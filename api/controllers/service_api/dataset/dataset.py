@@ -39,27 +39,22 @@ class DatasetListApi(DatasetApiResource):
 
     def get(self, tenant_id):
         """Resource for getting datasets."""
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         # provider = request.args.get("provider", default="vendor")
         search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
         include_all = request.args.get("include_all", default="false").lower() == "true"
-
         datasets, total = DatasetService.get_datasets(
             page, limit, tenant_id, current_user, search, tag_ids, include_all
         )
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
-
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
         model_names = []
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
@@ -131,9 +126,7 @@ class DatasetListApi(DatasetApiResource):
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-
         args = parser.parse_args()
-
         if args.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
                 tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
@@ -148,7 +141,6 @@ class DatasetListApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
-
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
@@ -168,7 +160,6 @@ class DatasetListApi(DatasetApiResource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
-
         return marshal(dataset, dataset_detail_fields), 200
 
 
@@ -188,17 +179,13 @@ class DatasetApi(DatasetApiResource):
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
-
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
-
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
         model_names = []
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
         if data["indexing_technique"] == "high_quality":
             item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
             if item_model in model_names:
@@ -207,11 +194,9 @@ class DatasetApi(DatasetApiResource):
                 data["embedding_available"] = False
         else:
             data["embedding_available"] = True
-
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
-
         return data, 200
 
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -220,7 +205,6 @@ class DatasetApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -250,7 +234,6 @@ class DatasetApi(DatasetApiResource):
         )
         parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
         parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-
         parser.add_argument(
             "external_retrieval_model",
             type=dict,
@@ -259,7 +242,6 @@ class DatasetApi(DatasetApiResource):
             location="json",
             help="Invalid external retrieval model.",
         )
-
         parser.add_argument(
             "external_knowledge_id",
             type=str,
@@ -268,7 +250,6 @@ class DatasetApi(DatasetApiResource):
             location="json",
             help="Invalid external knowledge id.",
         )
-
         parser.add_argument(
             "external_knowledge_api_id",
             type=str,
@@ -279,7 +260,6 @@ class DatasetApi(DatasetApiResource):
         )
         args = parser.parse_args()
         data = request.get_json()
-
         # check embedding model setting
         if data.get("indexing_technique") == "high_quality" or data.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
@@ -295,20 +275,15 @@ class DatasetApi(DatasetApiResource):
                 data.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
                 data.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
-
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, data.get("permission"), data.get("partial_member_list")
         )
-
         dataset = DatasetService.update_dataset(dataset_id_str, args, current_user)
-
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         result_data = marshal(dataset, dataset_detail_fields)
         tenant_id = current_user.current_tenant_id
-
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
             DatasetPermissionService.update_partial_member_list(
                 tenant_id, dataset_id_str, data.get("partial_member_list")
@@ -319,32 +294,25 @@ class DatasetApi(DatasetApiResource):
             or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
         ):
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
-
         return result_data, 200
 
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, _, dataset_id):
         """
         Deletes a dataset given its ID.
-
         Args:
             _: ignore
             dataset_id (UUID): The ID of the dataset to be deleted.
-
         Returns:
             dict: A dictionary with a key 'result' and a value 'success'
                   if the dataset was successfully deleted. Omitted in HTTP response.
             int: HTTP status code 204 indicating that the operation was successful.
-
         Raises:
             NotFound: If the dataset with the given ID does not exist.
         """
-
         dataset_id_str = str(dataset_id)
-
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
@@ -361,16 +329,13 @@ class DocumentStatusApi(DatasetApiResource):
     def patch(self, tenant_id, dataset_id, action):
         """
         Batch update document status.
-
         Args:
             tenant_id: tenant id
             dataset_id: dataset id
             action: action to perform (enable, disable, archive, un_archive)
-
         Returns:
             dict: A dictionary with a key 'result' and a value 'success'
             int: HTTP status code 200 indicating that the operation was successful.
-
         Raises:
             NotFound: If the dataset with the given ID does not exist.
             Forbidden: If the user does not have permission.
@@ -378,30 +343,24 @@ class DocumentStatusApi(DatasetApiResource):
         """
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
-
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         # Check user's permission
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         # Check dataset model setting
         DatasetService.check_dataset_model_setting(dataset)
-
         # Get document IDs from request body
         data = request.get_json()
         document_ids = data.get("document_ids", [])
-
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
         except services.errors.document.DocumentIndexingError as e:
             raise InvalidActionError(str(e))
         except ValueError as e:
             raise InvalidActionError(str(e))
-
         return {"result": "success"}, 200
 
 
@@ -411,7 +370,6 @@ class DatasetTagsApi(DatasetApiResource):
     def get(self, _, dataset_id):
         """Get all knowledge type tags."""
         tags = TagService.get_tags("knowledge", current_user.current_tenant_id)
-
         return tags, 200
 
     @validate_dataset_token
@@ -419,7 +377,6 @@ class DatasetTagsApi(DatasetApiResource):
         """Add a knowledge type tag."""
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -428,20 +385,16 @@ class DatasetTagsApi(DatasetApiResource):
             help="Name must be between 1 to 50 characters.",
             type=DatasetTagsApi._validate_tag_name,
         )
-
         args = parser.parse_args()
         args["type"] = "knowledge"
         tag = TagService.save_tags(args)
-
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
-
         return response, 200
 
     @validate_dataset_token
     def patch(self, _, dataset_id):
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -454,11 +407,8 @@ class DatasetTagsApi(DatasetApiResource):
         args = parser.parse_args()
         args["type"] = "knowledge"
         tag = TagService.update_tags(args, args.get("tag_id"))
-
         binding_count = TagService.get_tag_binding_count(args.get("tag_id"))
-
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-
         return response, 200
 
     @validate_dataset_token
@@ -470,7 +420,6 @@ class DatasetTagsApi(DatasetApiResource):
         parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
         args = parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
-
         return 204
 
     @staticmethod
@@ -486,7 +435,6 @@ class DatasetTagBindingApi(DatasetApiResource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
@@ -494,11 +442,9 @@ class DatasetTagBindingApi(DatasetApiResource):
         parser.add_argument(
             "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
         )
-
         args = parser.parse_args()
         args["type"] = "knowledge"
         TagService.save_tag_binding(args)
-
         return 204
 
 
@@ -508,15 +454,12 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
         parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
-
         args = parser.parse_args()
         args["type"] = "knowledge"
         TagService.delete_tag_binding(args)
-
         return 204
 
 

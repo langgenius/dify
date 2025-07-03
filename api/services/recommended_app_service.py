@@ -21,7 +21,6 @@ class RecommendedAppService:
                     "en-US"
                 )
             )
-
         return result
 
     @classmethod

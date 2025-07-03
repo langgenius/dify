@@ -33,7 +33,6 @@ class HitTestingService:
         limit: int = 10,
     ) -> dict:
         start = time.perf_counter()
-
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model or default_retrieval_model
@@ -41,11 +40,9 @@ class HitTestingService:
         metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions:
             dataset_retrieval = DatasetRetrieval()
-
             from core.app.app_config.entities import MetadataFilteringCondition
 
             metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
-
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
                 query=query,
@@ -75,17 +72,13 @@ class HitTestingService:
             weights=retrieval_model.get("weights", None),
             document_ids_filter=document_ids_filter,
         )
-
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
-
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
         )
-
         db.session.add(dataset_query)
         db.session.commit()
-
         return cls.compact_retrieve_response(query, all_documents)  # type: ignore
 
     @classmethod
@@ -102,32 +95,25 @@ class HitTestingService:
                 "query": {"content": query},
                 "records": [],
             }
-
         start = time.perf_counter()
-
         all_documents = RetrievalService.external_retrieve(
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             external_retrieval_model=external_retrieval_model,
             metadata_filtering_conditions=metadata_filtering_conditions,
         )
-
         end = time.perf_counter()
         logging.debug(f"External knowledge hit testing retrieve in {end - start:0.4f} seconds")
-
         dataset_query = DatasetQuery(
             dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
         )
-
         db.session.add(dataset_query)
         db.session.commit()
-
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
     def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
         records = RetrievalService.format_retrieval_documents(documents)
-
         return {
             "query": {
                 "content": query,
@@ -156,7 +142,6 @@ class HitTestingService:
     @classmethod
     def hit_testing_args_check(cls, args):
         query = args["query"]
-
         if not query or len(query) > 250:
             raise ValueError("Query is required and cannot exceed 250 characters")
 

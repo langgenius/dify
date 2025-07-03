@@ -37,23 +37,17 @@ class AccountInitApi(Resource):
     @login_required
     def post(self):
         account = current_user
-
         if account.status == "active":
             raise AccountAlreadyInitedError()
-
         parser = reqparse.RequestParser()
-
         if dify_config.EDITION == "CLOUD":
             parser.add_argument("invitation_code", type=str, location="json")
-
         parser.add_argument("interface_language", type=supported_language, required=True, location="json")
         parser.add_argument("timezone", type=timezone, required=True, location="json")
         args = parser.parse_args()
-
         if dify_config.EDITION == "CLOUD":
             if not args["invitation_code"]:
                 raise ValueError("invitation_code is required")
-
             # check invitation code
             invitation_code = (
                 db.session.query(InvitationCode)
@@ -63,22 +57,18 @@ class AccountInitApi(Resource):
                 )
                 .first()
             )
-
             if not invitation_code:
                 raise InvalidInvitationCodeError()
-
             invitation_code.status = "used"
             invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
-
         account.interface_language = args["interface_language"]
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
         account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.commit()
-
         return {"result": "success"}
 
 
@@ -101,13 +91,10 @@ class AccountNameApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
-
         # Validate account name length
         if len(args["name"]) < 3 or len(args["name"]) > 30:
             raise ValueError("Account name must be between 3 and 30 characters.")
-
         updated_account = AccountService.update_account(current_user, name=args["name"])
-
         return updated_account
 
 
@@ -120,9 +107,7 @@ class AccountAvatarApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("avatar", type=str, required=True, location="json")
         args = parser.parse_args()
-
         updated_account = AccountService.update_account(current_user, avatar=args["avatar"])
-
         return updated_account
 
 
@@ -135,9 +120,7 @@ class AccountInterfaceLanguageApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("interface_language", type=supported_language, required=True, location="json")
         args = parser.parse_args()
-
         updated_account = AccountService.update_account(current_user, interface_language=args["interface_language"])
-
         return updated_account
 
 
@@ -150,9 +133,7 @@ class AccountInterfaceThemeApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("interface_theme", type=str, choices=["light", "dark"], required=True, location="json")
         args = parser.parse_args()
-
         updated_account = AccountService.update_account(current_user, interface_theme=args["interface_theme"])
-
         return updated_account
 
 
@@ -165,13 +146,10 @@ class AccountTimezoneApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("timezone", type=str, required=True, location="json")
         args = parser.parse_args()
-
         # Validate timezone string, e.g. America/New_York, Asia/Shanghai
         if args["timezone"] not in pytz.all_timezones:
             raise ValueError("Invalid timezone string.")
-
         updated_account = AccountService.update_account(current_user, timezone=args["timezone"])
-
         return updated_account
 
 
@@ -186,15 +164,12 @@ class AccountPasswordApi(Resource):
         parser.add_argument("new_password", type=str, required=True, location="json")
         parser.add_argument("repeat_new_password", type=str, required=True, location="json")
         args = parser.parse_args()
-
         if args["new_password"] != args["repeat_new_password"]:
             raise RepeatPasswordNotMatchError()
-
         try:
             AccountService.update_account_password(current_user, args["password"], args["new_password"])
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
-
         return {"result": "success"}
 
 
@@ -205,7 +180,6 @@ class AccountIntegrateApi(Resource):
         "is_bound": fields.Boolean,
         "link": fields.String,
     }
-
     integrate_list_fields = {
         "data": fields.List(fields.Nested(integrate_fields)),
     }
@@ -216,13 +190,10 @@ class AccountIntegrateApi(Resource):
     @marshal_with(integrate_list_fields)
     def get(self):
         account = current_user
-
         account_integrates = db.session.query(AccountIntegrate).filter(AccountIntegrate.account_id == account.id).all()
-
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
         providers = ["github", "google"]
-
         integrate_data = []
         for provider in providers:
             existing_integrate = next((ai for ai in account_integrates if ai.provider == provider), None)
@@ -246,7 +217,6 @@ class AccountIntegrateApi(Resource):
                         "link": f"{base_url}{oauth_base_path}/{provider}",
                     }
                 )
-
         return {"data": integrate_data}
 
 
@@ -256,10 +226,8 @@ class AccountDeleteVerifyApi(Resource):
     @account_initialization_required
     def get(self):
         account = current_user
-
         token, code = AccountService.generate_account_deletion_verification_code(account)
         AccountService.send_account_deletion_verification_email(account, code)
-
         return {"result": "success", "data": token}
 
 
@@ -269,17 +237,13 @@ class AccountDeleteApi(Resource):
     @account_initialization_required
     def post(self):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         args = parser.parse_args()
-
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
             raise InvalidAccountDeletionCodeError()
-
         AccountService.delete_account(account)
-
         return {"result": "success"}
 
 
@@ -290,9 +254,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         parser.add_argument("email", type=str, required=True, location="json")
         parser.add_argument("feedback", type=str, required=True, location="json")
         args = parser.parse_args()
-
         BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
-
         return {"result": "success"}
 
 
@@ -309,7 +271,6 @@ class EducationVerifyApi(Resource):
     @marshal_with(verify_fields)
     def get(self):
         account = current_user
-
         return BillingService.EducationIdentity.verify(account.id, account.email)
 
 
@@ -325,13 +286,11 @@ class EducationApi(Resource):
     @cloud_edition_billing_enabled
     def post(self):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, location="json")
         parser.add_argument("institution", type=str, required=True, location="json")
         parser.add_argument("role", type=str, required=True, location="json")
         args = parser.parse_args()
-
         return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
 
     @setup_required
@@ -342,7 +301,6 @@ class EducationApi(Resource):
     @marshal_with(status_fields)
     def get(self):
         account = current_user
-
         return BillingService.EducationIdentity.is_active(account.id)
 
 
@@ -365,7 +323,6 @@ class EducationAutoCompleteApi(Resource):
         parser.add_argument("page", type=int, required=False, location="args", default=0)
         parser.add_argument("limit", type=int, required=False, location="args", default=20)
         args = parser.parse_args()
-
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
 

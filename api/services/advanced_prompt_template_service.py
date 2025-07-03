@@ -22,7 +22,6 @@ class AdvancedPromptTemplateService:
         model_mode = args["model_mode"]
         model_name = args["model_name"]
         has_context = args["has_context"]
-
         if "baichuan" in model_name.lower():
             return cls.get_baichuan_prompt(app_mode, model_mode, has_context)
         else:
@@ -31,7 +30,6 @@ class AdvancedPromptTemplateService:
     @classmethod
     def get_common_prompt(cls, app_mode: str, model_mode: str, has_context: str) -> dict:
         context_prompt = copy.deepcopy(CONTEXT)
-
         if app_mode == AppMode.CHAT.value:
             if model_mode == "completion":
                 return cls.get_completion_prompt(
@@ -57,7 +55,6 @@ class AdvancedPromptTemplateService:
             prompt_template["completion_prompt_config"]["prompt"]["text"] = (
                 context + prompt_template["completion_prompt_config"]["prompt"]["text"]
             )
-
         return prompt_template
 
     @classmethod
@@ -66,13 +63,11 @@ class AdvancedPromptTemplateService:
             prompt_template["chat_prompt_config"]["prompt"][0]["text"] = (
                 context + prompt_template["chat_prompt_config"]["prompt"][0]["text"]
             )
-
         return prompt_template
 
     @classmethod
     def get_baichuan_prompt(cls, app_mode: str, model_mode: str, has_context: str) -> dict:
         baichuan_context_prompt = copy.deepcopy(BAICHUAN_CONTEXT)
-
         if app_mode == AppMode.CHAT.value:
             if model_mode == "completion":
                 return cls.get_completion_prompt(

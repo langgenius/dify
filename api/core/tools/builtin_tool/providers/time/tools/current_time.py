@@ -26,7 +26,6 @@ class CurrentTimeTool(BuiltinTool):
         if tz == "UTC":
             yield self.create_text_message(f"{datetime.now(UTC).strftime(fm)}")
             return
-
         try:
             tz = pytz_timezone(tz)
         except Exception:

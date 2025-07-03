@@ -15,7 +15,6 @@ class RecyclableContextVar(Generic[T]):
     """
     RecyclableContextVar is a wrapper around ContextVar
     It's safe to use in gunicorn with thread recycling, but features like `reset` are not available for now
-
     NOTE: you need to call `increment_thread_recycles` before requests
     """
 
@@ -38,7 +37,6 @@ class RecyclableContextVar(Generic[T]):
         self_updates = self._updates.get()
         if thread_recycles > self_updates:
             self._updates.set(thread_recycles)
-
         # check if thread is recycled and should be updated
         if thread_recycles < self_updates:
             return self._context_var.get()
@@ -56,10 +54,8 @@ class RecyclableContextVar(Generic[T]):
         self_updates = self._updates.get()
         if thread_recycles > self_updates:
             self._updates.set(thread_recycles)
-
         if self._updates.get() == self._thread_recycles.get(0):
             # after increment,
             self._updates.set(self._updates.get() + 1)
-
         # set the context
         self._context_var.set(value)

@@ -32,12 +32,9 @@ class NacosHttpClient:
 
     def _inject_auth_info(self, headers, params, module="config"):
         headers.update({"User-Agent": "Nacos-Http-Client-In-Dify:v0.0.1"})
-
         if module == "login":
             return
-
         ts = str(int(time.time() * 1000))
-
         if self.ak and self.sk:
             sign_str = self.get_sign_str(params["group"], params["tenant"], ts)
             headers["Spas-AccessKey"] = self.ak
@@ -67,7 +64,6 @@ class NacosHttpClient:
         current_time = time.time()
         if self.token and not force_refresh and self.token_expire_time > current_time:
             return self.token
-
         params = {"username": self.username, "password": self.password}
         url = "http://" + self.server + "/nacos/v1/auth/login"
         try:

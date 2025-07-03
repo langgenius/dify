@@ -24,12 +24,10 @@ class WeekdayTool(BuiltinTool):
         if month is None:
             raise ValueError("Month is required")
         day = tool_parameters.get("day")
-
         date_obj = self.convert_datetime(year, month, day)
         if not date_obj:
             yield self.create_text_message(f"Invalid date: Year {year}, Month {month}, Day {day}.")
             return
-
         weekday_name = calendar.day_name[date_obj.weekday()]
         month_name = calendar.month_name[month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
@@ -41,7 +39,6 @@ class WeekdayTool(BuiltinTool):
             # allowed range in datetime module
             if not (year >= 1 and 1 <= month <= 12 and 1 <= day <= 31):
                 return None
-
             year = int(year)
             month = int(month)
             day = int(day)

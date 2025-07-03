@@ -42,23 +42,18 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
             api_token = validate_and_get_api_token("app")
-
             app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
             if not app_model:
                 raise Forbidden("The app no longer exists.")
-
             if app_model.status != "normal":
                 raise Forbidden("The app's status is abnormal.")
-
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
-
             tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
-
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .filter(Tenant.id == api_token.tenant_id)
@@ -79,9 +74,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
                 raise Unauthorized("Tenant does not exist.")
-
             kwargs["app_model"] = app_model
-
             if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
@@ -92,20 +85,15 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 else:
                     # use default-user
                     user_id = None
-
                 if not user_id and fetch_user_arg.required:
                     raise ValueError("Arg user must be provided.")
-
                 if user_id:
                     user_id = str(user_id)
-
                 end_user = create_or_update_end_user_for_user_id(app_model, user_id)
                 kwargs["end_user"] = end_user
-
                 # Set EndUser as current logged-in user for flask_login.current_user
                 current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
-
             return view_func(*args, **kwargs)
 
         return decorated_view
@@ -121,13 +109,11 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
-
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
                 vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
-
                 if resource == "members" and 0 < members.limit <= members.size:
                     raise Forbidden("The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
@@ -138,7 +124,6 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
                     raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
-
             return view(*args, **kwargs)
 
         return decorated
@@ -160,7 +145,6 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
                         )
                 else:
                     return view(*args, **kwargs)
-
             return view(*args, **kwargs)
 
         return decorated
@@ -173,19 +157,14 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
         @wraps(view)
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-
             if resource == "knowledge":
                 knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
                     key = f"rate_limit_{api_token.tenant_id}"
-
                     redis_client.zadd(key, {current_time: current_time})
-
                     redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
                     request_count = redis_client.zcard(key)
-
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
@@ -236,7 +215,6 @@ def validate_dataset_token(view=None):
 
     if view:
         return decorator(view)
-
     # if view is None, it means that the decorator is used without parentheses
     # use the decorator as a function for method_decorators
     return decorator
@@ -249,13 +227,10 @@ def validate_and_get_api_token(scope: str | None = None):
     auth_header = request.headers.get("Authorization")
     if auth_header is None or " " not in auth_header:
         raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
-
     auth_scheme, auth_token = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
-
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
-
     current_time = datetime.now(UTC).replace(tzinfo=None)
     cutoff_time = current_time - timedelta(minutes=1)
     with Session(db.engine, expire_on_commit=False) as session:
@@ -271,7 +246,6 @@ def validate_and_get_api_token(scope: str | None = None):
         )
         result = session.execute(update_stmt)
         api_token = result.scalar_one_or_none()
-
         if not api_token:
             stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
             api_token = session.scalar(stmt)
@@ -279,7 +253,6 @@ def validate_and_get_api_token(scope: str | None = None):
                 raise Unauthorized("Access token is invalid")
         else:
             session.commit()
-
     return api_token
 
 
@@ -289,7 +262,6 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     """
     if not user_id:
         user_id = "DEFAULT-USER"
-
     end_user = (
         db.session.query(EndUser)
         .filter(
@@ -300,7 +272,6 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         )
         .first()
     )
-
     if end_user is None:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
@@ -311,7 +282,6 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         )
         db.session.add(end_user)
         db.session.commit()
-
     return end_user
 
 
@@ -320,8 +290,6 @@ class DatasetApiResource(Resource):
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
-
         if not dataset:
             raise NotFound("Dataset not found.")
-
         return dataset

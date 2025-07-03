@@ -49,7 +49,6 @@ class EnterpriseService:
         def is_user_allowed_to_access_webapp(cls, user_id: str, app_code: str):
             params = {"userId": user_id, "appCode": app_code}
             data = EnterpriseRequest.send_request("GET", "/webapp/permission", params=params)
-
             return data.get("result", False)
 
         @classmethod
@@ -70,16 +69,13 @@ class EnterpriseService:
             data: dict[str, str] = EnterpriseRequest.send_request("POST", "/webapp/access-mode/batch/id", json=body)
             if not data:
                 raise ValueError("No data found.")
-
             if not isinstance(data["accessModes"], dict):
                 raise ValueError("Invalid data format.")
-
             ret = {}
             for key, value in data["accessModes"].items():
                 curr = WebAppSettings()
                 curr.access_mode = value
                 ret[key] = curr
-
             return ret
 
         @classmethod
@@ -98,17 +94,13 @@ class EnterpriseService:
                 raise ValueError("app_id must be provided.")
             if access_mode not in ["public", "private", "private_all"]:
                 raise ValueError("access_mode must be either 'public', 'private', or 'private_all'")
-
             data = {"appId": app_id, "accessMode": access_mode}
-
             response = EnterpriseRequest.send_request("POST", "/webapp/access-mode", json=data)
-
             return response.get("result", False)
 
         @classmethod
         def cleanup_webapp(cls, app_id: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
-
             body = {"appId": app_id}
             EnterpriseRequest.send_request("DELETE", "/webapp/clean", json=body)

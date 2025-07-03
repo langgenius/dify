@@ -14,7 +14,6 @@ class SavedMessage(Base):
         db.PrimaryKeyConstraint("id", name="saved_message_pkey"),
         db.Index("saved_message_message_idx", "app_id", "message_id", "created_by_role", "created_by"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     message_id = db.Column(StringUUID, nullable=False)
@@ -33,7 +32,6 @@ class PinnedConversation(Base):
         db.PrimaryKeyConstraint("id", name="pinned_conversation_pkey"),
         db.Index("pinned_conversation_conversation_idx", "app_id", "conversation_id", "created_by_role", "created_by"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)

@@ -37,7 +37,6 @@ provider_fields = {
     "is_valid": fields.Boolean,
     "token_is_set": fields.Boolean,
 }
-
 tenant_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -49,7 +48,6 @@ tenant_fields = {
     "trial_end_reason": fields.String,
     "custom_config": fields.Raw(attribute="custom_config"),
 }
-
 tenants_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -58,7 +56,6 @@ tenants_fields = {
     "created_at": TimestampField,
     "current": fields.Boolean,
 }
-
 workspace_fields = {"id": fields.String, "name": fields.String, "status": fields.String, "created_at": TimestampField}
 
 
@@ -69,10 +66,8 @@ class TenantListApi(Resource):
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
-
         for tenant in tenants:
             features = FeatureService.get_features(tenant.id)
-
             # Create a dictionary with tenant attributes
             tenant_dict = {
                 "id": tenant.id,
@@ -82,9 +77,7 @@ class TenantListApi(Resource):
                 "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
                 "current": tenant.id == current_user.current_tenant_id,
             }
-
             tenant_dicts.append(tenant_dict)
-
         return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
 
 
@@ -96,14 +89,11 @@ class WorkspaceListApi(Resource):
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
         tenants = db.paginate(select=stmt, page=args["page"], per_page=args["limit"], error_out=False)
         has_more = False
-
         if tenants.has_next:
             has_more = True
-
         return {
             "data": marshal(tenants.items, workspace_fields),
             "has_more": has_more,
@@ -121,9 +111,7 @@ class TenantApi(Resource):
     def get(self):
         if request.path == "/info":
             logging.warning("Deprecated URL /info was used.")
-
         tenant = current_user.current_tenant
-
         if tenant.status == TenantStatus.ARCHIVE:
             tenants = TenantService.get_join_tenants(current_user)
             # if there is any tenant, switch to the first one
@@ -133,7 +121,6 @@ class TenantApi(Resource):
             # else, raise Unauthorized
             else:
                 raise Unauthorized("workspace is archived")
-
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
@@ -145,17 +132,14 @@ class SwitchWorkspaceApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("tenant_id", type=str, required=True, location="json")
         args = parser.parse_args()
-
         # check if tenant_id is valid, 403 if not
         try:
             TenantService.switch_tenant(current_user, args["tenant_id"])
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
-
         new_tenant = db.session.query(Tenant).get(args["tenant_id"])  # Get new tenant
         if new_tenant is None:
             raise ValueError("Tenant not found")
-
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
 
@@ -169,19 +153,15 @@ class CustomConfigWorkspaceApi(Resource):
         parser.add_argument("remove_webapp_brand", type=bool, location="json")
         parser.add_argument("replace_webapp_logo", type=str, location="json")
         args = parser.parse_args()
-
         tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
-
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],
             "replace_webapp_logo": args["replace_webapp_logo"]
             if args["replace_webapp_logo"] is not None
             else tenant.custom_config_dict.get("replace_webapp_logo"),
         }
-
         tenant.custom_config_dict = custom_config_dict
         db.session.commit()
-
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
 
@@ -193,21 +173,16 @@ class WebappLogoWorkspaceApi(Resource):
     def post(self):
         # get file from request
         file = request.files["file"]
-
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
-
         if not file.filename:
             raise FilenameNotExistsError
-
         extension = file.filename.split(".")[-1]
         if extension.lower() not in {"svg", "png"}:
             raise UnsupportedFileTypeError()
-
         try:
             upload_file = FileService.upload_file(
                 filename=file.filename,
@@ -215,12 +190,10 @@ class WebappLogoWorkspaceApi(Resource):
                 mimetype=file.mimetype,
                 user=current_user,
             )
-
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return {"id": upload_file.id}, 201
 
 
@@ -233,11 +206,9 @@ class WorkspaceInfoApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
-
         tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
         tenant.name = args["name"]
         db.session.commit()
-
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
 

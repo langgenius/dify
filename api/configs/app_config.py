@@ -33,7 +33,6 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
         remote_source_name = current_state.get("REMOTE_SETTINGS_SOURCE_NAME")
         if not remote_source_name:
             return {}
-
         remote_source: RemoteSettingsSource | None = None
         match remote_source_name:
             case RemoteSettingsSourceName.APOLLO:
@@ -43,15 +42,12 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
             case _:
                 logger.warning(f"Unsupported remote source: {remote_source_name}")
                 return {}
-
         d: dict[str, Any] = {}
-
         for field_name, field in self.settings_cls.model_fields.items():
             field_value, field_key, value_is_complex = remote_source.get_field_value(field, field_name)
             field_value = remote_source.prepare_field_value(field_name, field, field_value, value_is_complex)
             if field_value is not None:
                 d[field_key] = field_value
-
         return d
 
 
@@ -86,7 +82,6 @@ class DifyConfig(
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
-
     @classmethod
     def settings_customise_sources(
         cls,

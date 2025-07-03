@@ -49,17 +49,13 @@ class DatasetDocumentSegmentListApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         document = DocumentService.get_document(dataset_id, document_id)
-
         if not document:
             raise NotFound("Document not found.")
-
         parser = reqparse.RequestParser()
         parser.add_argument("limit", type=int, default=20, location="args")
         parser.add_argument("status", type=str, action="append", default=[], location="args")
@@ -67,15 +63,12 @@ class DatasetDocumentSegmentListApi(Resource):
         parser.add_argument("enabled", type=str, default="all", location="args")
         parser.add_argument("keyword", type=str, default=None, location="args")
         parser.add_argument("page", type=int, default=1, location="args")
-
         args = parser.parse_args()
-
         page = args["page"]
         limit = min(args["limit"], 100)
         status_list = args["status"]
         hit_count_gte = args["hit_count_gte"]
         keyword = args["keyword"]
-
         query = (
             select(DocumentSegment)
             .filter(
@@ -84,24 +77,18 @@ class DatasetDocumentSegmentListApi(Resource):
             )
             .order_by(DocumentSegment.position.asc())
         )
-
         if status_list:
             query = query.filter(DocumentSegment.status.in_(status_list))
-
         if hit_count_gte is not None:
             query = query.filter(DocumentSegment.hit_count >= hit_count_gte)
-
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
-
         if args["enabled"].lower() != "all":
             if args["enabled"].lower() == "true":
                 query = query.filter(DocumentSegment.enabled == True)
             elif args["enabled"].lower() == "false":
                 query = query.filter(DocumentSegment.enabled == False)
-
         segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
-
         response = {
             "data": marshal(segments.items, segment_fields),
             "limit": limit,
@@ -129,7 +116,6 @@ class DatasetDocumentSegmentListApi(Resource):
         if not document:
             raise NotFound("Document not found.")
         segment_ids = request.args.getlist("segment_id")
-
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -161,7 +147,6 @@ class DatasetDocumentSegmentApi(Resource):
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -183,7 +168,6 @@ class DatasetDocumentSegmentApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
-
         document_indexing_cache_key = "document_{}_indexing".format(document.id)
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
@@ -370,13 +354,11 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
-
         try:
             # Skip the first row
             df = pd.read_csv(file)
@@ -410,7 +392,6 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
-
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
 
@@ -502,13 +483,10 @@ class ChildChunkAddApi(Resource):
         parser.add_argument("limit", type=int, default=20, location="args")
         parser.add_argument("keyword", type=str, default=None, location="args")
         parser.add_argument("page", type=int, default=1, location="args")
-
         args = parser.parse_args()
-
         page = args["page"]
         limit = min(args["limit"], 100)
         keyword = args["keyword"]
-
         child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
         return {
             "data": marshal(child_chunks.items, child_chunk_fields),

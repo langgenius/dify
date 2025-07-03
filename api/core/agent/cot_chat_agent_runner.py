@@ -20,18 +20,15 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         assert self.app_config.agent
         assert self.app_config.agent.prompt
-
         prompt_entity = self.app_config.agent.prompt
         if not prompt_entity:
             raise ValueError("Agent prompt configuration is not set")
         first_prompt = prompt_entity.first_prompt
-
         system_prompt = (
             first_prompt.replace("{{instruction}}", self._instruction)
             .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools)))
             .replace("{{tool_names}}", ", ".join([tool.name for tool in self._prompt_messages_tools]))
         )
-
         return SystemPromptMessage(content=system_prompt)
 
     def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
@@ -41,7 +38,6 @@ class CotChatAgentRunner(CotAgentRunner):
         if self.files:
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=query))
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
@@ -59,11 +55,9 @@ class CotChatAgentRunner(CotAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
-
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
             prompt_messages.append(UserPromptMessage(content=query))
-
         return prompt_messages
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
@@ -72,7 +66,6 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         # organize system prompt
         system_message = self._organize_system_prompt()
-
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
         if not agent_scratchpad:
@@ -91,12 +84,9 @@ class CotChatAgentRunner(CotAgentRunner):
                         assistant_message.content += f"Action: {unit.action_str}\n\n"
                     if unit.observation:
                         assistant_message.content += f"Observation: {unit.observation}\n\n"
-
             assistant_messages = [assistant_message]
-
         # query messages
         query_messages = self._organize_user_query(self._query, [])
-
         if assistant_messages:
             # organize historic prompt messages
             historic_messages = self._organize_historic_prompt_messages(
@@ -113,6 +103,5 @@ class CotChatAgentRunner(CotAgentRunner):
             # organize historic prompt messages
             historic_messages = self._organize_historic_prompt_messages([system_message, *query_messages])
             messages = [system_message, *historic_messages, *query_messages]
-
         # join all messages
         return messages

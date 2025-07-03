@@ -34,10 +34,8 @@ class AudioApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     def post(self, app_model: App, end_user: EndUser):
         file = request.files["file"]
-
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
-
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
@@ -75,14 +73,12 @@ class TextApi(Resource):
             parser.add_argument("text", type=str, location="json")
             parser.add_argument("streaming", type=bool, location="json")
             args = parser.parse_args()
-
             message_id = args.get("message_id", None)
             text = args.get("text", None)
             voice = args.get("voice", None)
             response = AudioService.transcript_tts(
                 app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
             )
-
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")

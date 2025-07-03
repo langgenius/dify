@@ -19,10 +19,8 @@ class ComplianceApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("doc_name", type=str, required=True, location="args")
         args = parser.parse_args()
-
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")
-
         return BillingService.get_compliance_download_link(
             doc_name=args.doc_name,
             account_id=current_user.id,

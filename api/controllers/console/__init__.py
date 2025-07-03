@@ -27,21 +27,17 @@ from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 api = ExternalApi(bp)
-
 # File
 api.add_resource(FileApi, "/files/upload")
 api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
 api.add_resource(FileSupportTypeApi, "/files/support-type")
-
 # Remote files
 api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
 api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
-
 # Import App
 api.add_resource(AppImportApi, "/apps/imports")
 api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
 api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
-
 # Import other controllers
 from . import admin, apikey, extension, feature, ping, setup, version
 
@@ -97,7 +93,6 @@ from .explore import (
 # Explore Audio
 api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
 api.add_resource(ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio", endpoint="installed_app_text")
-
 # Explore Completion
 api.add_resource(
     CompletionApi, "/installed-apps/<uuid:installed_app_id>/completion-messages", endpoint="installed_app_completion"
@@ -115,7 +110,6 @@ api.add_resource(
     "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
     endpoint="installed_app_stop_chat_completion",
 )
-
 # Explore Conversation
 api.add_resource(
     ConversationRenameApi,
@@ -140,8 +134,6 @@ api.add_resource(
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
     endpoint="installed_app_conversation_unpin",
 )
-
-
 # Explore Message
 api.add_resource(MessageListApi, "/installed-apps/<uuid:installed_app_id>/messages", endpoint="installed_app_messages")
 api.add_resource(
@@ -164,7 +156,6 @@ api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_ap
 api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
-
 # Import tag controllers
 from .tag import tags
 

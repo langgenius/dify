@@ -35,11 +35,9 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
             response = ToolEngine.generic_invoke(
                 tool_runtime, tool_parameters, user_id, DifyWorkflowCallbackHandler(), workflow_call_depth=1
             )
-
             response = ToolFileMessageTransformer.transform_tool_invoke_messages(
                 response, user_id=user_id, tenant_id=tenant_id
             )
-
             return response
         except Exception as e:
             raise e

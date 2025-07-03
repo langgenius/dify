@@ -34,7 +34,6 @@ def clean_embedding_cache_task():
                 db.session.execute(
                     text("DELETE FROM embeddings WHERE id = :embedding_id"), {"embedding_id": embedding_id}
                 )
-
             db.session.commit()
         else:
             break

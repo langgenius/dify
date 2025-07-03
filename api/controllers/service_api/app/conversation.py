@@ -29,7 +29,6 @@ class ConversationApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
@@ -42,7 +41,6 @@ class ConversationApi(Resource):
             location="args",
         )
         args = parser.parse_args()
-
         try:
             with Session(db.engine) as session:
                 return ConversationService.pagination_by_last_id(
@@ -65,9 +63,7 @@ class ConversationDetailApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
-
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
@@ -82,14 +78,11 @@ class ConversationRenameApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=False, location="json")
         parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
-
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
         except services.errors.conversation.ConversationNotExistsError:
@@ -104,14 +97,11 @@ class ConversationVariablesApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         try:
             return ConversationService.get_conversational_variable(
                 app_model, conversation_id, end_user, args["limit"], args["last_id"]

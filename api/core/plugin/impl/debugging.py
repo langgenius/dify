@@ -13,5 +13,4 @@ class PluginDebuggingClient(BasePluginClient):
             key: str
 
         response = self._request_with_plugin_daemon_response("POST", f"plugin/{tenant_id}/debugging/key", Response)
-
         return response.key

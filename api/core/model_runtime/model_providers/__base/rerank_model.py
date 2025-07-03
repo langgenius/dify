@@ -25,7 +25,6 @@ class RerankModel(AIModel):
     ) -> RerankResult:
         """
         Invoke rerank model
-
         :param model: model name
         :param credentials: model credentials
         :param query: search query

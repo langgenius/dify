@@ -13,27 +13,22 @@ class OceanBaseVectorConfig(BaseSettings):
         description="Hostname or IP address of the OceanBase Vector server (e.g. 'localhost')",
         default=None,
     )
-
     OCEANBASE_VECTOR_PORT: Optional[PositiveInt] = Field(
         description="Port number on which the OceanBase Vector server is listening (default is 2881)",
         default=2881,
     )
-
     OCEANBASE_VECTOR_USER: Optional[str] = Field(
         description="Username for authenticating with the OceanBase Vector database",
         default=None,
     )
-
     OCEANBASE_VECTOR_PASSWORD: Optional[str] = Field(
         description="Password for authenticating with the OceanBase Vector database",
         default=None,
     )
-
     OCEANBASE_VECTOR_DATABASE: Optional[str] = Field(
         description="Name of the OceanBase Vector database to connect to",
         default=None,
     )
-
     OCEANBASE_ENABLE_HYBRID_SEARCH: bool = Field(
         description="Enable hybrid search features (requires OceanBase >= 4.3.5.1). Set to false for compatibility "
         "with older versions",

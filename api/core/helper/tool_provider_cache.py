@@ -18,7 +18,6 @@ class ToolProviderCredentialsCache:
     def get(self) -> Optional[dict]:
         """
         Get cached model provider credentials.
-
         :return:
         """
         cached_provider_credentials = redis_client.get(self.cache_key)
@@ -28,7 +27,6 @@ class ToolProviderCredentialsCache:
                 cached_provider_credentials = json.loads(cached_provider_credentials)
             except JSONDecodeError:
                 return None
-
             return dict(cached_provider_credentials)
         else:
             return None
@@ -36,7 +34,6 @@ class ToolProviderCredentialsCache:
     def set(self, credentials: dict) -> None:
         """
         Cache model provider credentials.
-
         :param credentials: provider credentials
         :return:
         """
@@ -45,7 +42,6 @@ class ToolProviderCredentialsCache:
     def delete(self) -> None:
         """
         Delete cached model provider credentials.
-
         :return:
         """
         redis_client.delete(self.cache_key)

@@ -50,7 +50,6 @@ class MessageListApi(WebApiResource):
         "status": fields.String,
         "error": fields.String,
     }
-
     message_infinite_scroll_pagination_fields = {
         "limit": fields.Integer,
         "has_more": fields.Boolean,
@@ -62,13 +61,11 @@ class MessageListApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
         parser.add_argument("first_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         try:
             return MessageService.pagination_by_first_id(
                 app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
@@ -82,12 +79,10 @@ class MessageListApi(WebApiResource):
 class MessageFeedbackApi(WebApiResource):
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         parser.add_argument("content", type=str, location="json", default=None)
         args = parser.parse_args()
-
         try:
             MessageService.create_feedback(
                 app_model=app_model,
@@ -98,7 +93,6 @@ class MessageFeedbackApi(WebApiResource):
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
-
         return {"result": "success"}
 
 
@@ -106,17 +100,13 @@ class MessageMoreLikeThisApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
         message_id = str(message_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
         )
         args = parser.parse_args()
-
         streaming = args["response_mode"] == "streaming"
-
         try:
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
@@ -125,7 +115,6 @@ class MessageMoreLikeThisApi(WebApiResource):
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=streaming,
             )
-
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -151,9 +140,7 @@ class MessageSuggestedQuestionApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotCompletionAppError()
-
         message_id = str(message_id)
-
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.WEB_APP
@@ -175,7 +162,6 @@ class MessageSuggestedQuestionApi(WebApiResource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
-
         return {"data": questions}
 
 

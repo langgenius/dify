@@ -66,7 +66,6 @@ class WebsiteService:
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
             )
             return WaterCrawlProvider(api_key, credentials.get("config").get("base_url", None)).crawl_url(url, options)
-
         elif provider == "jinareader":
             api_key = encrypter.decrypt_token(
                 tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
@@ -150,7 +149,6 @@ class WebsiteService:
                 "data": [],
                 "time_consuming": data.get("duration", 0) / 1000,
             }
-
             if crawl_status_data["status"] == "completed":
                 response = requests.post(
                     "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
@@ -177,7 +175,6 @@ class WebsiteService:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         # decrypt api_key
         api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
-
         if provider == "firecrawl":
             crawl_data: list[dict[str, Any]] | None = None
             file_key = "website_files/" + job_id + ".txt"
@@ -191,7 +188,6 @@ class WebsiteService:
                 if result.get("status") != "completed":
                     raise ValueError("Crawl job is not completed")
                 crawl_data = result.get("data")
-
             if crawl_data:
                 for item in crawl_data:
                     if item.get("source_url") == url:
@@ -221,7 +217,6 @@ class WebsiteService:
                 status_data = status_response.json().get("data", {})
                 if status_data.get("status") != "completed":
                     raise ValueError("Crawl job is not completed")
-
                 # Get processed data
                 data_response = requests.post(
                     "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",

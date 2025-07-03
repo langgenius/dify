@@ -32,15 +32,12 @@ def isoformat(o: Union[datetime.date, datetime.time]) -> str:
 def decimal_encoder(dec_value: Decimal) -> Union[int, float]:
     """
     Encodes a Decimal as int of there's no exponent, otherwise float
-
     This is useful when we use ConstrainedDecimal to represent Numeric(x,0)
     where a integer (but not int typed) is used. Encoding this as a float
     results in failed round-tripping between encode and parse.
     Our Id type is a prime example of this.
-
     >>> decimal_encoder(Decimal("1.0"))
     1.0
-
     >>> decimal_encoder(Decimal("1"))
     1
     """
@@ -191,13 +188,11 @@ def jsonable_encoder(
                 )
             )
         return encoded_list
-
     if type(obj) in ENCODERS_BY_TYPE:
         return ENCODERS_BY_TYPE[type(obj)](obj)
     for encoder, classes_tuple in encoders_by_class_tuples.items():
         if isinstance(obj, classes_tuple):
             return encoder(obj)
-
     try:
         data = dict(obj)
     except Exception as e:

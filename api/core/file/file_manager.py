@@ -48,7 +48,6 @@ def to_prompt_message_content(
         raise ValueError("Missing file extension")
     if f.mime_type is None:
         raise ValueError("Missing file mime_type")
-
     params = {
         "base64_data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
         "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
@@ -57,14 +56,12 @@ def to_prompt_message_content(
     }
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
-
     prompt_class_map: Mapping[FileType, type[PromptMessageContentUnionTypes]] = {
         FileType.IMAGE: ImagePromptMessageContent,
         FileType.AUDIO: AudioPromptMessageContent,
         FileType.VIDEO: VideoPromptMessageContent,
         FileType.DOCUMENT: DocumentPromptMessageContent,
     }
-
     try:
         return prompt_class_map[f.type].model_validate(params)
     except KeyError:
@@ -84,15 +81,11 @@ def download(f: File, /):
 def _download_file_content(path: str, /):
     """
     Download and return the contents of a file as bytes.
-
     This function loads the file from storage and ensures it's in bytes format.
-
     Args:
         path (str): The path to the file in storage.
-
     Returns:
         bytes: The contents of the file as a bytes object.
-
     Raises:
         ValueError: If the loaded file is not a bytes object.
     """
@@ -112,7 +105,6 @@ def _get_encoded_string(f: File, /):
             data = _download_file_content(f._storage_key)
         case FileTransferMethod.TOOL_FILE:
             data = _download_file_content(f._storage_key)
-
     encoded_string = base64.b64encode(data).decode("utf-8")
     return encoded_string
 

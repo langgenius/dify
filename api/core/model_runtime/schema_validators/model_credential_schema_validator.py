@@ -11,17 +11,12 @@ class ModelCredentialSchemaValidator(CommonValidator):
     def validate_and_filter(self, credentials: dict) -> dict:
         """
         Validate model credentials
-
         :param credentials: model credentials
         :return: filtered credentials
         """
-
         if self.model_credential_schema is None:
             raise ValueError("Model credential schema is None")
-
         # get the credential_form_schemas in provider_credential_schema
         credential_form_schemas = self.model_credential_schema.credential_form_schemas
-
         credentials["__model_type"] = self.model_type.value
-
         return self._validate_and_filter_credential_form_schemas(credential_form_schemas, credentials)

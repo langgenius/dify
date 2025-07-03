@@ -41,7 +41,6 @@ class LicenseLimitationModel(BaseModel):
     def is_available(self, required: int = 1) -> bool:
         """
         Determine whether the requested amount can be allocated.
-
         Returns True if:
          - this limit is not active, or
          - the limit is zero (unlimited), or
@@ -49,7 +48,6 @@ class LicenseLimitationModel(BaseModel):
         """
         if not self.enabled or self.limit == 0:
             return True
-
         return (self.limit - self.size) >= required
 
 
@@ -102,7 +100,6 @@ class PluginInstallationPermissionModel(BaseModel):
     #   official_and_specific_partners: allow official and specific partner plugins
     #   all: allow installation of all plugins
     plugin_installation_scope: PluginInstallationScope = PluginInstallationScope.ALL
-
     # If True, restrict plugin installation to the marketplace only
     # Equivalent to ForceEnablePluginVerification
     restrict_to_marketplace_only: bool = False
@@ -123,7 +120,6 @@ class FeatureModel(BaseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -155,16 +151,12 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str) -> FeatureModel:
         features = FeatureModel()
-
         cls._fulfill_params_from_env(features)
-
         if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
-
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
-
         return features
 
     @classmethod
@@ -180,17 +172,13 @@ class FeatureService:
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
-
         cls._fulfill_system_params_from_env(system_features)
-
         if dify_config.ENTERPRISE_ENABLED:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
-
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
-
         return system_features
 
     @classmethod
@@ -220,75 +208,56 @@ class FeatureService:
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
-
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
-
         if features.billing.subscription.plan != "sandbox":
             features.webapp_copyright_enabled = True
-
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
             features.members.limit = billing_info["members"]["limit"]
-
         if "apps" in billing_info:
             features.apps.size = billing_info["apps"]["size"]
             features.apps.limit = billing_info["apps"]["limit"]
-
         if "vector_space" in billing_info:
             features.vector_space.size = billing_info["vector_space"]["size"]
             features.vector_space.limit = billing_info["vector_space"]["limit"]
-
         if "documents_upload_quota" in billing_info:
             features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
             features.documents_upload_quota.limit = billing_info["documents_upload_quota"]["limit"]
-
         if "annotation_quota_limit" in billing_info:
             features.annotation_quota_limit.size = billing_info["annotation_quota_limit"]["size"]
             features.annotation_quota_limit.limit = billing_info["annotation_quota_limit"]["limit"]
-
         if "docs_processing" in billing_info:
             features.docs_processing = billing_info["docs_processing"]
-
         if "can_replace_logo" in billing_info:
             features.can_replace_logo = billing_info["can_replace_logo"]
-
         if "model_load_balancing_enabled" in billing_info:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
         if "knowledge_rate_limit" in billing_info:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
-
         if "SSOEnforcedForSignin" in enterprise_info:
             features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
-
         if "SSOEnforcedForSigninProtocol" in enterprise_info:
             features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
-
         if "EnableEmailCodeLogin" in enterprise_info:
             features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
-
         if "EnableEmailPasswordLogin" in enterprise_info:
             features.enable_email_password_login = enterprise_info["EnableEmailPasswordLogin"]
-
         if "IsAllowRegister" in enterprise_info:
             features.is_allow_register = enterprise_info["IsAllowRegister"]
-
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
-
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")
             features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
             features.branding.workspace_logo = enterprise_info["Branding"].get("workspaceLogo", "")
             features.branding.favicon = enterprise_info["Branding"].get("favicon", "")
-
         if "WebAppAuth" in enterprise_info:
             features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSso", False)
             features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get(
@@ -298,21 +267,16 @@ class FeatureService:
                 "allowEmailPasswordLogin", False
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
-
         if "License" in enterprise_info:
             license_info = enterprise_info["License"]
-
             if "status" in license_info:
                 features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-
             if "expiredAt" in license_info:
                 features.license.expired_at = license_info["expiredAt"]
-
             if "workspaces" in license_info:
                 features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
                 features.license.workspaces.limit = license_info["workspaces"]["limit"]
                 features.license.workspaces.size = license_info["workspaces"]["used"]
-
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]
             features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[

@@ -45,9 +45,7 @@ class DatasetRetrieverTool(Tool):
             return []
         if retrieve_config is None:
             return []
-
         feature = DatasetRetrieval()
-
         # save original retrieve strategy, and set retrieve strategy to SINGLE
         # Agent only support SINGLE mode
         original_retriever_mode = retrieve_config.retrieve_strategy
@@ -64,10 +62,8 @@ class DatasetRetrieverTool(Tool):
         )
         if retrieval_tools is None or len(retrieval_tools) == 0:
             return []
-
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
-
         # convert retrieval tools to Tools
         tools = []
         for retrieval_tool in retrieval_tools:
@@ -82,9 +78,7 @@ class DatasetRetrieverTool(Tool):
                 ),
                 runtime=ToolRuntime(tenant_id=tenant_id),
             )
-
             tools.append(tool)
-
         return tools
 
     def get_runtime_parameters(

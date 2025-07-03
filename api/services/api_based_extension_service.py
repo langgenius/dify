@@ -13,18 +13,14 @@ class APIBasedExtensionService:
             .order_by(APIBasedExtension.created_at.desc())
             .all()
         )
-
         for extension in extension_list:
             extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
-
         return extension_list
 
     @classmethod
     def save(cls, extension_data: APIBasedExtension) -> APIBasedExtension:
         cls._validation(extension_data)
-
         extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
-
         db.session.add(extension_data)
         db.session.commit()
         return extension_data
@@ -42,12 +38,9 @@ class APIBasedExtensionService:
             .filter_by(id=api_based_extension_id)
             .first()
         )
-
         if not extension:
             raise ValueError("API based extension is not found")
-
         extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
-
         return extension
 
     @classmethod
@@ -55,7 +48,6 @@ class APIBasedExtensionService:
         # name
         if not extension_data.name:
             raise ValueError("name must not be empty")
-
         if not extension_data.id:
             # case one: check new data, name must be unique
             is_name_existed = (
@@ -64,7 +56,6 @@ class APIBasedExtensionService:
                 .filter_by(name=extension_data.name)
                 .first()
             )
-
             if is_name_existed:
                 raise ValueError("name must be unique, it is already existed")
         else:
@@ -76,21 +67,16 @@ class APIBasedExtensionService:
                 .filter(APIBasedExtension.id != extension_data.id)
                 .first()
             )
-
             if is_name_existed:
                 raise ValueError("name must be unique, it is already existed")
-
         # api_endpoint
         if not extension_data.api_endpoint:
             raise ValueError("api_endpoint must not be empty")
-
         # api_key
         if not extension_data.api_key:
             raise ValueError("api_key must not be empty")
-
         if len(extension_data.api_key) < 5:
             raise ValueError("api_key must be at least 5 characters")
-
         # check endpoint
         cls._ping_connection(extension_data)
 

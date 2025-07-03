@@ -18,15 +18,12 @@ from services.feature_service import FeatureService
 def mail_clean_document_notify_task():
     """
     Async Send document clean notify mail
-
     Usage: mail_clean_document_notify_task.delay()
     """
     if not mail.is_inited():
         return
-
     logging.info(click.style("Start send document clean notify mail", fg="green"))
     start_at = time.perf_counter()
-
     # send document clean notify mail
     try:
         dataset_auto_disable_logs = (
@@ -57,7 +54,6 @@ def mail_clean_document_notify_task():
                 account = db.session.query(Account).filter(Account.id == current_owner_join.account_id).first()
                 if not account:
                     continue
-
                 dataset_auto_dataset_map = {}  # type: ignore
                 for dataset_auto_disable_log in tenant_dataset_auto_disable_logs:
                     if dataset_auto_disable_log.dataset_id not in dataset_auto_dataset_map:
@@ -65,7 +61,6 @@ def mail_clean_document_notify_task():
                     dataset_auto_dataset_map[dataset_auto_disable_log.dataset_id].append(
                         dataset_auto_disable_log.document_id
                     )
-
                 for dataset_id, document_ids in dataset_auto_dataset_map.items():
                     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
                     if dataset:
@@ -81,7 +76,6 @@ def mail_clean_document_notify_task():
                     mail.send(
                         to=account.email, subject="Dify Knowledge base auto disable notification", html=html_content
                     )
-
             # update notified to True
             for dataset_auto_disable_log in tenant_dataset_auto_disable_logs:
                 dataset_auto_disable_log.notified = True

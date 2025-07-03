@@ -51,14 +51,11 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
-
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
             args.created_at__before = isoparse(args.created_at__before)
-
         if args.created_at__after:
             args.created_at__after = isoparse(args.created_at__after)
-
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
         with Session(db.engine) as session:
@@ -74,7 +71,6 @@ class WorkflowAppLogApi(Resource):
                 created_by_end_user_session_id=args.created_by_end_user_session_id,
                 created_by_account=args.created_by_account,
             )
-
             return workflow_app_log_pagination
 
 

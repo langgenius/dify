@@ -65,17 +65,13 @@ class DatasetListApi(Resource):
             datasets, total = DatasetService.get_datasets(
                 page, limit, current_user.current_tenant_id, current_user, search, tag_ids, include_all
             )
-
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
-
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
         model_names = []
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             # convert embedding_model_provider to plugin standard format
@@ -88,13 +84,11 @@ class DatasetListApi(Resource):
                     item["embedding_available"] = False
             else:
                 item["embedding_available"] = True
-
             if item.get("permission") == "partial_members":
                 part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item["id"])
                 item.update({"partial_member_list": part_users_list})
             else:
                 item.update({"partial_member_list": []})
-
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
@@ -147,11 +141,9 @@ class DatasetListApi(Resource):
             required=False,
         )
         args = parser.parse_args()
-
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_user.current_tenant_id,
@@ -166,7 +158,6 @@ class DatasetListApi(Resource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
-
         return marshal(dataset, dataset_detail_fields), 201
 
 
@@ -191,17 +182,13 @@ class DatasetApi(Resource):
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
-
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
-
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
-
         model_names = []
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
-
         if data["indexing_technique"] == "high_quality":
             item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
             if item_model in model_names:
@@ -210,11 +197,9 @@ class DatasetApi(Resource):
                 data["embedding_available"] = False
         else:
             data["embedding_available"] = True
-
         if data.get("permission") == "partial_members":
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
-
         return data, 200
 
     @setup_required
@@ -226,7 +211,6 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -256,7 +240,6 @@ class DatasetApi(Resource):
         )
         parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
         parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-
         parser.add_argument(
             "external_retrieval_model",
             type=dict,
@@ -265,7 +248,6 @@ class DatasetApi(Resource):
             location="json",
             help="Invalid external retrieval model.",
         )
-
         parser.add_argument(
             "external_knowledge_id",
             type=str,
@@ -274,7 +256,6 @@ class DatasetApi(Resource):
             location="json",
             help="Invalid external knowledge id.",
         )
-
         parser.add_argument(
             "external_knowledge_api_id",
             type=str,
@@ -285,7 +266,6 @@ class DatasetApi(Resource):
         )
         args = parser.parse_args()
         data = request.get_json()
-
         # check embedding model setting
         if (
             data.get("indexing_technique") == "high_quality"
@@ -295,20 +275,15 @@ class DatasetApi(Resource):
             DatasetService.check_embedding_model_setting(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
-
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, data.get("permission"), data.get("partial_member_list")
         )
-
         dataset = DatasetService.update_dataset(dataset_id_str, args, current_user)
-
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         result_data = marshal(dataset, dataset_detail_fields)
         tenant_id = current_user.current_tenant_id
-
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
             DatasetPermissionService.update_partial_member_list(
                 tenant_id, dataset_id_str, data.get("partial_member_list")
@@ -319,10 +294,8 @@ class DatasetApi(Resource):
             or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
         ):
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
-
         return result_data, 200
 
     @setup_required
@@ -331,11 +304,9 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
-
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
-
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
@@ -352,7 +323,6 @@ class DatasetUseCheckApi(Resource):
     @account_initialization_required
     def get(self, dataset_id):
         dataset_id_str = str(dataset_id)
-
         dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
         return {"is_using": dataset_is_using}, 200
 
@@ -366,17 +336,13 @@ class DatasetQueryApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-
         dataset_queries, total = DatasetService.get_dataset_queries(dataset_id=dataset.id, page=page, per_page=limit)
-
         response = {
             "data": marshal(dataset_queries, dataset_query_detail_fields),
             "has_more": len(dataset_queries) == limit,
@@ -419,10 +385,8 @@ class DatasetIndexingEstimateApi(Resource):
                 .filter(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids))
                 .all()
             )
-
             if file_details is None:
                 raise NotFound("File not found.")
-
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
@@ -482,7 +446,6 @@ class DatasetIndexingEstimateApi(Resource):
             raise ProviderNotInitializeError(ex.description)
         except Exception as e:
             raise IndexingEstimateError(str(e))
-
         return response.model_dump(), 200
 
 
@@ -496,20 +459,16 @@ class DatasetRelatedAppListApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         app_dataset_joins = DatasetService.get_related_apps(dataset.id)
-
         related_apps = []
         for app_dataset_join in app_dataset_joins:
             app_model = app_dataset_join.app
             if app_model:
                 related_apps.append(app_model)
-
         return {"data": related_apps, "total": len(related_apps)}, 200
 
 
@@ -585,20 +544,17 @@ class DatasetApiKeyApi(Resource):
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         current_key_count = (
             db.session.query(ApiToken)
             .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
             .count()
         )
-
         if current_key_count >= self.max_keys:
             flask_restful.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
             )
-
         key = ApiToken.generate_api_key(self.token_prefix, 24)
         api_token = ApiToken()
         api_token.tenant_id = current_user.current_tenant_id
@@ -617,11 +573,9 @@ class DatasetApiDeleteApi(Resource):
     @account_initialization_required
     def delete(self, api_key_id):
         api_key_id = str(api_key_id)
-
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         key = (
             db.session.query(ApiToken)
             .filter(
@@ -631,13 +585,10 @@ class DatasetApiDeleteApi(Resource):
             )
             .first()
         )
-
         if key is None:
             flask_restful.abort(404, message="API key not found")
-
         db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
         db.session.commit()
-
         return {"result": "success"}, 204
 
 
@@ -757,7 +708,6 @@ class DatasetErrorDocs(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
         results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
-
         return {"data": [marshal(item, document_status_fields) for item in results], "total": len(results)}, 200
 
 
@@ -774,9 +724,7 @@ class DatasetPermissionUserListApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-
         return {
             "data": partial_members_list,
         }, 200

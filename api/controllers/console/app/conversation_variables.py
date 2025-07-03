@@ -22,7 +22,6 @@ class ConversationVariablesApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", type=str, location="args")
         args = parser.parse_args()
-
         stmt = (
             select(ConversationVariable)
             .where(ConversationVariable.app_id == app_model.id)
@@ -32,15 +31,12 @@ class ConversationVariablesApi(Resource):
             stmt = stmt.where(ConversationVariable.conversation_id == args["conversation_id"])
         else:
             raise ValueError("conversation_id is required")
-
         # NOTE: This is a temporary solution to avoid performance issues.
         page = 1
         page_size = 100
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
-
         with Session(db.engine) as session:
             rows = session.scalars(stmt).all()
-
         return {
             "page": page,
             "limit": page_size,

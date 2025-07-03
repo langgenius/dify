@@ -19,13 +19,10 @@ class SimpleCode(BuiltinTool):
         """
         invoke simple code
         """
-
         language = tool_parameters.get("language", CodeLanguage.PYTHON3)
         code = tool_parameters.get("code", "")
-
         if language not in {CodeLanguage.PYTHON3, CodeLanguage.JAVASCRIPT}:
             raise ValueError(f"Only python3 and javascript are supported, not {language}")
-
         try:
             result = CodeExecutor.execute_code(language, "", code)
             yield self.create_text_message(result)

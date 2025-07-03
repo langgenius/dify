@@ -61,12 +61,10 @@ class ASRTool(BuiltinTool):
         message_id: Optional[str] = None,
     ) -> list[ToolParameter]:
         parameters = []
-
         options = []
         for provider, model in self.get_available_models():
             option = PluginParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
             options.append(option)
-
         parameters.append(
             ToolParameter(
                 name="model",

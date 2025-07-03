@@ -40,38 +40,28 @@ class FileService:
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-
         # check if filename contains invalid characters
         if any(c in filename for c in ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]):
             raise ValueError("Filename contains invalid characters")
-
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
-
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
-
         # get file size
         file_size = len(content)
-
         # check if the file size is exceeded
         if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
             raise FileTooLargeError
-
         # generate file key
         file_uuid = str(uuid.uuid4())
-
         if isinstance(user, Account):
             current_tenant_id = user.current_tenant_id
         else:
             # end_user
             current_tenant_id = user.tenant_id
-
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
-
         # save file to storage
         storage.save(file_key, content)
-
         # save file to db
         upload_file = UploadFile(
             tenant_id=current_tenant_id or "",
@@ -88,15 +78,12 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
-
         db.session.add(upload_file)
         db.session.commit()
-
         if not upload_file.source_url:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
             db.session.add(upload_file)
             db.session.commit()
-
         return upload_file
 
     @staticmethod
@@ -109,7 +96,6 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
-
         return file_size <= file_size_limit
 
     @staticmethod
@@ -119,10 +105,8 @@ class FileService:
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
         file_key = "upload_files/" + current_user.current_tenant_id + "/" + file_uuid + ".txt"
-
         # save file to storage
         storage.save(file_key, text.encode("utf-8"))
-
         # save file to db
         upload_file = UploadFile(
             tenant_id=current_user.current_tenant_id,
@@ -139,27 +123,21 @@ class FileService:
             used_by=current_user.id,
             used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         )
-
         db.session.add(upload_file)
         db.session.commit()
-
         return upload_file
 
     @staticmethod
     def get_file_preview(file_id: str):
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-
         if not upload_file:
             raise NotFound("File not found")
-
         # extract text from file
         extension = upload_file.extension
         if extension.lower() not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
-
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ""
-
         return text
 
     @staticmethod
@@ -169,19 +147,14 @@ class FileService:
         )
         if not result:
             raise NotFound("File not found or signature is invalid")
-
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
-
         # extract text from file
         extension = upload_file.extension
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
-
         generator = storage.load(upload_file.key, stream=True)
-
         return generator, upload_file.mime_type
 
     @staticmethod
@@ -189,28 +162,20 @@ class FileService:
         result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
         if not result:
             raise NotFound("File not found or signature is invalid")
-
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
-
         generator = storage.load(upload_file.key, stream=True)
-
         return generator, upload_file
 
     @staticmethod
     def get_public_image_preview(file_id: str):
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
-
         # extract text from file
         extension = upload_file.extension
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
-
         generator = storage.load(upload_file.key)
-
         return generator, upload_file.mime_type

@@ -20,17 +20,14 @@ class CotAgentOutputParser:
                     action = json.loads(action, strict=False)
                 except json.JSONDecodeError:
                     return action or ""
-
             # cohere always returns a list
             if isinstance(action, list) and len(action) == 1:
                 action = action[0]
-
             for key, value in action.items():
                 if "input" in key.lower():
                     action_input = value
                 else:
                     action_name = value
-
             if action_name is not None and action_input is not None:
                 return AgentScratchpadUnit.Action(
                     action_name=action_name,
@@ -59,31 +56,25 @@ class CotAgentOutputParser:
         json_quote_count = 0
         in_json = False
         got_json = False
-
         action_cache = ""
         action_str = "action:"
         action_idx = 0
-
         thought_cache = ""
         thought_str = "thought:"
         thought_idx = 0
-
         last_character = ""
-
         for response in llm_response:
             if response.delta.usage:
                 usage_dict["usage"] = response.delta.usage
             response_content = response.delta.message.content
             if not isinstance(response_content, str):
                 continue
-
             # stream
             index = 0
             while index < len(response_content):
                 steps = 1
                 delta = response_content[index : index + steps]
                 yield_delta = False
-
                 if not in_json and delta == "`":
                     last_character = delta
                     code_block_cache += delta
@@ -98,7 +89,6 @@ class CotAgentOutputParser:
                         last_character = delta
                         code_block_cache += delta
                     code_block_delimiter_count = 0
-
                 if not in_code_block and not in_json:
                     if delta.lower() == action_str[action_idx] and action_idx == 0:
                         if last_character not in {"\n", " ", ""}:
@@ -127,7 +117,6 @@ class CotAgentOutputParser:
                             yield action_cache
                             action_cache = ""
                             action_idx = 0
-
                     if delta.lower() == thought_str[thought_idx] and thought_idx == 0:
                         if last_character not in {"\n", " ", ""}:
                             yield_delta = True
@@ -155,13 +144,11 @@ class CotAgentOutputParser:
                             yield thought_cache
                             thought_cache = ""
                             thought_idx = 0
-
                     if yield_delta:
                         index += steps
                         last_character = delta
                         yield delta
                         continue
-
                 if code_block_delimiter_count == 3:
                     if in_code_block:
                         last_character = delta
@@ -173,10 +160,8 @@ class CotAgentOutputParser:
                         else:
                             index += steps
                             continue
-
                     in_code_block = not in_code_block
                     code_block_delimiter_count = 0
-
                 if not in_code_block:
                     # handle single json
                     if delta == "{":
@@ -198,7 +183,6 @@ class CotAgentOutputParser:
                         if in_json:
                             last_character = delta
                             json_cache += delta
-
                     if got_json:
                         got_json = False
                         last_character = delta
@@ -206,15 +190,11 @@ class CotAgentOutputParser:
                         json_cache = ""
                         json_quote_count = 0
                         in_json = False
-
                 if not in_code_block and not in_json:
                     last_character = delta
                     yield delta.replace("`", "")
-
                 index += steps
-
         if code_block_cache:
             yield code_block_cache
-
         if json_cache:
             yield parse_action(json_cache)

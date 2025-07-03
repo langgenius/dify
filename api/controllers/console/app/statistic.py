@@ -22,12 +22,10 @@ class DailyMessageStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(*) AS message_count
@@ -36,39 +34,28 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "message_count": i.message_count})
-
         return jsonify({"data": response_data})
 
 
@@ -79,12 +66,10 @@ class DailyConversationStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(DISTINCT messages.conversation_id) AS conversation_count
@@ -93,39 +78,28 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "conversation_count": i.conversation_count})
-
         return jsonify({"data": response_data})
 
 
@@ -136,12 +110,10 @@ class DailyTerminalsStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(DISTINCT messages.from_end_user_id) AS terminal_count
@@ -150,39 +122,28 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
-
         return jsonify({"data": response_data})
 
 
@@ -193,12 +154,10 @@ class DailyTokenCostStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     (SUM(messages.message_tokens) + SUM(messages.answer_tokens)) AS token_count,
@@ -208,41 +167,30 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {"date": str(i.date), "token_count": i.token_count, "total_price": i.total_price, "currency": "USD"}
                 )
-
         return jsonify({"data": response_data})
 
 
@@ -253,12 +201,10 @@ class AverageSessionInteractionStatistic(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     AVG(subquery.message_count) AS interactions
@@ -275,30 +221,22 @@ FROM
         WHERE
             c.app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND c.created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND c.created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += """
         GROUP BY m.conversation_id
     ) subquery
@@ -309,16 +247,13 @@ GROUP BY
     date
 ORDER BY
     date"""
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {"date": str(i.date), "interactions": float(i.interactions.quantize(Decimal("0.01")))}
                 )
-
         return jsonify({"data": response_data})
 
 
@@ -329,12 +264,10 @@ class UserSatisfactionRateStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(m.id) AS message_count,
@@ -347,34 +280,24 @@ LEFT JOIN
 WHERE
     m.app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND m.created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND m.created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
@@ -384,7 +307,6 @@ WHERE
                         "rate": round((i.feedback_count * 1000 / i.message_count) if i.message_count > 0 else 0, 2),
                     }
                 )
-
         return jsonify({"data": response_data})
 
 
@@ -395,12 +317,10 @@ class AverageResponseTimeStatistic(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     AVG(provider_response_latency) AS latency
@@ -409,39 +329,28 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "latency": round(i.latency * 1000, 4)})
-
         return jsonify({"data": response_data})
 
 
@@ -452,12 +361,10 @@ class TokensPerSecondStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     CASE
@@ -469,39 +376,28 @@ FROM
 WHERE
     app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "tps": round(i.tokens_per_second, 4)})
-
         return jsonify({"data": response_data})
 
 

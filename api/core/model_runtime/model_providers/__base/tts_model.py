@@ -17,7 +17,6 @@ class TTSModel(AIModel):
     """
 
     model_type: ModelType = ModelType.TTS
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -32,7 +31,6 @@ class TTSModel(AIModel):
     ) -> Iterable[bytes]:
         """
         Invoke large language model
-
         :param model: model name
         :param tenant_id: user tenant id
         :param credentials: model credentials
@@ -59,7 +57,6 @@ class TTSModel(AIModel):
     def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list[dict]:
         """
         Retrieves the list of voices supported by a given text-to-speech (TTS) model.
-
         :param language: The language for which the voices are requested.
         :param model: The name of the TTS model.
         :param credentials: The credentials required to access the TTS model.

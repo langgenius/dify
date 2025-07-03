@@ -24,11 +24,9 @@ class PluginPermissionService:
                 permission = TenantPluginPermission(
                     tenant_id=tenant_id, install_permission=install_permission, debug_permission=debug_permission
                 )
-
                 session.add(permission)
             else:
                 permission.install_permission = install_permission
                 permission.debug_permission = debug_permission
-
             session.commit()
             return True

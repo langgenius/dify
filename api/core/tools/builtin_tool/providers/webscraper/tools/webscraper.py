@@ -25,10 +25,8 @@ class WebscraperTool(BuiltinTool):
             if not url:
                 yield self.create_text_message("Please input url")
                 return
-
             # get webpage
             result = get_url(url, user_agent=user_agent)
-
             if tool_parameters.get("generate_summary"):
                 # summarize and return
                 yield self.create_text_message(self.summary(user_id=user_id, content=result))

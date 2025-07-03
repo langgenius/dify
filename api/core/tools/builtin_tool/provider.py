@@ -20,7 +20,6 @@ class BuiltinToolProviderController(ToolProviderController):
 
     def __init__(self, **data: Any) -> None:
         self.tools = []
-
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, f"{provider}.yaml")
@@ -28,24 +27,20 @@ class BuiltinToolProviderController(ToolProviderController):
             provider_yaml = load_yaml_file(yaml_path, ignore_error=False)
         except Exception as e:
             raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}")
-
         if "credentials_for_provider" in provider_yaml and provider_yaml["credentials_for_provider"] is not None:
             # set credentials name
             for credential_name in provider_yaml["credentials_for_provider"]:
                 provider_yaml["credentials_for_provider"][credential_name]["name"] = credential_name
-
         credentials_schema = []
         for credential in provider_yaml.get("credentials_for_provider", {}):
             credential_dict = provider_yaml.get("credentials_for_provider", {}).get(credential, {})
             credentials_schema.append(credential_dict)
-
         super().__init__(
             entity=ToolProviderEntity(
                 identity=provider_yaml["identity"],
                 credentials_schema=credentials_schema,
             ),
         )
-
         self._load_tools()
 
     def _load_tools(self):
@@ -58,7 +53,6 @@ class BuiltinToolProviderController(ToolProviderController):
             # get tool name
             tool_name = tool_file.split(".")[0]
             tool = load_yaml_file(path.join(tool_path, tool_file), ignore_error=False)
-
             # get tool class, import the module
             assistant_tool_class: type[BuiltinTool] = load_single_subclass_from_source(
                 module_name=f"core.tools.builtin_tool.providers.{provider}.tools.{tool_name}",
@@ -80,13 +74,11 @@ class BuiltinToolProviderController(ToolProviderController):
                     runtime=ToolRuntime(tenant_id=""),
                 )
             )
-
         self.tools = tools
 
     def _get_builtin_tools(self) -> list[BuiltinTool]:
         """
         returns a list of tools that the provider can provide
-
         :return: list of tools
         """
         return self.tools
@@ -94,18 +86,15 @@ class BuiltinToolProviderController(ToolProviderController):
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
-
         :return: the credentials schema
         """
         if not self.entity.credentials_schema:
             return []
-
         return self.entity.credentials_schema.copy()
 
     def get_tools(self) -> list[BuiltinTool]:
         """
         returns a list of tools that the provider can provide
-
         :return: list of tools
         """
         return self._get_builtin_tools()
@@ -120,7 +109,6 @@ class BuiltinToolProviderController(ToolProviderController):
     def need_credentials(self) -> bool:
         """
         returns whether the provider needs credentials
-
         :return: whether the provider needs credentials
         """
         return self.entity.credentials_schema is not None and len(self.entity.credentials_schema) != 0
@@ -129,7 +117,6 @@ class BuiltinToolProviderController(ToolProviderController):
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
-
         :return: type of the provider
         """
         return ToolProviderType.BUILT_IN
@@ -138,7 +125,6 @@ class BuiltinToolProviderController(ToolProviderController):
     def tool_labels(self) -> list[str]:
         """
         returns the labels of the provider
-
         :return: labels of the provider
         """
         label_enums = self._get_tool_labels()
@@ -153,13 +139,11 @@ class BuiltinToolProviderController(ToolProviderController):
     def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
-
         :param user_id: use id
         :param credentials: the credentials of the tool
         """
         # validate credentials format
         self.validate_credentials_format(credentials)
-
         # validate credentials
         self._validate_credentials(user_id, credentials)
 
@@ -167,7 +151,6 @@ class BuiltinToolProviderController(ToolProviderController):
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
-
         :param user_id: use id
         :param credentials: the credentials of the tool
         """

@@ -1,14 +1,11 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
-
 1. Detect Input Language
 Automatically identify the language of the user’s input (e.g. English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.).
-
 2. Generate Title
 - Combine Intention + Subject into a single, as-short-as-possible phrase.
 - The title must be natural, friendly, and in the same language as the input.
 - If the input is a direct question to the model, you may add an emoji at the end.
-
 3. Output Format
 Return **only** a valid JSON object with these exact keys and no additional text:
 {
@@ -16,10 +13,8 @@ Return **only** a valid JSON object with these exact keys and no additional text
   "Your Reasoning": "<Brief explanation in that language>",
   "Your Output": "<Intention + Subject>"
 }
-
 User Input:
 """  # noqa: E501
-
 PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE = (
     "You are an expert programmer. Generate code based on the following instructions:\n\n"
     "Instructions: {{INSTRUCTION}}\n\n"
@@ -92,8 +87,6 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
     "- The code should be complete, functional, and follow best practices for {{CODE_LANGUAGE}}.\n\n"
     "Generated Code:\n"
 )
-
-
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keep each question under 20 characters.\n"
@@ -101,7 +94,6 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
 )
-
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
     " in the long text. Please think step by step."
@@ -115,7 +107,6 @@ GENERATOR_QA_PROMPT = (
     "<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n"
     "<QA Pairs>"
 )
-
 WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>
@@ -130,7 +121,6 @@ Based on task description, please create a well-structured prompt template that 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template with at least 300 words and output only the prompt template.
 """  # noqa: E501
-
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>
@@ -145,32 +135,26 @@ Based on task description, please create a well-structured prompt template that 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template and output only the prompt template.
 """  # noqa: E501
-
 RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
 I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted.
 <information to be extracted>
 variables name bounded two double curly brackets. Variable name has to be composed of number, english alphabets and underline and nothing else.
 </information to be extracted>
-
 Step 1: Carefully read the input and understand the structure of the expected output.
 Step 2: Extract relevant parameters from the provided text based on the name and description of object.
 Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
 Step 4: Ensure that the list of variable_names is properly formatted and valid. The output should not contain any XML tags. Output an empty list if there is no valid variable name in input text.
-
 ### Structure
 Here is the structure of the expected output, I should always follow the output structure.
 ["variable_name_1", "variable_name_2"]
-
 ### Input Text
 Inside <text></text> XML tags, there is a text that I should extract parameters and convert to a JSON object.
 <text>
 {{INPUT_TEXT}}
 </text>
-
 ### Answer
 I should always output a valid list. Output nothing other than the list of variable_name. Output an empty list if there is no variable name in input text.
 """  # noqa: E501
-
 RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
 <instruction>
 Step 1: Identify the purpose of the chatbot from the variable {{TASK_DESCRIPTION}} and infer chatbot's tone  (e.g., friendly, professional, etc.) to add personality traits.
@@ -183,15 +167,11 @@ Example Output:
 Welcome! I'm here to assist you with any questions or issues you might have with your shopping experience. Whether you're looking for product information, need help with your order, or have any other inquiries, feel free to ask. I'm friendly, helpful, and ready to support you in any way I can.
 <Task>
 Here is the task description: {{INPUT_TEXT}}
-
 You just need to generate the output
 """  # noqa: E501
-
 SYSTEM_STRUCTURED_OUTPUT_GENERATE = """
 Your task is to convert simple user descriptions into properly formatted JSON Schema definitions. When a user describes data fields they need, generate a complete, valid JSON Schema that accurately represents those fields with appropriate types and requirements.
-
 ## Instructions:
-
 1. Analyze the user's description of their data needs
 2. Identify each property that should be included in the schema
 3. Determine the appropriate data type for each property
@@ -200,9 +180,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 6. Include appropriate constraints when specified (min/max values, patterns, formats)
 7. Provide ONLY the JSON Schema without any additional explanations, comments, or markdown formatting.
 8. DO NOT use markdown code blocks (``` or ``` json). Return the raw JSON Schema directly.
-
 ## Examples:
-
 ### Example 1:
 **User Input:** I need name and age
 **JSON Schema Output:**
@@ -214,7 +192,6 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
   },
   "required": ["name", "age"]
 }
-
 ### Example 2:
 **User Input:** I want to store information about books including title, author, publication year and optional page count
 **JSON Schema Output:**
@@ -228,7 +205,6 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
   },
   "required": ["title", "author", "publicationYear"]
 }
-
 ### Example 3:
 **User Input:** Create a schema for user profiles with email, password, and age (must be at least 18)
 **JSON Schema Output:**
@@ -250,7 +226,6 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
   },
   "required": ["email", "password", "age"]
 }
-
 ### Example 4:
 **User Input:** I need album schema, the ablum has songs, and each song has name, duration, and artist.
 **JSON Schema Output:**
@@ -288,10 +263,8 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
         "songs"
     ]
 }
-
 Now, generate a JSON Schema based on my description
 """  # noqa: E501
-
 STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
 constraints:
     - You must output in JSON format.
@@ -300,10 +273,8 @@ constraints:
 eg:
     Here is the JSON schema:
     {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
-
     Here is the user's question:
     My name is John Doe and I am 30 years old.
-
     output:
     {"name": "John Doe", "age": 30}
 Here is the JSON schema:

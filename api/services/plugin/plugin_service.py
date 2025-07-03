@@ -48,10 +48,8 @@ class PluginService:
         Fetch the latest plugin version
         """
         result: dict[str, Optional[PluginService.LatestPluginCache]] = {}
-
         try:
             cache_not_exists = []
-
             # Try to get from Redis first
             for plugin_id in plugin_ids:
                 cached_data = redis_client.get(f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}")
@@ -59,35 +57,28 @@ class PluginService:
                     result[plugin_id] = PluginService.LatestPluginCache.model_validate_json(cached_data)
                 else:
                     cache_not_exists.append(plugin_id)
-
             if cache_not_exists:
                 manifests = {
                     manifest.plugin_id: manifest
                     for manifest in marketplace.batch_fetch_plugin_manifests(cache_not_exists)
                 }
-
                 for plugin_id, manifest in manifests.items():
                     latest_plugin = PluginService.LatestPluginCache(
                         plugin_id=plugin_id,
                         version=manifest.latest_version,
                         unique_identifier=manifest.latest_package_identifier,
                     )
-
                     # Store in Redis
                     redis_client.setex(
                         f"{PluginService.REDIS_KEY_PREFIX}{plugin_id}",
                         PluginService.REDIS_TTL,
                         latest_plugin.model_dump_json(),
                     )
-
                     result[plugin_id] = latest_plugin
-
                     # pop plugin_id from cache_not_exists
                     cache_not_exists.remove(plugin_id)
-
                 for plugin_id in cache_not_exists:
                     result[plugin_id] = None
-
             return result
         except Exception:
             logger.exception("failed to fetch latest plugin version")
@@ -108,7 +99,6 @@ class PluginService:
         Check the plugin installation scope
         """
         features = FeatureService.get_system_features()
-
         match features.plugin_installation_permission.plugin_installation_scope:
             case PluginInstallationScope.OFFICIAL_ONLY:
                 if (
@@ -244,15 +234,11 @@ class PluginService:
         """
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
-
         if original_plugin_unique_identifier == new_plugin_unique_identifier:
             raise ValueError("you should not upgrade plugin with the same plugin")
-
         # check if plugin pkg is already downloaded
         manager = PluginInstaller()
-
         features = FeatureService.get_system_features()
-
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
             # already downloaded, skip, and record install event
@@ -265,10 +251,8 @@ class PluginService:
                 pkg,
                 verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
             )
-
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
-
         return manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -309,7 +293,6 @@ class PluginService:
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
         """
         Upload plugin package files
-
         returns: plugin_unique_identifier
         """
         PluginService._check_marketplace_only_permission()
@@ -335,7 +318,6 @@ class PluginService:
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
         features = FeatureService.get_system_features()
-
         manager = PluginInstaller()
         response = manager.upload_pkg(
             tenant_id,
@@ -358,9 +340,7 @@ class PluginService:
     @staticmethod
     def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
         PluginService._check_marketplace_only_permission()
-
         manager = PluginInstaller()
-
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -375,7 +355,6 @@ class PluginService:
         returns plugin_unique_identifier
         """
         PluginService._check_marketplace_only_permission()
-
         manager = PluginInstaller()
         return manager.install_from_identifiers(
             tenant_id,
@@ -397,9 +376,7 @@ class PluginService:
         """
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
-
         features = FeatureService.get_system_features()
-
         manager = PluginInstaller()
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
@@ -413,7 +390,6 @@ class PluginService:
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
             declaration = response.manifest
-
         return declaration
 
     @staticmethod
@@ -424,11 +400,8 @@ class PluginService:
         """
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
-
         manager = PluginInstaller()
-
         features = FeatureService.get_system_features()
-
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
@@ -447,7 +420,6 @@ class PluginService:
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
-
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,

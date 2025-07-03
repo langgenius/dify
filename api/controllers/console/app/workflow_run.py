@@ -33,10 +33,8 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         workflow_run_service = WorkflowRunService()
         result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args=args)
-
         return result
 
 
@@ -54,10 +52,8 @@ class WorkflowRunListApi(Resource):
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         workflow_run_service = WorkflowRunService()
         result = workflow_run_service.get_paginate_workflow_runs(app_model=app_model, args=args)
-
         return result
 
 
@@ -72,10 +68,8 @@ class WorkflowRunDetailApi(Resource):
         Get workflow run detail
         """
         run_id = str(run_id)
-
         workflow_run_service = WorkflowRunService()
         workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id)
-
         return workflow_run
 
 
@@ -90,7 +84,6 @@ class WorkflowRunNodeExecutionListApi(Resource):
         Get workflow run node execution list
         """
         run_id = str(run_id)
-
         workflow_run_service = WorkflowRunService()
         user = cast("Account | EndUser", current_user)
         node_executions = workflow_run_service.get_workflow_run_node_executions(
@@ -98,7 +91,6 @@ class WorkflowRunNodeExecutionListApi(Resource):
             run_id=run_id,
             user=user,
         )
-
         return {"data": node_executions}
 
 

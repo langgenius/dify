@@ -29,37 +29,30 @@ class ProviderConfigEncrypter(BaseModel):
     def encrypt(self, data: dict[str, str]) -> dict[str, str]:
         """
         encrypt tool credentials with tenant id
-
         return a deep copy of credentials with encrypted values
         """
         data = self._deep_copy(data)
-
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
         for credential in self.config:
             fields[credential.name] = credential
-
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
                     encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
                     data[field_name] = encrypted
-
         return data
 
     def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool credentials
-
         return a deep copy of credentials with masked values
         """
         data = self._deep_copy(data)
-
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
         for credential in self.config:
             fields[credential.name] = credential
-
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
@@ -69,13 +62,11 @@ class ProviderConfigEncrypter(BaseModel):
                         )
                     else:
                         data[field_name] = "*" * len(data[field_name])
-
         return data
 
     def decrypt(self, data: dict[str, str]) -> dict[str, str]:
         """
         decrypt tool credentials with tenant id
-
         return a deep copy of credentials with decrypted values
         """
         cache = ToolProviderCredentialsCache(
@@ -86,13 +77,11 @@ class ProviderConfigEncrypter(BaseModel):
         cached_credentials = cache.get()
         if cached_credentials:
             return cached_credentials
-
         data = self._deep_copy(data)
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
         for credential in self.config:
             fields[credential.name] = credential
-
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
@@ -100,11 +89,9 @@ class ProviderConfigEncrypter(BaseModel):
                         # if the value is None or empty string, skip decrypt
                         if not data[field_name]:
                             continue
-
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
                     except Exception:
                         pass
-
         cache.set(data)
         return data
 
@@ -160,23 +147,18 @@ class ToolParameterConfigurationManager:
                     current_parameters[index] = runtime_parameter
                     found = True
                     break
-
             if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
                 current_parameters.append(runtime_parameter)
-
         return current_parameters
 
     def mask_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool parameters
-
         return a deep copy of parameters with masked values
         """
         parameters = self._deep_copy(parameters)
-
         # override parameters
         current_parameters = self._merge_parameters()
-
         for parameter in current_parameters:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
@@ -191,20 +173,16 @@ class ToolParameterConfigurationManager:
                         )
                     else:
                         parameters[parameter.name] = "*" * len(parameters[parameter.name])
-
         return parameters
 
     def encrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         encrypt tool parameters with tenant id
-
         return a deep copy of parameters with encrypted values
         """
         # override parameters
         current_parameters = self._merge_parameters()
-
         parameters = self._deep_copy(parameters)
-
         for parameter in current_parameters:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
@@ -213,16 +191,13 @@ class ToolParameterConfigurationManager:
                 if parameter.name in parameters:
                     encrypted = encrypter.encrypt_token(self.tenant_id, parameters[parameter.name])
                     parameters[parameter.name] = encrypted
-
         return parameters
 
     def decrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         decrypt tool parameters with tenant id
-
         return a deep copy of parameters with decrypted values
         """
-
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
             provider=f"{self.provider_type.value}.{self.provider_name}",
@@ -233,11 +208,9 @@ class ToolParameterConfigurationManager:
         cached_parameters = cache.get()
         if cached_parameters:
             return cached_parameters
-
         # override parameters
         current_parameters = self._merge_parameters()
         has_secret_input = False
-
         for parameter in current_parameters:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
@@ -249,10 +222,8 @@ class ToolParameterConfigurationManager:
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
                     except Exception:
                         pass
-
         if has_secret_input:
             cache.set(parameters)
-
         return parameters
 
     def delete_tool_parameters_cache(self):

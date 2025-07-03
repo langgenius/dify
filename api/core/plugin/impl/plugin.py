@@ -60,11 +60,9 @@ class PluginInstaller(BasePluginClient):
         body = {
             "dify_pkg": ("dify_pkg", pkg, "application/octet-stream"),
         }
-
         data = {
             "verify_signature": "true" if verify_signature else "false",
         }
-
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/upload/package",
@@ -168,7 +166,6 @@ class PluginInstaller(BasePluginClient):
         """
         Fetch a plugin manifest.
         """
-
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/fetch/manifest",

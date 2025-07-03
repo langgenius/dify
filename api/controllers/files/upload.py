@@ -21,26 +21,20 @@ class PluginUploadFileApi(Resource):
     def post(self):
         # get file from request
         file = request.files["file"]
-
         timestamp = request.args.get("timestamp")
         nonce = request.args.get("nonce")
         sign = request.args.get("sign")
         tenant_id = request.args.get("tenant_id")
         if not tenant_id:
             raise Forbidden("Invalid request.")
-
         user_id = request.args.get("user_id")
         user = get_user(tenant_id, user_id)
-
         filename = file.filename
         mimetype = file.mimetype
-
         if not filename or not mimetype:
             raise Forbidden("Invalid request.")
-
         if not timestamp or not nonce or not sign:
             raise Forbidden("Invalid request.")
-
         if not verify_plugin_file_signature(
             filename=filename,
             mimetype=mimetype,
@@ -51,7 +45,6 @@ class PluginUploadFileApi(Resource):
             sign=sign,
         ):
             raise Forbidden("Invalid request.")
-
         try:
             tool_file = ToolFileManager().create_file_by_raw(
                 user_id=user.id,
@@ -61,10 +54,8 @@ class PluginUploadFileApi(Resource):
                 filename=filename,
                 conversation_id=None,
             )
-
             extension = guess_extension(tool_file.mimetype) or ".bin"
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
-
             # Create a dictionary with all the necessary attributes
             result = {
                 "id": tool_file.id,
@@ -80,13 +71,11 @@ class PluginUploadFileApi(Resource):
                 "extension": extension,
                 "preview_url": preview_url,
             }
-
             return result, 201
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return tool_file, 201
 
 

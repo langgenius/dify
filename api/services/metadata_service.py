@@ -22,7 +22,6 @@ class MetadataService:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-
         # check if metadata name already exists
         if (
             db.session.query(DatasetMetadata)
@@ -49,7 +48,6 @@ class MetadataService:
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
         if (
@@ -70,7 +68,6 @@ class MetadataService:
             metadata.name = name
             metadata.updated_by = current_user.id
             metadata.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-
             # update related documents
             dataset_metadata_bindings = (
                 db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata_id).all()
@@ -100,7 +97,6 @@ class MetadataService:
             if metadata is None:
                 raise ValueError("Metadata not found.")
             db.session.delete(metadata)
-
             # deal related documents
             dataset_metadata_bindings = (
                 db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata_id).all()

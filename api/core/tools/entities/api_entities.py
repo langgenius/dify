@@ -53,7 +53,6 @@ class ToolProviderApiEntity(BaseModel):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
                         parameter["type"] = "files"
         # -------------
-
         return {
             "id": self.id,
             "author": self.author,

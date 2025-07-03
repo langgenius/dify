@@ -19,9 +19,7 @@ class AgentLogApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", type=uuid_value, required=True, location="args")
         parser.add_argument("conversation_id", type=uuid_value, required=True, location="args")
-
         args = parser.parse_args()
-
         return AgentService.get_agent_logs(app_model, args["conversation_id"], args["message_id"])
 
 

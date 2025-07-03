@@ -22,15 +22,12 @@ class ToolLabelManager:
         Update tool labels
         """
         labels = cls.filter_tool_labels(labels)
-
         if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
             provider_id = controller.provider_id
         else:
             raise ValueError("Unsupported tool type")
-
         # delete old labels
         db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id == provider_id).delete()
-
         # insert new labels
         for label in labels:
             db.session.add(
@@ -40,7 +37,6 @@ class ToolLabelManager:
                     label_name=label,
                 )
             )
-
         db.session.commit()
 
     @classmethod
@@ -54,7 +50,6 @@ class ToolLabelManager:
             return controller.tool_labels
         else:
             raise ValueError("Unsupported tool type")
-
         labels = (
             db.session.query(ToolLabelBinding.label_name)
             .filter(
@@ -63,39 +58,30 @@ class ToolLabelManager:
             )
             .all()
         )
-
         return [label.label_name for label in labels]
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:
         """
         Get tools labels
-
         :param tool_providers: list of tool providers
-
         :return: dict of tool labels
             :key: tool id
             :value: list of tool labels
         """
         if not tool_providers:
             return {}
-
         for controller in tool_providers:
             if not isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
                 raise ValueError("Unsupported tool type")
-
         provider_ids = []
         for controller in tool_providers:
             assert isinstance(controller, ApiToolProviderController | WorkflowToolProviderController)
             provider_ids.append(controller.provider_id)
-
         labels: list[ToolLabelBinding] = (
             db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id.in_(provider_ids)).all()
         )
-
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
-
         for label in labels:
             tool_labels[label.tool_id].append(label.label_name)
-
         return tool_labels

@@ -28,7 +28,6 @@ class AnnotationReplyActionApi(Resource):
     def post(self, app_id, action):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         parser = reqparse.RequestParser()
         parser.add_argument("score_threshold", required=True, type=float, location="json")
@@ -51,7 +50,6 @@ class AppAnnotationSettingDetailApi(Resource):
     def get(self, app_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
         return result, 200
@@ -64,14 +62,11 @@ class AppAnnotationSettingUpdateApi(Resource):
     def post(self, app_id, annotation_setting_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("score_threshold", required=True, type=float, location="json")
         args = parser.parse_args()
-
         result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
         return result, 200
 
@@ -84,19 +79,16 @@ class AnnotationReplyActionStatusApi(Resource):
     def get(self, app_id, job_id, action):
         if not current_user.is_editor:
             raise Forbidden()
-
         job_id = str(job_id)
         app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
-
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
             app_annotation_error_key = "{}_app_annotation_error_{}".format(action, str(job_id))
             error_msg = redis_client.get(app_annotation_error_key).decode()
-
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
@@ -107,11 +99,9 @@ class AnnotationListApi(Resource):
     def get(self, app_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         keyword = request.args.get("keyword", default="", type=str)
-
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
         response = {
@@ -131,7 +121,6 @@ class AnnotationExportApi(Resource):
     def get(self, app_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response = {"data": marshal(annotation_list, annotation_fields)}
@@ -147,7 +136,6 @@ class AnnotationCreateApi(Resource):
     def post(self, app_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         parser = reqparse.RequestParser()
         parser.add_argument("question", required=True, type=str, location="json")
@@ -166,7 +154,6 @@ class AnnotationUpdateDeleteApi(Resource):
     def post(self, app_id, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         parser = reqparse.RequestParser()
@@ -182,7 +169,6 @@ class AnnotationUpdateDeleteApi(Resource):
     def delete(self, app_id, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_id, annotation_id)
@@ -197,14 +183,12 @@ class AnnotationBatchImportApi(Resource):
     def post(self, app_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         app_id = str(app_id)
         # get file from request
         file = request.files["file"]
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
         # check file type
@@ -221,7 +205,6 @@ class AnnotationBatchImportStatusApi(Resource):
     def get(self, app_id, job_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         job_id = str(job_id)
         indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
         cache_result = redis_client.get(indexing_cache_key)
@@ -232,7 +215,6 @@ class AnnotationBatchImportStatusApi(Resource):
         if job_status == "error":
             indexing_error_msg_key = "app_annotation_batch_import_error_msg_{}".format(str(job_id))
             error_msg = redis_client.get(indexing_error_msg_key).decode()
-
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
 
@@ -243,7 +225,6 @@ class AnnotationHitHistoryListApi(Resource):
     def get(self, app_id, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         app_id = str(app_id)

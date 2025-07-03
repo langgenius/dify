@@ -23,7 +23,6 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ApiTool(Tool):
     api_bundle: ApiToolBundle
     provider_id: str
-
     """
     Api tool
     """
@@ -55,10 +54,8 @@ class ApiTool(Tool):
         """
         # assemble validate request and request parameters
         headers = self.assembling_request(parameters)
-
         if format_only:
             return ""
-
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
         return self.validate_and_parse_response(response)
@@ -69,26 +66,20 @@ class ApiTool(Tool):
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         if self.runtime is None:
             raise ToolProviderCredentialValidationError("runtime not initialized")
-
         headers = {}
         if self.runtime is None:
             raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
-
         if "auth_type" not in credentials:
             raise ToolProviderCredentialValidationError("Missing auth_type")
-
         if credentials["auth_type"] == "api_key":
             api_key_header = "api_key"
-
             if "api_key_header" in credentials:
                 api_key_header = credentials["api_key_header"]
-
             if "api_key_value" not in credentials:
                 raise ToolProviderCredentialValidationError("Missing api_key_value")
             elif not isinstance(credentials["api_key_value"], str):
                 raise ToolProviderCredentialValidationError("api_key_value must be a string")
-
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
                 if api_key_header_prefix == "basic" and credentials["api_key_value"]:
@@ -97,9 +88,7 @@ class ApiTool(Tool):
                     credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
                 elif api_key_header_prefix == "custom":
                     pass
-
             headers[api_key_header] = credentials["api_key_value"]
-
         needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
@@ -107,7 +96,6 @@ class ApiTool(Tool):
                     parameters[parameter.name] = parameter.default
                 else:
                     raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
-
         return headers
 
     def validate_and_parse_response(self, response: httpx.Response) -> str:
@@ -146,30 +134,24 @@ class ApiTool(Tool):
         do http request depending on api bundle
         """
         method = method.lower()
-
         params = {}
         path_params = {}
         # FIXME: body should be a dict[str, Any] but it changed a lot in this function
         body: Any = {}
         cookies = {}
         files = []
-
         # check parameters
         for parameter in self.api_bundle.openapi.get("parameters", []):
             value = self.get_parameter_value(parameter, parameters)
             if parameter["in"] == "path":
                 path_params[parameter["name"]] = value
-
             elif parameter["in"] == "query":
                 if value != "":
                     params[parameter["name"]] = value
-
             elif parameter["in"] == "cookie":
                 cookies[parameter["name"]] = value
-
             elif parameter["in"] == "header":
                 headers[parameter["name"]] = str(value)
-
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
             # handle json request body
@@ -177,7 +159,6 @@ class ApiTool(Tool):
                 for content_type in self.api_bundle.openapi["requestBody"]["content"]:
                     headers["Content-Type"] = content_type
                     body_schema = self.api_bundle.openapi["requestBody"]["content"][content_type]["schema"]
-
                     # handle ref schema
                     if "$ref" in body_schema:
                         ref_path = body_schema["$ref"].split("/")
@@ -188,7 +169,6 @@ class ApiTool(Tool):
                         ):
                             if ref_name in self.api_bundle.openapi["components"]["schemas"]:
                                 body_schema = self.api_bundle.openapi["components"]["schemas"][ref_name]
-
                     required = body_schema.get("required", [])
                     properties = body_schema.get("properties", {})
                     for name, property in properties.items():
@@ -215,11 +195,9 @@ class ApiTool(Tool):
                         else:
                             body[name] = None
                     break
-
         # replace path parameters
         for name, value in path_params.items():
             url = url.replace(f"{{{name}}}", f"{value}")
-
         # parse http body data if needed
         if "Content-Type" in headers:
             if headers["Content-Type"] == "application/json":
@@ -228,14 +206,12 @@ class ApiTool(Tool):
                 body = urlencode(body)
             else:
                 body = body
-
         # if there is a file upload, remove the Content-Type header
         # so that httpx can automatically generate the boundary header required for multipart/form-data.
         # issue: https://github.com/langgenius/dify/issues/13684
         # reference: https://stackoverflow.com/questions/39280438/fetch-missing-boundary-in-multipart-form-data-post
         if files:
             headers.pop("Content-Type", None)
-
         if method in {
             "get",
             "head",
@@ -352,12 +328,9 @@ class ApiTool(Tool):
         response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
-
         # do http request
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
-
         # validate response
         response = self.validate_and_parse_response(response)
-
         # assemble invoke message
         yield self.create_text_message(response)

@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from models.model import File
-
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -41,7 +40,6 @@ class Tool(ABC):
     def tool_provider_type(self) -> ToolProviderType:
         """
         get the tool provider type
-
         :return: the tool provider type
         """
 
@@ -55,10 +53,8 @@ class Tool(ABC):
     ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
-
         # try parse tool parameters into the correct type
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
-
         result = self._invoke(
             user_id=user_id,
             tool_parameters=tool_parameters,
@@ -66,7 +62,6 @@ class Tool(ABC):
             app_id=app_id,
             message_id=message_id,
         )
-
         if isinstance(result, ToolInvokeMessage):
 
             def single_generator() -> Generator[ToolInvokeMessage, None, None]:
@@ -91,7 +86,6 @@ class Tool(ABC):
         for parameter in self.entity.parameters or []:
             if parameter.name in tool_parameters:
                 result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
-
         return result
 
     @abstractmethod
@@ -113,9 +107,7 @@ class Tool(ABC):
     ) -> list[ToolParameter]:
         """
         get the runtime parameters
-
         interface for developer to dynamic change the parameters of a tool depends on the variables pool
-
         :return: the runtime parameters
         """
         return self.entity.parameters
@@ -128,14 +120,12 @@ class Tool(ABC):
     ) -> list[ToolParameter]:
         """
         get merged runtime parameters
-
         :return: merged runtime parameters
         """
         parameters = self.entity.parameters
         parameters = parameters.copy()
         user_parameters = self.get_runtime_parameters() or []
         user_parameters = user_parameters.copy()
-
         # override parameters
         for parameter in user_parameters:
             # check if parameter in tool parameters
@@ -152,7 +142,6 @@ class Tool(ABC):
             else:
                 # add new parameter
                 parameters.append(parameter)
-
         return parameters
 
     def create_image_message(
@@ -161,7 +150,6 @@ class Tool(ABC):
     ) -> ToolInvokeMessage:
         """
         create an image message
-
         :param image: the url of the image
         :return: the image message
         """
@@ -179,7 +167,6 @@ class Tool(ABC):
     def create_link_message(self, link: str) -> ToolInvokeMessage:
         """
         create a link message
-
         :param link: the url of the link
         :return: the link message
         """
@@ -190,7 +177,6 @@ class Tool(ABC):
     def create_text_message(self, text: str) -> ToolInvokeMessage:
         """
         create a text message
-
         :param text: the text
         :return: the text message
         """
@@ -202,7 +188,6 @@ class Tool(ABC):
     def create_blob_message(self, blob: bytes, meta: Optional[dict] = None) -> ToolInvokeMessage:
         """
         create a blob message
-
         :param blob: the blob
         :param meta: the meta info of blob object
         :return: the blob message

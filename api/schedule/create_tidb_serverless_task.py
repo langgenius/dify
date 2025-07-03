@@ -27,11 +27,9 @@ def create_tidb_serverless_task():
             # create tidb serverless
             iterations_per_thread = 20
             create_clusters(iterations_per_thread)
-
         except Exception as e:
             click.echo(click.style(f"Error: {e}", fg="red"))
             break
-
     end_at = time.perf_counter()
     click.echo(click.style("Create tidb serverless task success latency: {}".format(end_at - start_at), fg="green"))
 

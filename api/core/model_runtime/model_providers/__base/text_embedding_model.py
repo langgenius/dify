@@ -15,7 +15,6 @@ class TextEmbeddingModel(AIModel):
     """
 
     model_type: ModelType = ModelType.TEXT_EMBEDDING
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -29,7 +28,6 @@ class TextEmbeddingModel(AIModel):
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
-
         :param model: model name
         :param credentials: model credentials
         :param texts: texts to embed
@@ -55,7 +53,6 @@ class TextEmbeddingModel(AIModel):
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> list[int]:
         """
         Get number of tokens for given prompt messages
-
         :param model: model name
         :param credentials: model credentials
         :param texts: texts to embed
@@ -75,31 +72,25 @@ class TextEmbeddingModel(AIModel):
     def _get_context_size(self, model: str, credentials: dict) -> int:
         """
         Get context size for given embedding model
-
         :param model: model name
         :param credentials: model credentials
         :return: context size
         """
         model_schema = self.get_model_schema(model, credentials)
-
         if model_schema and ModelPropertyKey.CONTEXT_SIZE in model_schema.model_properties:
             content_size: int = model_schema.model_properties[ModelPropertyKey.CONTEXT_SIZE]
             return content_size
-
         return 1000
 
     def _get_max_chunks(self, model: str, credentials: dict) -> int:
         """
         Get max chunks for given embedding model
-
         :param model: model name
         :param credentials: model credentials
         :return: max chunks
         """
         model_schema = self.get_model_schema(model, credentials)
-
         if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
             max_chunks: int = model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
             return max_chunks
-
         return 1

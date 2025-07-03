@@ -17,7 +17,6 @@ app_fields = {
     "icon_url": AppIconUrlField,
     "icon_background": fields.String,
 }
-
 recommended_app_fields = {
     "app": fields.Nested(app_fields, attribute="app"),
     "app_id": fields.String,
@@ -29,7 +28,6 @@ recommended_app_fields = {
     "position": fields.Integer,
     "is_listed": fields.Boolean,
 }
-
 recommended_app_list_fields = {
     "recommended_apps": fields.List(fields.Nested(recommended_app_fields)),
     "categories": fields.List(fields.String),
@@ -45,14 +43,12 @@ class RecommendedAppListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("language", type=str, location="args")
         args = parser.parse_args()
-
         if args.get("language") and args.get("language") in languages:
             language_prefix = args.get("language")
         elif current_user and current_user.interface_language:
             language_prefix = current_user.interface_language
         else:
             language_prefix = languages[0]
-
         return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 

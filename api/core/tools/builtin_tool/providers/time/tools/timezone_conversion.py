@@ -30,7 +30,6 @@ class TimezoneConversionTool(BuiltinTool):
                 f"Invalid datatime and timezone: {current_time},{current_timezone},{target_timezone}"
             )
             return
-
         yield self.create_text_message(f"{target_time}")
 
     @staticmethod

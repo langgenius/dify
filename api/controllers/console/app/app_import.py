@@ -31,7 +31,6 @@ class AppImportApi(Resource):
         # Check user role first
         if not current_user.is_editor:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("mode", type=str, required=True, location="json")
         parser.add_argument("yaml_content", type=str, location="json")
@@ -43,7 +42,6 @@ class AppImportApi(Resource):
         parser.add_argument("icon_background", type=str, location="json")
         parser.add_argument("app_id", type=str, location="json")
         args = parser.parse_args()
-
         # Create service with session
         with Session(db.engine) as session:
             import_service = AppDslService(session)
@@ -83,7 +81,6 @@ class AppImportConfirmApi(Resource):
         # Check user role first
         if not current_user.is_editor:
             raise Forbidden()
-
         # Create service with session
         with Session(db.engine) as session:
             import_service = AppDslService(session)
@@ -91,7 +88,6 @@ class AppImportConfirmApi(Resource):
             account = cast(Account, current_user)
             result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
-
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED.value:
             return result.model_dump(mode="json"), 400
@@ -107,9 +103,7 @@ class AppImportCheckDependenciesApi(Resource):
     def get(self, app_model: App):
         if not current_user.is_editor:
             raise Forbidden()
-
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)
-
         return result.model_dump(mode="json"), 200

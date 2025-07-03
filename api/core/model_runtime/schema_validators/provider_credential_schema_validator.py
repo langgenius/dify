@@ -9,11 +9,9 @@ class ProviderCredentialSchemaValidator(CommonValidator):
     def validate_and_filter(self, credentials: dict) -> dict:
         """
         Validate provider credentials
-
         :param credentials: provider credentials
         :return: validated provider credentials
         """
         # get the credential_form_schemas in provider_credential_schema
         credential_form_schemas = self.provider_credential_schema.credential_form_schemas
-
         return self._validate_and_filter_credential_form_schemas(credential_form_schemas, credentials)

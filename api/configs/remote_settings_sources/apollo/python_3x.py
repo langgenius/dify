@@ -10,12 +10,9 @@ ssl_context = ssl.create_default_context()
 ssl_context.set_ciphers("HIGH:!DH:!aNULL")
 ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
-
 # Create an opener object and pass in a custom SSL context
 opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_context))
-
 urllib.request.install_opener(opener)
-
 logger = logging.getLogger(__name__)
 
 

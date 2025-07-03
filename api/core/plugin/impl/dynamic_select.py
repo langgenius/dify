@@ -38,8 +38,6 @@ class DynamicSelectClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for options in response:
             return options
-
         raise ValueError(f"Plugin service returned no options for parameter '{parameter}' in provider '{provider}'")

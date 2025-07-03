@@ -12,7 +12,6 @@ class PluginEncrypter:
             provider_type=payload.namespace,
             provider_identity=payload.identity,
         )
-
         if payload.opt == "encrypt":
             return {
                 "data": encrypter.encrypt(payload.data),

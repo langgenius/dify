@@ -20,7 +20,6 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
         with Session(db.engine) as session:
             if not user_id:
                 user_id = "DEFAULT-USER"
-
             if user_id == "DEFAULT-USER":
                 user_model = session.query(EndUser).filter(EndUser.session_id == "DEFAULT-USER").first()
                 if not user_model:
@@ -41,7 +40,6 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
                     raise ValueError("user not found")
     except Exception:
         raise ValueError("user not found")
-
     return user_model
 
 
@@ -53,21 +51,15 @@ def get_user_tenant(view: Optional[Callable] = None):
             parser = reqparse.RequestParser()
             parser.add_argument("tenant_id", type=str, required=True, location="json")
             parser.add_argument("user_id", type=str, required=True, location="json")
-
             kwargs = parser.parse_args()
-
             user_id = kwargs.get("user_id")
             tenant_id = kwargs.get("tenant_id")
-
             if not tenant_id:
                 raise ValueError("tenant_id is required")
-
             if not user_id:
                 user_id = "DEFAULT-USER"
-
             del kwargs["tenant_id"]
             del kwargs["user_id"]
-
             try:
                 tenant_model = (
                     db.session.query(Tenant)
@@ -78,18 +70,13 @@ def get_user_tenant(view: Optional[Callable] = None):
                 )
             except Exception:
                 raise ValueError("tenant not found")
-
             if not tenant_model:
                 raise ValueError("tenant not found")
-
             kwargs["tenant_model"] = tenant_model
-
             user = get_user(tenant_id, user_id)
             kwargs["user_model"] = user
-
             current_app.login_manager._update_request_context_with_user(user)  # type: ignore
             user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
-
             return view_func(*args, **kwargs)
 
         return decorated_view
@@ -107,12 +94,10 @@ def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel
                 data = request.get_json()
             except Exception:
                 raise ValueError("invalid json")
-
             try:
                 payload = payload_type(**data)
             except Exception as e:
                 raise ValueError(f"invalid payload: {str(e)}")
-
             kwargs["payload"] = payload
             return view_func(*args, **kwargs)
 

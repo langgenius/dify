@@ -166,7 +166,6 @@ class GenericProviderID:
                 value = f"langgenius/{value}/{value}"
             else:
                 raise ValueError(f"Invalid plugin id {value}")
-
         self.organization, self.plugin_name, self.provider_name = value.split("/")
         self.is_hardcoded = is_hardcoded
 

@@ -36,7 +36,6 @@ def clean_unused_datasets_task():
                 .group_by(Document.dataset_id)
                 .subquery()
             )
-
             # Subquery for counting old documents
             document_subquery_old = (
                 db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
@@ -49,7 +48,6 @@ def clean_unused_datasets_task():
                 .group_by(Document.dataset_id)
                 .subquery()
             )
-
             # Main query with join and filter
             stmt = (
                 select(Dataset)
@@ -62,9 +60,7 @@ def clean_unused_datasets_task():
                 )
                 .order_by(Dataset.created_at.desc())
             )
-
             datasets = db.paginate(stmt, page=1, per_page=50)
-
         except NotFound:
             break
         if datasets.items is None or len(datasets.items) == 0:
@@ -97,10 +93,8 @@ def clean_unused_datasets_task():
                     # remove index
                     index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
                     index_processor.clean(dataset, None)
-
                     # update document
                     update_params = {Document.enabled: False}
-
                     db.session.query(Document).filter_by(dataset_id=dataset.id).update(update_params)
                     db.session.commit()
                     click.echo(click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green"))
@@ -122,7 +116,6 @@ def clean_unused_datasets_task():
                 .group_by(Document.dataset_id)
                 .subquery()
             )
-
             # Subquery for counting old documents
             document_subquery_old = (
                 db.session.query(Document.dataset_id, func.count(Document.id).label("document_count"))
@@ -135,7 +128,6 @@ def clean_unused_datasets_task():
                 .group_by(Document.dataset_id)
                 .subquery()
             )
-
             # Main query with join and filter
             stmt = (
                 select(Dataset)
@@ -149,7 +141,6 @@ def clean_unused_datasets_task():
                 .order_by(Dataset.created_at.desc())
             )
             datasets = db.paginate(stmt, page=1, per_page=50)
-
         except NotFound:
             break
         if datasets.items is None or len(datasets.items) == 0:
@@ -174,10 +165,8 @@ def clean_unused_datasets_task():
                         # remove index
                         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
                         index_processor.clean(dataset, None)
-
                         # update document
                         update_params = {Document.enabled: False}
-
                         db.session.query(Document).filter_by(dataset_id=dataset.id).update(update_params)
                         db.session.commit()
                         click.echo(

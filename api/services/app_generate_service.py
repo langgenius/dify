@@ -51,7 +51,6 @@ class AppGenerateService:
                         f"or your RPD was {dify_config.APP_DAILY_RATE_LIMIT} requests/day"
                     )
                 cls.system_rate_limiter.increment_rate_limit(app_model.tenant_id)
-
         # app level rate limiter
         max_active_request = AppGenerateService._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
@@ -207,14 +206,11 @@ class AppGenerateService:
         if invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = workflow_service.get_draft_workflow(app_model=app_model)
-
             if not workflow:
                 raise ValueError("Workflow not initialized")
         else:
             # fetch published workflow by app_model
             workflow = workflow_service.get_published_workflow(app_model=app_model)
-
             if not workflow:
                 raise ValueError("Workflow not published")
-
         return workflow

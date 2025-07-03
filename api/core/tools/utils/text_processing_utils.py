@@ -4,10 +4,8 @@ import re
 def remove_leading_symbols(text: str) -> str:
     """
     Remove leading punctuation or symbols from the given text.
-
     Args:
         text (str): The input text to process.
-
     Returns:
         str: The text with leading punctuation or symbols removed.
     """

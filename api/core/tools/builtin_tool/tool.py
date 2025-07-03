@@ -16,7 +16,6 @@ Please summarize the text you got.
 class BuiltinTool(Tool):
     """
     Builtin tool
-
     :param meta: the meta data of a tool call processing
     """
 
@@ -40,7 +39,6 @@ class BuiltinTool(Tool):
     def invoke_model(self, user_id: str, prompt_messages: list[PromptMessage], stop: list[str]) -> LLMResult:
         """
         invoke model
-
         :param user_id: the user id
         :param prompt_messages: the prompt messages
         :param stop: the stop words
@@ -61,12 +59,10 @@ class BuiltinTool(Tool):
     def get_max_tokens(self) -> int:
         """
         get max tokens
-
         :return: the max tokens
         """
         if self.runtime is None:
             raise ValueError("runtime is required")
-
         return ModelInvocationUtils.get_max_llm_context_tokens(
             tenant_id=self.runtime.tenant_id or "",
         )
@@ -74,20 +70,17 @@ class BuiltinTool(Tool):
     def get_prompt_tokens(self, prompt_messages: list[PromptMessage]) -> int:
         """
         get prompt tokens
-
         :param prompt_messages: the prompt messages
         :return: the tokens
         """
         if self.runtime is None:
             raise ValueError("runtime is required")
-
         return ModelInvocationUtils.calculate_tokens(
             tenant_id=self.runtime.tenant_id or "", prompt_messages=prompt_messages
         )
 
     def summary(self, user_id: str, content: str) -> str:
         max_tokens = self.get_max_tokens()
-
         if self.get_prompt_tokens(prompt_messages=[UserPromptMessage(content=content)]) < max_tokens * 0.6:
             return content
 
@@ -102,7 +95,6 @@ class BuiltinTool(Tool):
                 prompt_messages=[SystemPromptMessage(content=_SUMMARY_PROMPT), UserPromptMessage(content=content)],
                 stop=[],
             )
-
             assert isinstance(summary.message.content, str)
             return summary.message.content
 
@@ -122,7 +114,6 @@ class BuiltinTool(Tool):
                 new_lines.append(line)
             else:
                 new_lines.append(line)
-
         # merge lines into messages with max tokens
         messages: list[str] = []
         for j in new_lines:
@@ -135,16 +126,12 @@ class BuiltinTool(Tool):
                     messages.append(j)
                 else:
                     messages[-1] += j
-
         summaries = []
         for i in range(len(messages)):
             message = messages[i]
             summary = summarize(message)
             summaries.append(summary)
-
         result = "\n".join(summaries)
-
         if self.get_prompt_tokens(prompt_messages=[UserPromptMessage(content=result)]) > max_tokens * 0.7:
             return self.summary(user_id=user_id, content=result)
-
         return result

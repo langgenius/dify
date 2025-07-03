@@ -58,24 +58,18 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-
         args = parser.parse_args()
-
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
         if not dataset:
             raise ValueError("Dataset does not exist.")
-
         if not dataset.indexing_technique and not args["indexing_technique"]:
             raise ValueError("indexing_technique is required.")
-
         text = args.get("text")
         name = args.get("name")
         if text is None or name is None:
             raise ValueError("Both 'text' and 'name' must be non-null values.")
-
         if args.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
                 tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
@@ -90,7 +84,6 @@ class DocumentAddByTextApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
-
         upload_file = FileService.upload_text(text=str(text), text_name=str(name))
         data_source = {
             "type": "upload_file",
@@ -100,7 +93,6 @@ class DocumentAddByTextApi(DatasetApiResource):
         knowledge_config = KnowledgeConfig(**args)
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
@@ -112,7 +104,6 @@ class DocumentAddByTextApi(DatasetApiResource):
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-
         documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
         return documents_and_batch_fields, 200
 
@@ -137,10 +128,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
         if not dataset:
             raise ValueError("Dataset does not exist.")
-
         if (
             args.get("retrieval_model")
             and args.get("retrieval_model").get("reranking_model")
@@ -151,10 +140,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
                 args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
                 args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
-
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
-
         if args["text"]:
             text = args.get("text")
             name = args.get("name")
@@ -170,7 +157,6 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         args["original_document_id"] = str(document_id)
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
@@ -182,7 +168,6 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-
         documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
         return documents_and_batch_fields, 200
 
@@ -202,23 +187,18 @@ class DocumentAddByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
-
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
         if not dataset:
             raise ValueError("Dataset does not exist.")
-
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
-
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
             raise ValueError("indexing_technique is required.")
         args["indexing_technique"] = indexing_technique
-
         if "embedding_model_provider" in args:
             DatasetService.check_embedding_model_setting(
                 tenant_id, args["embedding_model_provider"], args["embedding_model"]
@@ -233,19 +213,15 @@ class DocumentAddByFileApi(DatasetApiResource):
                 args["retrieval_model"].get("reranking_model").get("reranking_provider_name"),
                 args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
             )
-
         # save file info
         file = request.files["file"]
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
-
         if not file.filename:
             raise FilenameNotExistsError
-
         upload_file = FileService.upload_file(
             filename=file.filename,
             content=file.read(),
@@ -261,11 +237,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         # validate args
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
-
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
         if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
             raise ValueError("process_rule is required.")
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
@@ -295,31 +269,23 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
-
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
         if not dataset:
             raise ValueError("Dataset does not exist.")
-
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
-
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
-
         if "file" in request.files:
             # save file info
             file = request.files["file"]
-
             if len(request.files) > 1:
                 raise TooManyFilesError()
-
             if not file.filename:
                 raise FilenameNotExistsError
-
             try:
                 upload_file = FileService.upload_file(
                     filename=file.filename,
@@ -339,10 +305,8 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
@@ -365,29 +329,22 @@ class DocumentDeleteApi(DatasetApiResource):
         document_id = str(document_id)
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-
         # get dataset info
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
         if not dataset:
             raise ValueError("Dataset does not exist.")
-
         document = DocumentService.get_document(dataset.id, document_id)
-
         # 404 if document not found
         if document is None:
             raise NotFound("Document Not Exists.")
-
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
-
         try:
             # delete document
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
-
         return 204
 
 
@@ -401,18 +358,13 @@ class DocumentListApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
-
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
-
         if search:
             search = f"%{search}%"
             query = query.filter(Document.name.like(search))
-
         query = query.order_by(desc(Document.created_at), desc(Document.position))
-
         paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
-
         response = {
             "data": marshal(documents, document_fields),
             "has_more": len(documents) == limit,
@@ -420,7 +372,6 @@ class DocumentListApi(DatasetApiResource):
             "total": paginated_documents.total,
             "page": page,
         }
-
         return response
 
 
@@ -479,21 +430,15 @@ class DocumentDetailApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id, document_id):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
-
         dataset = self.get_dataset(dataset_id, tenant_id)
-
         document = DocumentService.get_document(dataset.id, document_id)
-
         if not document:
             raise NotFound("Document not found.")
-
         if document.tenant_id != str(tenant_id):
             raise Forbidden("No permission.")
-
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
-
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
@@ -564,7 +509,6 @@ class DocumentDetailApi(DatasetApiResource):
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
             }
-
         return response
 
 

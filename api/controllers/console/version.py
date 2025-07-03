@@ -16,7 +16,6 @@ class VersionApi(Resource):
         parser.add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
         check_update_url = dify_config.CHECK_UPDATE_URL
-
         result = {
             "version": dify_config.project.version,
             "release_date": "",
@@ -27,17 +26,14 @@ class VersionApi(Resource):
                 "model_load_balancing_enabled": dify_config.MODEL_LB_ENABLED,
             },
         }
-
         if not check_update_url:
             return result
-
         try:
             response = requests.get(check_update_url, {"current_version": args.get("current_version")})
         except Exception as error:
             logging.warning("Check update version error: {}.".format(str(error)))
             result["version"] = args.get("current_version")
             return result
-
         content = json.loads(response.content)
         if _has_new_version(latest_version=content["version"], current_version=f"{args.get('current_version')}"):
             result["version"] = content["version"]
@@ -51,7 +47,6 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     try:
         latest = version.parse(latest_version)
         current = version.parse(current_version)
-
         # Compare versions
         return latest > current
     except version.InvalidVersion:

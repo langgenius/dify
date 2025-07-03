@@ -30,7 +30,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
     ) -> dict:
         """
         Invoke parameter extractor node.
-
         :param tenant_id: str
         :param user_id: str
         :param parameters: list[ParameterConfig]
@@ -62,7 +61,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
                 f"{node_id}.query": query,
             },
         )
-
         return {
             "inputs": execution.inputs,
             "outputs": execution.outputs,
@@ -81,7 +79,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
     ) -> dict:
         """
         Invoke question classifier node.
-
         :param tenant_id: str
         :param user_id: str
         :param model_config: ModelConfig
@@ -111,7 +108,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
                 f"{node_id}.query": query,
             },
         )
-
         return {
             "inputs": execution.inputs,
             "outputs": execution.outputs,

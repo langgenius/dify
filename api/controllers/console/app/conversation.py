@@ -44,9 +44,7 @@ class CompletionConversationApi(Resource):
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
-
         query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
-
         if args["keyword"]:
             query = query.join(Message, Message.conversation_id == Conversation.id).filter(
                 or_(
@@ -54,29 +52,21 @@ class CompletionConversationApi(Resource):
                     Message.answer.ilike("%{}%".format(args["keyword"])),
                 )
             )
-
         account = current_user
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             query = query.where(Conversation.created_at >= start_datetime_utc)
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=59)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             query = query.where(Conversation.created_at < end_datetime_utc)
-
         # FIXME, the type ignore in this file
         if args["annotation_status"] == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
@@ -88,11 +78,8 @@ class CompletionConversationApi(Resource):
                 .group_by(Conversation.id)
                 .having(func.count(MessageAnnotation.id) == 0)
             )
-
         query = query.order_by(Conversation.created_at.desc())
-
         conversations = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
-
         return conversations
 
 
@@ -106,7 +93,6 @@ class CompletionConversationDetailApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
-
         return _get_conversation(app_model, conversation_id)
 
     @setup_required
@@ -117,19 +103,15 @@ class CompletionConversationDetailApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
-
         conversation = (
             db.session.query(Conversation)
             .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
-
         if not conversation:
             raise NotFound("Conversation Not Exists.")
-
         conversation.is_deleted = True
         db.session.commit()
-
         return {"result": "success"}, 204
 
 
@@ -161,7 +143,6 @@ class ChatConversationApi(Resource):
             location="args",
         )
         args = parser.parse_args()
-
         subquery = (
             db.session.query(
                 Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id")
@@ -169,9 +150,7 @@ class ChatConversationApi(Resource):
             .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
             .subquery()
         )
-
         query = db.select(Conversation).where(Conversation.app_id == app_model.id)
-
         if args["keyword"]:
             keyword_filter = "%{}%".format(args["keyword"])
             query = (
@@ -191,37 +170,29 @@ class ChatConversationApi(Resource):
                 )
                 .group_by(Conversation.id)
             )
-
         account = current_user
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at >= start_datetime_utc)
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=59)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
-
         if args["annotation_status"] == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
@@ -232,7 +203,6 @@ class ChatConversationApi(Resource):
                 .group_by(Conversation.id)
                 .having(func.count(MessageAnnotation.id) == 0)
             )
-
         if args["message_count_gte"] and args["message_count_gte"] >= 1:
             query = (
                 query.options(joinedload(Conversation.messages))  # type: ignore
@@ -240,10 +210,8 @@ class ChatConversationApi(Resource):
                 .group_by(Conversation.id)
                 .having(func.count(Message.id) >= args["message_count_gte"])
             )
-
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
-
         match args["sort_by"]:
             case "created_at":
                 query = query.order_by(Conversation.created_at.asc())
@@ -255,9 +223,7 @@ class ChatConversationApi(Resource):
                 query = query.order_by(Conversation.updated_at.desc())
             case _:
                 query = query.order_by(Conversation.created_at.desc())
-
         conversations = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
-
         return conversations
 
 
@@ -271,7 +237,6 @@ class ChatConversationDetailApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
-
         return _get_conversation(app_model, conversation_id)
 
     @setup_required
@@ -282,19 +247,15 @@ class ChatConversationDetailApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
-
         conversation = (
             db.session.query(Conversation)
             .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
-
         if not conversation:
             raise NotFound("Conversation Not Exists.")
-
         conversation.is_deleted = True
         db.session.commit()
-
         return {"result": "success"}, 204
 
 
@@ -310,13 +271,10 @@ def _get_conversation(app_model, conversation_id):
         .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
         .first()
     )
-
     if not conversation:
         raise NotFound("Conversation Not Exists.")
-
     if not conversation.read_at:
         conversation.read_at = datetime.now(UTC).replace(tzinfo=None)
         conversation.read_account_id = current_user.id
         db.session.commit()
-
     return conversation

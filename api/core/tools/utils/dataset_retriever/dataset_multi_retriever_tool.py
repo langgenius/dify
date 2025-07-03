@@ -71,18 +71,14 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             model_type=ModelType.RERANK,
             model=self.reranking_model_name,
         )
-
         rerank_runner = RerankModelRunner(rerank_model_instance)
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
-
         for hit_callback in self.hit_callbacks:
             hit_callback.on_tool_end(all_documents)
-
         document_score_list = {}
         for item in all_documents:
             if item.metadata and item.metadata.get("score"):
                 document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
-
         document_context_list = []
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
         segments = (
@@ -96,7 +92,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             )
             .all()
         )
-
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
             sorted_segments = sorted(
@@ -134,7 +129,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             score=document_score_list.get(segment.index_node_id, None),
                             doc_metadata=document.doc_metadata,
                         )
-
                         if self.retriever_from == "dev":
                             source.hit_count = segment.hit_count
                             source.word_count = segment.word_count
@@ -146,10 +140,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             source.content = segment.content
                         context_list.append(source)
                     resource_number += 1
-
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
-
             return str("\n".join(document_context_list))
         return ""
 
@@ -165,16 +157,12 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             dataset = (
                 db.session.query(Dataset).filter(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id).first()
             )
-
             if not dataset:
                 return []
-
             for hit_callback in hit_callbacks:
                 hit_callback.on_query(query, dataset.id)
-
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
-
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
@@ -202,5 +190,4 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                         weights=retrieval_model.get("weights", None),
                     )
-
                     all_documents.extend(documents)

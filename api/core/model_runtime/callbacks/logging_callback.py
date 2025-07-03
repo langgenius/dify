@@ -27,7 +27,6 @@ class LoggingCallback(Callback):
     ) -> None:
         """
         Before invoke callback
-
         :param llm_instance: LLM instance
         :param model: model name
         :param credentials: model credentials
@@ -43,28 +42,21 @@ class LoggingCallback(Callback):
         self.print_text("Parameters:\n", color="blue")
         for key, value in model_parameters.items():
             self.print_text(f"\t{key}: {value}\n", color="blue")
-
         if stop:
             self.print_text(f"\tstop: {stop}\n", color="blue")
-
         if tools:
             self.print_text("\tTools:\n", color="blue")
             for tool in tools:
                 self.print_text(f"\t\t{tool.name}\n", color="blue")
-
         self.print_text(f"Stream: {stream}\n", color="blue")
-
         if user:
             self.print_text(f"User: {user}\n", color="blue")
-
         self.print_text("Prompt messages:\n", color="blue")
         for prompt_message in prompt_messages:
             if prompt_message.name:
                 self.print_text(f"\tname: {prompt_message.name}\n", color="blue")
-
             self.print_text(f"\trole: {prompt_message.role.value}\n", color="blue")
             self.print_text(f"\tcontent: {prompt_message.content}\n", color="blue")
-
         if stream:
             self.print_text("\n[on_llm_new_chunk]")
 
@@ -83,7 +75,6 @@ class LoggingCallback(Callback):
     ):
         """
         On new chunk callback
-
         :param llm_instance: LLM instance
         :param chunk: chunk
         :param model: model name
@@ -113,7 +104,6 @@ class LoggingCallback(Callback):
     ) -> None:
         """
         After invoke callback
-
         :param llm_instance: LLM instance
         :param result: result
         :param model: model name
@@ -127,14 +117,12 @@ class LoggingCallback(Callback):
         """
         self.print_text("\n[on_llm_after_invoke]\n", color="yellow")
         self.print_text(f"Content: {result.message.content}\n", color="yellow")
-
         if result.message.tool_calls:
             self.print_text("Tool calls:\n", color="yellow")
             for tool_call in result.message.tool_calls:
                 self.print_text(f"\t{tool_call.id}\n", color="yellow")
                 self.print_text(f"\t{tool_call.function.name}\n", color="yellow")
                 self.print_text(f"\t{json.dumps(tool_call.function.arguments)}\n", color="yellow")
-
         self.print_text(f"Model: {result.model}\n", color="yellow")
         self.print_text(f"Usage: {result.usage}\n", color="yellow")
         self.print_text(f"System Fingerprint: {result.system_fingerprint}\n", color="yellow")
@@ -154,7 +142,6 @@ class LoggingCallback(Callback):
     ) -> None:
         """
         Invoke error callback
-
         :param llm_instance: LLM instance
         :param ex: exception
         :param model: model name

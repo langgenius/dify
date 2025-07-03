@@ -65,7 +65,6 @@ class StorageConfig(BaseSettings):
         "'huawei-obs', 'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'opendal'.",
         default="opendal",
     )
-
     STORAGE_LOCAL_PATH: str = Field(
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
@@ -79,7 +78,6 @@ class VectorStoreConfig(BaseSettings):
         " Set to None if not using a vector store.",
         default=None,
     )
-
     VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
         description="Enable whitelist for vector store.",
         default=False,
@@ -99,37 +97,30 @@ class DatabaseConfig(BaseSettings):
         description="Hostname or IP address of the database server.",
         default="localhost",
     )
-
     DB_PORT: PositiveInt = Field(
         description="Port number for database connection.",
         default=5432,
     )
-
     DB_USERNAME: str = Field(
         description="Username for database authentication.",
         default="postgres",
     )
-
     DB_PASSWORD: str = Field(
         description="Password for database authentication.",
         default="",
     )
-
     DB_DATABASE: str = Field(
         description="Name of the database to connect to.",
         default="dify",
     )
-
     DB_CHARSET: str = Field(
         description="Character set for database connection.",
         default="",
     )
-
     DB_EXTRAS: str = Field(
         description="Additional database connection parameters. Example: 'keepalives_idle=60&keepalives=1'",
         default="",
     )
-
     SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
         description="Database URI scheme for SQLAlchemy connection.",
         default="postgresql",
@@ -151,27 +142,22 @@ class DatabaseConfig(BaseSettings):
         description="Maximum number of database connections in the pool.",
         default=30,
     )
-
     SQLALCHEMY_MAX_OVERFLOW: NonNegativeInt = Field(
         description="Maximum number of connections that can be created beyond the pool_size.",
         default=10,
     )
-
     SQLALCHEMY_POOL_RECYCLE: NonNegativeInt = Field(
         description="Number of seconds after which a connection is automatically recycled.",
         default=3600,
     )
-
     SQLALCHEMY_POOL_PRE_PING: bool = Field(
         description="If True, enables connection pool pre-ping feature to check connections.",
         default=False,
     )
-
     SQLALCHEMY_ECHO: bool | str = Field(
         description="If True, SQLAlchemy will log all SQL statements.",
         default=False,
     )
-
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
@@ -190,9 +176,7 @@ class DatabaseConfig(BaseSettings):
             merged_options = f"{options} {timezone_opt}"
         else:
             merged_options = timezone_opt
-
         connect_args = {"options": merged_options}
-
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
@@ -207,22 +191,18 @@ class CeleryConfig(DatabaseConfig):
         description="Backend for Celery task results. Options: 'database', 'redis'.",
         default="database",
     )
-
     CELERY_BROKER_URL: Optional[str] = Field(
         description="URL of the message broker for Celery tasks.",
         default=None,
     )
-
     CELERY_USE_SENTINEL: Optional[bool] = Field(
         description="Whether to use Redis Sentinel for high availability.",
         default=False,
     )
-
     CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
         description="Name of the Redis Sentinel master.",
         default=None,
     )
-
     CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
         description="Password of the Redis Sentinel master.",
         default=None,
@@ -254,7 +234,6 @@ class InternalTestConfig(BaseSettings):
         description="Internal test AWS secret access key",
         default=None,
     )
-
     AWS_ACCESS_KEY_ID: Optional[str] = Field(
         description="Internal test AWS access key ID",
         default=None,

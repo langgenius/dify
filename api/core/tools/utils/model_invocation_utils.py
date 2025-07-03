@@ -1,6 +1,5 @@
 """
 For some reason, model will be used in tools like WebScraperTool, WikipediaSearchTool etc.
-
 Therefore, a model manager is needed to list/invoke/validate models.
 """
 
@@ -41,20 +40,15 @@ class ModelInvocationUtils:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-
         if not model_instance:
             raise InvokeModelError("Model not found")
-
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-
         if not schema:
             raise InvokeModelError("No model schema found")
-
         max_tokens: Optional[int] = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
         if max_tokens is None:
             return 2048
-
         return max_tokens
 
     @staticmethod
@@ -62,17 +56,13 @@ class ModelInvocationUtils:
         """
         calculate tokens from prompt messages and model parameters
         """
-
         # get model instance
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
-
         if not model_instance:
             raise InvokeModelError("Model not found")
-
         # get tokens
         tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
         return tokens
 
     @staticmethod
@@ -81,7 +71,6 @@ class ModelInvocationUtils:
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context
-
         :param user_id: user id
         :param tenant_id: tenant id, the tenant id of the creator of the tool
         :param tool_type: tool type
@@ -89,7 +78,6 @@ class ModelInvocationUtils:
         :param prompt_messages: prompt messages
         :return: AssistantPromptMessage
         """
-
         # get model manager
         model_manager = ModelManager()
         # get model instance
@@ -97,15 +85,12 @@ class ModelInvocationUtils:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-
         # get prompt tokens
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
         model_parameters = {
             "temperature": 0.8,
             "top_p": 0.8,
         }
-
         # create tool model invoke
         tool_model_invoke = ToolModelInvoke(
             user_id=user_id,
@@ -124,10 +109,8 @@ class ModelInvocationUtils:
             total_price=0,
             currency="USD",
         )
-
         db.session.add(tool_model_invoke)
         db.session.commit()
-
         try:
             response: LLMResult = cast(
                 LLMResult,
@@ -153,7 +136,6 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke server unavailable error: {e}")
         except Exception as e:
             raise InvokeModelError(f"Invoke error: {e}")
-
         # update tool model invoke
         tool_model_invoke.model_response = response.message.content
         if response.usage:
@@ -163,7 +145,5 @@ class ModelInvocationUtils:
             tool_model_invoke.provider_response_latency = response.usage.latency
             tool_model_invoke.total_price = response.usage.total_price
             tool_model_invoke.currency = response.usage.currency
-
         db.session.commit()
-
         return response

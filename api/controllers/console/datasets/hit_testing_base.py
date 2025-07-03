@@ -30,12 +30,10 @@ class DatasetsHitTestingBase:
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         return dataset
 
     @staticmethod
@@ -45,7 +43,6 @@ class DatasetsHitTestingBase:
     @staticmethod
     def parse_args():
         parser = reqparse.RequestParser()
-
         parser.add_argument("query", type=str, location="json")
         parser.add_argument("retrieval_model", type=dict, required=False, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")

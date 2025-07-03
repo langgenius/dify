@@ -39,7 +39,6 @@ class ClearFreePlanTenantExpiredLogs:
                     )
                     if len(messages) == 0:
                         break
-
                     storage.save(
                         f"free_plan_tenant_expired_logs/"
                         f"{tenant_id}/messages/{datetime.datetime.now().strftime('%Y-%m-%d')}"
@@ -50,22 +49,17 @@ class ClearFreePlanTenantExpiredLogs:
                             ),
                         ).encode("utf-8"),
                     )
-
                     message_ids = [message.id for message in messages]
-
                     # delete messages
                     session.query(Message).filter(
                         Message.id.in_(message_ids),
                     ).delete(synchronize_session=False)
-
                     session.commit()
-
                     click.echo(
                         click.style(
                             f"[{datetime.datetime.now()}] Processed {len(message_ids)} messages for tenant {tenant_id} "
                         )
                     )
-
             while True:
                 with Session(db.engine).no_autoflush as session:
                     conversations = (
@@ -77,10 +71,8 @@ class ClearFreePlanTenantExpiredLogs:
                         .limit(batch)
                         .all()
                     )
-
                     if len(conversations) == 0:
                         break
-
                     storage.save(
                         f"free_plan_tenant_expired_logs/"
                         f"{tenant_id}/conversations/{datetime.datetime.now().strftime('%Y-%m-%d')}"
@@ -91,20 +83,17 @@ class ClearFreePlanTenantExpiredLogs:
                             ),
                         ).encode("utf-8"),
                     )
-
                     conversation_ids = [conversation.id for conversation in conversations]
                     session.query(Conversation).filter(
                         Conversation.id.in_(conversation_ids),
                     ).delete(synchronize_session=False)
                     session.commit()
-
                     click.echo(
                         click.style(
                             f"[{datetime.datetime.now()}] Processed {len(conversation_ids)}"
                             f" conversations for tenant {tenant_id}"
                         )
                     )
-
             while True:
                 with Session(db.engine).no_autoflush as session:
                     workflow_node_executions = (
@@ -117,10 +106,8 @@ class ClearFreePlanTenantExpiredLogs:
                         .limit(batch)
                         .all()
                     )
-
                     if len(workflow_node_executions) == 0:
                         break
-
                     # save workflow node executions
                     storage.save(
                         f"free_plan_tenant_expired_logs/"
@@ -130,24 +117,20 @@ class ClearFreePlanTenantExpiredLogs:
                             jsonable_encoder(workflow_node_executions),
                         ).encode("utf-8"),
                     )
-
                     workflow_node_execution_ids = [
                         workflow_node_execution.id for workflow_node_execution in workflow_node_executions
                     ]
-
                     # delete workflow node executions
                     session.query(WorkflowNodeExecutionModel).filter(
                         WorkflowNodeExecutionModel.id.in_(workflow_node_execution_ids),
                     ).delete(synchronize_session=False)
                     session.commit()
-
                     click.echo(
                         click.style(
                             f"[{datetime.datetime.now()}] Processed {len(workflow_node_execution_ids)}"
                             f" workflow node executions for tenant {tenant_id}"
                         )
                     )
-
             while True:
                 with Session(db.engine).no_autoflush as session:
                     workflow_runs = (
@@ -159,12 +142,9 @@ class ClearFreePlanTenantExpiredLogs:
                         .limit(batch)
                         .all()
                     )
-
                     if len(workflow_runs) == 0:
                         break
-
                     # save workflow runs
-
                     storage.save(
                         f"free_plan_tenant_expired_logs/"
                         f"{tenant_id}/workflow_runs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
@@ -175,9 +155,7 @@ class ClearFreePlanTenantExpiredLogs:
                             ),
                         ).encode("utf-8"),
                     )
-
                     workflow_run_ids = [workflow_run.id for workflow_run in workflow_runs]
-
                     # delete workflow runs
                     session.query(WorkflowRun).filter(
                         WorkflowRun.id.in_(workflow_run_ids),
@@ -189,19 +167,14 @@ class ClearFreePlanTenantExpiredLogs:
         """
         Clear free plan tenant expired logs.
         """
-
         click.echo(click.style("Clearing free plan tenant expired logs", fg="white"))
         ended_at = datetime.datetime.now()
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
-
         with Session(db.engine) as session:
             total_tenant_count = session.query(Tenant.id).count()
-
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
-
         handled_tenant_count = 0
-
         thread_pool = ThreadPoolExecutor(max_workers=10)
 
         def process_tenant(flask_app: Flask, tenant_id: str) -> None:
@@ -229,7 +202,6 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
         futures = []
-
         if tenant_ids:
             for tenant_id in tenant_ids:
                 futures.append(
@@ -257,7 +229,6 @@ class ClearFreePlanTenantExpiredLogs:
                         datetime.timedelta(hours=3),
                         datetime.timedelta(hours=1),
                     ]
-
                     for test_interval in test_intervals:
                         tenant_count = (
                             session.query(Tenant.id)
@@ -270,7 +241,6 @@ class ClearFreePlanTenantExpiredLogs:
                     else:
                         # If all intervals have too many tenants, use minimum interval
                         interval = datetime.timedelta(hours=1)
-
                     # Adjust interval to target ~100 tenants per batch
                     if tenant_count > 0:
                         # Scale interval based on ratio to target count
@@ -281,15 +251,12 @@ class ClearFreePlanTenantExpiredLogs:
                                 interval * (100 / tenant_count),  # Scale to target 100
                             ),
                         )
-
                     batch_end = min(current_time + interval, ended_at)
-
                     rs = (
                         session.query(Tenant.id)
                         .filter(Tenant.created_at.between(current_time, batch_end))
                         .order_by(Tenant.created_at)
                     )
-
                     tenants = []
                     for row in rs:
                         tenant_id = str(row.id)
@@ -298,7 +265,6 @@ class ClearFreePlanTenantExpiredLogs:
                         except Exception:
                             logger.exception(f"Failed to process tenant {tenant_id}")
                             continue
-
                         futures.append(
                             thread_pool.submit(
                                 process_tenant,
@@ -306,9 +272,7 @@ class ClearFreePlanTenantExpiredLogs:
                                 tenant_id,
                             )
                         )
-
                 current_time = batch_end
-
         # wait for all threads to finish
         for future in futures:
             future.result()

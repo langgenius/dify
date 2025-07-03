@@ -43,7 +43,6 @@ class Moderation(Extensible, ABC):
     def validate_config(cls, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
-
         :param tenant_id: the id of workspace
         :param config: the form config data
         :return:
@@ -56,7 +55,6 @@ class Moderation(Extensible, ABC):
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review
         on the user inputs and return the processed results.
-
         :param inputs: user inputs
         :param query: query string (required in chat app)
         :return:
@@ -69,7 +67,6 @@ class Moderation(Extensible, ABC):
         Moderation for outputs.
         When LLM outputs content, the front end will pass the output content (may be segmented)
         to this method for sensitive content review, and the output content will be shielded if the review fails.
-
         :param text: LLM output content
         :return:
         """
@@ -81,32 +78,25 @@ class Moderation(Extensible, ABC):
         inputs_config = config.get("inputs_config")
         if not isinstance(inputs_config, dict):
             raise ValueError("inputs_config must be a dict")
-
         # outputs_config
         outputs_config = config.get("outputs_config")
         if not isinstance(outputs_config, dict):
             raise ValueError("outputs_config must be a dict")
-
         inputs_config_enabled = inputs_config.get("enabled")
         outputs_config_enabled = outputs_config.get("enabled")
         if not inputs_config_enabled and not outputs_config_enabled:
             raise ValueError("At least one of inputs_config or outputs_config must be enabled")
-
         # preset_response
         if not is_preset_response_required:
             return
-
         if inputs_config_enabled:
             if not inputs_config.get("preset_response"):
                 raise ValueError("inputs_config.preset_response is required")
-
             if len(inputs_config.get("preset_response", 0)) > 100:
                 raise ValueError("inputs_config.preset_response must be less than 100 characters")
-
         if outputs_config_enabled:
             if not outputs_config.get("preset_response"):
                 raise ValueError("outputs_config.preset_response is required")
-
             if len(outputs_config.get("preset_response", 0)) > 100:
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
 

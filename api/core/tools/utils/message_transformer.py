@@ -38,9 +38,7 @@ class ToolFileMessageTransformer:
                         file_url=message.message.text,
                         conversation_id=conversation_id,
                     )
-
                     url = f"/files/tools/{tool_file.id}{guess_extension(tool_file.mimetype) or '.png'}"
-
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
@@ -57,15 +55,12 @@ class ToolFileMessageTransformer:
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
                 meta = message.meta or {}
-
                 mimetype = meta.get("mime_type", "application/octet-stream")
                 # get filename from meta
                 filename = meta.get("filename", None)
                 # if message is str, encode it to bytes
-
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
-
                 assert isinstance(message.message.blob, bytes)
                 tool_file_manager = ToolFileManager()
                 tool_file = tool_file_manager.create_file_by_raw(
@@ -76,9 +71,7 @@ class ToolFileMessageTransformer:
                     mimetype=mimetype,
                     filename=filename,
                 )
-
                 url = cls.get_tool_file_url(tool_file_id=tool_file.id, extension=guess_extension(tool_file.mimetype))
-
                 # check if file is image
                 if "image" in mimetype:
                     yield ToolInvokeMessage(

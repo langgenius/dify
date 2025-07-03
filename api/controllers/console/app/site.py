@@ -45,15 +45,12 @@ class AppSite(Resource):
     @marshal_with(app_site_fields)
     def post(self, app_model):
         args = parse_app_site_args()
-
         # The role of the current user in the ta table must be editor, admin, or owner
         if not current_user.is_editor:
             raise Forbidden()
-
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
         if not site:
             raise NotFound
-
         for attr_name in [
             "title",
             "icon_type",
@@ -75,11 +72,9 @@ class AppSite(Resource):
             value = args.get(attr_name)
             if value is not None:
                 setattr(site, attr_name, value)
-
         site.updated_by = current_user.id
         site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return site
 
 
@@ -93,17 +88,13 @@ class AppSiteAccessTokenReset(Resource):
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
-
         if not site:
             raise NotFound
-
         site.code = Site.generate_code(16)
         site.updated_by = current_user.id
         site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return site
 
 

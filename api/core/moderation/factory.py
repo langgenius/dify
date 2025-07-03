@@ -14,7 +14,6 @@ class ModerationFactory:
     def validate_config(cls, name: str, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
-
         :param name: the name of extension
         :param tenant_id: the id of workspace
         :param config: the form config data
@@ -30,7 +29,6 @@ class ModerationFactory:
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review
         on the user inputs and return the processed results.
-
         :param inputs: user inputs
         :param query: query string (required in chat app)
         :return:
@@ -42,7 +40,6 @@ class ModerationFactory:
         Moderation for outputs.
         When LLM outputs content, the front end will pass the output content (may be segmented)
         to this method for sensitive content review, and the output content will be shielded if the review fails.
-
         :param text: LLM output content
         :return:
         """

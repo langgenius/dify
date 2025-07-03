@@ -103,10 +103,10 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
-            agent_thoughts = []
+            agent_thoughts: list[dict[str, Any]] = []
 
             from core.tools.entities.tool_entities import ToolInvokeMessage
-            
+
             thought_log_message = ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.LOG,
                 message=ToolInvokeMessage.LogMessage(
@@ -128,11 +128,10 @@ class AgentNode(ToolNode):
             )
 
             from core.tools.entities.tool_entities import ToolInvokeMessage
-            
+
             def enhanced_message_stream():
-                
                 yield thought_log_message
-                
+
                 yield from message_stream
 
             yield from self._transform_message(

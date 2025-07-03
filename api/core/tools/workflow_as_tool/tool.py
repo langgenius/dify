@@ -26,9 +26,7 @@ class WorkflowTool(Tool):
     workflow_call_depth: int
     thread_pool_id: Optional[str] = None
     workflow_as_tool_id: str
-
     label: str
-
     """
     Workflow tool.
     """
@@ -52,13 +50,11 @@ class WorkflowTool(Tool):
         self.workflow_call_depth = workflow_call_depth
         self.thread_pool_id = thread_pool_id
         self.label = label
-
         super().__init__(entity=entity, runtime=runtime)
 
     def tool_provider_type(self) -> ToolProviderType:
         """
         get the tool provider type
-
         :return: the tool provider type
         """
         return ToolProviderType.WORKFLOW
@@ -76,16 +72,13 @@ class WorkflowTool(Tool):
         """
         app = self._get_app(app_id=self.workflow_app_id)
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
-
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
-
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
         generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
-
         result = generator.generate(
             app_model=app,
             workflow=workflow,
@@ -98,10 +91,8 @@ class WorkflowTool(Tool):
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
-
         if err := data.get("error"):
             raise ToolInvokeError(err)
-
         outputs = data.get("outputs")
         if outputs is None:
             outputs = {}
@@ -109,14 +100,12 @@ class WorkflowTool(Tool):
             outputs, files = self._extract_files(outputs)  # type: ignore
             for file in files:
                 yield self.create_file_message(file)  # type: ignore
-
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
         """
         fork a new tool with metadata
-
         :return: the new tool
         """
         return self.__class__(
@@ -143,10 +132,8 @@ class WorkflowTool(Tool):
             )
         else:
             workflow = db.session.query(Workflow).filter(Workflow.app_id == app_id, Workflow.version == version).first()
-
         if not workflow:
             raise ValueError("workflow not found or not published")
-
         return workflow
 
     def _get_app(self, app_id: str) -> App:
@@ -156,13 +143,11 @@ class WorkflowTool(Tool):
         app = db.session.query(App).filter(App.id == app_id).first()
         if not app:
             raise ValueError("app not found")
-
         return app
 
     def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
         """
         transform the tool parameters
-
         :param tool_parameters: the tool parameters
         :return: tool_parameters, files
         """
@@ -186,19 +171,16 @@ class WorkflowTool(Tool):
                                 file_dict["upload_file_id"] = file.related_id
                             elif file.transfer_method == FileTransferMethod.REMOTE_URL:
                                 file_dict["url"] = file.generate_url()
-
                             files.append(file_dict)
                     except Exception:
                         logger.exception(f"Failed to transform file {file}")
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
-
         return parameters_result, files
 
     def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
         """
         extract files from the result
-
         :return: the result, files
         """
         files: list[File] = []
@@ -220,9 +202,7 @@ class WorkflowTool(Tool):
                     tenant_id=str(cast(ToolRuntime, self.runtime).tenant_id),
                 )
                 files.append(file)
-
             result[key] = value
-
         return result, files
 
     def _update_file_mapping(self, file_dict: dict) -> dict:

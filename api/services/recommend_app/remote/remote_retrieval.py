@@ -62,10 +62,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
-
         result: dict = response.json()
-
         if "categories" in result:
             result["categories"] = sorted(result["categories"])
-
         return result

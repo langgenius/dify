@@ -25,7 +25,6 @@ class PluginDebuggingKeyApi(Resource):
     @plugin_permission_required(debug_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
-
         try:
             return {
                 "key": PluginService.get_debugging_key(tenant_id),
@@ -50,7 +49,6 @@ class PluginListApi(Resource):
             plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
@@ -62,12 +60,10 @@ class PluginListLatestVersionsApi(Resource):
         req = reqparse.RequestParser()
         req.add_argument("plugin_ids", type=list, required=True, location="json")
         args = req.parse_args()
-
         try:
             versions = PluginService.list_latest_versions(args["plugin_ids"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder({"versions": versions})
 
 
@@ -77,16 +73,13 @@ class PluginListInstallationsFromIdsApi(Resource):
     @account_initialization_required
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_ids", type=list, required=True, location="json")
         args = parser.parse_args()
-
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder({"plugins": plugins})
 
 
@@ -97,12 +90,10 @@ class PluginIconApi(Resource):
         req.add_argument("tenant_id", type=str, required=True, location="args")
         req.add_argument("filename", type=str, required=True, location="args")
         args = req.parse_args()
-
         try:
             icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
@@ -114,19 +105,15 @@ class PluginUploadFromPkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         file = request.files["pkg"]
-
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
             raise ValueError("File size exceeds the maximum allowed size")
-
         content = file.read()
         try:
             response = PluginService.upload_pkg(tenant_id, content)
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -137,18 +124,15 @@ class PluginUploadFromGithubApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("repo", type=str, required=True, location="json")
         parser.add_argument("version", type=str, required=True, location="json")
         parser.add_argument("package", type=str, required=True, location="json")
         args = parser.parse_args()
-
         try:
             response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -159,19 +143,15 @@ class PluginUploadFromBundleApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         file = request.files["bundle"]
-
         # check file size
         if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
             raise ValueError("File size exceeds the maximum allowed size")
-
         content = file.read()
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -182,21 +162,17 @@ class PluginInstallFromPkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
         args = parser.parse_args()
-
         # check if all plugin_unique_identifiers are valid string
         for plugin_unique_identifier in args["plugin_unique_identifiers"]:
             if not isinstance(plugin_unique_identifier, str):
                 raise ValueError("Invalid plugin unique identifier")
-
         try:
             response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -207,14 +183,12 @@ class PluginInstallFromGithubApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("repo", type=str, required=True, location="json")
         parser.add_argument("version", type=str, required=True, location="json")
         parser.add_argument("package", type=str, required=True, location="json")
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
         args = parser.parse_args()
-
         try:
             response = PluginService.install_from_github(
                 tenant_id,
@@ -225,7 +199,6 @@ class PluginInstallFromGithubApi(Resource):
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -236,21 +209,17 @@ class PluginInstallFromMarketplaceApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
         args = parser.parse_args()
-
         # check if all plugin_unique_identifiers are valid string
         for plugin_unique_identifier in args["plugin_unique_identifiers"]:
             if not isinstance(plugin_unique_identifier, str):
                 raise ValueError("Invalid plugin unique identifier")
-
         try:
             response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder(response)
 
 
@@ -261,11 +230,9 @@ class PluginFetchMarketplacePkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
         args = parser.parse_args()
-
         try:
             return jsonable_encoder(
                 {
@@ -286,11 +253,9 @@ class PluginFetchManifestApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
         args = parser.parse_args()
-
         try:
             return jsonable_encoder(
                 {
@@ -310,12 +275,10 @@ class PluginFetchInstallTasksApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
-
         try:
             return jsonable_encoder(
                 {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
@@ -331,7 +294,6 @@ class PluginFetchInstallTaskApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self, task_id: str):
         tenant_id = current_user.current_tenant_id
-
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
         except PluginDaemonClientSideError as e:
@@ -345,7 +307,6 @@ class PluginDeleteInstallTaskApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self, task_id: str):
         tenant_id = current_user.current_tenant_id
-
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
         except PluginDaemonClientSideError as e:
@@ -359,7 +320,6 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
         except PluginDaemonClientSideError as e:
@@ -373,7 +333,6 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self, task_id: str, identifier: str):
         tenant_id = current_user.current_tenant_id
-
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
         except PluginDaemonClientSideError as e:
@@ -387,12 +346,10 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
         parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
         args = parser.parse_args()
-
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_marketplace(
@@ -410,7 +367,6 @@ class PluginUpgradeFromGithubApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
         parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
@@ -418,7 +374,6 @@ class PluginUpgradeFromGithubApi(Resource):
         parser.add_argument("version", type=str, required=True, location="json")
         parser.add_argument("package", type=str, required=True, location="json")
         args = parser.parse_args()
-
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_github(
@@ -443,9 +398,7 @@ class PluginUninstallApi(Resource):
         req = reqparse.RequestParser()
         req.add_argument("plugin_installation_id", type=str, required=True, location="json")
         args = req.parse_args()
-
         tenant_id = current_user.current_tenant_id
-
         try:
             return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
         except PluginDaemonClientSideError as e:
@@ -460,17 +413,13 @@ class PluginChangePermissionApi(Resource):
         user = current_user
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         req = reqparse.RequestParser()
         req.add_argument("install_permission", type=str, required=True, location="json")
         req.add_argument("debug_permission", type=str, required=True, location="json")
         args = req.parse_args()
-
         install_permission = TenantPluginPermission.InstallPermission(args["install_permission"])
         debug_permission = TenantPluginPermission.DebugPermission(args["debug_permission"])
-
         tenant_id = user.current_tenant_id
-
         return {"success": PluginPermissionService.change_permission(tenant_id, install_permission, debug_permission)}
 
 
@@ -480,7 +429,6 @@ class PluginFetchPermissionApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
-
         permission = PluginPermissionService.get_permission(tenant_id)
         if not permission:
             return jsonable_encoder(
@@ -489,7 +437,6 @@ class PluginFetchPermissionApi(Resource):
                     "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
                 }
             )
-
         return jsonable_encoder(
             {
                 "install_permission": permission.install_permission,
@@ -506,10 +453,8 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         # check if the user is admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         tenant_id = current_user.current_tenant_id
         user_id = current_user.id
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_id", type=str, required=True, location="args")
         parser.add_argument("provider", type=str, required=True, location="args")
@@ -517,7 +462,6 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         parser.add_argument("parameter", type=str, required=True, location="args")
         parser.add_argument("provider_type", type=str, required=True, location="args")
         args = parser.parse_args()
-
         try:
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id,
@@ -530,7 +474,6 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
-
         return jsonable_encoder({"options": options})
 
 
@@ -555,8 +498,6 @@ api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin
 api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
 api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
-
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
-
 api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")

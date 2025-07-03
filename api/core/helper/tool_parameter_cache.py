@@ -22,7 +22,6 @@ class ToolParameterCache:
     def get(self) -> Optional[dict]:
         """
         Get cached model provider credentials.
-
         :return:
         """
         cached_tool_parameter = redis_client.get(self.cache_key)
@@ -32,7 +31,6 @@ class ToolParameterCache:
                 cached_tool_parameter = json.loads(cached_tool_parameter)
             except JSONDecodeError:
                 return None
-
             return dict(cached_tool_parameter)
         else:
             return None
@@ -44,7 +42,6 @@ class ToolParameterCache:
     def delete(self) -> None:
         """
         Delete cached model provider credentials.
-
         :return:
         """
         redis_client.delete(self.cache_key)

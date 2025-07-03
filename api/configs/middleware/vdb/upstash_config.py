@@ -13,7 +13,6 @@ class UpstashConfig(BaseSettings):
         description="URL of the upstash server (e.g., 'https://vector.upstash.io')",
         default=None,
     )
-
     UPSTASH_VECTOR_TOKEN: Optional[str] = Field(
         description="Token for authenticating with the upstash server",
         default=None,

@@ -39,7 +39,6 @@ class ApiToolManageService:
                 tool_bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
             except Exception as e:
                 raise ValueError(f"invalid schema: {str(e)}")
-
             credentials_schema = [
                 ProviderConfig(
                     name="auth_type",
@@ -68,7 +67,6 @@ class ApiToolManageService:
                     default="",
                 ),
             ]
-
             return cast(
                 Mapping,
                 jsonable_encoder(
@@ -87,7 +85,6 @@ class ApiToolManageService:
     def convert_schema_to_tool_bundles(schema: str, extra_info: dict | None = None) -> tuple[list[ApiToolBundle], str]:
         """
         convert schema to tool bundles
-
         :return: the list of tool bundles, description
         """
         try:
@@ -113,9 +110,7 @@ class ApiToolManageService:
         """
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
-
         # check if the provider exists
         provider = (
             db.session.query(ApiToolProvider)
@@ -125,18 +120,14 @@ class ApiToolManageService:
             )
             .first()
         )
-
         if provider is not None:
             raise ValueError(f"provider {provider_name} already exists")
-
         # parse openapi to tool bundle
         extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
-
         if len(tool_bundles) > 100:
             raise ValueError("the number of apis should be less than 100")
-
         # create db provider
         db_provider = ApiToolProvider(
             tenant_id=tenant_id,
@@ -151,18 +142,14 @@ class ApiToolManageService:
             privacy_policy=privacy_policy,
             custom_disclaimer=custom_disclaimer,
         )
-
         if "auth_type" not in credentials:
             raise ValueError("auth_type is required")
-
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
-
         # create provider entity
         provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
-
         # encrypt credentials
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
@@ -170,16 +157,12 @@ class ApiToolManageService:
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
-
         encrypted_credentials = tool_configuration.encrypt(credentials)
         db_provider.credentials_str = json.dumps(encrypted_credentials)
-
         db.session.add(db_provider)
         db.session.commit()
-
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
-
         return {"result": "success"}
 
     @staticmethod
@@ -192,19 +175,16 @@ class ApiToolManageService:
             " Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
             "Accept": "*/*",
         }
-
         try:
             response = get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 raise ValueError(f"Got status code {response.status_code}")
             schema = response.text
-
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
         except Exception:
             logger.exception("parse api schema error")
             raise ValueError("invalid schema, please check the url you provided")
-
         return {"schema": schema}
 
     @staticmethod
@@ -220,13 +200,10 @@ class ApiToolManageService:
             )
             .first()
         )
-
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
-
         controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
         labels = ToolLabelManager.get_tool_labels(controller)
-
         return [
             ToolTransformService.convert_tool_entity_to_api_entity(
                 tool_bundle,
@@ -255,9 +232,7 @@ class ApiToolManageService:
         """
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
-
         # check if the provider exists
         provider = (
             db.session.query(ApiToolProvider)
@@ -267,14 +242,12 @@ class ApiToolManageService:
             )
             .first()
         )
-
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
         # parse openapi to tool bundle
         extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
-
         # update db provider
         provider.name = provider_name
         provider.icon = json.dumps(icon)
@@ -284,18 +257,14 @@ class ApiToolManageService:
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
-
         if "auth_type" not in credentials:
             raise ValueError("auth_type is required")
-
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
-
         # create provider entity
         provider_controller = ApiToolProviderController.from_db(provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
-
         # get original credentials if exists
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
@@ -303,26 +272,20 @@ class ApiToolManageService:
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
-
         original_credentials = tool_configuration.decrypt(provider.credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
-
         credentials = tool_configuration.encrypt(credentials)
         provider.credentials_str = json.dumps(credentials)
-
         db.session.add(provider)
         db.session.commit()
-
         # delete cache
         tool_configuration.delete_tool_credentials_cache()
-
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
-
         return {"result": "success"}
 
     @staticmethod
@@ -338,13 +301,10 @@ class ApiToolManageService:
             )
             .first()
         )
-
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
-
         db.session.delete(provider)
         db.session.commit()
-
         return {"result": "success"}
 
     @staticmethod
@@ -369,17 +329,14 @@ class ApiToolManageService:
         """
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema_type}")
-
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
         except Exception:
             raise ValueError("invalid schema")
-
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
-
         db_provider = (
             db.session.query(ApiToolProvider)
             .filter(
@@ -388,7 +345,6 @@ class ApiToolManageService:
             )
             .first()
         )
-
         if not db_provider:
             # create a fake db provider
             db_provider = ApiToolProvider(
@@ -402,18 +358,14 @@ class ApiToolManageService:
                 tools_str=json.dumps(jsonable_encoder(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
-
         if "auth_type" not in credentials:
             raise ValueError("auth_type is required")
-
         # get auth type, none or api key
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
-
         # create provider entity
         provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
-
         # decrypt credentials
         if db_provider.id:
             tool_configuration = ProviderConfigEncrypter(
@@ -428,7 +380,6 @@ class ApiToolManageService:
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]
-
         try:
             provider_controller.validate_credentials_format(credentials)
             # get tool
@@ -442,7 +393,6 @@ class ApiToolManageService:
             result = tool.validate_credentials(credentials, parameters)
         except Exception as e:
             return {"error": str(e)}
-
         return {"result": result or "empty response"}
 
     @staticmethod
@@ -454,9 +404,7 @@ class ApiToolManageService:
         db_providers: list[ApiToolProvider] = (
             db.session.query(ApiToolProvider).filter(ApiToolProvider.tenant_id == tenant_id).all() or []
         )
-
         result: list[ToolProviderApiEntity] = []
-
         for provider in db_providers:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
@@ -465,19 +413,14 @@ class ApiToolManageService:
                 provider_controller, db_provider=provider, decrypt_credentials=True
             )
             user_provider.labels = labels
-
             # add icon
             ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
-
             tools = provider_controller.get_tools(tenant_id=tenant_id)
-
             for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.convert_tool_entity_to_api_entity(
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels
                     )
                 )
-
             result.append(user_provider)
-
         return result

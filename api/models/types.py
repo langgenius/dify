@@ -35,7 +35,6 @@ _E = TypeVar("_E", bound=enum.StrEnum)
 class EnumText(TypeDecorator, Generic[_E]):
     impl = VARCHAR
     cache_ok = True
-
     _length: int
     _enum_class: type[_E]
 

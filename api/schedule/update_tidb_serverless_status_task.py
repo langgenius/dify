@@ -24,10 +24,8 @@ def update_tidb_serverless_status_task():
             return
         # update tidb serverless status
         update_clusters(tidb_serverless_list)
-
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
-
     end_at = time.perf_counter()
     click.echo(
         click.style("Update tidb serverless status task success latency: {}".format(end_at - start_at), fg="green")

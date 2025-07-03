@@ -22,7 +22,6 @@ class AgentService:
         """
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
-
         conversation: Conversation | None = (
             db.session.query(Conversation)
             .filter(
@@ -31,10 +30,8 @@ class AgentService:
             )
             .first()
         )
-
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
-
         message: Optional[Message] = (
             db.session.query(Message)
             .filter(
@@ -43,12 +40,9 @@ class AgentService:
             )
             .first()
         )
-
         if not message:
             raise ValueError(f"Message not found: {message_id}")
-
         agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
-
         if conversation.from_end_user_id:
             # only select name field
             executor = (
@@ -58,18 +52,14 @@ class AgentService:
             executor = (
                 db.session.query(Account, Account.name).filter(Account.id == conversation.from_account_id).first()
             )
-
         if executor:
             executor = executor.name
         else:
             executor = "Unknown"
-
         timezone = pytz.timezone(current_user.timezone)
-
         app_model_config = app_model.app_model_config
         if not app_model_config:
             raise ValueError("App model config not found")
-
         result = {
             "meta": {
                 "status": "success",
@@ -83,11 +73,9 @@ class AgentService:
             "iterations": [],
             "files": message.message_files,
         }
-
         agent_config = AgentConfigManager.convert(app_model_config.to_dict())
         if not agent_config:
             raise ValueError("Agent config not found")
-
         agent_tools = agent_config.tools or []
 
         def find_agent_tool(tool_name: str):
@@ -125,7 +113,6 @@ class AgentService:
                             )
                 else:
                     tool_icon = ""
-
                 tool_calls.append(
                     {
                         "status": "success" if not tool_meta_data.get("error") else "error",
@@ -139,7 +126,6 @@ class AgentService:
                         "tool_icon": tool_icon,
                     }
                 )
-
             result["iterations"].append(
                 {
                     "tokens": agent_thought.tokens,
@@ -153,7 +139,6 @@ class AgentService:
                     "files": agent_thought.files,
                 }
             )
-
         return result
 
     @classmethod

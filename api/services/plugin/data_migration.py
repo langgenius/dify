@@ -28,9 +28,7 @@ class PluginDataMigration:
     def migrate_datasets(cls) -> None:
         table_name = "datasets"
         provider_column_name = "embedding_model_provider"
-
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
-
         processed_count = 0
         failed_ids = []
         while True:
@@ -39,17 +37,14 @@ where {provider_column_name} not like '%/%' and {provider_column_name} is not nu
 limit 1000"""
             with db.engine.begin() as conn:
                 rs = conn.execute(db.text(sql))
-
                 current_iter_count = 0
                 for i in rs:
                     record_id = str(i.id)
                     provider_name = str(i.provider_name)
                     retrieval_model = i.retrieval_model
                     print(type(retrieval_model))
-
                     if record_id in failed_ids:
                         continue
-
                     retrieval_model_changed = False
                     if retrieval_model:
                         if (
@@ -71,14 +66,12 @@ limit 1000"""
                                 retrieval_model["reranking_model"]["reranking_provider_name"]
                             ).to_string()
                             retrieval_model_changed = True
-
                     click.echo(
                         click.style(
                             f"[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})",
                             fg="white",
                         )
                     )
-
                     try:
                         # update provider name append with "langgenius/{provider_name}/{provider_name}"
                         params = {"record_id": record_id}
@@ -86,9 +79,7 @@ limit 1000"""
                         if retrieval_model and retrieval_model_changed:
                             update_retrieval_model_sql = ", retrieval_model = :retrieval_model"
                             params["retrieval_model"] = json.dumps(retrieval_model)
-
                         params["provider_name"] = ModelProviderID(provider_name).to_string()
-
                         sql = f"""update {table_name}
                         set {provider_column_name} =
                         :provider_name
@@ -113,13 +104,10 @@ limit 1000"""
                             f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
                         )
                         continue
-
                     current_iter_count += 1
                     processed_count += 1
-
             if not current_iter_count:
                 break
-
         click.echo(
             click.style(f"Migrate [{table_name}] data for plugin completed, total: {processed_count}", fg="green")
         )
@@ -129,11 +117,9 @@ limit 1000"""
         cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]
     ) -> None:
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
-
         processed_count = 0
         failed_ids = []
         last_id = "00000000-0000-0000-0000-000000000000"
-
         while True:
             sql = f"""
                 SELECT id, {provider_column_name} AS provider_name
@@ -146,30 +132,24 @@ limit 1000"""
                 LIMIT 5000
             """
             params = {"last_id": last_id or ""}
-
             with db.engine.begin() as conn:
                 rs = conn.execute(db.text(sql), params)
-
                 current_iter_count = 0
                 batch_updates = []
-
                 for i in rs:
                     current_iter_count += 1
                     processed_count += 1
                     record_id = str(i.id)
                     last_id = record_id
                     provider_name = str(i.provider_name)
-
                     if record_id in failed_ids:
                         continue
-
                     click.echo(
                         click.style(
                             f"[{processed_count}] Migrating [{table_name}] {record_id} ({provider_name})",
                             fg="white",
                         )
                     )
-
                     try:
                         # update jina to langgenius/jina_tool/jina etc.
                         updated_value = provider_cls(provider_name).to_string()
@@ -186,7 +166,6 @@ limit 1000"""
                             f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
                         )
                         continue
-
                 if batch_updates:
                     update_sql = f"""
                         UPDATE {table_name}
@@ -200,10 +179,8 @@ limit 1000"""
                             fg="green",
                         )
                     )
-
             if not current_iter_count:
                 break
-
         click.echo(
             click.style(f"Migrate [{table_name}] data for plugin completed, total: {processed_count}", fg="green")
         )

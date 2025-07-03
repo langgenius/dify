@@ -34,7 +34,6 @@ class TokenBufferMemory:
         :param message_limit: message limit
         """
         app_record = self.conversation.app
-
         # fetch limited messages, and return reversed
         query = (
             db.session.query(
@@ -51,24 +50,18 @@ class TokenBufferMemory:
             )
             .order_by(Message.created_at.desc())
         )
-
         if message_limit and message_limit > 0:
             message_limit = min(message_limit, 500)
         else:
             message_limit = 500
-
         messages = query.limit(message_limit).all()
-
         # instead of all messages from the conversation, we only need to extract messages
         # that belong to the thread of last message
         thread_messages = extract_thread_messages(messages)
-
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
         if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
             thread_messages.pop(0)
-
         messages = list(reversed(thread_messages))
-
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
@@ -81,12 +74,10 @@ class TokenBufferMemory:
                         workflow_run = (
                             db.session.query(WorkflowRun).filter(WorkflowRun.id == message.workflow_run_id).first()
                         )
-
                         if workflow_run and workflow_run.workflow:
                             file_extra_config = FileUploadConfigManager.convert(
                                 workflow_run.workflow.features_dict, is_vision=False
                             )
-
                 detail = ImagePromptMessageContent.DETAIL.LOW
                 if file_extra_config and app_record:
                     file_objs = file_factory.build_from_message_files(
@@ -96,7 +87,6 @@ class TokenBufferMemory:
                         detail = file_extra_config.image_config.detail
                 else:
                     file_objs = []
-
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
@@ -108,26 +98,19 @@ class TokenBufferMemory:
                             image_detail_config=detail,
                         )
                         prompt_message_contents.append(prompt_message)
-
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
-
             else:
                 prompt_messages.append(UserPromptMessage(content=message.query))
-
             prompt_messages.append(AssistantPromptMessage(content=message.answer))
-
         if not prompt_messages:
             return []
-
         # prune the chat message if it exceeds the max token limit
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
-
         if curr_message_tokens > max_token_limit:
             pruned_memory = []
             while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
                 pruned_memory.append(prompt_messages.pop(0))
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
-
         return prompt_messages
 
     def get_history_prompt_text(
@@ -146,7 +129,6 @@ class TokenBufferMemory:
         :return:
         """
         prompt_messages = self.get_history_prompt_messages(max_token_limit=max_token_limit, message_limit=message_limit)
-
         string_messages = []
         for m in prompt_messages:
             if m.role == PromptMessageRole.USER:
@@ -155,7 +137,6 @@ class TokenBufferMemory:
                 role = ai_prefix
             else:
                 continue
-
             if isinstance(m.content, list):
                 inner_msg = ""
                 for content in m.content:
@@ -163,10 +144,8 @@ class TokenBufferMemory:
                         inner_msg += f"{content.data}\n"
                     elif isinstance(content, ImagePromptMessageContent):
                         inner_msg += "[image]\n"
-
                 string_messages.append(f"{role}: {inner_msg.strip()}")
             else:
                 message = f"{role}: {m.content}"
                 string_messages.append(message)
-
         return "\n".join(string_messages)

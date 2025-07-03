@@ -41,12 +41,10 @@ class WebConversationService:
                 .order_by(PinnedConversation.created_at.desc())
             )
             pinned_conversation_ids = session.scalars(stmt).all()
-
             if pinned:
                 include_ids = pinned_conversation_ids
             else:
                 exclude_ids = pinned_conversation_ids
-
         return ConversationService.pagination_by_last_id(
             session=session,
             app_model=app_model,
@@ -73,21 +71,17 @@ class WebConversationService:
             )
             .first()
         )
-
         if pinned_conversation:
             return
-
         conversation = ConversationService.get_conversation(
             app_model=app_model, conversation_id=conversation_id, user=user
         )
-
         pinned_conversation = PinnedConversation(
             app_id=app_model.id,
             conversation_id=conversation.id,
             created_by_role="account" if isinstance(user, Account) else "end_user",
             created_by=user.id,
         )
-
         db.session.add(pinned_conversation)
         db.session.commit()
 
@@ -105,9 +99,7 @@ class WebConversationService:
             )
             .first()
         )
-
         if not pinned_conversation:
             return
-
         db.session.delete(pinned_conversation)
         db.session.commit()

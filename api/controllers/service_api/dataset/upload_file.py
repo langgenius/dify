@@ -36,7 +36,6 @@ class UploadFileApi(DatasetApiResource):
                 raise NotFound("UploadFile not found.")
         else:
             raise ValueError("Upload file id not found in document data source info.")
-
         url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
         return {
             "id": upload_file.id,

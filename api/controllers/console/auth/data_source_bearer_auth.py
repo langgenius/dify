@@ -62,9 +62,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
         # The role of the current user in the table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
-
         return {"result": "success"}, 204
 
 

@@ -13,7 +13,6 @@ from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
-
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
@@ -39,7 +38,6 @@ if TYPE_CHECKING:
 class DifySetup(Base):
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
-
     version = db.Column(db.String(255), nullable=False)
     setup_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -56,7 +54,6 @@ class AppMode(StrEnum):
     def value_of(cls, value: str) -> "AppMode":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -74,7 +71,6 @@ class IconType(Enum):
 class App(Base):
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -121,7 +117,6 @@ class App(Base):
     def app_model_config(self):
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
-
         return None
 
     @property
@@ -130,7 +125,6 @@ class App(Base):
             from .workflow import Workflow
 
             return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
-
         return None
 
     @property
@@ -149,7 +143,6 @@ class App(Base):
             return False
         if not app_model_config.agent_mode:
             return False
-
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
@@ -162,7 +155,6 @@ class App(Base):
     def mode_compatible_with_agent(self) -> str:
         if self.mode == AppMode.CHAT.value and self.is_agent:
             return AppMode.AGENT_CHAT.value
-
         return str(self.mode)
 
     @property
@@ -174,16 +166,12 @@ class App(Base):
         app_model_config = self.app_model_config
         if not app_model_config:
             return []
-
         if not app_model_config.agent_mode:
             return []
-
         agent_mode = app_model_config.agent_mode_dict
         tools = agent_mode.get("tools", [])
-
         api_provider_ids: list[str] = []
         builtin_provider_ids: list[GenericProviderID] = []
-
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
@@ -203,16 +191,12 @@ class App(Base):
                             is_hardcoded = True
                         except Exception:
                             is_hardcoded = False
-
                         provider_id = GenericProviderID(provider_id, is_hardcoded)
                     except Exception:
                         continue
-
                     builtin_provider_ids.append(provider_id)
-
         if not api_provider_ids and not builtin_provider_ids:
             return []
-
         with Session(db.engine) as session:
             if api_provider_ids:
                 existing_api_providers = [
@@ -224,7 +208,6 @@ class App(Base):
                 ]
             else:
                 existing_api_providers = []
-
         if builtin_provider_ids:
             # get the non-hardcoded builtin providers
             non_hardcoded_builtin_providers = [
@@ -241,19 +224,15 @@ class App(Base):
             ]
         else:
             existence = []
-
         existing_builtin_providers = {
             provider_id.provider_name: existence[i] for i, provider_id in enumerate(builtin_provider_ids)
         }
-
         deleted_tools = []
-
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-
                 if provider_type == ToolProviderType.API.value:
                     if uuid.UUID(provider_id) not in existing_api_providers:
                         deleted_tools.append(
@@ -263,10 +242,8 @@ class App(Base):
                                 "provider_id": provider_id,
                             }
                         )
-
                 if provider_type == ToolProviderType.BUILT_IN.value:
                     generic_provider_id = GenericProviderID(provider_id)
-
                     if not existing_builtin_providers[generic_provider_id.provider_name]:
                         deleted_tools.append(
                             {
@@ -275,7 +252,6 @@ class App(Base):
                                 "provider_id": provider_id,  # use the original one
                             }
                         )
-
         return deleted_tools
 
     @property
@@ -291,7 +267,6 @@ class App(Base):
             )
             .all()
         )
-
         return tags or []
 
     @property
@@ -300,14 +275,12 @@ class App(Base):
             account = db.session.query(Account).filter(Account.id == self.created_by).first()
             if account:
                 return account.name
-
         return None
 
 
 class AppModelConfig(Base):
     __tablename__ = "app_model_configs"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_model_config_pkey"), db.Index("app_app_id_idx", "app_id"))
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     provider = db.Column(db.String(255), nullable=True)
@@ -379,7 +352,6 @@ class AppModelConfig(Base):
             collection_binding_detail = annotation_setting.collection_binding_detail
             if not collection_binding_detail:
                 raise ValueError("Collection binding detail not found")
-
             return {
                 "id": annotation_setting.id,
                 "enabled": True,
@@ -389,7 +361,6 @@ class AppModelConfig(Base):
                     "embedding_model_name": collection_binding_detail.model_name,
                 },
             }
-
         else:
             return {"enabled": False}
 
@@ -550,7 +521,6 @@ class AppModelConfig(Base):
             dataset_configs=self.dataset_configs,
             file_upload=self.file_upload,
         )
-
         return new_app_model_config
 
 
@@ -561,7 +531,6 @@ class RecommendedApp(Base):
         db.Index("recommended_app_app_id_idx", "app_id"),
         db.Index("recommended_app_is_listed_idx", "is_listed", "language"),
     )
-
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     description = db.Column(db.JSON, nullable=False)
@@ -590,7 +559,6 @@ class InstalledApp(Base):
         db.Index("installed_app_app_id_idx", "app_id"),
         db.UniqueConstraint("tenant_id", "app_id", name="unique_tenant_app"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
@@ -625,7 +593,6 @@ class Conversation(Base):
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
         db.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     app_model_config_id = db.Column(StringUUID, nullable=True)
@@ -640,13 +607,11 @@ class Conversation(Base):
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     status = db.Column(db.String(255), nullable=False)
-
     # The `invoke_from` records how the conversation is created.
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
     invoke_from = db.Column(db.String(255), nullable=True)
-
     # ref: ConversationSource.
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
@@ -656,18 +621,15 @@ class Conversation(Base):
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
-
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def inputs(self):
         inputs = self._inputs.copy()
-
         # Convert file mapping to File object
         for key, value in inputs.items():
             # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
@@ -689,7 +651,6 @@ class Conversation(Base):
                     elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
-
         return inputs
 
     @inputs.setter
@@ -706,7 +667,6 @@ class Conversation(Base):
     def model_config(self):
         model_config = {}
         app_model_config: Optional[AppModelConfig] = None
-
         if self.mode == AppMode.ADVANCED_CHAT.value:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
@@ -714,7 +674,6 @@ class Conversation(Base):
         else:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
-
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
@@ -727,10 +686,8 @@ class Conversation(Base):
                 )
                 if app_model_config:
                     model_config = app_model_config.to_dict()
-
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider
-
         return model_config
 
     @property
@@ -767,7 +724,6 @@ class Conversation(Base):
             )
             .count()
         )
-
         dislike = (
             db.session.query(MessageFeedback)
             .filter(
@@ -777,7 +733,6 @@ class Conversation(Base):
             )
             .count()
         )
-
         return {"like": like, "dislike": dislike}
 
     @property
@@ -791,7 +746,6 @@ class Conversation(Base):
             )
             .count()
         )
-
         dislike = (
             db.session.query(MessageFeedback)
             .filter(
@@ -801,7 +755,6 @@ class Conversation(Base):
             )
             .count()
         )
-
         return {"like": like, "dislike": dislike}
 
     @property
@@ -814,11 +767,9 @@ class Conversation(Base):
             WorkflowExecutionStatus.STOPPED: 0,
             WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
         }
-
         for message in messages:
             if message.workflow_run:
                 status_counts[WorkflowExecutionStatus(message.workflow_run.status)] += 1
-
         return (
             {
                 "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
@@ -848,7 +799,6 @@ class Conversation(Base):
             end_user = db.session.query(EndUser).filter(EndUser.id == self.from_end_user_id).first()
             if end_user:
                 return end_user.session_id
-
         return None
 
     @property
@@ -857,7 +807,6 @@ class Conversation(Base):
             account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
             if account:
                 return account.name
-
         return None
 
     @property
@@ -903,7 +852,6 @@ class Message(Base):
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     model_provider = db.Column(db.String(255), nullable=True)
@@ -975,21 +923,15 @@ class Message(Base):
     def re_sign_file_url_answer(self) -> str:
         if not self.answer:
             return self.answer
-
         pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
         matches = re.findall(pattern, self.answer)
-
         if not matches:
             return self.answer
-
         urls = [match[0] for match in matches]
-
         # remove duplicate urls
         urls = list(set(urls))
-
         if not urls:
             return self.answer
-
         re_sign_file_url_answer = self.answer
         for url in urls:
             if "files/tools" in url:
@@ -998,9 +940,7 @@ class Message(Base):
                 result = re.search(tool_file_id_pattern, url)
                 if not result:
                     continue
-
                 tool_file_id = result.group(1)
-
                 # get extension
                 if "." in tool_file_id:
                     split_result = tool_file_id.split(".")
@@ -1010,10 +950,8 @@ class Message(Base):
                     tool_file_id = split_result[0]
                 else:
                     extension = ".bin"
-
                 if not tool_file_id:
                     continue
-
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
@@ -1021,7 +959,6 @@ class Message(Base):
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
-
                 upload_file_id = result.group(1)
                 if not upload_file_id:
                     continue
@@ -1042,7 +979,6 @@ class Message(Base):
             if "as_attachment" in url:
                 sign_url += "&as_attachment=true"
             re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
-
         return re_sign_file_url_answer
 
     @property
@@ -1094,7 +1030,6 @@ class Message(Base):
             return (
                 db.session.query(AppModelConfig).filter(AppModelConfig.id == conversation.app_model_config_id).first()
             )
-
         return None
 
     @property
@@ -1126,7 +1061,6 @@ class Message(Base):
         current_app = db.session.query(App).filter(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
-
         files = []
         for message_file in message_files:
             if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
@@ -1173,12 +1107,10 @@ class Message(Base):
                     f"MessageFile {message_file.id} has an invalid transfer_method {message_file.transfer_method}"
                 )
             files.append(file)
-
         result = [
             {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
-
         db.session.commit()
         return result
 
@@ -1188,7 +1120,6 @@ class Message(Base):
             from .workflow import WorkflowRun
 
             return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
-
         return None
 
     def to_dict(self) -> dict:
@@ -1247,7 +1178,6 @@ class MessageFeedback(Base):
         db.Index("message_feedback_message_idx", "message_id", "from_source"),
         db.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     conversation_id = db.Column(StringUUID, nullable=False)
@@ -1330,7 +1260,6 @@ class MessageAnnotation(Base):
         db.Index("message_annotation_conversation_idx", "conversation_id"),
         db.Index("message_annotation_message_idx", "message_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=True)
@@ -1362,7 +1291,6 @@ class AppAnnotationHitHistory(Base):
         db.Index("app_annotation_hit_histories_annotation_idx", "annotation_id"),
         db.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     annotation_id: Mapped[str] = db.Column(StringUUID, nullable=False)
@@ -1397,7 +1325,6 @@ class AppAnnotationSetting(Base):
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
         db.Index("app_annotation_settings_app_idx", "app_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     score_threshold = db.Column(Float, nullable=False, server_default=db.text("0"))
@@ -1425,7 +1352,6 @@ class OperationLog(Base):
         db.PrimaryKeyConstraint("id", name="operation_log_pkey"),
         db.Index("operation_log_account_action_idx", "tenant_id", "account_id", "action"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -1443,7 +1369,6 @@ class EndUser(Base, UserMixin):
         db.Index("end_user_session_id_idx", "session_id", "type"),
         db.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=True)
@@ -1463,7 +1388,6 @@ class Site(Base):
         db.Index("site_app_id_idx", "app_id"),
         db.Index("site_code_idx", "code", "status"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
@@ -1505,7 +1429,6 @@ class Site(Base):
             result = generate_string(n)
             while db.session.query(Site).filter(Site.code == result).count() > 0:
                 result = generate_string(n)
-
             return result
 
     @property
@@ -1521,7 +1444,6 @@ class ApiToken(Base):
         db.Index("api_token_token_idx", "token", "type"),
         db.Index("api_token_tenant_idx", "tenant_id", "type"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=True)
     tenant_id = db.Column(StringUUID, nullable=True)
@@ -1545,7 +1467,6 @@ class UploadFile(Base):
         db.PrimaryKeyConstraint("id", name="upload_file_pkey"),
         db.Index("upload_file_tenant_idx", "tenant_id"),
     )
-
     id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     storage_type: Mapped[str] = db.Column(db.String(255), nullable=False)
@@ -1607,7 +1528,6 @@ class ApiRequest(Base):
         db.PrimaryKeyConstraint("id", name="api_request_pkey"),
         db.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     api_token_id = db.Column(StringUUID, nullable=False)
@@ -1624,7 +1544,6 @@ class MessageChain(Base):
         db.PrimaryKeyConstraint("id", name="message_chain_pkey"),
         db.Index("message_chain_message_id_idx", "message_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     message_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
@@ -1640,7 +1559,6 @@ class MessageAgentThought(Base):
         db.Index("message_agent_thought_message_id_idx", "message_id"),
         db.Index("message_agent_thought_message_chain_id_idx", "message_chain_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     message_id = db.Column(StringUUID, nullable=False)
     message_chain_id = db.Column(StringUUID, nullable=True)
@@ -1753,7 +1671,6 @@ class DatasetRetrieverResource(Base):
         db.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
         db.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     message_id = db.Column(StringUUID, nullable=False)
     position = db.Column(db.Integer, nullable=False)
@@ -1781,9 +1698,7 @@ class Tag(Base):
         db.Index("tag_type_idx", "type"),
         db.Index("tag_name_idx", "name"),
     )
-
     TAG_TYPE_LIST = ["knowledge", "app"]
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
@@ -1799,7 +1714,6 @@ class TagBinding(Base):
         db.Index("tag_bind_target_id_idx", "target_id"),
         db.Index("tag_bind_tag_id_idx", "tag_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=True)
     tag_id = db.Column(StringUUID, nullable=True)
@@ -1814,7 +1728,6 @@ class TraceAppConfig(Base):
         db.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),
         db.Index("trace_app_config_app_id_idx", "app_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     tracing_provider = db.Column(db.String(255), nullable=True)

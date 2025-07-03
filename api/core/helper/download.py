@@ -5,7 +5,6 @@ def download_with_size_limit(url, max_download_size: int, **kwargs):
     response = ssrf_proxy.get(url, follow_redirects=True, **kwargs)
     if response.status_code == 404:
         raise ValueError("file not found")
-
     total_size = 0
     chunks = []
     for chunk in response.iter_bytes():

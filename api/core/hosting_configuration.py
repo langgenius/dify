@@ -51,14 +51,12 @@ class HostingConfiguration:
     def init_app(self, app: Flask) -> None:
         if dify_config.EDITION != "CLOUD":
             return
-
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/openai/openai"] = self.init_openai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/anthropic/anthropic"] = self.init_anthropic()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/minimax/minimax"] = self.init_minimax()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/spark/spark"] = self.init_spark()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/zhipuai/zhipuai"] = self.init_zhipuai()
-
         self.moderation_config = self.init_moderation_config()
 
     @staticmethod
@@ -70,7 +68,6 @@ class HostingConfiguration:
                 "openai_api_base": dify_config.HOSTED_AZURE_OPENAI_API_BASE,
                 "base_model_name": "gpt-35-turbo",
             }
-
             quotas: list[HostingQuota] = []
             hosted_quota_limit = dify_config.HOSTED_AZURE_OPENAI_QUOTA_LIMIT
             trial_quota = TrialHostingQuota(
@@ -117,9 +114,7 @@ class HostingConfiguration:
                 ],
             )
             quotas.append(trial_quota)
-
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -128,31 +123,24 @@ class HostingConfiguration:
     def init_openai(self) -> HostingProvider:
         quota_unit = QuotaUnit.CREDITS
         quotas: list[HostingQuota] = []
-
         if dify_config.HOSTED_OPENAI_TRIAL_ENABLED:
             hosted_quota_limit = dify_config.HOSTED_OPENAI_QUOTA_LIMIT
             trial_models = self.parse_restrict_models_from_env("HOSTED_OPENAI_TRIAL_MODELS")
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
             quotas.append(trial_quota)
-
         if dify_config.HOSTED_OPENAI_PAID_ENABLED:
             paid_models = self.parse_restrict_models_from_env("HOSTED_OPENAI_PAID_MODELS")
             paid_quota = PaidHostingQuota(restrict_models=paid_models)
             quotas.append(paid_quota)
-
         if len(quotas) > 0:
             credentials = {
                 "openai_api_key": dify_config.HOSTED_OPENAI_API_KEY,
             }
-
             if dify_config.HOSTED_OPENAI_API_BASE:
                 credentials["openai_api_base"] = dify_config.HOSTED_OPENAI_API_BASE
-
             if dify_config.HOSTED_OPENAI_API_ORGANIZATION:
                 credentials["openai_organization"] = dify_config.HOSTED_OPENAI_API_ORGANIZATION
-
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -162,26 +150,20 @@ class HostingConfiguration:
     def init_anthropic() -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         quotas: list[HostingQuota] = []
-
         if dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
             hosted_quota_limit = dify_config.HOSTED_ANTHROPIC_QUOTA_LIMIT
             trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit)
             quotas.append(trial_quota)
-
         if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
             paid_quota = PaidHostingQuota()
             quotas.append(paid_quota)
-
         if len(quotas) > 0:
             credentials = {
                 "anthropic_api_key": dify_config.HOSTED_ANTHROPIC_API_KEY,
             }
-
             if dify_config.HOSTED_ANTHROPIC_API_BASE:
                 credentials["anthropic_api_url"] = dify_config.HOSTED_ANTHROPIC_API_BASE
-
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -192,14 +174,12 @@ class HostingConfiguration:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_MINIMAX_ENABLED:
             quotas: list[HostingQuota] = [FreeHostingQuota()]
-
             return HostingProvider(
                 enabled=True,
                 credentials=None,  # use credentials from the provider
                 quota_unit=quota_unit,
                 quotas=quotas,
             )
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -210,14 +190,12 @@ class HostingConfiguration:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_SPARK_ENABLED:
             quotas: list[HostingQuota] = [FreeHostingQuota()]
-
             return HostingProvider(
                 enabled=True,
                 credentials=None,  # use credentials from the provider
                 quota_unit=quota_unit,
                 quotas=quotas,
             )
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -228,14 +206,12 @@ class HostingConfiguration:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_ZHIPUAI_ENABLED:
             quotas: list[HostingQuota] = [FreeHostingQuota()]
-
             return HostingProvider(
                 enabled=True,
                 credentials=None,  # use credentials from the provider
                 quota_unit=quota_unit,
                 quotas=quotas,
             )
-
         return HostingProvider(
             enabled=False,
             quota_unit=quota_unit,
@@ -250,9 +226,7 @@ class HostingConfiguration:
                 if "/" not in provider:
                     provider = f"{DEFAULT_PLUGIN_ID}/{provider}/{provider}"
                 hosted_providers.append(provider)
-
             return HostedModerationConfig(enabled=True, providers=hosted_providers)
-
         return HostedModerationConfig(enabled=False)
 
     @staticmethod

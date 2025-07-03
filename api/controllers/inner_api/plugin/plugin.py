@@ -243,7 +243,6 @@ class PluginInvokeAppApi(Resource):
             inputs=payload.inputs,
             files=payload.files,
         )
-
         return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 

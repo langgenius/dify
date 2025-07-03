@@ -25,10 +25,8 @@ class ProviderType(Enum):
 class ProviderQuotaType(Enum):
     PAID = "paid"
     """hosted paid quota"""
-
     FREE = "free"
     """third-party free quota"""
-
     TRIAL = "trial"
     """hosted trial quota"""
 
@@ -53,7 +51,6 @@ class Provider(Base):
             "tenant_id", "provider_name", "provider_type", "quota_type", name="unique_provider_name_type_quota"
         ),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -63,13 +60,11 @@ class Provider(Base):
     encrypted_config: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     is_valid: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("false"))
     last_used: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
-
     quota_type: Mapped[Optional[str]] = mapped_column(
         db.String(40), nullable=True, server_default=text("''::character varying")
     )
     quota_limit: Mapped[Optional[int]] = mapped_column(db.BigInteger, nullable=True)
     quota_used: Mapped[Optional[int]] = mapped_column(db.BigInteger, default=0)
-
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -110,7 +105,6 @@ class ProviderModel(Base):
             "tenant_id", "provider_name", "model_name", "model_type", name="unique_provider_model_name"
         ),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -128,7 +122,6 @@ class TenantDefaultModel(Base):
         db.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
         db.Index("tenant_default_model_tenant_id_provider_type_idx", "tenant_id", "provider_name", "model_type"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -144,7 +137,6 @@ class TenantPreferredModelProvider(Base):
         db.PrimaryKeyConstraint("id", name="tenant_preferred_model_provider_pkey"),
         db.Index("tenant_preferred_model_provider_tenant_provider_idx", "tenant_id", "provider_name"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -159,7 +151,6 @@ class ProviderOrder(Base):
         db.PrimaryKeyConstraint("id", name="provider_order_pkey"),
         db.Index("provider_order_tenant_provider_idx", "tenant_id", "provider_name"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -190,7 +181,6 @@ class ProviderModelSetting(Base):
         db.PrimaryKeyConstraint("id", name="provider_model_setting_pkey"),
         db.Index("provider_model_setting_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -212,7 +202,6 @@ class LoadBalancingModelConfig(Base):
         db.PrimaryKeyConstraint("id", name="load_balancing_model_config_pkey"),
         db.Index("load_balancing_model_config_tenant_provider_model_idx", "tenant_id", "provider_name", "model_type"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(db.String(255), nullable=False)

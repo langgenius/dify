@@ -20,7 +20,6 @@ class PromptMessageRole(Enum):
     def value_of(cls, value: str) -> "PromptMessageRole":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -128,8 +127,6 @@ PromptMessageContentUnionTypes = Annotated[
     ],
     Field(discriminator="type"),
 ]
-
-
 CONTENT_TYPE_MAPPING: Mapping[PromptMessageContentType, type[PromptMessageContent]] = {
     PromptMessageContentType.TEXT: TextPromptMessageContent,
     PromptMessageContentType.IMAGE: ImagePromptMessageContent,
@@ -151,7 +148,6 @@ class PromptMessage(ABC, BaseModel):
     def is_empty(self) -> bool:
         """
         Check if prompt message is empty.
-
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
@@ -228,12 +224,10 @@ class AssistantPromptMessage(PromptMessage):
     def is_empty(self) -> bool:
         """
         Check if prompt message is empty.
-
         :return: True if prompt message is empty, False otherwise
         """
         if not super().is_empty() and not self.tool_calls:
             return False
-
         return True
 
 
@@ -256,10 +250,8 @@ class ToolPromptMessage(PromptMessage):
     def is_empty(self) -> bool:
         """
         Check if prompt message is empty.
-
         :return: True if prompt message is empty, False otherwise
         """
         if not super().is_empty() and not self.tool_call_id:
             return False
-
         return True

@@ -83,7 +83,6 @@ class AccountStatus(enum.StrEnum):
 class Account(UserMixin, Base):
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
@@ -138,10 +137,8 @@ class Account(UserMixin, Base):
                 .one_or_none()
             ),
         )
-
         if not tenant_account_join:
             return
-
         tenant, join = tenant_account_join
         self.role = join.role
         self._current_tenant = tenant
@@ -195,7 +192,6 @@ class TenantStatus(enum.StrEnum):
 class Tenant(Base):
     __tablename__ = "tenants"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="tenant_pkey"),)
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     encrypt_public_key = db.Column(db.Text)
@@ -229,7 +225,6 @@ class TenantAccountJoin(Base):
         db.Index("tenant_account_join_tenant_id_idx", "tenant_id"),
         db.UniqueConstraint("tenant_id", "account_id", name="unique_tenant_account_join"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -247,7 +242,6 @@ class AccountIntegrate(Base):
         db.UniqueConstraint("account_id", "provider", name="unique_account_provider"),
         db.UniqueConstraint("provider", "open_id", name="unique_provider_open_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     account_id = db.Column(StringUUID, nullable=False)
     provider = db.Column(db.String(16), nullable=False)
@@ -264,7 +258,6 @@ class InvitationCode(Base):
         db.Index("invitation_codes_batch_idx", "batch"),
         db.Index("invitation_codes_code_idx", "code", "status"),
     )
-
     id = db.Column(db.Integer, nullable=False)
     batch = db.Column(db.String(255), nullable=False)
     code = db.Column(db.String(32), nullable=False)
@@ -292,7 +285,6 @@ class TenantPluginPermission(Base):
         db.PrimaryKeyConstraint("id", name="account_plugin_permission_pkey"),
         db.UniqueConstraint("tenant_id", name="unique_tenant_plugin"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     install_permission: Mapped[InstallPermission] = mapped_column(

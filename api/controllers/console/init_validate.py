@@ -29,15 +29,12 @@ class InitValidateAPI(Resource):
         tenant_count = TenantService.get_tenant_count()
         if tenant_count > 0:
             raise AlreadySetupError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("password", type=StrLen(30), required=True, location="json")
         input_password = parser.parse_args()["password"]
-
         if input_password != os.environ.get("INIT_PASSWORD"):
             session["is_init_validated"] = False
             raise InitValidateFailedError()
-
         session["is_init_validated"] = True
         return {"result": "success"}, 201
 
@@ -47,10 +44,8 @@ def get_init_validate_status():
         if os.environ.get("INIT_PASSWORD"):
             if session.get("is_init_validated"):
                 return True
-
             with Session(db.engine) as db_session:
                 return db_session.execute(select(DifySetup)).scalar_one_or_none()
-
     return True
 
 

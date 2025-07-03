@@ -9,7 +9,6 @@ parameters__system_parameters = {
     "file_size_limit": fields.Integer,
     "workflow_file_upload_limit": fields.Integer,
 }
-
 parameters_fields = {
     "opening_statement": fields.String,
     "suggested_questions": fields.Raw,
@@ -24,7 +23,6 @@ parameters_fields = {
     "file_upload": fields.Raw,
     "system_parameters": fields.Nested(parameters__system_parameters),
 }
-
 site_fields = {
     "title": fields.String,
     "chat_color_theme": fields.String,

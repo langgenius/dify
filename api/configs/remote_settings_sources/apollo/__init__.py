@@ -19,17 +19,14 @@ class ApolloSettingsSourceInfo(BaseSettings):
         description="apollo app_id",
         default=None,
     )
-
     APOLLO_CLUSTER: Optional[str] = Field(
         description="apollo cluster",
         default=None,
     )
-
     APOLLO_CONFIG_URL: Optional[str] = Field(
         description="apollo config url",
         default=None,
     )
-
     APOLLO_NAMESPACE: Optional[str] = Field(
         description="apollo namespace",
         default=None,

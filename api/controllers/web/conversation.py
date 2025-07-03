@@ -22,7 +22,6 @@ class ConversationListApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
@@ -36,11 +35,9 @@ class ConversationListApi(WebApiResource):
             location="args",
         )
         args = parser.parse_args()
-
         pinned = None
         if "pinned" in args and args["pinned"] is not None:
             pinned = args["pinned"] == "true"
-
         try:
             with Session(db.engine) as session:
                 return WebConversationService.pagination_by_last_id(
@@ -62,14 +59,12 @@ class ConversationApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         WebConversationService.unpin(app_model, conversation_id, end_user)
-
         return {"result": "success"}, 204
 
 
@@ -79,14 +74,11 @@ class ConversationRenameApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=False, location="json")
         parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
-
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
         except ConversationNotExistsError:
@@ -98,14 +90,11 @@ class ConversationPinApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
-
         try:
             WebConversationService.pin(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
         return {"result": "success"}
 
 
@@ -114,10 +103,8 @@ class ConversationUnPinApi(WebApiResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         conversation_id = str(c_id)
         WebConversationService.unpin(app_model, conversation_id, end_user)
-
         return {"result": "success"}
 
 

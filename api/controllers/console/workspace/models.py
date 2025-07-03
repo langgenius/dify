@@ -29,14 +29,11 @@ class DefaultModelApi(Resource):
             location="args",
         )
         args = parser.parse_args()
-
         tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
             tenant_id=tenant_id, model_type=args["model_type"]
         )
-
         return jsonable_encoder({"data": default_model_entity})
 
     @setup_required
@@ -45,25 +42,19 @@ class DefaultModelApi(Resource):
     def post(self):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("model_settings", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
         for model_setting in model_settings:
             if "model_type" not in model_setting or model_setting["model_type"] not in [mt.value for mt in ModelType]:
                 raise ValueError("invalid model type")
-
             if "provider" not in model_setting:
                 continue
-
             if "model" not in model_setting:
                 raise ValueError("invalid model")
-
             try:
                 model_provider_service.update_default_model_of_model_type(
                     tenant_id=tenant_id,
@@ -77,7 +68,6 @@ class DefaultModelApi(Resource):
                     f" model:{model_setting.get('model')}"
                 )
                 raise ex
-
         return {"result": "success"}
 
 
@@ -87,10 +77,8 @@ class ModelProviderModelApi(Resource):
     @account_initialization_required
     def get(self, provider):
         tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
-
         return jsonable_encoder({"data": models})
 
     @setup_required
@@ -99,9 +87,7 @@ class ModelProviderModelApi(Resource):
     def post(self, provider: str):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -116,9 +102,7 @@ class ModelProviderModelApi(Resource):
         parser.add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("config_from", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
-
         model_load_balancing_service = ModelLoadBalancingService()
-
         if (
             "load_balancing" in args
             and args["load_balancing"]
@@ -127,7 +111,6 @@ class ModelProviderModelApi(Resource):
         ):
             if "configs" not in args["load_balancing"]:
                 raise ValueError("invalid load balancing configs")
-
             # save load balancing configs
             model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
@@ -136,7 +119,6 @@ class ModelProviderModelApi(Resource):
                 model_type=args["model_type"],
                 configs=args["load_balancing"]["configs"],
             )
-
             # enable load balancing
             model_load_balancing_service.enable_model_load_balancing(
                 tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
@@ -146,10 +128,8 @@ class ModelProviderModelApi(Resource):
             model_load_balancing_service.disable_model_load_balancing(
                 tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
             )
-
             if args.get("config_from", "") != "predefined-model":
                 model_provider_service = ModelProviderService()
-
                 try:
                     model_provider_service.save_model_credentials(
                         tenant_id=tenant_id,
@@ -164,7 +144,6 @@ class ModelProviderModelApi(Resource):
                         f" model: {args.get('model')}, model_type: {args.get('model_type')}"
                     )
                     raise ValueError(str(ex))
-
         return {"result": "success"}, 200
 
     @setup_required
@@ -173,9 +152,7 @@ class ModelProviderModelApi(Resource):
     def delete(self, provider: str):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -187,12 +164,10 @@ class ModelProviderModelApi(Resource):
             location="json",
         )
         args = parser.parse_args()
-
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credentials(
             tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
         )
-
         return {"result": "success"}, 204
 
 
@@ -202,7 +177,6 @@ class ModelProviderModelCredentialApi(Resource):
     @account_initialization_required
     def get(self, provider: str):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="args")
         parser.add_argument(
@@ -214,17 +188,14 @@ class ModelProviderModelCredentialApi(Resource):
             location="args",
         )
         args = parser.parse_args()
-
         model_provider_service = ModelProviderService()
         credentials = model_provider_service.get_model_credentials(
             tenant_id=tenant_id, provider=provider, model_type=args["model_type"], model=args["model"]
         )
-
         model_load_balancing_service = ModelLoadBalancingService()
         is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
             tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
         )
-
         return {
             "credentials": credentials,
             "load_balancing": {"enabled": is_load_balancing_enabled, "configs": load_balancing_configs},
@@ -237,7 +208,6 @@ class ModelProviderModelEnableApi(Resource):
     @account_initialization_required
     def patch(self, provider: str):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -249,12 +219,10 @@ class ModelProviderModelEnableApi(Resource):
             location="json",
         )
         args = parser.parse_args()
-
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
             tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
         )
-
         return {"result": "success"}
 
 
@@ -264,7 +232,6 @@ class ModelProviderModelDisableApi(Resource):
     @account_initialization_required
     def patch(self, provider: str):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -276,12 +243,10 @@ class ModelProviderModelDisableApi(Resource):
             location="json",
         )
         args = parser.parse_args()
-
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
             tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
         )
-
         return {"result": "success"}
 
 
@@ -291,7 +256,6 @@ class ModelProviderModelValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -304,12 +268,9 @@ class ModelProviderModelValidateApi(Resource):
         )
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         model_provider_service = ModelProviderService()
-
         result = True
         error = ""
-
         try:
             model_provider_service.model_credentials_validate(
                 tenant_id=tenant_id,
@@ -321,12 +282,9 @@ class ModelProviderModelValidateApi(Resource):
         except CredentialsValidateFailedError as ex:
             result = False
             error = str(ex)
-
         response = {"result": "success" if result else "error"}
-
         if not result:
             response["error"] = error or ""
-
         return response
 
 
@@ -338,14 +296,11 @@ class ModelProviderModelParameterRuleApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="args")
         args = parser.parse_args()
-
         tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
             tenant_id=tenant_id, provider=provider, model=args["model"]
         )
-
         return jsonable_encoder({"data": parameter_rules})
 
 
@@ -355,10 +310,8 @@ class ModelProviderAvailableModelApi(Resource):
     @account_initialization_required
     def get(self, model_type):
         tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
-
         return jsonable_encoder({"data": models})
 
 
@@ -379,7 +332,6 @@ api.add_resource(
 api.add_resource(
     ModelProviderModelValidateApi, "/workspaces/current/model-providers/<path:provider>/models/credentials/validate"
 )
-
 api.add_resource(
     ModelProviderModelParameterRuleApi, "/workspaces/current/model-providers/<path:provider>/models/parameter-rules"
 )

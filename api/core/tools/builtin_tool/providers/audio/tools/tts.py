@@ -48,7 +48,6 @@ class TTSTool(BuiltinTool):
         buffer = io.BytesIO()
         for chunk in tts:
             buffer.write(chunk)
-
         wav_bytes = buffer.getvalue()
         yield self.create_text_message("Audio generated successfully")
         yield self.create_blob_message(
@@ -77,7 +76,6 @@ class TTSTool(BuiltinTool):
         message_id: Optional[str] = None,
     ) -> list[ToolParameter]:
         parameters = []
-
         options = []
         for provider, model, voices in self.get_available_models():
             option = PluginParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
@@ -96,7 +94,6 @@ class TTSTool(BuiltinTool):
                     ],
                 )
             )
-
         parameters.insert(
             0,
             ToolParameter(

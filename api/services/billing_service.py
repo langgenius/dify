@@ -12,22 +12,18 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
     compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     @classmethod
     def get_info(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
-
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
         return billing_info
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
-
         knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
-
         return {
             "limit": knowledge_rate_limit.get("limit", 10),
             "subscription_plan": knowledge_rate_limit.get("subscription_plan", "sandbox"),
@@ -62,7 +58,6 @@ class BillingService:
     )
     def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
@@ -72,16 +67,13 @@ class BillingService:
     @staticmethod
     def is_tenant_owner_or_admin(current_user):
         tenant_id = current_user.current_tenant_id
-
         join: Optional[TenantAccountJoin] = (
             db.session.query(TenantAccountJoin)
             .filter(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
-
         if not join:
             raise ValueError("Tenant account join not found")
-
         if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError("Only team owner or team admin can perform this action")
 
@@ -116,9 +108,7 @@ class BillingService:
                 from controllers.console.error import EducationVerifyLimitError
 
                 raise EducationVerifyLimitError()
-
             cls.verification_rate_limit.increment_rate_limit(account_email)
-
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/verify", params=params)
 
@@ -133,7 +123,6 @@ class BillingService:
                 from controllers.console.error import EducationActivateLimitError
 
                 raise EducationActivateLimitError()
-
             cls.activation_rate_limit.increment_rate_limit(account.email)
             params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
             json = {
@@ -162,7 +151,6 @@ class BillingService:
             from controllers.console.error import CompilanceRateLimitError
 
             raise CompilanceRateLimitError()
-
         json = {
             "doc_name": doc_name,
             "account_id": account_id,

@@ -36,11 +36,9 @@ class DataSourceApi(Resource):
             )
             .all()
         )
-
         base_url = request.url_root.rstrip("/")
         data_source_oauth_base_path = "/console/api/oauth/data-source"
         providers = ["notion"]
-
         integrate_data = []
         for provider in providers:
             # existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
@@ -121,7 +119,6 @@ class DataSourceNotionListApi(Resource):
                     raise NotFound("Dataset not found.")
                 if dataset.data_source_type != "notion_import":
                     raise ValueError("Dataset is not notion type.")
-
                 documents = session.scalars(
                     select(Document).filter_by(
                         dataset_id=dataset_id,
@@ -182,7 +179,6 @@ class DataSourceNotionApi(Resource):
             ).scalar_one_or_none()
         if not data_source_binding:
             raise NotFound("Data source binding not found.")
-
         extractor = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
@@ -190,7 +186,6 @@ class DataSourceNotionApi(Resource):
             notion_access_token=data_source_binding.access_token,
             tenant_id=current_user.current_tenant_id,
         )
-
         text_docs = extractor.extract()
         return {"content": "\n".join([doc.page_content for doc in text_docs])}, 200
 
@@ -244,7 +239,6 @@ class DataSourceNotionDatasetSyncApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
             document_indexing_sync_task.delay(dataset_id_str, document.id)
@@ -261,7 +255,6 @@ class DataSourceNotionDocumentSyncApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         document = DocumentService.get_document(dataset_id_str, document_id_str)
         if document is None:
             raise NotFound("Document not found.")

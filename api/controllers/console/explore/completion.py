@@ -39,7 +39,6 @@ class CompletionApi(InstalledAppResource):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, location="json", default="")
@@ -47,18 +46,14 @@ class CompletionApi(InstalledAppResource):
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
         args = parser.parse_args()
-
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
-
         installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -87,9 +82,7 @@ class CompletionStopApi(InstalledAppResource):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
-
         return {"result": "success"}, 200
 
 
@@ -99,7 +92,6 @@ class ChatApi(InstalledAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
@@ -108,17 +100,13 @@ class ChatApi(InstalledAppResource):
         parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
         args = parser.parse_args()
-
         args["auto_generate_name"] = False
-
         installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -150,7 +138,5 @@ class ChatStopApi(InstalledAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
-
         return {"result": "success"}, 200

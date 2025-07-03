@@ -14,14 +14,12 @@ class ModerationModel(AIModel):
     """
 
     model_type: ModelType = ModelType.MODERATION
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
     def invoke(self, model: str, credentials: dict, text: str, user: Optional[str] = None) -> bool:
         """
         Invoke moderation model
-
         :param model: model name
         :param credentials: model credentials
         :param text: text to moderate
@@ -29,7 +27,6 @@ class ModerationModel(AIModel):
         :return: false if text is safe, true otherwise
         """
         self.started_at = time.perf_counter()
-
         try:
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_moderation(

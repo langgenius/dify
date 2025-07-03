@@ -38,7 +38,6 @@ class Callback(ABC):
     ) -> None:
         """
         Before invoke callback
-
         :param llm_instance: LLM instance
         :param model: model name
         :param credentials: model credentials
@@ -67,7 +66,6 @@ class Callback(ABC):
     ):
         """
         On new chunk callback
-
         :param llm_instance: LLM instance
         :param chunk: chunk
         :param model: model name
@@ -97,7 +95,6 @@ class Callback(ABC):
     ) -> None:
         """
         After invoke callback
-
         :param llm_instance: LLM instance
         :param result: result
         :param model: model name
@@ -127,7 +124,6 @@ class Callback(ABC):
     ) -> None:
         """
         Invoke error callback
-
         :param llm_instance: LLM instance
         :param ex: exception
         :param model: model name

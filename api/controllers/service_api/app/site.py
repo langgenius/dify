@@ -17,13 +17,10 @@ class AppSiteApi(Resource):
     def get(self, app_model: App):
         """Retrieve app site info."""
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
-
         if not site:
             raise Forbidden()
-
         if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
-
         return site
 
 

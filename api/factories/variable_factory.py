@@ -84,7 +84,6 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
         raise VariableError("missing value type")
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
-
     result: Variable
     match value_type:
         case SegmentType.STRING:
@@ -156,32 +155,24 @@ def build_segment(value: Any, /) -> Segment:
 def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
     """
     Build a segment with explicit type checking.
-
     This function creates a segment from a value while enforcing type compatibility
     with the specified segment_type. It provides stricter type validation compared
     to the standard build_segment function.
-
     Args:
         segment_type: The expected SegmentType for the resulting segment
         value: The value to be converted into a segment
-
     Returns:
         Segment: A segment instance of the appropriate type
-
     Raises:
         TypeMismatchError: If the value type doesn't match the expected segment_type
-
     Special Cases:
         - For empty list [] values, if segment_type is array[*], returns the corresponding array type
         - Type validation is performed before segment creation
-
     Examples:
         >>> build_segment_with_type(SegmentType.STRING, "hello")
         StringSegment(value="hello")
-
         >>> build_segment_with_type(SegmentType.ARRAY_STRING, [])
         ArrayStringSegment(value=[])
-
         >>> build_segment_with_type(SegmentType.STRING, 123)
         # Raises TypeMismatchError
     """
@@ -191,7 +182,6 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
             return NoneSegment()
         else:
             raise TypeMismatchError(f"Expected {segment_type}, but got None")
-
     # Handle empty list special case for array types
     if isinstance(value, list) and len(value) == 0:
         if segment_type == SegmentType.ARRAY_ANY:
@@ -206,15 +196,12 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
             return ArrayFileSegment(value=value)
         else:
             raise TypeMismatchError(f"Expected {segment_type}, but got empty list")
-
     # Build segment using existing logic to infer actual type
     inferred_segment = build_segment(value)
     inferred_type = inferred_segment.value_type
-
     # Type compatibility checking
     if inferred_type == segment_type:
         return inferred_segment
-
     # Type mismatch - raise error with descriptive message
     raise TypeMismatchError(
         f"Type mismatch: expected {segment_type}, but value '{value}' "
@@ -234,11 +221,9 @@ def segment_to_variable(
         return segment
     name = name or selector[-1]
     id = id or str(uuid4())
-
     segment_type = type(segment)
     if segment_type not in SEGMENT_TO_VARIABLE_MAP:
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
-
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
     return cast(
         Variable,

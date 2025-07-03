@@ -24,7 +24,6 @@ class PluginParameterService:
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options for a plugin parameter.
-
         Args:
             tenant_id: The tenant ID.
             plugin_id: The plugin ID.
@@ -33,7 +32,6 @@ class PluginParameterService:
             parameter: The parameter name.
         """
         credentials: Mapping[str, Any] = {}
-
         match provider_type:
             case "tool":
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
@@ -44,7 +42,6 @@ class PluginParameterService:
                     provider_type=provider_controller.provider_type.value,
                     provider_identity=provider_controller.entity.identity.name,
                 )
-
                 # check if credentials are required
                 if not provider_controller.need_credentials:
                     credentials = {}
@@ -59,14 +56,11 @@ class PluginParameterService:
                             )
                             .first()
                         )
-
                     if db_record is None:
                         raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
-
                     credentials = tool_configuration.decrypt(db_record.credentials)
             case _:
                 raise ValueError(f"Invalid provider type: {provider_type}")
-
         return (
             DynamicSelectClient()
             .fetch_dynamic_select_options(tenant_id, user_id, plugin_id, provider, action, credentials, parameter)

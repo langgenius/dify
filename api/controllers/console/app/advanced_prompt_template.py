@@ -17,7 +17,6 @@ class AdvancedPromptTemplateList(Resource):
         parser.add_argument("has_context", type=str, required=False, default="true", location="args")
         parser.add_argument("model_name", type=str, required=True, location="args")
         args = parser.parse_args()
-
         return AdvancedPromptTemplateService.get_prompt(args)
 
 

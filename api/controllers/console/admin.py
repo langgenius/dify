@@ -19,23 +19,17 @@ def admin_required(view):
     def decorated(*args, **kwargs):
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
-
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
             raise Unauthorized("Authorization header is missing.")
-
         if " " not in auth_header:
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
         auth_scheme, auth_token = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
-
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
         if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
-
         return view(*args, **kwargs)
 
     return decorated
@@ -55,11 +49,9 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("category", type=str, required=True, nullable=False, location="json")
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         app = db.session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
-
         site = app.site
         if not site:
             desc = args["desc"] or ""
@@ -71,12 +63,10 @@ class InsertExploreAppListApi(Resource):
             copy_right = site.copyright or args["copyright"] or ""
             privacy_policy = site.privacy_policy or args["privacy_policy"] or ""
             custom_disclaimer = site.custom_disclaimer or args["custom_disclaimer"] or ""
-
         with Session(db.engine) as session:
             recommended_app = session.execute(
                 select(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"])
             ).scalar_one_or_none()
-
             if not recommended_app:
                 recommended_app = RecommendedApp(
                     app_id=app.id,
@@ -88,12 +78,9 @@ class InsertExploreAppListApi(Resource):
                     category=args["category"],
                     position=args["position"],
                 )
-
                 db.session.add(recommended_app)
-
                 app.is_public = True
                 db.session.commit()
-
                 return {"result": "success"}, 201
             else:
                 recommended_app.description = desc
@@ -103,11 +90,8 @@ class InsertExploreAppListApi(Resource):
                 recommended_app.language = args["language"]
                 recommended_app.category = args["category"]
                 recommended_app.position = args["position"]
-
                 app.is_public = True
-
                 db.session.commit()
-
                 return {"result": "success"}, 200
 
 
@@ -119,16 +103,12 @@ class InsertExploreAppApi(Resource):
             recommended_app = session.execute(
                 select(RecommendedApp).filter(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
-
         if not recommended_app:
             return {"result": "success"}, 204
-
         with Session(db.engine) as session:
             app = session.execute(select(App).filter(App.id == recommended_app.app_id)).scalar_one_or_none()
-
         if app:
             app.is_public = False
-
         with Session(db.engine) as session:
             installed_apps = session.execute(
                 select(InstalledApp).filter(
@@ -136,13 +116,10 @@ class InsertExploreAppApi(Resource):
                     InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
                 )
             ).all()
-
         for installed_app in installed_apps:
             db.session.delete(installed_app)
-
         db.session.delete(recommended_app)
         db.session.commit()
-
         return {"result": "success"}, 204
 
 

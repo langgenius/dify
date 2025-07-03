@@ -20,12 +20,9 @@ def installed_app_required(view=None):
         def decorated(*args, **kwargs):
             if not kwargs.get("installed_app_id"):
                 raise ValueError("missing installed_app_id in path parameters")
-
             installed_app_id = kwargs.get("installed_app_id")
             installed_app_id = str(installed_app_id)
-
             del kwargs["installed_app_id"]
-
             installed_app = (
                 db.session.query(InstalledApp)
                 .filter(
@@ -33,16 +30,12 @@ def installed_app_required(view=None):
                 )
                 .first()
             )
-
             if installed_app is None:
                 raise NotFound("Installed app not found")
-
             if not installed_app.app:
                 db.session.delete(installed_app)
                 db.session.commit()
-
                 raise NotFound("Installed app not found")
-
             return view(installed_app, *args, **kwargs)
 
         return decorated
@@ -66,7 +59,6 @@ def user_allowed_to_access_app(view=None):
                 )
                 if not res:
                     raise AppAccessDeniedError()
-
             return view(installed_app, *args, **kwargs)
 
         return decorated
@@ -78,7 +70,6 @@ def user_allowed_to_access_app(view=None):
 
 class InstalledAppResource(Resource):
     # must be reversed if there are multiple decorators
-
     method_decorators = [
         user_allowed_to_access_app,
         installed_app_required,

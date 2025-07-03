@@ -13,22 +13,18 @@ class CouchbaseConfig(BaseSettings):
         description="COUCHBASE connection string",
         default=None,
     )
-
     COUCHBASE_USER: Optional[str] = Field(
         description="COUCHBASE user",
         default=None,
     )
-
     COUCHBASE_PASSWORD: Optional[str] = Field(
         description="COUCHBASE password",
         default=None,
     )
-
     COUCHBASE_BUCKET_NAME: Optional[str] = Field(
         description="COUCHBASE bucket name",
         default=None,
     )
-
     COUCHBASE_SCOPE_NAME: Optional[str] = Field(
         description="COUCHBASE scope name",
         default=None,

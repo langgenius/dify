@@ -31,21 +31,18 @@ class ModelProviderService:
     def get_provider_list(self, tenant_id: str, model_type: Optional[str] = None) -> list[ProviderResponse]:
         """
         get provider list.
-
         :param tenant_id: workspace id
         :param model_type: model type
         :return:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         provider_responses = []
         for provider_configuration in provider_configurations.values():
             if model_type:
                 model_type_entity = ModelType.value_of(model_type)
                 if model_type_entity not in provider_configuration.provider.supported_model_types:
                     continue
-
             provider_response = ProviderResponse(
                 tenant_id=tenant_id,
                 provider=provider_configuration.provider.provider,
@@ -71,9 +68,7 @@ class ModelProviderService:
                     quota_configurations=provider_configuration.system_configuration.quota_configurations,
                 ),
             )
-
             provider_responses.append(provider_response)
-
         return provider_responses
 
     def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
@@ -81,14 +76,12 @@ class ModelProviderService:
         get provider models.
         For the model provider page,
         only supports passing in a single provider to query the list of supported models.
-
         :param tenant_id:
         :param provider:
         :return:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider available models
         return [
             ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
@@ -103,31 +96,26 @@ class ModelProviderService:
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         return provider_configuration.get_custom_credentials(obfuscated=True)
 
     def provider_credentials_validate(self, tenant_id: str, provider: str, credentials: dict) -> None:
         """
         validate provider credentials.
-
         :param tenant_id:
         :param provider:
         :param credentials:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         provider_configuration.custom_credentials_validate(credentials)
 
     def save_provider_credentials(self, tenant_id: str, provider: str, credentials: dict) -> None:
         """
         save custom provider config.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param credentials: provider credentials
@@ -135,38 +123,32 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Add or update custom provider credentials.
         provider_configuration.add_or_update_custom_credentials(credentials)
 
     def remove_provider_credentials(self, tenant_id: str, provider: str) -> None:
         """
         remove custom provider config.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :return:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Remove custom provider credentials.
         provider_configuration.delete_custom_credentials()
 
     def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> Optional[dict]:
         """
         get model credentials.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model_type: model type
@@ -175,12 +157,10 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Get model custom credentials from ProviderModel if exists
         return provider_configuration.get_custom_model_credentials(
             model_type=ModelType.value_of(model_type), model=model, obfuscated=True
@@ -191,7 +171,6 @@ class ModelProviderService:
     ) -> None:
         """
         validate model credentials.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model_type: model type
@@ -201,12 +180,10 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Validate model credentials
         provider_configuration.custom_model_credentials_validate(
             model_type=ModelType.value_of(model_type), model=model, credentials=credentials
@@ -217,7 +194,6 @@ class ModelProviderService:
     ) -> None:
         """
         save model credentials.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model_type: model type
@@ -227,12 +203,10 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Add or update custom model credentials
         provider_configuration.add_or_update_custom_model_credentials(
             model_type=ModelType.value_of(model_type), model=model, credentials=credentials
@@ -241,7 +215,6 @@ class ModelProviderService:
     def remove_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> None:
         """
         remove model credentials.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model_type: model type
@@ -250,51 +223,40 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Remove custom model credentials
         provider_configuration.delete_custom_model_credentials(model_type=ModelType.value_of(model_type), model=model)
 
     def get_models_by_model_type(self, tenant_id: str, model_type: str) -> list[ProviderWithModelsResponse]:
         """
         get models by model type.
-
         :param tenant_id: workspace id
         :param model_type: model type
         :return:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider available models
         models = provider_configurations.get_models(model_type=ModelType.value_of(model_type))
-
         # Group models by provider
         provider_models: dict[str, list[ModelWithProviderEntity]] = {}
         for model in models:
             if model.provider.provider not in provider_models:
                 provider_models[model.provider.provider] = []
-
             if model.deprecated:
                 continue
-
             if model.status != ModelStatus.ACTIVE:
                 continue
-
             provider_models[model.provider.provider].append(model)
-
         # convert to ProviderWithModelsResponse list
         providers_with_models: list[ProviderWithModelsResponse] = []
         for provider, models in provider_models.items():
             if not models:
                 continue
-
             first_model = models[0]
-
             providers_with_models.append(
                 ProviderWithModelsResponse(
                     tenant_id=tenant_id,
@@ -318,14 +280,12 @@ class ModelProviderService:
                     ],
                 )
             )
-
         return providers_with_models
 
     def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> list[ParameterRule]:
         """
         get model parameter rules.
         Only supports LLM.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
@@ -333,34 +293,27 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)
-
         if not credentials:
             return []
-
         model_schema = provider_configuration.get_model_schema(
             model_type=ModelType.LLM, model=model, credentials=credentials
         )
-
         return model_schema.parameter_rules if model_schema else []
 
     def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
         """
         get default model of model type.
-
         :param tenant_id: workspace id
         :param model_type: model type
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-
         try:
             result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
             return (
@@ -386,7 +339,6 @@ class ModelProviderService:
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
         """
         update default model of model type.
-
         :param tenant_id: workspace id
         :param model_type: model type
         :param provider: provider name
@@ -403,7 +355,6 @@ class ModelProviderService:
     ) -> tuple[Optional[bytes], Optional[str]]:
         """
         get model provider icon.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param icon_type: icon type (icon_small or icon_large)
@@ -412,13 +363,11 @@ class ModelProviderService:
         """
         model_provider_factory = ModelProviderFactory(tenant_id)
         byte_data, mime_type = model_provider_factory.get_provider_icon(provider, icon_type, lang)
-
         return byte_data, mime_type
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """
         switch preferred provider.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param preferred_provider_type: preferred provider type
@@ -426,22 +375,18 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Convert preferred_provider_type to ProviderType
         preferred_provider_type_enum = ProviderType.value_of(preferred_provider_type)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
 
     def enable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
         """
         enable model.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
@@ -450,19 +395,16 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Enable model
         provider_configuration.enable_model(model=model, model_type=ModelType.value_of(model_type))
 
     def disable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
         """
         disable model.
-
         :param tenant_id: workspace id
         :param provider: provider name
         :param model: model name
@@ -471,11 +413,9 @@ class ModelProviderService:
         """
         # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
-
         # Enable model
         provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))

@@ -26,7 +26,6 @@ class SavedMessageService:
             .all()
         )
         message_ids = [sm.message_id for sm in saved_messages]
-
         return MessageService.pagination_by_last_id(
             app_model=app_model, user=user, last_id=last_id, limit=limit, include_ids=message_ids
         )
@@ -45,19 +44,15 @@ class SavedMessageService:
             )
             .first()
         )
-
         if saved_message:
             return
-
         message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
-
         saved_message = SavedMessage(
             app_id=app_model.id,
             message_id=message.id,
             created_by_role="account" if isinstance(user, Account) else "end_user",
             created_by=user.id,
         )
-
         db.session.add(saved_message)
         db.session.commit()
 
@@ -75,9 +70,7 @@ class SavedMessageService:
             )
             .first()
         )
-
         if not saved_message:
             return
-
         db.session.delete(saved_message)
         db.session.commit()

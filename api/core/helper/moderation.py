@@ -27,22 +27,16 @@ def check_moderation(tenant_id: str, model_config: ModelConfigWithCredentialsEnt
         provider_name = model_config.provider
         if using_provider_type == ProviderType.SYSTEM and provider_name in moderation_config.providers:
             hosting_openai_config = hosting_configuration.provider_map[openai_provider_name]
-
             if hosting_openai_config.credentials is None:
                 return False
-
             # 2000 text per chunk
             length = 2000
             text_chunks = [text[i : i + length] for i in range(0, len(text), length)]
-
             if len(text_chunks) == 0:
                 return True
-
             text_chunk = secrets.choice(text_chunks)
-
             try:
                 model_provider_factory = ModelProviderFactory(tenant_id)
-
                 # Get model instance of LLM
                 model_type_instance = model_provider_factory.get_model_type_instance(
                     provider=openai_provider_name, model_type=ModelType.MODERATION
@@ -51,11 +45,9 @@ def check_moderation(tenant_id: str, model_config: ModelConfigWithCredentialsEnt
                 moderation_result = model_type_instance.invoke(
                     model="omni-moderation-latest", credentials=hosting_openai_config.credentials, text=text_chunk
                 )
-
                 if moderation_result is True:
                     return True
             except Exception:
                 logger.exception(f"Fails to check moderation, provider_name: {provider_name}")
                 raise InvokeBadRequestError("Rate limit exceeded, please try again later.")
-
     return False

@@ -36,7 +36,6 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
-
 workflow_run_fields = {
     "id": fields.String,
     "workflow_id": fields.String,
@@ -62,7 +61,6 @@ class WorkflowRunDetailApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
             raise NotWorkflowAppError()
-
         workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
         return workflow_run
 
@@ -76,20 +74,16 @@ class WorkflowRunApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         args = parser.parse_args()
-
         streaming = args.get("response_mode") == "streaming"
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
-
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -117,9 +111,7 @@ class WorkflowTaskStopApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
-
         return {"result": "success"}
 
 
@@ -152,14 +144,11 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
-
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
             args.created_at__before = isoparse(args.created_at__before)
-
         if args.created_at__after:
             args.created_at__after = isoparse(args.created_at__after)
-
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
         with Session(db.engine) as session:
@@ -175,7 +164,6 @@ class WorkflowAppLogApi(Resource):
                 created_by_end_user_session_id=args.created_by_end_user_session_id,
                 created_by_account=args.created_by_account,
             )
-
             return workflow_app_log_pagination
 
 

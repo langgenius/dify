@@ -11,5 +11,4 @@ def get_plugin_agent_strategy(
     for agent_strategy in agent_provider.declaration.strategies:
         if agent_strategy.identity.name == agent_strategy_name:
             return PluginAgentStrategy(tenant_id, agent_strategy)
-
     raise ValueError(f"Agent strategy {agent_strategy_name} not found")

@@ -2,19 +2,13 @@ from configs import dify_config
 
 HIDDEN_VALUE = "[__HIDDEN__]"
 UUID_NIL = "00000000-0000-0000-0000-000000000000"
-
 DEFAULT_FILE_NUMBER_LIMITS = 3
-
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
-
 VIDEO_EXTENSIONS = ["mp4", "mov", "mpeg", "mpga"]
 VIDEO_EXTENSIONS.extend([ext.upper() for ext in VIDEO_EXTENSIONS])
-
 AUDIO_EXTENSIONS = ["mp3", "m4a", "wav", "webm", "amr"]
 AUDIO_EXTENSIONS.extend([ext.upper() for ext in AUDIO_EXTENSIONS])
-
-
 if dify_config.ETL_TYPE == "Unstructured":
     DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "mdx", "pdf", "html", "htm", "xlsx", "xls", "vtt", "properties"]
     DOCUMENT_EXTENSIONS.extend(("doc", "docx", "csv", "eml", "msg", "pptx", "xml", "epub"))

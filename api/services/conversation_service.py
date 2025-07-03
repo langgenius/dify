@@ -37,7 +37,6 @@ class ConversationService:
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
-
         stmt = select(Conversation).where(
             Conversation.is_deleted == False,
             Conversation.app_id == app_model.id,
@@ -50,15 +49,12 @@ class ConversationService:
             stmt = stmt.where(Conversation.id.in_(include_ids))
         if exclude_ids is not None:
             stmt = stmt.where(~Conversation.id.in_(exclude_ids))
-
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
-
         if last_id:
             last_conversation = session.scalar(stmt.where(Conversation.id == last_id))
             if not last_conversation:
                 raise LastConversationNotExistsError()
-
             # build filters based on sorting
             filter_condition = cls._build_filter_condition(
                 sort_field=sort_field,
@@ -68,7 +64,6 @@ class ConversationService:
             stmt = stmt.where(filter_condition)
         query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
         conversations = session.scalars(query_stmt).all()
-
         has_more = False
         if len(conversations) == limit:
             current_page_last_conversation = conversations[-1]
@@ -81,7 +76,6 @@ class ConversationService:
             rest_count = session.scalar(count_stmt) or 0
             if rest_count > 0:
                 has_more = True
-
         return InfiniteScrollPagination(data=conversations, limit=limit, has_more=has_more)
 
     @classmethod
@@ -108,14 +102,12 @@ class ConversationService:
         auto_generate: bool,
     ):
         conversation = cls.get_conversation(app_model, conversation_id, user)
-
         if auto_generate:
             return cls.auto_generate_name(app_model, conversation)
         else:
             conversation.name = name
             conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
-
         return conversation
 
     @classmethod
@@ -127,10 +119,8 @@ class ConversationService:
             .order_by(Message.created_at.asc())
             .first()
         )
-
         if not message:
             raise MessageNotExistsError()
-
         # generate conversation name
         try:
             name = LLMGenerator.generate_conversation_name(
@@ -139,9 +129,7 @@ class ConversationService:
             conversation.name = name
         except:
             pass
-
         db.session.commit()
-
         return conversation
 
     @classmethod
@@ -158,16 +146,13 @@ class ConversationService:
             )
             .first()
         )
-
         if not conversation:
             raise ConversationNotExistsError()
-
         return conversation
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         conversation = cls.get_conversation(app_model, conversation_id, user)
-
         conversation.is_deleted = True
         conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
@@ -182,32 +167,26 @@ class ConversationService:
         last_id: Optional[str],
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
-
         stmt = (
             select(ConversationVariable)
             .where(ConversationVariable.app_id == app_model.id)
             .where(ConversationVariable.conversation_id == conversation.id)
             .order_by(ConversationVariable.created_at)
         )
-
         with Session(db.engine) as session:
             if last_id:
                 last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
                 if not last_variable:
                     raise ConversationVariableNotExistsError()
-
                 # Filter for variables created after the last_id
                 stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
-
             # Apply limit to query
             query_stmt = stmt.limit(limit)  # Get one extra to check if there are more
             rows = session.scalars(query_stmt).all()
-
         has_more = False
         if len(rows) > limit:
             has_more = True
             rows = rows[:limit]  # Remove the extra item
-
         variables = [
             {
                 "created_at": row.created_at,
@@ -216,5 +195,4 @@ class ConversationService:
             }
             for row in rows
         ]
-
         return InfiniteScrollPagination(variables, limit, has_more)

@@ -27,7 +27,6 @@ def decrypt_token(tenant_id: str, token: str):
 
 def batch_decrypt_token(tenant_id: str, tokens: list[str]):
     rsa_key, cipher_rsa = rsa.get_decrypt_decoding(tenant_id)
-
     return [rsa.decrypt_token_with_decoding(base64.b64decode(token), rsa_key, cipher_rsa) for token in tokens]
 
 

@@ -35,9 +35,7 @@ class PluginTool(Tool):
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
-
         tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
-
         yield from manager.invoke(
             tenant_id=self.tenant_id,
             user_id=user_id,
@@ -70,10 +68,8 @@ class PluginTool(Tool):
         """
         if not self.entity.has_runtime_parameters:
             return self.entity.parameters
-
         if self.runtime_parameters is not None:
             return self.runtime_parameters
-
         manager = PluginToolManager()
         self.runtime_parameters = manager.get_runtime_parameters(
             tenant_id=self.tenant_id,
@@ -85,5 +81,4 @@ class PluginTool(Tool):
             app_id=app_id,
             message_id=message_id,
         )
-
         return self.runtime_parameters

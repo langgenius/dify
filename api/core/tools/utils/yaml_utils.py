@@ -23,7 +23,6 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
             return default_value
         else:
             raise FileNotFoundError(f"File not found: {file_path}")
-
     with open(file_path, encoding="utf-8") as yaml_file:
         try:
             yaml_content = yaml.safe_load(yaml_file)

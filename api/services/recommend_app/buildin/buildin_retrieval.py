@@ -35,12 +35,10 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         if cls.builtin_data:
             return cls.builtin_data
-
         root_path = current_app.root_path
         cls.builtin_data = json.loads(
             Path(path.join(root_path, "constants", "recommended_apps.json")).read_text(encoding="utf-8")
         )
-
         return cls.builtin_data or {}
 
     @classmethod

@@ -23,7 +23,6 @@ class AppSiteApi(WebApiResource):
         "user_input_form": fields.Raw(attribute="user_input_form_list"),
         "pre_prompt": fields.String,
     }
-
     site_fields = {
         "title": fields.String,
         "chat_color_theme": fields.String,
@@ -41,7 +40,6 @@ class AppSiteApi(WebApiResource):
         "show_workflow_steps": fields.Boolean,
         "use_icon_as_answer_icon": fields.Boolean,
     }
-
     app_fields = {
         "app_id": fields.String,
         "end_user_id": fields.String,
@@ -58,15 +56,11 @@ class AppSiteApi(WebApiResource):
         """Retrieve app site info."""
         # get site
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
-
         if not site:
             raise Forbidden()
-
         if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
-
         can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
-
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 
 
@@ -85,7 +79,6 @@ class AppSiteInfo:
         self.model_config = None
         self.plan = tenant.plan
         self.can_replace_logo = can_replace_logo
-
         if can_replace_logo:
             base_url = dify_config.FILES_URL
             remove_webapp_brand = tenant.custom_config_dict.get("remove_webapp_brand", False)

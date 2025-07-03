@@ -68,13 +68,11 @@ class ProviderResponse(BaseModel):
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
-
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -82,7 +80,6 @@ class ProviderResponse(BaseModel):
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
-
         if self.icon_large is not None:
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
@@ -104,7 +101,6 @@ class ProviderWithModelsResponse(BaseModel):
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
-
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -112,7 +108,6 @@ class ProviderWithModelsResponse(BaseModel):
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
-
         if self.icon_large is not None:
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
@@ -128,7 +123,6 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
-
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -136,7 +130,6 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
-
         if self.icon_large is not None:
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
@@ -151,7 +144,6 @@ class DefaultModelResponse(BaseModel):
     model: str
     model_type: ModelType
     provider: SimpleProviderEntityResponse
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

@@ -39,7 +39,6 @@ class PluginParameterType(enum.StrEnum):
     MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
     DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
-
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
 
@@ -94,7 +93,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
-
             case PluginParameterType.BOOLEAN:
                 if value is None:
                     return False
@@ -110,7 +108,6 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                             return bool(value)
                 else:
                     return value if isinstance(value, bool) else bool(value)
-
             case PluginParameterType.NUMBER:
                 if isinstance(value, int | float):
                     return value
@@ -156,11 +153,9 @@ def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: An
         parameter_value = rule.default
         if not parameter_value and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")
-
     if type == PluginParameterType.SELECT:
         # check if tool_parameter_config in options
         options = [x.value for x in rule.options]
         if parameter_value is not None and parameter_value not in options:
             raise ValueError(f"tool parameter {rule.name} value {parameter_value} not in options {options}")
-
     return cast_parameter_value(type, parameter_value)

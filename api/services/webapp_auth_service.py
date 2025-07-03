@@ -35,19 +35,15 @@ class WebAppAuthService:
         account = db.session.query(Account).filter_by(email=email).first()
         if not account:
             raise AccountNotFoundError()
-
         if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
-
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
-
         return cast(Account, account)
 
     @classmethod
     def login(cls, account: Account) -> str:
         access_token = cls._get_account_jwt_token(account=account)
-
         return access_token
 
     @classmethod
@@ -55,10 +51,8 @@ class WebAppAuthService:
         account = db.session.query(Account).filter(Account.email == email).first()
         if not account:
             return None
-
         if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
-
         return account
 
     @classmethod
@@ -68,7 +62,6 @@ class WebAppAuthService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
-
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
@@ -78,7 +71,6 @@ class WebAppAuthService:
             to=account.email if account else email,
             code=code,
         )
-
         return token
 
     @classmethod
@@ -108,14 +100,12 @@ class WebAppAuthService:
         )
         db.session.add(end_user)
         db.session.commit()
-
         return end_user
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
         exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
-
         payload = {
             "sub": "Web API Passport",
             "user_id": account.id,
@@ -124,7 +114,6 @@ class WebAppAuthService:
             "auth_type": "internal",
             "exp": exp,
         }
-
         token: str = PassportService().issue(payload)
         return token
 
@@ -141,15 +130,12 @@ class WebAppAuthService:
         ]
         if access_mode:
             return access_mode in modes_requiring_permission_check
-
         if not app_code and not app_id:
             raise ValueError("Either app_code or app_id must be provided.")
-
         if app_code:
             app_id = AppService.get_app_id_by_code(app_code)
         if not app_id:
             raise ValueError("App ID could not be determined from the provided app_code.")
-
         webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
         if webapp_settings and webapp_settings.access_mode in modes_requiring_permission_check:
             return True
@@ -162,7 +148,6 @@ class WebAppAuthService:
         """
         if not app_code and not access_mode:
             raise ValueError("Either app_code or access_mode must be provided.")
-
         if access_mode:
             if access_mode == "public":
                 return WebAppAuthType.PUBLIC
@@ -170,9 +155,7 @@ class WebAppAuthService:
                 return WebAppAuthType.INTERNAL
             elif access_mode == "sso_verified":
                 return WebAppAuthType.EXTERNAL
-
         if app_code:
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
-
         raise ValueError("Could not determine app authentication type.")

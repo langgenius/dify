@@ -19,7 +19,6 @@ def validate_jwt_token(view=None):
         @wraps(view)
         def decorated(*args, **kwargs):
             app_model, end_user = decode_jwt_token()
-
             return view(app_model, end_user, *args, **kwargs)
 
         return decorated
@@ -36,13 +35,10 @@ def decode_jwt_token():
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
             raise Unauthorized("Authorization header is missing.")
-
         if " " not in auth_header:
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
         auth_scheme, tk = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
-
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
         decoded = PassportService().verify(tk)
@@ -60,7 +56,6 @@ def decode_jwt_token():
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
         if not end_user:
             raise NotFound()
-
         # for enterprise webapp auth
         app_web_auth_enabled = False
         webapp_settings = None
@@ -69,12 +64,10 @@ def decode_jwt_token():
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
             app_web_auth_enabled = webapp_settings.access_mode != "public"
-
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
         _validate_user_accessibility(
             decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled, webapp_settings
         )
-
         return app_model, end_user
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
@@ -85,7 +78,6 @@ def decode_jwt_token():
             )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()
-
         raise Unauthorized(e.description)
 
 
@@ -96,7 +88,6 @@ def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_au
         source = decoded.get("token_source")
         if not source or source != "webapp":
             raise WebAppAuthRequiredError()
-
     # Check if authentication is not enforced for web, and if the token source is webapp,
     # raise an error and redirect to normal passport login
     if not system_webapp_auth_enabled or not app_web_auth_enabled:
@@ -117,14 +108,11 @@ def _validate_user_accessibility(
         user_id = decoded.get("user_id")
         if not user_id:
             raise WebAppAuthRequiredError()
-
         if not webapp_settings:
             raise WebAppAuthRequiredError("Web app settings not found.")
-
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
                 raise WebAppAuthAccessDeniedError()
-
         auth_type = decoded.get("auth_type")
         granted_at = decoded.get("granted_at")
         if not auth_type:

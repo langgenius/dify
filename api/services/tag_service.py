@@ -70,7 +70,6 @@ class TagService:
             )
             .all()
         )
-
         return tags or []
 
     @staticmethod

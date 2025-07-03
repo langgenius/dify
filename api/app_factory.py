@@ -93,7 +93,6 @@ def initialize_extensions(app: DifyApp):
             if dify_config.DEBUG:
                 logging.info(f"Skipped {short_name}")
             continue
-
         start_time = time.perf_counter()
         ext.init_app(app)
         end_time = time.perf_counter()
@@ -108,5 +107,4 @@ def create_migrations_app():
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
-
     return app

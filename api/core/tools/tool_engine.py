@@ -75,11 +75,9 @@ class ToolEngine:
                     pass
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
-
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
-
             messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
@@ -98,20 +96,15 @@ class ToolEngine:
                 tenant_id=tenant_id,
                 conversation_id=message.conversation_id,
             )
-
             message_list = list(messages)
-
             # extract binary data from tool invoke message
             binary_files = ToolEngine._extract_tool_response_binary_and_text(message_list)
             # create message file
             message_files = ToolEngine._create_message_files(
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
             )
-
             plain_text = ToolEngine._convert_tool_response_to_str(message_list)
-
             meta = invocation_meta_dict["meta"]
-
             # hit the callback handler
             agent_tool_callback.on_tool_end(
                 tool_name=tool.entity.identity.name,
@@ -120,7 +113,6 @@ class ToolEngine:
                 message_id=message.id,
                 trace_manager=trace_manager,
             )
-
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta
         except ToolProviderCredentialValidationError as e:
@@ -143,7 +135,6 @@ class ToolEngine:
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
-
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod
@@ -164,14 +155,11 @@ class ToolEngine:
         try:
             # hit the callback handler
             workflow_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
-
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
                 tool.thread_pool_id = thread_pool_id
-
             if tool.runtime and tool.runtime.runtime_parameters:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
-
             response = tool.invoke(
                 user_id=user_id,
                 tool_parameters=tool_parameters,
@@ -179,14 +167,12 @@ class ToolEngine:
                 app_id=app_id,
                 message_id=message_id,
             )
-
             # hit the callback handler
             response = workflow_tool_callback.on_tool_execution(
                 tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
             )
-
             return response
         except Exception as e:
             workflow_tool_callback.on_tool_error(e)
@@ -251,7 +237,6 @@ class ToolEngine:
                 )
             else:
                 result += str(response.message)
-
         return result
 
     @staticmethod
@@ -277,10 +262,8 @@ class ToolEngine:
                             mimetype = guess_type_result
                     except Exception:
                         pass
-
                 if not mimetype:
                     mimetype = "image/jpeg"
-
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "image/jpeg"),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
@@ -288,7 +271,6 @@ class ToolEngine:
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if not response.meta:
                     raise ValueError("missing meta data")
-
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "application/octet-stream"),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
@@ -312,11 +294,9 @@ class ToolEngine:
     ) -> list[str]:
         """
         Create message file
-
         :return: message file ids
         """
         result = []
-
         for message in tool_messages:
             if "image" in message.mimetype:
                 file_type = FileType.IMAGE
@@ -328,7 +308,6 @@ class ToolEngine:
                 file_type = FileType.DOCUMENT
             else:
                 file_type = FileType.CUSTOM
-
             # extract tool file id from url
             tool_file_id = message.url.split("/")[-1].split(".")[0]
             message_file = MessageFile(
@@ -345,13 +324,9 @@ class ToolEngine:
                 ),
                 created_by=user_id,
             )
-
             db.session.add(message_file)
             db.session.commit()
             db.session.refresh(message_file)
-
             result.append(message_file.id)
-
         db.session.close()
-
         return result

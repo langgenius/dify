@@ -90,6 +90,18 @@ dependencies = [
 [tool.setuptools]
 packages = []
 
+[tool.ruff]
+line-length = 120
+extend-exclude = [
+    "**/migrations/versions/*.py",
+]
+
+[tool.ruff.format]
+# The following option is used to control whether to add a trailing comma to the last
+# item of a multi-line expression. It's set to true to avoid ruff and editorconfig's
+# conflict on the final newline.
+skip-magic-trailing-comma = true
+
 [tool.uv]
 default-groups = ["storage", "tools", "vdb"]
 package = false

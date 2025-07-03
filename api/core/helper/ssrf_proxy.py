@@ -10,7 +10,6 @@ import httpx
 from configs import dify_config
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
-
 HTTP_REQUEST_NODE_SSL_VERIFY = True  # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
 try:
     HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
@@ -23,7 +22,6 @@ try:
         raise ValueError("Invalid value. HTTP_REQUEST_NODE_SSL_VERIFY should be 'True' or 'False'")
 except NameError:
     HTTP_REQUEST_NODE_SSL_VERIFY = True
-
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
@@ -39,7 +37,6 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:
             kwargs["follow_redirects"] = allow_redirects
-
     if "timeout" not in kwargs:
         kwargs["timeout"] = httpx.Timeout(
             timeout=dify_config.SSRF_DEFAULT_TIME_OUT,
@@ -47,12 +44,9 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             read=dify_config.SSRF_DEFAULT_READ_TIME_OUT,
             write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
         )
-
     if "ssl_verify" not in kwargs:
         kwargs["ssl_verify"] = HTTP_REQUEST_NODE_SSL_VERIFY
-
     ssl_verify = kwargs.pop("ssl_verify")
-
     retries = 0
     while retries <= max_retries:
         try:
@@ -69,17 +63,14 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             else:
                 with httpx.Client(verify=ssl_verify) as client:
                     response = client.request(method=method, url=url, **kwargs)
-
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
                 logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
-
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
             if max_retries == 0:
                 raise
-
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))

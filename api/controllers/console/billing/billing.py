@@ -17,9 +17,7 @@ class Subscription(Resource):
         parser.add_argument("plan", type=str, required=True, location="args", choices=["professional", "team"])
         parser.add_argument("interval", type=str, required=True, location="args", choices=["month", "year"])
         args = parser.parse_args()
-
         BillingService.is_tenant_owner_or_admin(current_user)
-
         return BillingService.get_subscription(
             args["plan"], args["interval"], current_user.email, current_user.current_tenant_id
         )

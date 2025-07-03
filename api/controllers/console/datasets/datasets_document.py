@@ -60,37 +60,28 @@ class DocumentResource(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         document = DocumentService.get_document(dataset_id, document_id)
-
         if not document:
             raise NotFound("Document not found.")
-
         if document.tenant_id != current_user.current_tenant_id:
             raise Forbidden("No permission.")
-
         return document
 
     def get_batch_documents(self, dataset_id: str, batch: str) -> list[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         documents = DocumentService.get_batch_documents(dataset_id, batch)
-
         if not documents:
             raise NotFound("Documents not found.")
-
         return documents
 
 
@@ -100,9 +91,7 @@ class GetProcessRuleApi(Resource):
     @account_initialization_required
     def get(self):
         req_data = request.args
-
         document_id = req_data.get("document_id")
-
         # get default rules
         mode = DocumentService.DEFAULT_RULES["mode"]
         rules = DocumentService.DEFAULT_RULES["rules"]
@@ -110,17 +99,13 @@ class GetProcessRuleApi(Resource):
         if document_id:
             # get the latest process rule
             document = db.get_or_404(Document, document_id)
-
             dataset = DatasetService.get_dataset(document.dataset_id)
-
             if not dataset:
                 raise NotFound("Dataset not found.")
-
             try:
                 DatasetService.check_dataset_permission(dataset, current_user)
             except services.errors.account.NoPermissionError as e:
                 raise Forbidden(str(e))
-
             # get the latest process rule
             dataset_process_rule = (
                 db.session.query(DatasetProcessRule)
@@ -132,7 +117,6 @@ class GetProcessRuleApi(Resource):
             if dataset_process_rule:
                 mode = dataset_process_rule.mode
                 rules = dataset_process_rule.rules_dict
-
         return {"mode": mode, "rules": rules, "limits": limits}
 
 
@@ -166,31 +150,25 @@ class DatasetDocumentListApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_user.current_tenant_id)
-
         if search:
             search = f"%{search}%"
             query = query.filter(Document.name.like(search))
-
         if sort.startswith("-"):
             sort_logic = desc
             sort = sort[1:]
         else:
             sort_logic = asc
-
         if sort == "hit_count":
             sub_query = (
                 db.select(DocumentSegment.document_id, db.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
                 .group_by(DocumentSegment.document_id)
                 .subquery()
             )
-
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
                 sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
                 sort_logic(Document.position),
@@ -205,7 +183,6 @@ class DatasetDocumentListApi(Resource):
                 desc(Document.created_at),
                 desc(Document.position),
             )
-
         paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
         if fetch:
@@ -236,7 +213,6 @@ class DatasetDocumentListApi(Resource):
             "total": paginated_documents.total,
             "page": page,
         }
-
         return response
 
     @setup_required
@@ -247,21 +223,16 @@ class DatasetDocumentListApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
         dataset_id = str(dataset_id)
-
         dataset = DatasetService.get_dataset(dataset_id)
-
         if not dataset:
             raise NotFound("Dataset not found.")
-
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
@@ -279,24 +250,19 @@ class DatasetDocumentListApi(Resource):
         )
         args = parser.parse_args()
         knowledge_config = KnowledgeConfig(**args)
-
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
-
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
             dataset = DatasetService.get_dataset(dataset_id)
-
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-
         return {"dataset": dataset, "documents": documents, "batch": batch}
 
     @setup_required
@@ -310,13 +276,11 @@ class DatasetDocumentListApi(Resource):
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-
         try:
             document_ids = request.args.getlist("document_id")
             DocumentService.delete_documents(dataset, document_ids)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
-
         return {"result": "success"}, 204
 
 
@@ -331,7 +295,6 @@ class DatasetInitApi(Resource):
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "indexing_technique",
@@ -351,7 +314,6 @@ class DatasetInitApi(Resource):
         parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
-
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -373,10 +335,8 @@ class DatasetInitApi(Resource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
-
         try:
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
                 tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
@@ -387,9 +347,7 @@ class DatasetInitApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-
         response = {"dataset": dataset, "documents": documents, "batch": batch}
-
         return response
 
 
@@ -401,36 +359,27 @@ class DocumentIndexingEstimateApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
-
         if document.indexing_status in {"completed", "error"}:
             raise DocumentAlreadyFinishedError()
-
         data_process_rule = document.dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
-
         response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
-
         if document.data_source_type == "upload_file":
             data_source_info = document.data_source_info_dict
             if data_source_info and "upload_file_id" in data_source_info:
                 file_id = data_source_info["upload_file_id"]
-
                 file = (
                     db.session.query(UploadFile)
                     .filter(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
                     .first()
                 )
-
                 # raise error if file not found
                 if not file:
                     raise NotFound("File not found.")
-
                 extract_setting = ExtractSetting(
                     datasource_type="upload_file", upload_file=file, document_model=document.doc_form
                 )
-
                 indexing_runner = IndexingRunner()
-
                 try:
                     estimate_response = indexing_runner.indexing_estimate(
                         current_user.current_tenant_id,
@@ -452,7 +401,6 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise ProviderNotInitializeError(ex.description)
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
-
         return response, 200
 
 
@@ -487,7 +435,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 pages.append(page)
                 notion_info = {"workspace_id": data_source_info["notion_workspace_id"], "pages": pages}
                 info_list.append(notion_info)
-
             if document.data_source_type == "upload_file":
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
@@ -495,15 +442,12 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     .filter(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id == file_id)
                     .first()
                 )
-
                 if file_detail is None:
                     raise NotFound("File not found.")
-
                 extract_setting = ExtractSetting(
                     datasource_type="upload_file", upload_file=file_detail, document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
-
             elif document.data_source_type == "notion_import":
                 extract_setting = ExtractSetting(
                     datasource_type="notion_import",
@@ -530,7 +474,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
-
             else:
                 raise ValueError("Data source type not support")
             indexing_runner = IndexingRunner()
@@ -608,7 +551,6 @@ class DocumentIndexingStatusApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
-
         completed_segments = (
             db.session.query(DocumentSegment)
             .filter(
@@ -623,7 +565,6 @@ class DocumentIndexingStatusApi(DocumentResource):
             .filter(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
             .count()
         )
-
         # Create a dictionary with document attributes and additional fields
         document_dict = {
             "id": document.id,
@@ -652,11 +593,9 @@ class DocumentDetailApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
-
         metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
-
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
@@ -727,7 +666,6 @@ class DocumentDetailApi(DocumentResource):
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
             }
-
         return response, 200
 
 
@@ -740,31 +678,25 @@ class DocumentProcessingApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
-
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         if action == "pause":
             if document.indexing_status != "indexing":
                 raise InvalidActionError("Document not in indexing state.")
-
             document.paused_by = current_user.id
             document.paused_at = datetime.now(UTC).replace(tzinfo=None)
             document.is_paused = True
             db.session.commit()
-
         elif action == "resume":
             if document.indexing_status not in {"paused", "error"}:
                 raise InvalidActionError("Document not in paused or error state.")
-
             document.paused_by = None
             document.paused_at = None
             document.is_paused = False
             db.session.commit()
         else:
             raise InvalidActionError()
-
         return {"result": "success"}, 200
 
 
@@ -781,14 +713,11 @@ class DocumentDeleteApi(DocumentResource):
             raise NotFound("Dataset not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-
         document = self.get_document(dataset_id, document_id)
-
         try:
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
-
         return {"result": "success"}, 204
 
 
@@ -800,26 +729,19 @@ class DocumentMetadataApi(DocumentResource):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
-
         req_data = request.get_json()
-
         doc_type = req_data.get("doc_type")
         doc_metadata = req_data.get("doc_metadata")
-
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         if doc_type is None or doc_metadata is None:
             raise ValueError("Both doc_type and doc_metadata must be provided.")
-
         if doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
             raise ValueError("Invalid doc_type.")
-
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
         metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
-
         document.doc_metadata = {}
         if doc_type == "others":
             document.doc_metadata = doc_metadata
@@ -828,11 +750,9 @@ class DocumentMetadataApi(DocumentResource):
                 value = doc_metadata.get(key)
                 if value is not None and isinstance(value, value_type):
                     document.doc_metadata[key] = value
-
         document.doc_type = doc_type
         document.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return {"result": "success", "message": "Document metadata updated."}, 200
 
 
@@ -847,19 +767,14 @@ class DocumentStatusApi(DocumentResource):
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-
         # check user's permission
         DatasetService.check_dataset_permission(dataset, current_user)
-
         document_ids = request.args.getlist("document_id")
-
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
         except services.errors.document.DocumentIndexingError as e:
@@ -868,7 +783,6 @@ class DocumentStatusApi(DocumentResource):
             raise InvalidActionError(str(e))
         except NotFound as e:
             raise NotFound(str(e))
-
         return {"result": "success"}, 200
 
 
@@ -881,27 +795,21 @@ class DocumentPauseApi(DocumentResource):
         """pause document."""
         dataset_id = str(dataset_id)
         document_id = str(document_id)
-
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
-
         document = DocumentService.get_document(dataset.id, document_id)
-
         # 404 if document not found
         if document is None:
             raise NotFound("Document Not Exists.")
-
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
-
         try:
             # pause document
             DocumentService.pause_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot pause completed document.")
-
         return {"result": "success"}, 204
 
 
@@ -918,11 +826,9 @@ class DocumentRecoverApi(DocumentResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         document = DocumentService.get_document(dataset.id, document_id)
-
         # 404 if document not found
         if document is None:
             raise NotFound("Document Not Exists.")
-
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
@@ -931,7 +837,6 @@ class DocumentRecoverApi(DocumentResource):
             DocumentService.recover_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Document is not in paused status.")
-
         return {"result": "success"}, 204
 
 
@@ -942,7 +847,6 @@ class DocumentRetryApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
         """retry document."""
-
         parser = reqparse.RequestParser()
         parser.add_argument("document_ids", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -954,17 +858,13 @@ class DocumentRetryApi(DocumentResource):
         for document_id in args["document_ids"]:
             try:
                 document_id = str(document_id)
-
                 document = DocumentService.get_document(dataset.id, document_id)
-
                 # 404 if document not found
                 if document is None:
                     raise NotFound("Document Not Exists.")
-
                 # 403 if document is archived
                 if DocumentService.check_archived(document):
                     raise ArchivedDocumentImmutableError()
-
                 # 400 if document is completed
                 if document.indexing_status == "completed":
                     raise DocumentAlreadyFinishedError()
@@ -974,7 +874,6 @@ class DocumentRetryApi(DocumentResource):
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
-
         return {"result": "success"}, 204
 
 
@@ -992,12 +891,10 @@ class DocumentRenameApi(DocumentResource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         try:
             document = DocumentService.rename_document(dataset_id, document_id, args["name"])
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
-
         return document
 
 
@@ -1024,7 +921,6 @@ class WebsiteDocumentSyncApi(DocumentResource):
             raise ArchivedDocumentImmutableError()
         # sync document
         DocumentService.sync_website_document(dataset_id, document)
-
         return {"result": "success"}, 200
 
 
@@ -1048,5 +944,4 @@ api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:
 api.add_resource(DocumentRecoverApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")
 api.add_resource(DocumentRenameApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
-
 api.add_resource(WebsiteDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")

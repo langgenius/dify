@@ -22,7 +22,6 @@ class VectorService:
         cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents: list[Document] = []
-
         for segment in segments:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
                 dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
@@ -45,7 +44,6 @@ class VectorService:
                 if dataset.indexing_technique == "high_quality":
                     # check embedding model setting
                     model_manager = ModelManager()
-
                     if dataset.embedding_model_provider:
                         embedding_model_instance = model_manager.get_model_instance(
                             tenant_id=dataset.tenant_id,
@@ -81,7 +79,6 @@ class VectorService:
     @classmethod
     def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
         # update segment index task
-
         # format new index
         document = Document(
             page_content=segment.content,
@@ -101,7 +98,6 @@ class VectorService:
             # update keyword index
             keyword = Keyword(dataset)
             keyword.delete_by_ids([segment.index_node_id])
-
             # save keyword index
             if keywords and len(keywords) > 0:
                 keyword.add_texts([document], keywords_list=[keywords])
@@ -122,7 +118,6 @@ class VectorService:
         if regenerate:
             # delete child chunks
             index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
-
         # generate child chunks
         document = Document(
             page_content=segment.content,
@@ -146,7 +141,6 @@ class VectorService:
         # save child chunks
         if documents and documents[0].children:
             index_processor.load(dataset, documents)
-
             for position, child_chunk in enumerate(documents[0].children, start=1):
                 child_segment = ChildChunk(
                     tenant_id=dataset.tenant_id,

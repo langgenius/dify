@@ -23,7 +23,6 @@ api_key_fields = {
     "last_used_at": TimestampField,
     "created_at": TimestampField,
 }
-
 api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
 
 
@@ -38,16 +37,13 @@ def _get_resource(resource_id, tenant_id, resource_model):
             resource = session.execute(
                 select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
             ).scalar_one_or_none()
-
     if resource is None:
         flask_restful.abort(404, message=f"{resource_model.__name__} not found.")
-
     return resource
 
 
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
-
     resource_type: str | None = None
     resource_model: Any = None
     resource_id_field: str | None = None
@@ -73,20 +69,17 @@ class BaseApiKeyListResource(Resource):
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         if not current_user.is_editor:
             raise Forbidden()
-
         current_key_count = (
             db.session.query(ApiToken)
             .filter(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
             .count()
         )
-
         if current_key_count >= self.max_keys:
             flask_restful.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
             )
-
         key = ApiToken.generate_api_key(self.token_prefix, 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
@@ -100,7 +93,6 @@ class BaseApiKeyListResource(Resource):
 
 class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
-
     resource_type: str | None = None
     resource_model: Any = None
     resource_id_field: str | None = None
@@ -110,11 +102,9 @@ class BaseApiKeyResource(Resource):
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
         key = (
             db.session.query(ApiToken)
             .filter(
@@ -124,13 +114,10 @@ class BaseApiKeyResource(Resource):
             )
             .first()
         )
-
         if key is None:
             flask_restful.abort(404, message="API key not found")
-
         db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
         db.session.commit()
-
         return {"result": "success"}, 204
 
 

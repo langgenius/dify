@@ -52,22 +52,16 @@ class FileApi(Resource):
         file = request.files["file"]
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
-
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
-
         if not file.filename:
             raise FilenameNotExistsError
-
         if source == "datasets" and not current_user.is_dataset_editor:
             raise Forbidden()
-
         if source not in ("datasets", None):
             source = None
-
         try:
             upload_file = FileService.upload_file(
                 filename=file.filename,
@@ -80,7 +74,6 @@ class FileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return upload_file, 201
 
 

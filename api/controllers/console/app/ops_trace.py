@@ -20,7 +20,6 @@ class TraceAppConfigApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("tracing_provider", type=str, required=True, location="args")
         args = parser.parse_args()
-
         try:
             trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])
             if not trace_config:
@@ -38,7 +37,6 @@ class TraceAppConfigApi(Resource):
         parser.add_argument("tracing_provider", type=str, required=True, location="json")
         parser.add_argument("tracing_config", type=dict, required=True, location="json")
         args = parser.parse_args()
-
         try:
             result = OpsService.create_tracing_app_config(
                 app_id=app_id, tracing_provider=args["tracing_provider"], tracing_config=args["tracing_config"]
@@ -60,7 +58,6 @@ class TraceAppConfigApi(Resource):
         parser.add_argument("tracing_provider", type=str, required=True, location="json")
         parser.add_argument("tracing_config", type=dict, required=True, location="json")
         args = parser.parse_args()
-
         try:
             result = OpsService.update_tracing_app_config(
                 app_id=app_id, tracing_provider=args["tracing_provider"], tracing_config=args["tracing_config"]
@@ -79,7 +76,6 @@ class TraceAppConfigApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("tracing_provider", type=str, required=True, location="args")
         args = parser.parse_args()
-
         try:
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])
             if not result:

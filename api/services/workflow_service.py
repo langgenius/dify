@@ -96,7 +96,6 @@ class WorkflowService:
             )
             .first()
         )
-
         # return draft workflow
         return workflow
 
@@ -121,10 +120,8 @@ class WorkflowService:
         """
         Get published workflow
         """
-
         if not app_model.workflow_id:
             return None
-
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
@@ -135,7 +132,6 @@ class WorkflowService:
             )
             .first()
         )
-
         return workflow
 
     def get_all_published_workflow(
@@ -153,7 +149,6 @@ class WorkflowService:
         """
         if not app_model.workflow_id:
             return [], False
-
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
@@ -161,19 +156,14 @@ class WorkflowService:
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )
-
         if user_id:
             stmt = stmt.where(Workflow.created_by == user_id)
-
         if named_only:
             stmt = stmt.where(Workflow.marked_name != "")
-
         workflows = session.scalars(stmt).all()
-
         has_more = len(workflows) > limit
         if has_more:
             workflows = workflows[:-1]
-
         return workflows, has_more
 
     def sync_draft_workflow(
@@ -193,13 +183,10 @@ class WorkflowService:
         """
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
-
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
-
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
-
         # create draft workflow if not found
         if not workflow:
             workflow = Workflow(
@@ -222,13 +209,10 @@ class WorkflowService:
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
-
         # commit db session changes
         db.session.commit()
-
         # trigger app workflow events
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
-
         # return draft workflow
         return workflow
 
@@ -249,7 +233,6 @@ class WorkflowService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
-
         # create new workflow
         workflow = Workflow.new(
             tenant_id=app_model.tenant_id,
@@ -264,13 +247,10 @@ class WorkflowService:
             marked_name=marked_name,
             marked_comment=marked_comment,
         )
-
         # commit db session changes
         session.add(workflow)
-
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
-
         # return new workflow
         return workflow
 
@@ -285,7 +265,6 @@ class WorkflowService:
             default_config = node_class.get_default_config()
             if default_config:
                 default_block_configs.append(default_config)
-
         return default_block_configs
 
     def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
@@ -296,16 +275,13 @@ class WorkflowService:
         :return:
         """
         node_type_enum = NodeType(node_type)
-
         # return default block config
         if node_type_enum not in NODE_TYPE_CLASSES_MAPPING:
             return None
-
         node_class = NODE_TYPE_CLASSES_MAPPING[node_type_enum][LATEST_VERSION]
         default_config = node_class.get_default_config(filters=filters)
         if not default_config:
             return None
-
         return default_config
 
     def run_draft_workflow_node(
@@ -322,11 +298,9 @@ class WorkflowService:
         Run draft workflow node
         """
         files = files or []
-
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
-
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config.get("data", {})
@@ -354,7 +328,6 @@ class WorkflowService:
                     node_type=node_type,
                     conversation_id=conversation_id,
                 )
-
         else:
             variable_pool = VariablePool(
                 system_variables={},
@@ -362,19 +335,16 @@ class WorkflowService:
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
             )
-
         variable_loader = DraftVarLoader(
             engine=db.engine,
             app_id=app_model.id,
             tenant_id=app_model.tenant_id,
         )
-
         eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
         if eclosing_node_type_and_id:
             _, enclosing_node_id = eclosing_node_type_and_id
         else:
             enclosing_node_id = None
-
         run = WorkflowEntry.single_step_run(
             workflow=draft_workflow,
             node_id=node_id,
@@ -383,7 +353,6 @@ class WorkflowService:
             variable_pool=variable_pool,
             variable_loader=variable_loader,
         )
-
         # run draft workflow node
         start_at = time.perf_counter()
         node_execution = self._handle_node_run_result(
@@ -391,10 +360,8 @@ class WorkflowService:
             start_at=start_at,
             node_id=node_id,
         )
-
         # Set workflow_id on the NodeExecution
         node_execution.workflow_id = draft_workflow.id
-
         # Create repository and save the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=db.engine,
@@ -403,10 +370,8 @@ class WorkflowService:
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         repository.save(node_execution)
-
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution = repository.to_db_model(node_execution)
-
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
                 session=session,
@@ -428,7 +393,6 @@ class WorkflowService:
         """
         # run draft workflow node
         start_at = time.perf_counter()
-
         workflow_node_execution = self._handle_node_run_result(
             invoke_node_fn=lambda: WorkflowEntry.run_free_node(
                 node_id=node_id,
@@ -440,7 +404,6 @@ class WorkflowService:
             start_at=start_at,
             node_id=node_id,
         )
-
         return workflow_node_execution
 
     def _handle_node_run_result(
@@ -451,16 +414,13 @@ class WorkflowService:
     ) -> WorkflowNodeExecution:
         try:
             node_instance, generator = invoke_node_fn()
-
             node_run_result: NodeRunResult | None = None
             for event in generator:
                 if isinstance(event, RunCompletedEvent):
                     node_run_result = event.run_result
-
                     # sign output files
                     # node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
                     break
-
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
@@ -498,7 +458,6 @@ class WorkflowService:
             run_succeeded = False
             node_run_result = None
             error = e.error
-
         # Create a NodeExecution domain model
         node_execution = WorkflowNodeExecution(
             id=str(uuid4()),
@@ -511,7 +470,6 @@ class WorkflowService:
             created_at=datetime.now(UTC).replace(tzinfo=None),
             finished_at=datetime.now(UTC).replace(tzinfo=None),
         )
-
         if run_succeeded and node_run_result:
             # Set inputs, process_data, and outputs as dictionaries (not JSON strings)
             inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
@@ -521,12 +479,10 @@ class WorkflowService:
                 else None
             )
             outputs = node_run_result.outputs
-
             node_execution.inputs = inputs
             node_execution.process_data = process_data
             node_execution.outputs = outputs
             node_execution.metadata = node_run_result.metadata
-
             # Map status from WorkflowNodeExecutionStatus to NodeExecutionStatus
             if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                 node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
@@ -537,14 +493,12 @@ class WorkflowService:
             # Set failed status and error
             node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
-
         return node_execution
 
     def convert_to_workflow(self, app_model: App, account: Account, args: dict) -> App:
         """
         Basic mode of chatbot app(expert mode) to workflow
         Completion App to Workflow App
-
         :param app_model: App instance
         :param account: Account instance
         :param args: dict
@@ -552,10 +506,8 @@ class WorkflowService:
         """
         # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
-
         if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
-
         # convert to workflow
         new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
@@ -565,7 +517,6 @@ class WorkflowService:
             icon=args.get("icon", "🤖"),
             icon_background=args.get("icon_background", "#FFEAD5"),
         )
-
         return new_app
 
     def validate_features_structure(self, app_model: App, features: dict) -> dict:
@@ -585,7 +536,6 @@ class WorkflowService:
     ) -> Optional[Workflow]:
         """
         Update workflow attributes
-
         :param session: SQLAlchemy database session
         :param workflow_id: Workflow ID
         :param tenant_id: Tenant ID
@@ -595,25 +545,19 @@ class WorkflowService:
         """
         stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
         workflow = session.scalar(stmt)
-
         if not workflow:
             return None
-
         allowed_fields = ["marked_name", "marked_comment"]
-
         for field, value in data.items():
             if field in allowed_fields:
                 setattr(workflow, field, value)
-
         workflow.updated_by = account_id
         workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-
         return workflow
 
     def delete_workflow(self, *, session: Session, workflow_id: str, tenant_id: str) -> bool:
         """
         Delete a workflow
-
         :param session: SQLAlchemy database session
         :param workflow_id: Workflow ID
         :param tenant_id: Tenant ID
@@ -624,21 +568,17 @@ class WorkflowService:
         """
         stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
         workflow = session.scalar(stmt)
-
         if not workflow:
             raise ValueError(f"Workflow with ID {workflow_id} not found")
-
         # Check if workflow is a draft version
         if workflow.version == "draft":
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
-
         # Check if this workflow is currently referenced by an app
         app_stmt = select(App).where(App.workflow_id == workflow_id)
         app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app
             raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.id}'")
-
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version
         tool_provider = (
@@ -650,11 +590,9 @@ class WorkflowService:
             )
             .first()
         )
-
         if tool_provider:
             # Cannot delete a workflow that's published as a tool
             raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
-
         session.delete(workflow)
         return True
 
@@ -682,7 +620,6 @@ def _setup_variable_pool(
             # Randomly generated.
             SystemVariableKey.WORKFLOW_EXECUTION_ID: str(uuid.uuid4()),
         }
-
         # Only add chatflow-specific variables for non-workflow types
         if workflow.type != WorkflowType.WORKFLOW.value:
             system_inputs.update(
@@ -694,7 +631,6 @@ def _setup_variable_pool(
             )
     else:
         system_inputs = {}
-
     # init variable pool
     variable_pool = VariablePool(
         system_variables=system_inputs,
@@ -702,7 +638,6 @@ def _setup_variable_pool(
         environment_variables=workflow.environment_variables,
         conversation_variables=conversation_variables,
     )
-
     return variable_pool
 
 
@@ -710,7 +645,6 @@ def _rebuild_file_for_user_inputs_in_start_node(
     tenant_id: str, start_node_data: StartNodeData, user_inputs: Mapping[str, Any]
 ) -> Mapping[str, Any]:
     inputs_copy = dict(user_inputs)
-
     for variable in start_node_data.variables:
         if variable.type not in (VariableEntityType.FILE, VariableEntityType.FILE_LIST):
             continue

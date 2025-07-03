@@ -57,10 +57,8 @@ class LLMUsage(ModelUsage):
     def from_metadata(cls, metadata: dict) -> "LLMUsage":
         """
         Create LLMUsage instance from metadata dictionary with default values.
-
         Args:
             metadata: Dictionary containing usage metadata
-
         Returns:
             LLMUsage instance with values from metadata or defaults
         """
@@ -68,7 +66,6 @@ class LLMUsage(ModelUsage):
         completion_tokens = metadata.get("completion_tokens", 0)
         if total_tokens > 0 and completion_tokens == 0:
             completion_tokens = total_tokens
-
         return cls(
             prompt_tokens=metadata.get("prompt_tokens", 0),
             completion_tokens=completion_tokens,
@@ -87,7 +84,6 @@ class LLMUsage(ModelUsage):
     def plus(self, other: "LLMUsage") -> "LLMUsage":
         """
         Add two LLMUsage instances together.
-
         :param other: Another LLMUsage instance to add
         :return: A new LLMUsage instance with summed values
         """
@@ -112,7 +108,6 @@ class LLMUsage(ModelUsage):
     def __add__(self, other: "LLMUsage") -> "LLMUsage":
         """
         Overload the + operator to add two LLMUsage instances.
-
         :param other: Another LLMUsage instance to add
         :return: A new LLMUsage instance with summed values
         """

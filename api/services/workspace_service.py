@@ -21,7 +21,6 @@ class WorkspaceService:
             "trial_end_reason": None,
             "role": "normal",
         }
-
         # Get role of user
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
@@ -30,9 +29,7 @@ class WorkspaceService:
         )
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
-
         can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo
-
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL
             replace_webapp_logo = (
@@ -41,10 +38,8 @@ class WorkspaceService:
                 else None
             )
             remove_webapp_brand = tenant.custom_config_dict.get("remove_webapp_brand", False)
-
             tenant_info["custom_config"] = {
                 "remove_webapp_brand": remove_webapp_brand,
                 "replace_webapp_logo": replace_webapp_logo,
             }
-
         return tenant_info

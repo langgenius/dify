@@ -14,19 +14,14 @@ class FileApi(WebApiResource):
     def post(self, app_model, end_user):
         file = request.files["file"]
         source = request.form.get("source")
-
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
-
         if not file.filename:
             raise FilenameNotExistsError
-
         if source not in ("datasets", None):
             source = None
-
         try:
             upload_file = FileService.upload_file(
                 filename=file.filename,
@@ -39,5 +34,4 @@ class FileApi(WebApiResource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return upload_file, 201

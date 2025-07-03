@@ -36,7 +36,6 @@ from services.workflow_draft_variable_service import WorkflowDraftVariableServic
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
-
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
@@ -77,19 +76,15 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
         imported_ver = version.parse(imported_version)
     except version.InvalidVersion:
         return ImportStatus.FAILED
-
     # If imported version is newer than current, always return PENDING
     if imported_ver > current_ver:
         return ImportStatus.PENDING
-
     # If imported version is older than current's major, return PENDING
     if imported_ver.major < current_ver.major:
         return ImportStatus.PENDING
-
     # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
     if imported_ver.minor < current_ver.minor:
         return ImportStatus.COMPLETED_WITH_WARNINGS
-
     # If imported version equals or is older than current's micro, return COMPLETED
     return ImportStatus.COMPLETED
 
@@ -130,13 +125,11 @@ class AppDslService:
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
-
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
         except ValueError:
             raise ValueError(f"Invalid import_mode: {import_mode}")
-
         # Get YAML content
         content: str = ""
         if mode == ImportMode.YAML_URL:
@@ -158,14 +151,12 @@ class AppDslService:
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
-
                 if len(content) > DSL_MAX_SIZE:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="File size exceeds the limit of 10MB",
                     )
-
                 if not content:
                     return Import(
                         id=import_id,
@@ -186,7 +177,6 @@ class AppDslService:
                     error="yaml_content is required when import_mode is yaml-content",
                 )
             content = yaml_content
-
         # Process YAML content
         try:
             # Parse YAML to validate format
@@ -197,19 +187,16 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="Invalid YAML format: content must be a mapping",
                 )
-
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
             if not data.get("kind") or data.get("kind") != "app":
                 data["kind"] = "app"
-
             imported_version = data.get("version", "0.1.0")
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = _check_version_compatibility(imported_version)
-
             # Extract app data
             app_data = data.get("app")
             if not app_data:
@@ -218,27 +205,23 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="Missing app data in YAML content",
                 )
-
             # If app_id is provided, check if it exists
             app = None
             if app_id:
                 stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
                 app = self._session.scalar(stmt)
-
                 if not app:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="App not found",
                     )
-
                 if app.mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="Only workflow or advanced chat apps can be overwritten",
                     )
-
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 pending_data = PendingData(
@@ -256,14 +239,12 @@ class AppDslService:
                     IMPORT_INFO_REDIS_EXPIRY,
                     pending_data.model_dump_json(),
                 )
-
                 return Import(
                     id=import_id,
                     status=status,
                     app_id=app_id,
                     imported_dsl_version=imported_version,
                 )
-
             # Extract dependencies
             dependencies = data.get("dependencies", [])
             check_dependencies_pending_data = None
@@ -275,11 +256,9 @@ class AppDslService:
                     dependencies_list = self._extract_dependencies_from_workflow_graph(graph)
                 else:
                     dependencies_list = self._extract_dependencies_from_model_config(data.get("model_config", {}))
-
                 check_dependencies_pending_data = DependenciesAnalysisService.generate_latest_dependencies(
                     dependencies_list
                 )
-
             # Create or update app
             app = self._create_or_update_app(
                 app=app,
@@ -292,7 +271,6 @@ class AppDslService:
                 icon_background=icon_background,
                 dependencies=check_dependencies_pending_data,
             )
-
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
             draft_var_srv.delete_workflow_variables(app_id=app.id)
             return Import(
@@ -302,14 +280,12 @@ class AppDslService:
                 app_mode=app.mode,
                 imported_dsl_version=imported_version,
             )
-
         except yaml.YAMLError as e:
             return Import(
                 id=import_id,
                 status=ImportStatus.FAILED,
                 error=f"Invalid YAML format: {str(e)}",
             )
-
         except Exception as e:
             logger.exception("Failed to import app")
             return Import(
@@ -324,14 +300,12 @@ class AppDslService:
         """
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data = redis_client.get(redis_key)
-
         if not pending_data:
             return Import(
                 id=import_id,
                 status=ImportStatus.FAILED,
                 error="Import information expired or does not exist",
             )
-
         try:
             if not isinstance(pending_data, str | bytes):
                 return Import(
@@ -341,12 +315,10 @@ class AppDslService:
                 )
             pending_data = PendingData.model_validate_json(pending_data)
             data = yaml.safe_load(pending_data.yaml_content)
-
             app = None
             if pending_data.app_id:
                 stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
                 app = self._session.scalar(stmt)
-
             # Create or update app
             app = self._create_or_update_app(
                 app=app,
@@ -358,10 +330,8 @@ class AppDslService:
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
             )
-
             # Delete import info from Redis
             redis_client.delete(redis_key)
-
             return Import(
                 id=import_id,
                 status=ImportStatus.COMPLETED,
@@ -370,7 +340,6 @@ class AppDslService:
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
-
         except Exception as e:
             logger.exception("Error confirming import")
             return Import(
@@ -390,10 +359,8 @@ class AppDslService:
         dependencies = redis_client.get(redis_key)
         if not dependencies:
             return CheckDependenciesResult()
-
         # Extract dependencies
         dependencies = CheckDependenciesPendingData.model_validate_json(dependencies)
-
         # Get leaked dependencies
         leaked_dependencies = DependenciesAnalysisService.get_leaked_dependencies(
             tenant_id=app_model.tenant_id, dependencies=dependencies.dependencies
@@ -421,7 +388,6 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
-
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         if icon_type_value in ["emoji", "link", "image"]:
@@ -429,7 +395,6 @@ class AppDslService:
         else:
             icon_type = "emoji"
         icon = icon or str(app_data.get("icon", ""))
-
         if app:
             # Update existing app
             app.name = name or app_data.get("name", app.name)
@@ -441,7 +406,6 @@ class AppDslService:
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
-
             # Create new app
             app = App()
             app.id = str(uuid4())
@@ -457,11 +421,9 @@ class AppDslService:
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
             app.updated_by = account.id
-
             self._session.add(app)
             self._session.commit()
             app_was_created.send(app, account=account)
-
         # save dependencies
         if dependencies:
             redis_client.setex(
@@ -469,13 +431,11 @@ class AppDslService:
                 IMPORT_INFO_REDIS_EXPIRY,
                 CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
             )
-
         # Initialize app based on mode
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow_data = data.get("workflow")
             if not workflow_data or not isinstance(workflow_data, dict):
                 raise ValueError("Missing workflow data for workflow/advanced chat app")
-
             environment_variables_list = workflow_data.get("environment_variables", [])
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
@@ -484,7 +444,6 @@ class AppDslService:
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-
             workflow_service = WorkflowService()
             current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
             if current_draft_workflow:
@@ -521,9 +480,7 @@ class AppDslService:
                 app_model_config.app_id = app.id
                 app_model_config.created_by = account.id
                 app_model_config.updated_by = account.id
-
                 app.app_model_config_id = app_model_config.id
-
                 self._session.add(app_model_config)
                 app_model_config_was_updated.send(app, app_model_config=app_model_config)
         else:
@@ -539,7 +496,6 @@ class AppDslService:
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
-
         export_data = {
             "version": CURRENT_DSL_VERSION,
             "kind": "app",
@@ -552,14 +508,12 @@ class AppDslService:
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
             },
         }
-
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
-
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
@@ -573,7 +527,6 @@ class AppDslService:
         workflow = workflow_service.get_draft_workflow(app_model)
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
-
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
@@ -601,7 +554,6 @@ class AppDslService:
         app_model_config = app_model.app_model_config
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
-
         export_data["model_config"] = app_model_config.to_dict()
         dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
         export_data["dependencies"] = [
@@ -698,7 +650,6 @@ class AppDslService:
                         pass
             except Exception as e:
                 logger.exception("Error extracting node dependency", exc_info=e)
-
         return dependencies
 
     @classmethod
@@ -709,7 +660,6 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         dependencies = []
-
         try:
             # completion model
             model_dict = model_config.get("model", {})
@@ -717,7 +667,6 @@ class AppDslService:
                 dependencies.append(
                     DependenciesAnalysisService.analyze_model_provider_dependency(model_dict.get("provider", ""))
                 )
-
             # reranking model
             dataset_configs = model_config.get("dataset_configs", {})
             if dataset_configs:
@@ -730,7 +679,6 @@ class AppDslService:
                                 .get("provider")
                             )
                         )
-
             # tools
             agent_configs = model_config.get("agent_mode", {})
             if agent_configs:
@@ -738,10 +686,8 @@ class AppDslService:
                     dependencies.append(
                         DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
                     )
-
         except Exception as e:
             logger.exception("Error extracting model config dependency", exc_info=e)
-
         return dependencies
 
     @classmethod
@@ -752,7 +698,6 @@ class AppDslService:
         dependencies = [PluginDependency(**dep) for dep in dsl_dependencies]
         if not dependencies:
             return []
-
         return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
 
     @staticmethod

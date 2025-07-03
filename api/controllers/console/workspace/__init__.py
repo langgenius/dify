@@ -17,7 +17,6 @@ def plugin_permission_required(
         def decorated(*args, **kwargs):
             user = current_user
             tenant_id = user.current_tenant_id
-
             with Session(db.engine) as session:
                 permission = (
                     session.query(TenantPluginPermission)
@@ -26,11 +25,9 @@ def plugin_permission_required(
                     )
                     .first()
                 )
-
                 if not permission:
                     # no permission set, allow access for everyone
                     return view(*args, **kwargs)
-
                 if install_required:
                     if permission.install_permission == TenantPluginPermission.InstallPermission.NOBODY:
                         raise Forbidden()
@@ -39,7 +36,6 @@ def plugin_permission_required(
                             raise Forbidden()
                     if permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE:
                         pass
-
                 if debug_required:
                     if permission.debug_permission == TenantPluginPermission.DebugPermission.NOBODY:
                         raise Forbidden()
@@ -48,7 +44,6 @@ def plugin_permission_required(
                             raise Forbidden()
                     if permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE:
                         pass
-
             return view(*args, **kwargs)
 
         return decorated

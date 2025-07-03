@@ -41,9 +41,7 @@ class RemoteFileUploadApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")
         args = parser.parse_args()
-
         url = args["url"]
-
         try:
             resp = ssrf_proxy.head(url=url)
             if resp.status_code != httpx.codes.OK:
@@ -52,14 +50,10 @@ class RemoteFileUploadApi(Resource):
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
         except httpx.RequestError as e:
             raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
-
         file_info = helpers.guess_file_info_from_response(resp)
-
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
             raise FileTooLargeError
-
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
-
         try:
             user = cast(Account, current_user)
             upload_file = FileService.upload_file(
@@ -73,7 +67,6 @@ class RemoteFileUploadApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return {
             "id": upload_file.id,
             "name": upload_file.name,

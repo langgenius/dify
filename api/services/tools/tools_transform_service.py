@@ -42,7 +42,6 @@ class ToolTransformService:
         url_prefix = (
             URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
-
         if provider_type == ToolProviderType.BUILT_IN.value:
             return str(url_prefix / "builtin" / provider_name / "icon")
         elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
@@ -52,14 +51,12 @@ class ToolTransformService:
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
-
         return ""
 
     @staticmethod
     def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity]):
         """
         repack provider
-
         :param tenant_id: the tenant id
         :param provider: the provider dict
         """
@@ -102,28 +99,22 @@ class ToolTransformService:
             tools=[],
             labels=provider_controller.tool_labels,
         )
-
         if isinstance(provider_controller, PluginToolProviderController):
             result.plugin_id = provider_controller.plugin_id
             result.plugin_unique_identifier = provider_controller.plugin_unique_identifier
-
         # get credentials schema
         schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
-
         for name, value in schema.items():
             if result.masked_credentials:
                 result.masked_credentials[name] = ""
-
         # check if the provider need credentials
         if not provider_controller.need_credentials:
             result.is_team_authorization = True
             result.allow_delete = False
         elif db_provider:
             result.is_team_authorization = True
-
             if decrypt_credentials:
                 credentials = db_provider.credentials
-
                 # init tool configuration
                 tool_configuration = ProviderConfigEncrypter(
                     tenant_id=db_provider.tenant_id,
@@ -134,10 +125,8 @@ class ToolTransformService:
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = tool_configuration.decrypt(data=credentials)
                 masked_credentials = tool_configuration.mask_tool_credentials(data=decrypted_credentials)
-
                 result.masked_credentials = masked_credentials
                 result.original_credentials = decrypted_credentials
-
         return result
 
     @staticmethod
@@ -154,7 +143,6 @@ class ToolTransformService:
             if db_provider.credentials["auth_type"] == "api_key"
             else ApiProviderAuthType.NONE,
         )
-
         return controller
 
     @staticmethod
@@ -205,7 +193,6 @@ class ToolTransformService:
             user = db_provider.user
             if not user:
                 raise ValueError("user not found")
-
             username = user.name
         except Exception:
             logger.exception(f"failed to get user name for api provider {db_provider.id}")
@@ -232,7 +219,6 @@ class ToolTransformService:
             tools=[],
             labels=labels or [],
         )
-
         if decrypt_credentials:
             # init tool configuration
             tool_configuration = ProviderConfigEncrypter(
@@ -241,13 +227,10 @@ class ToolTransformService:
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )
-
             # decrypt the credentials and mask the credentials
             decrypted_credentials = tool_configuration.decrypt(data=credentials)
             masked_credentials = tool_configuration.mask_tool_credentials(data=decrypted_credentials)
-
             result.masked_credentials = masked_credentials
-
         return result
 
     @staticmethod
@@ -268,7 +251,6 @@ class ToolTransformService:
                     tenant_id=tenant_id,
                 )
             )
-
             # get tool parameters
             parameters = tool.entity.parameters or []
             # get tool runtime parameters
@@ -282,10 +264,8 @@ class ToolTransformService:
                         current_parameters[index] = runtime_parameter
                         found = True
                         break
-
                 if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
                     current_parameters.append(runtime_parameter)
-
             return ToolApiEntity(
                 author=tool.entity.identity.author,
                 name=tool.entity.identity.name,

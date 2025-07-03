@@ -10,7 +10,6 @@ class OpenAIModeration(Moderation):
     def validate_config(cls, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
-
         :param tenant_id: the id of workspace
         :param config: the form config data
         :return:
@@ -22,14 +21,11 @@ class OpenAIModeration(Moderation):
         preset_response = ""
         if self.config is None:
             raise ValueError("The config is not set.")
-
         if self.config["inputs_config"]["enabled"]:
             preset_response = self.config["inputs_config"]["preset_response"]
-
             if query:
                 inputs["query__"] = query
             flagged = self._is_violated(inputs)
-
         return ModerationInputsResult(
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
@@ -39,11 +35,9 @@ class OpenAIModeration(Moderation):
         preset_response = ""
         if self.config is None:
             raise ValueError("The config is not set.")
-
         if self.config["outputs_config"]["enabled"]:
             flagged = self._is_violated({"text": text})
             preset_response = self.config["outputs_config"]["preset_response"]
-
         return ModerationOutputsResult(
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
@@ -54,7 +48,5 @@ class OpenAIModeration(Moderation):
         model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id, provider="openai", model_type=ModelType.MODERATION, model="text-moderation-stable"
         )
-
         openai_moderation = model_instance.invoke_moderation(text=text)
-
         return openai_moderation

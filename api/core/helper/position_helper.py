@@ -28,7 +28,6 @@ def get_tool_position_map(folder_path: str, file_name: str = "_position.yaml") -
     :return: a dict with name as key and index as value
     """
     position_map = get_position_map(folder_path, file_name=file_name)
-
     return pin_position_map(
         position_map,
         pin_list=dify_config.POSITION_TOOL_PINS_LIST,
@@ -58,17 +57,14 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
     :return: the sorted position map
     """
     positions = sorted(original_position_map.keys(), key=lambda x: original_position_map[x])
-
     # Add pins to position map
     position_map = {name: idx for idx, name in enumerate(pin_list)}
-
     # Add remaining positions to position map
     start_idx = len(position_map)
     for name in positions:
         if name not in position_map:
             position_map[name] = start_idx
             start_idx += 1
-
     return position_map
 
 
@@ -91,9 +87,7 @@ def is_filtered(
         return False
     if not include_set and not exclude_set:
         return False
-
     name = name_func(data)
-
     if name in exclude_set:  # exclude_set is prioritized
         return True
     if include_set and name not in include_set:  # filter out only if include_set is not empty
@@ -116,7 +110,6 @@ def sort_by_position_map(
     """
     if not position_map or not data:
         return data
-
     return sorted(data, key=lambda x: position_map.get(name_func(x), float("inf")))
 
 

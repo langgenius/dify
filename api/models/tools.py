@@ -28,7 +28,6 @@ class BuiltinToolProvider(Base):
         # one tenant can only have one tool provider with the same name
         db.UniqueConstraint("tenant_id", "provider", name="unique_builtin_tool_provider"),
     )
-
     # id of the tool provider
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # id of the tenant
@@ -61,7 +60,6 @@ class ApiToolProvider(Base):
         db.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),
         db.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the api provider
     name = db.Column(db.String(255), nullable=False)
@@ -84,7 +82,6 @@ class ApiToolProvider(Base):
     privacy_policy = db.Column(db.String(255), nullable=True)
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
-
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -121,7 +118,6 @@ class ToolLabelBinding(Base):
         db.PrimaryKeyConstraint("id", name="tool_label_bind_pkey"),
         db.UniqueConstraint("tool_id", "label_name", name="unique_tool_label_bind"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # tool id
     tool_id: Mapped[str] = mapped_column(db.String(64), nullable=False)
@@ -142,7 +138,6 @@ class WorkflowToolProvider(Base):
         db.UniqueConstraint("name", "tenant_id", name="unique_workflow_tool_provider"),
         db.UniqueConstraint("tenant_id", "app_id", name="unique_workflow_tool_provider_app_id"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the workflow provider
     name: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -164,7 +159,6 @@ class WorkflowToolProvider(Base):
     parameter_configuration: Mapped[str] = mapped_column(db.Text, nullable=False, server_default="[]")
     # privacy policy
     privacy_policy: Mapped[str] = mapped_column(db.String(255), nullable=True, server_default="")
-
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
@@ -196,7 +190,6 @@ class ToolModelInvoke(Base):
 
     __tablename__ = "tool_model_invokes"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="tool_model_invoke_pkey"),)
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # who invoke this tool
     user_id = db.Column(StringUUID, nullable=False)
@@ -214,7 +207,6 @@ class ToolModelInvoke(Base):
     prompt_messages = db.Column(db.Text, nullable=False)
     # invoke response
     model_response = db.Column(db.Text, nullable=False)
-
     prompt_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
@@ -239,7 +231,6 @@ class ToolConversationVariables(Base):
         db.Index("user_id_idx", "user_id"),
         db.Index("conversation_id_idx", "conversation_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # conversation user id
     user_id = db.Column(StringUUID, nullable=False)
@@ -249,7 +240,6 @@ class ToolConversationVariables(Base):
     conversation_id = db.Column(StringUUID, nullable=False)
     # variables pool
     variables_str = db.Column(db.Text, nullable=False)
-
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -268,7 +258,6 @@ class ToolFile(Base):
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),
         db.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
@@ -299,11 +288,9 @@ class DeprecatedPublishedAppTool(Base):
         db.PrimaryKeyConstraint("id", name="published_app_tool_pkey"),
         db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # id of the app
     app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
-
     user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     # who published this tool
     description = db.Column(db.Text, nullable=False)

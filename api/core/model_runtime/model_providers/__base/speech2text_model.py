@@ -13,14 +13,12 @@ class Speech2TextModel(AIModel):
     """
 
     model_type: ModelType = ModelType.SPEECH2TEXT
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
     def invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke speech to text model
-
         :param model: model name
         :param credentials: model credentials
         :param file: audio file

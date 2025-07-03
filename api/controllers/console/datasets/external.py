@@ -29,7 +29,6 @@ class ExternalApiTemplateListApi(Resource):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
-
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
             page, limit, current_user.current_tenant_id, search
         )
@@ -62,20 +61,16 @@ class ExternalApiTemplateListApi(Resource):
             required=True,
         )
         args = parser.parse_args()
-
         ExternalDatasetService.validate_api_list(args["settings"])
-
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
                 tenant_id=current_user.current_tenant_id, user_id=current_user.id, args=args
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
-
         return external_knowledge_api.to_dict(), 201
 
 
@@ -88,7 +83,6 @@ class ExternalApiTemplateApi(Resource):
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
-
         return external_knowledge_api.to_dict(), 200
 
     @setup_required
@@ -96,7 +90,6 @@ class ExternalApiTemplateApi(Resource):
     @account_initialization_required
     def patch(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -114,14 +107,12 @@ class ExternalApiTemplateApi(Resource):
         )
         args = parser.parse_args()
         ExternalDatasetService.validate_api_list(args["settings"])
-
         external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
             tenant_id=current_user.current_tenant_id,
             user_id=current_user.id,
             external_knowledge_api_id=external_knowledge_api_id,
             args=args,
         )
-
         return external_knowledge_api.to_dict(), 200
 
     @setup_required
@@ -129,11 +120,9 @@ class ExternalApiTemplateApi(Resource):
     @account_initialization_required
     def delete(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
-
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
-
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
         return {"result": "success"}, 204
 
@@ -144,7 +133,6 @@ class ExternalApiUseCheckApi(Resource):
     @account_initialization_required
     def get(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
-
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
             external_knowledge_api_id
         )
@@ -159,7 +147,6 @@ class ExternalDatasetCreateApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
@@ -172,13 +159,10 @@ class ExternalDatasetCreateApi(Resource):
         )
         parser.add_argument("description", type=str, required=False, nullable=True, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
-
         args = parser.parse_args()
-
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
         try:
             dataset = ExternalDatasetService.create_external_dataset(
                 tenant_id=current_user.current_tenant_id,
@@ -187,7 +171,6 @@ class ExternalDatasetCreateApi(Resource):
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
-
         return marshal(dataset, dataset_detail_fields), 201
 
 
@@ -200,20 +183,16 @@ class ExternalKnowledgeHitTestingApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
         parser = reqparse.RequestParser()
         parser.add_argument("query", type=str, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
         parser.add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
         args = parser.parse_args()
-
         HitTestingService.hit_testing_args_check(args)
-
         try:
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
@@ -222,7 +201,6 @@ class ExternalKnowledgeHitTestingApi(Resource):
                 external_retrieval_model=args["external_retrieval_model"],
                 metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )
-
             return response
         except Exception as e:
             raise InternalServerError(str(e))
@@ -241,7 +219,6 @@ class BedrockRetrievalApi(Resource):
         )
         parser.add_argument("knowledge_id", nullable=False, required=True, type=str)
         args = parser.parse_args()
-
         # Call the knowledge retrieval service
         result = ExternalDatasetTestService.knowledge_retrieval(
             args["retrieval_setting"], args["query"], args["knowledge_id"]

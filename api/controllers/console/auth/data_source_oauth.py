@@ -21,7 +21,6 @@ def get_oauth_providers():
             client_secret=dify_config.NOTION_CLIENT_SECRET or "",
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
-
         OAUTH_PROVIDERS = {"notion": notion_oauth}
         return OAUTH_PROVIDERS
 
@@ -56,11 +55,9 @@ class OAuthDataSourceCallback(Resource):
             return {"error": "Invalid provider"}, 400
         if "code" in request.args:
             code = request.args.get("code")
-
             return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&code={code}")
         elif "error" in request.args:
             error = request.args.get("error")
-
             return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error={error}")
         else:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}?type=notion&error=Access denied")
@@ -84,7 +81,6 @@ class OAuthDataSourceBinding(Resource):
                     f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}"
                 )
                 return {"error": "OAuth data source process failed"}, 400
-
             return {"result": "success"}, 200
 
 
@@ -105,7 +101,6 @@ class OAuthDataSourceSync(Resource):
         except requests.exceptions.HTTPError as e:
             logging.exception(f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
             return {"error": "OAuth data source process failed"}, 400
-
         return {"result": "success"}, 200
 
 

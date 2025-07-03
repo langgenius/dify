@@ -7,14 +7,11 @@ from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("web", __name__, url_prefix="/api")
 api = ExternalApi(bp)
-
 # Files
 api.add_resource(FileApi, "/files/upload")
-
 # Remote files
 api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
 api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
-
 from . import (
     app,
     audio,

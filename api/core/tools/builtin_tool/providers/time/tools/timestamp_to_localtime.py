@@ -26,14 +26,11 @@ class TimestampToLocaltimeTool(BuiltinTool):
         if not timezone:
             timezone = None
         time_format = "%Y-%m-%d %H:%M:%S"
-
         locatime = self.timestamp_to_localtime(timestamp, timezone)
         if not locatime:
             yield self.create_text_message(f"Invalid timestamp: {timestamp}")
             return
-
         localtime_format = locatime.strftime(time_format)
-
         yield self.create_text_message(f"{localtime_format}")
 
     @staticmethod

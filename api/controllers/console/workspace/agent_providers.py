@@ -14,10 +14,8 @@ class AgentProviderListApi(Resource):
     @account_initialization_required
     def get(self):
         user = current_user
-
         user_id = user.id
         tenant_id = user.current_tenant_id
-
         return jsonable_encoder(AgentService.list_agent_providers(user_id, tenant_id))
 
 

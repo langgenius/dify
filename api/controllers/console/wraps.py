@@ -24,10 +24,8 @@ def account_initialization_required(view):
     def decorated(*args, **kwargs):
         # check account initialization
         account = current_user
-
         if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
-
         return view(*args, **kwargs)
 
     return decorated
@@ -38,7 +36,6 @@ def only_edition_cloud(view):
     def decorated(*args, **kwargs):
         if dify_config.EDITION != "CLOUD":
             abort(404)
-
         return view(*args, **kwargs)
 
     return decorated
@@ -49,7 +46,6 @@ def only_edition_enterprise(view):
     def decorated(*args, **kwargs):
         if not dify_config.ENTERPRISE_ENABLED:
             abort(404)
-
         return view(*args, **kwargs)
 
     return decorated
@@ -60,7 +56,6 @@ def only_edition_self_hosted(view):
     def decorated(*args, **kwargs):
         if dify_config.EDITION != "SELF_HOSTED":
             abort(404)
-
         return view(*args, **kwargs)
 
     return decorated
@@ -110,7 +105,6 @@ def cloud_edition_billing_resource_check(resource: str):
                     abort(403, "The annotation quota has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
-
             return view(*args, **kwargs)
 
         return decorated
@@ -132,7 +126,6 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
                         )
                 else:
                     return view(*args, **kwargs)
-
             return view(*args, **kwargs)
 
         return decorated
@@ -149,13 +142,9 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
                     key = f"rate_limit_{current_user.current_tenant_id}"
-
                     redis_client.zadd(key, {current_time: current_time})
-
                     redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
                     request_count = redis_client.zcard(key)
-
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
@@ -180,10 +169,8 @@ def cloud_utm_record(view):
     def decorated(*args, **kwargs):
         try:
             features = FeatureService.get_features(current_user.current_tenant_id)
-
             if features.billing.enabled:
                 utm_info = request.cookies.get("utm_info")
-
                 if utm_info:
                     utm_info_dict: dict = json.loads(utm_info)
                     OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
@@ -206,7 +193,6 @@ def setup_required(view):
             raise NotInitValidateError()
         elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
-
         return view(*args, **kwargs)
 
     return decorated
@@ -218,7 +204,6 @@ def enterprise_license_required(view):
         settings = FeatureService.get_system_features()
         if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
-
         return view(*args, **kwargs)
 
     return decorated
@@ -230,7 +215,6 @@ def email_password_login_enabled(view):
         features = FeatureService.get_system_features()
         if features.enable_email_password_login:
             return view(*args, **kwargs)
-
         # otherwise, return 403
         abort(403)
 

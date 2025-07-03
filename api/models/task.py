@@ -11,7 +11,6 @@ class CeleryTask(Base):
     """Task result/status."""
 
     __tablename__ = "celery_taskmeta"
-
     id = db.Column(db.Integer, db.Sequence("task_id_sequence"), primary_key=True, autoincrement=True)
     task_id = db.Column(db.String(155), unique=True)
     status = db.Column(db.String(50), default=states.PENDING)
@@ -35,7 +34,6 @@ class CeleryTaskSet(Base):
     """TaskSet result."""
 
     __tablename__ = "celery_tasksetmeta"
-
     id = db.Column(db.Integer, db.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True)
     taskset_id = db.Column(db.String(155), unique=True)
     result = db.Column(db.PickleType, nullable=True)

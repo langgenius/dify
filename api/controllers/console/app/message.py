@@ -52,26 +52,21 @@ class ChatMessageListApi(Resource):
         parser.add_argument("first_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         conversation = (
             db.session.query(Conversation)
             .filter(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
             .first()
         )
-
         if not conversation:
             raise NotFound("Conversation Not Exists.")
-
         if args["first_id"]:
             first_message = (
                 db.session.query(Message)
                 .filter(Message.conversation_id == conversation.id, Message.id == args["first_id"])
                 .first()
             )
-
             if not first_message:
                 raise NotFound("First message not found")
-
             history_messages = (
                 db.session.query(Message)
                 .filter(
@@ -91,7 +86,6 @@ class ChatMessageListApi(Resource):
                 .limit(args["limit"])
                 .all()
             )
-
         has_more = False
         if len(history_messages) == args["limit"]:
             current_page_first_message = history_messages[-1]
@@ -104,12 +98,9 @@ class ChatMessageListApi(Resource):
                 )
                 .count()
             )
-
             if rest_count > 0:
                 has_more = True
-
         history_messages = list(reversed(history_messages))
-
         return InfiniteScrollPagination(data=history_messages, limit=args["limit"], has_more=has_more)
 
 
@@ -123,16 +114,11 @@ class MessageFeedbackApi(Resource):
         parser.add_argument("message_id", required=True, type=uuid_value, location="json")
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
-
         message_id = str(args["message_id"])
-
         message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
-
         if not message:
             raise NotFound("Message Not Exists.")
-
         feedback = message.admin_feedback
-
         if not args["rating"] and feedback:
             db.session.delete(feedback)
         elif args["rating"] and feedback:
@@ -149,9 +135,7 @@ class MessageFeedbackApi(Resource):
                 from_account_id=current_user.id,
             )
             db.session.add(feedback)
-
         db.session.commit()
-
         return {"result": "success"}
 
 
@@ -165,7 +149,6 @@ class MessageAnnotationApi(Resource):
     def post(self, app_model):
         if not current_user.is_editor:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=False, type=uuid_value, location="json")
         parser.add_argument("question", required=True, type=str, location="json")
@@ -173,7 +156,6 @@ class MessageAnnotationApi(Resource):
         parser.add_argument("annotation_reply", required=False, type=dict, location="json")
         args = parser.parse_args()
         annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
-
         return annotation
 
 
@@ -184,7 +166,6 @@ class MessageAnnotationCountApi(Resource):
     @get_app_model
     def get(self, app_model):
         count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_model.id).count()
-
         return {"count": count}
 
 
@@ -195,7 +176,6 @@ class MessageSuggestedQuestionApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model, message_id):
         message_id = str(message_id)
-
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, message_id=message_id, user=current_user, invoke_from=InvokeFrom.DEBUGGER
@@ -217,7 +197,6 @@ class MessageSuggestedQuestionApi(Resource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
-
         return {"data": questions}
 
 
@@ -229,12 +208,9 @@ class MessageApi(Resource):
     @marshal_with(message_detail_fields)
     def get(self, app_model, message_id):
         message_id = str(message_id)
-
         message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
-
         if not message:
             raise NotFound("Message Not Exists.")
-
         return message
 
 

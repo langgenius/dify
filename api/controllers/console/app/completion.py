@@ -48,17 +48,13 @@ class CompletionMessageApi(Resource):
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         args = parser.parse_args()
-
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False
-
         account = flask_login.current_user
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -89,9 +85,7 @@ class CompletionMessageStopApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model, task_id):
         account = flask_login.current_user
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
-
         return {"result": "success"}, 200
 
 
@@ -111,17 +105,13 @@ class ChatMessageApi(Resource):
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         args = parser.parse_args()
-
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False
-
         account = flask_login.current_user
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -154,9 +144,7 @@ class ChatMessageStopApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def post(self, app_model, task_id):
         account = flask_login.current_user
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
-
         return {"result": "success"}, 200
 
 

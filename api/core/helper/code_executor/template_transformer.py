@@ -21,7 +21,6 @@ class TemplateTransformer(ABC):
         """
         runner_script = cls.assemble_runner_script(code, inputs)
         preload_script = cls.get_preload_script()
-
         return runner_script, preload_script
 
     @classmethod

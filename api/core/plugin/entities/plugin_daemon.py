@@ -66,7 +66,6 @@ class PluginBasicBooleanResponse(BaseModel):
 
 class PluginModelSchemaEntity(BaseModel):
     model_schema: AIModelEntity = Field(description="The model schema.")
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

@@ -130,10 +130,8 @@ class ProviderEntity(BaseModel):
     models: list[AIModelEntity] = Field(default_factory=list)
     provider_credential_schema: Optional[ProviderCredentialSchema] = None
     model_credential_schema: Optional[ModelCredentialSchema] = None
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
-
     # position from plugin _position.yaml
     position: Optional[dict[str, list[str]]] = {}
 
@@ -148,7 +146,6 @@ class ProviderEntity(BaseModel):
     def to_simple_provider(self) -> SimpleProviderEntity:
         """
         Convert to simple provider.
-
         :return: simple provider
         """
         return SimpleProviderEntity(

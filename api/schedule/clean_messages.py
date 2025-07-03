@@ -41,7 +41,6 @@ def clean_messages():
                 .limit(100)
                 .all()
             )
-
         except NotFound:
             break
         if not messages:

@@ -37,13 +37,9 @@ class WorkflowConverter:
     ):
         """
         Convert app to workflow
-
         - basic mode of chatbot app
-
         - expert mode of chatbot app
-
         - completion app
-
         :param app_model: App instance
         :param account: Account
         :param name: new app name
@@ -55,11 +51,9 @@ class WorkflowConverter:
         # convert app model config
         if not app_model.app_model_config:
             raise ValueError("App model config is required")
-
         workflow = self.convert_app_model_config_to_workflow(
             app_model=app_model, app_model_config=app_model.app_model_config, account_id=account.id
         )
-
         # create new app
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
@@ -79,12 +73,9 @@ class WorkflowConverter:
         db.session.add(new_app)
         db.session.flush()
         db.session.commit()
-
         workflow.app_id = new_app.id
         db.session.commit()
-
         app_was_created.send(new_app, account=account)
-
         return new_app
 
     def convert_app_model_config_to_workflow(self, app_model: App, app_model_config: AppModelConfig, account_id: str):
@@ -96,13 +87,10 @@ class WorkflowConverter:
         """
         # get new app mode
         new_app_mode = self._get_new_app_mode(app_model)
-
         # convert app model config
         app_config = self._convert_to_app_config(app_model=app_model, app_model_config=app_model_config)
-
         # init workflow graph
         graph: dict[str, Any] = {"nodes": [], "edges": []}
-
         # Convert list:
         # - variables -> start
         # - model_config -> llm
@@ -111,12 +99,9 @@ class WorkflowConverter:
         # - external_data_variables -> http-request
         # - dataset -> knowledge-retrieval
         # - show_retrieve_source -> knowledge-retrieval
-
         # convert to start node
         start_node = self._convert_to_start_node(variables=app_config.variables)
-
         graph["nodes"].append(start_node)
-
         # convert to http request node
         external_data_variable_node_mapping: dict[str, str] = {}
         if app_config.external_data_variables:
@@ -125,19 +110,15 @@ class WorkflowConverter:
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables,
             )
-
             for http_request_node in http_request_nodes:
                 graph = self._append_node(graph, http_request_node)
-
         # convert to knowledge retrieval node
         if app_config.dataset:
             knowledge_retrieval_node = self._convert_to_knowledge_retrieval_node(
                 new_app_mode=new_app_mode, dataset_config=app_config.dataset, model_config=app_config.model
             )
-
             if knowledge_retrieval_node:
                 graph = self._append_node(graph, knowledge_retrieval_node)
-
         # convert to llm node
         llm_node = self._convert_to_llm_node(
             original_app_mode=AppMode.value_of(app_model.mode),
@@ -148,9 +129,7 @@ class WorkflowConverter:
             file_upload=app_config.additional_features.file_upload,
             external_data_variable_node_mapping=external_data_variable_node_mapping,
         )
-
         graph = self._append_node(graph, llm_node)
-
         if new_app_mode == AppMode.WORKFLOW:
             # convert to end node by app mode
             end_node = self._convert_to_end_node()
@@ -158,9 +137,7 @@ class WorkflowConverter:
         else:
             answer_node = self._convert_to_answer_node()
             graph = self._append_node(graph, answer_node)
-
         app_model_config_dict = app_config.app_model_config_dict
-
         # features
         if new_app_mode == AppMode.ADVANCED_CHAT:
             features = {
@@ -179,7 +156,6 @@ class WorkflowConverter:
                 "file_upload": app_model_config_dict.get("file_upload"),
                 "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
             }
-
         # create workflow record
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
@@ -192,10 +168,8 @@ class WorkflowConverter:
             environment_variables=[],
             conversation_variables=[],
         )
-
         db.session.add(workflow)
         db.session.commit()
-
         return workflow
 
     def _convert_to_app_config(self, app_model: App, app_model_config: AppModelConfig) -> EasyUIBasedAppConfig:
@@ -214,7 +188,6 @@ class WorkflowConverter:
             )
         else:
             raise ValueError("Invalid app mode")
-
         return app_config
 
     def _convert_to_start_node(self, variables: list[VariableEntity]) -> dict:
@@ -251,27 +224,21 @@ class WorkflowConverter:
             tool_type = external_data_variable.type
             if tool_type != "api":
                 continue
-
             tool_variable = external_data_variable.variable
             tool_config = external_data_variable.config
-
             # get params from config
             api_based_extension_id = tool_config.get("api_based_extension_id")
             if not api_based_extension_id:
                 continue
-
             # get api_based_extension
             api_based_extension = self._get_api_based_extension(
                 tenant_id=tenant_id, api_based_extension_id=api_based_extension_id
             )
-
             # decrypt api_key
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=api_based_extension.api_key)
-
             inputs = {}
             for v in variables:
                 inputs[v.variable] = "{{#start." + v.variable + "#}}"
-
             request_body = {
                 "point": APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value,
                 "params": {
@@ -281,10 +248,8 @@ class WorkflowConverter:
                     "query": "{{#sys.query#}}" if app_model.mode == AppMode.CHAT.value else "",
                 },
             }
-
             request_body_json = json.dumps(request_body)
             request_body_json = request_body_json.replace(r"\{\{", "{{").replace(r"\}\}", "}}")
-
             http_request_node = {
                 "id": f"http_request_{index}",
                 "position": None,
@@ -299,9 +264,7 @@ class WorkflowConverter:
                     "body": {"type": "json", "data": request_body_json},
                 },
             }
-
             nodes.append(http_request_node)
-
             # append code node for response body parsing
             code_node: dict[str, Any] = {
                 "id": f"code_{index}",
@@ -316,12 +279,9 @@ class WorkflowConverter:
                     "outputs": {"result": {"type": "string"}},
                 },
             }
-
             nodes.append(code_node)
-
             external_data_variable_node_mapping[external_data_variable.variable] = code_node["id"]
             index += 1
-
         return nodes, external_data_variable_node_mapping
 
     def _convert_to_knowledge_retrieval_node(
@@ -342,7 +302,6 @@ class WorkflowConverter:
             query_variable_selector = ["start", retrieve_config.query_variable]
         else:
             return None
-
         return {
             "id": "knowledge_retrieval",
             "position": None,
@@ -400,10 +359,8 @@ class WorkflowConverter:
         knowledge_retrieval_node = next(
             filter(lambda n: n["data"]["type"] == NodeType.KNOWLEDGE_RETRIEVAL.value, graph["nodes"]), None
         )
-
         role_prefix = None
         prompts: Any = None
-
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
@@ -419,7 +376,6 @@ class WorkflowConverter:
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,
                 )
-
                 template = prompt_template_config["prompt_template"].template
                 if not template:
                     prompts = []
@@ -427,11 +383,9 @@ class WorkflowConverter:
                     template = self._replace_template_variables(
                         template, start_node["data"]["variables"], external_data_variable_node_mapping
                     )
-
                     prompts = [{"role": "user", "text": template}]
             else:
                 advanced_chat_prompt_template = prompt_template.advanced_chat_prompt_template
-
                 prompts = []
                 if advanced_chat_prompt_template:
                     for m in advanced_chat_prompt_template.messages:
@@ -439,7 +393,6 @@ class WorkflowConverter:
                         text = self._replace_template_variables(
                             text, start_node["data"]["variables"], external_data_variable_node_mapping
                         )
-
                         prompts.append({"role": m.role.value, "text": text})
         # Completion Model
         else:
@@ -456,16 +409,13 @@ class WorkflowConverter:
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False,
                 )
-
                 template = prompt_template_config["prompt_template"].template
                 template = self._replace_template_variables(
                     template=template,
                     variables=start_node["data"]["variables"],
                     external_data_variable_node_mapping=external_data_variable_node_mapping,
                 )
-
                 prompts = {"text": template}
-
                 prompt_rules = prompt_template_config["prompt_rules"]
                 role_prefix = {
                     "user": prompt_rules.get("human_prefix", "Human"),
@@ -482,23 +432,18 @@ class WorkflowConverter:
                     )
                 else:
                     text = ""
-
                 text = text.replace("{{#query#}}", "{{#sys.query#}}")
-
                 prompts = {
                     "text": text,
                 }
-
                 if advanced_completion_prompt_template and advanced_completion_prompt_template.role_prefix:
                     role_prefix = {
                         "user": advanced_completion_prompt_template.role_prefix.user,
                         "assistant": advanced_completion_prompt_template.role_prefix.assistant,
                     }
-
         memory = None
         if new_app_mode == AppMode.ADVANCED_CHAT:
             memory = {"role_prefix": role_prefix, "window": {"enabled": False}}
-
         completion_params = model_config.parameters
         completion_params.update({"stop": model_config.stop})
         return {
@@ -543,11 +488,9 @@ class WorkflowConverter:
         """
         for v in variables:
             template = template.replace("{{" + v["variable"] + "}}", "{{#start." + v["variable"] + "#}}")
-
         if external_data_variable_node_mapping:
             for variable, code_node_id in external_data_variable_node_mapping.items():
                 template = template.replace("{{" + variable + "}}", "{{#" + code_node_id + ".result#}}")
-
         return template
 
     def _convert_to_end_node(self) -> dict:
@@ -590,7 +533,6 @@ class WorkflowConverter:
     def _append_node(self, graph: dict, node: dict) -> dict:
         """
         Append Node to Graph
-
         :param graph: Graph, include: nodes, edges
         :param node: Node to append
         :return:
@@ -623,8 +565,6 @@ class WorkflowConverter:
             .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .first()
         )
-
         if not api_based_extension:
             raise ValueError(f"API Based Extension not found, id: {api_based_extension_id}")
-
         return api_based_extension

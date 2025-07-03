@@ -36,25 +36,21 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             .filter(RecommendedApp.is_listed == True, RecommendedApp.language == language)
             .all()
         )
-
         if len(recommended_apps) == 0:
             recommended_apps = (
                 db.session.query(RecommendedApp)
                 .filter(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
                 .all()
             )
-
         categories = set()
         recommended_apps_result = []
         for recommended_app in recommended_apps:
             app = recommended_app.app
             if not app or not app.is_public:
                 continue
-
             site = app.site
             if not site:
                 continue
-
             recommended_app_result = {
                 "id": recommended_app.id,
                 "app": recommended_app.app,
@@ -68,9 +64,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
                 "is_listed": recommended_app.is_listed,
             }
             recommended_apps_result.append(recommended_app_result)
-
             categories.add(recommended_app.category)
-
         return {"recommended_apps": recommended_apps_result, "categories": sorted(categories)}
 
     @classmethod
@@ -86,15 +80,12 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             .filter(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
             .first()
         )
-
         if not recommended_app:
             return None
-
         # get app detail
         app_model = db.session.query(App).filter(App.id == app_id).first()
         if not app_model or not app_model.is_public:
             return None
-
         return {
             "id": app_model.id,
             "name": app_model.name,

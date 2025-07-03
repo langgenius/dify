@@ -37,13 +37,10 @@ class ApolloClient:
         self.config_url = config_url
         self.cluster = cluster
         self.app_id = app_id
-
         # Non-core parameters
         self.ip = init_ip()
         self.secret = secret
-
         # Check the parameter variables
-
         # Private control variables
         self._cycle_time = 5
         self._stopping = False
@@ -62,7 +59,6 @@ class ApolloClient:
         self._path_checker()
         if start_hot_update:
             self._start_hot_update()
-
         # start the heartbeat thread
         heartbeat = threading.Thread(target=self._heart_beat)
         heartbeat.daemon = True
@@ -95,25 +91,21 @@ class ApolloClient:
             val = get_value_from_dict(namespace_cache, key)
             if val is not None:
                 return val
-
             no_key = no_key_cache_key(namespace, key)
             if no_key in self._no_key:
                 return default_val
-
             # read the network configuration
             namespace_data = self.get_json_from_net(namespace)
             val = get_value_from_dict(namespace_data, key)
             if val is not None:
                 self._update_cache_and_file(namespace_data, namespace)
                 return val
-
             # read the file configuration
             namespace_cache = self._get_local_cache(namespace)
             val = get_value_from_dict(namespace_cache, key)
             if val is not None:
                 self._update_cache_and_file(namespace_cache, namespace)
                 return val
-
             # If all of them are not obtained, the default value is returned
             # and the local cache is set to None
             self._set_local_cache_none(namespace, key)

@@ -14,11 +14,9 @@ class OAuthProxyService(BasePluginClient):
     def create_proxy_context(user_id: str, tenant_id: str, plugin_id: str, provider: str):
         """
         Create a proxy context for an OAuth 2.0 authorization request.
-
         This parameter is a crucial security measure to prevent Cross-Site Request
         Forgery (CSRF) attacks. It works by generating a unique nonce and storing it
         in a distributed cache (Redis) along with the user's session context.
-
         The returned nonce should be included as the 'proxy_context' parameter in the
         authorization URL. Upon callback, the `use_proxy_context` method
         is used to verify the state, ensuring the request's integrity and authenticity,

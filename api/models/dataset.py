@@ -41,10 +41,8 @@ class Dataset(Base):
         db.Index("dataset_tenant_idx", "tenant_id"),
         db.Index("retrieval_model_idx", "retrieval_model", postgresql_using="gin"),
     )
-
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -71,7 +69,6 @@ class Dataset(Base):
         )
         if dataset_keyword_table:
             return dataset_keyword_table
-
         return None
 
     @property
@@ -176,7 +173,6 @@ class Dataset(Base):
             )
             .all()
         )
-
         return tags or []
 
     @property
@@ -205,7 +201,6 @@ class Dataset(Base):
     @property
     def doc_metadata(self):
         dataset_metadatas = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == self.id).all()
-
         doc_metadata = [
             {
                 "id": dataset_metadata.id,
@@ -264,14 +259,12 @@ class DatasetProcessRule(Base):
         db.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
         db.Index("dataset_process_rule_dataset_id_idx", "dataset_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     dataset_id = db.Column(StringUUID, nullable=False)
     mode = db.Column(db.String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
     rules = db.Column(db.Text, nullable=True)
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
     AUTOMATIC_RULES: dict[str, Any] = {
@@ -307,7 +300,6 @@ class Document(Base):
         db.Index("document_tenant_idx", "tenant_id"),
         db.Index("document_metadata_idx", "doc_metadata", postgresql_using="gin"),
     )
-
     # initial fields
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
@@ -322,35 +314,27 @@ class Document(Base):
     created_by = db.Column(StringUUID, nullable=False)
     created_api_request_id = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
     # start processing
     processing_started_at = db.Column(db.DateTime, nullable=True)
-
     # parsing
     file_id = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=True)
     parsing_completed_at = db.Column(db.DateTime, nullable=True)
-
     # cleaning
     cleaning_completed_at = db.Column(db.DateTime, nullable=True)
-
     # split
     splitting_completed_at = db.Column(db.DateTime, nullable=True)
-
     # indexing
     tokens = db.Column(db.Integer, nullable=True)
     indexing_latency = db.Column(db.Float, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
-
     # pause
     is_paused = db.Column(db.Boolean, nullable=True, server_default=db.text("false"))
     paused_by = db.Column(StringUUID, nullable=True)
     paused_at = db.Column(db.DateTime, nullable=True)
-
     # error
     error = db.Column(db.Text, nullable=True)
     stopped_at = db.Column(db.DateTime, nullable=True)
-
     # basic fields
     indexing_status = db.Column(db.String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
     enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
@@ -365,7 +349,6 @@ class Document(Base):
     doc_metadata = db.Column(JSONB, nullable=True)
     doc_form = db.Column(db.String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
-
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
     @property
@@ -394,7 +377,6 @@ class Document(Base):
                 data_source_info_dict = json.loads(self.data_source_info)
             except JSONDecodeError:
                 data_source_info_dict = {}
-
             return data_source_info_dict
         return None
 
@@ -488,7 +470,6 @@ class Document(Base):
                 metadata_list.append(metadata_dict)
             # deal built-in fields
             metadata_list.extend(self.get_built_in_fields())
-
             return metadata_list
         return None
 
@@ -650,7 +631,6 @@ class DocumentSegment(Base):
         db.Index("document_segment_node_dataset_idx", "index_node_id", "dataset_id"),
         db.Index("document_segment_tenant_idx", "tenant_id"),
     )
-
     # initial fields
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
@@ -661,12 +641,10 @@ class DocumentSegment(Base):
     answer = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=False)
     tokens = db.Column(db.Integer, nullable=False)
-
     # indexing fields
     keywords = db.Column(db.JSON, nullable=True)
     index_node_id = db.Column(db.String(255), nullable=True)
     index_node_hash = db.Column(db.String(255), nullable=True)
-
     # basic fields
     hit_count = db.Column(db.Integer, nullable=False, default=0)
     enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
@@ -748,7 +726,6 @@ class DocumentSegment(Base):
     def get_sign_content(self):
         signed_urls = []
         text = self.content
-
         # For data before v0.10.0
         pattern = r"/files/([a-f0-9\-]+)/image-preview"
         matches = re.finditer(pattern, text)
@@ -760,11 +737,9 @@ class DocumentSegment(Base):
             secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
             signed_url = f"{match.group(0)}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
-
         # For data after v0.10.0
         pattern = r"/files/([a-f0-9\-]+)/file-preview"
         matches = re.finditer(pattern, text)
@@ -776,17 +751,14 @@ class DocumentSegment(Base):
             secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
             signed_url = f"{match.group(0)}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
-
         # Reconstruct the text with signed URLs
         offset = 0
         for start, end, signed_url in signed_urls:
             text = text[: start + offset] + signed_url + text[end + offset :]
             offset += len(signed_url) - (end - start)
-
         return text
 
 
@@ -798,7 +770,6 @@ class ChildChunk(Base):
         db.Index("child_chunks_node_idx", "index_node_id", "dataset_id"),
         db.Index("child_chunks_segment_idx", "segment_id"),
     )
-
     # initial fields
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
@@ -839,7 +810,6 @@ class AppDatasetJoin(Base):
         db.PrimaryKeyConstraint("id", name="app_dataset_join_pkey"),
         db.Index("app_dataset_join_app_dataset_idx", "dataset_id", "app_id"),
     )
-
     id = db.Column(StringUUID, primary_key=True, nullable=False, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
@@ -856,7 +826,6 @@ class DatasetQuery(Base):
         db.PrimaryKeyConstraint("id", name="dataset_query_pkey"),
         db.Index("dataset_query_dataset_id_idx", "dataset_id"),
     )
-
     id = db.Column(StringUUID, primary_key=True, nullable=False, server_default=db.text("uuid_generate_v4()"))
     dataset_id = db.Column(StringUUID, nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -873,7 +842,6 @@ class DatasetKeywordTable(Base):
         db.PrimaryKeyConstraint("id", name="dataset_keyword_table_pkey"),
         db.Index("dataset_keyword_table_dataset_id_idx", "dataset_id"),
     )
-
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     dataset_id = db.Column(StringUUID, nullable=False, unique=True)
     keyword_table = db.Column(db.Text, nullable=False)
@@ -919,7 +887,6 @@ class Embedding(Base):
         db.UniqueConstraint("model_name", "hash", "provider_name", name="embedding_hash_idx"),
         db.Index("created_at_idx", "created_at"),
     )
-
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     model_name = db.Column(
         db.String(255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying")
@@ -942,7 +909,6 @@ class DatasetCollectionBinding(Base):
         db.PrimaryKeyConstraint("id", name="dataset_collection_bindings_pkey"),
         db.Index("provider_model_name_idx", "provider_name", "model_name"),
     )
-
     id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
@@ -991,7 +957,6 @@ class DatasetPermission(Base):
         db.Index("idx_dataset_permissions_account_id", "account_id"),
         db.Index("idx_dataset_permissions_tenant_id", "tenant_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"), primary_key=True)
     dataset_id = db.Column(StringUUID, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -1007,7 +972,6 @@ class ExternalKnowledgeApis(Base):
         db.Index("external_knowledge_apis_tenant_idx", "tenant_id"),
         db.Index("external_knowledge_apis_name_idx", "name"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.String(255), nullable=False)
@@ -1049,7 +1013,6 @@ class ExternalKnowledgeApis(Base):
         dataset_bindings = []
         for dataset in datasets:
             dataset_bindings.append({"id": dataset.id, "name": dataset.name})
-
         return dataset_bindings
 
 
@@ -1062,7 +1025,6 @@ class ExternalKnowledgeBindings(Base):
         db.Index("external_knowledge_bindings_external_knowledge_idx", "external_knowledge_id"),
         db.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
     )
-
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     external_knowledge_api_id = db.Column(StringUUID, nullable=False)
@@ -1082,7 +1044,6 @@ class DatasetAutoDisableLog(Base):
         db.Index("dataset_auto_disable_log_dataset_idx", "dataset_id"),
         db.Index("dataset_auto_disable_log_created_atx", "created_at"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
@@ -1098,7 +1059,6 @@ class RateLimitLog(Base):
         db.Index("rate_limit_log_tenant_idx", "tenant_id"),
         db.Index("rate_limit_log_operation_idx", "operation"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     subscription_plan = db.Column(db.String(255), nullable=False)
@@ -1113,7 +1073,6 @@ class DatasetMetadata(Base):
         db.Index("dataset_metadata_tenant_idx", "tenant_id"),
         db.Index("dataset_metadata_dataset_idx", "dataset_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
@@ -1134,7 +1093,6 @@ class DatasetMetadataBinding(Base):
         db.Index("dataset_metadata_binding_metadata_idx", "metadata_id"),
         db.Index("dataset_metadata_binding_document_idx", "document_id"),
     )
-
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)

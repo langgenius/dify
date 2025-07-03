@@ -78,12 +78,10 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
-
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     value=fields.Raw(attribute=_serialize_var_value),
 )
-
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
     "id": fields.String,
     "type": fields.String(attribute=lambda _: "env"),
@@ -94,7 +92,6 @@ _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
-
 _WORKFLOW_DRAFT_ENV_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS)),
 }
@@ -108,7 +105,6 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS), attribute=_get_items),
     "total": fields.Raw(),
 }
-
 _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
 }
@@ -116,9 +112,7 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
 
 def _api_prerequisite(f):
     """Common prerequisites for all draft workflow variable APIs.
-
     It ensures the following conditions are satisfied:
-
     - Dify has been property setup.
     - The request user has logged in and initialized.
     - The requested app is a workflow or a chat flow.
@@ -146,13 +140,11 @@ class WorkflowVariableCollectionApi(Resource):
         """
         parser = _create_pagination_parser()
         args = parser.parse_args()
-
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
         workflow_exist = workflow_service.is_workflow_exist(app_model=app_model)
         if not workflow_exist:
             raise DraftWorkflowNotExist()
-
         # fetch draft workflow by app_model
         with Session(bind=db.engine, expire_on_commit=False) as session:
             draft_var_srv = WorkflowDraftVariableService(
@@ -163,7 +155,6 @@ class WorkflowVariableCollectionApi(Resource):
             page=args.page,
             limit=args.limit,
         )
-
         return workflow_vars
 
     @_api_prerequisite
@@ -187,7 +178,6 @@ def validate_node_id(node_id: str) -> NoReturn | None:
         # we mitigate the risk that user of the API depending on the implementation detail of the API.
         #
         # ref: [Hyrum's Law](https://www.hyrumslaw.com/)
-
         raise InvalidArgumentError(
             f"invalid node_id, please use correspond api for conversation and system variables, node_id={node_id}",
         )
@@ -204,7 +194,6 @@ class NodeVariableCollectionApi(Resource):
                 session=session,
             )
             node_vars = draft_var_srv.list_node_variables(app_model.id, node_id)
-
         return node_vars
 
     @_api_prerequisite
@@ -256,28 +245,23 @@ class VariableApi(Resource):
         #         "url": "http://127.0.0.1:5001/files/1602650a-4fe4-423c-85a2-af76c083e3c4/file-preview?timestamp=1750041099&nonce=...&sign=...=",
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
-
         parser = reqparse.RequestParser()
         parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
         # Parse 'value' field as-is to maintain its original data structure
         parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
-
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
         args = parser.parse_args(strict=True)
-
         variable = draft_var_srv.get_variable(variable_id=variable_id)
         if variable is None:
             raise NotFoundError(description=f"variable not found, id={variable_id}")
         if variable.app_id != app_model.id:
             raise NotFoundError(description=f"variable not found, id={variable_id}")
-
         new_name = args.get(self._PATCH_NAME_FIELD, None)
         raw_value = args.get(self._PATCH_VALUE_FIELD, None)
         if new_name is None and raw_value is None:
             return variable
-
         new_value = None
         if raw_value is not None:
             if variable.value_type == SegmentType.FILE:
@@ -316,7 +300,6 @@ class VariableResetApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-
         workflow_srv = WorkflowService()
         draft_workflow = workflow_srv.get_draft_workflow(app_model)
         if draft_workflow is None:
@@ -328,7 +311,6 @@ class VariableResetApi(Resource):
             raise NotFoundError(description=f"variable not found, id={variable_id}")
         if variable.app_id != app_model.id:
             raise NotFoundError(description=f"variable not found, id={variable_id}")
-
         resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()
         if resetted is None:
@@ -385,7 +367,6 @@ class EnvironmentVariableCollectionApi(Resource):
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
         if workflow is None:
             raise DraftWorkflowNotExist()
-
         env_vars = workflow.environment_variables
         env_vars_list = []
         for v in env_vars:
@@ -404,7 +385,6 @@ class EnvironmentVariableCollectionApi(Resource):
                     "editable": True,
                 }
             )
-
         return {"items": env_vars_list}
 
 
@@ -415,7 +395,6 @@ api.add_resource(
 api.add_resource(NodeVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
 api.add_resource(VariableApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
 api.add_resource(VariableResetApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
-
 api.add_resource(ConversationVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/conversation-variables")
 api.add_resource(SystemVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/system-variables")
 api.add_resource(EnvironmentVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/environment-variables")

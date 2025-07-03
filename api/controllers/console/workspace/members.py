@@ -46,22 +46,17 @@ class MemberInviteEmailApi(Resource):
         parser.add_argument("role", type=str, required=True, default="admin", location="json")
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
-
         invitee_emails = args["emails"]
         invitee_role = args["role"]
         interface_language = args["language"]
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
-
         workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
-
         if not workspace_members.is_available(len(invitee_emails)):
             raise WorkspaceMembersLimitExceeded()
-
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(
@@ -81,7 +76,6 @@ class MemberInviteEmailApi(Resource):
                 )
             except Exception as e:
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
-
         return {
             "result": "success",
             "invitation_results": invitation_results,
@@ -110,7 +104,6 @@ class MemberCancelInviteApi(Resource):
                 return {"code": "member-not-found", "message": str(e)}, 404
             except Exception as e:
                 raise ValueError(str(e))
-
         return {"result": "success", "tenant_id": str(current_user.current_tenant.id)}, 200
 
 
@@ -125,22 +118,17 @@ class MemberUpdateRoleApi(Resource):
         parser.add_argument("role", type=str, required=True, location="json")
         args = parser.parse_args()
         new_role = args["role"]
-
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
-
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
         except Exception as e:
             raise ValueError(str(e))
-
         # todo: 403
-
         return {"result": "success"}
 
 

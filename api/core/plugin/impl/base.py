@@ -32,9 +32,7 @@ from core.plugin.impl.exc import (
 )
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
-
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,10 +54,8 @@ class BasePluginClient:
         headers = headers or {}
         headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         headers["Accept-Encoding"] = "gzip, deflate, br"
-
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
             data = json.dumps(data)
-
         try:
             response = requests.request(
                 method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
@@ -67,7 +63,6 @@ class BasePluginClient:
         except requests.exceptions.ConnectionError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
-
         return response
 
     def _stream_request(
@@ -147,7 +142,6 @@ class BasePluginClient:
             msg = f"Failed to request plugin daemon, url: {path}"
             logging.exception(msg)
             raise ValueError(msg) from e
-
         try:
             json_response = response.json()
             if transformer:
@@ -160,18 +154,15 @@ class BasePluginClient:
             )
             logging.exception(msg)
             raise ValueError(msg)
-
         if rep.code != 0:
             try:
                 error = PluginDaemonError(**json.loads(rep.message))
             except Exception:
                 raise ValueError(f"{rep.message}, code: {rep.code}")
-
             self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
             frame = inspect.currentframe()
             raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
-
         return rep.data
 
     def _request_with_plugin_daemon_response_stream(
@@ -200,14 +191,12 @@ class BasePluginClient:
                 # for `ValueError`.
                 # Otherwise, use the `line` to provide better contextual information about the error.
                 raise ValueError(line_data.get("error", line))
-
             if rep.code != 0:
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError(**json.loads(rep.message))
                     except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
-
                     self._handle_plugin_daemon_error(error.error_type, error.message)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:

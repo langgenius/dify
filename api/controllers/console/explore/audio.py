@@ -30,12 +30,9 @@ from services.errors.audio import (
 class ChatAudioApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
-
         file = request.files["file"]
-
         try:
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
-
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
@@ -75,11 +72,9 @@ class ChatTextApi(InstalledAppResource):
             parser.add_argument("text", type=str, location="json")
             parser.add_argument("streaming", type=bool, location="json")
             args = parser.parse_args()
-
             message_id = args.get("message_id", None)
             text = args.get("text", None)
             voice = args.get("voice", None)
-
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:

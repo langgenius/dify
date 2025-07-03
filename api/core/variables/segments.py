@@ -12,7 +12,6 @@ from .types import SegmentType
 
 class Segment(BaseModel):
     model_config = ConfigDict(frozen=True)
-
     value_type: SegmentType
     value: Any
 

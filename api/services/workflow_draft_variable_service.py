@@ -52,7 +52,6 @@ class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
     # ref: core.workflow.variable_loader.VariableLoader
-
     # Database engine used for loading variables.
     _engine: Engine
     # Application ID for which variables are being loaded.
@@ -78,14 +77,11 @@ class DraftVarLoader(VariableLoader):
     def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
         if not selectors:
             return []
-
         # Map each selector (as a tuple via `_selector_to_tuple`) to its corresponding Variable instance.
         variable_by_selector: dict[tuple[str, str], Variable] = {}
-
         with Session(bind=self._engine, expire_on_commit=False) as session:
             srv = WorkflowDraftVariableService(session)
             draft_vars = srv.get_draft_variables_by_selectors(self._app_id, selectors)
-
         for draft_var in draft_vars:
             segment = draft_var.get_value()
             variable = segment_to_variable(
@@ -97,7 +93,6 @@ class DraftVarLoader(VariableLoader):
             )
             selector_tuple = self._selector_to_tuple(variable.selector)
             variable_by_selector[selector_tuple] = variable
-
         # Important:
         files: list[File] = []
         for draft_var in draft_vars:
@@ -109,7 +104,6 @@ class DraftVarLoader(VariableLoader):
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(session, tenant_id=self._tenant_id)
             storage_key_loader.load_storage_keys(files)
-
         return list(variable_by_selector.values())
 
 
@@ -132,7 +126,6 @@ class WorkflowDraftVariableService:
             assert len(selector) >= MIN_SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
             node_id, name = selector[:2]
             ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
-
         # NOTE(QuantumGhost): Although the number of `or` expressions may be large, as long as
         # each expression includes conditions on both `node_id` and `name` (which are covered by the unique index),
         # PostgreSQL can efficiently retrieve the results using a bitmap index scan.
@@ -159,7 +152,6 @@ class WorkflowDraftVariableService:
             .offset((page - 1) * limit)
             .all()
         )
-
         return WorkflowDraftVariableList(variables=variables, total=total)
 
     def _list_node_variables(self, app_id: str, node_id: str) -> WorkflowDraftVariableList:
@@ -220,7 +212,6 @@ class WorkflowDraftVariableService:
     def _reset_conv_var(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         conv_var_by_name = {i.name: i for i in workflow.conversation_variables}
         conv_var = conv_var_by_name.get(variable.name)
-
         if conv_var is None:
             self._session.delete(instance=variable)
             self._session.flush()
@@ -228,7 +219,6 @@ class WorkflowDraftVariableService:
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
             )
             return None
-
         variable.set_value(conv_var)
         variable.last_edited_at = None
         self._session.add(variable)
@@ -247,7 +237,6 @@ class WorkflowDraftVariableService:
             self._session.flush()
             _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
-
         query = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == variable.node_execution_id)
         node_exec = self._session.scalars(query).first()
         if node_exec is None:
@@ -260,16 +249,13 @@ class WorkflowDraftVariableService:
             self._session.delete(instance=variable)
             self._session.flush()
             return None
-
         outputs_dict = node_exec.outputs_dict or {}
         # a sentinel value used to check the absent of the output variable key.
         absent = object()
-
         if variable.get_variable_type() == DraftVariableType.NODE:
             # Get node type for proper value extraction
             node_config = workflow.get_node_config_by_id(variable.node_id)
             node_type = workflow.get_node_type_from_node_config(node_config)
-
             # Note: Based on the implementation in `_build_from_variable_assigner_mapping`,
             # VariableAssignerNode (both v1 and v2) can only create conversation draft variables.
             # For consistency, we should simply return when processing VARIABLE_ASSIGNER nodes.
@@ -281,7 +267,6 @@ class WorkflowDraftVariableService:
             output_value = outputs_dict.get(variable.name, absent)
         else:
             output_value = outputs_dict.get(f"sys.{variable.name}", absent)
-
         # We cannot use `is None` to check the existence of an output variable here as
         # the value of the output may be `None`.
         if output_value is absent:
@@ -348,15 +333,12 @@ class WorkflowDraftVariableService:
     ) -> str:
         """
         get_or_create_conversation creates and returns the ID of a conversation for debugging.
-
         If a conversation already exists, as determined by the following criteria, its ID is returned:
         - The system variable `sys.conversation_id` exists in the draft variable table, and
         - A corresponding conversation record is found in the database.
-
         If no such conversation exists, a new conversation is created and its ID is returned.
         """
         conv_id = self._get_conversation_id_from_draft_variable(workflow.app_id)
-
         if conv_id is not None:
             conversation = (
                 self._session.query(Conversation)
@@ -387,7 +369,6 @@ class WorkflowDraftVariableService:
             from_end_user_id=None,
             from_account_id=account_id,
         )
-
         self._session.add(conversation)
         self._session.flush()
         return conversation.id
@@ -494,11 +475,9 @@ def _build_segment_for_serialized_values(v: Any) -> Segment:
     """
     Reconstructs Segment objects from serialized values, with special handling
     for FileSegment and ArrayFileSegment types.
-
     This function should only be used when:
     1. No explicit type information is available
     2. The input value is in serialized form (dict or list)
-
     It detects potential file objects in the serialized data and properly rebuilds the
     appropriate segment type.
     """
@@ -512,7 +491,6 @@ class DraftVariableSaver:
     # This is used to signal the execution of a workflow node when it has no other outputs.
     _DUMMY_OUTPUT_IDENTITY: ClassVar[str] = "__dummy__"
     _DUMMY_OUTPUT_VALUE: ClassVar[None] = None
-
     # _EXCLUDE_VARIABLE_NAMES_MAPPING maps node types and versions to variable names that
     # should be excluded when saving draft variables. This prevents certain internal or
     # technical variables from being exposed in the draft environment, particularly those
@@ -521,23 +499,17 @@ class DraftVariableSaver:
         NodeType.LLM: frozenset(["finish_reason"]),
         NodeType.LOOP: frozenset(["loop_round"]),
     }
-
     # Database session used for persisting draft variables.
     _session: Session
-
     # The application ID associated with the draft variables.
     # This should match the `Workflow.app_id` of the workflow to which the current node belongs.
     _app_id: str
-
     # The ID of the node for which DraftVariableSaver is saving output variables.
     _node_id: str
-
     # The type of the current node (see NodeType).
     _node_type: NodeType
-
     #
     _node_execution_id: str
-
     # _enclosing_node_id identifies the container node that the current node belongs to.
     # For example, if the current node is an LLM node inside an Iteration node
     # or Loop node, then `_enclosing_node_id` refers to the ID of
@@ -586,7 +558,6 @@ class DraftVariableSaver:
     def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars: list[WorkflowDraftVariable] = []
         updated_variables = get_updated_variables(process_data) or []
-
         for item in updated_variables:
             selector = item.selector
             if len(selector) < MIN_SELECTORS_LENGTH:
@@ -638,7 +609,6 @@ class DraftVariableSaver:
                         value_seg = WorkflowDraftVariable.build_segment_with_type(SegmentType.ARRAY_FILE, files)
                     else:
                         value_seg = ArrayFileSegment(value=[])
-
                 draft_vars.append(
                     WorkflowDraftVariable.new_sys_variable(
                         app_id=self._app_id,

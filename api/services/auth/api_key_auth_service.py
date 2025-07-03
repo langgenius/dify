@@ -23,7 +23,6 @@ class ApiKeyAuthService:
             # Encrypt the api key
             api_key = encrypter.encrypt_token(tenant_id, args["credentials"]["config"]["api_key"])
             args["credentials"]["config"]["api_key"] = api_key
-
             data_source_api_key_binding = DataSourceApiKeyAuthBinding()
             data_source_api_key_binding.tenant_id = tenant_id
             data_source_api_key_binding.category = args["category"]

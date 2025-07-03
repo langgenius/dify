@@ -22,13 +22,11 @@ class CotCompletionAgentRunner(CotAgentRunner):
         if prompt_entity is None:
             raise ValueError("prompt entity is not set")
         first_prompt = prompt_entity.first_prompt
-
         system_prompt = (
             first_prompt.replace("{{instruction}}", self._instruction)
             .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools)))
             .replace("{{tool_names}}", ", ".join([tool.name for tool in self._prompt_messages_tools]))
         )
-
         return system_prompt
 
     def _organize_historic_prompt(self, current_session_messages: Optional[list[PromptMessage]] = None) -> str:
@@ -37,7 +35,6 @@ class CotCompletionAgentRunner(CotAgentRunner):
         """
         historic_prompt_messages = self._organize_historic_prompt_messages(current_session_messages)
         historic_prompt = ""
-
         for message in historic_prompt_messages:
             if isinstance(message, UserPromptMessage):
                 historic_prompt += f"Question: {message.content}\n\n"
@@ -49,7 +46,6 @@ class CotCompletionAgentRunner(CotAgentRunner):
                         if not isinstance(content, TextPromptMessageContent):
                             continue
                         historic_prompt += content.data
-
         return historic_prompt
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
@@ -58,10 +54,8 @@ class CotCompletionAgentRunner(CotAgentRunner):
         """
         # organize system prompt
         system_prompt = self._organize_instruction_prompt()
-
         # organize historic prompt messages
         historic_prompt = self._organize_historic_prompt()
-
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
         assistant_prompt = ""
@@ -74,15 +68,12 @@ class CotCompletionAgentRunner(CotAgentRunner):
                     assistant_prompt += f"Action: {unit.action_str}\n\n"
                 if unit.observation:
                     assistant_prompt += f"Observation: {unit.observation}\n\n"
-
         # query messages
         query_prompt = f"Question: {self._query}"
-
         # join all messages
         prompt = (
             system_prompt.replace("{{historic_messages}}", historic_prompt)
             .replace("{{agent_scratchpad}}", assistant_prompt)
             .replace("{{query}}", query_prompt)
         )
-
         return [UserPromptMessage(content=prompt)]

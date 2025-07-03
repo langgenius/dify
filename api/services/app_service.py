@@ -36,7 +36,6 @@ class AppService:
         :return:
         """
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
-
         if args["mode"] == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW.value)
         elif args["mode"] == "completion":
@@ -49,7 +48,6 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
         elif args["mode"] == "channel":
             filters.append(App.mode == AppMode.CHANNEL.value)
-
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
@@ -61,14 +59,12 @@ class AppService:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
-
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
         )
-
         return app_models
 
     def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
@@ -80,14 +76,12 @@ class AppService:
         """
         app_mode = AppMode.value_of(args["mode"])
         app_template = default_app_templates[app_mode]
-
         # get model config
         default_model_config = app_template.get("model_config")
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
             # get model provider
             model_manager = ModelManager()
-
             # get default model instance
             try:
                 model_instance = model_manager.get_default_model_instance(
@@ -98,7 +92,6 @@ class AppService:
             except Exception as e:
                 logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
                 model_instance = None
-
             if model_instance:
                 if (
                     model_instance.model == default_model_config["model"]["name"]
@@ -110,7 +103,6 @@ class AppService:
                     model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
                     if model_schema is None:
                         raise ValueError(f"model schema not found for model {model_instance.model}")
-
                     default_model_dict = {
                         "provider": model_instance.provider,
                         "name": model_instance.model,
@@ -124,9 +116,7 @@ class AppService:
                 default_model_config["model"]["provider"] = provider
                 default_model_config["model"]["name"] = model
                 default_model_dict = default_model_config["model"]
-
             default_model_config["model"] = json.dumps(default_model_dict)
-
         app = App(**app_template["app"])
         app.name = args["name"]
         app.description = args.get("description", "")
@@ -139,10 +129,8 @@ class AppService:
         app.api_rpm = args.get("api_rpm", 0)
         app.created_by = account.id
         app.updated_by = account.id
-
         db.session.add(app)
         db.session.flush()
-
         if default_model_config:
             app_model_config = AppModelConfig(**default_model_config)
             app_model_config.app_id = app.id
@@ -150,17 +138,12 @@ class AppService:
             app_model_config.updated_by = account.id
             db.session.add(app_model_config)
             db.session.flush()
-
             app.app_model_config_id = app_model_config.id
-
         db.session.commit()
-
         app_was_created.send(app, account=account)
-
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
-
         return app
 
     def get_app(self, app: App) -> App:
@@ -190,19 +173,16 @@ class AppService:
                         provider_type=agent_tool_entity.provider_type,
                         identity_id=f"AGENT.{app.id}",
                     )
-
                     # get decrypted parameters
                     if agent_tool_entity.tool_parameters:
                         parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
                         masked_parameter = manager.mask_tool_parameters(parameters or {})
                     else:
                         masked_parameter = {}
-
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
                 except Exception as e:
                     pass
-
             # override agent mode
             model_config.agent_mode = json.dumps(agent_mode)
 
@@ -219,7 +199,6 @@ class AppService:
                     return model_config
 
             app = ModifiedApp(app)
-
         return app
 
     def update_app(self, app: App, args: dict) -> App:
@@ -238,7 +217,6 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return app
 
     def update_app_name(self, app: App, name: str) -> App:
@@ -252,7 +230,6 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return app
 
     def update_app_icon(self, app: App, icon: str, icon_background: str) -> App:
@@ -268,7 +245,6 @@ class AppService:
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return app
 
     def update_app_site_status(self, app: App, enable_site: bool) -> App:
@@ -280,12 +256,10 @@ class AppService:
         """
         if enable_site == app.enable_site:
             return app
-
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return app
 
     def update_app_api_status(self, app: App, enable_api: bool) -> App:
@@ -297,12 +271,10 @@ class AppService:
         """
         if enable_api == app.enable_api:
             return app
-
         app.enable_api = enable_api
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
-
         return app
 
     def delete_app(self, app: App) -> None:
@@ -312,11 +284,9 @@ class AppService:
         """
         db.session.delete(app)
         db.session.commit()
-
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
-
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
@@ -327,14 +297,11 @@ class AppService:
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
-
         meta: dict = {"tool_icons": {}}
-
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 return meta
-
             graph = workflow.graph_dict
             nodes = graph.get("nodes", [])
             tools = []
@@ -351,17 +318,12 @@ class AppService:
                     )
         else:
             app_model_config: Optional[AppModelConfig] = app_model.app_model_config
-
             if not app_model_config:
                 return meta
-
             agent_config = app_model_config.agent_mode_dict
-
             # get all tools
             tools = agent_config.get("tools", [])
-
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
-
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
@@ -381,7 +343,6 @@ class AppService:
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
                     except:
                         meta["tool_icons"][tool_name] = {"background": "#252525", "content": "\ud83d\ude01"}
-
         return meta
 
     @staticmethod

@@ -19,7 +19,6 @@ class EnterpriseMail(Resource):
         parser.add_argument("body", type=str, required=True)
         parser.add_argument("substitutions", type=dict, required=False)
         args = parser.parse_args()
-
         EnterpriseMailService.send_mail(DifyMail(**args))
         return {"message": "success"}, 200
 

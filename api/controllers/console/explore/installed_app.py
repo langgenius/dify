@@ -30,7 +30,6 @@ class InstalledAppsListApi(Resource):
     def get(self):
         app_id = request.args.get("app_id", default=None, type=str)
         current_tenant_id = current_user.current_tenant_id
-
         if app_id:
             installed_apps = (
                 db.session.query(InstalledApp)
@@ -39,7 +38,6 @@ class InstalledAppsListApi(Resource):
             )
         else:
             installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
-
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [
             {
@@ -54,7 +52,6 @@ class InstalledAppsListApi(Resource):
             for installed_app in installed_apps
             if installed_app.app is not None
         ]
-
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
             user_id = current_user.id
@@ -75,7 +72,6 @@ class InstalledAppsListApi(Resource):
                     res.append(installed_app)
             installed_app_list = res
             logger.debug(f"installed_app_list: {installed_app_list}, user_id: {user_id}")
-
         installed_app_list.sort(
             key=lambda app: (
                 -app["is_pinned"],
@@ -83,7 +79,6 @@ class InstalledAppsListApi(Resource):
                 -app["last_used_at"].timestamp() if app["last_used_at"] is not None else 0,
             )
         )
-
         return {"installed_apps": installed_app_list}
 
     @login_required
@@ -93,30 +88,23 @@ class InstalledAppsListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
-
         recommended_app = db.session.query(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
             raise NotFound("App not found")
-
         current_tenant_id = current_user.current_tenant_id
         app = db.session.query(App).filter(App.id == args["app_id"]).first()
-
         if app is None:
             raise NotFound("App not found")
-
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
-
         installed_app = (
             db.session.query(InstalledApp)
             .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
             .first()
         )
-
         if installed_app is None:
             # todo: position
             recommended_app.install_count += 1
-
             new_installed_app = InstalledApp(
                 app_id=args["app_id"],
                 tenant_id=current_tenant_id,
@@ -126,7 +114,6 @@ class InstalledAppsListApi(Resource):
             )
             db.session.add(new_installed_app)
             db.session.commit()
-
         return {"message": "App installed successfully"}
 
 
@@ -139,25 +126,20 @@ class InstalledAppApi(InstalledAppResource):
     def delete(self, installed_app):
         if installed_app.app_owner_tenant_id == current_user.current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
-
         db.session.delete(installed_app)
         db.session.commit()
-
         return {"result": "success", "message": "App uninstalled successfully"}, 204
 
     def patch(self, installed_app):
         parser = reqparse.RequestParser()
         parser.add_argument("is_pinned", type=inputs.boolean)
         args = parser.parse_args()
-
         commit_args = False
         if "is_pinned" in args:
             installed_app.is_pinned = args["is_pinned"]
             commit_args = True
-
         if commit_args:
             db.session.commit()
-
         return {"result": "success", "message": "App info updated successfully"}
 
 

@@ -42,10 +42,8 @@ class WorkflowAppService:
         stmt = select(WorkflowAppLog).where(
             WorkflowAppLog.tenant_id == app_model.tenant_id, WorkflowAppLog.app_id == app_model.id
         )
-
         if keyword or status:
             stmt = stmt.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
-
         if keyword:
             keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
             keyword_conditions = [
@@ -54,27 +52,21 @@ class WorkflowAppService:
                 # filter keyword by end user session id if created by end user role
                 and_(WorkflowRun.created_by_role == "end_user", EndUser.session_id.ilike(keyword_like_val)),
             ]
-
             # filter keyword by workflow run id
             keyword_uuid = self._safe_parse_uuid(keyword)
             if keyword_uuid:
                 keyword_conditions.append(WorkflowRun.id == keyword_uuid)
-
             stmt = stmt.outerjoin(
                 EndUser,
                 and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatorUserRole.END_USER),
             ).where(or_(*keyword_conditions))
-
         if status:
             stmt = stmt.where(WorkflowRun.status == status)
-
         # Add time-based filtering
         if created_at_before:
             stmt = stmt.where(WorkflowAppLog.created_at <= created_at_before)
-
         if created_at_after:
             stmt = stmt.where(WorkflowAppLog.created_at >= created_at_after)
-
         # Filter by end user session id or account email
         if created_by_end_user_session_id:
             stmt = stmt.join(
@@ -94,19 +86,14 @@ class WorkflowAppService:
                     Account.email == created_by_account,
                 ),
             )
-
         stmt = stmt.order_by(WorkflowAppLog.created_at.desc())
-
         # Get total count using the same filters
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total = session.scalar(count_stmt) or 0
-
         # Apply pagination limits
         offset_stmt = stmt.offset((page - 1) * limit).limit(limit)
-
         # Execute query and get items
         items = list(session.scalars(offset_stmt).all())
-
         return {
             "page": page,
             "limit": limit,
@@ -120,7 +107,6 @@ class WorkflowAppService:
         # fast check
         if len(value) < 32:
             return None
-
         try:
             return uuid.UUID(value)
         except ValueError:

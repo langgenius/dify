@@ -39,14 +39,12 @@ class ChatMessageAudioApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def post(self, app_model):
         file = request.files["file"]
-
         try:
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
                 end_user=None,
             )
-
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
@@ -87,11 +85,9 @@ class ChatMessageTextApi(Resource):
             parser.add_argument("voice", type=str, location="json")
             parser.add_argument("streaming", type=bool, location="json")
             args = parser.parse_args()
-
             message_id = args.get("message_id", None)
             text = args.get("text", None)
             voice = args.get("voice", None)
-
             response = AudioService.transcript_tts(
                 app_model=app_model, text=text, voice=voice, message_id=message_id, is_draft=True
             )
@@ -132,12 +128,10 @@ class TextModesApi(Resource):
             parser = reqparse.RequestParser()
             parser.add_argument("language", type=str, required=True, location="args")
             args = parser.parse_args()
-
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
                 language=args["language"],
             )
-
             return response
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
             raise AppUnavailableError("Text to audio voices language parameter loss.")

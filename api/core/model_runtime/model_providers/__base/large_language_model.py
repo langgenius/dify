@@ -36,7 +36,6 @@ def _increase_tool_call(
 ):
     """
     Merge incremental tool call updates into existing tool calls.
-
     :param new_tool_calls: List of new tool call deltas to be merged.
     :param existing_tools_calls: List of existing tool calls to be modified IN-PLACE.
     """
@@ -44,13 +43,11 @@ def _increase_tool_call(
     def get_tool_call(tool_call_id: str):
         """
         Get or create a tool call by ID
-
         :param tool_call_id: tool call ID
         :return: existing or new tool call
         """
         if not tool_call_id:
             return existing_tools_calls[-1]
-
         _tool_call = next((_tool_call for _tool_call in existing_tools_calls if _tool_call.id == tool_call_id), None)
         if _tool_call is None:
             _tool_call = AssistantPromptMessage.ToolCall(
@@ -59,7 +56,6 @@ def _increase_tool_call(
                 function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="", arguments=""),
             )
             existing_tools_calls.append(_tool_call)
-
         return _tool_call
 
     for new_tool_call in new_tool_calls:
@@ -85,7 +81,6 @@ class LargeLanguageModel(AIModel):
     """
 
     model_type: ModelType = ModelType.LLM
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -103,7 +98,6 @@ class LargeLanguageModel(AIModel):
     ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
-
         :param model: model name
         :param credentials: model credentials
         :param prompt_messages: prompt messages
@@ -118,14 +112,10 @@ class LargeLanguageModel(AIModel):
         # validate and filter model parameters
         if model_parameters is None:
             model_parameters = {}
-
         self.started_at = time.perf_counter()
-
         callbacks = callbacks or []
-
         if dify_config.DEBUG:
             callbacks.append(LoggingCallback())
-
         # trigger before invoke callbacks
         self._trigger_before_invoke_callbacks(
             model=model,
@@ -138,9 +128,7 @@ class LargeLanguageModel(AIModel):
             user=user,
             callbacks=callbacks,
         )
-
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
-
         try:
             plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
@@ -156,14 +144,12 @@ class LargeLanguageModel(AIModel):
                 stop=list(stop) if stop else None,
                 stream=stream,
             )
-
             if not stream:
                 content = ""
                 content_list = []
                 usage = LLMUsage.empty_usage()
                 system_fingerprint = None
                 tools_calls: list[AssistantPromptMessage.ToolCall] = []
-
                 for chunk in result:
                     if isinstance(chunk.delta.message.content, str):
                         content += chunk.delta.message.content
@@ -171,11 +157,9 @@ class LargeLanguageModel(AIModel):
                         content_list.extend(chunk.delta.message.content)
                     if chunk.delta.message.tool_calls:
                         _increase_tool_call(chunk.delta.message.tool_calls, tools_calls)
-
                     usage = chunk.delta.usage or LLMUsage.empty_usage()
                     system_fingerprint = chunk.system_fingerprint
                     break
-
                 result = LLMResult(
                     model=model,
                     prompt_messages=prompt_messages,
@@ -199,10 +183,8 @@ class LargeLanguageModel(AIModel):
                 user=user,
                 callbacks=callbacks,
             )
-
             # TODO
             raise self._transform_invoke_error(e)
-
         if stream and isinstance(result, Generator):
             return self._invoke_result_generator(
                 model=model,
@@ -251,7 +233,6 @@ class LargeLanguageModel(AIModel):
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke result generator
-
         :param result: result generator
         :return: result generator
         """
@@ -278,7 +259,6 @@ class LargeLanguageModel(AIModel):
                 # To ensure compatibility, we add the prompt_messages back here.
                 chunk.prompt_messages = prompt_messages
                 yield chunk
-
                 self._trigger_new_chunk_callbacks(
                     chunk=chunk,
                     model=model,
@@ -291,18 +271,14 @@ class LargeLanguageModel(AIModel):
                     user=user,
                     callbacks=callbacks,
                 )
-
                 _update_message_content(chunk.delta.message.content)
-
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
-
                 if chunk.system_fingerprint:
                     system_fingerprint = chunk.system_fingerprint
         except Exception as e:
             raise self._transform_invoke_error(e)
-
         assistant_message = AssistantPromptMessage(content=message_content)
         self._trigger_after_invoke_callbacks(
             model=model,
@@ -332,7 +308,6 @@ class LargeLanguageModel(AIModel):
     ) -> int:
         """
         Get number of tokens for given prompt messages
-
         :param model: model name
         :param credentials: model credentials
         :param prompt_messages: prompt messages
@@ -359,7 +334,6 @@ class LargeLanguageModel(AIModel):
     ) -> LLMUsage:
         """
         Calculate response usage
-
         :param model: model name
         :param credentials: model credentials
         :param prompt_tokens: prompt tokens
@@ -373,12 +347,10 @@ class LargeLanguageModel(AIModel):
             price_type=PriceType.INPUT,
             tokens=prompt_tokens,
         )
-
         # get completion price info
         completion_price_info = self.get_price(
             model=model, credentials=credentials, price_type=PriceType.OUTPUT, tokens=completion_tokens
         )
-
         # transform usage
         usage = LLMUsage(
             prompt_tokens=prompt_tokens,
@@ -394,7 +366,6 @@ class LargeLanguageModel(AIModel):
             currency=prompt_price_info.currency,
             latency=time.perf_counter() - self.started_at,
         )
-
         return usage
 
     def _trigger_before_invoke_callbacks(
@@ -411,7 +382,6 @@ class LargeLanguageModel(AIModel):
     ) -> None:
         """
         Trigger before invoke callbacks
-
         :param model: model name
         :param credentials: model credentials
         :param prompt_messages: prompt messages
@@ -457,7 +427,6 @@ class LargeLanguageModel(AIModel):
     ) -> None:
         """
         Trigger new chunk callbacks
-
         :param chunk: chunk
         :param model: model name
         :param credentials: model credentials
@@ -504,7 +473,6 @@ class LargeLanguageModel(AIModel):
     ) -> None:
         """
         Trigger after invoke callbacks
-
         :param model: model name
         :param result: result
         :param credentials: model credentials
@@ -552,7 +520,6 @@ class LargeLanguageModel(AIModel):
     ) -> None:
         """
         Trigger invoke error callbacks
-
         :param model: model name
         :param ex: exception
         :param credentials: model credentials

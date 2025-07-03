@@ -13,13 +13,11 @@ from extensions.ext_mail import mail
 
 # Create a dedicated Redis connection (using the same configuration as Celery)
 celery_broker_url = dify_config.CELERY_BROKER_URL
-
 parsed = urlparse(celery_broker_url)
 host = parsed.hostname or "localhost"
 port = parsed.port or 6379
 password = parsed.password or None
 redis_db = parsed.path.strip("/") or "1"  # type: ignore
-
 celery_redis = Redis(host=host, port=port, password=password, db=redis_db)
 
 
@@ -27,12 +25,10 @@ celery_redis = Redis(host=host, port=port, password=password, db=redis_db)
 def queue_monitor_task():
     queue_name = "dataset"
     threshold = dify_config.QUEUE_MONITOR_THRESHOLD
-
     try:
         queue_length = celery_redis.llen(f"{queue_name}")
         logging.info(click.style(f"Start monitor {queue_name}", fg="green"))
         logging.info(click.style(f"Queue length: {queue_length}", fg="green"))
-
         if queue_length >= threshold:
             warning_msg = f"Queue {queue_name} task count exceeded the limit.: {queue_length}/{threshold}"
             logging.warning(click.style(warning_msg, fg="red"))
@@ -54,7 +50,6 @@ def queue_monitor_task():
                         )
                     except Exception as e:
                         logging.exception(click.style("Exception occurred during sending email", fg="red"))
-
     except Exception as e:
         logging.exception(click.style("Exception occurred during queue monitoring", fg="red"))
     finally:

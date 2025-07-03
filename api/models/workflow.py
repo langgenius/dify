@@ -20,7 +20,6 @@ from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
     from models.model import AppMode
-
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
@@ -38,7 +37,6 @@ from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
 _logger = logging.getLogger(__name__)
-
 if TYPE_CHECKING:
     from models.model import AppMode
 
@@ -55,7 +53,6 @@ class WorkflowType(Enum):
     def value_of(cls, value: str) -> "WorkflowType":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -68,7 +65,6 @@ class WorkflowType(Enum):
     def from_app_mode(cls, app_mode: Union[str, "AppMode"]) -> "WorkflowType":
         """
         Get workflow type from app mode.
-
         :param app_mode: app mode
         :return: workflow type
         """
@@ -85,30 +81,19 @@ class _InvalidGraphDefinitionError(Exception):
 class Workflow(Base):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
-
     Attributes:
-
     - id (uuid) Workflow ID, pk
     - tenant_id (uuid) Workspace ID
     - app_id (uuid) App ID
     - type (string) Workflow type
-
         `workflow` for `Workflow App`
-
         `chat` for `Chat App workflow mode`
-
     - version (string) Version
-
         `draft` for draft version (only one for each app), other for version number (redundant)
-
     - graph (text) Workflow canvas configuration (JSON)
-
         The entire canvas configuration JSON, including Node, Edge, and other configurations
-
         - nodes (array[object]) Node list, see Node Schema
-
         - edges (array[object]) Edge list, see Edge Schema
-
     - created_by (uuid) Creator ID
     - created_at (timestamp) Creation time
     - updated_by (uuid) `optional` Last updater ID
@@ -120,7 +105,6 @@ class Workflow(Base):
         db.PrimaryKeyConstraint("id", name="workflow_pkey"),
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -145,7 +129,6 @@ class Workflow(Base):
     _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
-
     VERSION_DRAFT = "draft"
 
     @classmethod
@@ -217,14 +200,11 @@ class Workflow(Base):
         the node's id, title, and its data as a dict.
         """
         workflow_graph = self.graph_dict
-
         if not workflow_graph:
             raise WorkflowDataError(f"workflow graph not found, workflow_id={self.id}")
-
         nodes = workflow_graph.get("nodes")
         if not nodes:
             raise WorkflowDataError("nodes not found in workflow graph")
-
         try:
             node_config = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
@@ -264,7 +244,6 @@ class Workflow(Base):
         """
         if not self._features:
             return self._features
-
         features = json.loads(self._features)
         if features.get("file_upload", {}).get("image", {}).get("enabled", False):
             image_enabled = True
@@ -295,36 +274,28 @@ class Workflow(Base):
         # get start node from graph
         if not self.graph:
             return []
-
         graph_dict = self.graph_dict
         if "nodes" not in graph_dict:
             return []
-
         start_node = next((node for node in graph_dict["nodes"] if node["data"]["type"] == "start"), None)
         if not start_node:
             return []
-
         # get user_input_form from start node
         variables: list[Any] = start_node.get("data", {}).get("variables", [])
-
         if to_old_structure:
             old_structure_variables = []
             for variable in variables:
                 old_structure_variables.append({variable["type"]: variable})
-
             return old_structure_variables
-
         return variables
 
     @property
     def unique_hash(self) -> str:
         """
         Get hash of workflow.
-
         :return: hash
         """
         entity = {"graph": self.graph_dict, "features": self.features_dict}
-
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
     @property
@@ -333,7 +304,6 @@ class Workflow(Base):
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
         It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
         is the one being used by the tool.
-
         For accurate checking, use a direct query with tenant_id, app_id, and version.
         """
         from models.tools import WorkflowToolProvider
@@ -350,7 +320,6 @@ class Workflow(Base):
         # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = "{}"
-
         # Get tenant_id from current_user (Account or EndUser)
         if isinstance(current_user, Account):
             # Account user
@@ -358,10 +327,8 @@ class Workflow(Base):
         else:
             # EndUser
             tenant_id = current_user.tenant_id
-
         if not tenant_id:
             return []
-
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
         results = [
             variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
@@ -382,7 +349,6 @@ class Workflow(Base):
         if not value:
             self._environment_variables = "{}"
             return
-
         # Get tenant_id from current_user (Account or EndUser)
         if isinstance(current_user, Account):
             # Account user
@@ -390,15 +356,12 @@ class Workflow(Base):
         else:
             # EndUser
             tenant_id = current_user.tenant_id
-
         if not tenant_id:
             self._environment_variables = "{}"
             return
-
         value = list(value)
         if any(var for var in value if not var.id):
             raise ValueError("environment variable require a unique id")
-
         # Compare inputs and origin variables,
         # if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
         origin_variables_dictionary = {var.id: var for var in self.environment_variables}
@@ -426,7 +389,6 @@ class Workflow(Base):
             v if not isinstance(v, SecretVariable) or include_secret else v.model_copy(update={"value": ""})
             for v in environment_variables
         ]
-
         result = {
             "graph": self.graph_dict,
             "features": self.features_dict,
@@ -440,7 +402,6 @@ class Workflow(Base):
         # TODO: find some way to init `self._conversation_variables` when instance created.
         if self._conversation_variables is None:
             self._conversation_variables = "{}"
-
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
         results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
         return results
@@ -460,21 +421,15 @@ class Workflow(Base):
 class WorkflowRun(Base):
     """
     Workflow Run
-
     Attributes:
-
     - id (uuid) Run ID
     - tenant_id (uuid) Workspace ID
     - app_id (uuid) App ID
-
     - workflow_id (uuid) Workflow ID
     - type (string) Workflow type
     - triggered_from (string) Trigger source
-
         `debugging` for canvas debugging
-
         `app-run` for (published) app execution
-
     - version (string) Version
     - graph (text) Workflow canvas configuration (JSON)
     - inputs (text) Input parameters
@@ -485,11 +440,8 @@ class WorkflowRun(Base):
     - total_tokens (int) `optional` Total tokens used
     - total_steps (int) Total steps (redundant), default 0
     - created_by_role (string) Creator role
-
         - `account` Console account
-
         - `end_user` End user
-
     - created_by (uuid) Runner ID
     - created_at (timestamp) Run time
     - finished_at (timestamp) End time
@@ -500,11 +452,9 @@ class WorkflowRun(Base):
         db.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
         db.Index("workflow_run_triggerd_from_idx", "tenant_id", "app_id", "triggered_from"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
-
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     type: Mapped[str] = mapped_column(db.String(255))
     triggered_from: Mapped[str] = mapped_column(db.String(255))
@@ -621,21 +571,15 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
 class WorkflowNodeExecutionModel(Base):
     """
     Workflow Node Execution
-
     - id (uuid) Execution ID
     - tenant_id (uuid) Workspace ID
     - app_id (uuid) App ID
     - workflow_id (uuid) Workflow ID
     - triggered_from (string) Trigger source
-
         `single-step` for single-step debugging
-
         `workflow-run` for workflow execution (debugging / user execution)
-
     - workflow_run_id (uuid) `optional` Workflow run ID
-
         Null for single-step debugging.
-
     - index (int) Execution sequence number, used for displaying Tracing Node order
     - predecessor_node_id (string) `optional` Predecessor node ID, used for displaying execution path
     - node_id (string) Node ID
@@ -648,20 +592,13 @@ class WorkflowNodeExecutionModel(Base):
     - error (string) `optional` Error reason
     - elapsed_time (float) `optional` Time consumption (s)
     - execution_metadata (text) Metadata
-
         - total_tokens (int) `optional` Total tokens used
-
         - total_price (decimal) `optional` Total cost
-
         - currency (string) `optional` Currency, such as USD / RMB
-
     - created_at (timestamp) Run time
     - created_by_role (string) Creator role
-
         - `account` Console account
-
         - `end_user` End user
-
     - created_by (uuid) Runner ID
     - finished_at (timestamp) End time
     """
@@ -782,7 +719,6 @@ class WorkflowNodeExecutionModel(Base):
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-
         return extras
 
 
@@ -799,7 +735,6 @@ class WorkflowAppLogCreatedFrom(Enum):
     def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -812,28 +747,19 @@ class WorkflowAppLogCreatedFrom(Enum):
 class WorkflowAppLog(Base):
     """
     Workflow App execution log, excluding workflow debugging records.
-
     Attributes:
-
     - id (uuid) run ID
     - tenant_id (uuid) Workspace ID
     - app_id (uuid) App ID
     - workflow_id (uuid) Associated Workflow ID
     - workflow_run_id (uuid) Associated Workflow Run ID
     - created_from (string) Creation source
-
         `service-api` App Execution OpenAPI
-
         `web-app` WebApp
-
         `installed-app` Installed App
-
     - created_by_role (string) Creator role
-
         - `account` Console account
-
         - `end_user` End user
-
     - created_by (uuid) Creator ID, depends on the user table according to created_by_role
     - created_at (timestamp) Creation time
     """
@@ -843,7 +769,6 @@ class WorkflowAppLog(Base):
         db.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
         db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
     )
-
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -873,7 +798,6 @@ class WorkflowAppLog(Base):
 
 class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"
-
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
@@ -917,10 +841,8 @@ def _naive_utc_datetime():
 class WorkflowDraftVariable(Base):
     """`WorkflowDraftVariable` record variables and outputs generated during
     debugging worfklow or chatflow.
-
     IMPORTANT: This model maintains multiple invariant rules that must be preserved.
     Do not instantiate this class directly with the constructor.
-
     Instead, use the factory methods (`new_conversation_variable`, `new_sys_variable`,
     `new_node_variable`) defined below to ensure all invariants are properly maintained.
     """
@@ -937,17 +859,14 @@ class WorkflowDraftVariable(Base):
     __table_args__ = (UniqueConstraint(*unique_app_id_node_id_name()),)
     # Required for instance variable annotation.
     __allow_unmapped__ = True
-
     # id is the unique identifier of a draft variable.
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
-
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime,
         nullable=False,
         default=_naive_utc_datetime,
         server_default=func.current_timestamp(),
     )
-
     updated_at: Mapped[datetime] = mapped_column(
         db.DateTime,
         nullable=False,
@@ -955,10 +874,8 @@ class WorkflowDraftVariable(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
-
     # "`app_id` maps to the `id` field in the `model.App` model."
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-
     # `last_edited_at` records when the value of a given draft variable
     # is edited.
     #
@@ -968,7 +885,6 @@ class WorkflowDraftVariable(Base):
         nullable=True,
         default=None,
     )
-
     # The `node_id` field is special.
     #
     # If the variable is a conversation variable or a system variable, then the value of `node_id`
@@ -980,7 +896,6 @@ class WorkflowDraftVariable(Base):
     # However, there's one caveat. The id of the first "Answer" node in chatflow is "answer". (Other
     # "Answer" node conform the rules above.)
     node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id")
-
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
     #
@@ -991,21 +906,15 @@ class WorkflowDraftVariable(Base):
         default="",
         nullable=False,
     )
-
     selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
-
     # The data type of this variable's value
     value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
-
     # The variable's value serialized as a JSON string
     value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
-
     # Controls whether the variable should be displayed in the variable inspection panel
     visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
-
     # Determines whether this variable can be modified by users
     editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
-
     # The `node_execution_id` field identifies the workflow node execution that created this variable.
     # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
     #
@@ -1016,7 +925,6 @@ class WorkflowDraftVariable(Base):
         nullable=True,
         default=None,
     )
-
     # Cache for deserialized value
     #
     # NOTE(QuantumGhost): This field serves two purposes:
@@ -1035,7 +943,6 @@ class WorkflowDraftVariable(Base):
         The constructor of `WorkflowDraftVariable` is not intended for
         direct use outside this file. Its solo purpose is setup private state
         used by the model instance.
-
         Please use the factory methods
         (`new_conversation_variable`, `new_sys_variable`, `new_node_variable`)
         defined below to create instances of this class.
@@ -1107,25 +1014,19 @@ class WorkflowDraftVariable(Base):
                 raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
             file_list = cls.rebuild_file_types(value)
             return build_segment_with_type(segment_type=segment_type, value=file_list)
-
         return build_segment_with_type(segment_type=segment_type, value=value)
 
     def get_value(self) -> Segment:
         """Decode the serialized value into its corresponding `Segment` object.
-
         This method caches the result, so repeated calls will return the same
         object instance without re-parsing the serialized data.
-
         If you need to modify the returned `Segment`, use `value.model_copy()`
         to create a copy first to avoid affecting the cached instance.
-
         For more information about the caching mechanism, see the documentation
         of the `__value` field.
-
         Returns:
             Segment: The deserialized value as a Segment object.
         """
-
         if self.__value is not None:
             return self.__value
         value = self._loads_value()
@@ -1138,10 +1039,8 @@ class WorkflowDraftVariable(Base):
 
     def set_value(self, value: Segment):
         """Updates the `value` and corresponding `value_type` fields in the database model.
-
         This method also stores the provided Segment object in the deserialized cache
         without creating a copy, allowing for efficient value access.
-
         Args:
             value: The Segment object to store as the variable's value.
         """

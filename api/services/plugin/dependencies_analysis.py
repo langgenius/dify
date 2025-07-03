@@ -9,7 +9,6 @@ class DependenciesAnalysisService:
     def analyze_tool_dependency(cls, tool_id: str) -> str:
         """
         Analyze the dependency of a tool.
-
         Convert the tool id to the plugin_id
         """
         try:
@@ -21,7 +20,6 @@ class DependenciesAnalysisService:
     def analyze_model_provider_dependency(cls, model_provider_id: str) -> str:
         """
         Analyze the dependency of a model provider.
-
         Convert the model provider id to the plugin_id
         """
         try:
@@ -37,13 +35,10 @@ class DependenciesAnalysisService:
         required_plugin_unique_identifiers = []
         for dependency in dependencies:
             required_plugin_unique_identifiers.append(dependency.value.plugin_unique_identifier)
-
         manager = PluginInstaller()
-
         # get leaked dependencies
         missing_plugins = manager.fetch_missing_dependencies(tenant_id, required_plugin_unique_identifiers)
         missing_plugin_unique_identifiers = {plugin.plugin_unique_identifier: plugin for plugin in missing_plugins}
-
         leaked_dependencies = []
         for dependency in dependencies:
             unique_identifier = dependency.value.plugin_unique_identifier
@@ -55,7 +50,6 @@ class DependenciesAnalysisService:
                         current_identifier=missing_plugin_unique_identifiers[unique_identifier].current_identifier,
                     )
                 )
-
         return leaked_dependencies
 
     @classmethod
@@ -103,7 +97,6 @@ class DependenciesAnalysisService:
                 )
             else:
                 raise ValueError(f"Unknown plugin source: {plugin.source}")
-
         return result
 
     @classmethod

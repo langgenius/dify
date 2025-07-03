@@ -46,10 +46,8 @@ class WorkflowToolProviderController(ToolProviderController):
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> "WorkflowToolProviderController":
         app = db_provider.app
-
         if not app:
             raise ValueError("app not found")
-
         controller = WorkflowToolProviderController(
             entity=ToolProviderEntity(
                 identity=ToolProviderIdentity(
@@ -64,11 +62,8 @@ class WorkflowToolProviderController(ToolProviderController):
             ),
             provider_id=db_provider.id or "",
         )
-
         # init tools
-
         controller.tools = [controller._get_db_provider_tool(db_provider, app)]
-
         return controller
 
     @property
@@ -87,15 +82,12 @@ class WorkflowToolProviderController(ToolProviderController):
             .filter(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
             .first()
         )
-
         if not workflow:
             raise ValueError("workflow not found")
-
         # fetch start node
         graph: Mapping = workflow.graph_dict
         features_dict: Mapping = workflow.features_dict
         features = WorkflowAppConfigManager.convert_features(config_dict=features_dict, app_mode=AppMode.WORKFLOW)
-
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
@@ -103,7 +95,6 @@ class WorkflowToolProviderController(ToolProviderController):
             return next(filter(lambda x: x.variable == variable_name, variables), None)  # type: ignore
 
         user = db_provider.user
-
         workflow_tool_parameters = []
         for parameter in parameters:
             variable = fetch_workflow_variable(parameter.name)
@@ -113,13 +104,11 @@ class WorkflowToolProviderController(ToolProviderController):
                 if variable.type not in VARIABLE_TO_PARAMETER_TYPE_MAPPING:
                     raise ValueError(f"unsupported variable type {variable.type}")
                 parameter_type = VARIABLE_TO_PARAMETER_TYPE_MAPPING[variable.type]
-
                 if variable.type == VariableEntityType.SELECT and variable.options:
                     options = [
                         PluginParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
                         for option in variable.options
                     ]
-
                 workflow_tool_parameters.append(
                     ToolParameter(
                         name=parameter.name,
@@ -148,7 +137,6 @@ class WorkflowToolProviderController(ToolProviderController):
                 )
             else:
                 raise ValueError("variable not found")
-
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
@@ -181,13 +169,11 @@ class WorkflowToolProviderController(ToolProviderController):
     def get_tools(self, tenant_id: str) -> list[WorkflowTool]:
         """
         fetch tools from database
-
         :param tenant_id: the tenant id
         :return: the tools
         """
         if self.tools is not None:
             return self.tools
-
         db_providers: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
             .filter(
@@ -196,32 +182,25 @@ class WorkflowToolProviderController(ToolProviderController):
             )
             .first()
         )
-
         if not db_providers:
             return []
         if not db_providers.app:
             raise ValueError("app not found")
-
         app = db_providers.app
         if not app:
             raise ValueError("can not read app of workflow")
-
         self.tools = [self._get_db_provider_tool(db_providers, app)]
-
         return self.tools
 
     def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:  # type: ignore
         """
         get tool by name
-
         :param tool_name: the name of the tool
         :return: the tool
         """
         if self.tools is None:
             return None
-
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:
                 return tool
-
         return None

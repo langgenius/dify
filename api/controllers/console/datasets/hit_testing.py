@@ -17,11 +17,9 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
         dataset_id_str = str(dataset_id)
-
         dataset = self.get_and_validate_dataset(dataset_id_str)
         args = self.parse_args()
         self.hit_testing_args_check(args)
-
         return self.perform_hit_testing(dataset, args)
 
 

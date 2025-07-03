@@ -23,12 +23,10 @@ class WorkflowDailyRunsStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(id) AS runs
@@ -42,39 +40,28 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "runs": i.runs})
-
         return jsonify({"data": response_data})
 
 
@@ -85,12 +72,10 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     COUNT(DISTINCT workflow_runs.created_by) AS terminal_count
@@ -104,39 +89,28 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
-
         return jsonify({"data": response_data})
 
 
@@ -147,12 +121,10 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @get_app_model
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
     SUM(workflow_runs.total_tokens) AS token_count
@@ -166,34 +138,24 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
-
         sql_query += " GROUP BY date ORDER BY date"
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
@@ -203,7 +165,6 @@ WHERE
                         "token_count": i.token_count,
                     }
                 )
-
         return jsonify({"data": response_data})
 
 
@@ -214,12 +175,10 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model):
         account = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
-
         sql_query = """SELECT
     AVG(sub.interactions) AS interactions,
     sub.date
@@ -246,43 +205,33 @@ GROUP BY
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
         }
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
-
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
             sql_query = sql_query.replace("{{start}}", " AND c.created_at >= :start")
             arg_dict["start"] = start_datetime_utc
         else:
             sql_query = sql_query.replace("{{start}}", "")
-
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
             sql_query = sql_query.replace("{{end}}", " AND c.created_at < :end")
             arg_dict["end"] = end_datetime_utc
         else:
             sql_query = sql_query.replace("{{end}}", "")
-
         response_data = []
-
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {"date": str(i.date), "interactions": float(i.interactions.quantize(Decimal("0.01")))}
                 )
-
         return jsonify({"data": response_data})
 
 

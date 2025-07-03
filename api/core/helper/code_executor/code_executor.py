@@ -41,19 +41,16 @@ class CodeLanguage(StrEnum):
 class CodeExecutor:
     dependencies_cache: dict[str, str] = {}
     dependencies_cache_lock = Lock()
-
     code_template_transformers: dict[CodeLanguage, type[TemplateTransformer]] = {
         CodeLanguage.PYTHON3: Python3TemplateTransformer,
         CodeLanguage.JINJA2: Jinja2TemplateTransformer,
         CodeLanguage.JAVASCRIPT: NodeJsTemplateTransformer,
     }
-
     code_language_to_running_language = {
         CodeLanguage.JAVASCRIPT: "nodejs",
         CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
         CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
     }
-
     supported_dependencies_languages: set[CodeLanguage] = {CodeLanguage.PYTHON3}
 
     @classmethod
@@ -66,16 +63,13 @@ class CodeExecutor:
         :return:
         """
         url = code_execution_endpoint_url / "v1" / "sandbox" / "run"
-
         headers = {"X-Api-Key": dify_config.CODE_EXECUTION_API_KEY}
-
         data = {
             "language": cls.code_language_to_running_language.get(language),
             "code": code,
             "preload": preload,
             "enable_network": True,
         }
-
         try:
             response = post(
                 str(url),
@@ -103,20 +97,15 @@ class CodeExecutor:
                 " please check if the sandbox service is running."
                 f" ( Error: {str(e)} )"
             )
-
         try:
             response_data = response.json()
         except:
             raise CodeExecutionError("Failed to parse response")
-
         if (code := response_data.get("code")) != 0:
             raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")
-
         response_code = CodeExecutionResponse(**response_data)
-
         if response_code.data.error:
             raise CodeExecutionError(response_code.data.error)
-
         return response_code.data.stdout or ""
 
     @classmethod
@@ -131,12 +120,9 @@ class CodeExecutor:
         template_transformer = cls.code_template_transformers.get(language)
         if not template_transformer:
             raise CodeExecutionError(f"Unsupported language {language}")
-
         runner, preload = template_transformer.transform_caller(code, inputs)
-
         try:
             response = cls.execute_code(language, preload, runner)
         except CodeExecutionError as e:
             raise e
-
         return template_transformer.transform_response(response)

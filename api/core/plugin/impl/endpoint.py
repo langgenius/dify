@@ -8,7 +8,6 @@ class PluginEndpointClient(BasePluginClient):
     ) -> bool:
         """
         Create an endpoint for the given plugin.
-
         Errors will be raised if any error occurs.
         """
         return self._request_with_plugin_daemon_response(

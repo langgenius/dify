@@ -65,10 +65,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp.model_schema
-
         return None
 
     def validate_provider_credentials(
@@ -93,13 +91,10 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             if resp.credentials and isinstance(resp.credentials, dict):
                 credentials.update(resp.credentials)
-
             return resp.result
-
         return False
 
     def validate_model_credentials(
@@ -133,13 +128,10 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             if resp.credentials and isinstance(resp.credentials, dict):
                 credentials.update(resp.credentials)
-
             return resp.result
-
         return False
 
     def invoke_llm(
@@ -184,7 +176,6 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         try:
             yield from response
         except PluginDaemonInnerError as e:
@@ -227,10 +218,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp.num_tokens
-
         return 0
 
     def invoke_text_embedding(
@@ -269,10 +258,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp
-
         raise ValueError("Failed to invoke text embedding")
 
     def get_text_embedding_num_tokens(
@@ -309,10 +296,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp.num_tokens
-
         return []
 
     def invoke_rerank(
@@ -355,10 +340,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp
-
         raise ValueError("Failed to invoke rerank")
 
     def invoke_tts(
@@ -398,7 +381,6 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         try:
             for result in response:
                 hex_str = result.result
@@ -440,14 +422,11 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             voices = []
             for voice in resp.voices:
                 voices.append({"name": voice.name, "value": voice.value})
-
             return voices
-
         return []
 
     def invoke_speech_to_text(
@@ -484,10 +463,8 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp.result
-
         raise ValueError("Failed to invoke speech to text")
 
     def invoke_moderation(
@@ -524,8 +501,6 @@ class PluginModelClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-
         for resp in response:
             return resp.result
-
         raise ValueError("Failed to invoke moderation")

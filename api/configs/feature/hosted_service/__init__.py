@@ -14,18 +14,15 @@ class HostedCreditConfig(BaseSettings):
         """
         Get credit value for a specific model name.
         Returns 1 if model is not found in configuration (default credit).
-
         :param model_name: The name of the model to search for
         :return: The credit value for the model
         """
         if not self.HOSTED_MODEL_CREDIT_CONFIG:
             return 1
-
         try:
             credit_map = dict(
                 item.strip().split(":", 1) for item in self.HOSTED_MODEL_CREDIT_CONFIG.split(",") if ":" in item
             )
-
             # Search for matching model pattern
             for pattern, credit in credit_map.items():
                 if pattern.strip() == model_name:
@@ -44,22 +41,18 @@ class HostedOpenAiConfig(BaseSettings):
         description="API key for hosted OpenAI service",
         default=None,
     )
-
     HOSTED_OPENAI_API_BASE: Optional[str] = Field(
         description="Base URL for hosted OpenAI API",
         default=None,
     )
-
     HOSTED_OPENAI_API_ORGANIZATION: Optional[str] = Field(
         description="Organization ID for hosted OpenAI service",
         default=None,
     )
-
     HOSTED_OPENAI_TRIAL_ENABLED: bool = Field(
         description="Enable trial access to hosted OpenAI service",
         default=False,
     )
-
     HOSTED_OPENAI_TRIAL_MODELS: str = Field(
         description="Comma-separated list of available models for trial access",
         default="gpt-3.5-turbo,"
@@ -71,17 +64,14 @@ class HostedOpenAiConfig(BaseSettings):
         "gpt-3.5-turbo-0125,"
         "text-davinci-003",
     )
-
     HOSTED_OPENAI_QUOTA_LIMIT: NonNegativeInt = Field(
         description="Quota limit for hosted OpenAI service usage",
         default=200,
     )
-
     HOSTED_OPENAI_PAID_ENABLED: bool = Field(
         description="Enable paid access to hosted OpenAI service",
         default=False,
     )
-
     HOSTED_OPENAI_PAID_MODELS: str = Field(
         description="Comma-separated list of available models for paid access",
         default="gpt-4,"
@@ -109,17 +99,14 @@ class HostedAzureOpenAiConfig(BaseSettings):
         description="Enable hosted Azure OpenAI service",
         default=False,
     )
-
     HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
         description="API key for hosted Azure OpenAI service",
         default=None,
     )
-
     HOSTED_AZURE_OPENAI_API_BASE: Optional[str] = Field(
         description="Base URL for hosted Azure OpenAI API",
         default=None,
     )
-
     HOSTED_AZURE_OPENAI_QUOTA_LIMIT: NonNegativeInt = Field(
         description="Quota limit for hosted Azure OpenAI service usage",
         default=200,
@@ -135,22 +122,18 @@ class HostedAnthropicConfig(BaseSettings):
         description="Base URL for hosted Anthropic API",
         default=None,
     )
-
     HOSTED_ANTHROPIC_API_KEY: Optional[str] = Field(
         description="API key for hosted Anthropic service",
         default=None,
     )
-
     HOSTED_ANTHROPIC_TRIAL_ENABLED: bool = Field(
         description="Enable trial access to hosted Anthropic service",
         default=False,
     )
-
     HOSTED_ANTHROPIC_QUOTA_LIMIT: NonNegativeInt = Field(
         description="Quota limit for hosted Anthropic service usage",
         default=600000,
     )
-
     HOSTED_ANTHROPIC_PAID_ENABLED: bool = Field(
         description="Enable paid access to hosted Anthropic service",
         default=False,
@@ -199,7 +182,6 @@ class HostedModerationConfig(BaseSettings):
         description="Enable hosted Moderation service",
         default=False,
     )
-
     HOSTED_MODERATION_PROVIDERS: str = Field(
         description="Comma-separated list of moderation providers",
         default="",
@@ -215,7 +197,6 @@ class HostedFetchAppTemplateConfig(BaseSettings):
         description="Mode for fetching app templates: remote, db, or builtin default to remote,",
         default="remote",
     )
-
     HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN: str = Field(
         description="Domain for fetching remote app templates",
         default="https://tmpl.dify.ai",

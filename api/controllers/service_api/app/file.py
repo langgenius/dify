@@ -21,20 +21,15 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     def post(self, app_model: App, end_user: EndUser):
         file = request.files["file"]
-
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
         if not file.mimetype:
             raise UnsupportedFileTypeError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
-
         if not file.filename:
             raise FilenameNotExistsError
-
         try:
             upload_file = FileService.upload_file(
                 filename=file.filename,
@@ -46,7 +41,6 @@ class FileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-
         return upload_file, 201
 
 

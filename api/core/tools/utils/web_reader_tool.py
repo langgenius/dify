@@ -17,7 +17,6 @@ FULL_TEMPLATE = """
 TITLE: {title}
 AUTHOR: {author}
 TEXT:
-
 {text}
 """
 
@@ -35,11 +34,9 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
     }
     if user_agent:
         headers["User-Agent"] = user_agent
-
     main_content_type = None
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
     response = ssrf_proxy.head(url, headers=headers, follow_redirects=True, timeout=(5, 10))
-
     if response.status_code == 200:
         # check content-type
         content_type = response.headers.get("Content-Type")
@@ -53,22 +50,17 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
                 extension = re.search(r"\.(\w+)$", filename)
                 if extension:
                     main_content_type = mimetypes.guess_type(filename)[0]
-
         if main_content_type not in supported_content_types:
             return "Unsupported content-type [{}] of URL.".format(main_content_type)
-
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
             return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
-
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
         scraper.perform_request = ssrf_proxy.make_request  # type: ignore
         response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))  # type: ignore
-
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
-
     # Detect encoding using chardet
     detected_encoding = chardet.detect(response.content)
     encoding = detected_encoding["encoding"]
@@ -79,18 +71,14 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
             content = response.text
     else:
         content = response.text
-
     article = extract_using_readabilipy(content)
-
     if not article.text:
         return ""
-
     res = FULL_TEMPLATE.format(
         title=article.title,
         author=article.auther,
         text=article.text,
     )
-
     return res
 
 
@@ -108,7 +96,6 @@ def extract_using_readabilipy(html: str):
         auther=json_article.get("byline") or "",
         text=json_article.get("plain_text") or [],
     )
-
     return article
 
 

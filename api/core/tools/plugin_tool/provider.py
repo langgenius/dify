@@ -26,7 +26,6 @@ class PluginToolProviderController(BuiltinToolProviderController):
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
-
         :return: type of the provider
         """
         return ToolProviderType.PLUGIN
@@ -51,10 +50,8 @@ class PluginToolProviderController(BuiltinToolProviderController):
         tool_entity = next(
             (tool_entity for tool_entity in self.entity.tools if tool_entity.identity.name == tool_name), None
         )
-
         if not tool_entity:
             raise ValueError(f"Tool with name {tool_name} not found")
-
         return PluginTool(
             entity=tool_entity,
             runtime=ToolRuntime(tenant_id=self.tenant_id),

@@ -76,10 +76,8 @@ class ApiToolProviderController(ToolProviderController):
             ]
         elif auth_type == ApiProviderAuthType.NONE:
             pass
-
         user = db_provider.user
         user_name = user.name if user else ""
-
         return ApiToolProviderController(
             entity=ToolProviderEntity(
                 identity=ToolProviderIdentity(
@@ -103,7 +101,6 @@ class ApiToolProviderController(ToolProviderController):
     def _parse_tool_bundle(self, tool_bundle: ApiToolBundle) -> ApiTool:
         """
         parse tool bundle to tool
-
         :param tool_bundle: the tool bundle
         :return: the tool
         """
@@ -133,54 +130,44 @@ class ApiToolProviderController(ToolProviderController):
     def load_bundled_tools(self, tools: list[ApiToolBundle]):
         """
         load bundled tools
-
         :param tools: the bundled tools
         :return: the tools
         """
         self.tools = [self._parse_tool_bundle(tool) for tool in tools]
-
         return self.tools
 
     def get_tools(self, tenant_id: str) -> list[ApiTool]:
         """
         fetch tools from database
-
         :param tenant_id: the tenant id
         :return: the tools
         """
         if len(self.tools) > 0:
             return self.tools
-
         tools: list[ApiTool] = []
-
         # get tenant api providers
         db_providers: list[ApiToolProvider] = (
             db.session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
             .all()
         )
-
         if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:
                 for tool in db_provider.tools:
                     assistant_tool = self._parse_tool_bundle(tool)
                     tools.append(assistant_tool)
-
         self.tools = tools
         return tools
 
     def get_tool(self, tool_name: str):
         """
         get tool by name
-
         :param tool_name: the name of the tool
         :return: the tool
         """
         if self.tools is None:
             self.get_tools(self.tenant_id)
-
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:
                 return tool
-
         raise ValueError(f"tool {tool_name} not found")

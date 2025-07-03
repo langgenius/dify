@@ -1,0 +1,11 @@
+# venv
+venv*/
+.venv/
+
+# ide
+.idea/
+.vscode/
+
+# custom
+web/.env.local.save
+venv312/

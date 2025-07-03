@@ -23,7 +23,6 @@ class ModelType(Enum):
     def value_of(cls, origin_model_type: str) -> "ModelType":
         """
         Get model type from origin model type.
-
         :return: model type
         """
         if origin_model_type in {"text-generation", cls.LLM.value}:
@@ -44,7 +43,6 @@ class ModelType(Enum):
     def to_origin_model_type(self) -> str:
         """
         Get origin model type from model type.
-
         :return: origin model type
         """
         if self == self.LLM:
@@ -106,7 +104,6 @@ class DefaultParameterName(StrEnum):
     def value_of(cls, value: Any) -> "DefaultParameterName":
         """
         Get parameter name from value.
-
         :param value: parameter value
         :return: parameter name
         """

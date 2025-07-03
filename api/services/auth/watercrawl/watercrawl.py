@@ -14,7 +14,6 @@ class WatercrawlAuth(ApiKeyAuthBase):
             raise ValueError("Invalid auth type, WaterCrawl auth type must be x-api-key")
         self.api_key = credentials.get("config", {}).get("api_key", None)
         self.base_url = credentials.get("config", {}).get("base_url", "https://app.watercrawl.dev")
-
         if not self.api_key:
             raise ValueError("No API key provided")
 

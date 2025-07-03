@@ -16,5 +16,4 @@ class BuiltinToolProviderSort:
             return provider.name
 
         sorted_providers = sort_by_position_map(cls._position, providers, name_func)
-
         return sorted_providers

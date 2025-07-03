@@ -45,7 +45,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         description = dataset.description
         if not description:
             description = "useful for when you want to answer queries about the " + dataset.name
-
         description = description.replace("\n", "").replace("\r", "")
         return cls(
             name=f"dataset_{dataset.id.replace('-', '_')}",
@@ -59,7 +58,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         dataset = (
             db.session.query(Dataset).filter(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id).first()
         )
-
         if not dataset:
             return ""
         for hit_callback in self.hit_callbacks:
@@ -119,7 +117,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     context_list.append(source)
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)
-
             return str("\n".join([item.page_content for item in results]))
         else:
             if metadata_condition and not document_ids_filter:
@@ -183,7 +180,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     score=record.score,
                                 )
                             )
-
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
@@ -209,7 +205,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     score=record.score or 0.0,
                                     doc_metadata=document.doc_metadata,  # type: ignore
                                 )
-
                                 if self.retriever_from == "dev":
                                     source.hit_count = segment.hit_count
                                     source.word_count = segment.word_count
@@ -220,7 +215,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 else:
                                     source.content = segment.content
                                 retrieval_resource_list.append(source)
-
             if self.return_resource and retrieval_resource_list:
                 retrieval_resource_list = sorted(
                     retrieval_resource_list,

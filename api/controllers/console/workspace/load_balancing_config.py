@@ -17,9 +17,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
     def post(self, provider: str):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
-
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -32,13 +30,10 @@ class LoadBalancingCredentialsValidateApi(Resource):
         )
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         # validate model load balancing credentials
         model_load_balancing_service = ModelLoadBalancingService()
-
         result = True
         error = ""
-
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
@@ -50,12 +45,9 @@ class LoadBalancingCredentialsValidateApi(Resource):
         except CredentialsValidateFailedError as ex:
             result = False
             error = str(ex)
-
         response = {"result": "success" if result else "error"}
-
         if not result:
             response["error"] = error
-
         return response
 
 
@@ -66,9 +58,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     def post(self, provider: str, config_id: str):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
-
         tenant_id = current_user.current_tenant_id
-
         parser = reqparse.RequestParser()
         parser.add_argument("model", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
@@ -81,13 +71,10 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         )
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         # validate model load balancing config credentials
         model_load_balancing_service = ModelLoadBalancingService()
-
         result = True
         error = ""
-
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
@@ -100,12 +87,9 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         except CredentialsValidateFailedError as ex:
             result = False
             error = str(ex)
-
         response = {"result": "success" if result else "error"}
-
         if not result:
             response["error"] = error
-
         return response
 
 
@@ -114,7 +98,6 @@ api.add_resource(
     LoadBalancingCredentialsValidateApi,
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate",
 )
-
 api.add_resource(
     LoadBalancingConfigCredentialsValidateApi,
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate",

@@ -13,7 +13,6 @@ class FirecrawlAuth(ApiKeyAuthBase):
             raise ValueError("Invalid auth type, Firecrawl auth type must be Bearer")
         self.api_key = credentials.get("config", {}).get("api_key", None)
         self.base_url = credentials.get("config", {}).get("base_url", "https://api.firecrawl.dev")
-
         if not self.api_key:
             raise ValueError("No API key provided")
 

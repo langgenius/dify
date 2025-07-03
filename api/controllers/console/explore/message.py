@@ -37,17 +37,14 @@ class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
         app_model = installed_app.app
-
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
         parser.add_argument("first_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         try:
             return MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
@@ -61,14 +58,11 @@ class MessageListApi(InstalledAppResource):
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
         app_model = installed_app.app
-
         message_id = str(message_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         parser.add_argument("content", type=str, location="json")
         args = parser.parse_args()
-
         try:
             MessageService.create_feedback(
                 app_model=app_model,
@@ -79,7 +73,6 @@ class MessageFeedbackApi(InstalledAppResource):
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
-
         return {"result": "success"}
 
 
@@ -88,17 +81,13 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
-
         message_id = str(message_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
         )
         args = parser.parse_args()
-
         streaming = args["response_mode"] == "streaming"
-
         try:
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
@@ -133,9 +122,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         message_id = str(message_id)
-
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
@@ -157,5 +144,4 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
-
         return {"data": questions}

@@ -43,10 +43,8 @@ class PluginAgentStrategy(BaseAgentStrategy):
         Invoke the agent strategy.
         """
         manager = PluginAgentClient()
-
         initialized_params = self.initialize_parameters(params)
         params = convert_parameters_to_plugin_format(initialized_params)
-
         yield from manager.invoke(
             tenant_id=self.tenant_id,
             user_id=user_id,

@@ -26,7 +26,6 @@ class TagListApi(Resource):
         tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
         tags = TagService.get_tags(tag_type, current_user.current_tenant_id, keyword)
-
         return tags, 200
 
     @setup_required
@@ -36,7 +35,6 @@ class TagListApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name
@@ -46,9 +44,7 @@ class TagListApi(Resource):
         )
         args = parser.parse_args()
         tag = TagService.save_tags(args)
-
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
-
         return response, 200
 
 
@@ -61,18 +57,14 @@ class TagUpdateDeleteApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name
         )
         args = parser.parse_args()
         tag = TagService.update_tags(args, tag_id)
-
         binding_count = TagService.get_tag_binding_count(tag_id)
-
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-
         return response, 200
 
     @setup_required
@@ -83,9 +75,7 @@ class TagUpdateDeleteApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-
         TagService.delete_tag(tag_id)
-
         return 204
 
 
@@ -97,7 +87,6 @@ class TagBindingCreateApi(Resource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument(
             "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
@@ -110,7 +99,6 @@ class TagBindingCreateApi(Resource):
         )
         args = parser.parse_args()
         TagService.save_tag_binding(args)
-
         return 200
 
 
@@ -122,7 +110,6 @@ class TagBindingDeleteApi(Resource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
         parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
@@ -131,7 +118,6 @@ class TagBindingDeleteApi(Resource):
         )
         args = parser.parse_args()
         TagService.delete_tag_binding(args)
-
         return 200
 
 

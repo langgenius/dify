@@ -39,7 +39,6 @@ class MessageListApi(Resource):
         "status": fields.String,
         "error": fields.String,
     }
-
     message_infinite_scroll_pagination_fields = {
         "limit": fields.Integer,
         "has_more": fields.Boolean,
@@ -52,13 +51,11 @@ class MessageListApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
         parser.add_argument("first_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         try:
             return MessageService.pagination_by_first_id(
                 app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
@@ -73,12 +70,10 @@ class MessageFeedbackApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         parser.add_argument("content", type=str, location="json")
         args = parser.parse_args()
-
         try:
             MessageService.create_feedback(
                 app_model=app_model,
@@ -89,7 +84,6 @@ class MessageFeedbackApi(Resource):
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
-
         return {"result": "success"}
 
 
@@ -112,7 +106,6 @@ class MessageSuggestedApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
@@ -124,7 +117,6 @@ class MessageSuggestedApi(Resource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
-
         return {"result": "success", "data": questions}
 
 

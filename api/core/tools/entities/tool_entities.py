@@ -54,7 +54,6 @@ class ToolProviderType(enum.StrEnum):
     def value_of(cls, value: str) -> "ToolProviderType":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -78,7 +77,6 @@ class ApiProviderSchemaType(Enum):
     def value_of(cls, value: str) -> "ApiProviderSchemaType":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -100,7 +98,6 @@ class ApiProviderAuthType(Enum):
     def value_of(cls, value: str) -> "ApiProviderAuthType":
         """
         Get value of given mode.
-
         :param value: mode value
         :return: mode
         """
@@ -144,12 +141,10 @@ class ToolInvokeMessage(BaseModel):
             value = values.get("variable_value")
             if not isinstance(value, dict | list | str | int | float | bool):
                 raise ValueError("Only basic types and lists are allowed.")
-
             # if stream is true, the value must be a string
             if values.get("stream"):
                 if not isinstance(value, str):
                     raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
-
             return values
 
         @field_validator("variable_name", mode="before")
@@ -241,7 +236,6 @@ class ToolParameter(PluginParameter):
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
         DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT.value
-
         # deprecated, should not use.
         SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
 
@@ -272,7 +266,6 @@ class ToolParameter(PluginParameter):
     ) -> "ToolParameter":
         """
         get a simple tool parameter
-
         :param name: the name of the parameter
         :param llm_description: the description presented to the LLM
         :param typ: the type of the parameter
@@ -287,7 +280,6 @@ class ToolParameter(PluginParameter):
             ]
         else:
             option_objs = []
-
         return cls(
             name=name,
             label=I18nObject(en_US="", zh_Hans=""),
@@ -335,7 +327,6 @@ class ToolEntity(BaseModel):
     description: Optional[ToolDescription] = None
     output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

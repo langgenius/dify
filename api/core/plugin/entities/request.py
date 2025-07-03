@@ -42,7 +42,6 @@ class BaseRequestInvokeModel(BaseModel):
     provider: str
     model: str
     model_type: ModelType
-
     model_config = ConfigDict(protected_namespaces=())
 
 
@@ -58,7 +57,6 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     tools: Optional[list[PromptMessageTool]] = Field(default_factory=list[PromptMessageTool])
     stop: Optional[list[str]] = Field(default_factory=list[str])
     stream: Optional[bool] = False
-
     model_config = ConfigDict(protected_namespaces=())
 
     @field_validator("prompt_messages", mode="before")
@@ -66,7 +64,6 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     def convert_prompt_messages(cls, v):
         if not isinstance(v, list):
             raise ValueError("prompt_messages must be a list")
-
         for i in range(len(v)):
             if v[i]["role"] == PromptMessageRole.USER.value:
                 v[i] = UserPromptMessage(**v[i])
@@ -78,7 +75,6 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
                 v[i] = ToolPromptMessage(**v[i])
             else:
                 v[i] = PromptMessage(**v[i])
-
         return v
 
 

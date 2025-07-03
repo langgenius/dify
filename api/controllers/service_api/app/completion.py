@@ -36,20 +36,15 @@ class CompletionApi(Resource):
     def post(self, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise AppUnavailableError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, location="json", default="")
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-
         args = parser.parse_args()
-
         streaming = args["response_mode"] == "streaming"
-
         args["auto_generate_name"] = False
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model,
@@ -58,7 +53,6 @@ class CompletionApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming,
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -87,9 +81,7 @@ class CompletionStopApi(Resource):
     def post(self, app_model: App, end_user: EndUser, task_id):
         if app_model.mode != "completion":
             raise AppUnavailableError()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
-
         return {"result": "success"}, 200
 
 
@@ -99,7 +91,6 @@ class ChatApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
@@ -108,16 +99,12 @@ class ChatApi(Resource):
         parser.add_argument("conversation_id", type=uuid_value, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
-
         args = parser.parse_args()
-
         streaming = args["response_mode"] == "streaming"
-
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
-
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -149,9 +136,7 @@ class ChatStopApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
-
         return {"result": "success"}, 200
 
 

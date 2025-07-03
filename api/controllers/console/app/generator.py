@@ -27,10 +27,8 @@ class RuleGenerateApi(Resource):
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
         args = parser.parse_args()
-
         account = current_user
         PROMPT_GENERATION_MAX_TOKENS = int(os.getenv("PROMPT_GENERATION_MAX_TOKENS", "512"))
-
         try:
             rules = LLMGenerator.generate_rule_config(
                 tenant_id=account.current_tenant_id,
@@ -47,7 +45,6 @@ class RuleGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-
         return rules
 
 
@@ -62,7 +59,6 @@ class RuleCodeGenerateApi(Resource):
         parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
         parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
         args = parser.parse_args()
-
         account = current_user
         CODE_GENERATION_MAX_TOKENS = int(os.getenv("CODE_GENERATION_MAX_TOKENS", "1024"))
         try:
@@ -81,7 +77,6 @@ class RuleCodeGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-
         return code_result
 
 
@@ -94,7 +89,6 @@ class RuleStructuredOutputGenerateApi(Resource):
         parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
-
         account = current_user
         try:
             structured_output = LLMGenerator.generate_structured_output(
@@ -110,7 +104,6 @@ class RuleStructuredOutputGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-
         return structured_output
 
 

@@ -3,7 +3,6 @@
 
 class WorkflowDataError(Exception):
     """Base class for all workflow data related exceptions.
-
     This should be used to indicate issues with workflow data integrity, such as
     no `graph` configuration, missing `nodes` field in `graph` configuration, or
     similar issues.

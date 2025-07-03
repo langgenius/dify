@@ -18,10 +18,8 @@ class WorkflowToolConfigurationUtils:
         """
         nodes = graph.get("nodes", [])
         start_node = next(filter(lambda x: x.get("data", {}).get("type") == "start", nodes), None)
-
         if not start_node:
             return []
-
         return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
 
     @classmethod
@@ -30,14 +28,11 @@ class WorkflowToolConfigurationUtils:
     ):
         """
         check is synced
-
         raise ValueError if not synced
         """
         variable_names = [variable.variable for variable in variables]
-
         if len(tool_configurations) != len(variables):
             raise ValueError("parameter configuration mismatch, please republish the tool to update")
-
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
                 raise ValueError("parameter configuration mismatch, please republish the tool to update")

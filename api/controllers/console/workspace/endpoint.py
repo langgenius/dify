@@ -18,17 +18,14 @@ class EndpointCreateApi(Resource):
         user = current_user
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifier", type=str, required=True)
         parser.add_argument("settings", type=dict, required=True)
         parser.add_argument("name", type=str, required=True)
         args = parser.parse_args()
-
         plugin_unique_identifier = args["plugin_unique_identifier"]
         settings = args["settings"]
         name = args["name"]
-
         try:
             return {
                 "success": EndpointService.create_endpoint(
@@ -49,15 +46,12 @@ class EndpointListApi(Resource):
     @account_initialization_required
     def get(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
-
         page = args["page"]
         page_size = args["page_size"]
-
         return jsonable_encoder(
             {
                 "endpoints": EndpointService.list_endpoints(
@@ -76,17 +70,14 @@ class EndpointListForSinglePluginApi(Resource):
     @account_initialization_required
     def get(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=int, required=True, location="args")
         parser.add_argument("page_size", type=int, required=True, location="args")
         parser.add_argument("plugin_id", type=str, required=True, location="args")
         args = parser.parse_args()
-
         page = args["page"]
         page_size = args["page_size"]
         plugin_id = args["plugin_id"]
-
         return jsonable_encoder(
             {
                 "endpoints": EndpointService.list_endpoints_for_single_plugin(
@@ -106,16 +97,12 @@ class EndpointDeleteApi(Resource):
     @account_initialization_required
     def post(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
-
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         endpoint_id = args["endpoint_id"]
-
         return {
             "success": EndpointService.delete_endpoint(
                 tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
@@ -129,20 +116,16 @@ class EndpointUpdateApi(Resource):
     @account_initialization_required
     def post(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
         parser.add_argument("settings", type=dict, required=True)
         parser.add_argument("name", type=str, required=True)
         args = parser.parse_args()
-
         endpoint_id = args["endpoint_id"]
         settings = args["settings"]
         name = args["name"]
-
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         return {
             "success": EndpointService.update_endpoint(
                 tenant_id=user.current_tenant_id,
@@ -160,16 +143,12 @@ class EndpointEnableApi(Resource):
     @account_initialization_required
     def post(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
-
         endpoint_id = args["endpoint_id"]
-
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         return {
             "success": EndpointService.enable_endpoint(
                 tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
@@ -183,16 +162,12 @@ class EndpointDisableApi(Resource):
     @account_initialization_required
     def post(self):
         user = current_user
-
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
-
         endpoint_id = args["endpoint_id"]
-
         if not user.is_admin_or_owner:
             raise Forbidden()
-
         return {
             "success": EndpointService.disable_endpoint(
                 tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id

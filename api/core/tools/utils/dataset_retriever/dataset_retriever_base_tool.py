@@ -27,7 +27,6 @@ class DatasetRetrieverBaseTool(BaseModel, ABC):
         **kwargs: Any,
     ) -> Any:
         """Use the tool.
-
         Add run_manager: Optional[CallbackManagerForToolRun] = None
         to child implementations to enable tracing,
         """

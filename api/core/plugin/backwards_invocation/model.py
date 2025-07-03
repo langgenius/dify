@@ -47,7 +47,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         response = model_instance.invoke_llm(
             prompt_messages=payload.prompt_messages,
@@ -57,7 +56,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             stream=True if payload.stream is None else payload.stream,
             user=user_id,
         )
-
         if isinstance(response, Generator):
 
             def handle() -> Generator[LLMResultChunk, None, None]:
@@ -102,12 +100,9 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         model_schema = model_instance.model_type_instance.get_model_schema(payload.model, model_instance.credentials)
-
         if not model_schema:
             raise ValueError(f"Model schema not found for {payload.model}")
-
         response = invoke_llm_with_structured_output(
             provider=payload.provider,
             model_schema=model_schema,
@@ -120,7 +115,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             user=user_id,
             model_parameters=payload.completion_params,
         )
-
         if isinstance(response, Generator):
 
             def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
@@ -166,13 +160,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         response = model_instance.invoke_text_embedding(
             texts=payload.texts,
             user=user_id,
         )
-
         return response
 
     @classmethod
@@ -186,7 +178,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         response = model_instance.invoke_rerank(
             query=payload.query,
@@ -195,7 +186,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             top_n=payload.top_n,
             user=user_id,
         )
-
         return response
 
     @classmethod
@@ -209,7 +199,6 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         response = model_instance.invoke_tts(
             content_text=payload.content_text,
@@ -235,18 +224,15 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         with tempfile.NamedTemporaryFile(suffix=".mp3", mode="wb", delete=True) as temp:
             temp.write(unhexlify(payload.file))
             temp.flush()
             temp.seek(0)
-
             response = model_instance.invoke_speech2text(
                 file=temp,
                 user=user_id,
             )
-
             return {
                 "result": response,
             }
@@ -262,13 +248,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             model_type=payload.model_type,
             model=payload.model,
         )
-
         # invoke model
         response = model_instance.invoke_moderation(
             text=payload.text,
             user=user_id,
         )
-
         return {
             "result": response,
         }
@@ -312,19 +296,16 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         """
         max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id)
         content = payload.text
-
         SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
 retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
 Please summarize the text you got.
-
 Here is the extra instruction you need to follow:
 <extra_instruction>
 {payload.instruction}
 </extra_instruction>
 """
-
         if (
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
@@ -352,7 +333,6 @@ Here is the extra instruction you need to follow:
                     UserPromptMessage(content=content),
                 ],
             )
-
             assert isinstance(summary.message.content, str)
             return summary.message.content
 
@@ -372,7 +352,6 @@ Here is the extra instruction you need to follow:
                 new_lines.append(line)
             else:
                 new_lines.append(line)
-
         # merge lines into messages with max tokens
         messages: list[str] = []
         for i in new_lines:  # type: ignore
@@ -385,15 +364,12 @@ Here is the extra instruction you need to follow:
                     messages.append(i)  # type: ignore
                 else:
                     messages[-1] += i  # type: ignore
-
         summaries = []
         for i in range(len(messages)):
             message = messages[i]
             summary = summarize(message)
             summaries.append(summary)
-
         result = "\n".join(summaries)
-
         if (
             cls.get_prompt_tokens(
                 tenant_id=tenant.id,
@@ -406,5 +382,4 @@ Here is the extra instruction you need to follow:
                 tenant=tenant,
                 payload=RequestInvokeSummary(text=result, instruction=payload.instruction),
             )
-
         return result

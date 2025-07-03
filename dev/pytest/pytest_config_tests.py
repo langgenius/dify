@@ -1,7 +1,6 @@
 import yaml  # type: ignore
 from dotenv import dotenv_values
 from pathlib import Path
-
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "APP_MAX_EXECUTION_TIME",
     "BATCH_UPLOAD_LIMIT",
@@ -39,7 +38,6 @@ BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "WEAVIATE_BATCH_SIZE",
     "WEAVIATE_GRPC_ENABLED",
 }
-
 BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF = {
     "BATCH_UPLOAD_LIMIT",
     "CELERY_BEAT_SCHEDULER_TIME",
@@ -87,15 +85,11 @@ BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF = {
     "WEAVIATE_BATCH_SIZE",
     "WEAVIATE_GRPC_ENABLED",
 }
-
 API_CONFIG_SET = set(dotenv_values(Path("api") / Path(".env.example")).keys())
 DOCKER_CONFIG_SET = set(dotenv_values(Path("docker") / Path(".env.example")).keys())
 DOCKER_COMPOSE_CONFIG_SET = set()
-
 with open(Path("docker") / Path("docker-compose.yaml")) as f:
     DOCKER_COMPOSE_CONFIG_SET = set(yaml.safe_load(f.read())["x-shared-env"].keys())
-
-
 def test_yaml_config():
     # python set == operator is used to compare two sets
     DIFF_API_WITH_DOCKER = (
@@ -117,7 +111,5 @@ def test_yaml_config():
         )
         raise Exception("API and Docker Compose config sets are different")
     print("All tests passed!")
-
-
 if __name__ == "__main__":
     test_yaml_config()
