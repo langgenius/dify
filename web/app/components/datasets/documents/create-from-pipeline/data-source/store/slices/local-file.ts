@@ -1,11 +1,12 @@
 import type { StateCreator } from 'zustand'
-import type { FileItem } from '@/models/datasets'
+import type { DocumentItem, FileItem } from '@/models/datasets'
 
 export type LocalFileSliceShape = {
   localFileList: FileItem[]
   setLocalFileList: (fileList: FileItem[]) => void
   currentLocalFile: File | undefined
   setCurrentLocalFile: (file: File | undefined) => void
+  previewLocalFileRef: React.MutableRefObject<DocumentItem | undefined>
 }
 
 export const createLocalFileSlice: StateCreator<LocalFileSliceShape> = (set) => {
@@ -18,5 +19,6 @@ export const createLocalFileSlice: StateCreator<LocalFileSliceShape> = (set) => 
     setCurrentLocalFile: (file: File | undefined) => set(() => ({
       currentLocalFile: file,
     })),
+    previewLocalFileRef: { current: undefined },
   })
 }

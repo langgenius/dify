@@ -27,6 +27,7 @@ import { ContentType, base, baseOptions, getAccessToken } from './fetch'
 import { asyncRunSafe } from '@/utils'
 import type {
   DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
 const TIME_OUT = 100000
@@ -69,6 +70,7 @@ export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
 export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
+export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -108,6 +110,7 @@ export type IOtherOptions = {
   // Pipeline data source node run
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted
+  onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
 function unicodeToChar(text: string) {
@@ -165,6 +168,7 @@ const handleStream = (
   onAgentLog?: IOnAgentLog,
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
+  onDataSourceNodeError?: IOnDataSourceNodeError,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -289,6 +293,9 @@ const handleStream = (
             else if (bufferObj.event === 'datasource_completed') {
               onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
             }
+            else if (bufferObj.event === 'datasource_error') {
+              onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
+            }
             else {
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
             }
@@ -387,6 +394,7 @@ export const ssePost = async (
     onLoopFinish,
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
+    onDataSourceNodeError,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -486,6 +494,7 @@ export const ssePost = async (
         onAgentLog,
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
