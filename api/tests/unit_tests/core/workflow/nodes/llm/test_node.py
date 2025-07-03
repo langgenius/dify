@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+import core.workflow.nodes.llm.node
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
@@ -37,7 +38,7 @@ from core.workflow.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
-from core.workflow.nodes.llm.node import LLM_NODE_THINKING_TAGS_ENABLED, LLMNode
+from core.workflow.nodes.llm.node import LLMNode
 from models.enums import UserFrom
 from models.provider import ProviderType
 from models.workflow import WorkflowType
@@ -751,17 +752,17 @@ with multiple lines
     def test_environment_variable_enabled(self):
         """Test that environment variable is properly read when enabled."""
         importlib.reload(core.workflow.nodes.llm.node)
-        assert LLM_NODE_THINKING_TAGS_ENABLED is True
+        assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is True
 
     @mock.patch.dict("os.environ", {"LLM_NODE_THINKING_TAGS_ENABLED": "false"})
     def test_environment_variable_disabled(self):
         """Test that environment variable is properly read when disabled."""
         importlib.reload(core.workflow.nodes.llm.node)
-        assert LLM_NODE_THINKING_TAGS_ENABLED is False
+        assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is False
 
     def test_environment_variable_default(self):
         """Test that environment variable defaults to True."""
         with mock.patch.dict("os.environ"):
             os.environ.pop("LLM_NODE_THINKING_TAGS_ENABLED", None)
             importlib.reload(core.workflow.nodes.llm.node)
-            assert LLM_NODE_THINKING_TAGS_ENABLED is True
+            assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is True
