@@ -11,7 +11,8 @@ from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
-from models.model import App, AppMode, AppModelConfig, Message, MessageStatus
+from models.enums import MessageStatus
+from models.model import App, AppMode, AppModelConfig, Message
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
