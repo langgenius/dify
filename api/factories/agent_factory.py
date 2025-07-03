@@ -10,6 +10,6 @@ def get_plugin_agent_strategy(
     agent_provider = manager.fetch_agent_strategy_provider(tenant_id, agent_strategy_provider_name)
     for agent_strategy in agent_provider.declaration.strategies:
         if agent_strategy.identity.name == agent_strategy_name:
-            return PluginAgentStrategy(tenant_id, agent_strategy)
+            return PluginAgentStrategy(tenant_id, agent_strategy, agent_provider.meta.version)
 
     raise ValueError(f"Agent strategy {agent_strategy_name} not found")
