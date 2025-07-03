@@ -18,12 +18,12 @@ const AppTip: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='fixed bottom-0 left-0 right-0 z-10 border-t border-state-warning-hover px-[60px] py-4'>
+    <div className='fixed bottom-0 left-0 right-0 z-10 border-t border-state-warning-hover px-12 py-4'>
       <div className="absolute inset-0 bg-[linear-gradient(92deg,_rgba(247,144,9,0.25)_53.67%,_rgba(255,255,255,0)_100%)] opacity-40" />
       <div className='relative flex items-center'>
         <div className='relative rounded-lg bg-text-accent p-1.5'>
           <RiImage2Fill className='size-5 text-text-primary-on-surface' />
-          <div className='border-px absolute left-[-2px] top-[-2px] size-2 rounded-[3px] border-white bg-components-badge-status-light-error-border-inner p-0.5'>
+          <div className='absolute left-[-2px] top-[-2px] size-2 rounded-[3px] border border-white bg-components-badge-status-light-error-border-inner p-0.5'>
             <div className='h-full w-full rounded-[3px] bg-components-badge-status-light-error-bg'></div>
           </div>
         </div>

@@ -6,15 +6,19 @@ import style from '../list.module.css'
 import Apps from './Apps'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import AppTip from './check-legacy/components/app-tip'
+import cn from '@/utils/classnames'
 
 const AppList = () => {
   const { t } = useTranslation()
   useEducationInit()
   const { systemFeatures } = useGlobalPublicStore()
+  const legacyAppNum = 5
+  const publishedAppNum = 3
   return (
-    <div className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
+    <div className={cn('relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body', legacyAppNum > 0 && 'pb-[74px]')}>
       <Apps />
-      {!systemFeatures.branding.enabled && <footer className='shrink-0 grow-0 px-12 py-6'>
+      {(!systemFeatures.branding.enabled && !legacyAppNum) && <footer className='shrink-0 grow-0 px-12 py-6'>
         <h3 className='text-gradient text-xl font-semibold leading-tight'>{t('app.join')}</h3>
         <p className='system-sm-regular mt-1 text-text-tertiary'>{t('app.communityIntro')}</p>
         <div className='mt-3 flex items-center gap-2'>
@@ -26,6 +30,10 @@ const AppList = () => {
           </Link>
         </div>
       </footer>}
+
+      {legacyAppNum > 0 && (
+        <AppTip appNum={legacyAppNum} publishedNum={publishedAppNum} />
+      )}
     </div >
   )
 }

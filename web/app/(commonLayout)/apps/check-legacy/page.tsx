@@ -12,7 +12,6 @@ import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
 import { noop } from 'lodash'
 import Tip from './components/tip'
-import AppTip from './components/app-tip'
 
 const i18nPrefix = 'app.checkLegacy'
 const Page = () => {
@@ -94,7 +93,6 @@ const Page = () => {
       <div className='ml-3 shrink-0 pr-8 pt-[108px]'>
         <Tip />
       </div>
-      <AppTip appNum={5} publishedNum={3} />
     </div>
   )
 }
