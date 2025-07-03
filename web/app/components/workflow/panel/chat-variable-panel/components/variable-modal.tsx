@@ -16,7 +16,7 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -141,6 +141,13 @@ const ChatVariableModal = ({
       return false
     }
     return true
+  }
+
+  const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    if (!!e.target.value && !checkVariableName(e.target.value))
+      return
+    setName(e.target.value || '')
   }
 
   const handleTypeChange = (v: ChatVarType) => {
@@ -275,7 +282,7 @@ const ChatVariableModal = ({
             <Input
               placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
               value={name}
-              onChange={e => setName(e.target.value || '')}
+              onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
               type='text'
             />

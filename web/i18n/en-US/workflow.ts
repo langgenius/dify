@@ -551,6 +551,7 @@ const translation = {
       advancedDependencies: 'Advanced Dependencies',
       advancedDependenciesTip: 'Add some preloaded dependencies that take more time to consume or are not default built-in here',
       searchDependencies: 'Search Dependencies',
+      syncFunctionSignature: 'Sync function signature to code',
     },
     templateTransform: {
       inputVars: 'Input Variables',

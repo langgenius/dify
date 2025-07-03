@@ -546,6 +546,7 @@ const translation = {
       advancedDependencies: '高級依賴',
       advancedDependenciesTip: '在這裡添加一些預加載需要消耗較多時間或非默認內置的依賴包',
       searchDependencies: '搜索依賴',
+      syncFunctionSignature: '同步函數簽名至代碼',
     },
     templateTransform: {
       inputVars: '輸入變量',

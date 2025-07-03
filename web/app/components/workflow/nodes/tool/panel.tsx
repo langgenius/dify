@@ -42,6 +42,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     isLoading,
     outputSchema,
     hasObjectOutput,
+    currTool,
   } = useConfig(id, data)
 
   if (isLoading) {
@@ -80,6 +81,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 filterVar={filterVar}
                 isSupportConstantValue
                 onOpen={handleOnVarOpen}
+                currentProvider={currCollection}
+                currentTool={currTool}
               />
             </Field>
           )}
