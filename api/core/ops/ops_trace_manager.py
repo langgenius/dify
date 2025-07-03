@@ -41,6 +41,28 @@ from tasks.ops_trace_task import process_trace_tasks
 class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
+            case TracingProviderEnum.ARIZE:
+                from core.ops.entities.config_entity import ArizeConfig
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+
+                return {
+                    "config_class": ArizeConfig,
+                    "secret_keys": ["api_key", "space_id"],
+                    "other_keys": ["project", "endpoint"],
+                    "trace_instance": ArizePhoenixDataTrace,
+                }
+
+            case TracingProviderEnum.PHOENIX:
+                from core.ops.entities.config_entity import PhoenixConfig
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+
+                return {
+                    "config_class": PhoenixConfig,
+                    "secret_keys": ["api_key"],
+                    "other_keys": ["project", "endpoint"],
+                    "trace_instance": ArizePhoenixDataTrace,
+                }
+
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
