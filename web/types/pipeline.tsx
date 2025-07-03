@@ -15,3 +15,8 @@ export type DataSourceNodeCompletedResponse = {
   data: any
   time_consuming?: number
 }
+
+export type DataSourceNodeErrorResponse = {
+  event: 'datasource_error'
+  error: string
+}

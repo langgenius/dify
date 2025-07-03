@@ -16,7 +16,7 @@ export type OnlineDocumentSliceShape = {
   setSelectedPagesId: (selectedPagesId: Set<string>) => void
 }
 
-export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set, get) => {
+export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set) => {
   return ({
     documentData: [],
     setDocumentData: (documentData: DataSourceNotionWorkspace[]) => set(() => ({
@@ -38,7 +38,7 @@ export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> =
     setCurrentDocument: (document: NotionPage | undefined) => set(() => ({
       currentDocument: document,
     })),
-    selectedPagesId: new Set([...get().onlineDocuments.map(doc => doc.page_id)]),
+    selectedPagesId: new Set(),
     setSelectedPagesId: (selectedPagesId: Set<string>) => set(() => ({
       selectedPagesId,
     })),

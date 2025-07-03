@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
 
 export type OnlineDriveSliceShape = {
   prefix: string[]
@@ -32,11 +32,7 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     setSelectedFileList: (selectedFileList: string[]) => set(() => ({
       selectedFileList,
     })),
-    fileList: [{
-      key: 'Bucket_1',
-      size: 1024, // unit bytes
-      type: OnlineDriveFileType.bucket,
-    }],
+    fileList: [],
     setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
       fileList,
     })),
