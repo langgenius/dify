@@ -1,12 +1,12 @@
 'use client'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from './loading'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
 import { useFilePreview } from '@/service/use-common'
 import DocumentFileIcon from '../../../common/document-file-icon'
-import { formatNumberAbbreviated } from '@/utils/format'
+import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 
 type FilePreviewProps = {
   file: File
@@ -20,31 +20,19 @@ const FilePreview = ({
   const { t } = useTranslation()
   const { data: fileData, isFetching } = useFilePreview(file.id || '')
 
-  const getFileName = (currentFile?: File) => {
-    if (!currentFile)
+  const fileName = useMemo(() => {
+    if (!file)
       return ''
-    const arr = currentFile.name.split('.')
+    const arr = file.name.split('.')
     return arr.slice(0, -1).join()
-  }
-
-  const getFileSize = (fileSize: number) => {
-    if (!fileSize)
-      return fileSize
-    const units = ['', 'K', 'M', 'G', 'T', 'P']
-    let index = 0
-    while (fileSize >= 1024 && index < units.length) {
-      fileSize = fileSize / 1024
-      index++
-    }
-    return `${fileSize.toFixed(2)} ${units[index]}B`
-  }
+  }, [file])
 
   return (
     <div className='flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
       <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
           <div className='system-2xs-semibold-uppercase text-text-accent'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
-          <div className='title-md-semi-bold text-tex-primary'>{`${getFileName(file)}.${file.extension}`}</div>
+          <div className='title-md-semi-bold text-tex-primary'>{`${fileName}.${file.extension || ''}`}</div>
           <div className='system-xs-medium flex items-center gap-x-1 text-text-tertiary'>
             <DocumentFileIcon
               className='size-3.5 shrink-0'
@@ -53,7 +41,7 @@ const FilePreview = ({
             />
             <span className='uppercase'>{file.extension}</span>
             <span>·</span>
-            <span>{getFileSize(file.size)}</span>
+            <span>{formatFileSize(file.size)}</span>
             {fileData && (
               <>
                 <span>·</span>

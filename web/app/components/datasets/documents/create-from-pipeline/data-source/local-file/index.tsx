@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import cn from '@/utils/classnames'
-import type { CustomFile as File, FileItem } from '@/models/datasets'
+import type { DocumentItem, CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { upload } from '@/service/base'
@@ -15,35 +15,34 @@ import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
+import { useDataSourceStore } from '../store'
+import produce from 'immer'
 
 const FILES_NUMBER_LIMIT = 20
 
 export type LocalFileProps = {
-  fileList: FileItem[]
   allowedExtensions: string[]
-  prepareFileList: (files: FileItem[]) => void
-  onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
-  onFileListUpdate?: (files: FileItem[]) => void
-  onPreview?: (file: File) => void
   notSupportBatchUpload?: boolean
 }
 
 const LocalFile = ({
-  fileList,
   allowedExtensions,
-  prepareFileList,
-  onFileUpdate,
-  onFileListUpdate,
-  onPreview,
   notSupportBatchUpload,
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
+  const fileList = useDataSourceStore(state => state.localFileList)
+  const setFileList = useDataSourceStore(state => state.setLocalFileList)
+  const setCurrentFile = useDataSourceStore(state => state.setCurrentLocalFile)
+  const previewFileRef = useDataSourceStore(state => state.previewLocalFileRef)
   const [dragging, setDragging] = useState(false)
+
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
+  const fileListRef = useRef<FileItem[]>([])
+
   const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
@@ -69,7 +68,26 @@ const LocalFile = ({
     batch_count_limit: 5,
   }, [fileUploadConfigResponse])
 
-  const fileListRef = useRef<FileItem[]>([])
+  const updateFile = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
+    const newList = produce(list, (draft) => {
+      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
+      draft[targetIndex] = {
+        ...draft[targetIndex],
+        progress,
+      }
+    })
+    setFileList(newList)
+    previewFileRef.current = newList[0].file as DocumentItem
+  }, [previewFileRef, setFileList])
+
+  const updateFileList = useCallback((preparedFiles: FileItem[]) => {
+    setFileList(preparedFiles)
+  }, [setFileList])
+
+  const handlePreview = useCallback((file: File) => {
+    if (file.id)
+      setCurrentFile(file)
+  }, [setCurrentFile])
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -107,7 +125,7 @@ const LocalFile = ({
     const onProgress = (e: ProgressEvent) => {
       if (e.lengthComputable) {
         const percent = Math.floor(e.loaded / e.total * 100)
-        onFileUpdate(fileItem, percent, fileListRef.current)
+        updateFile(fileItem, percent, fileListRef.current)
       }
     }
 
@@ -124,16 +142,16 @@ const LocalFile = ({
         }
         const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
         fileListRef.current[index] = completeFile
-        onFileUpdate(completeFile, 100, fileListRef.current)
+        updateFile(completeFile, 100, fileListRef.current)
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
         notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
-        onFileUpdate(fileItem, -2, fileListRef.current)
+        updateFile(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
       .finally()
-  }, [fileListRef, notify, onFileUpdate, t])
+  }, [fileListRef, notify, updateFile, t])
 
   const uploadBatchFiles = useCallback((bFiles: FileItem[]) => {
     bFiles.forEach(bf => (bf.progress = 0))
@@ -172,10 +190,10 @@ const LocalFile = ({
       progress: -1,
     }))
     const newFiles = [...fileListRef.current, ...preparedFiles]
-    prepareFileList(newFiles)
+    updateFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
+  }, [updateFileList, uploadMultipleFiles, notify, t, fileList])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -207,17 +225,17 @@ const LocalFile = ({
     initialUpload(validFiles)
   }, [initialUpload, isValid, notSupportBatchUpload])
 
-  const selectHandle = () => {
+  const selectHandle = useCallback(() => {
     if (fileUploader.current)
       fileUploader.current.click()
-  }
+  }, [])
 
   const removeFile = (fileID: string) => {
     if (fileUploader.current)
       fileUploader.current.value = ''
 
     fileListRef.current = fileListRef.current.filter(item => item.fileID !== fileID)
-    onFileListUpdate?.([...fileListRef.current])
+    updateFileList([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = [...(e.target.files ?? [])] as File[]
@@ -287,7 +305,7 @@ const LocalFile = ({
             return (
               <div
                 key={`${fileItem.fileID}-${index}`}
-                onClick={() => fileItem.file?.id && onPreview?.(fileItem.file)}
+                onClick={handlePreview.bind(null, fileItem.file)}
                 className={cn(
                   'flex h-12 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-4',
                   isError && 'border-state-destructive-border bg-state-destructive-hover',

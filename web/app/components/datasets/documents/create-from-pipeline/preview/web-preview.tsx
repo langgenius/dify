@@ -6,12 +6,12 @@ import { RiCloseLine, RiGlobalLine } from '@remixicon/react'
 import { formatNumberAbbreviated } from '@/utils/format'
 
 type WebsitePreviewProps = {
-  payload: CrawlResultItem
+  currentWebsite: CrawlResultItem
   hidePreview: () => void
 }
 
 const WebsitePreview = ({
-  payload,
+  currentWebsite,
   hidePreview,
 }: WebsitePreviewProps) => {
   const { t } = useTranslation()
@@ -21,13 +21,13 @@ const WebsitePreview = ({
       <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
           <div className='system-2xs-semibold-uppercase'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
-          <div className='title-md-semi-bold text-tex-primary'>{payload.title}</div>
+          <div className='title-md-semi-bold text-tex-primary'>{currentWebsite.title}</div>
           <div className='system-xs-medium flex gap-x-1  text-text-tertiary'>
             <RiGlobalLine className='size-3.5' />
-            <span className='uppercase' title={payload.source_url}>{payload.source_url}</span>
+            <span className='uppercase' title={currentWebsite.source_url}>{currentWebsite.source_url}</span>
             <span>·</span>
             <span>·</span>
-            <span>{`${formatNumberAbbreviated(payload.markdown.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
+            <span>{`${formatNumberAbbreviated(currentWebsite.markdown.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
           </div>
         </div>
         <button
@@ -39,7 +39,7 @@ const WebsitePreview = ({
         </button>
       </div>
       <div className='body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary'>
-        {payload.markdown}
+        {currentWebsite.markdown}
       </div>
     </div>
   )

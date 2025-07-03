@@ -2,8 +2,8 @@ import type { StateCreator } from 'zustand'
 import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 
 export type OnlineDocumentSliceShape = {
-  documentData: DataSourceNotionWorkspace[]
-  setDocumentData: (documentData: DataSourceNotionWorkspace[]) => void
+  documentsData: DataSourceNotionWorkspace[]
+  setDocumentsData: (documentData: DataSourceNotionWorkspace[]) => void
   searchValue: string
   setSearchValue: (searchValue: string) => void
   currentWorkspaceId: string
@@ -14,13 +14,14 @@ export type OnlineDocumentSliceShape = {
   setCurrentDocument: (document: NotionPage | undefined) => void
   selectedPagesId: Set<string>
   setSelectedPagesId: (selectedPagesId: Set<string>) => void
+  previewOnlineDocumentRef: React.MutableRefObject<NotionPage | undefined>
 }
 
 export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set) => {
   return ({
-    documentData: [],
-    setDocumentData: (documentData: DataSourceNotionWorkspace[]) => set(() => ({
-      documentData,
+    documentsData: [],
+    setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) => set(() => ({
+      documentsData,
     })),
     searchValue: '',
     setSearchValue: (searchValue: string) => set(() => ({
@@ -42,5 +43,6 @@ export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> =
     setSelectedPagesId: (selectedPagesId: Set<string>) => set(() => ({
       selectedPagesId,
     })),
+    previewOnlineDocumentRef: { current: undefined },
   })
 }

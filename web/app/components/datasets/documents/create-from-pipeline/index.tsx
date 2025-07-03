@@ -27,7 +27,7 @@ import Processing from './processing'
 import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useWebsiteCrawl } from './hooks'
 import DataSourceProvider from './data-source/store/provider'
 
 const CreateFormPipeline = () => {
@@ -53,56 +53,24 @@ const CreateFormPipeline = () => {
   } = useAddDocumentsSteps()
   const {
     fileList,
-    previewFile,
+    previewFileRef,
     allFileLoaded,
-    updateFile,
-    updateFileList,
-    currentFile,
-    updateCurrentFile,
-    hideFilePreview,
+    currentLocalFile,
+    hidePreviewLocalFile,
   } = useLocalFile()
   const {
-    documentsData,
-    setDocumentsData,
-    searchValue,
-    setSearchValue,
-    currentWorkspaceId,
-    setCurrentWorkspaceId,
-    PagesMapAndSelectedPagesId,
-    selectedPagesId,
-    setSelectedPagesId,
     onlineDocuments,
-    previewOnlineDocument,
-    updateOnlineDocuments,
     currentDocument,
-    updateCurrentPage,
-    hideOnlineDocumentPreview,
+    previewOnlineDocumentRef,
+    hidePreviewOnlineDocument,
   } = useOnlineDocuments()
   const {
     websitePages,
-    crawlResult,
-    setCrawlResult,
-    step,
-    setStep,
     previewWebsitePage,
-    updataCheckedCrawlResultChange,
     currentWebsite,
-    updateCurrentWebsite,
-    previewIndex,
     hideWebsitePreview,
   } = useWebsiteCrawl()
-  const {
-    prefix,
-    setPrefix,
-    keywords,
-    setKeywords,
-    startAfter,
-    setStartAfter,
-    selectedFileList,
-    setSelectedFileList,
-    fileList: onlineDriveFileList,
-    setFileList,
-  } = useOnlineDrive()
+  // const { } = useOnlineDrive()
 
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
@@ -127,7 +95,7 @@ const CreateFormPipeline = () => {
       return
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
-      const { id, name, type, size, extension, mime_type } = previewFile.current as File
+      const { id, name, type, size, extension, mime_type } = previewFileRef.current as File
       const documentInfo = {
         related_id: id,
         name,
@@ -141,7 +109,7 @@ const CreateFormPipeline = () => {
       datasourceInfoList.push(documentInfo)
     }
     if (datasourceType === DatasourceType.onlineDocument) {
-      const { workspace_id, ...rest } = previewOnlineDocument.current
+      const { workspace_id, ...rest } = previewOnlineDocumentRef.current!
       const documentInfo = {
         workspace_id,
         page: rest,
@@ -162,7 +130,7 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, datasourceType, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline])
+  }, [datasource, datasourceType, pipelineId, previewFileRef, previewOnlineDocumentRef, previewWebsitePage, runPublishedPipeline])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -230,14 +198,14 @@ const CreateFormPipeline = () => {
   }, [handlePreviewChunks, handleProcess])
 
   const handlePreviewFileChange = useCallback((file: DocumentItem) => {
-    previewFile.current = file
+    previewFileRef.current = file
     onClickPreview()
-  }, [onClickPreview, previewFile])
+  }, [onClickPreview, previewFileRef])
 
   const handlePreviewOnlineDocumentChange = useCallback((page: NotionPage) => {
-    previewOnlineDocument.current = page
+    previewOnlineDocumentRef.current = page
     onClickPreview()
-  }, [onClickPreview, previewOnlineDocument])
+  }, [onClickPreview, previewOnlineDocumentRef])
 
   const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
     previewWebsitePage.current = website
@@ -272,59 +240,26 @@ const CreateFormPipeline = () => {
                   />
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile
-                      fileList={fileList}
                       allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      prepareFileList={updateFileList}
-                      onFileListUpdate={updateFileList}
-                      onFileUpdate={updateFile}
-                      onPreview={updateCurrentFile}
                       notSupportBatchUpload={notSupportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDocument && (
                     <OnlineDocuments
-                      documentsData={documentsData}
-                      setDocumentsData={setDocumentsData}
-                      searchValue={searchValue}
-                      setSearchValue={setSearchValue}
-                      currentWorkspaceId={currentWorkspaceId}
-                      setCurrentWorkspaceId={setCurrentWorkspaceId}
-                      PagesMapAndSelectedPagesId={PagesMapAndSelectedPagesId}
-                      selectedPagesId={selectedPagesId}
-                      setSelectedPagesId={setSelectedPagesId}
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
-                      onSelect={updateOnlineDocuments}
-                      onPreview={updateCurrentPage}
                     />
                   )}
                   {datasourceType === DatasourceType.websiteCrawl && (
                     <WebsiteCrawl
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
-                      crawlResult={crawlResult}
-                      setCrawlResult={setCrawlResult}
-                      step={step}
-                      setStep={setStep}
-                      checkedCrawlResult={websitePages}
-                      onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
-                      onPreview={updateCurrentWebsite}
-                      previewIndex={previewIndex}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDrive && (
                     <OnlineDrive
+                      nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
-                      prefix={prefix}
-                      setPrefix={setPrefix}
-                      keywords={keywords}
-                      setKeywords={setKeywords}
-                      startAfter={startAfter}
-                      setStartAfter={setStartAfter}
-                      selectedFileList={selectedFileList}
-                      setSelectedFileList={setSelectedFileList}
-                      fileList={onlineDriveFileList}
-                      setFileList={setFileList}
                     />
                   )}
                   {isShowVectorSpaceFull && (
@@ -362,15 +297,25 @@ const CreateFormPipeline = () => {
         currentStep === 1 && (
           <div className='h-full min-w-0 flex-1'>
             <div className='flex h-full flex-col pl-2 pt-2'>
-              {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+              {currentLocalFile && (
+                <FilePreview
+                  file={currentLocalFile}
+                  hidePreview={hidePreviewLocalFile}
+                />
+              )}
               {currentDocument && (
                 <OnlineDocumentPreview
                   datasourceNodeId={datasource!.nodeId}
                   currentPage={currentDocument}
-                  hidePreview={hideOnlineDocumentPreview}
+                  hidePreview={hidePreviewOnlineDocument}
                 />
               )}
-              {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+              {currentWebsite && (
+                <WebsitePreview
+                  currentWebsite={currentWebsite}
+                  hidePreview={hideWebsitePreview}
+                />
+              )}
             </div>
           </div>
         )

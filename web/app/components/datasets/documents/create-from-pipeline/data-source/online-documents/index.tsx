@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from './page-selector'
-import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import Header from '@/app/components/datasets/create/website/base/header'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
@@ -10,43 +10,44 @@ import { ssePost } from '@/service/base'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { useDataSourceStore } from '../store'
 
 type OnlineDocumentsProps = {
-  onSelect: (selectedPages: NotionPage[]) => void
-  previewPageId?: string
-  onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
-  documentsData: DataSourceNotionWorkspace[]
-  setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) => void
-  searchValue: string
-  setSearchValue: (value: string) => void
-  currentWorkspaceId: string
-  setCurrentWorkspaceId: (workspaceId: string) => void
-  PagesMapAndSelectedPagesId: DataSourceNotionPageMap
-  selectedPagesId: Set<string>
-  setSelectedPagesId: (selectedPagesId: Set<string>) => void
 }
 
 const OnlineDocuments = ({
-  onSelect,
-  previewPageId,
-  onPreview,
   isInPipeline = false,
   nodeId,
   nodeData,
-  documentsData,
-  setDocumentsData,
-  searchValue,
-  setSearchValue,
-  currentWorkspaceId,
-  setCurrentWorkspaceId,
-  PagesMapAndSelectedPagesId,
-  selectedPagesId,
-  setSelectedPagesId,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const documentsData = useDataSourceStore(state => state.documentsData)
+  const setDocumentsData = useDataSourceStore(state => state.setDocumentsData)
+  const searchValue = useDataSourceStore(state => state.searchValue)
+  const setSearchValue = useDataSourceStore(state => state.setSearchValue)
+  const currentWorkspaceId = useDataSourceStore(state => state.currentWorkspaceId)
+  const setCurrentWorkspaceId = useDataSourceStore(state => state.setCurrentWorkspaceId)
+  const setOnlineDocuments = useDataSourceStore(state => state.setOnlineDocuments)
+  const setCurrentDocument = useDataSourceStore(state => state.setCurrentDocument)
+  const selectedPagesId = useDataSourceStore(state => state.selectedPagesId)
+  const setSelectedPagesId = useDataSourceStore(state => state.setSelectedPagesId)
+
+  const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
+    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+      next.pages.forEach((page) => {
+        prev[page.page_id] = {
+          ...page,
+          workspace_id: next.workspace_id,
+        }
+      })
+
+      return prev
+    }, {})
+    return pagesMap
+  }, [documentsData])
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
@@ -96,13 +97,12 @@ const OnlineDocuments = ({
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
-    onSelect(selectedPages)
-  }, [setSelectedPagesId, onSelect, PagesMapAndSelectedPagesId])
+    setOnlineDocuments(selectedPages)
+  }, [setSelectedPagesId, setOnlineDocuments, PagesMapAndSelectedPagesId])
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
-    if (onPreview)
-      onPreview(PagesMapAndSelectedPagesId[previewPageId])
-  }, [PagesMapAndSelectedPagesId, onPreview])
+    setCurrentDocument(PagesMapAndSelectedPagesId[previewPageId])
+  }, [PagesMapAndSelectedPagesId, setCurrentDocument])
 
   const headerInfo = useMemo(() => {
     return {
@@ -144,7 +144,6 @@ const OnlineDocuments = ({
             pagesMap={PagesMapAndSelectedPagesId}
             onSelect={handleSelectPages}
             canPreview={!isInPipeline}
-            previewPageId={previewPageId}
             onPreview={handlePreviewPage}
             isMultipleChoice={!isInPipeline}
             currentWorkspaceId={currentWorkspaceId}

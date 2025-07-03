@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { DocumentItem, FileItem } from '@/models/datasets'
+import type { DocumentItem, CustomFile as File, FileItem } from '@/models/datasets'
 
 export type LocalFileSliceShape = {
   localFileList: FileItem[]

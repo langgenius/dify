@@ -5,12 +5,7 @@ import { useNodes } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useCallback, useMemo, useState } from 'react'
-import type { CrawlResult } from '@/models/datasets'
-import { type CrawlResultItem, CrawlStep, type FileItem } from '@/models/datasets'
-import produce from 'immer'
-import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { OnlineDriveFileType } from '@/models/pipeline'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
@@ -57,131 +52,27 @@ export const useDatasourceOptions = () => {
         data: node.data,
       })
     })
-    if (process.env.NODE_ENV === 'development') {
-      // todo: delete mock data
-      options.push({
-        label: 'Google Drive',
-        value: '123456',
-        // @ts-expect-error mock data
-        data: {
-          datasource_parameters: {},
-          datasource_configurations: {},
-          type: BlockEnum.DataSource,
-          title: 'Google Drive',
-          plugin_id: 'langgenius/google-drive',
-          provider_type: 'online_drive',
-          provider_name: 'google_drive',
-          datasource_name: 'google-drive',
-          datasource_label: 'Google Drive',
-          selected: false,
-        },
-      })
-    }
     return options
   }, [datasourceNodes])
 
   return options
 }
 
-export const useLocalFile = () => {
-  const [fileList, setFileList] = useState<FileItem[]>([])
-
-  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
-    const newList = produce(list, (draft) => {
-      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
-      draft[targetIndex] = {
-        ...draft[targetIndex],
-        progress,
-      }
-    })
-    setFileList(newList)
-  }
-
-  const updateFileList = (preparedFiles: FileItem[]) => {
-    setFileList(preparedFiles)
-  }
-
-  return {
-    fileList,
-    updateFile,
-    updateFileList,
-  }
-}
-
-export const useOnlineDocuments = () => {
-  const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
-  const [searchValue, setSearchValue] = useState('')
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
-  const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
-
-  const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
-    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
-        prev[page.page_id] = {
-          ...page,
-          workspace_id: next.workspace_id,
-        }
-      })
-
-      return prev
-    }, {})
-    return pagesMap
-  }, [documentsData])
-  const defaultSelectedPagesId = [...(onlineDocuments.map(doc => doc.page_id) || [])]
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
-
-  const updateOnlineDocuments = (value: NotionPage[]) => {
-    setOnlineDocuments(value)
-  }
-
-  return {
-    documentsData,
-    setDocumentsData,
-    searchValue,
-    setSearchValue,
-    currentWorkspaceId,
-    setCurrentWorkspaceId,
-    PagesMapAndSelectedPagesId,
-    selectedPagesId,
-    setSelectedPagesId,
-    onlineDocuments,
-    updateOnlineDocuments,
-  }
-}
-
-export const useWebsiteCrawl = () => {
-  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [crawlResult, setCrawlResult] = useState<CrawlResult | undefined>()
-  const [step, setStep] = useState<CrawlStep>(CrawlStep.init)
-
-  return {
-    crawlResult,
-    setCrawlResult,
-    websitePages,
-    setWebsitePages,
-    step,
-    setStep,
-  }
-}
-
 export const useOnlineDrive = () => {
   const [prefix, setPrefix] = useState<string[]>([])
   const [keywords, setKeywords] = useState('')
+  const [bucket, setBucket] = useState('')
   const [startAfter, setStartAfter] = useState('')
   const [selectedFileList, setSelectedFileList] = useState<string[]>([])
-  const [fileList, setFileList] = useState<OnlineDriveFile[]>([
-    {
-      key: 'Bucket_1',
-      size: 1024, // unit bytes
-      type: OnlineDriveFileType.bucket,
-    },
-  ])
+  const [fileList, setFileList] = useState<OnlineDriveFile[]>([])
 
   return {
     prefix,
     setPrefix,
     keywords,
     setKeywords,
+    bucket,
+    setBucket,
     startAfter,
     setStartAfter,
     selectedFileList,

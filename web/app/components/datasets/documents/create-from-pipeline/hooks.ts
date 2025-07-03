@@ -4,11 +4,9 @@ import type { DataSourceOption } from '@/app/components/rag-pipeline/components/
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { CrawlResult, CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
+import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
-import produce from 'immer'
-import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
+import { useDataSourceStore } from './data-source/store'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -58,26 +56,6 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
         data: node.data,
       })
     })
-    if (process.env.NODE_ENV === 'development') {
-      // todo: delete mock data
-      options.push({
-        label: 'Google Drive',
-        value: '123456',
-        // @ts-expect-error mock data
-        data: {
-          datasource_parameters: {},
-          datasource_configurations: {},
-          type: BlockEnum.DataSource,
-          title: 'Google Drive',
-          plugin_id: 'langgenius/google-drive',
-          provider_type: 'online_drive',
-          provider_name: 'google_drive',
-          datasource_name: 'google-drive',
-          datasource_label: 'Google Drive',
-          selected: false,
-        },
-      })
-    }
     return options
   }, [datasourceNodes])
 
@@ -85,102 +63,41 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
 }
 
 export const useLocalFile = () => {
-  const [fileList, setFileList] = useState<FileItem[]>([])
-  const [currentFile, setCurrentFile] = useState<File | undefined>()
-
-  const previewFile = useRef<DocumentItem>()
+  const fileList = useDataSourceStore(state => state.localFileList)
+  const previewFileRef = useDataSourceStore(state => state.previewLocalFileRef)
+  const currentLocalFile = useDataSourceStore(state => state.currentLocalFile)
+  const setCurrentFile = useDataSourceStore(state => state.setCurrentLocalFile)
 
   const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
 
-  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
-    const newList = produce(list, (draft) => {
-      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
-      draft[targetIndex] = {
-        ...draft[targetIndex],
-        progress,
-      }
-    })
-    setFileList(newList)
-    previewFile.current = newList[0].file as DocumentItem
-  }
-
-  const updateFileList = useCallback((preparedFiles: FileItem[]) => {
-    setFileList(preparedFiles)
-  }, [])
-
-  const updateCurrentFile = useCallback((file: File) => {
-    setCurrentFile(file)
-  }, [])
-
-  const hideFilePreview = useCallback(() => {
+  const hidePreviewLocalFile = useCallback(() => {
     setCurrentFile(undefined)
-  }, [])
+  }, [setCurrentFile])
 
   return {
     fileList,
-    previewFile,
+    previewFileRef,
     allFileLoaded,
-    updateFile,
-    updateFileList,
-    currentFile,
-    updateCurrentFile,
-    hideFilePreview,
+    currentLocalFile,
+    hidePreviewLocalFile,
   }
 }
 
 export const useOnlineDocuments = () => {
-  const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
-  const [searchValue, setSearchValue] = useState('')
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
-  const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
-  const [currentDocument, setCurrentDocument] = useState<NotionPage | undefined>()
+  const onlineDocuments = useDataSourceStore(state => state.onlineDocuments)
+  const previewOnlineDocumentRef = useDataSourceStore(state => state.previewOnlineDocumentRef)
+  const setCurrentDocument = useDataSourceStore(state => state.setCurrentDocument)
+  const currentDocument = useDataSourceStore(state => state.currentDocument)
 
-  const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
-    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
-        prev[page.page_id] = {
-          ...page,
-          workspace_id: next.workspace_id,
-        }
-      })
-
-      return prev
-    }, {})
-    return pagesMap
-  }, [documentsData])
-  const defaultSelectedPagesId = [...(onlineDocuments.map(doc => doc.page_id) || [])]
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
-
-  const previewOnlineDocument = useRef<NotionPage>(onlineDocuments[0])
-
-  const updateOnlineDocuments = (value: NotionPage[]) => {
-    setOnlineDocuments(value)
-  }
-
-  const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentDocument(page)
-  }, [])
-
-  const hideOnlineDocumentPreview = useCallback(() => {
+  const hidePreviewOnlineDocument = useCallback(() => {
     setCurrentDocument(undefined)
-  }, [])
+  }, [setCurrentDocument])
 
   return {
-    documentsData,
-    setDocumentsData,
-    searchValue,
-    setSearchValue,
-    currentWorkspaceId,
-    setCurrentWorkspaceId,
-    PagesMapAndSelectedPagesId,
-    selectedPagesId,
-    setSelectedPagesId,
     onlineDocuments,
-    previewOnlineDocument,
-    updateOnlineDocuments,
     currentDocument,
-    updateCurrentPage,
-    hideOnlineDocumentPreview,
+    previewOnlineDocumentRef,
+    hidePreviewOnlineDocument,
   }
 }
 
@@ -224,28 +141,5 @@ export const useWebsiteCrawl = () => {
 }
 
 export const useOnlineDrive = () => {
-  const [prefix, setPrefix] = useState<string[]>([])
-  const [keywords, setKeywords] = useState('')
-  const [startAfter, setStartAfter] = useState('')
-  const [selectedFileList, setSelectedFileList] = useState<string[]>([])
-  const [fileList, setFileList] = useState<OnlineDriveFile[]>([
-    {
-      key: 'Bucket_1',
-      size: 1024, // unit bytes
-      type: OnlineDriveFileType.bucket,
-    },
-  ])
-
-  return {
-    prefix,
-    setPrefix,
-    keywords,
-    setKeywords,
-    startAfter,
-    setStartAfter,
-    selectedFileList,
-    setSelectedFileList,
-    fileList,
-    setFileList,
-  }
+  return {}
 }

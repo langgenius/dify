@@ -12,6 +12,8 @@ export type OnlineDriveSliceShape = {
   setSelectedFileList: (selectedFileList: string[]) => void
   fileList: OnlineDriveFile[]
   setFileList: (fileList: OnlineDriveFile[]) => void
+  bucket: string
+  setBucket: (bucket: string) => void
 }
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set) => {
@@ -35,6 +37,10 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     fileList: [],
     setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
       fileList,
+    })),
+    bucket: '',
+    setBucket: (bucket: string) => set(() => ({
+      bucket,
     })),
   })
 }

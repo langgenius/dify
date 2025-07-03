@@ -13,7 +13,6 @@ type PageSelectorProps = {
   list: DataSourceNotionPage[]
   onSelect: (selectedPagesId: Set<string>) => void
   canPreview?: boolean
-  previewPageId?: string
   onPreview?: (selectedPageId: string) => void
   isMultipleChoice?: boolean
   currentWorkspaceId: string
@@ -41,14 +40,13 @@ const PageSelector = ({
   list,
   onSelect,
   canPreview = true,
-  previewPageId,
   onPreview,
   isMultipleChoice = true,
   currentWorkspaceId,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
-  const [localPreviewPageId, setLocalPreviewPageId] = useState('')
+  const [currentPreviewPageId, setCurrentPreviewPageId] = useState('')
 
   useEffect(() => {
     setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
@@ -71,7 +69,6 @@ const PageSelector = ({
     }
   })
   const currentDataList = searchValue ? searchDataList : dataList
-  const currentPreviewPageId = previewPageId === undefined ? localPreviewPageId : previewPageId
 
   const listMapWithChildrenAndDescendants = useMemo(() => {
     return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
@@ -149,7 +146,7 @@ const PageSelector = ({
     const current = currentDataList[index]
     const pageId = current.page_id
 
-    setLocalPreviewPageId(pageId)
+    setCurrentPreviewPageId(pageId)
 
     if (onPreview)
       onPreview(pageId)

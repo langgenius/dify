@@ -1,6 +1,6 @@
 import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workflow/store'
 import { useCallback, useMemo, useState } from 'react'
-import { useLocalFile, useOnlineDocuments, useOnlineDrive, useTestRunSteps, useWebsiteCrawl } from './hooks'
+import { useTestRunSteps } from './hooks'
 import DataSourceOptions from './data-source-options'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
@@ -16,9 +16,14 @@ import CloseButton from './close-button'
 import Header from './header'
 import FooterTips from './footer-tips'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
+import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
+  const fileList = useDataSourceStore(state => state.localFileList)
+  const onlineDocuments = useDataSourceStore(state => state.onlineDocuments)
+  const websitePages = useDataSourceStore(state => state.websitePages)
+  const selectedFileList = useDataSourceStore(state => state.selectedFileList)
   const [datasource, setDatasource] = useState<Datasource>()
 
   const {
@@ -27,45 +32,6 @@ const TestRunPanel = () => {
     handleNextStep,
     handleBackStep,
   } = useTestRunSteps()
-  const {
-    fileList,
-    updateFile,
-    updateFileList,
-  } = useLocalFile()
-  const {
-    documentsData,
-    setDocumentsData,
-    searchValue,
-    setSearchValue,
-    currentWorkspaceId,
-    setCurrentWorkspaceId,
-    PagesMapAndSelectedPagesId,
-    selectedPagesId,
-    setSelectedPagesId,
-    onlineDocuments,
-    updateOnlineDocuments,
-  } = useOnlineDocuments()
-  const {
-    crawlResult,
-    setCrawlResult,
-    websitePages,
-    setWebsitePages,
-    step,
-    setStep,
-  } = useWebsiteCrawl()
-  const {
-    prefix,
-    setPrefix,
-    keywords,
-    setKeywords,
-    startAfter,
-    setStartAfter,
-    selectedFileList,
-    setSelectedFileList,
-    fileList: onlineDriveFileList,
-    setFileList,
-  } = useOnlineDrive()
-  const { handleRun } = useWorkflowRun()
 
   const datasourceType = datasource?.nodeData.provider_type
 
@@ -77,12 +43,16 @@ const TestRunPanel = () => {
       return !onlineDocuments.length
     if (datasourceType === DatasourceType.websiteCrawl)
       return !websitePages.length
+    if (datasourceType === DatasourceType.onlineDrive)
+      return !selectedFileList.length
     return false
-  }, [datasource, datasourceType, fileList, onlineDocuments.length, websitePages.length])
+  }, [datasource, datasourceType, fileList, onlineDocuments.length, selectedFileList.length, websitePages.length])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setShowDebugAndPreviewPanel(false)
-  }
+  }, [setShowDebugAndPreviewPanel])
+
+  const { handleRun } = useWorkflowRun()
 
   const handleProcess = useCallback((data: Record<string, any>) => {
     if (!datasource)
@@ -137,57 +107,29 @@ const TestRunPanel = () => {
                 />
                 {datasourceType === DatasourceType.localFile && (
                   <LocalFile
-                    fileList={fileList}
                     allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                    prepareFileList={updateFileList}
-                    onFileListUpdate={updateFileList}
-                    onFileUpdate={updateFile}
                     notSupportBatchUpload={false} // only support single file upload in test run
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDocument && (
                   <OnlineDocuments
-                    documentsData={documentsData}
-                    setDocumentsData={setDocumentsData}
-                    searchValue={searchValue}
-                    setSearchValue={setSearchValue}
-                    currentWorkspaceId={currentWorkspaceId}
-                    setCurrentWorkspaceId={setCurrentWorkspaceId}
-                    PagesMapAndSelectedPagesId={PagesMapAndSelectedPagesId}
-                    selectedPagesId={selectedPagesId}
-                    setSelectedPagesId={setSelectedPagesId}
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
-                    onSelect={updateOnlineDocuments}
                     isInPipeline
                   />
                 )}
                 {datasourceType === DatasourceType.websiteCrawl && (
                   <WebsiteCrawl
                     nodeId={datasource!.nodeId}
-                    checkedCrawlResult={websitePages}
                     nodeData={datasource!.nodeData}
-                    crawlResult={crawlResult}
-                    setCrawlResult={setCrawlResult}
-                    step={step}
-                    setStep={setStep}
-                    onCheckedCrawlResultChange={setWebsitePages}
                     isInPipeline
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDrive && (
                   <OnlineDrive
+                    nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
-                    prefix={prefix}
-                    setPrefix={setPrefix}
-                    keywords={keywords}
-                    setKeywords={setKeywords}
-                    startAfter={startAfter}
-                    setStartAfter={setStartAfter}
-                    selectedFileList={selectedFileList}
-                    setSelectedFileList={setSelectedFileList}
-                    fileList={onlineDriveFileList}
-                    setFileList={setFileList}
+                    isInPipeline
                   />
                 )}
               </div>
