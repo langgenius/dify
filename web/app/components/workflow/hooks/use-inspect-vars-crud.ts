@@ -1,221 +1,29 @@
-import { fetchNodeInspectVars } from '@/service/workflow'
-import { useStore, useWorkflowStore } from '../store'
-import type { ValueSelector } from '../types'
-import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
+import { useStore } from '../store'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useConversationVarValues,
-  useDeleteAllInspectorVars,
-  useDeleteInspectVar,
-  useDeleteNodeInspectorVars,
-  useEditInspectorVar,
-  useInvalidateConversationVarValues,
-  useInvalidateSysVarValues,
-  useLastRun,
-  useResetConversationVar,
-  useResetToLastRunValue,
   useSysVarValues,
 } from '@/service/use-workflow'
-import { useCallback, useEffect, useState } from 'react'
-import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
-import produce from 'immer'
-import type { Node } from '@/app/components/workflow/types'
-import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
-import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 
 const useInspectVarsCrud = () => {
-  const workflowStore = useWorkflowStore()
   const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
-  const {
-    appId,
-    setNodeInspectVars,
-    setInspectVarValue,
-    renameInspectVarName: renameInspectVarNameInStore,
-    deleteAllInspectVars: deleteAllInspectVarsInStore,
-    deleteNodeInspectVars: deleteNodeInspectVarsInStore,
-    deleteInspectVar: deleteInspectVarInStore,
-    setNodesWithInspectVars,
-    resetToLastRunVar: resetToLastRunVarInStore,
-  } = workflowStore.getState()
-
-  const { data: conversationVars } = useConversationVarValues(appId)
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
-  const { mutateAsync: doResetConversationVar } = useResetConversationVar(appId)
-  const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(appId)
-  const { data: systemVars } = useSysVarValues(appId)
-  const invalidateSysVarValues = useInvalidateSysVarValues(appId)
-
-  const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(appId)
-  const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
-  const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
-
-  const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(appId)
-  const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
-  const getNodeInspectVars = useCallback((nodeId: string) => {
-    const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
-    return node
-  }, [nodesWithInspectVars])
-
-  const getVarId = useCallback((nodeId: string, varName: string) => {
-    const node = getNodeInspectVars(nodeId)
-    if (!node)
-      return undefined
-    const varId = node.vars.find((varItem) => {
-        return varItem.selector[1] === varName
-      })?.id
-      return varId
-  }, [getNodeInspectVars])
-
-  const getInspectVar = useCallback((nodeId: string, name: string): VarInInspect | undefined => {
-    const node = getNodeInspectVars(nodeId)
-    if (!node)
-      return undefined
-
-    const variable = node.vars.find((varItem) => {
-      return varItem.name === name
-    })
-    return variable
-  }, [getNodeInspectVars])
-
-  const hasSetInspectVar = useCallback((nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => {
-      const isEnv = isENV([nodeId])
-      if (isEnv) // always have value
-        return true
-      const isSys = isSystemVar([nodeId])
-      if (isSys)
-        return sysVars.some(varItem => varItem.selector?.[1]?.replace('sys.', '') === name)
-      const isChatVar = isConversationVar([nodeId])
-      if (isChatVar)
-        return conversationVars.some(varItem => varItem.selector?.[1] === name)
-      return getInspectVar(nodeId, name) !== undefined
-  }, [getInspectVar])
-
-  const hasNodeInspectVars = useCallback((nodeId: string) => {
-    return !!getNodeInspectVars(nodeId)
-  }, [getNodeInspectVars])
-
-  const fetchInspectVarValue = async (selector: ValueSelector) => {
-    const nodeId = selector[0]
-    const isSystemVar = nodeId === 'sys'
-    const isConversationVar = nodeId === 'conversation'
-    if (isSystemVar) {
-      invalidateSysVarValues()
-      return
-    }
-    if (isConversationVar) {
-      invalidateConversationVarValues()
-      return
-    }
-    const vars = await fetchNodeInspectVars(appId, nodeId)
-    setNodeInspectVars(nodeId, vars)
-  }
-
-  // after last run would call this
-  const appendNodeInspectVars = (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
-    const nodes = produce(nodesWithInspectVars, (draft) => {
-      const nodeInfo = allNodes.find(node => node.id === nodeId)
-        if (nodeInfo) {
-          const index = draft.findIndex(node => node.nodeId === nodeId)
-          if (index === -1) {
-            draft.push({
-              nodeId,
-              nodeType: nodeInfo.data.type,
-              title: nodeInfo.data.title,
-              vars: payload,
-            })
-          }
-          else {
-            draft[index].vars = payload
-          }
-        }
-    })
-    setNodesWithInspectVars(nodes)
-    handleCancelNodeSuccessStatus(nodeId)
-  }
-
-  const hasNodeInspectVar = (nodeId: string, varId: string) => {
-    const targetNode = nodesWithInspectVars.find(item => item.nodeId === nodeId)
-    if(!targetNode || !targetNode.vars)
-      return false
-    return targetNode.vars.some(item => item.id === varId)
-  }
-
-  const deleteInspectVar = async (nodeId: string, varId: string) => {
-    if(hasNodeInspectVar(nodeId, varId)) {
-      await doDeleteInspectVar(varId)
-      deleteInspectVarInStore(nodeId, varId)
-    }
-  }
-
-  const resetConversationVar = async (varId: string) => {
-    await doResetConversationVar(varId)
-    invalidateConversationVarValues()
-  }
-
-  const deleteNodeInspectorVars = async (nodeId: string) => {
-    if (hasNodeInspectVars(nodeId)) {
-      await doDeleteNodeInspectorVars(nodeId)
-      deleteNodeInspectVarsInStore(nodeId)
-    }
-  }
-
-  const deleteAllInspectorVars = async () => {
-    await doDeleteAllInspectorVars()
-    await invalidateConversationVarValues()
-    await invalidateSysVarValues()
-    deleteAllInspectVarsInStore()
-    handleEdgeCancelRunningStatus()
-  }
-
-  const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
-    await doEditInspectorVar({
-      varId,
-      value,
-    })
-    setInspectVarValue(nodeId, varId, value)
-    if (nodeId === VarInInspectType.conversation)
-      invalidateConversationVarValues()
-    if (nodeId === VarInInspectType.system)
-      invalidateSysVarValues()
-  }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])
-
-  const [currNodeId, setCurrNodeId] = useState<string | null>(null)
-  const [currEditVarId, setCurrEditVarId] = useState<string | null>(null)
-  const { data } = useLastRun(appId, currNodeId || '', !!currNodeId)
-  useEffect(() => {
-    if (data && currNodeId && currEditVarId) {
-      const inspectVar = getNodeInspectVars(currNodeId)?.vars?.find(item => item.id === currEditVarId)
-        resetToLastRunVarInStore(currNodeId, currEditVarId, data.outputs?.[inspectVar?.selector?.[1] || ''])
-    }
-  }, [data, currNodeId, currEditVarId, getNodeInspectVars, editInspectVarValue, resetToLastRunVarInStore])
-
-  const renameInspectVarName = async (nodeId: string, oldName: string, newName: string) => {
-    const varId = getVarId(nodeId, oldName)
-    if (!varId)
-      return
-
-    const newSelector = [nodeId, newName]
-    await doEditInspectorVar({
-      varId,
-      name: newName,
-    })
-    renameInspectVarNameInStore(nodeId, varId, newSelector)
-  }
-
-  const isInspectVarEdited = useCallback((nodeId: string, name: string) => {
-    const inspectVar = getInspectVar(nodeId, name)
-    if (!inspectVar)
-      return false
-
-    return inspectVar.edited
-  }, [getInspectVar])
-
-  const resetToLastRunVar = async (nodeId: string, varId: string) => {
-    await doResetToLastRunValue(varId)
-    setCurrNodeId(nodeId)
-    setCurrEditVarId(varId)
-  }
+  const configsMap = useHooksStore(s => s.configsMap)
+  const { data: conversationVars } = useConversationVarValues(configsMap?.conversationVarsUrl)
+  const { data: systemVars } = useSysVarValues(configsMap?.systemVarsUrl)
+  const hasNodeInspectVars = useHooksStore(s => s.hasNodeInspectVars)
+  const hasSetInspectVar = useHooksStore(s => s.hasSetInspectVar)
+  const fetchInspectVarValue = useHooksStore(s => s.fetchInspectVarValue)
+  const editInspectVarValue = useHooksStore(s => s.editInspectVarValue)
+  const renameInspectVarName = useHooksStore(s => s.renameInspectVarName)
+  const appendNodeInspectVars = useHooksStore(s => s.appendNodeInspectVars)
+  const deleteInspectVar = useHooksStore(s => s.deleteInspectVar)
+  const deleteNodeInspectorVars = useHooksStore(s => s.deleteNodeInspectorVars)
+  const deleteAllInspectorVars = useHooksStore(s => s.deleteAllInspectorVars)
+  const isInspectVarEdited = useHooksStore(s => s.isInspectVarEdited)
+  const resetToLastRunVar = useHooksStore(s => s.resetToLastRunVar)
+  const invalidateSysVarValues = useHooksStore(s => s.invalidateSysVarValues)
+  const resetConversationVar = useHooksStore(s => s.resetConversationVar)
+  const invalidateConversationVarValues = useHooksStore(s => s.invalidateConversationVarValues)
 
   return {
     conversationVars: conversationVars || [],

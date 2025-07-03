@@ -14,6 +14,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import SyncButton from '@/app/components/base/button/sync-button'
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -40,6 +41,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleRemoveVariable,
+    handleSyncFunctionSignature,
     handleCodeChange,
     handleCodeLanguageChange,
     handleVarsChange,
@@ -68,7 +70,12 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
+            !readOnly ? (
+              <div className="flex gap-2">
+                <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`)} onClick={handleSyncFunctionSignature} />
+                <AddButton onClick={handleAddVariable} />
+              </div>
+            ) : undefined
           }
         >
           <VarList

@@ -3,7 +3,7 @@ import json
 from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError
@@ -18,6 +18,7 @@ from controllers.service_api.app.error import (
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
     DocumentIndexingError,
+    InvalidMetadataError,
 )
 from controllers.service_api.wraps import (
     DatasetApiResource,
@@ -210,6 +211,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
+        if dataset.provider == "external":
+            raise ValueError("External datasets are not supported.")
+
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
             raise ValueError("indexing_technique is required.")
@@ -299,6 +303,9 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
+
+        if dataset.provider == "external":
+            raise ValueError("External datasets are not supported.")
 
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
@@ -466,6 +473,101 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
+class DocumentDetailApi(DatasetApiResource):
+    METADATA_CHOICES = {"all", "only", "without"}
+
+    def get(self, tenant_id, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        dataset = self.get_dataset(dataset_id, tenant_id)
+
+        document = DocumentService.get_document(dataset.id, document_id)
+
+        if not document:
+            raise NotFound("Document not found.")
+
+        if document.tenant_id != str(tenant_id):
+            raise Forbidden("No permission.")
+
+        metadata = request.args.get("metadata", "all")
+        if metadata not in self.METADATA_CHOICES:
+            raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
+
+        if metadata == "only":
+            response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
+        elif metadata == "without":
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
+            data_source_info = document.data_source_detail_dict
+            response = {
+                "id": document.id,
+                "position": document.position,
+                "data_source_type": document.data_source_type,
+                "data_source_info": data_source_info,
+                "dataset_process_rule_id": document.dataset_process_rule_id,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
+                "name": document.name,
+                "created_from": document.created_from,
+                "created_by": document.created_by,
+                "created_at": document.created_at.timestamp(),
+                "tokens": document.tokens,
+                "indexing_status": document.indexing_status,
+                "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
+                "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
+                "indexing_latency": document.indexing_latency,
+                "error": document.error,
+                "enabled": document.enabled,
+                "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
+                "disabled_by": document.disabled_by,
+                "archived": document.archived,
+                "segment_count": document.segment_count,
+                "average_segment_length": document.average_segment_length,
+                "hit_count": document.hit_count,
+                "display_status": document.display_status,
+                "doc_form": document.doc_form,
+                "doc_language": document.doc_language,
+            }
+        else:
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
+            data_source_info = document.data_source_detail_dict
+            response = {
+                "id": document.id,
+                "position": document.position,
+                "data_source_type": document.data_source_type,
+                "data_source_info": data_source_info,
+                "dataset_process_rule_id": document.dataset_process_rule_id,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
+                "name": document.name,
+                "created_from": document.created_from,
+                "created_by": document.created_by,
+                "created_at": document.created_at.timestamp(),
+                "tokens": document.tokens,
+                "indexing_status": document.indexing_status,
+                "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
+                "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
+                "indexing_latency": document.indexing_latency,
+                "error": document.error,
+                "enabled": document.enabled,
+                "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
+                "disabled_by": document.disabled_by,
+                "archived": document.archived,
+                "doc_type": document.doc_type,
+                "doc_metadata": document.doc_metadata_details,
+                "segment_count": document.segment_count,
+                "average_segment_length": document.average_segment_length,
+                "hit_count": document.hit_count,
+                "display_status": document.display_status,
+                "doc_form": document.doc_form,
+                "doc_language": document.doc_language,
+            }
+
+        return response
+
+
 api.add_resource(
     DocumentAddByTextApi,
     "/datasets/<uuid:dataset_id>/document/create_by_text",
@@ -489,3 +591,4 @@ api.add_resource(
 api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentListApi, "/datasets/<uuid:dataset_id>/documents")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
+api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")

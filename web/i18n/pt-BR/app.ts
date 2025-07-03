@@ -136,6 +136,14 @@ const translation = {
       notConfigured: 'Configure o provedor para habilitar o rastreamento',
       moreProvider: 'Mais provedores',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilidade de LLM de nível empresarial, avaliação online e offline, monitoramento e experimentação—impulsionada pelo OpenTelemetry. Projetado especificamente para aplicações baseadas em LLM e agentes.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Plataforma de observabilidade, avaliação, engenharia de prompts e experimentação de código aberto baseada em OpenTelemetry para seus fluxos de trabalho e agentes de LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Uma plataforma de desenvolvedor completa para cada etapa do ciclo de vida do aplicativo impulsionado por LLM.',

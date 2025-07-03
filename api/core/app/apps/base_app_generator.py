@@ -1,10 +1,20 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, final
+
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import VariableEntityType
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileUploadConfig
+from core.workflow.nodes.enums import NodeType
+from core.workflow.repositories.draft_variable_repository import (
+    DraftVariableSaver,
+    DraftVariableSaverFactory,
+    NoopDraftVariableSaver,
+)
 from factories import file_factory
+from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import VariableEntity
@@ -159,3 +169,38 @@ class BaseAppGenerator:
                         yield f"event: {message}\n\n"
 
             return gen()
+
+    @final
+    @staticmethod
+    def _get_draft_var_saver_factory(invoke_from: InvokeFrom) -> DraftVariableSaverFactory:
+        if invoke_from == InvokeFrom.DEBUGGER:
+
+            def draft_var_saver_factory(
+                session: Session,
+                app_id: str,
+                node_id: str,
+                node_type: NodeType,
+                node_execution_id: str,
+                enclosing_node_id: str | None = None,
+            ) -> DraftVariableSaver:
+                return DraftVariableSaverImpl(
+                    session=session,
+                    app_id=app_id,
+                    node_id=node_id,
+                    node_type=node_type,
+                    node_execution_id=node_execution_id,
+                    enclosing_node_id=enclosing_node_id,
+                )
+        else:
+
+            def draft_var_saver_factory(
+                session: Session,
+                app_id: str,
+                node_id: str,
+                node_type: NodeType,
+                node_execution_id: str,
+                enclosing_node_id: str | None = None,
+            ) -> DraftVariableSaver:
+                return NoopDraftVariableSaver()
+
+        return draft_var_saver_factory

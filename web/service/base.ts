@@ -110,7 +110,7 @@ function unicodeToChar(text: string) {
 
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
-  params.append('redirect_url', globalThis.location.pathname)
+  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
   if (message)
     params.append('message', message)
   if (code)

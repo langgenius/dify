@@ -23,7 +23,10 @@ const ExternalMemberSSOAuth = () => {
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
     if (!appCode)
       return null
 
