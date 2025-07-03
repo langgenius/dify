@@ -1090,13 +1090,13 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
       break
     }
     case BlockEnum.Code: {
-      const targetVar = (data as CodeNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      const targetVar = (data as CodeNodeType).variables?.find(v => Array.isArray(v.value_selector) && v.value_selector && v.value_selector.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = targetVar.variable
       break
     }
     case BlockEnum.TemplateTransform: {
-      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => Array.isArray(v.value_selector) && v.value_selector && v.value_selector.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = targetVar.variable
       break

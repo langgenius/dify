@@ -8,6 +8,8 @@ import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   nodeId: string
@@ -36,19 +38,40 @@ const VarList: FC<Props> = ({
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      onVarNameChange?.(list[index].variable, e.target.value)
+      replaceSpaceWithUnderscreInVarNameInput(e.target)
+
+      const newKey = e.target.value
+      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
+      if (!isValid) {
+        Toast.notify({
+          type: 'error',
+          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        })
+        return
+      }
+
+      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        })
+        return
+      }
+
+      onVarNameChange?.(list[index].variable, newKey)
       const newList = produce(list, (draft) => {
-        draft[index].variable = e.target.value
+        draft[index].variable = newKey
       })
       onChange(newList)
     }
   }, [list, onVarNameChange, onChange])
 
   const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector | string, varKindType: VarKindType) => {
+    return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
       const newList = produce(list, (draft) => {
         if (!isSupportConstantValue || varKindType === VarKindType.variable) {
           draft[index].value_selector = value as ValueSelector
+          draft[index].value_type = varInfo?.type
           if (isSupportConstantValue)
             draft[index].variable_type = VarKindType.variable
 

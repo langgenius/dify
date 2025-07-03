@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from './input'
 import Button from '@/app/components/base/button'
+import { useDocLink } from '@/context/i18n'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -17,6 +18,7 @@ const UrlInput: FC<Props> = ({
   onRun,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [url, setUrl] = useState('')
   const handleUrlChange = useCallback((url: string | number) => {
     setUrl(url as string)
@@ -32,7 +34,7 @@ const UrlInput: FC<Props> = ({
       <Input
         value={url}
         onChange={handleUrlChange}
-        placeholder='https://docs.dify.ai'
+        placeholder={docLink()}
       />
       <Button
         variant='primary'

@@ -93,6 +93,7 @@ const translation = {
     noTemplateFound: 'Nu s-au găsit șabloane',
     forAdvanced: 'PENTRU UTILIZATORII AVANSAȚI',
     chooseAppType: 'Alegeți un tip de aplicație',
+    dropDSLToCreateApp: 'Trageți fișierul DSL aici pentru a crea aplicația',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',
@@ -134,6 +135,14 @@ const translation = {
       configured: 'Configurat',
       notConfigured: 'Configurați furnizorul pentru a activa urmărirea',
       moreProvider: 'Mai mulți furnizori',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilitate LLM de nivel enterprise, evaluare online și offline, monitorizare și experimentare—alimentată de OpenTelemetry. Proiectată special pentru aplicații bazate pe LLM și agenți.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Platformă open-source și bazată pe OpenTelemetry pentru observabilitate, evaluare, inginerie de prompturi și experimentare pentru fluxurile de lucru și agenții LLM.',
     },
     langsmith: {
       title: 'LangSmith',

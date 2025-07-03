@@ -87,6 +87,7 @@ const translation = {
     appCreateDSLErrorPart3: '当前应用 DSL 版本：',
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
+    dropDSLToCreateApp: '拖放 DSL 文件到此处创建应用',
     Confirm: '确认',
   },
   newAppFromTemplate: {
@@ -148,6 +149,14 @@ const translation = {
       configured: '已配置',
       notConfigured: '配置提供商以启用追踪',
       moreProvider: '更多提供商',
+    },
+    arize: {
+      title: 'Arize',
+      description: '企业级LLM可观测性、在线和离线评估、监控和实验平台，基于OpenTelemetry构建，专为LLM和代理驱动的应用程序设计。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '开源且基于OpenTelemetry的可观测性、评估、提示工程和实验平台，适用于您的LLM工作流程和代理。',
     },
     langsmith: {
       title: 'LangSmith',

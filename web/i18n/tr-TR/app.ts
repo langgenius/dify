@@ -93,6 +93,7 @@ const translation = {
     advancedShortDescription: 'Çok turlu sohbetler için geliştirilmiş iş akışı',
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
+    dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -134,6 +135,14 @@ const translation = {
       configured: 'Yapılandırıldı',
       notConfigured: 'İzlemeyi etkinleştirmek için sağlayıcıyı yapılandırın',
       moreProvider: 'Daha Fazla Sağlayıcı',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Kurumsal düzeyde LLM gözlemlenebilirliği, çevrimiçi ve çevrimdışı değerlendirme, izleme ve deneyler — OpenTelemetry ile desteklenmektedir. LLM ve ajan tabanlı uygulamalar için özel olarak tasarlanmıştır.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'LLM iş akışlarınız ve ajanlarınız için açık kaynaklı ve OpenTelemetry tabanlı gözlemlenebilirlik, değerlendirme, istem mühendisliği ve deney platformu.',
     },
     langsmith: {
       title: 'LangSmith',

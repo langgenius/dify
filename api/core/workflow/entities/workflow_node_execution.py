@@ -66,11 +66,21 @@ class WorkflowNodeExecution(BaseModel):
     but they are not stored in the model.
     """
 
-    # Core identification fields
-    id: str  # Unique identifier for this execution record
-    node_execution_id: Optional[str] = None  # Optional secondary ID for cross-referencing
+    # --------- Core identification fields ---------
+
+    # Unique identifier for this execution record, used when persisting to storage.
+    # Value is a UUID string (e.g., '09b3e04c-f9ae-404c-ad82-290b8d7bd382').
+    id: str
+
+    # Optional secondary ID for cross-referencing purposes.
+    #
+    # NOTE: For referencing the persisted record, use `id` rather than `node_execution_id`.
+    # While `node_execution_id` may sometimes be a UUID string, this is not guaranteed.
+    # In most scenarios, `id` should be used as the primary identifier.
+    node_execution_id: Optional[str] = None
     workflow_id: str  # ID of the workflow this node belongs to
     workflow_execution_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
+    # --------- Core identification fields ends ---------
 
     # Execution positioning and flow
     index: int  # Sequence number for ordering in trace visualization

@@ -137,6 +137,7 @@ const translation = {
     next: 'Prochain',
     installPlugin: 'Installer le plugin',
     installFailedDesc: 'L’installation du plug-in a échoué.',
+    installWarning: 'Ce plugin n’est pas autorisé à être installé.',
   },
   installFromGitHub: {
     installFailed: 'Échec de l’installation',

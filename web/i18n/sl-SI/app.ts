@@ -97,6 +97,7 @@ const translation = {
     chatbotShortDescription: 'Chatbot, ki temelji na LLM, s preprosto nastavitvijo',
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
+    dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',
@@ -144,6 +145,14 @@ const translation = {
       configured: 'Konfigurirano',
       notConfigured: 'Konfigurirajte ponudnika za omogočanje sledenja',
       moreProvider: 'Več ponudnikov',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Podjetniško opazovanje LLM, spletno in nespletno vrednotenje, nadzorovanje in eksperimentiranje — s podporo OpenTelemetry. Namenjeno aplikacijam, ki temeljijo na LLM in agentih.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Odprtokodna in na OpenTelemetry osnovana platforma za opazovanje, vrednotenje, inženiring pozivov ter eksperimentiranje za vaše LLM poteke dela in agente.',
     },
     langsmith: {
       title: 'LangSmith',

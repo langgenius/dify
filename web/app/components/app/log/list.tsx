@@ -41,6 +41,7 @@ import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import PromptLogModal from '../../base/prompt-log-modal'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -190,11 +191,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { notify } = useContext(ToastContext)
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -309,18 +313,34 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       return item
     }))
   }, [allChatItems])
-  const handleAnnotationRemoved = useCallback((index: number) => {
-    setAllChatItems(allChatItems.map((item, i) => {
-      if (i === index) {
-        return {
-          ...item,
-          content: item.content,
-          annotation: undefined,
-        }
+  const handleAnnotationRemoved = useCallback(async (index: number): Promise<boolean> => {
+    const annotation = allChatItems[index]?.annotation
+
+    try {
+      if (annotation?.id) {
+        const { delAnnotation } = await import('@/service/annotation')
+        await delAnnotation(appDetail?.id || '', annotation.id)
       }
-      return item
-    }))
-  }, [allChatItems])
+
+      setAllChatItems(allChatItems.map((item, i) => {
+        if (i === index) {
+          return {
+            ...item,
+            content: item.content,
+            annotation: undefined,
+          }
+        }
+        return item
+      }))
+
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      return true
+    }
+    catch {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      return false
+    }
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -354,7 +374,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }
 
   useEffect(() => {
-    adjustModalWidth()
+    const raf = requestAnimationFrame(adjustModalWidth)
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   return (
@@ -513,6 +534,16 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             setShowMessageLogModal(false)
           }}
           defaultTab={currentLogModalActiveTab}
+        />
+      )}
+      {!isChatMode && showPromptLogModal && (
+        <PromptLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
         />
       )}
     </div>

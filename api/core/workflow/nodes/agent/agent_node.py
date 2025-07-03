@@ -39,6 +39,10 @@ class AgentNode(ToolNode):
     _node_data_cls = AgentNodeData  # type: ignore
     _node_type = NodeType.AGENT
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator:
         """
         Run the agent node
@@ -154,7 +158,10 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template expects a string template,
                 # but if passing a dict, convert to JSON string first before rendering
                 try:
-                    parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    else:
+                        parameter_value = str(agent_input.value)
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
@@ -162,7 +169,8 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
                 try:
-                    parameter_value = json.loads(parameter_value)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.loads(parameter_value)
                 except json.JSONDecodeError:
                     parameter_value = parameter_value
             else:
@@ -214,7 +222,7 @@ class AgentNode(ToolNode):
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
-                                extra.get("descrption", "") or tool_runtime.entity.description.llm
+                                extra.get("description", "") or tool_runtime.entity.description.llm
                             )
                         for tool_runtime_params in tool_runtime.entity.parameters:
                             tool_runtime_params.form = (

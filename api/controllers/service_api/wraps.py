@@ -11,13 +11,13 @@ from flask_restful import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.dataset import RateLimitLog
+from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -317,3 +317,11 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
 
 class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
+
+    def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        return dataset

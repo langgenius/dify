@@ -100,6 +100,7 @@ const translation = {
     chatbotUserDescription: '簡単な設定で LLM ベースのチャットボットを迅速に構築します。Chatflow は後で切り替えることができます。',
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
+    dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',
@@ -143,6 +144,14 @@ const translation = {
       configured: '設定しました',
       notConfigured: 'トレース機能を有効化するためには、サービスの設定が必要です。',
       moreProvider: 'その他のプロバイダー',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'エンタープライズグレードのLLM可観測性、オンラインおよびオフライン評価、モニタリング、実験—OpenTelemetryによって支えられています。LLMおよびエージェント駆動型アプリケーション向けに特別に設計されています。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'オープンソースおよびOpenTelemetryベースの可観測性、評価、プロンプトエンジニアリング、実験プラットフォームで、LLMワークフローおよびエージェントに対応します。',
     },
     langsmith: {
       title: 'LangSmith',

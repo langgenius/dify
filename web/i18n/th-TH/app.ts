@@ -93,6 +93,7 @@ const translation = {
     advancedUserDescription: 'โฟลว์พร้อมคุณสมบัติหน่วยความจำเพิ่มเติมและอินเตอร์เฟซแชทบอท',
     chooseAppType: 'เลือกประเภทแอป',
     advancedShortDescription: 'โฟลว์ที่เสริมประสิทธิภาพสำหรับการสนทนาหลายรอบ',
+    dropDSLToCreateApp: 'ลากไฟล์ DSL มาที่นี่เพื่สร้างแอป',
   },
   editApp: 'แก้ไขข้อมูล',
   editAppTitle: 'แก้ไขข้อมูลโปรเจกต์',
@@ -140,6 +141,14 @@ const translation = {
       configured: 'กําหนดค่าแล้ว',
       notConfigured: 'ผู้ให้บริการกําหนดค่าเพื่อเปิดใช้งานการติดตาม',
       moreProvider: 'ผู้ให้บริการเพิ่มเติม',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'การสังเกตการณ์ LLM ระดับองค์กร การประเมินออนไลน์และออฟไลน์ การตรวจสอบ และการทดลอง—ขับเคลื่อนโดย OpenTelemetry ออกแบบมาโดยเฉพาะสำหรับแอปพลิเคชันที่ขับเคลื่อนด้วย LLM และตัวแทน',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'แพลตฟอร์มโอเพ่นซอร์สและ OpenTelemetry สำหรับการสังเกตการณ์ การประเมิน วิศวกรรมพรอมต์ และการทดลองสำหรับเวิร์กโฟลว์และตัวแทน LLM ของคุณ',
     },
     langsmith: {
       title: 'Langsmith',

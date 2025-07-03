@@ -89,6 +89,7 @@ const translation = {
     workflowShortDescription: '지능형 자동화를 위한 에이전트 플로우',
     agentUserDescription: '작업 목표를 달성하기 위해 반복적인 추론과 자율적인 도구를 사용할 수 있는 지능형 에이전트입니다.',
     advancedUserDescription: '메모리 기능과 챗봇 인터페이스를 갖춘 워크플로우',
+    dropDSLToCreateApp: '여기에 DSL 파일을 드롭하여 앱을 만드세요.',
   },
   editApp: '정보 편집하기',
   editAppTitle: '앱 정보 편집하기',
@@ -130,6 +131,14 @@ const translation = {
       configured: '구성됨',
       notConfigured: '추적을 활성화하려면 제공업체를 구성하세요',
       moreProvider: '더 많은 제공업체',
+    },
+    arize: {
+      title: 'Arize',
+      description: '엔터프라이즈급 LLM 가시성, 온라인 및 오프라인 평가, 모니터링 및 실험—OpenTelemetry를 기반으로 합니다. LLM 및 에이전트 기반 애플리케이션을 위해 특별히 설계되었습니다.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '오픈소스 및 OpenTelemetry 기반의 가시성, 평가, 프롬프트 엔지니어링 및 실험 플랫폼으로, LLM 워크플로우 및 에이전트를 지원합니다.',
     },
     langsmith: {
       title: 'LangSmith',

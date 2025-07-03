@@ -52,8 +52,8 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             datasetId={datasetId || creationCache?.dataset?.id || ''}
             batchId={creationCache?.batch || ''}
             documents={creationCache?.documents as FullDocumentDetail[]}
-            indexingType={indexingType || creationCache?.dataset?.indexing_technique}
-            retrievalMethod={retrievalMethod || creationCache?.dataset?.retrieval_model?.search_method}
+            indexingType={creationCache?.dataset?.indexing_technique || indexingType}
+            retrievalMethod={creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod}
           />
         </div>
       </div>

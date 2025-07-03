@@ -32,6 +32,7 @@ from models import Account, App, AppMode
 from models.model import AppModelConfig
 from models.workflow import Workflow
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -292,6 +293,8 @@ class AppDslService:
                 dependencies=check_dependencies_pending_data,
             )
 
+            draft_var_srv = WorkflowDraftVariableService(session=self._session)
+            draft_var_srv.delete_workflow_variables(app_id=app.id)
             return Import(
                 id=import_id,
                 status=status,
@@ -421,7 +424,7 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link"]:
+        if icon_type_value in ["emoji", "link", "image"]:
             icon_type = icon_type_value
         else:
             icon_type = "emoji"

@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: '下載完成。',
     downloadFailed: '下載失敗。請稍後再試。',
     format: '格式',
+    deSelectAll: '全不選',
+    selectAll: '全選',
   },
   placeholder: {
     input: '請輸入',
@@ -467,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API 擴充套件提供了一個集中式的 API 管理，在此統一新增 API 配置後，方便在 Dify 上的各類應用中直接使用。',
     link: '瞭解如何開發您自己的 API 擴充套件。',
-    linkUrl: 'https://docs.dify.ai/zh-hans/guides/tools/extensions/api-based/api-based-extension',
     add: '新增 API 擴充套件',
     selector: {
       title: 'API 擴充套件',

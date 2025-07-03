@@ -10,7 +10,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 
 export type ModalPropsType = {
   env?: EnvironmentVariable
@@ -40,6 +40,13 @@ const VariableModal = ({
       return false
     }
     return true
+  }
+
+  const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    if (!!e.target.value && !checkVariableName(e.target.value))
+      return
+    setName(e.target.value || '')
   }
 
   const handleSave = () => {
@@ -127,7 +134,7 @@ const VariableModal = ({
             <Input
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
               value={name}
-              onChange={e => setName(e.target.value || '')}
+              onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
               type='text'
             />
@@ -139,7 +146,7 @@ const VariableModal = ({
           <div className='flex'>
             {
               type !== 'number' ? <textarea
-                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
                 value={value}
                 placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
                 onChange={e => setValue(e.target.value)}

@@ -95,6 +95,7 @@ const translation = {
     foundResult: '{{Anzahl}} Ergebnis',
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
+    dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
   },
   editApp: 'App bearbeiten',
   editAppTitle: 'App-Informationen bearbeiten',
@@ -136,6 +137,14 @@ const translation = {
       configured: 'Konfiguriert',
       notConfigured: 'Anbieter konfigurieren, um Nachverfolgung zu aktivieren',
       moreProvider: 'Weitere Anbieter',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Unternehmensgerechte LLM-Observierbarkeit, Online- und Offline-Bewertung, Überwachung und Experimentierung—unterstützt durch OpenTelemetry. Speziell für LLM- und agentenbasierte Anwendungen entwickelt.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Open-Source- und OpenTelemetry-basierte Plattform für Observierbarkeit, Bewertung, Prompt-Engineering und Experimentierung für Ihre LLM-Workflows und -Agenten.',
     },
     langsmith: {
       title: 'LangSmith',

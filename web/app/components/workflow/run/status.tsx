@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { useDocLink } from '@/context/i18n'
 
 type ResultProps = {
   status: string
@@ -21,6 +22,7 @@ const StatusPanel: FC<ResultProps> = ({
   exceptionCounts,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   return (
     <StatusContainer status={status}>
@@ -134,7 +136,7 @@ const StatusPanel: FC<ResultProps> = ({
             <div className='system-xs-medium text-text-warning'>
               {error}
               <a
-                href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                href={docLink('/guides/workflow/error-handling/error-type')}
                 target='_blank'
                 className='text-text-accent'
               >

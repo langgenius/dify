@@ -10,6 +10,7 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -17,6 +18,13 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
+
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+    nodesWithInspectVars,
+    deleteInspectVar,
+  } = useInspectVarsCrud()
 
   const [isShowAddVarModal, {
     setTrue: showAddVarModal,
@@ -31,6 +39,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const [removedIndex, setRemoveIndex] = useState(0)
   const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
     if (moreInfo?.payload?.type === ChangeType.remove) {
+      const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === moreInfo?.payload?.payload?.beforeKey
+      })?.id
+      if(varId)
+        deleteInspectVar(id, varId)
+
       if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
@@ -46,8 +60,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
     if (moreInfo?.payload?.type === ChangeType.changeVarName) {
       const changedVar = newList[moreInfo.index]
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
+      renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
     }
-  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
+    else if(moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
+      deleteNodeInspectorVars(id)
+    }
+  }, [deleteInspectVar, deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, nodesWithInspectVars, renameInspectVarName, setInputs, showRemoveVarConfirm])
 
   const removeVarInNode = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {

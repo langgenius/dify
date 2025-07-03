@@ -97,6 +97,7 @@ const translation = {
     completionUserDescription: 'به سرعت یک دستیار هوش مصنوعی برای وظایف تولید متن با پیکربندی ساده بسازید.',
     advancedShortDescription: 'گردش‌کار پیشرفته برای گفتگوهای چند مرحله‌ای',
     agentUserDescription: 'یک عامل هوشمند که قادر به استدلال تکراری و استفاده از ابزار مستقل برای دستیابی به اهداف وظیفه است.',
+    dropDSLToCreateApp: 'فایل DSL را اینجا رها کنید تا برنامه ساخته شود',
   },
   editApp: 'ویرایش اطلاعات',
   editAppTitle: 'ویرایش اطلاعات برنامه',
@@ -138,6 +139,14 @@ const translation = {
       configured: 'پیکربندی شده',
       notConfigured: 'برای فعال‌سازی ردیابی ارائه‌دهنده را پیکربندی کنید',
       moreProvider: 'ارائه‌دهندگان بیشتر',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'قابلیت مشاهده LLM در سطح سازمانی، ارزیابی آنلاین و آفلاین، نظارت و آزمایش — با پشتیبانی از OpenTelemetry. طراحی‌شده مخصوص برنامه‌های مبتنی بر LLM و عامل‌ها.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'پلتفرم متن‌باز و مبتنی بر OpenTelemetry برای مشاهده‌پذیری، ارزیابی، مهندسی پرامپت و آزمایش برای جریان‌های کاری و عامل‌های LLM شما.',
     },
     langsmith: {
       title: 'LangSmith',

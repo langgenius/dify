@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Download non riuscito. Per favore riprova più tardi.',
     more: 'Di più',
     format: 'Formato',
+    selectAll: 'Seleziona tutto',
+    deSelectAll: 'Deseleziona tutto',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -495,7 +497,6 @@ const translation = {
     title:
       'Le estensioni API forniscono una gestione centralizzata delle API, semplificando la configurazione per un facile utilizzo nelle applicazioni di Dify.',
     link: 'Scopri come sviluppare la tua estensione API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Aggiungi Estensione API',
     selector: {
       title: 'Estensione API',
