@@ -32,13 +32,14 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
-import { useStore } from '@/app/components/workflow/store/workflow'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  environmentVariables?: Var[]
+  conversationVariables?: Var[]
   getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
@@ -50,6 +51,8 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
   getVarType,
+  environmentVariables = [],
+  conversationVariables = [],
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -69,16 +72,17 @@ const WorkflowVariableBlockComponent = ({
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
 
-  const environmentVariables = useStore(s => s.environmentVariables)
-  const conversationVariables = useStore(s => s.conversationVariables)
-
   let variableValid = true
-  if (isEnv)
-    variableValid = environmentVariables.some(v => v.name === (variables?.[1]))
-   else if (isChatVar)
-    variableValid = conversationVariables.some(v => v.name === variables?.[1])
-   else
-    variableValid = !!node
+  if (isEnv) {
+    console.log('=============环境变量：', environmentVariables, variables)
+    variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else if (isChatVar) {
+    console.log('=============会话变量：', conversationVariables, variables)
+    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+
+  else { variableValid = !!node }
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
