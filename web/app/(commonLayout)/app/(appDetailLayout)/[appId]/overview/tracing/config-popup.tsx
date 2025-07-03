@@ -266,24 +266,24 @@ const ConfigPopup: FC<PopupProps> = ({
           ? (
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
-              <div className='mt-2 space-y-2'>
-                {arizePanel}
-                {phoenixPanel}
+              <div className='mt-2 max-h-96 space-y-2 overflow-y-auto'>
                 {langfusePanel}
                 {langSmithPanel}
                 {opikPanel}
                 {weavePanel}
+                {arizePanel}
+                {phoenixPanel}
               </div>
             </>
           )
           : (
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
-              <div className='mt-2 space-y-2'>
+              <div className='mt-2 max-h-40 space-y-2 overflow-y-auto'>
                 {configuredProviderPanel()}
               </div>
               <div className='system-xs-medium-uppercase mt-3 text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
-              <div className='mt-2 space-y-2'>
+              <div className='mt-2 max-h-40 space-y-2 overflow-y-auto'>
                 {moreProviderPanel()}
               </div>
             </>
