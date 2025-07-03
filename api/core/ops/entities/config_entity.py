@@ -4,6 +4,8 @@ from pydantic import BaseModel, ValidationInfo, field_validator
 
 
 class TracingProviderEnum(StrEnum):
+    ARIZE = "arize"
+    PHOENIX = "phoenix"
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
@@ -16,6 +18,63 @@ class BaseTracingConfig(BaseModel):
     """
 
     ...
+
+
+class ArizeConfig(BaseTracingConfig):
+    """
+    Model class for Arize tracing config.
+    """
+
+    api_key: str | None = None
+    space_id: str | None = None
+    project: str | None = None
+    endpoint: str = "https://otlp.arize.com"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "default"
+
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://otlp.arize.com"
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("endpoint must start with https:// or http://")
+
+        return v
+
+
+class PhoenixConfig(BaseTracingConfig):
+    """
+    Model class for Phoenix tracing config.
+    """
+
+    api_key: str | None = None
+    project: str | None = None
+    endpoint: str = "https://app.phoenix.arize.com"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "default"
+
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://app.phoenix.arize.com"
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("endpoint must start with https:// or http://")
+
+        return v
 
 
 class LangfuseConfig(BaseTracingConfig):
