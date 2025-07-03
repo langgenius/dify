@@ -10,6 +10,7 @@ from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.datasource.local_file.local_file_provider import LocalFileDatasourcePluginProviderController
 from core.datasource.online_document.online_document_provider import OnlineDocumentDatasourcePluginProviderController
+from core.datasource.online_drive.online_drive_provider import OnlineDriveDatasourcePluginProviderController
 from core.datasource.website_crawl.website_crawl_provider import WebsiteCrawlDatasourcePluginProviderController
 from core.plugin.impl.datasource import PluginDatasourceManager
 
@@ -49,6 +50,13 @@ class DatasourceManager:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     controller = OnlineDocumentDatasourcePluginProviderController(
+                        entity=provider_entity.declaration,
+                        plugin_id=provider_entity.plugin_id,
+                        plugin_unique_identifier=provider_entity.plugin_unique_identifier,
+                        tenant_id=tenant_id,
+                    )
+                case DatasourceProviderType.ONLINE_DRIVE:
+                    controller = OnlineDriveDatasourcePluginProviderController(
                         entity=provider_entity.declaration,
                         plugin_id=provider_entity.plugin_id,
                         plugin_unique_identifier=provider_entity.plugin_unique_identifier,
