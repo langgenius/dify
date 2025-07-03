@@ -795,6 +795,7 @@ more context or rephrase your question? I'm here to help!"""
     def test_environment_variable_enabled(self):
         """Test that environment variable is properly read when enabled."""
         from core.workflow.nodes.llm.node import LLM_NODE_THINKING_TAGS_ENABLED
+
         assert LLM_NODE_THINKING_TAGS_ENABLED is True
 
     @mock.patch.dict("os.environ", {"LLM_NODE_THINKING_TAGS_ENABLED": "false"})
@@ -802,13 +803,17 @@ more context or rephrase your question? I'm here to help!"""
         """Test that environment variable is properly read when disabled."""
         # Need to reimport to get the updated value
         import importlib
+
         import core.workflow.nodes.llm.node
+
         importlib.reload(core.workflow.nodes.llm.node)
         from core.workflow.nodes.llm.node import LLM_NODE_THINKING_TAGS_ENABLED
+
         assert LLM_NODE_THINKING_TAGS_ENABLED is False
 
     def test_environment_variable_default(self):
         """Test that environment variable defaults to True."""
         from core.workflow.nodes.llm.node import LLM_NODE_THINKING_TAGS_ENABLED
+
         # Default should be True for backward compatibility
         assert LLM_NODE_THINKING_TAGS_ENABLED is True
