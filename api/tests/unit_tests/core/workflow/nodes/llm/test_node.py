@@ -1,10 +1,10 @@
 import base64
+import importlib
+import os
 import uuid
 from collections.abc import Sequence
 from typing import Optional
 from unittest import mock
-import os
-import importlib
 
 import pytest
 
@@ -37,7 +37,7 @@ from core.workflow.nodes.llm.entities import (
     VisionConfigOptions,
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
-from core.workflow.nodes.llm.node import LLMNode, LLM_NODE_THINKING_TAGS_ENABLED
+from core.workflow.nodes.llm.node import LLM_NODE_THINKING_TAGS_ENABLED, LLMNode
 from models.enums import UserFrom
 from models.provider import ProviderType
 from models.workflow import WorkflowType
