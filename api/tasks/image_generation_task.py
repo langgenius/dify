@@ -48,11 +48,7 @@ def generate_image_task(
             raise Exception(f"End user {end_user_id} not found")
 
         # Get the existing UserGeneratedImage entity
-        user_generated_image = (
-            db.session.query(UserGeneratedImage)
-            .filter(UserGeneratedImage.id == image_id)
-            .first()
-        )
+        user_generated_image = db.session.query(UserGeneratedImage).filter(UserGeneratedImage.id == image_id).first()
         if not user_generated_image:
             raise Exception(f"UserGeneratedImage {image_id} not found")
 
@@ -67,16 +63,10 @@ def generate_image_task(
             db.session.commit()
             raise Exception("Image generation app id is not set")
 
-        image_generation_app_model = (
-            db.session.query(App)
-            .filter(App.id == dify_config.IMAGE_GENERATION_APP_ID)
-            .first()
-        )
+        image_generation_app_model = db.session.query(App).filter(App.id == dify_config.IMAGE_GENERATION_APP_ID).first()
         if image_generation_app_model is None:
             user_generated_image.status = "failed"
-            user_generated_image.error_message = (
-                "Image generation app model is not found"
-            )
+            user_generated_image.error_message = "Image generation app model is not found"
             db.session.commit()
             raise Exception("Image generation app model is not found")
 
@@ -93,10 +83,7 @@ def generate_image_task(
             .all()
         )
 
-        recent_messages = [
-            f"user: {message.query}\n\nassistant: {message.answer}"
-            for message in recent_messages
-        ]
+        recent_messages = [f"user: {message.query}\n\nassistant: {message.answer}" for message in recent_messages]
 
         # Prepare arguments for generation
         args = {
@@ -167,9 +154,7 @@ def generate_image_task(
         # Update status to failed if we have the entity
         try:
             user_generated_image = (
-                db.session.query(UserGeneratedImage)
-                .filter(UserGeneratedImage.id == image_id)
-                .first()
+                db.session.query(UserGeneratedImage).filter(UserGeneratedImage.id == image_id).first()
             )
             if user_generated_image:
                 user_generated_image.status = "failed"

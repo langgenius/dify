@@ -238,9 +238,7 @@ class LoginApi(Resource):
         AccountService.reset_login_error_rate_limit(login_id)
 
         # Generate token for the authenticated admin
-        token_pair = AccountService.login(
-            account, ip_address=extract_remote_ip(request)
-        )
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
         response_data = token_pair.model_dump()
 

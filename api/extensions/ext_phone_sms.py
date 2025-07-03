@@ -47,11 +47,10 @@ class PhoneSms:
             access_key_secret=secret,
         )
         # Endpoint 请参考 https://api.aliyun.com/product/Dysmsapi
-        config.endpoint = 'dysmsapi.aliyuncs.com'
+        config.endpoint = "dysmsapi.aliyuncs.com"
         return Dysmsapi20170525Client(config)
 
     def send_sms(self, phone_numbers: str, code: str) -> None:
-
         if not self._client:
             raise ValueError("PhoneSms client is not initialized")
 
@@ -63,7 +62,7 @@ class PhoneSms:
         )
 
         response = self._client.send_sms_with_options(send_sms_request, util_models.RuntimeOptions())
-        if response.body.code != 'OK':
+        if response.body.code != "OK":
             raise Exception(response.body.message)
 
 

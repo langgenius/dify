@@ -198,7 +198,6 @@ class EmailCodeLoginApi(Resource):
         is_new_user = account is None
 
         if account is None:
-
             # Create new account
             account = AccountService.create_account_in_tenant(
                 tenant=tenant,
@@ -212,9 +211,11 @@ class EmailCodeLoginApi(Resource):
                 OrganizationService.assign_account_to_organization(account, organization.id)
 
         else:
-
-            if (organization is not None and account.current_organization_id is not None 
-                and account.current_organization_id != organization.id):
+            if (
+                organization is not None
+                and account.current_organization_id is not None
+                and account.current_organization_id != organization.id
+            ):
                 raise OrganizationMismatchError()
 
             connected_tenant = TenantService.get_join_tenants(account)

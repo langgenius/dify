@@ -120,4 +120,4 @@ class StudentConversation(Resource):
             raise NotFound("Last Conversation Not Exists.")
 
 
-api.add_resource(StudentConversation, '/students/<string:student_id>/conversation')
+api.add_resource(StudentConversation, "/students/<string:student_id>/conversation")

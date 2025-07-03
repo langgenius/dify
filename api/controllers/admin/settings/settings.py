@@ -181,6 +181,6 @@ class OperationLogs(Resource):
         pass
 
 
-api.add_resource(WatermarkSettings, '/settings/watermark')
-api.add_resource(SystemInfo, '/settings/info')
-api.add_resource(OperationLogs, '/settings/logs')
+api.add_resource(WatermarkSettings, "/settings/watermark")
+api.add_resource(SystemInfo, "/settings/info")
+api.add_resource(OperationLogs, "/settings/logs")

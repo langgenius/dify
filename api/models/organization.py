@@ -59,13 +59,13 @@ class Organization(db.Model):  # type: ignore[name-defined]
     def allowed_email_domains(self) -> list[str]:
         """Get list of allowed email domains for this organization"""
         settings = self.settings_dict
-        return settings.get('allowed_email_domains', [])
+        return settings.get("allowed_email_domains", [])
 
     @allowed_email_domains.setter
     def allowed_email_domains(self, domains: list[str]):
         """Set allowed email domains for this organization"""
         settings = self.settings_dict
-        settings['allowed_email_domains'] = domains
+        settings["allowed_email_domains"] = domains
         self.settings_dict = settings
 
     @property
@@ -78,7 +78,7 @@ class Organization(db.Model):  # type: ignore[name-defined]
         if not self.is_email_restricted:
             return True
 
-        email_domain = email.split('@')[-1].lower()
+        email_domain = email.split("@")[-1].lower()
         return email_domain in self.allowed_email_domains
 
     @property

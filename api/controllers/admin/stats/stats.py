@@ -109,15 +109,15 @@ class UserStats(Resource):
         """
         try:
             # Parse date parameters
-            start_date_str = request.args.get('start_date')
-            end_date_str = request.args.get('end_date')
+            start_date_str = request.args.get("start_date")
+            end_date_str = request.args.get("end_date")
 
             if not start_date_str or not end_date_str:
                 raise BadRequest("start_date and end_date are required")
 
             try:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
                 end_date = end_date.replace(hour=23, minute=59, second=59)
             except ValueError:
                 raise BadRequest("Invalid date format. Use YYYY-MM-DD")
@@ -187,15 +187,15 @@ class ConversationStats(Resource):
         """
         try:
             # Parse date parameters
-            start_date_str = request.args.get('start_date')
-            end_date_str = request.args.get('end_date')
+            start_date_str = request.args.get("start_date")
+            end_date_str = request.args.get("end_date")
 
             if not start_date_str or not end_date_str:
                 raise BadRequest("start_date and end_date are required")
 
             try:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
                 end_date = end_date.replace(hour=23, minute=59, second=59)
             except ValueError:
                 raise BadRequest("Invalid date format. Use YYYY-MM-DD")
@@ -215,6 +215,6 @@ class ConversationStats(Resource):
             return {"error": "An error occurred while processing the request"}, 500
 
 
-api.add_resource(RiskStats, '/stats/risk')
-api.add_resource(UserStats, '/stats/user')
-api.add_resource(ConversationStats, '/stats/conversation')
+api.add_resource(RiskStats, "/stats/risk")
+api.add_resource(UserStats, "/stats/user")
+api.add_resource(ConversationStats, "/stats/conversation")

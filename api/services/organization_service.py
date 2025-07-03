@@ -21,16 +21,16 @@ class OrganizationService:
         Returns:
             Organization or None if no match found
         """
-        if not email or '@' not in email:
+        if not email or "@" not in email:
             return None
 
         # Get email domain
-        email_domain = email.split('@')[-1].lower()
+        email_domain = email.split("@")[-1].lower()
 
         # Get active organizations for this tenant
         organizations = (
             db.session.query(Organization)
-            .filter(Organization.tenant_id == tenant_id, Organization.status == 'active')
+            .filter(Organization.tenant_id == tenant_id, Organization.status == "active")
             .all()
         )
 
@@ -186,7 +186,7 @@ class OrganizationService:
         """
         return (
             db.session.query(Organization)
-            .filter(Organization.tenant_id == tenant_id, Organization.status == 'active')
+            .filter(Organization.tenant_id == tenant_id, Organization.status == "active")
             .all()
         )
 

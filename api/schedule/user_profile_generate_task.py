@@ -43,9 +43,7 @@ def user_profile_generate_task():
             logger.info(f"No users to update. for app_id {app_id}")
             continue
 
-        logger.info(
-            f"Found {len(users_to_update)} users profile and memory updates. in app_id {app_id}"
-        )
+        logger.info(f"Found {len(users_to_update)} users profile and memory updates. in app_id {app_id}")
         update_user_profile_for_appid(users_to_update)
 
     end_at = time.perf_counter()
@@ -64,9 +62,7 @@ def update_user_profile_for_appid(users_to_update: list[EndUser]):
         batch = users_to_update[i : i + batch_size]
         try:
             for user in batch:
-                new_messages, latest_messages_created_at = fetch_new_messages_for_user(
-                    user
-                )
+                new_messages, latest_messages_created_at = fetch_new_messages_for_user(user)
 
                 if len(new_messages) > 0:
                     process_user_memory(user, new_messages)
@@ -91,9 +87,7 @@ def fetch_users_to_update(app_id: str) -> list[EndUser]:
     )
 
     latest_message_query = latest_message_query.filter(Message.app_id == app_id)
-    latest_message_subquery = latest_message_query.group_by(
-        Message.from_end_user_id
-    ).subquery()
+    latest_message_subquery = latest_message_query.group_by(Message.from_end_user_id).subquery()
 
     # Then join with EndUser to find users who need memory updates
     users_query = (
@@ -106,8 +100,7 @@ def fetch_users_to_update(app_id: str) -> list[EndUser]:
             EndUser.app_id == app_id,
             or_(
                 EndUser.profile_updated_at.is_(None),
-                EndUser.profile_updated_at
-                < latest_message_subquery.c.latest_message_time,
+                EndUser.profile_updated_at < latest_message_subquery.c.latest_message_time,
             ),
         )
     )
@@ -122,14 +115,10 @@ def fetch_users_to_update(app_id: str) -> list[EndUser]:
 def fetch_new_messages_for_user(user: EndUser) -> tuple[str, datetime]:
     """Fetch new messages for a user."""
 
-    message_query = db.session.query(Message).filter(
-        Message.from_end_user_id == user.id
-    )
+    message_query = db.session.query(Message).filter(Message.from_end_user_id == user.id)
     message_query = message_query.filter(Message.app_id == user.app_id)
     if user.profile_updated_at:
-        message_query = message_query.filter(
-            Message.created_at > user.profile_updated_at
-        )
+        message_query = message_query.filter(Message.created_at > user.profile_updated_at)
     new_messages = message_query.order_by(asc(Message.created_at)).all()
 
     if len(new_messages) == 0:
@@ -150,9 +139,7 @@ def process_user_memory(user: EndUser, new_messages: str):
 
     memory_app_id = dify_config.USER_MEMORY_GENERATION_APP_ID
     if memory_app_id == "":
-        logger.warning(
-            "No memory generation app_id provided, skipping memory generation."
-        )
+        logger.warning("No memory generation app_id provided, skipping memory generation.")
         return
 
     memory_app_model = db.session.query(App).filter(App.id == memory_app_id).first()
@@ -195,18 +182,12 @@ def process_user_health_summary(user: EndUser, new_messages: str):
 
     health_summary_app_id = dify_config.USER_HEALTH_SUMMARY_GENERATION_APP_ID
     if health_summary_app_id == "":
-        logger.warning(
-            "No health summary app_id provided, skipping health summary generation."
-        )
+        logger.warning("No health summary app_id provided, skipping health summary generation.")
         return
 
-    health_summary_app_model = (
-        db.session.query(App).filter(App.id == health_summary_app_id).first()
-    )
+    health_summary_app_model = db.session.query(App).filter(App.id == health_summary_app_id).first()
     if health_summary_app_model is None:
-        logger.error(
-            f"App not found for health summary generation app_id {health_summary_app_id}"
-        )
+        logger.error(f"App not found for health summary generation app_id {health_summary_app_id}")
         return
 
     args = {
@@ -237,9 +218,7 @@ def process_user_health_summary(user: EndUser, new_messages: str):
     result = response["data"]["outputs"]["result"]
 
     if result is None:
-        logger.warning(
-            f"Health summary generation failed with None result for user {user.id}"
-        )
+        logger.warning(f"Health summary generation failed with None result for user {user.id}")
         return
 
     # preprocess result in case of ```json xxxx```

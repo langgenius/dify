@@ -19,7 +19,6 @@ DEFAULT_IMAGE_EXTENSION = ".png"
 
 
 class ImageGenerationService:
-
     generate_image_rate_limiter = RateLimiter(
         prefix="generate_image_rate_limit", max_attempts=dify_config.IMAGE_GENERATION_DAILY_LIMIT, time_window=86400 * 1
     )
@@ -62,7 +61,6 @@ class ImageGenerationService:
 
     @staticmethod
     def pagination_image_list(end_user: EndUser, limit: int, offset: int) -> MultiPagePagination:
-
         query = (
             db.session.query(UserGeneratedImage)
             .filter(UserGeneratedImage.app_id == end_user.app_id, UserGeneratedImage.end_user_id == end_user.id)

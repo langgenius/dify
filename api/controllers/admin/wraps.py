@@ -44,16 +44,20 @@ def validate_admin_token_and_extract_info(view: Optional[Callable] = None):
                 raise Unauthorized("Invalid token: user not found")
             if account.status != AccountStatus.ACTIVE:
                 raise Unauthorized("Invalid token: account is not active")
-            
+
             # Check if user has admin role in their current organization
-            org_member = db.session.query(OrganizationMember).filter(
-                OrganizationMember.account_id == user_id,
-                OrganizationMember.organization_id == account.current_organization_id
-            ).first()
-            
+            org_member = (
+                db.session.query(OrganizationMember)
+                .filter(
+                    OrganizationMember.account_id == user_id,
+                    OrganizationMember.organization_id == account.current_organization_id,
+                )
+                .first()
+            )
+
             if not org_member:
                 raise Unauthorized("Invalid token: user is not a member of any organization")
-            
+
             # Check if the user has admin role
             if org_member.role != OrganizationRole.ADMIN:
                 raise Unauthorized("Invalid token: account does not have admin privileges")

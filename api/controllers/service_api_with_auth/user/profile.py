@@ -89,33 +89,33 @@ class UserProfile(Resource):
         validated_data = {}
 
         # Validate username if provided
-        if 'username' in data:
-            username = data['username']
+        if "username" in data:
+            username = data["username"]
             # Validate username (Chinese or English only, max 10 chars)
-            if not re.match(r'^[a-zA-Z\u4e00-\u9fa5]+$', username) or len(username) > 10:
+            if not re.match(r"^[a-zA-Z\u4e00-\u9fa5]+$", username) or len(username) > 10:
                 return {"success": False, "message": "Invalid username format"}, 400
-            validated_data['username'] = username
+            validated_data["username"] = username
 
         # Validate gender if provided
-        if 'gender' in data:
-            gender_str = data['gender']
+        if "gender" in data:
+            gender_str = data["gender"]
             if gender_str not in ["unknown", "male", "female"]:
                 return {"success": False, "message": "Invalid gender value"}, 400
-            validated_data['gender'] = gender_str
+            validated_data["gender"] = gender_str
 
         # Validate major if provided
-        if 'major' in data:
-            major = data['major']
+        if "major" in data:
+            major = data["major"]
 
             # Allow None as a valid value (to clear the field)
             if major is None:
-                validated_data['major'] = None
+                validated_data["major"] = None
             elif not isinstance(major, str):
                 return {"success": False, "message": "Major must be a string value or null"}, 400
             elif len(major) > 50:
                 return {"success": False, "message": "Major exceeds maximum length of 50"}, 400
             else:
-                validated_data['major'] = major
+                validated_data["major"] = major
 
         # Use the service to update user profile
         success, error = EndUserService.update_user_profile(end_user, validated_data)
@@ -126,4 +126,4 @@ class UserProfile(Resource):
         return {"success": True}
 
 
-api.add_resource(UserProfile, '/user/profile')
+api.add_resource(UserProfile, "/user/profile")

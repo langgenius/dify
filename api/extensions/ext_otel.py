@@ -111,9 +111,7 @@ def init_app(app: DifyApp):
                     ) as span:
                         span.set_status(StatusCode.ERROR)
                         span.record_exception(record.exc_info[1])
-                        span.set_attribute(
-                            "exception.type", record.exc_info[0].__name__
-                        )
+                        span.set_attribute("exception.type", record.exc_info[0].__name__)
                         span.set_attribute("exception.message", str(record.exc_info[1]))
             except Exception:
                 pass
@@ -198,9 +196,7 @@ def init_app(app: DifyApp):
     set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
     if not is_celery_worker():
         init_flask_instrumentor(app)
-        CeleryInstrumentor(
-            tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()
-        ).instrument()
+        CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
     atexit.register(shutdown_tracer)
@@ -221,6 +217,4 @@ def init_celery_worker(*args, **kwargs):
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logging.info("Initializing OpenTelemetry for Celery worker")
-        CeleryInstrumentor(
-            tracer_provider=tracer_provider, meter_provider=metric_provider
-        ).instrument()
+        CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()

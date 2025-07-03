@@ -54,25 +54,17 @@ class AnswersSummaryAnalysisApi(Resource):
             return {"error": "exam_answers file_id is required"}, 400
 
         # Read the exam answers file to get categories and correct answers
-        exam_answers_file_content, _ = self._read_file_with_encoding_detection(
-            exam_answers_file_id
-        )
+        exam_answers_file_content, _ = self._read_file_with_encoding_detection(exam_answers_file_id)
         if not exam_answers_file_content:
             return {"error": "Failed to read exam answers file or file not found"}, 404
 
         # Parse the exam answers file
-        exam_answers, categories, correct_answer = self._parse_exam_answers(
-            exam_answers_file_content
-        )
+        exam_answers, categories, correct_answer = self._parse_exam_answers(exam_answers_file_content)
         if not categories or not correct_answer:
-            return {
-                "error": "Failed to parse categories and correct answers from exam file"
-            }, 400
+            return {"error": "Failed to parse categories and correct answers from exam file"}, 400
 
         # Read the user answers file content with encoding detection
-        user_answers_file_content, _ = self._read_file_with_encoding_detection(
-            user_answers_file_id
-        )
+        user_answers_file_content, _ = self._read_file_with_encoding_detection(user_answers_file_id)
         if not user_answers_file_content:
             return {"error": "Failed to read user answers file or file not found"}, 404
 
@@ -82,9 +74,7 @@ class AnswersSummaryAnalysisApi(Resource):
             return {"error": "Failed to parse user answers from file"}, 400
 
         # Calculate category statistics
-        summary_analysis = self._calculate_category_statistics(
-            user_answers, correct_answer, categories
-        )
+        summary_analysis = self._calculate_category_statistics(user_answers, correct_answer, categories)
 
         # Return the response
         return jsonify(
@@ -95,16 +85,12 @@ class AnswersSummaryAnalysisApi(Resource):
             }
         )
 
-    def _read_file_with_encoding_detection(
-        self, file_id: str
-    ) -> tuple[Optional[str], Optional[str]]:
+    def _read_file_with_encoding_detection(self, file_id: str) -> tuple[Optional[str], Optional[str]]:
         """Read file content with automatic encoding detection.
         Supports both CSV and XLSX files, converting XLSX to CSV text format.
         """
         try:
-            upload_file = (
-                db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-            )
+            upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
             if not upload_file:
                 return None, None
 
@@ -112,15 +98,12 @@ class AnswersSummaryAnalysisApi(Resource):
             file_content = storage.load_once(upload_file.key)
 
             # Check if the file is Excel (.xlsx) based on filename or mime type
-            file_extension = (
-                upload_file.name.split(".")[-1].lower() if upload_file.name else ""
-            )
+            file_extension = upload_file.name.split(".")[-1].lower() if upload_file.name else ""
             mime_type = upload_file.mime_type if upload_file.mime_type else ""
 
             is_excel = (
                 file_extension == "xlsx"
-                or mime_type
-                == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                or mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
             if is_excel:
@@ -174,9 +157,7 @@ class AnswersSummaryAnalysisApi(Resource):
             print(f"Error reading file: {str(e)}")
             return None, None
 
-    def _parse_exam_answers(
-        self, file_content: str
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    def _parse_exam_answers(self, file_content: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
         """Parse exam answers from the file content.
 
         Expected format is CSV with columns:
@@ -207,9 +188,7 @@ class AnswersSummaryAnalysisApi(Resource):
 
             exam_answers = []
             category_map = defaultdict(list)
-            correct_answers = [
-                ""
-            ] * 1000  # Initialize with empty strings, we'll trim later
+            correct_answers = [""] * 1000  # Initialize with empty strings, we'll trim later
             max_question_num = 0
 
             for row in csv_reader:
@@ -247,9 +226,7 @@ class AnswersSummaryAnalysisApi(Resource):
             correct_answers = correct_answers[:max_question_num]
 
             # Convert category_map to the expected categories format
-            categories = [
-                {"name": cat, "items": items} for cat, items in category_map.items()
-            ]
+            categories = [{"name": cat, "items": items} for cat, items in category_map.items()]
 
             return exam_answers, categories, correct_answers
         except Exception as e:
@@ -281,9 +258,7 @@ class AnswersSummaryAnalysisApi(Resource):
 
             result = []
             for row in csv_reader:
-                if (
-                    not row or len(row) < 4
-                ):  # Skip empty rows or rows with insufficient data
+                if not row or len(row) < 4:  # Skip empty rows or rows with insufficient data
                     continue
 
                 # Extract student ID and name
@@ -293,9 +268,7 @@ class AnswersSummaryAnalysisApi(Resource):
                 # Extract answers (skip ID, name, and score columns)
                 answers = [ans.strip() for ans in row[3:]]
 
-                result.append(
-                    {"user_name": name, "code": student_id, "answers": answers}
-                )
+                result.append({"user_name": name, "code": student_id, "answers": answers})
 
             return result
         except Exception as e:
@@ -399,9 +372,7 @@ class GenerateAnalysisReportApi(Resource):
 
         data = request.get_json()
         summary_analysis = data.get("summary_analysis")
-        school_name = data.get(
-            "school_name", "山东单县一中"
-        )  # Default value if not provided
+        school_name = data.get("school_name", "山东单县一中")  # Default value if not provided
         html_template = data.get("html_template")
 
         if not summary_analysis:
@@ -507,9 +478,7 @@ class GenerateAnalysisReportApi(Resource):
 
         # Create the HTML with the template
         template = Template(html_template)
-        html_content = template.render(
-            school_name=school_name, summary_analysis=summary_analysis
-        )
+        html_content = template.render(school_name=school_name, summary_analysis=summary_analysis)
 
         # Generate PDF
         html = HTML(string=html_content)

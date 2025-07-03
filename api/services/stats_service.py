@@ -102,13 +102,13 @@ class StatsService:
         date_range = []
         current_date = start_date
         while current_date <= end_date:
-            date_range.append(current_date.strftime('%Y-%m-%d'))
+            date_range.append(current_date.strftime("%Y-%m-%d"))
             current_date += timedelta(days=1)
 
         daily_stats = []
 
         for date_str in date_range:
-            date = datetime.strptime(date_str, '%Y-%m-%d')
+            date = datetime.strptime(date_str, "%Y-%m-%d")
             next_date = date + timedelta(days=1)
 
             # Count active users (users who had a conversation on this date)
@@ -154,8 +154,8 @@ class StatsService:
                 active_user_ids_query = active_user_ids_query.filter(Message.organization_id == organization_id)
 
             # Get the intersection to find active new users
-            new_user_ids = [user_id for user_id, in new_user_ids_query.all()]
-            active_user_ids = [user_id for user_id, in active_user_ids_query.all()]
+            new_user_ids = [user_id for (user_id,) in new_user_ids_query.all()]
+            active_user_ids = [user_id for (user_id,) in active_user_ids_query.all()]
 
             # Count users who appear in both lists (created today AND active today)
             active_new_users = len(set(new_user_ids).intersection(set(active_user_ids)))
@@ -184,13 +184,13 @@ class StatsService:
         date_range = []
         current_date = start_date
         while current_date <= end_date:
-            date_range.append(current_date.strftime('%Y-%m-%d'))
+            date_range.append(current_date.strftime("%Y-%m-%d"))
             current_date += timedelta(days=1)
 
         daily_stats = []
 
         for date_str in date_range:
-            date = datetime.strptime(date_str, '%Y-%m-%d')
+            date = datetime.strptime(date_str, "%Y-%m-%d")
             next_date = date + timedelta(days=1)
 
             # Count total conversations for this date

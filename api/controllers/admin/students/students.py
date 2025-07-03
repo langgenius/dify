@@ -100,11 +100,11 @@ class StudentList(Resource):
         from flask import request
 
         # Get query parameters with defaults
-        health_status = request.args.get('health_status')
-        begin_date = request.args.get('begin_date')
-        end_date = request.args.get('end_date')
-        page = int(request.args.get('page', 1))
-        limit = int(request.args.get('limit', 20))
+        health_status = request.args.get("health_status")
+        begin_date = request.args.get("begin_date")
+        end_date = request.args.get("end_date")
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 20))
 
         # Validate parameters
         if begin_date:
@@ -122,13 +122,13 @@ class StudentList(Resource):
         # Build query filters
         filters = {}
         if health_status:
-            filters['health_status'] = health_status
+            filters["health_status"] = health_status
 
         if begin_date:
-            filters['last_chat_at__gte'] = begin_date
+            filters["last_chat_at__gte"] = begin_date
 
         if end_date:
-            filters['last_chat_at__lte'] = end_date
+            filters["last_chat_at__lte"] = end_date
 
         # Get students with pagination
         offset = (page - 1) * limit
@@ -142,4 +142,4 @@ class StudentList(Resource):
         )
 
 
-api.add_resource(StudentList, '/students')
+api.add_resource(StudentList, "/students")

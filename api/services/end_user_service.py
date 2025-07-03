@@ -32,8 +32,8 @@ class EndUserService:
             db.session.query(
                 Message.from_end_user_id,
                 func.count(
-                    func.distinct(func.date(func.timezone('UTC+8', func.timezone('UTC', Message.created_at))))
-                ).label('active_days'),
+                    func.distinct(func.date(func.timezone("UTC+8", func.timezone("UTC", Message.created_at))))
+                ).label("active_days"),
             )
             .filter(Message.app_id == app_model.id)
             .group_by(Message.from_end_user_id)
@@ -44,9 +44,9 @@ class EndUserService:
         subq = (
             db.session.query(
                 Conversation.from_end_user_id,
-                func.max(Conversation.created_at).label('last_chat_at'),
-                func.min(Conversation.created_at).label('first_chat_at'),
-                func.count(Message.id).label('total_messages'),
+                func.max(Conversation.created_at).label("last_chat_at"),
+                func.min(Conversation.created_at).label("first_chat_at"),
+                func.count(Message.id).label("total_messages"),
             )
             .filter(Conversation.app_id == app_model.id)
             .join(Message, Message.conversation_id == Conversation.id)
@@ -75,14 +75,14 @@ class EndUserService:
         # Apply filters
         filter_conditions = []
 
-        if 'health_status' in filters:
-            filter_conditions.append(EndUser.health_status == filters['health_status'])
+        if "health_status" in filters:
+            filter_conditions.append(EndUser.health_status == filters["health_status"])
 
-        if 'last_chat_at__gte' in filters:
-            filter_conditions.append(subq.c.last_chat_at >= filters['last_chat_at__gte'])
+        if "last_chat_at__gte" in filters:
+            filter_conditions.append(subq.c.last_chat_at >= filters["last_chat_at__gte"])
 
-        if 'last_chat_at__lte' in filters:
-            filter_conditions.append(subq.c.last_chat_at <= filters['last_chat_at__lte'])
+        if "last_chat_at__lte" in filters:
+            filter_conditions.append(subq.c.last_chat_at <= filters["last_chat_at__lte"])
 
         # Apply all filter conditions
         if filter_conditions:
@@ -109,17 +109,17 @@ class EndUserService:
 
             # Convert to dictionary for JSON serialization
             end_user_dict = {
-                'id': end_user.external_user_id,
-                'email': end_user.email,
-                'first_chat_at': end_user.first_chat_at,
-                'last_chat_at': end_user.last_chat_at,
-                'total_messages': end_user.total_messages,
-                'active_days': end_user.active_days,
-                'health_status': end_user.health_status,
-                'topics': end_user.topics,
-                'summary': end_user.summary,
-                'major': end_user.major,
-                'organization_id': end_user.organization_id,
+                "id": end_user.external_user_id,
+                "email": end_user.email,
+                "first_chat_at": end_user.first_chat_at,
+                "last_chat_at": end_user.last_chat_at,
+                "total_messages": end_user.total_messages,
+                "active_days": end_user.active_days,
+                "health_status": end_user.health_status,
+                "topics": end_user.topics,
+                "summary": end_user.summary,
+                "major": end_user.major,
+                "organization_id": end_user.organization_id,
             }
 
             users.append(end_user_dict)
@@ -172,18 +172,18 @@ class EndUserService:
         """
         try:
             # Update username if provided
-            if 'username' in profile_data:
-                end_user.name = profile_data['username']
+            if "username" in profile_data:
+                end_user.name = profile_data["username"]
 
             # Update gender if provided
-            if 'gender' in profile_data:
-                gender_str = profile_data['gender']
+            if "gender" in profile_data:
+                gender_str = profile_data["gender"]
                 gender_map = {"unknown": 0, "male": 1, "female": 2}
                 end_user.gender = gender_map[gender_str]
 
             # Update major if provided
-            if 'major' in profile_data:
-                major = profile_data['major']
+            if "major" in profile_data:
+                major = profile_data["major"]
 
                 # Create a new dictionary if extra_profile is None
                 if end_user.extra_profile is None:
@@ -191,7 +191,7 @@ class EndUserService:
 
                 # Make a copy of the existing dictionary to ensure changes are detected
                 extra_profile = dict(end_user.extra_profile)
-                extra_profile['major'] = major
+                extra_profile["major"] = major
                 end_user.extra_profile = extra_profile
 
                 # Force the change to be detected
