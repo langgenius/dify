@@ -32,6 +32,37 @@ uv run ruff format .  # Format Python code
 uv run mypy .         # Type check Python code
 ```
 
+### Database Migration (api/)
+
+The project uses **Flask-Migrate** (Alembic) for database schema management:
+
+```bash
+cd api
+# Apply pending migrations to database
+uv run flask db upgrade
+
+# Generate new migration from model changes  
+uv run flask db migrate -m "description_of_changes"
+
+# Check current migration status
+uv run flask db current
+
+# View migration history
+uv run flask db history
+
+# Downgrade to previous migration (if needed)
+uv run flask db downgrade
+```
+
+**Migration File Naming Pattern**: `YYYY_MM_DD_HHMM-{revision_id}_{description}.py`
+
+**Key Migration Guidelines**:
+- Always review auto-generated migrations before applying
+- Use descriptive migration messages
+- Test migrations on staging before production
+- Migrations are in `api/migrations/versions/`
+- Migration templates use `script.py.mako`
+
 ### Docker Development
 
 ```bash
