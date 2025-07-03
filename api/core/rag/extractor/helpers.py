@@ -1,7 +1,6 @@
 """Document loader helpers."""
 
 import concurrent.futures
-import os
 from typing import NamedTuple, Optional, cast
 
 
