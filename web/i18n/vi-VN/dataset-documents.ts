@@ -28,6 +28,8 @@ const translation = {
       delete: 'Xóa',
       enableWarning: 'Tệp đã lưu trữ không thể được kích hoạt',
       sync: 'Đồng bộ',
+      pause: 'Tạm dừng',
+      resume: 'Tiếp tục',
     },
     index: {
       enable: 'Kích hoạt',

@@ -28,6 +28,8 @@ const translation = {
       delete: 'Șterge',
       enableWarning: 'Fișierul arhivat nu poate fi activat',
       sync: 'Sincronizează',
+      pause: 'Pauză',
+      resume: 'Relua',
     },
     index: {
       enable: 'Activează',
