@@ -334,7 +334,6 @@ export const OperationAction: FC<{
                   <Divider className='my-1' />
                 </>
               )}
-              {/* Pause/Resume actions for indexing documents */}
               {!archived && display_status?.toLowerCase() === 'indexing' && (
                 <div className={s.actionItem} onClick={() => onOperate('pause')}>
                   <RiPauseCircleLine className='h-4 w-4 text-text-tertiary' />
