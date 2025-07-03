@@ -28,6 +28,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     AGENT_LOG = "agent_log"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"
+    DATASOURCE_INFO = "datasource_info"
     LOOP_ID = "loop_id"
     LOOP_INDEX = "loop_index"
     PARALLEL_ID = "parallel_id"

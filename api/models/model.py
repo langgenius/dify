@@ -51,6 +51,7 @@ class AppMode(StrEnum):
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
     CHANNEL = "channel"
+    RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":

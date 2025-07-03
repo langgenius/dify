@@ -3,6 +3,7 @@ from threading import Lock
 from typing import TYPE_CHECKING
 
 from contexts.wrapper import RecyclableContextVar
+from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 
 if TYPE_CHECKING:
     from core.model_runtime.entities.model_entities import AIModelEntity
@@ -32,4 +33,12 @@ plugin_model_schema_lock: RecyclableContextVar[Lock] = RecyclableContextVar(Cont
 
 plugin_model_schemas: RecyclableContextVar[dict[str, "AIModelEntity"]] = RecyclableContextVar(
     ContextVar("plugin_model_schemas")
+)
+
+datasource_plugin_providers: RecyclableContextVar[dict[str, "DatasourcePluginProviderController"]] = (
+    RecyclableContextVar(ContextVar("datasource_plugin_providers"))
+)
+
+datasource_plugin_providers_lock: RecyclableContextVar[Lock] = RecyclableContextVar(
+    ContextVar("datasource_plugin_providers_lock")
 )

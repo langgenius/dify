@@ -14,3 +14,10 @@ class SystemVariableKey(StrEnum):
     APP_ID = "app_id"
     WORKFLOW_ID = "workflow_id"
     WORKFLOW_EXECUTION_ID = "workflow_run_id"
+    # RAG Pipeline
+    DOCUMENT_ID = "document_id"
+    BATCH = "batch"
+    DATASET_ID = "dataset_id"
+    DATASOURCE_TYPE = "datasource_type"
+    DATASOURCE_INFO = "datasource_info"
+    INVOKE_FROM = "invoke_from"

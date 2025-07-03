@@ -175,7 +175,7 @@ class GraphEngine:
                         )
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
-                        if item.node_type == NodeType.END:
+                        if item.node_type in (NodeType.END, NodeType.KNOWLEDGE_INDEX):
                             self.graph_runtime_state.outputs = (
                                 dict(item.route_node_state.node_run_result.outputs)
                                 if item.route_node_state.node_run_result
@@ -320,10 +320,10 @@ class GraphEngine:
                 raise e
 
             # It may not be necessary, but it is necessary. :)
-            if (
-                self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower()
-                == NodeType.END.value
-            ):
+            if self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower() in [
+                NodeType.END.value,
+                NodeType.KNOWLEDGE_INDEX.value,
+            ]:
                 break
 
             previous_route_node_state = route_node_state

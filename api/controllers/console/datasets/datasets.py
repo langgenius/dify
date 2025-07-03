@@ -283,6 +283,15 @@ class DatasetApi(Resource):
             location="json",
             help="Invalid external knowledge api id.",
         )
+
+        parser.add_argument(
+            "icon_info",
+            type=dict,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid icon info.",
+        )
         args = parser.parse_args()
         data = request.get_json()
 

@@ -1,7 +1,8 @@
 """Abstract interface for document loader implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from configs import dify_config
 from core.model_manager import ModelInstance
@@ -13,6 +14,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Document as DatasetDocument
 
 
 class BaseIndexProcessor(ABC):
@@ -31,6 +33,14 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
+        raise NotImplementedError
+
+    @abstractmethod
+    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
         raise NotImplementedError
 
     @abstractmethod

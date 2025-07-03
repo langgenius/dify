@@ -83,7 +83,6 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
-import PluginDependency from './plugin-dependency'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -182,6 +181,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setAutoFreeze(true)
     }
   }, [])
+
   useEffect(() => {
     return () => {
       handleSyncWorkflowDraft(true, true)
@@ -323,7 +323,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
         )
       }
       <LimitTips />
-      <PluginDependency />
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
@@ -417,4 +416,4 @@ const WorkflowWithDefaultContext = ({
   )
 }
 
-export default WorkflowWithDefaultContext
+export default memo(WorkflowWithDefaultContext)

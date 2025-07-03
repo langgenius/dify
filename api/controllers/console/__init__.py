@@ -76,7 +76,6 @@ from .billing import billing, compliance
 
 # Import datasets controllers
 from .datasets import (
-    data_source,
     datasets,
     datasets_document,
     datasets_segments,
@@ -84,6 +83,14 @@ from .datasets import (
     hit_testing,
     metadata,
     website,
+)
+from .datasets.rag_pipeline import (
+    datasource_auth,
+    datasource_content_preview,
+    rag_pipeline,
+    rag_pipeline_datasets,
+    rag_pipeline_import,
+    rag_pipeline_workflow,
 )
 
 # Import explore controllers

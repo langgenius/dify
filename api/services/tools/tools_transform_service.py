@@ -5,6 +5,7 @@ from typing import Optional, Union, cast
 from yarl import URL
 
 from configs import dify_config
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -56,7 +57,7 @@ class ToolTransformService:
         return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity]):
+    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
         """
         repack provider
 
@@ -76,6 +77,18 @@ class ToolTransformService:
             else:
                 provider.icon = ToolTransformService.get_tool_provider_icon_url(
                     provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+                )
+        elif isinstance(provider, PluginDatasourceProviderEntity):
+            if provider.plugin_id:
+                if isinstance(provider.declaration.identity.icon, str):
+                    provider.declaration.identity.icon = ToolTransformService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                    )
+            else:
+                provider.declaration.identity.icon = ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider.type.value,
+                    provider_name=provider.name,
+                    icon=provider.declaration.identity.icon,
                 )
 
     @classmethod

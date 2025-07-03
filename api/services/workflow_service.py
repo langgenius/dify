@@ -257,7 +257,6 @@ class WorkflowService:
             type=draft_workflow.type,
             version=Workflow.version_from_datetime(datetime.now(UTC).replace(tzinfo=None)),
             graph=draft_workflow.graph,
-            features=draft_workflow.features,
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,
             conversation_variables=draft_workflow.conversation_variables,
