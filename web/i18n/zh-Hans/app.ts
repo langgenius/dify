@@ -250,6 +250,11 @@ const translation = {
       createAt: '创建时间',
       noData: '暂无数据',
     },
+    tip: {
+      title: '如何解决？',
+      description: '您现在可以在开始表单中创建文件类型变量。未来我们将不再支持图片上传功能。',
+      learnMore: '了解更多',
+    },
   },
 }
 

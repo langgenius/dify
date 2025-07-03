@@ -249,6 +249,11 @@ const translation = {
       createAt: 'Created At',
       noData: 'No items found',
     },
+    tip: {
+      title: 'How to solve it?',
+      description: 'You can now create file type variables in the start form. We will no longer support the image upload feature in the future.',
+      learnMore: 'Learn more',
+    },
   },
 }
 

@@ -7,17 +7,15 @@ import AppIcon from '@/app/components/base/app-icon'
 
 const i18nPrefix = 'app.checkLegacy.list'
 type Props = {
-  className?: string
   list: any[]
 }
 
 const List: FC<Props> = ({
-  className,
   list,
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='grow'>
+    <div className='h-0 grow overflow-y-auto'>
       {list.length > 0 ? (
         <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
