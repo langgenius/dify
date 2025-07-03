@@ -73,16 +73,13 @@ const WorkflowVariableBlockComponent = ({
   const isException = isExceptionVariable(varName, node?.type)
 
   let variableValid = true
-  if (isEnv) {
-    console.log('=============环境变量：', environmentVariables, variables)
+  if (isEnv)
     variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isChatVar) {
-    console.log('=============会话变量：', conversationVariables, variables)
-    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
 
-  else { variableValid = !!node }
+  else if (isChatVar)
+    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+
+  else variableValid = !!node
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
