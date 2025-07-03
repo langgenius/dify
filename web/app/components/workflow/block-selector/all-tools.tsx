@@ -93,9 +93,8 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
-
   useEffect(() => {
-    if (enable_marketplace) return
+    if (!enable_marketplace) return
     if (searchText || tags.length > 0) {
       fetchPlugins({
         query: searchText,
@@ -142,11 +141,11 @@ const AllTools = ({
       >
         <Tools
           className={toolContentClassName}
-          showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
           canNotSelectMultiple={canNotSelectMultiple}
           onSelectMultiple={onSelectMultiple}
+          toolType={activeTab}
           viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
           selectedTools={selectedTools}

@@ -28,10 +28,21 @@ const translation = {
     add: '添加',
     added: '已添加',
     manageInTools: '去工具列表管理',
-    emptyTitle: '没有可用的工作流工具',
-    emptyTip: '去“工作流 -> 发布为工具”添加',
-    emptyTitleCustom: '没有可用的自定义工具',
-    emptyTipCustom: '创建自定义工具',
+    custom: {
+      title: '没有可用的自定义工具',
+      tip: '创建自定义工具',
+    },
+    workflow: {
+      title: '没有可用的工作流工具',
+      tip: '在工作室中发布工作流作为工具',
+    },
+    mcp: {
+      title: '没有可用的 MCP 工具',
+      tip: '添加 MCP 服务器',
+    },
+    agent: {
+      title: '没有可用的 agent 策略',
+    },
   },
   createTool: {
     title: '创建自定义工具',

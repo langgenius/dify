@@ -28,10 +28,21 @@ const translation = {
     add: 'add',
     added: 'added',
     manageInTools: 'Manage in Tools',
-    emptyTitle: 'No workflow tool available',
-    emptyTip: 'Go to "Workflow -> Publish as Tool"',
-    emptyTitleCustom: 'No custom tool available',
-    emptyTipCustom: 'Create a custom tool',
+    custom: {
+      title: 'No custom tool available',
+      tip: 'Create a custom tool',
+    },
+    workflow: {
+      title: 'No workflow tool available',
+      tip: 'Publish workflows as tools in Studio',
+    },
+    mcp: {
+      title: 'No MCP tool available',
+      tip: 'Add a MCP server',
+    },
+    agent: {
+      title: 'No agent strategy available',
+    },
   },
   createTool: {
     title: 'Create Custom Tool',

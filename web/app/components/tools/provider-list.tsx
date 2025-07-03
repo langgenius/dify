@@ -19,8 +19,25 @@ import MCPList from './mcp'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { ToolTypeEnum } from '../workflow/block-selector/types'
 
+const getToolType = (type: string) => {
+  switch (type) {
+    case 'builtin':
+      return ToolTypeEnum.BuiltIn
+    case 'api':
+      return ToolTypeEnum.Custom
+    case 'workflow':
+      return ToolTypeEnum.Workflow
+    case 'mcp':
+      return ToolTypeEnum.MCP
+    default:
+      return ToolTypeEnum.BuiltIn
+  }
+}
 const ProviderList = () => {
+  // const searchParams = useSearchParams()
+    // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -131,7 +148,7 @@ const ProviderList = () => {
                   />
                 </div>
               ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
+              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
