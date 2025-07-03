@@ -8,6 +8,9 @@ import CreateForm from '../create-form'
 import type { CreateFormData } from '@/models/pipeline'
 import Modal from '@/app/components/base/modal'
 import { useRouter } from 'next/navigation'
+import Toast from '@/app/components/base/toast'
+import { useTranslation } from 'react-i18next'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 type CreateFromScratchModalProps = {
   show: boolean
@@ -18,6 +21,7 @@ const CreateFromScratchModal = ({
   show,
   onClose,
 }: CreateFromScratchModalProps) => {
+  const { t } = useTranslation()
   const { push } = useRouter()
   const [memberList, setMemberList] = useState<Member[]>([])
   const { data: members } = useMembers()
@@ -28,6 +32,7 @@ const CreateFromScratchModal = ({
   }, [members])
 
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
+  const resetDatasetList = useResetDatasetList()
 
   const handleCreate = useCallback(async (payload: CreateFormData) => {
     const { name, appIcon, description, permission, selectedMemberIDs } = payload
@@ -54,15 +59,28 @@ const CreateFromScratchModal = ({
       request.partial_member_list = selectedMemberList
     }
     await createEmptyDataset(request, {
-      onSettled: (data) => {
+      onSuccess: (data) => {
         if (data) {
           const { id } = data
+          Toast.notify({
+            type: 'success',
+            message: t('datasetPipeline.creation.successTip'),
+          })
+          resetDatasetList()
           push(`/datasets/${id}/pipeline`)
         }
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.creation.errorTip'),
+        })
+      },
+      onSettled: () => {
         onClose?.()
       },
     })
-  }, [createEmptyDataset, memberList, onClose, push])
+  }, [createEmptyDataset, memberList, onClose, push, resetDatasetList, t])
 
   return (
     <Modal

@@ -70,7 +70,7 @@ const TemplateCard = ({
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
-          message: t('app.newApp.appCreated'),
+          message: t('datasetPipeline.creation.successTip'),
         })
         resetDatasetList()
         if (newDataset.pipeline_id)

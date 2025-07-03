@@ -100,7 +100,7 @@ const CreateFromDSLModal = ({
     }
 
     if (!response) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
       isCreatingRef.current = false
       return
     }
@@ -113,7 +113,7 @@ const CreateFromDSLModal = ({
 
       notify({
         type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-        message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
+        message: t(status === DSLImportStatus.COMPLETED ? 'datasetPipeline.creation.successTip' : 'datasetPipeline.creation.caution'),
         children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
       })
       if (pipeline_id)
@@ -135,7 +135,7 @@ const CreateFromDSLModal = ({
       isCreatingRef.current = false
     }
     else {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
       isCreatingRef.current = false
     }
   }
@@ -155,7 +155,7 @@ const CreateFromDSLModal = ({
     const response = await importDSLConfirm(importId)
 
     if (!response) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
       return
     }
 
@@ -169,14 +169,14 @@ const CreateFromDSLModal = ({
 
       notify({
         type: 'success',
-        message: t('app.newApp.appCreated'),
+        message: t('datasetPipeline.creation.successTip'),
       })
       if (pipeline_id)
         await handleCheckPluginDependencies(pipeline_id, true)
       push(`datasets/${dataset_id}/pipeline`)
     }
     else if (status === DSLImportStatus.FAILED) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('datasetPipeline.creation.errorTip') })
     }
   }
 
