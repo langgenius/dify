@@ -19,7 +19,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from models.model import App, AppMode
+from models.model import App
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -77,21 +77,9 @@ class TextApi(WebApiResource):
 
             message_id = args.get("message_id", None)
             text = args.get("text", None)
-            if (
-                app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}
-                and app_model.workflow
-                and app_model.workflow.features_dict
-            ):
-                text_to_speech = app_model.workflow.features_dict.get("text_to_speech", {})
-                voice = args.get("voice") or text_to_speech.get("voice")
-            else:
-                try:
-                    voice = args.get("voice") or app_model.app_model_config.text_to_speech_dict.get("voice")
-                except Exception:
-                    voice = None
-
+            voice = args.get("voice", None)
             response = AudioService.transcript_tts(
-                app_model=app_model, message_id=message_id, end_user=end_user.external_user_id, voice=voice, text=text
+                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
             )
 
             return response

@@ -18,7 +18,6 @@ from controllers.console.app.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from models.model import AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -79,19 +78,9 @@ class ChatTextApi(InstalledAppResource):
 
             message_id = args.get("message_id", None)
             text = args.get("text", None)
-            if (
-                app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}
-                and app_model.workflow
-                and app_model.workflow.features_dict
-            ):
-                text_to_speech = app_model.workflow.features_dict.get("text_to_speech")
-                voice = args.get("voice") or text_to_speech.get("voice")
-            else:
-                try:
-                    voice = args.get("voice") or app_model.app_model_config.text_to_speech_dict.get("voice")
-                except Exception:
-                    voice = None
-            response = AudioService.transcript_tts(app_model=app_model, message_id=message_id, voice=voice, text=text)
+            voice = args.get("voice", None)
+
+            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
