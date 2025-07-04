@@ -24,8 +24,12 @@ const Breadcrumbs = ({
   const showSearchResult = !!keywords && searchResultsLength > 0
   const isRoot = prefix.length === 0 && bucket === ''
 
+  const displayBreadcrumbNum = useMemo(() => {
+    const num = isInPipeline ? 2 : 3
+    return bucket ? num - 1 : num
+  }, [isInPipeline, bucket])
+
   const breadcrumbs = useMemo(() => {
-    const displayBreadcrumbNum = isInPipeline ? 2 : 3
     const prefixToDisplay = prefix.slice(0, displayBreadcrumbNum - 1)
     const collapsedBreadcrumbs = prefix.slice(displayBreadcrumbNum - 1, prefix.length - 1)
     return {
@@ -35,7 +39,7 @@ const Breadcrumbs = ({
       collapsedBreadcrumbs,
       lastBreadcrumb: prefix[prefix.length - 1],
     }
-  }, [isInPipeline, prefix])
+  }, [displayBreadcrumbNum, prefix])
 
   const handleBackToBucketList = useCallback(() => {
     setFileList([])
@@ -43,6 +47,12 @@ const Breadcrumbs = ({
     setBucket('')
     setPrefix([])
   }, [setBucket, setFileList, setPrefix, setSelectedFileList])
+
+  const handleClickBucketName = useCallback(() => {
+    setFileList([])
+    setSelectedFileList([])
+    setPrefix([])
+  }, [setFileList, setPrefix, setSelectedFileList])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
     const newPrefix = breadcrumbs.prefixBreadcrumbs.slice(0, index - 1)
@@ -69,7 +79,14 @@ const Breadcrumbs = ({
       {!showSearchResult && !isRoot && (
         <div className='flex items-center gap-x-0.5'>
           {bucket && (
-            <Bucket handleBackToBucketList={handleBackToBucketList} />
+            <Bucket
+              bucketName={bucket}
+              handleBackToBucketList={handleBackToBucketList}
+              handleClickBucketName={handleClickBucketName}
+              isActive={prefix.length === 0}
+              disabled={prefix.length === 0}
+              showSeparator={prefix.length > 0}
+            />
           )}
           {!breadcrumbs.needCollapsed && (
             <>

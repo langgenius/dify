@@ -102,11 +102,12 @@ const OnlineDrive = ({
         draft.splice(index, 1)
       }
       else {
+        if (isInPipeline && draft.length >= 1) return
         draft.push(file.key)
       }
     })
     setSelectedFileList(newSelectedFileList)
-  }, [selectedFileList, setSelectedFileList])
+  }, [isInPipeline, selectedFileList, setSelectedFileList])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
     if (file.type === OnlineDriveFileType.file) return
@@ -115,10 +116,9 @@ const OnlineDrive = ({
       setBucket(file.displayName)
     }
     else {
-      const key = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
+      const displayName = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
       const newPrefix = produce(prefix, (draft) => {
-        const newList = key.split('/')
-        draft.push(...newList)
+        draft.push(displayName)
       })
       setPrefix(newPrefix)
     }
