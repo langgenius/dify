@@ -27,24 +27,24 @@ function parseParams(params: ReadonlyURLSearchParams): DocumentListQuery {
 }
 
 // Update the URL search string with the given query parameters.
-function updateSearchParams(query: DocumentListQuery, current: URLSearchParams) {
+function updateSearchParams(query: DocumentListQuery, searchParams: URLSearchParams) {
   const { page, limit, keyword } = query || {}
 
   const hasNonDefaultParams = (page && page > 1) || (limit && limit !== 10) || (keyword && keyword.trim())
 
   if (hasNonDefaultParams) {
-    current.set('page', (page || 1).toString())
-    current.set('limit', (limit || 10).toString())
+    searchParams.set('page', (page || 1).toString())
+    searchParams.set('limit', (limit || 10).toString())
   }
   else {
-    current.delete('page')
-    current.delete('limit')
+    searchParams.delete('page')
+    searchParams.delete('limit')
   }
 
   if (keyword && keyword.trim())
-    current.set('keyword', encodeURIComponent(keyword))
+    searchParams.set('keyword', encodeURIComponent(keyword))
   else
-    current.delete('keyword')
+    searchParams.delete('keyword')
 }
 
 function useDocumentListQueryState() {
