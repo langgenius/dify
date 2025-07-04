@@ -31,7 +31,8 @@ const Item = ({
 
   const Wrapper = disabled ? Tooltip : React.Fragment
 
-  const handleSelect = useCallback(() => {
+  const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
     onSelect(file)
   }, [file, onSelect])
 

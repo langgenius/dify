@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 type Props = {
   isChecked: boolean
   disabled?: boolean
-  onCheck?: () => void
+  onCheck?: (event: React.MouseEvent<HTMLDivElement>) => void
   className?: string
 }
 
@@ -27,9 +27,9 @@ const RadioUI: FC<Props> = ({
         !disabled && 'bg-components-radio-bg shadow-xs shadow-shadow-shadow-3 hover:bg-components-radio-bg-hover',
         className,
       )}
-      onClick={() => {
+      onClick={(event) => {
         if (disabled) return
-        onCheck?.()
+        onCheck?.(event)
       }}
     />
   )

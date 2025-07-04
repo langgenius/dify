@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import Header from './header'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import FileList from './file-list'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -79,6 +79,12 @@ const OnlineDrive = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bucket, prefix, startAfter])
 
+  const onlineDriveFileList = useMemo(() => {
+    if (keywords)
+      return fileList.filter(file => file.key.toLowerCase().includes(keywords.toLowerCase()))
+    return fileList
+  }, [fileList, keywords])
+
   const updateKeywords = useCallback((keywords: string) => {
     setKeywords(keywords)
   }, [setKeywords])
@@ -123,14 +129,14 @@ const OnlineDrive = ({
         docLink='https://docs.dify.ai/'
       />
       <FileList
-        fileList={fileList}
+        fileList={onlineDriveFileList}
         selectedFileList={selectedFileList}
         prefix={prefix}
         keywords={keywords}
         bucket={bucket}
         resetKeywords={resetPrefix}
         updateKeywords={updateKeywords}
-        searchResultsLength={fileList.length}
+        searchResultsLength={onlineDriveFileList.length}
         handleSelectFile={handleSelectFile}
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
