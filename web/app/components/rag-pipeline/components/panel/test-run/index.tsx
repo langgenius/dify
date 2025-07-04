@@ -86,7 +86,7 @@ const TestRunPanel = () => {
     if (datasourceType === DatasourceType.onlineDrive) {
       datasourceInfoList.push({
         bucket,
-        file: selectedFileList[0],
+        key: selectedFileList[0],
       })
     }
     handleRun({
