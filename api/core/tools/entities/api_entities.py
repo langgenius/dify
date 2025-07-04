@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import CredentialType, ToolProviderType
 
 
 class ToolApiEntity(BaseModel):
@@ -85,3 +85,22 @@ class ToolProviderApiEntity(BaseModel):
     def optional_field(self, key: str, value: Any) -> dict:
         """Return dict with key-value if value is truthy, empty dict otherwise."""
         return {key: value} if value else {}
+
+
+class ToolProviderCredentialApiEntity(BaseModel):
+    id: str = Field(description="The unique id of the credential")
+    name: str = Field(description="The name of the credential")
+    provider: str = Field(description="The provider of the credential")
+    credential_type: CredentialType = Field(description="The type of the credential")
+    is_default: bool = Field(
+        default=False, description="Whether the credential is the default credential for the provider in the workspace"
+    )
+    credentials: dict = Field(description="The credentials of the provider")
+
+
+class ToolProviderCredentialInfoApiEntity(BaseModel):
+    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    is_oauth_custom_client_enabled: bool = Field(
+        default=False, description="Whether the OAuth custom client is enabled for the provider"
+    )
+    credentials: list[ToolProviderCredentialApiEntity] = Field(description="The credentials of the provider")

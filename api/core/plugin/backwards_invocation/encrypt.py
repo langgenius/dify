@@ -1,12 +1,12 @@
 from core.plugin.entities.request import RequestInvokeEncrypt
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.configuration import create_generic_encrypter
 from models.account import Tenant
 
 
 class PluginEncrypter:
     @classmethod
     def invoke_encrypt(cls, tenant: Tenant, payload: RequestInvokeEncrypt) -> dict:
-        encrypter = ProviderConfigEncrypter(
+        encrypter, cache = create_generic_encrypter(
             tenant_id=tenant.id,
             config=payload.config,
             provider_type=payload.namespace,
@@ -22,7 +22,7 @@ class PluginEncrypter:
                 "data": encrypter.decrypt(payload.data),
             }
         elif payload.opt == "clear":
-            encrypter.delete_tool_credentials_cache()
+            cache.delete()
             return {
                 "data": {},
             }
