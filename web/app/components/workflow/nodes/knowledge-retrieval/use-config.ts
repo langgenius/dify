@@ -290,6 +290,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
     if (type === MetadataFilteringVariableType.number)
       operator = ComparisonOperator.equal
+    else if (type === MetadataFilteringVariableType.array)
+      operator = ComparisonOperator.in
 
     const newCondition = {
       id: uuid4(),
@@ -386,6 +388,20 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     filterVar: filterNumberVar,
   })
 
+  const filterArrayVar = useCallback((varPayload: Var) => {
+    // 匹配所有数组类型：array, array[string], array[number], array[object], array[file]
+    return [VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile, VarType.array].includes(varPayload.type)
+           || varPayload.type.toString().startsWith('array')
+  }, [])
+
+  const {
+    availableVars: availableArrayVars,
+    availableNodesWithParent: availableArrayNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterArrayVar,
+  })
+
   return {
     readOnly,
     inputs,
@@ -411,6 +427,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    availableArrayVars,
+    availableArrayNodesWithParent,
   }
 }
 

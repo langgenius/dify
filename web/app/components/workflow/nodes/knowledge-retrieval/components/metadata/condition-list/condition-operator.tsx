@@ -16,9 +16,9 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import type {
-  ComparisonOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ComparisonOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 const i18nPrefix = 'workflow.nodes.ifElse'
 
