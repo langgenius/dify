@@ -4,7 +4,6 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 from yarl import URL
