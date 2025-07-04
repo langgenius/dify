@@ -60,7 +60,7 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const newFileList = convertOnlineDriveDataToFileList(documentsData.data)
+          const newFileList = convertOnlineDriveDataToFileList(documentsData.data, prefix)
           setFileList([...fileList, ...newFileList])
           setIsLoading(false)
         },

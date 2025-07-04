@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDataSourceStore } from '../../../../store'
 import Bucket from './bucket'
 import BreadcrumbItem from './item'
+import Dropdown from './dropdown'
 
 type BreadcrumbsProps = {
   prefix: string[]
@@ -55,11 +56,11 @@ const Breadcrumbs = ({
   }, [setFileList, setPrefix, setSelectedFileList])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
-    const newPrefix = breadcrumbs.prefixBreadcrumbs.slice(0, index - 1)
+    const newPrefix = prefix.slice(0, index - 1)
     setFileList([])
     setSelectedFileList([])
     setPrefix(newPrefix)
-  }, [breadcrumbs.prefixBreadcrumbs, setFileList, setPrefix, setSelectedFileList])
+  }, [prefix, setFileList, setPrefix, setSelectedFileList])
 
   return (
     <div className='flex grow items-center py-1'>
@@ -104,6 +105,33 @@ const Breadcrumbs = ({
                   />
                 )
               })}
+            </>
+          )}
+          {breadcrumbs.needCollapsed && (
+            <>
+              {breadcrumbs.prefixBreadcrumbs.map((breadcrumb, index) => {
+                return (
+                  <BreadcrumbItem
+                    key={`${breadcrumb}-${index}`}
+                    index={index}
+                    handleClick={handleClickBreadcrumb}
+                    name={breadcrumb}
+                  />
+                )
+              })}
+              <Dropdown
+                startIndex={breadcrumbs.prefixBreadcrumbs.length}
+                breadcrumbs={breadcrumbs.collapsedBreadcrumbs}
+                onBreadcrumbClick={handleClickBreadcrumb}
+              />
+              <BreadcrumbItem
+                index={prefix.length - 1}
+                handleClick={handleClickBreadcrumb}
+                name={breadcrumbs.lastBreadcrumb}
+                isActive={true}
+                disabled={true}
+                showSeparator={false}
+              />
             </>
           )}
         </div>
