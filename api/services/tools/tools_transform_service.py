@@ -20,7 +20,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.configuration import create_encrypter, create_generic_encrypter
+from core.tools.utils.encryption import create_encrypter, create_generic_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider

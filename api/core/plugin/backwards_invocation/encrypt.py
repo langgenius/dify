@@ -1,5 +1,5 @@
 from core.plugin.entities.request import RequestInvokeEncrypt
-from core.tools.utils.configuration import create_generic_encrypter
+from core.tools.utils.encryption import create_generic_encrypter
 from models.account import Tenant
 
 

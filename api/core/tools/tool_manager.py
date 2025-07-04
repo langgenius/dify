@@ -45,11 +45,9 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
-    ProviderConfigEncrypter,
     ToolParameterConfigurationManager,
-    create_encrypter,
-    create_generic_encrypter,
 )
+from core.tools.utils.encryption import ProviderConfigEncrypter, create_encrypter, create_generic_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider

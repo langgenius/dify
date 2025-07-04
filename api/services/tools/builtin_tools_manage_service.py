@@ -24,7 +24,7 @@ from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidatio
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import create_encrypter
+from core.tools.utils.encryption import create_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
