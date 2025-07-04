@@ -948,9 +948,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.Answer: {
-      res = (data as AnswerNodeType).variables?.map((v) => {
-        return v.value_selector
-      })
+      res = matchNotSystemVars([(data as AnswerNodeType).answer])
       break
     }
     case BlockEnum.LLM: {
