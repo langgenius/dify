@@ -141,7 +141,7 @@ const Item: FC<ItemProps> = ({
           ref={itemRef}
           className={cn(
             (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
-            isHovering && ((isObj || isStructureOutput) ? 'bg-primary-50' : 'bg-state-base-hover'),
+            isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3')
           }
           onClick={handleChosen}
@@ -260,6 +260,7 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -271,6 +272,7 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  autoFocus = true,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -323,7 +325,7 @@ const VarReferenceVars: FC<Props> = ({
                 onKeyDown={handleKeyDown}
                 onClear={() => setSearchText('')}
                 onBlur={onBlur}
-                autoFocus
+                autoFocus={autoFocus}
               />
             </div>
             <div className='relative left-[-4px] h-[0.5px] bg-black/5' style={{

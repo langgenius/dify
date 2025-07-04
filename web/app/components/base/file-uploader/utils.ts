@@ -154,7 +154,7 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       transferMethod: fileItem.transfer_method,
       supportFileType: fileItem.type,
       uploadedId: fileItem.upload_file_id || fileItem.related_id,
-      url: fileItem.url,
+      url: fileItem.url || fileItem.remote_url,
     }
   })
 }

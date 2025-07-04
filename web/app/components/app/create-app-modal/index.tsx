@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
@@ -19,7 +19,6 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
-import { AppModes } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -30,6 +29,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
+import { useDocLink } from '@/context/i18n'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -55,14 +55,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
-
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const category = searchParams.get('category')
-    if (category && AppModes.includes(category as AppMode))
-      setAppMode(category as AppMode)
-  }, [searchParams])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -128,7 +120,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   onClick={() => {
                     setAppMode('workflow')
                   }} />
-                  <AppTypeCard
+                <AppTypeCard
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
@@ -312,31 +304,41 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppMode }) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/readme',
+      link: docLink('/guides/application-orchestrate/chatbot-application'),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/application-orchestrate/agent',
+      link: docLink('/guides/application-orchestrate/agent'),
     },
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: null,
+      link: docLink('/guides/application-orchestrate/text-generator', {
+        'zh-Hans': '/guides/application-orchestrate/readme',
+        'ja-JP': '/guides/application-orchestrate/README',
+      }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

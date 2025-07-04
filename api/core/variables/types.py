@@ -18,3 +18,17 @@ class SegmentType(StrEnum):
     NONE = "none"
 
     GROUP = "group"
+
+    def is_array_type(self):
+        return self in _ARRAY_TYPES
+
+
+_ARRAY_TYPES = frozenset(
+    [
+        SegmentType.ARRAY_ANY,
+        SegmentType.ARRAY_STRING,
+        SegmentType.ARRAY_NUMBER,
+        SegmentType.ARRAY_OBJECT,
+        SegmentType.ARRAY_FILE,
+    ]
+)

@@ -107,7 +107,7 @@ const Editor: FC<Props> = ({
             }}
             variableBlock={{
               show: true,
-              variables: modelConfig.configs.prompt_variables.map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter(item => item.key && item.key.trim() && item.name && item.name.trim()).map(item => ({
                 name: item.name,
                 value: item.key,
               })),

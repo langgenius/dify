@@ -1,3 +1,4 @@
+import binascii
 from collections.abc import Mapping
 from typing import Any
 
@@ -16,7 +17,7 @@ class OAuthHandler(BasePluginClient):
         provider: str,
         system_credentials: Mapping[str, Any],
     ) -> PluginOAuthAuthorizationUrlResponse:
-        return self._request_with_plugin_daemon_response(
+        response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/oauth/get_authorization_url",
             PluginOAuthAuthorizationUrlResponse,
@@ -32,6 +33,9 @@ class OAuthHandler(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        for resp in response:
+            return resp
+        raise ValueError("No response received from plugin daemon for authorization URL request.")
 
     def get_credentials(
         self,
@@ -49,7 +53,7 @@ class OAuthHandler(BasePluginClient):
         # encode request to raw http request
         raw_request_bytes = self._convert_request_to_raw_data(request)
 
-        return self._request_with_plugin_daemon_response(
+        response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/oauth/get_credentials",
             PluginOAuthCredentialsResponse,
@@ -58,7 +62,8 @@ class OAuthHandler(BasePluginClient):
                 "data": {
                     "provider": provider,
                     "system_credentials": system_credentials,
-                    "raw_request_bytes": raw_request_bytes,
+                    # for json serialization
+                    "raw_http_request": binascii.hexlify(raw_request_bytes).decode(),
                 },
             },
             headers={
@@ -66,6 +71,9 @@ class OAuthHandler(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        for resp in response:
+            return resp
+        raise ValueError("No response received from plugin daemon for authorization URL request.")
 
     def _convert_request_to_raw_data(self, request: Request) -> bytes:
         """
@@ -79,7 +87,7 @@ class OAuthHandler(BasePluginClient):
         """
         # Start with the request line
         method = request.method
-        path = request.path
+        path = request.full_path
         protocol = request.headers.get("HTTP_VERSION", "HTTP/1.1")
         raw_data = f"{method} {path} {protocol}\r\n".encode()
 

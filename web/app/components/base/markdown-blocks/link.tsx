@@ -16,7 +16,7 @@ const Link = ({ node, children, ...props }: any) => {
   }
   else {
     const href = props.href || node.properties?.href
-    if(!isValidUrl(href))
+    if(!href || !isValidUrl(href))
       return <span>{children}</span>
 
     return <a href={href} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>

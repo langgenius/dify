@@ -14,6 +14,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { createCustomCollection } from '@/service/tools'
 import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   onRefreshData: () => void
@@ -25,10 +26,11 @@ const Contribute = ({ onRefreshData }: Props) => {
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
 
+  const docLink = useDocLink()
   const linkUrl = useMemo(() => {
-    if (language.startsWith('zh_'))
-      return 'https://docs.dify.ai/zh-hans/guides/tools#ru-he-chuang-jian-zi-ding-yi-gong-ju'
-    return 'https://docs.dify.ai/en/guides/tools#how-to-create-custom-tools'
+    return docLink('/guides/tools#how-to-create-custom-tools', {
+      'zh-Hans': '/guides/tools#ru-he-chuang-jian-zi-ding-yi-gong-ju',
+    })
   }, [language])
 
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)

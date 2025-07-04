@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: '元數據名稱不能為空',
       invalid: '元數據名稱只能包含小寫字母、數字和底線，並且必須以小寫字母開頭',
+      tooLong: '元數據名稱不能超過 {{max}} 個字符',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: '自動為所有選定文檔創建上述所有編輯和新元數據，否則編輯元數據將僅適用於具有該元數據的文檔。',

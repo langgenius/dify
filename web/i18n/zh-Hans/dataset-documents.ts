@@ -30,6 +30,8 @@ const translation = {
       delete: '删除',
       enableWarning: '归档的文件无法启用',
       sync: '同步',
+      pause: '暂停',
+      resume: '恢复',
     },
     index: {
       enable: '启用中',
@@ -387,6 +389,8 @@ const translation = {
     editedAt: '编辑于',
     expandChunks: '展开分段',
     collapseChunks: '折叠分段',
+    keywordEmpty: '关键词不能为空',
+    keywordDuplicate: '关键词已经存在',
   },
 }
 

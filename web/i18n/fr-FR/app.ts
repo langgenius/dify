@@ -93,6 +93,7 @@ const translation = {
     noIdeaTip: 'Pas d’idées ? Consultez nos modèles',
     optional: 'Optionnel',
     advancedShortDescription: 'Workflow amélioré pour conversations multi-tours',
+    dropDSLToCreateApp: 'Déposez le fichier DSL ici pour créer une application',
   },
   editApp: 'Modifier les informations',
   editAppTitle: 'Modifier les informations de l\'application',
@@ -134,6 +135,14 @@ const translation = {
       configured: 'Configuré',
       notConfigured: 'Configurez le fournisseur pour activer le traçage',
       moreProvider: 'Plus de fournisseurs',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilité de LLM de niveau entreprise, évaluation en ligne et hors ligne, surveillance et expérimentation—alimentée par OpenTelemetry. Conçue spécialement pour les applications basées sur LLM et agents.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Plateforme open-source basée sur OpenTelemetry pour l’observabilité, l’évaluation, l’ingénierie des prompts et l’expérimentation de vos flux de travail et agents LLM.',
     },
     langsmith: {
       title: 'LangSmith',
@@ -207,17 +216,20 @@ const translation = {
     modelNotSupported: 'Modèle non pris en charge',
     moreFillTip: 'Affichage d\'un maximum de 10 niveaux d\'imbrication',
     configure: 'Configurer',
+    structured: 'systématique',
   },
   accessItemsDescription: {
     anyone: 'Tout le monde peut accéder à l\'application web.',
     specific: 'Seules des groupes ou membres spécifiques peuvent accéder à l\'application web.',
     organization: 'Toute personne dans l\'organisation peut accéder à l\'application web.',
+    external: 'Seuls les utilisateurs externes authentifiés peuvent accéder à l\'application Web.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Quiconque avec le lien',
       specific: 'Groupes ou membres spécifiques',
       organization: 'Seuls les membres au sein de l\'entreprise',
+      external: 'Utilisateurs externes authentifiés',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Rechercher des groupes et des membres',

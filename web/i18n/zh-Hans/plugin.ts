@@ -154,6 +154,7 @@ const translation = {
     next: '下一步',
     pluginLoadError: '插件加载错误',
     pluginLoadErrorDesc: '此插件将不会被安装',
+    installWarning: '此插件不允许安装。',
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',
@@ -210,7 +211,7 @@ const translation = {
     clearAll: '清除所有',
   },
   requestAPlugin: '申请插件',
-  submitPlugin: '上传插件',
+  publishPlugins: '发布插件',
   difyVersionNotCompatible: '当前 Dify 版本不兼容该插件，其最低版本要求为 {{minimalDifyVersion}}',
 }
 

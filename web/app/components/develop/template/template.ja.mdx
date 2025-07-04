@@ -220,7 +220,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `file` (File) 必須
     アップロードするファイル。
   - `user` (string) 必須
-    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
+    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。サービス API は WebApp によって作成された会話を共有しません。
 
   ### レスポンス
   アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。
@@ -289,7 +289,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `task_id` (string) タスク ID、ストリーミングチャンクの返信から取得可能
   リクエストボディ
   - `user` (string) 必須
-    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。
+    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。サービス API は WebApp によって作成された会話を共有しません。
   ### レスポンス
   - `result` (string) 常に"success"を返します
   </Col>
@@ -510,6 +510,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `name` (string) アプリケーションの名前
   - `description` (string) アプリケーションの説明
   - `tags` (array[string]) アプリケーションのタグ
+  - `mode` (string) アプリケーションのモード
+  - `author_name` (string) 作者の名前
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -526,7 +528,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

@@ -115,7 +115,7 @@ def test_filter_files_by_type(list_operator_node):
         },
     ]
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    for expected_file, result_file in zip(expected_files, result.outputs["result"]):
+    for expected_file, result_file in zip(expected_files, result.outputs["result"].value):
         assert expected_file["filename"] == result_file.filename
         assert expected_file["type"] == result_file.type
         assert expected_file["tenant_id"] == result_file.tenant_id

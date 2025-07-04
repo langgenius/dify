@@ -15,7 +15,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        if not TenantAccountRole.is_privileged_role(current_user.current_tenant.current_role):
+        if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -64,7 +64,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str, config_id: str):
-        if not TenantAccountRole.is_privileged_role(current_user.current_tenant.current_role):
+        if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id

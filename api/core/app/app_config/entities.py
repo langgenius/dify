@@ -104,6 +104,7 @@ class VariableEntity(BaseModel):
     Variable Entity.
     """
 
+    # `variable` records the name of the variable in user inputs.
     variable: str
     label: str
     description: str = ""

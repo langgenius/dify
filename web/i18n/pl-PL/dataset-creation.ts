@@ -54,7 +54,6 @@ const translation = {
     },
     website: {
       limit: 'Ograniczać',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       firecrawlDoc: 'Dokumentacja Firecrawl',
       unknownError: 'Nieznany błąd',
       fireCrawlNotConfiguredDescription: 'Skonfiguruj Firecrawl z kluczem API, aby z niego korzystać.',
@@ -85,7 +84,6 @@ const translation = {
       jinaReaderNotConfiguredDescription: 'Skonfiguruj Jina Reader, wprowadzając bezpłatny klucz API, aby uzyskać dostęp.',
       watercrawlTitle: 'Wyodrębnij treści z sieci za pomocą Watercrawl',
       configureWatercrawl: 'Skonfiguruj Watercrawl',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureJinaReader: 'Skonfiguruj Czytnik Jina',
       configureFirecrawl: 'Skonfiguruj Firecrawl',
       watercrawlDoc: 'Dokumentacja Watercrawl',

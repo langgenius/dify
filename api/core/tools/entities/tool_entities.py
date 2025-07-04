@@ -240,6 +240,7 @@ class ToolParameter(PluginParameter):
         FILES = PluginParameterType.FILES.value
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
+        DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT.value
 
         # deprecated, should not use.
         SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value

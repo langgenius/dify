@@ -81,7 +81,7 @@ const Datasets = ({
       currentContainer?.removeEventListener('scroll', onScroll)
       onScroll.cancel()
     }
-  }, [onScroll])
+  }, [containerRef, onScroll])
 
   return (
     <nav className='grid shrink-0 grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>

@@ -47,7 +47,13 @@ class AppInfoApi(Resource):
     def get(self, app_model: App):
         """Get app information"""
         tags = [tag.name for tag in app_model.tags]
-        return {"name": app_model.name, "description": app_model.description, "tags": tags, "mode": app_model.mode}
+        return {
+            "name": app_model.name,
+            "description": app_model.description,
+            "tags": tags,
+            "mode": app_model.mode,
+            "author_name": app_model.author_name,
+        }
 
 
 api.add_resource(AppParameterApi, "/parameters")

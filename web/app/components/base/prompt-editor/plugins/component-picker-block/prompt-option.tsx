@@ -32,6 +32,10 @@ export const PromptMenuItem = memo(({
           return
         onMouseEnter()
       }}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       onClick={() => {
         if (disabled)
           return

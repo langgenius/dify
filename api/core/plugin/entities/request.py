@@ -82,6 +82,16 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
         return v
 
 
+class RequestInvokeLLMWithStructuredOutput(RequestInvokeLLM):
+    """
+    Request to invoke LLM with structured output
+    """
+
+    structured_output_schema: dict[str, Any] = Field(
+        default_factory=dict, description="The schema of the structured output in JSON schema format"
+    )
+
+
 class RequestInvokeTextEmbedding(BaseRequestInvokeModel):
     """
     Request to invoke text embedding

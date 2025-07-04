@@ -10,6 +10,9 @@ from core.tools.entities.common_entities import I18nObject
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+    icon: Optional[str] = Field(
+        default=None, description="The icon of the option, can be a url or a base64 encoded image"
+    )
 
     @field_validator("value", mode="before")
     @classmethod
@@ -35,6 +38,7 @@ class PluginParameterType(enum.StrEnum):
     APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
     MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
 
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
@@ -29,6 +30,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
   const { notify } = useToastContext()
@@ -100,7 +102,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <div className='flex h-9 items-center justify-between text-sm font-medium text-text-primary'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
-            href={t('common.apiBasedExtension.linkUrl') || '/'}
+            href={docLink('/guides/extension/api-based-extension/README')}
             target='_blank' rel='noopener noreferrer'
             className='group flex items-center text-xs font-normal text-text-accent'
           >

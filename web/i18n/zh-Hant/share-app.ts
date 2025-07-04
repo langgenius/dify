@@ -73,6 +73,9 @@ const translation = {
     execution: '執行',
     executions: '{{num}} 執行',
   },
+  login: {
+    backToHome: '返回首頁',
+  },
 }
 
 export default translation

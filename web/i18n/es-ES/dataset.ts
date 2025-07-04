@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'El nombre de metadatos no puede estar vacío',
       invalid: 'El nombre de los metadatos solo puede contener letras minúsculas, números y guiones bajos, y debe comenzar con una letra minúscula.',
+      tooLong: 'El nombre de los metadatos no puede exceder {{max}} caracteres.',
     },
     batchEditMetadata: {
       multipleValue: 'Valor Múltiple',
@@ -202,6 +203,7 @@ const translation = {
       builtInDescription: 'Los metadatos integrados se extraen y generan automáticamente. Deben estar habilitados antes de su uso y no se pueden editar.',
       name: 'Nombre',
       description: 'Puedes gestionar todos los metadatos en este conocimiento aquí. Las modificaciones se sincronizarán en todos los documentos.',
+      disabled: 'desactivar',
     },
     documentMetadata: {
       technicalParameters: 'Parámetros técnicos',

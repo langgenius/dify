@@ -31,10 +31,13 @@ const TestApi: FC<Props> = ({
   const language = getLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)
+  const [testing, setTesting] = useState(false)
   const [result, setResult] = useState<string>('')
   const { operation_id: toolName, parameters } = tool
   const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
   const handleTest = async () => {
+    if (testing) return
+    setTesting(true)
     // clone test schema
     const credentials = JSON.parse(JSON.stringify(tempCredential)) as Credential
     if (credentials.auth_type === AuthType.none) {
@@ -52,6 +55,7 @@ const TestApi: FC<Props> = ({
     }
     const res = await testAPIAvailable(data) as any
     setResult(res.error || res.result)
+    setTesting(false)
   }
 
   return (
@@ -107,7 +111,7 @@ const TestApi: FC<Props> = ({
               </div>
 
             </div>
-            <Button variant='primary' className=' mt-4 h-10 w-full' onClick={handleTest}>{t('tools.test.title')}</Button>
+            <Button variant='primary' className=' mt-4 h-10 w-full' loading={testing} disabled={testing} onClick={handleTest}>{t('tools.test.title')}</Button>
             <div className='mt-6'>
               <div className='flex items-center space-x-3'>
                 <div className='system-xs-semibold text-text-tertiary'>{t('tools.test.testResult')}</div>

@@ -7,12 +7,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { LangfuseIcon, LangsmithIcon, OpikIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -23,19 +23,6 @@ import Divider from '@/app/components/base/divider'
 
 const I18N_PREFIX = 'app.tracing'
 
-const Title = ({
-  className,
-}: {
-  className?: string
-}) => {
-  const { t } = useTranslation()
-
-  return (
-    <div className={cn('system-xl-semibold flex items-center text-text-primary', className)}>
-      {t('common.appMenus.overview')}
-    </div>
-  )
-}
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -75,24 +62,31 @@ const Panel: FC = () => {
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
-  const InUseProviderIcon
-    = inUseTracingProvider === TracingProvider.langSmith
-      ? LangsmithIcon
-      : inUseTracingProvider === TracingProvider.langfuse
-        ? LangfuseIcon
-        : inUseTracingProvider === TracingProvider.opik
-          ? OpikIcon
-          : inUseTracingProvider === TracingProvider.weave
-            ? WeaveIcon
-            : LangsmithIcon
+  const providerIconMap: Record<TracingProvider, React.FC<{ className?: string }>> = {
+    [TracingProvider.arize]: ArizeIcon,
+    [TracingProvider.phoenix]: PhoenixIcon,
+    [TracingProvider.langSmith]: LangsmithIcon,
+    [TracingProvider.langfuse]: LangfuseIcon,
+    [TracingProvider.opik]: OpikIcon,
+    [TracingProvider.weave]: WeaveIcon,
+  }
+  const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
+  const [arizeConfig, setArizeConfig] = useState<ArizeConfig | null>(null)
+  const [phoenixConfig, setPhoenixConfig] = useState<PhoenixConfig | null>(null)
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig)
 
   const fetchTracingConfig = async () => {
+    const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
+    if (!arizeHasNotConfig)
+      setArizeConfig(arizeConfig as ArizeConfig)
+    const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
+    if (!phoenixHasNotConfig)
+      setPhoenixConfig(phoenixConfig as PhoenixConfig)
     const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
     if (!langSmithHasNotConfig)
       setLangSmithConfig(langSmithConfig as LangSmithConfig)
@@ -110,7 +104,11 @@ const Panel: FC = () => {
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
     const { tracing_config } = await doFetchTracingConfig({ appId, provider })
-    if (provider === TracingProvider.langSmith)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(tracing_config as ArizeConfig)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(tracing_config as PhoenixConfig)
+    else if (provider === TracingProvider.langSmith)
       setLangSmithConfig(tracing_config as LangSmithConfig)
     else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(tracing_config as LangFuseConfig)
@@ -121,7 +119,11 @@ const Panel: FC = () => {
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === TracingProvider.langSmith)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(null)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(null)
+    else if (provider === TracingProvider.langSmith)
       setLangSmithConfig(null)
     else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(null)
@@ -154,7 +156,6 @@ const Panel: FC = () => {
   if (!isLoaded) {
     return (
       <div className='mb-3 flex items-center justify-between'>
-        <Title className='h-[41px]' />
         <div className='w-[200px]'>
           <Loading />
         </div>
@@ -163,8 +164,7 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex items-center justify-between')}>
-      <Title className='h-[41px]' />
+    <div className={cn('flex items-center justify-between')}>
       <div
         className={cn(
           'flex cursor-pointer items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
@@ -185,6 +185,8 @@ const Panel: FC = () => {
                 onStatusChange={handleTracingEnabledChange}
                 chosenProvider={inUseTracingProvider}
                 onChooseProvider={handleChooseProvider}
+                arizeConfig={arizeConfig}
+                phoenixConfig={phoenixConfig}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
@@ -220,6 +222,8 @@ const Panel: FC = () => {
                 onStatusChange={handleTracingEnabledChange}
                 chosenProvider={inUseTracingProvider}
                 onChooseProvider={handleChooseProvider}
+                arizeConfig={arizeConfig}
+                phoenixConfig={phoenixConfig}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}

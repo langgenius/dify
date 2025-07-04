@@ -4,8 +4,12 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
-from controllers.service_api.wraps import DatasetApiResource, validate_dataset_token
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from controllers.service_api.wraps import (
+    DatasetApiResource,
+    cloud_edition_billing_rate_limit_check,
+    validate_dataset_token,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
@@ -13,7 +17,7 @@ from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import tag_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
 
@@ -70,6 +74,7 @@ class DatasetListApi(DatasetApiResource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
         parser = reqparse.RequestParser()
@@ -128,6 +133,22 @@ class DatasetListApi(DatasetApiResource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 
         args = parser.parse_args()
+
+        if args.get("embedding_model_provider"):
+            DatasetService.check_embedding_model_setting(
+                tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
+            )
+        if (
+            args.get("retrieval_model")
+            and args.get("retrieval_model").get("reranking_model")
+            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
+            DatasetService.check_reranking_model_setting(
+                tenant_id,
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+            )
+
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
@@ -193,6 +214,7 @@ class DatasetApi(DatasetApiResource):
 
         return data, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, _, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -259,9 +281,19 @@ class DatasetApi(DatasetApiResource):
         data = request.get_json()
 
         # check embedding model setting
-        if data.get("indexing_technique") == "high_quality":
+        if data.get("indexing_technique") == "high_quality" or data.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
+            )
+        if (
+            data.get("retrieval_model")
+            and data.get("retrieval_model").get("reranking_model")
+            and data.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
+            DatasetService.check_reranking_model_setting(
+                dataset.tenant_id,
+                data.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                data.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
@@ -293,6 +325,7 @@ class DatasetApi(DatasetApiResource):
 
         return result_data, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, _, dataset_id):
         """
         Deletes a dataset given its ID.
@@ -320,6 +353,56 @@ class DatasetApi(DatasetApiResource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
+
+
+class DocumentStatusApi(DatasetApiResource):
+    """Resource for batch document status operations."""
+
+    def patch(self, tenant_id, dataset_id, action):
+        """
+        Batch update document status.
+
+        Args:
+            tenant_id: tenant id
+            dataset_id: dataset id
+            action: action to perform (enable, disable, archive, un_archive)
+
+        Returns:
+            dict: A dictionary with a key 'result' and a value 'success'
+            int: HTTP status code 200 indicating that the operation was successful.
+
+        Raises:
+            NotFound: If the dataset with the given ID does not exist.
+            Forbidden: If the user does not have permission.
+            InvalidActionError: If the action is invalid or cannot be performed.
+        """
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        # Check user's permission
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        # Check dataset model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        # Get document IDs from request body
+        data = request.get_json()
+        document_ids = data.get("document_ids", [])
+
+        try:
+            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
+        except services.errors.document.DocumentIndexingError as e:
+            raise InvalidActionError(str(e))
+        except ValueError as e:
+            raise InvalidActionError(str(e))
+
+        return {"result": "success"}, 200
 
 
 class DatasetTagsApi(DatasetApiResource):
@@ -450,6 +533,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
 
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>")
 api.add_resource(DatasetTagsApi, "/datasets/tags")
 api.add_resource(DatasetTagBindingApi, "/datasets/tags/binding")
 api.add_resource(DatasetTagUnbindingApi, "/datasets/tags/unbinding")

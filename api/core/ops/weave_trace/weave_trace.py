@@ -40,9 +40,14 @@ class WeaveDataTrace(BaseTraceInstance):
         self.weave_api_key = weave_config.api_key
         self.project_name = weave_config.project
         self.entity = weave_config.entity
+        self.host = weave_config.host
 
-        # Login with API key first
-        login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+        # Login with API key first, including host if provided
+        if self.host:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+        else:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
         if not login_status:
             logger.error("Failed to login to Weights & Biases with the provided API key")
             raise ValueError("Weave login failed")
@@ -386,7 +391,11 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+            if self.host:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+            else:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
             if not login_status:
                 raise ValueError("Weave login failed")
             else:

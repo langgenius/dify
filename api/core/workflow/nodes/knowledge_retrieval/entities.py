@@ -132,3 +132,12 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     metadata_model_config: Optional[ModelConfig] = None
     metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
+
+    @property
+    def structured_output_enabled(self) -> bool:
+        # NOTE(QuantumGhost): Temporary workaround for issue #20725
+        # (https://github.com/langgenius/dify/issues/20725).
+        #
+        # The proper fix would be to make `KnowledgeRetrievalNode` inherit
+        # from `BaseNode` instead of `LLMNode`.
+        return False

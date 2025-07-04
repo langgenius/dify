@@ -56,7 +56,7 @@ const CardWrapper = ({
             >
               {t('plugin.detailPanel.operation.install')}
             </Button>
-            <a href={`${getPluginLinkInMarketplace(plugin)}?language=${localeFromLocale}${theme ? `&theme=${theme}` : ''}`} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
+            <a href={getPluginLinkInMarketplace(plugin, { language: localeFromLocale, theme })} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
               <Button
                 className='w-full gap-0.5'
               >

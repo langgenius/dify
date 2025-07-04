@@ -1,7 +1,10 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { MutableRefObject } from 'react'
 
 export type AgentLogItem = {
   node_execution_id: string,
@@ -35,7 +38,7 @@ export type NodeTracing = {
   title: string
   inputs: any
   process_data: any
-  outputs?: any
+  outputs?: Record<string, any>
   status: string
   parallel_run_id?: string
   error?: string
@@ -152,7 +155,6 @@ export type WorkflowStartedResponse = {
   data: {
     id: string
     workflow_id: string
-    sequence_number: number
     created_at: number
   }
 }
@@ -198,6 +200,7 @@ export type FileResponse = {
   type: string
   url: string
   upload_file_id: string
+  remote_url: string
 }
 
 export type NodeFinishedResponse = {
@@ -289,7 +292,6 @@ export type AgentLogResponse = {
 
 export type WorkflowRunHistory = {
   id: string
-  sequence_number: number
   version: string
   conversation_id?: string
   message_id?: string
@@ -351,4 +353,49 @@ export type UpdateWorkflowParams = {
   workflowId: string
   title: string
   releaseNotes: string
+}
+
+export type PanelExposedType = {
+  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
+}
+
+export type PanelProps = {
+  getInputVars: (textList: string[]) => InputVar[]
+  toVarInputs: (variables: Variable[]) => InputVar[]
+  runInputData: Record<string, any>
+  runInputDataRef: MutableRefObject<Record<string, any>>
+  setRunInputData: (data: Record<string, any>) => void
+  runResult: any
+}
+
+export type NodeRunResult = NodeTracing
+
+// Var Inspect
+export enum VarInInspectType {
+  conversation = 'conversation',
+  environment = 'env',
+  node = 'node',
+  system = 'sys',
+}
+
+export type VarInInspect = {
+  id: string
+  type: VarInInspectType
+  name: string
+  description: string
+  selector: ValueSelector // can get node id from selector[0]
+  value_type: VarType
+  value: any
+  edited: boolean
+  visible: boolean
+}
+
+export type NodeWithVar = {
+  nodeId: string
+  nodePayload: CommonNodeType
+  nodeType: BlockEnum
+  title: string
+  vars: VarInInspect[]
+  isSingRunRunning?: boolean
+  isValueFetched?: boolean
 }

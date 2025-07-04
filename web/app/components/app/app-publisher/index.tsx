@@ -9,11 +9,14 @@ import dayjs from 'dayjs'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
+  RiBuildingLine,
+  RiGlobalLine,
   RiLockLine,
   RiPlanetLine,
   RiPlayCircleLine,
   RiPlayList2Line,
   RiTerminalBoxLine,
+  RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
@@ -275,11 +278,33 @@ const AppPublisher = ({
                     onClick={() => {
                       setShowAppAccessControl(true)
                     }}>
-                    <div className='flex grow items-center gap-x-1.5 pr-1'>
-                      <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                      {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
-                      {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
-                      {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
+                    <div className='flex grow items-center gap-x-1.5 overflow-hidden pr-1'>
+                      {appDetail?.access_mode === AccessMode.ORGANIZATION
+                        && <>
+                          <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>
+                        </>
+                      }
+                      {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
+                        && <>
+                          <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                          <div className='grow truncate'>
+                            <span className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</span>
+                          </div>
+                        </>
+                      }
+                      {appDetail?.access_mode === AccessMode.PUBLIC
+                        && <>
+                          <RiGlobalLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
+                        </>
+                      }
+                      {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
+                        && <>
+                          <RiVerifiedBadgeLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.external')}</p>
+                        </>
+                      }
                     </div>
                     {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
                     <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
@@ -289,10 +314,10 @@ const AppPublisher = ({
                   {!isAppAccessSet && <p className='system-xs-regular mt-1 text-text-warning'>{t('app.publishApp.notSetDesc')}</p>}
                 </div>}
                 <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
-                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
                       className='flex-1'
-                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail?.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                       link={appURL}
                       icon={<RiPlayCircleLine className='h-4 w-4' />}
                     >
@@ -301,10 +326,10 @@ const AppPublisher = ({
                   </Tooltip>
                   {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                     ? (
-                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                         <SuggestedAction
                           className='flex-1'
-                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                           link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                           icon={<RiPlayList2Line className='h-4 w-4' />}
                         >

@@ -24,6 +24,7 @@ from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.lindorm_config import LindormConfig
+from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
@@ -222,6 +223,10 @@ class CeleryConfig(DatabaseConfig):
         default=None,
     )
 
+    CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
+        description="Password of the Redis Sentinel master.",
+        default=None,
+    )
     CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
@@ -323,5 +328,6 @@ class MiddlewareConfig(
     OpenGaussConfig,
     TableStoreConfig,
     DatasetQueueMonitorConfig,
+    MatrixoneConfig,
 ):
     pass

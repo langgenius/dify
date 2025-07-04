@@ -139,3 +139,13 @@ class InvokeRateLimitError(BaseHTTPException):
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429
+
+
+class NotFoundError(BaseHTTPException):
+    error_code = "not_found"
+    code = 404
+
+
+class InvalidArgumentError(BaseHTTPException):
+    error_code = "invalid_param"
+    code = 400

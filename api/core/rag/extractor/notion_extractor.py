@@ -79,55 +79,71 @@ class NotionExtractor(BaseExtractor):
     def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
         """Get all the pages from a Notion database."""
         assert self._notion_access_token is not None, "Notion access token is required"
-        res = requests.post(
-            DATABASE_URL_TMPL.format(database_id=database_id),
-            headers={
-                "Authorization": "Bearer " + self._notion_access_token,
-                "Content-Type": "application/json",
-                "Notion-Version": "2022-06-28",
-            },
-            json=query_dict,
-        )
-
-        data = res.json()
 
         database_content = []
-        if "results" not in data or data["results"] is None:
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            current_query = query_dict.copy()
+            if next_cursor:
+                current_query["start_cursor"] = next_cursor
+
+            res = requests.post(
+                DATABASE_URL_TMPL.format(database_id=database_id),
+                headers={
+                    "Authorization": "Bearer " + self._notion_access_token,
+                    "Content-Type": "application/json",
+                    "Notion-Version": "2022-06-28",
+                },
+                json=current_query,
+            )
+
+            response_data = res.json()
+
+            if "results" not in response_data or response_data["results"] is None:
+                break
+
+            for result in response_data["results"]:
+                properties = result["properties"]
+                data = {}
+                value: Any
+                for property_name, property_value in properties.items():
+                    type = property_value["type"]
+                    if type == "multi_select":
+                        value = []
+                        multi_select_list = property_value[type]
+                        for multi_select in multi_select_list:
+                            value.append(multi_select["name"])
+                    elif type in {"rich_text", "title"}:
+                        if len(property_value[type]) > 0:
+                            value = property_value[type][0]["plain_text"]
+                        else:
+                            value = ""
+                    elif type in {"select", "status"}:
+                        if property_value[type]:
+                            value = property_value[type]["name"]
+                        else:
+                            value = ""
+                    else:
+                        value = property_value[type]
+                    data[property_name] = value
+                row_dict = {k: v for k, v in data.items() if v}
+                row_content = ""
+                for key, value in row_dict.items():
+                    if isinstance(value, dict):
+                        value_dict = {k: v for k, v in value.items() if v}
+                        value_content = "".join(f"{k}:{v} " for k, v in value_dict.items())
+                        row_content = row_content + f"{key}:{value_content}\n"
+                    else:
+                        row_content = row_content + f"{key}:{value}\n"
+                database_content.append(row_content)
+
+            has_more = response_data.get("has_more", False)
+            next_cursor = response_data.get("next_cursor")
+
+        if not database_content:
             return []
-        for result in data["results"]:
-            properties = result["properties"]
-            data = {}
-            value: Any
-            for property_name, property_value in properties.items():
-                type = property_value["type"]
-                if type == "multi_select":
-                    value = []
-                    multi_select_list = property_value[type]
-                    for multi_select in multi_select_list:
-                        value.append(multi_select["name"])
-                elif type in {"rich_text", "title"}:
-                    if len(property_value[type]) > 0:
-                        value = property_value[type][0]["plain_text"]
-                    else:
-                        value = ""
-                elif type in {"select", "status"}:
-                    if property_value[type]:
-                        value = property_value[type]["name"]
-                    else:
-                        value = ""
-                else:
-                    value = property_value[type]
-                data[property_name] = value
-            row_dict = {k: v for k, v in data.items() if v}
-            row_content = ""
-            for key, value in row_dict.items():
-                if isinstance(value, dict):
-                    value_dict = {k: v for k, v in value.items() if v}
-                    value_content = "".join(f"{k}:{v} " for k, v in value_dict.items())
-                    row_content = row_content + f"{key}:{value_content}\n"
-                else:
-                    row_content = row_content + f"{key}:{value}\n"
-            database_content.append(row_content)
 
         return [Document(page_content="\n".join(database_content))]
 

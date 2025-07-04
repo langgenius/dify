@@ -308,6 +308,8 @@ const translation = {
     change: '更改',
     optional: '（选填）',
     moveToThisNode: '定位至此节点',
+    maximize: '最大化画布',
+    minimize: '退出最大化',
   },
   nodes: {
     common: {
@@ -548,6 +550,7 @@ const translation = {
       advancedDependencies: '高级依赖',
       advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
       searchDependencies: '搜索依赖',
+      syncFunctionSignature: '同步函数签名至代码',
     },
     templateTransform: {
       inputVars: '输入变量',
@@ -912,6 +915,35 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+    },
+  },
+  debug: {
+    settingsTab: '设置',
+    lastRunTab: '上次运行',
+    noData: {
+      description: '上次运行的结果将显示在这里',
+      runThisNode: '运行此节点',
+    },
+    variableInspect: {
+      title: '变量检查',
+      emptyTip: '在画布上逐步浏览节点或逐步运行节点后，您可以在变量检查中查看节点变量的当前值',
+      emptyLink: '了解更多',
+      clearAll: '重置所有',
+      clearNode: '清除缓存',
+      resetConversationVar: '重置会话变量为默认值',
+      view: '查看记录',
+      edited: '已编辑',
+      reset: '还原至上一次运行',
+      trigger: {
+        normal: '变量检查',
+        running: '缓存中',
+        stop: '停止运行',
+        cached: '查看缓存',
+        clear: '清除',
+      },
+      envNode: '环境变量',
+      chatNode: '会话变量',
+      systemNode: '系统变量',
     },
   },
 }

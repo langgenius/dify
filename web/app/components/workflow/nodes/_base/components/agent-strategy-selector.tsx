@@ -22,6 +22,7 @@ import type { ListRef } from '@/app/components/workflow/block-selector/market-pl
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 
@@ -131,7 +132,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
   useEffect(() => {
+    if (!enable_marketplace) return
     if (query) {
       fetchPlugins({
         query,
@@ -158,7 +162,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           alt='icon'
         /></div>}
         <p
-          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'text-xs px-1')}
+          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
         >
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
@@ -215,7 +219,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             }}
             className='h-full max-h-full max-w-none overflow-y-auto'
             indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
-          <PluginList
+          {enable_marketplace
+          && <PluginList
             ref={pluginRef}
             wrapElemRef={wrapElemRef}
             list={notInstalledPlugins}
@@ -223,6 +228,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             tags={DEFAULT_TAGS}
             disableMaxWidth
           />
+          }
         </main>
       </div>
     </PortalToFollowElemContent>

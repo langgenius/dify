@@ -28,6 +28,8 @@ const translation = {
       delete: 'Usuń',
       enableWarning: 'Zarchiwizowany plik nie może zostać włączony',
       sync: 'Synchronizuj',
+      resume: 'Wznawiać',
+      pause: 'Pauza',
     },
     index: {
       enable: 'Włącz',
@@ -390,6 +392,8 @@ const translation = {
     newChildChunk: 'Nowy fragment podrzędny',
     clearFilter: 'Wyczyść filtr',
     childChunks_one: 'FRAGMENT POTOMNY',
+    keywordDuplicate: 'Słowo kluczowe już istnieje',
+    keywordEmpty: 'Słowo kluczowe nie może być puste',
   },
 }
 

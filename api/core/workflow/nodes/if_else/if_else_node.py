@@ -1,4 +1,5 @@
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
 
 from typing_extensions import deprecated
 
@@ -15,6 +16,10 @@ from core.workflow.utils.condition.processor import ConditionProcessor
 class IfElseNode(BaseNode[IfElseNodeData]):
     _node_data_cls = IfElseNodeData
     _node_type = NodeType.IF_ELSE
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """
@@ -86,6 +91,22 @@ class IfElseNode(BaseNode[IfElseNodeData]):
         )
 
         return data
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: IfElseNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        var_mapping: dict[str, list[str]] = {}
+        for case in node_data.cases or []:
+            for condition in case.conditions:
+                key = "{}.#{}#".format(node_id, ".".join(condition.variable_selector))
+                var_mapping[key] = condition.variable_selector
+
+        return var_mapping
 
 
 @deprecated("This function is deprecated. You should use the new cases structure.")

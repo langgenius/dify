@@ -86,6 +86,8 @@ const UpdateDSLModal = ({
       graph,
       features,
       hash,
+      conversation_variables,
+      environment_variables,
     } = await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
 
     const { nodes, edges, viewport } = graph
@@ -122,6 +124,8 @@ const UpdateDSLModal = ({
         viewport,
         features: newFeatures,
         hash,
+        conversation_variables: conversation_variables || [],
+        environment_variables: environment_variables || [],
       },
     } as any)
   }, [eventEmitter])

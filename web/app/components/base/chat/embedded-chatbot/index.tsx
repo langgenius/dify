@@ -1,4 +1,6 @@
+'use client'
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -12,7 +14,7 @@ import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
@@ -23,6 +25,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 const Chatbot = () => {
   const {
@@ -36,6 +39,7 @@ const Chatbot = () => {
     chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
+    isInstalledApp,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -50,6 +54,22 @@ const Chatbot = () => {
   }, [site, customConfig, themeBuilder])
 
   useDocumentTitle(site?.title || 'Chat')
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
 
   if (appInfoLoading) {
     return (
@@ -66,8 +86,12 @@ const Chatbot = () => {
     )
   }
 
-  if (!userCanAccess)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
+  if (!userCanAccess) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
+  }
 
   if (appInfoError) {
     return (
@@ -141,7 +165,6 @@ const EmbeddedChatbotWrapper = () => {
     appInfoError,
     appInfoLoading,
     appData,
-    accessMode,
     userCanAccess,
     appParams,
     appMeta,
@@ -172,11 +195,11 @@ const EmbeddedChatbotWrapper = () => {
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
     userCanAccess,
-    accessMode,
     appInfoError,
     appInfoLoading,
     appData,
@@ -211,6 +234,7 @@ const EmbeddedChatbotWrapper = () => {
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>

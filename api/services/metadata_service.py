@@ -19,6 +19,10 @@ from services.entities.knowledge_entities.knowledge_entities import (
 class MetadataService:
     @staticmethod
     def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
+        # check if metadata name is too long
+        if len(metadata_args.name) > 255:
+            raise ValueError("Metadata name cannot exceed 255 characters.")
+
         # check if metadata name already exists
         if (
             db.session.query(DatasetMetadata)
@@ -42,6 +46,10 @@ class MetadataService:
 
     @staticmethod
     def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+        # check if metadata name is too long
+        if len(name) > 255:
+            raise ValueError("Metadata name cannot exceed 255 characters.")
+
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
         if (

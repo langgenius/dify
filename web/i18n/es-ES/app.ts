@@ -93,6 +93,7 @@ const translation = {
     foundResult: '{{conteo}} Resultado',
     chatbotUserDescription: 'Cree rápidamente un chatbot basado en LLM con una configuración sencilla. Puedes cambiar a Chatflow más tarde.',
     completionUserDescription: 'Cree rápidamente un asistente de IA para tareas de generación de texto con una configuración sencilla.',
+    dropDSLToCreateApp: 'Suelta el archivo DSL aquí para crear la aplicación',
   },
   editApp: 'Editar información',
   editAppTitle: 'Editar información de la app',
@@ -134,6 +135,14 @@ const translation = {
       configured: 'Configurado',
       notConfigured: 'Configurar proveedor para habilitar el rastreo',
       moreProvider: 'Más proveedores',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilidad de LLM de nivel empresarial, evaluación en línea y fuera de línea, monitoreo y experimentación—impulsada por OpenTelemetry. Diseñada específicamente para aplicaciones impulsadas por LLM y agentes.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Plataforma de observabilidad, evaluación, ingeniería de prompts y experimentación de código abierto basada en OpenTelemetry para sus flujos de trabajo y agentes de LLM.',
     },
     langsmith: {
       title: 'LangSmith',
@@ -207,17 +216,20 @@ const translation = {
     modelNotSupportedTip: 'El modelo actual no admite esta función y se degrada automáticamente a inyección de comandos.',
     structuredTip: 'Las Salidas Estructuradas son una función que garantiza que el modelo siempre generará respuestas que se ajusten a su esquema JSON proporcionado.',
     modelNotSupported: 'Modelo no soportado',
+    structured: 'sistemático',
   },
   accessItemsDescription: {
     anyone: 'Cualquiera puede acceder a la aplicación web.',
     specific: 'Solo grupos o miembros específicos pueden acceder a la aplicación web',
     organization: 'Cualquiera en la organización puede acceder a la aplicación web',
+    external: 'Solo los usuarios externos autenticados pueden acceder a la aplicación web.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Cualquiera con el enlace',
       specific: 'Grupos o miembros específicos',
       organization: 'Solo miembros dentro de la empresa',
+      external: 'Usuarios externos autenticados',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Buscar grupos y miembros',

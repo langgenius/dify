@@ -58,6 +58,8 @@ const translation = {
     more: 'Больше',
     downloadFailed: 'Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.',
     downloadSuccess: 'Загрузка завершена.',
+    selectAll: 'Выбрать все',
+    deSelectAll: 'Снять выделение со всех',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -471,7 +473,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API-расширения обеспечивают централизованное управление API, упрощая настройку для удобного использования в приложениях Dify.',
     link: 'Узнайте, как разработать собственное API-расширение.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Добавить API Extension',
     selector: {
       title: 'API Extension',

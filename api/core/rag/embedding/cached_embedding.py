@@ -139,4 +139,4 @@ class CacheEmbedding(Embeddings):
                 logging.exception(f"Failed to add embedding to redis for the text '{text[:10]}...({len(text)} chars)'")
             raise ex
 
-        return embedding_results
+        return embedding_results  # type: ignore

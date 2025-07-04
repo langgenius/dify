@@ -1,7 +1,7 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,37 @@ class LLMUsage(ModelUsage):
             latency=0.0,
         )
 
+    @classmethod
+    def from_metadata(cls, metadata: dict) -> "LLMUsage":
+        """
+        Create LLMUsage instance from metadata dictionary with default values.
+
+        Args:
+            metadata: Dictionary containing usage metadata
+
+        Returns:
+            LLMUsage instance with values from metadata or defaults
+        """
+        total_tokens = metadata.get("total_tokens", 0)
+        completion_tokens = metadata.get("completion_tokens", 0)
+        if total_tokens > 0 and completion_tokens == 0:
+            completion_tokens = total_tokens
+
+        return cls(
+            prompt_tokens=metadata.get("prompt_tokens", 0),
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            prompt_unit_price=Decimal(str(metadata.get("prompt_unit_price", 0))),
+            completion_unit_price=Decimal(str(metadata.get("completion_unit_price", 0))),
+            total_price=Decimal(str(metadata.get("total_price", 0))),
+            currency=metadata.get("currency", "USD"),
+            prompt_price_unit=Decimal(str(metadata.get("prompt_price_unit", 0))),
+            completion_price_unit=Decimal(str(metadata.get("completion_price_unit", 0))),
+            prompt_price=Decimal(str(metadata.get("prompt_price", 0))),
+            completion_price=Decimal(str(metadata.get("completion_price", 0))),
+            latency=metadata.get("latency", 0.0),
+        )
+
     def plus(self, other: "LLMUsage") -> "LLMUsage":
         """
         Add two LLMUsage instances together.
@@ -101,6 +132,20 @@ class LLMResult(BaseModel):
     system_fingerprint: Optional[str] = None
 
 
+class LLMStructuredOutput(BaseModel):
+    """
+    Model class for llm structured output.
+    """
+
+    structured_output: Optional[Mapping[str, Any]] = None
+
+
+class LLMResultWithStructuredOutput(LLMResult, LLMStructuredOutput):
+    """
+    Model class for llm result with structured output.
+    """
+
+
 class LLMResultChunkDelta(BaseModel):
     """
     Model class for llm result chunk delta.
@@ -121,6 +166,12 @@ class LLMResultChunk(BaseModel):
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     system_fingerprint: Optional[str] = None
     delta: LLMResultChunkDelta
+
+
+class LLMResultChunkWithStructuredOutput(LLMResultChunk, LLMStructuredOutput):
+    """
+    Model class for llm result chunk with structured output.
+    """
 
 
 class NumTokensResult(PriceInfo):

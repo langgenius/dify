@@ -137,6 +137,7 @@ const translation = {
     installPlugin: 'プラグインをインストールする',
     back: '戻る',
     uploadingPackage: '{{packageName}}をアップロード中...',
+    installWarning: 'このプラグインはインストールを許可されていません。',
   },
   installFromGitHub: {
     installedSuccessfully: 'インストールに成功しました',
@@ -206,12 +207,12 @@ const translation = {
   searchTools: '検索ツール...',
   installPlugin: 'プラグインをインストールする',
   searchInMarketplace: 'マーケットプレイスで検索',
-  submitPlugin: 'プラグインを提出する',
   difyVersionNotCompatible: '現在の Dify バージョンはこのプラグインと互換性がありません。最小バージョンは{{minimalDifyVersion}}です。',
   metadata: {
     title: 'プラグイン',
   },
   requestAPlugin: 'プラグインをリクエストする',
+  publishPlugins: 'プラグインを公開する',
 }
 
 export default translation

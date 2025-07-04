@@ -82,9 +82,9 @@ Chat applications support session persistence, allowing previous chat history to
 
     ### ChatCompletionResponse
     Returns the complete App result, `Content-Type` is `application/json`.
-    - `event` (string) 事件类型，固定为 `message`
-    - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
-    - `id` (string) 唯一ID
+    - `event` (string) Event type, always `message` in blocking mode.
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `id` (string) Unique ID, same as `message_id`
     - `message_id` (string) Unique message ID
     - `conversation_id` (string) Conversation ID
     - `mode` (string) App mode, fixed as `chat`
@@ -287,7 +287,7 @@ Chat applications support session persistence, allowing previous chat history to
   - `file` (File) Required
     The file to be uploaded.
   - `user` (string) Required
-    User identifier, defined by the developer's rules, must be unique within the application.
+    User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
 
   ### Response
   After a successful upload, the server will return the file's ID and related information.
@@ -357,7 +357,7 @@ Chat applications support session persistence, allowing previous chat history to
   - `task_id` (string) Task ID, can be obtained from the streaming chunk return
   ### Request Body
   - `user` (string) Required
-    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface.
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
   ### Response
   - `result` (string) Always returns "success"
   </Col>
@@ -1151,6 +1151,8 @@ Chat applications support session persistence, allowing previous chat history to
   - `name` (string) application name
   - `description` (string) application description
   - `tags` (array[string]) application tags
+  - `mode` (string) application mode
+  - `author_name` (string) application author name
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1167,7 +1169,9 @@ Chat applications support session persistence, allowing previous chat history to
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "advanced-chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

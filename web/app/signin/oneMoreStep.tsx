@@ -12,6 +12,7 @@ import { timezones } from '@/utils/timezone'
 import { LanguagesSupported, languages } from '@/i18n/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import { useDocLink } from '@/context/i18n'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -51,6 +52,7 @@ const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
 
 const OneMoreStep = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -164,7 +166,7 @@ const OneMoreStep = () => {
             <Link
               className='system-xs-medium text-text-accent-secondary'
               target='_blank' rel='noopener noreferrer'
-              href={'https://docs.dify.ai/en/policies/agreement/README'}
+              href={docLink('/policies/agreement/README')}
             >{t('login.license.link')}</Link>
           </div>
         </div>

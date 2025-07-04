@@ -10,6 +10,8 @@ from libs.passport import PassportService
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
+from services.webapp_auth_service import WebAppAuthService
 
 
 class AppParameterApi(WebApiResource):
@@ -46,10 +48,22 @@ class AppMeta(WebApiResource):
 class AppAccessMode(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
+        parser.add_argument("appId", type=str, required=False, location="args")
+        parser.add_argument("appCode", type=str, required=False, location="args")
         args = parser.parse_args()
 
-        app_id = args["appId"]
+        features = FeatureService.get_system_features()
+        if not features.webapp_auth.enabled:
+            return {"accessMode": "public"}
+
+        app_id = args.get("appId")
+        if args.get("appCode"):
+            app_code = args["appCode"]
+            app_id = AppService.get_app_id_by_code(app_code)
+
+        if not app_id:
+            raise ValueError("appId or appCode must be provided")
+
         res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
 
         return {"accessMode": res.access_mode}
@@ -75,6 +89,10 @@ class AppWebAuthPermission(Resource):
         except Exception as e:
             pass
 
+        features = FeatureService.get_system_features()
+        if not features.webapp_auth.enabled:
+            return {"result": True}
+
         parser = reqparse.RequestParser()
         parser.add_argument("appId", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -82,7 +100,9 @@ class AppWebAuthPermission(Resource):
         app_id = args["appId"]
         app_code = AppService.get_app_code_by_id(app_id)
 
-        res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+        res = True
+        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
         return {"result": res}
 
 

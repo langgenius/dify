@@ -178,6 +178,7 @@ const translation = {
     checkName: {
       empty: '메타데이터 이름은 비어 있을 수 없습니다.',
       invalid: '메타데이터 이름은 소문자, 숫자 및 밑줄만 포함할 수 있으며 소문자로 시작해야 합니다.',
+      tooLong: '메타데이터 이름은 {{max}}자를 초과할 수 없습니다.',
     },
     batchEditMetadata: {
       multipleValue: '다중 값',

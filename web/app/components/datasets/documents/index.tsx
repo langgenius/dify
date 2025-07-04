@@ -26,11 +26,12 @@ import cn from '@/utils/classnames'
 import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+import useDocumentListQueryState from './hooks/use-document-list-query-state'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
-import { LanguagesSupported } from '@/i18n/language'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
+import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -82,16 +83,20 @@ type IDocumentsProps = {
 }
 
 export const fetcher = (url: string) => get(url, {}, {})
-const DEFAULT_LIMIT = 10
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
-  const [currPage, setCurrPage] = React.useState<number>(0)
-  const [limit, setLimit] = useState<number>(DEFAULT_LIMIT)
+
+  // Use the new hook for URL state management
+  const { query, updateQuery } = useDocumentListQueryState()
+  const [currPage, setCurrPage] = React.useState<number>(query.page - 1) // Convert to 0-based index
+  const [limit, setLimit] = useState<number>(query.limit)
+
   const router = useRouter()
   const { dataset } = useDatasetDetailContext()
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
@@ -100,8 +105,46 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isDataSourceWeb = dataset?.data_source_type === DataSourceType.WEB
   const isDataSourceFile = dataset?.data_source_type === DataSourceType.FILE
   const embeddingAvailable = !!dataset?.embedding_available
-  const locale = getLocaleOnClient()
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
+
+  // Initialize search value from URL on mount
+  useEffect(() => {
+    if (query.keyword) {
+      setInputValue(query.keyword)
+      setSearchValue(query.keyword)
+    }
+  }, []) // Only run on mount
+
+  // Sync local state with URL query changes
+  useEffect(() => {
+    setCurrPage(query.page - 1)
+    setLimit(query.limit)
+    if (query.keyword !== searchValue) {
+      setInputValue(query.keyword)
+      setSearchValue(query.keyword)
+    }
+  }, [query])
+
+  // Update URL when pagination changes
+  const handlePageChange = (newPage: number) => {
+    setCurrPage(newPage)
+    updateQuery({ page: newPage + 1 }) // Convert to 1-based index
+  }
+
+  // Update URL when limit changes
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit)
+    setCurrPage(0) // Reset to first page when limit changes
+    updateQuery({ limit: newLimit, page: 1 })
+  }
+
+  // Update URL when search changes
+  useEffect(() => {
+    if (debouncedSearchValue !== query.keyword) {
+      setCurrPage(0) // Reset to first page when search changes
+      updateQuery({ keyword: debouncedSearchValue, page: 1 })
+    }
+  }, [debouncedSearchValue, query.keyword, updateQuery])
 
   const { data: documentsRes, isFetching: isListLoading } = useDocumentList({
     datasetId,
@@ -179,6 +222,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
+  const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule()
+
   const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
     const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
@@ -187,6 +232,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         pages: workspacesMap[workspaceId],
       }
     })
+    const { rules } = await fetchDefaultProcessRuleMutation.mutateAsync('/datasets/process-rule')
     const params = {
       data_source: {
         type: dataset?.data_source_type,
@@ -210,7 +256,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       },
       indexing_technique: dataset?.indexing_technique,
       process_rule: {
-        rules: {},
+        rules,
         mode: ProcessMode.general,
       },
     } as CreateDocumentReq
@@ -262,11 +308,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <a
             className='flex items-center text-text-accent'
             target='_blank'
-            href={
-              locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                : 'https://docs.dify.ai/en/guides/knowledge-base/integrate-knowledge-within-application'
-            }
+            href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
           >
             <span>{t('datasetDocuments.list.learnMore')}</span>
             <RiExternalLinkLine className='h-3 w-3' />
@@ -328,9 +370,9 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               pagination={{
                 total,
                 limit,
-                onLimitChange: setLimit,
+                onLimitChange: handleLimitChange,
                 current: currPage,
-                onChange: setCurrPage,
+                onChange: handlePageChange,
               }}
               onManageMetadata={showEditMetadataModal}
             />

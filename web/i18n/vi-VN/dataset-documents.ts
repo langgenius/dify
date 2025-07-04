@@ -28,6 +28,8 @@ const translation = {
       delete: 'Xóa',
       enableWarning: 'Tệp đã lưu trữ không thể được kích hoạt',
       sync: 'Đồng bộ',
+      pause: 'Tạm dừng',
+      resume: 'Tiếp tục',
     },
     index: {
       enable: 'Kích hoạt',
@@ -388,6 +390,8 @@ const translation = {
     clearFilter: 'Bộ lọc rõ ràng',
     chunk: 'Khúc',
     edited: 'EDITED',
+    keywordDuplicate: 'Từ khóa đã tồn tại',
+    keywordEmpty: 'Từ khóa không được để trống',
   },
 }
 

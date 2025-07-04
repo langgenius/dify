@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Échec du téléchargement. Veuillez réessayer plus tard.',
     more: 'Plus',
     downloadSuccess: 'Téléchargement terminé.',
+    deSelectAll: 'Désélectionner tout',
+    selectAll: 'Sélectionner tout',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -467,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'Les extensions API fournissent une gestion centralisée des API, simplifiant la configuration pour une utilisation facile à travers les applications de Dify.',
     link: 'Apprenez comment développer votre propre Extension API.',
-    linkUrl: 'https://docs.dify.ai/fonctionnalites/extension/extension_basee_sur_api',
     add: 'Ajouter l\'extension API',
     selector: {
       title: 'Extension de l\'API',

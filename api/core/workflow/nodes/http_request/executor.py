@@ -1,12 +1,14 @@
 import base64
 import json
+import secrets
+import string
 from collections.abc import Mapping
 from copy import deepcopy
-from random import randint
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
 import httpx
+from json_repair import repair_json
 
 from configs import dify_config
 from core.file import file_manager
@@ -177,7 +179,8 @@ class Executor:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
                     try:
-                        json_object = json.loads(json_string, strict=False)
+                        repaired = repair_json(json_string)
+                        json_object = json.loads(repaired, strict=False)
                     except json.JSONDecodeError as e:
                         raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
@@ -332,7 +335,7 @@ class Executor:
         try:
             response = getattr(ssrf_proxy, self.method.lower())(**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
-            raise HttpRequestNodeError(str(e))
+            raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
         return response  # type: ignore
 
@@ -434,4 +437,4 @@ def _generate_random_string(n: int) -> str:
         >>> _generate_random_string(5)
         'abcde'
     """
-    return "".join([chr(randint(97, 122)) for _ in range(n)])
+    return "".join(secrets.choice(string.ascii_lowercase) for _ in range(n))

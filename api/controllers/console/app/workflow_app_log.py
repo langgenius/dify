@@ -34,6 +34,20 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument(
             "created_at__after", type=str, location="args", help="Filter logs created after this timestamp"
         )
+        parser.add_argument(
+            "created_by_end_user_session_id",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
+        parser.add_argument(
+            "created_by_account",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
@@ -57,6 +71,8 @@ class WorkflowAppLogApi(Resource):
                 created_at_after=args.created_at__after,
                 page=args.page,
                 limit=args.limit,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
             )
 
             return workflow_app_log_pagination

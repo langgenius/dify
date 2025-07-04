@@ -8,7 +8,7 @@ import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
 import Input from '@/app/components/base/input'
 import type { VarType } from '@/app/components/workflow/types'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
@@ -37,6 +37,8 @@ const OutputVarList: FC<Props> = ({
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
+
+      replaceSpaceWithUnderscreInVarNameInput(e.target)
       const newKey = e.target.value
 
       const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)

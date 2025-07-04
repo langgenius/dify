@@ -1,12 +1,12 @@
 const translation = {
   daysInWeek: {
-    Tue: '星期二',
-    Wed: '星期三',
-    Fri: '自由',
-    Mon: '懷念',
-    Sun: '太陽',
-    Sat: '星期六',
-    Thu: '星期四',
+    Sun: '日',
+    Mon: '一',
+    Tue: '二',
+    Wed: '三',
+    Thu: '四',
+    Fri: '五',
+    Sat: '六',
   },
   months: {
     January: '一月',

@@ -29,6 +29,8 @@ const translation = {
       delete: 'Izbriši',
       enableWarning: 'Arhivirane datoteke ni mogoče omogočiti',
       sync: 'Sinhroniziraj',
+      pause: 'Pavza',
+      resume: 'Življenjepis',
     },
     index: {
       enable: 'Omogoči',
@@ -389,6 +391,8 @@ const translation = {
     chunk: 'Kos',
     addChunk: 'Dodajanje kosa',
     childChunkAdded: 'Dodan je 1 kos otroka',
+    keywordDuplicate: 'Ključna beseda že obstaja',
+    keywordEmpty: 'Ključna beseda ne more biti prazna',
   },
 }
 

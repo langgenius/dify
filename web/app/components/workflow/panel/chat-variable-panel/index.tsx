@@ -3,7 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   useStoreApi,
 } from 'reactflow'
@@ -22,18 +21,28 @@ import type {
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const {
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
+  const handleVarChanged = useCallback(() => {
+    doSyncWorkflowDraft(false, {
+      onSuccess() {
+        invalidateConversationVarValues()
+      },
+    })
+  }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
@@ -73,8 +82,8 @@ const ChatVariablePanel = () => {
     updateChatVarList(varList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    doSyncWorkflowDraft()
-  }, [doSyncWorkflowDraft, removeUsedVarInNodes, updateChatVarList, varList])
+    handleVarChanged()
+  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -92,7 +101,7 @@ const ChatVariablePanel = () => {
     if (!currentVar) {
       const newList = [chatVar, ...varList]
       updateChatVarList(newList)
-      doSyncWorkflowDraft()
+      handleVarChanged()
       return
     }
     // edit chatVar
@@ -110,8 +119,8 @@ const ChatVariablePanel = () => {
       })
       setNodes(newNodes)
     }
-    doSyncWorkflowDraft()
-  }, [currentVar, doSyncWorkflowDraft, getEffectedNodes, store, updateChatVarList, varList])
+    handleVarChanged()
+  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
 
   return (
     <div
@@ -139,7 +148,13 @@ const ChatVariablePanel = () => {
             <div className='system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary'>TIPS</div>
             <div className='system-sm-regular mb-4 mt-1 text-text-secondary'>
               {t('workflow.chatVariable.panelDescription')}
-              <a target='_blank' rel='noopener noreferrer' className='text-text-accent' href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/guides/workflow/variables#conversation-variables' : `https://docs.dify.ai/${locale.toLowerCase()}/guides/workflow/variables#hui-hua-bian-liang`}>{t('workflow.chatVariable.docLink')}</a>
+              <a target='_blank' rel='noopener noreferrer' className='text-text-accent'
+                href={docLink('/guides/workflow/variables#conversation-variables', {
+                  'zh-Hans': '/guides/workflow/variables#会话变量',
+                  'ja-JP': '/guides/workflow/variables#会話変数',
+                })}>
+                {t('workflow.chatVariable.docLink')}
+              </a>
             </div>
             <div className='flex items-center gap-2'>
               <div className='radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md'>
@@ -166,7 +181,7 @@ const ChatVariablePanel = () => {
                 </div>
               </div>
             </div>
-            <div className='absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45 bg-background-section-burn'/>
+            <div className='absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45 bg-background-section-burn' />
           </div>
         </div>
       )}

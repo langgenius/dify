@@ -58,6 +58,8 @@ const translation = {
     more: 'Mais',
     downloadSuccess: 'Download concluído.',
     format: 'Formato',
+    deSelectAll: 'Desmarcar tudo',
+    selectAll: 'Selecionar tudo',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -467,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'As extensões de API fornecem gerenciamento centralizado de API, simplificando a configuração para uso fácil em todos os aplicativos da Dify.',
     link: 'Saiba como desenvolver sua própria Extensão de API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Adicionar Extensão de API',
     selector: {
       title: 'Extensão de API',

@@ -85,6 +85,7 @@ class MemberInviteEmailApi(Resource):
         return {
             "result": "success",
             "invitation_results": invitation_results,
+            "tenant_id": str(current_user.current_tenant.id),
         }, 201
 
 
@@ -110,7 +111,7 @@ class MemberCancelInviteApi(Resource):
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {"result": "success"}, 204
+        return {"result": "success", "tenant_id": str(current_user.current_tenant.id)}, 200
 
 
 class MemberUpdateRoleApi(Resource):

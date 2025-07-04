@@ -11,7 +11,6 @@ import { ModelModeType } from '@/types/app'
 import { Theme } from '@/types/app'
 import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
 import cn from '@/utils/classnames'
-import type { ModelInfo } from './prompt-editor'
 import PromptEditor from './prompt-editor'
 import GeneratedResult from './generated-result'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
@@ -19,7 +18,6 @@ import Toast from '@/app/components/base/toast'
 import { type FormValue, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useVisualEditorStore } from '../visual-editor/store'
-import { useTranslation } from 'react-i18next'
 import { useMittContext } from '../visual-editor/context'
 
 type JsonSchemaGeneratorProps = {
@@ -36,10 +34,12 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
-  const { t } = useTranslation()
+  const localModel = localStorage.getItem('auto-gen-model')
+    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+    : null
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(GeneratorView.promptEditor)
-  const [model, setModel] = useState<Model>({
+  const [model, setModel] = useState<Model>(localModel || {
     name: '',
     provider: '',
     mode: ModelModeType.completion,
@@ -58,11 +58,19 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      setModel(prev => ({
-        ...prev,
-        name: defaultModel.model,
-        provider: defaultModel.provider.provider,
-      }))
+      const localModel = localStorage.getItem('auto-gen-model')
+        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+        : null
+      if (localModel) {
+        setModel(localModel)
+      }
+      else {
+        setModel(prev => ({
+          ...prev,
+          name: defaultModel.model,
+          provider: defaultModel.provider.provider,
+        }))
+      }
     }
   }, [defaultModel])
 
@@ -77,22 +85,25 @@ export const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     setOpen(false)
   }, [])
 
-  const handleModelChange = useCallback((model: ModelInfo) => {
-    setModel(prev => ({
-      ...prev,
-      provider: model.provider,
-      name: model.modelId,
-      mode: model.mode as ModelModeType,
-    }))
-  }, [])
+  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+    const newModel = {
+      ...model,
+      provider: newValue.provider,
+      name: newValue.modelId,
+      mode: newValue.mode as ModelModeType,
+    }
+    setModel(newModel)
+    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [model, setModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
-    setModel(prev => ({
-      ...prev,
+    const newModel = {
+      ...model,
       completion_params: newParams as CompletionParams,
-    }),
-    )
-  }, [])
+    }
+    setModel(newModel)
+    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [model, setModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()
 

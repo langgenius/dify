@@ -153,8 +153,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             return str("\n".join(document_context_list))
         return ""
 
-        raise RuntimeError("not segments found")
-
     def _retriever(
         self,
         flask_app: Flask,

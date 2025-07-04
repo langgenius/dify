@@ -28,6 +28,8 @@ const translation = {
       delete: 'Löschen',
       enableWarning: 'Archivierte Datei kann nicht aktiviert werden',
       sync: 'Synchronisieren',
+      resume: 'Fortsetzen',
+      pause: 'Pause',
     },
     index: {
       enable: 'Aktivieren',
@@ -390,6 +392,8 @@ const translation = {
     addChildChunk: 'Untergeordneten Block hinzufügen',
     regenerationConfirmTitle: 'Möchten Sie untergeordnete Chunks regenerieren?',
     searchResults_one: 'ERGEBNIS',
+    keywordEmpty: 'Das Schlüsselwort darf nicht leer sein.',
+    keywordDuplicate: 'Das Schlüsselwort existiert bereits',
   },
 }
 

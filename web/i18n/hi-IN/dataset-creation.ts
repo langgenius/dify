@@ -65,8 +65,6 @@ const translation = {
       run: 'चलाएं',
       firecrawlTitle: '🔥फायरक्रॉल के साथ वेब सामग्री निकालें',
       firecrawlDoc: 'फायरक्रॉल दस्तावेज़',
-      firecrawlDocLink:
-        'https://docs.dify.ai/guides/knowledge-base/sync_from_website',
       options: 'विकल्प',
       crawlSubPage: 'उप-पृष्ठों को क्रॉल करें',
       limit: 'सीमा',
@@ -97,7 +95,6 @@ const translation = {
       configureFirecrawl: 'फायरक्रॉल को कॉन्फ़िगर करें',
       watercrawlDoc: 'वाटरक्रॉल दस्तावेज़',
       waterCrawlNotConfiguredDescription: 'इसे उपयोग करने के लिए वॉटरक्रॉल को एपीआई कुंजी के साथ कॉन्फ़िगर करें।',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureJinaReader: 'जिना रीडर कॉन्फ़िगर करें',
       configureWatercrawl: 'वाटरक्रॉल कॉन्फ़िगर करें',
     },

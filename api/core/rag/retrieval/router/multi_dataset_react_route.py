@@ -9,7 +9,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
-from core.workflow.nodes.llm import LLMNode
+from core.workflow.nodes.llm import llm_utils
 
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
@@ -165,7 +165,7 @@ class ReactMultiDatasetRouter:
         text, usage = self._handle_invoke_result(invoke_result=invoke_result)
 
         # deduct quota
-        LLMNode.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
+        llm_utils.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
 
         return text, usage
 

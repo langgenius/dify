@@ -15,4 +15,17 @@ api.add_resource(FileApi, "/files/upload")
 api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
 api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
 
-from . import app, audio, completion, conversation, feature, message, passport, saved_message, site, workflow
+from . import (
+    app,
+    audio,
+    completion,
+    conversation,
+    feature,
+    forgot_password,
+    login,
+    message,
+    passport,
+    saved_message,
+    site,
+    workflow,
+)

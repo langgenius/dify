@@ -183,6 +183,7 @@ const translation = {
     checkName: {
       empty: 'Metadata name cannot be empty',
       invalid: 'Metadata name can only contain lowercase letters, numbers, and underscores and must start with a lowercase letter',
+      tooLong: 'Metadata name cannot exceed {{max}} characters',
     },
     batchEditMetadata: {
       editMetadata: 'Edit Metadata',

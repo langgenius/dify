@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayAnySegment
+from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -43,6 +44,10 @@ class ToolNode(BaseNode[ToolNodeData]):
 
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> Generator:
         """
@@ -163,7 +168,9 @@ class ToolNode(BaseNode[ToolNodeData]):
             if tool_input.type == "variable":
                 variable = variable_pool.get(tool_input.value)
                 if variable is None:
-                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    if parameter.required:
+                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    continue
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
                 segment_group = variable_pool.convert_template(str(tool_input.value))
@@ -202,7 +209,7 @@ class ToolNode(BaseNode[ToolNodeData]):
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
-
+        llm_usage: LLMUsage | None = None
         variables: dict[str, Any] = {}
 
         for message in message_stream:
@@ -270,9 +277,10 @@ class ToolNode(BaseNode[ToolNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if self.node_type == NodeType.AGENT:
-                    msg_metadata = message.message.json_object.pop("execution_metadata", {})
+                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                    llm_usage = LLMUsage.from_metadata(msg_metadata)
                     agent_execution_metadata = {
-                        key: value
+                        WorkflowNodeExecutionMetadataKey(key): value
                         for key, value in msg_metadata.items()
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
@@ -300,6 +308,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
+                assert isinstance(message.meta, File)
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
@@ -363,13 +372,14 @@ class ToolNode(BaseNode[ToolNodeData]):
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": files, "json": json, **variables},
+                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json, **variables},
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
                     WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
+                llm_usage=llm_usage,
             )
         )
 

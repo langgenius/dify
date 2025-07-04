@@ -18,7 +18,7 @@ describe('InputNumber Component', () => {
 
   it('renders input with default values', () => {
     render(<InputNumber {...defaultProps} />)
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('spinbutton')
     expect(input).toBeInTheDocument()
   })
 
@@ -56,7 +56,7 @@ describe('InputNumber Component', () => {
 
   it('handles direct input changes', () => {
     render(<InputNumber {...defaultProps} />)
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: '42' } })
     expect(defaultProps.onChange).toHaveBeenCalledWith(42)
@@ -64,7 +64,7 @@ describe('InputNumber Component', () => {
 
   it('handles empty input', () => {
     render(<InputNumber {...defaultProps} value={0} />)
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: '' } })
     expect(defaultProps.onChange).toHaveBeenCalledWith(undefined)
@@ -72,7 +72,7 @@ describe('InputNumber Component', () => {
 
   it('handles invalid input', () => {
     render(<InputNumber {...defaultProps} />)
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('spinbutton')
 
     fireEvent.change(input, { target: { value: 'abc' } })
     expect(defaultProps.onChange).not.toHaveBeenCalled()
@@ -86,7 +86,7 @@ describe('InputNumber Component', () => {
 
   it('disables controls when disabled prop is true', () => {
     render(<InputNumber {...defaultProps} disabled />)
-    const input = screen.getByRole('textbox')
+    const input = screen.getByRole('spinbutton')
     const incrementBtn = screen.getByRole('button', { name: /increment/i })
     const decrementBtn = screen.getByRole('button', { name: /decrement/i })
 

@@ -184,7 +184,16 @@ class OpenSearchVector(BaseVector):
         }
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            query["query"] = {"terms": {"metadata.document_id": document_ids_filter}}
+            query["query"] = {
+                "script_score": {
+                    "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID.value: document_ids_filter}}]}},
+                    "script": {
+                        "source": "knn_score",
+                        "lang": "knn",
+                        "params": {"field": Field.VECTOR.value, "query_value": query_vector, "space_type": "l2"},
+                    },
+                }
+            }
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
@@ -209,10 +218,10 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
+        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            full_text_query["query"]["terms"] = {"metadata.document_id": document_ids_filter}
+            full_text_query["query"]["bool"]["filter"] = [{"terms": {"metadata.document_id": document_ids_filter}}]
 
         response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
 
@@ -255,7 +264,8 @@ class OpenSearchVector(BaseVector):
                             Field.METADATA_KEY.value: {
                                 "type": "object",
                                 "properties": {
-                                    "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                    "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                    "document_id": {"type": "keyword"},
                                 },
                             },
                         }

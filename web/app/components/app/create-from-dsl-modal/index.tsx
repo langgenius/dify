@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +35,7 @@ type CreateFromDSLModalProps = {
   onClose: () => void
   activeTab?: string
   dslUrl?: string
+  droppedFile?: File
 }
 
 export enum CreateFromDSLModalTab {
@@ -42,11 +43,11 @@ export enum CreateFromDSLModalTab {
   FROM_URL = 'from-url',
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '' }: CreateFromDSLModalProps) => {
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [currentFile, setDSLFile] = useState<File>()
+  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
@@ -77,6 +78,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
+
+  useEffect(() => {
+    if (droppedFile)
+      handleFile(droppedFile)
+  }, [droppedFile])
 
   const onCreate: MouseEventHandler = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)

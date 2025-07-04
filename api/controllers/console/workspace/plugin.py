@@ -13,6 +13,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
@@ -497,6 +498,42 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+class PluginFetchDynamicSelectOptionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        # check if the user is admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = current_user.current_tenant_id
+        user_id = current_user.id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser.add_argument("provider", type=str, required=True, location="args")
+        parser.add_argument("action", type=str, required=True, location="args")
+        parser.add_argument("parameter", type=str, required=True, location="args")
+        parser.add_argument("provider_type", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options(
+                tenant_id,
+                user_id,
+                args["plugin_id"],
+                args["provider"],
+                args["action"],
+                args["parameter"],
+                args["provider_type"],
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
@@ -521,3 +558,5 @@ api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marke
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")

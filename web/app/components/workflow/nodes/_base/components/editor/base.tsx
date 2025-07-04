@@ -15,6 +15,7 @@ import {
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
+import ActionButton from '@/app/components/base/action-button'
 
 type Props = {
   className?: string
@@ -88,15 +89,16 @@ const Base: FC<Props> = ({
                 <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages} />
               </div>
             )}
-            {!isCopied
-              ? (
-                <Clipboard className='mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary' onClick={handleCopy} />
-              )
-              : (
-                <ClipboardCheck className='mx-1 h-3.5 w-3.5 text-text-tertiary' />
-              )
-            }
-
+            <ActionButton className='ml-1' onClick={handleCopy}>
+              {!isCopied
+                ? (
+                  <Clipboard className='h-4 w-4 cursor-pointer' />
+                )
+                : (
+                  <ClipboardCheck className='h-4 w-4' />
+                )
+              }
+            </ActionButton>
             <div className='ml-1'>
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>

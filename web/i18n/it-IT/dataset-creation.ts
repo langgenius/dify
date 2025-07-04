@@ -66,8 +66,6 @@ const translation = {
       run: 'Esegui',
       firecrawlTitle: 'Estrai contenuti web con 🔥Firecrawl',
       firecrawlDoc: 'Documenti Firecrawl',
-      firecrawlDocLink:
-        'https://docs.dify.ai/guides/knowledge-base/sync_from_website',
       options: 'Opzioni',
       crawlSubPage: 'Crawl sotto-pagine',
       limit: 'Limite',
@@ -101,7 +99,6 @@ const translation = {
       configureJinaReader: 'Configura Jina Reader',
       configureWatercrawl: 'Configura Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl non è configurato',
-      watercrawlDocLink: 'https://docs.dify.ai/it/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     },
     cancel: 'Annulla',
   },

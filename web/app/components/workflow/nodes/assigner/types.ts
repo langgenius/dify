@@ -30,3 +30,5 @@ export type AssignerNodeType = CommonNodeType & {
   version?: '1' | '2'
   items: AssignerNodeOperation[]
 }
+
+export const writeModeTypesNum = [WriteMode.increment, WriteMode.decrement, WriteMode.multiply, WriteMode.divide]

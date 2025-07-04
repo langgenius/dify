@@ -46,7 +46,7 @@ const Nav = ({
 
   return (
     <div className={`
-      mr-0 flex h-8 shrink-0 items-center rounded-xl px-0.5 text-sm font-medium sm:mr-3
+      flex h-8 max-w-[670px] shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-[400px]
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
@@ -61,7 +61,7 @@ const Nav = ({
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
-          <div className='mr-2'>
+          <div>
             {
               (hovered && curNav)
                 ? <ArrowNarrowLeft className='h-4 w-4' />
@@ -70,7 +70,9 @@ const Nav = ({
                   : icon
             }
           </div>
-          {text}
+          <div className='ml-2 max-[1024px]:hidden'>
+            {text}
+          </div>
         </div>
       </Link>
       {

@@ -5,6 +5,7 @@ import {
 import { del, get, patch } from '../base'
 import { useInvalid } from '../use-base'
 import type { MetadataType, SortType } from '../datasets'
+import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
@@ -129,4 +130,24 @@ export const useDocumentMetadata = (payload: {
 
 export const useInvalidDocumentDetailKey = () => {
   return useInvalid(useDocumentDetailKey)
+}
+
+export const useDocumentPause = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return pauseDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentResume = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
 }

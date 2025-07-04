@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Un agente intelligente in grado di ragionare in modo iterativo e di utilizzare autonomamente gli strumenti per raggiungere gli obiettivi del compito.',
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
+    dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',
@@ -143,6 +144,14 @@ const translation = {
       configured: 'Configurato',
       notConfigured: 'Configura il provider per abilitare il tracciamento',
       moreProvider: 'Altri Provider',
+    },
+    arize: {
+      title: 'Arize',
+      description: 'Osservabilità LLM di livello aziendale, valutazione online e offline, monitoraggio e sperimentazione—alimentata da OpenTelemetry. Progettata appositamente per applicazioni basate su LLM e agenti.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Piattaforma open-source basata su OpenTelemetry per osservabilità, valutazione, ingegneria dei prompt e sperimentazione per i tuoi flussi di lavoro e agenti LLM.',
     },
     langsmith: {
       title: 'LangSmith',
@@ -224,12 +233,14 @@ const translation = {
     anyone: 'Chiunque può accedere all\'app web',
     specific: 'Solo gruppi o membri specifici possono accedere all\'app web.',
     organization: 'Qualsiasi persona nell\'organizzazione può accedere all\'app web',
+    external: 'Solo gli utenti esterni autenticati possono accedere all\'applicazione Web',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Chiunque con il link',
       specific: 'Gruppi o membri specifici',
       organization: 'Solo i membri all\'interno dell\'impresa',
+      external: 'Utenti esterni autenticati',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Cerca gruppi e membri',

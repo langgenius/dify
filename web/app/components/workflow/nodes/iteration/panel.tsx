@@ -3,20 +3,15 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
-import ResultPanel from '../../run/result-panel'
 import { MAX_ITERATION_PARALLEL_NUM, MIN_ITERATION_PARALLEL_NUM } from '../../constants'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
-import { ErrorHandleMode, InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
+import { ErrorHandleMode, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import Switch from '@/app/components/base/switch'
 import Select from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
-
-import { useLogs } from '@/app/components/workflow/run/hooks'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -47,26 +42,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     childrenNodeVars,
     iterationChildrenNodes,
     handleOutputVarChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    inputVarValues,
-    setInputVarValues,
-    usedOutVars,
-    iterator,
-    setIterator,
-    iteratorInputKey,
-    iterationRunResult,
     changeParallel,
     changeErrorResponseMode,
     changeParallelNums,
   } = useConfig(id, data)
-
-  const nodeInfo = formatTracing(iterationRunResult, t)[0]
-  const logsParams = useLogs()
 
   return (
     <div className='pb-2 pt-2'>
@@ -137,38 +116,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false} />
         </Field>
       </div>
-
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: [...usedOutVars],
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-            {
-              label: t(`${i18nPrefix}.input`)!,
-              inputs: [{
-                label: '',
-                variable: iteratorInputKey,
-                type: InputVarType.iterator,
-                required: false,
-              }],
-              values: { [iteratorInputKey]: iterator },
-              onChange: keyValue => setIterator(keyValue[iteratorInputKey]),
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          {...logsParams}
-          result={
-            <ResultPanel {...runResult} showSteps={false} nodeInfo={nodeInfo} {...logsParams} />
-          }
-        />
-      )}
     </div>
   )
 }

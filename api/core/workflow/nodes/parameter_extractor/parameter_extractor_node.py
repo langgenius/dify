@@ -25,12 +25,15 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.variables.types import SegmentType
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.nodes.base.node import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.llm import LLMNode, ModelConfig
+from core.workflow.nodes.llm import ModelConfig, llm_utils
 from core.workflow.utils import variable_template_parser
+from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
@@ -83,7 +86,7 @@ def extract_json(text):
     return None
 
 
-class ParameterExtractorNode(LLMNode):
+class ParameterExtractorNode(BaseNode):
     """
     Parameter Extractor Node.
     """
@@ -108,6 +111,10 @@ class ParameterExtractorNode(LLMNode):
             }
         }
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self):
         """
         Run the node.
@@ -116,8 +123,11 @@ class ParameterExtractorNode(LLMNode):
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 
+        variable_pool = self.graph_runtime_state.variable_pool
+
         files = (
-            self._fetch_files(
+            llm_utils.fetch_files(
+                variable_pool=variable_pool,
                 selector=node_data.vision.configs.variable_selector,
             )
             if node_data.vision.enabled
@@ -137,7 +147,9 @@ class ParameterExtractorNode(LLMNode):
             raise ModelSchemaNotFoundError("Model schema not found")
 
         # fetch memory
-        memory = self._fetch_memory(
+        memory = llm_utils.fetch_memory(
+            variable_pool=variable_pool,
+            app_id=self.app_id,
             node_data_memory=node_data.memory,
             model_instance=model_instance,
         )
@@ -279,7 +291,7 @@ class ParameterExtractorNode(LLMNode):
         tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
 
         # deduct quota
-        self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+        llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
         if text is None:
             text = ""
@@ -578,28 +590,30 @@ class ParameterExtractorNode(LLMNode):
                 elif parameter.type in {"string", "select"}:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
-                elif parameter.type.startswith("array"):
+                elif parameter.is_array_type():
                     if isinstance(result[parameter.name], list):
-                        nested_type = parameter.type[6:-1]
-                        transformed_result[parameter.name] = []
+                        nested_type = parameter.element_type()
+                        assert nested_type is not None
+                        segment_value = build_segment_with_type(segment_type=SegmentType(parameter.type), value=[])
+                        transformed_result[parameter.name] = segment_value
                         for item in result[parameter.name]:
                             if nested_type == "number":
                                 if isinstance(item, int | float):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
                                 elif isinstance(item, str):
                                     try:
                                         if "." in item:
-                                            transformed_result[parameter.name].append(float(item))
+                                            segment_value.value.append(float(item))
                                         else:
-                                            transformed_result[parameter.name].append(int(item))
+                                            segment_value.value.append(int(item))
                                     except ValueError:
                                         pass
                             elif nested_type == "string":
                                 if isinstance(item, str):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
                             elif nested_type == "object":
                                 if isinstance(item, dict):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
 
             if parameter.name not in transformed_result:
                 if parameter.type == "number":
@@ -609,7 +623,9 @@ class ParameterExtractorNode(LLMNode):
                 elif parameter.type in {"string", "select"}:
                     transformed_result[parameter.name] = ""
                 elif parameter.type.startswith("array"):
-                    transformed_result[parameter.name] = []
+                    transformed_result[parameter.name] = build_segment_with_type(
+                        segment_type=SegmentType(parameter.type), value=[]
+                    )
 
         return transformed_result
 
@@ -794,7 +810,9 @@ class ParameterExtractorNode(LLMNode):
         Fetch model config.
         """
         if not self._model_instance or not self._model_config:
-            self._model_instance, self._model_config = super()._fetch_model_config(node_data_model)
+            self._model_instance, self._model_config = llm_utils.fetch_model_config(
+                tenant_id=self.tenant_id, node_data_model=node_data_model
+            )
 
         return self._model_instance, self._model_config
 

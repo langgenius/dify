@@ -3,6 +3,7 @@ import { Fragment, cloneElement, useRef } from 'react'
 import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
+  open?: boolean
   onClose?: () => void
   onClick?: () => void
 }
@@ -100,7 +101,8 @@ export default function CustomPopover({
                       }
                     >
                       {cloneElement(htmlContent as React.ReactElement, {
-                        onClose: () => onMouseLeave(open),
+                        open,
+                        onClose: close,
                         ...(manualClose
                           ? {
                             onClick: close,

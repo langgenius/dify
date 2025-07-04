@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'Le nom des métadonnées ne peut pas être vide',
       invalid: 'Le nom des métadonnées ne peut contenir que des lettres minuscules, des chiffres et des tirets bas et doit commencer par une lettre minuscule.',
+      tooLong: 'Le nom des métadonnées ne peut pas dépasser {{max}} caractères',
     },
     batchEditMetadata: {
       editMetadata: 'Modifier les métadonnées',

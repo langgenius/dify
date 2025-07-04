@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       invalid: 'Tên siêu dữ liệu chỉ có thể chứa chữ cái thường, số và dấu gạch dưới, và phải bắt đầu bằng một chữ cái thường.',
       empty: 'Tên siêu dữ liệu không được để trống',
+      tooLong: 'Tên siêu dữ liệu không được vượt quá {{max}} ký tự',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: 'Tự động tạo tất cả các siêu dữ liệu đã chỉnh sửa và mới cho tất cả các tài liệu được chọn, nếu không, việc chỉnh sửa siêu dữ liệu sẽ chỉ áp dụng cho các tài liệu có nó.',

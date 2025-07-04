@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'O nome dos metadados não pode estar vazio',
       invalid: 'O nome de metadata só pode conter letras minúsculas, números e sublinhados e deve começar com uma letra minúscula.',
+      tooLong: 'O nome dos metadados não pode exceder {{max}} caracteres.',
     },
     batchEditMetadata: {
       editDocumentsNum: 'Editando {{num}} documentos',

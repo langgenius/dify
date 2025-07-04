@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
 import ActionButton from '@/app/components/base/action-button'
@@ -19,14 +18,14 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-import { LanguagesSupported, languages } from '@/i18n/language'
+import { languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
+import { useDocLink } from '@/context/i18n'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -98,7 +97,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -238,7 +237,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+            <Link href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
+              'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
+            })}
+              target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
         {/* form body */}

@@ -62,7 +62,7 @@ const AppInputsPanel = ({
       return []
     let inputFormSchema = []
     if (isBasicApp) {
-      inputFormSchema = currentApp.model_config.user_input_form.filter((item: any) => !item.external_data_tool).map((item: any) => {
+      inputFormSchema = currentApp.model_config?.user_input_form?.filter((item: any) => !item.external_data_tool).map((item: any) => {
         if (item.paragraph) {
           return {
             ...item.paragraph,
@@ -108,10 +108,10 @@ const AppInputsPanel = ({
           type: 'text-input',
           required: false,
         }
-      })
+      }) || []
     }
     else {
-      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
+      const startNode = currentWorkflow?.graph?.nodes.find(node => node.data.type === BlockEnum.Start) as any
       inputFormSchema = startNode?.data.variables.map((variable: any) => {
         if (variable.type === InputVarType.multiFiles) {
           return {
@@ -132,7 +132,7 @@ const AppInputsPanel = ({
           ...variable,
           required: false,
         }
-      })
+      }) || []
     }
     if ((currentApp.mode === 'completion' || currentApp.mode === 'workflow') && basicAppFileConfig.enabled) {
       inputFormSchema.push({
@@ -144,7 +144,7 @@ const AppInputsPanel = ({
         fileUploadConfig,
       })
     }
-    return inputFormSchema
+    return inputFormSchema || []
   }, [basicAppFileConfig, currentApp, currentWorkflow, fileUploadConfig, isBasicApp])
 
   const handleFormChange = (value: Record<string, any>) => {

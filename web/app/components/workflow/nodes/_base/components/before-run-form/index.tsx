@@ -1,30 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-} from '@remixicon/react'
 import type { Props as FormProps } from './form'
 import Form from './form'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { InputVarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-
+import PanelWrap from './panel-wrap'
 const i18nPrefix = 'workflow.singleRun'
 
-type BeforeRunFormProps = {
+export type BeforeRunFormProps = {
   nodeName: string
   nodeType?: BlockEnum
   toolIcon?: string | Emoji
@@ -32,12 +25,15 @@ type BeforeRunFormProps = {
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
-  result?: React.JSX.Element
   forms: FormProps[]
   showSpecialResultPanel?: boolean
+  existVarValuesInForms: Record<string, any>[]
+  filteredExistVarForms: FormProps[]
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
+  if(value === undefined || value === null)
+    return value
   if (type === InputVarType.number)
     return Number.parseFloat(value)
   if (type === InputVarType.json)
@@ -53,6 +49,8 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.singleFile) {
     if (Array.isArray(value))
       return getProcessedFiles(value)
+    if (!value)
+      return undefined
     return getProcessedFiles([value])[0]
   }
 
@@ -60,22 +58,17 @@ function formatValue(value: string | any, type: InputVarType) {
 }
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
-  nodeType,
-  toolIcon,
   onHide,
   onRun,
-  onStop,
-  runningStatus,
-  result,
   forms,
-  showSpecialResultPanel,
-  ...restResultPanelParams
+  filteredExistVarForms,
+  existVarValuesInForms,
 }) => {
   const { t } = useTranslation()
 
-  const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
-  const isRunning = runningStatus === NodeRunningStatus.Running
   const isFileLoaded = (() => {
+    if (!forms || forms.length === 0)
+      return true
     // system files
     const filesForm = forms.find(item => !!item.values['#files#'])
     if (!filesForm)
@@ -87,12 +80,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     return true
   })()
-  const handleRun = useCallback(() => {
+  const handleRun = () => {
     let errMsg = ''
-    forms.forEach((form) => {
+    forms.forEach((form, i) => {
+      const existVarValuesInForm = existVarValuesInForms[i]
+
       form.inputs.forEach((input) => {
         const value = form.values[input.variable] as any
-        if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
+        if (!errMsg && input.required && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
           errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
 
         if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
@@ -137,69 +132,45 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     }
 
     onRun(submitData)
-  }, [forms, onRun, t])
+  }
+  const hasRun = useRef(false)
+  useEffect(() => {
+    // React 18 run twice in dev mode
+    if(hasRun.current)
+      return
+    hasRun.current = true
+    if(filteredExistVarForms.length === 0)
+      onRun({})
+  }, [filteredExistVarForms, onRun])
+
+  if(filteredExistVarForms.length === 0)
+    return null
+
   return (
-    <div className='absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt pt-10'>
-      <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>
-        <div className='flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3'>
-          <div className='truncate text-base font-semibold text-text-primary'>
-            {t(`${i18nPrefix}.testRun`)} {nodeName}
-          </div>
-          <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={() => {
-            onHide()
-          }}>
-            <RiCloseLine className='h-4 w-4 text-text-tertiary ' />
-          </div>
+    <PanelWrap
+      nodeName={nodeName}
+      onHide={onHide}
+    >
+      <div className='h-0 grow overflow-y-auto pb-4'>
+        <div className='mt-3 space-y-4 px-4'>
+          {filteredExistVarForms.map((form, index) => (
+            <div key={index}>
+              <Form
+                key={index}
+                className={cn(index < forms.length - 1 && 'mb-4')}
+                {...form}
+              />
+              {index < forms.length - 1 && <Split />}
+            </div>
+          ))}
         </div>
-        {
-          showSpecialResultPanel && (
-            <div className='h-0 grow overflow-y-auto pb-4'>
-              <SpecialResultPanel {...restResultPanelParams} />
-            </div>
-          )
-        }
-        {
-          !showSpecialResultPanel && (
-            <div className='h-0 grow overflow-y-auto pb-4'>
-              <div className='mt-3 space-y-4 px-4'>
-                {forms.map((form, index) => (
-                  <div key={index}>
-                    <Form
-                      key={index}
-                      className={cn(index < forms.length - 1 && 'mb-4')}
-                      {...form}
-                    />
-                    {index < forms.length - 1 && <Split />}
-                  </div>
-                ))}
-              </div>
-              <div className='mt-4 flex justify-between space-x-2 px-4' >
-                {isRunning && (
-                  <div
-                    className='cursor-pointer rounded-lg border border-divider-regular bg-components-button-secondary-bg p-2 shadow-xs'
-                    onClick={onStop}
-                  >
-                    <StopCircle className='h-4 w-4 text-text-tertiary' />
-                  </div>
-                )}
-                <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin' />}
-                  <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
-                </Button>
-              </div>
-              {isRunning && (
-                <ResultPanel status='running' showSteps={false} />
-              )}
-              {isFinished && (
-                <>
-                  {result}
-                </>
-              )}
-            </div>
-          )
-        }
+        <div className='mt-4 flex justify-between space-x-2 px-4' >
+          <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
+            <div>{t(`${i18nPrefix}.startRun`)}</div>
+          </Button>
+        </div>
       </div>
-    </div>
+    </PanelWrap>
   )
 }
 export default React.memo(BeforeRunForm)

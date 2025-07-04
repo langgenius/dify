@@ -55,8 +55,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   return <div className={classNames('flex', wrapClassName)}>
     <Input {...rest}
       // disable default controller
-      type='text'
-      className={classNames('rounded-r-none', className)}
+      type='number'
+      className={classNames('no-spinner rounded-r-none', className)}
       value={value}
       max={max}
       min={min}
@@ -77,8 +77,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       size={size}
     />
     <div className={classNames(
-      'flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs',
-      disabled && 'opacity-50 cursor-not-allowed',
+      'flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
+      disabled && 'cursor-not-allowed opacity-50',
       controlWrapClassName)}
     >
       <button

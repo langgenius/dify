@@ -29,6 +29,8 @@ const translation = {
       delete: 'Elimina',
       enableWarning: 'Il file archiviato non può essere abilitato',
       sync: 'Sincronizza',
+      resume: 'Riassumere',
+      pause: 'Pausa',
     },
     index: {
       enable: 'Abilita',
@@ -391,6 +393,8 @@ const translation = {
     regenerationSuccessMessage: 'È possibile chiudere questa finestra.',
     childChunkAdded: '1 blocco figlio aggiunto',
     childChunks_other: 'BLOCCHI FIGLIO',
+    keywordEmpty: 'La parola chiave non può essere vuota',
+    keywordDuplicate: 'La parola chiave esiste già',
   },
 }
 

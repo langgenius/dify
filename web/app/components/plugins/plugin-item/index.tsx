@@ -21,13 +21,15 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import { useSingleCategories } from '../hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useAppContext } from '@/context/app-context'
 import { gte } from 'semver'
 import Tooltip from '@/app/components/base/tooltip'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   className?: string
@@ -74,6 +76,7 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <div
@@ -164,9 +167,9 @@ const PluginItem: FC<Props> = ({
               </a>
             </>
           }
-          {source === PluginSource.marketplace
+          {source === PluginSource.marketplace && enable_marketplace
             && <>
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='flex items-center gap-0.5'>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='h-3 w-3 text-text-tertiary' />
               </a>

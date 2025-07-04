@@ -86,5 +86,8 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }
     enabled: !!appId && enabled,
     staleTime: 0,
     gcTime: 0,
+    initialData: {
+      result: !enabled,
+    },
   })
 }

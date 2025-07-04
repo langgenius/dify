@@ -9,7 +9,6 @@ import GetAutomaticResModal from '@/app/components/app/configuration/config/auto
 import { AppType } from '@/types/app'
 import type { AutomaticRes } from '@/service/debug'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { Model } from '@/types/app'
 
 type Props = {
   className?: string
@@ -20,7 +19,6 @@ type Props = {
 const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
-  modelConfig,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = useCallback((res: AutomaticRes) => {
@@ -40,7 +38,6 @@ const PromptGeneratorBtn: FC<Props> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
-          model={modelConfig as Model}
           isInLLMNode
         />
       )}
