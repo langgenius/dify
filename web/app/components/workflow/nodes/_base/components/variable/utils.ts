@@ -49,9 +49,10 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
-const inputVarTypeToVarType = (type: InputVarType): VarType => {
+export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
+    [InputVarType.boolean]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
   } as any)[type] || VarType.string

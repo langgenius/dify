@@ -12,6 +12,8 @@ import {
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import type { InputVarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import Badge from '@/app/components/base/badge'
+import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export type Item = {
   value: InputVarType
@@ -60,7 +62,8 @@ const TypeSelector: FC<Props> = ({
             {selectedItem?.name}
           </span>
           </div>
-          <div>
+          <div className='flex items-center space-x-1'>
+            <Badge uppercase={false}>{inputVarTypeToVarType(selectedItem?.value as InputVarType)}</Badge>
             <ChevronDownIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
           </div>
         </div>
@@ -84,7 +87,7 @@ const TypeSelector: FC<Props> = ({
                 <InputVarTypeIcon type={item.value} className='size-4 shrink-0 text-text-secondary' />
                 <span title={item.name}>{item.name}</span>
               </div>
-
+              <Badge uppercase={false}>{inputVarTypeToVarType(item.value)}</Badge>
             </div>
           ))}
         </div>
