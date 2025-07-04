@@ -7,15 +7,17 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
+from core.model_runtime.entities import TextPromptMessageContent, UserPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.provider_manager import ProviderManager
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
-from core.variables.segments import StringSegment, FileSegment, ArrayFileSegment
+from core.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -29,11 +31,6 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories.agent_factory import get_plugin_agent_strategy
 from models.model import Conversation
-from core.model_runtime.entities import (
-    UserPromptMessage,
-    TextPromptMessageContent
-)
-from core.file import file_manager
 
 
 class AgentNode(ToolNode):
@@ -292,15 +289,13 @@ class AgentNode(ToolNode):
                             if files:
                                 for f in files:
                                     try:
-                                        prompt_contents.append(
-                                            file_manager.to_prompt_message_content(
-                                                f
-                                            )
-                                        )
+                                        prompt_contents.append(file_manager.to_prompt_message_content(f))
                                     except Exception:
                                         continue
 
-                            synthetic_user_prompt = UserPromptMessage(content=prompt_contents if files else current_query)
+                            synthetic_user_prompt = UserPromptMessage(
+                                content=prompt_contents if files else current_query
+                            )
                             history_prompt_messages.append(synthetic_user_prompt.model_dump(mode="json"))
             result[parameter_name] = value
 
