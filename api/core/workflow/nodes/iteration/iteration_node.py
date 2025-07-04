@@ -1,5 +1,6 @@
 import contextvars
 import logging
+import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
@@ -133,8 +134,6 @@ class IterationNode(BaseNode[IterationNodeData]):
         variable_pool.add([self.node_id, "item"], iterator_list_value[0])
 
         # init graph engine
-        import time
-
         from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
         from core.workflow.graph_engine.graph_engine import GraphEngine, GraphEngineThreadPool
 

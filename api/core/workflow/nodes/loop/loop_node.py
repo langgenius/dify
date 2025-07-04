@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -100,8 +101,6 @@ class LoopNode(BaseNode[LoopNodeData]):
                 variable_pool.add(variable_selector, processed_segment.value)
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
-
-        import time
 
         from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
         from core.workflow.graph_engine.graph_engine import GraphEngine
