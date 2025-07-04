@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import Header from './header'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import FileList from './file-list'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -36,12 +36,14 @@ const OnlineDrive = ({
   const setSelectedFileList = useDataSourceStoreWithSelector(state => state.setSelectedFileList)
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
   const setFileList = useDataSourceStoreWithSelector(state => state.setFileList)
+  const [isLoading, setIsLoading] = useState(false)
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDrive = useCallback(async () => {
+    setIsLoading(true)
     ssePost(
       datasourceNodeRunURL,
       {
@@ -59,12 +61,14 @@ const OnlineDrive = ({
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           const newFileList = convertOnlineDriveDataToFileList(documentsData.data)
           setFileList([...fileList, ...newFileList])
+          setIsLoading(false)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           Toast.notify({
             type: 'error',
             message: error.error,
           })
+          setIsLoading(false)
         },
       },
     )
@@ -123,12 +127,14 @@ const OnlineDrive = ({
         selectedFileList={selectedFileList}
         prefix={prefix}
         keywords={keywords}
+        bucket={bucket}
         resetKeywords={resetPrefix}
         updateKeywords={updateKeywords}
         searchResultsLength={fileList.length}
         handleSelectFile={handleSelectFile}
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
+        isLoading={isLoading}
       />
     </div>
   )

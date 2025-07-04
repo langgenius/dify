@@ -7,6 +7,7 @@ type HeaderProps = {
   prefix: string[]
   inputValue: string
   keywords: string
+  bucket: string
   searchResultsLength: number
   handleInputChange: React.ChangeEventHandler<HTMLInputElement>
   handleResetKeywords: () => void
@@ -16,6 +17,7 @@ const Header = ({
   prefix,
   inputValue,
   keywords,
+  bucket,
   searchResultsLength,
   handleInputChange,
   handleResetKeywords,
@@ -27,6 +29,7 @@ const Header = ({
       <Breadcrumbs
         prefix={prefix}
         keywords={keywords}
+        bucket={bucket}
         searchResultsLength={searchResultsLength}
       />
       <Input

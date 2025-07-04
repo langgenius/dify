@@ -2,12 +2,15 @@ import type { OnlineDriveFile } from '@/models/pipeline'
 import Item from './item'
 import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
+import Loading from '@/app/components/base/loading'
+import { RiLoader2Line } from '@remixicon/react'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
   selectedFileList: string[]
   keywords: string
   isInPipeline: boolean
+  isLoading: boolean
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
@@ -21,12 +24,20 @@ const List = ({
   handleSelectFile,
   handleOpenFolder,
   isInPipeline,
+  isLoading,
 }: FileListProps) => {
-  const isEmptyFolder = fileList.length === 0 && keywords.length === 0
-  const isSearchResultEmpty = fileList.length === 0 && keywords.length > 0
+  const isAllLoading = isLoading && fileList.length === 0 && keywords.length === 0
+  const isPartLoading = isLoading && fileList.length > 0
+  const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
+  const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
 
   return (
     <div className='grow overflow-hidden p-1 pt-0'>
+      {
+        isAllLoading && (
+          <Loading type='app' />
+        )
+      }
       {
         isEmptyFolder && (
           <EmptyFolder />
@@ -53,6 +64,13 @@ const List = ({
                 />
               )
             })
+          }
+          {
+            isPartLoading && (
+              <div className='flex items-center justify-center py-2'>
+                <RiLoader2Line className='animation-spin size-4 text-text-tertiary' />
+              </div>
+            )
           }
         </div>
       )}
