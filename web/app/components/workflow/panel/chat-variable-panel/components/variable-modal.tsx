@@ -18,6 +18,7 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import cn from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import BoolValue from './bool-value'
+import ArrayBoolList from './array-bool-list'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -38,6 +39,7 @@ const typeList = [
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
+  ChatVarType.ArrayBoolean,
   ChatVarType.ArrayObject,
 ]
 
@@ -68,6 +70,12 @@ const arrayObjectPlaceholder = `#  example
 #     }
 #  ]`
 
+const arrayBoolPlaceholder = `#  example
+#  [
+#     "True",
+#     "False"
+#  ]`
+
 const ChatVariableModal = ({
   chatVar,
   onClose,
@@ -96,6 +104,8 @@ const ChatVariableModal = ({
       return arrayNumberPlaceholder
     if (type === ChatVarType.ArrayObject)
       return arrayObjectPlaceholder
+    if (type === ChatVarType.ArrayBoolean)
+      return arrayBoolPlaceholder
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
@@ -161,6 +171,8 @@ const ChatVariableModal = ({
       setEditInJSON(false)
     if(v === ChatVarType.Boolean)
       setValue(true)
+    if (v === ChatVarType.ArrayBoolean)
+      setValue([true])
     setType(v)
   }
 
@@ -308,7 +320,7 @@ const ChatVariableModal = ({
         <div className='mb-4'>
           <div className='system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary'>
             <div>{t('workflow.chatVariable.modal.value')}</div>
-            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && (
+            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
                 variant='ghost'
                 size='small'
@@ -375,6 +387,13 @@ const ChatVariableModal = ({
                 onChange={setValue}
               />
             )}
+            {type === ChatVarType.ArrayNumber && !editInJSON && (
+              <ArrayBoolList
+                list={value}
+                onChange={setValue}
+              />
+            )}
+
             {editInJSON && (
               <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
                 <CodeEditor
