@@ -582,6 +582,11 @@ class AppDslService:
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
+            # filter credential id from tool node
+            if node.get("data", {}).get("type", "") == NodeType.TOOL.value:
+                node["data"]["credential_id"] = None
+
+
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
         export_data["dependencies"] = [
