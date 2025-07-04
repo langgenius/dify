@@ -575,7 +575,6 @@ const DocumentList: FC<IDocumentListProps> = ({
                         )
                       }}
                     />
-                    {/* {doc.position} */}
                     {index + 1}
                   </div>
                 </td>
