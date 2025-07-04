@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from yarl import URL
 
@@ -39,6 +39,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderCredentialType,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
@@ -148,6 +149,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
+        credential_id: Optional[str] = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool]:
         """
         get the tool runtime
@@ -158,6 +160,7 @@ class ToolManager:
         :param tenant_id: the tenant id
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
+        :param credential_id: the credential id
 
         :return: the tool
         """
@@ -185,19 +188,31 @@ class ToolManager:
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
                 # get credentials
-                builtin_provider: BuiltinToolProvider | None = (
-                    db.session.query(BuiltinToolProvider)
-                    .filter(
-                        BuiltinToolProvider.tenant_id == tenant_id,
-                        (BuiltinToolProvider.provider == str(provider_id_entity))
-                        | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
+                if credential_id:
+                    builtin_provider = (
+                        db.session.query(BuiltinToolProvider)
+                        .filter(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
+                        )
+                        .first()
                     )
-                    .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                    .first()
-                )
+                    if builtin_provider is None:
+                        raise ToolProviderNotFoundError(f"builtin provider {credential_id} not found")
+                else:
+                    builtin_provider = (
+                        db.session.query(BuiltinToolProvider)
+                        .filter(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            (BuiltinToolProvider.provider == str(provider_id_entity))
+                            | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
+                        )
+                        .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                        .first()
+                    )
 
-                if builtin_provider is None:
-                    raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+                    if builtin_provider is None:
+                        raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
             else:
                 builtin_provider = (
                     db.session.query(BuiltinToolProvider)
@@ -209,8 +224,6 @@ class ToolManager:
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-            # decrypt the credentials
-            credentials = builtin_provider.credentials
             encrypter, _ = create_encrypter(
                 tenant_id=tenant_id,
                 config=[
@@ -221,15 +234,13 @@ class ToolManager:
                     tenant_id=tenant_id, provider=provider_id, credential_id=builtin_provider.id
                 ),
             )
-
-            decrypted_credentials = encrypter.decrypt(credentials)
-
             return cast(
                 BuiltinTool,
                 builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
-                        credentials=decrypted_credentials,
+                        credentials=encrypter.decrypt(builtin_provider.credentials),
+                        credential_type=ToolProviderCredentialType.of(builtin_provider.credential_type),
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
@@ -362,6 +373,7 @@ class ToolManager:
             tenant_id=tenant_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+            credential_id=workflow_tool.credential_id,
         )
         runtime_parameters = {}
         parameters = tool_runtime.get_merged_runtime_parameters()
