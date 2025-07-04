@@ -120,3 +120,53 @@ export const ONLINE_DOCUMENT_OUTPUT = [
     description: 'The content of the online document',
   },
 ]
+
+export const ONLINE_DRIVE_OUTPUT = [
+  {
+    name: 'file',
+    type: VarType.file,
+    description: 'file',
+    subItems: [
+      {
+        name: 'name',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'size',
+        type: VarType.number,
+        description: '',
+      },
+      {
+        name: 'type',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'extension',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'mime_type',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'transfer_method',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'url',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'related_id',
+        type: VarType.string,
+        description: '',
+      },
+    ],
+  },
+]

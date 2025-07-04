@@ -22,6 +22,7 @@ import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
   ONLINE_DOCUMENT_OUTPUT,
+  ONLINE_DRIVE_OUTPUT,
   WEBSITE_CRAWL_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
@@ -52,6 +53,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const isLocalFile = provider_type === DataSourceClassification.localFile
   const isWebsiteCrawl = provider_type === DataSourceClassification.websiteCrawl
   const isOnlineDocument = provider_type === DataSourceClassification.onlineDocument
+  const isOnlineDrive = provider_type === DataSourceClassification.onlineDrive
   const currentDataSource = dataSourceList?.find(ds => ds.plugin_id === plugin_id)
   const isAuthorized = !!currentDataSource?.is_authorized
   const [showAuthModal, {
@@ -196,6 +198,16 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         }
         {
           isOnlineDocument && ONLINE_DOCUMENT_OUTPUT.map((item, index) => (
+            <VarItem
+              key={index}
+              name={item.name}
+              type={item.type}
+              description={item.description}
+            />
+          ))
+        }
+        {
+          isOnlineDrive && ONLINE_DRIVE_OUTPUT.map((item, index) => (
             <VarItem
               key={index}
               name={item.name}
