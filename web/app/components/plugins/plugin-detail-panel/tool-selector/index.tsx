@@ -293,7 +293,6 @@ const ToolSelector: FC<Props> = ({
                   <div className='flex flex-col gap-1'>
                     <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
                     <ToolPicker
-                      panelClassName='w-[400px]'
                       placement='bottom'
                       offset={offset}
                       trigger={

@@ -111,7 +111,7 @@ const AllTools = ({
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('max-w-[500px]', className)}>
       <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
         <div className='flex h-8 items-center space-x-1'>
           {
