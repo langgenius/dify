@@ -34,6 +34,8 @@ import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
 import Divider from '../base/divider'
+import type { Operation } from './app-operations'
+import AppOperations from './app-operations'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -187,6 +189,55 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   if (!appDetail)
     return null
 
+  const operations = [
+    {
+      id: 'edit',
+      title: t('app.editApp'),
+      icon: <RiEditLine />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowEditModal(true)
+      },
+    },
+    {
+      id: 'duplicate',
+      title: t('app.duplicate'),
+      icon: <RiFileCopy2Line />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowDuplicateModal(true)
+      },
+    },
+    {
+      id: 'export',
+      title: t('app.export'),
+      icon: <RiFileDownloadLine />,
+      onClick: exportCheck,
+    },
+    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+      id: 'import',
+      title: t('workflow.common.importDSL'),
+      icon: <RiFileUploadLine />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowImportDSLModal(true)
+      },
+    } : undefined,
+    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+      id: 'switch',
+      title: t('app.switch'),
+      icon: <RiExchange2Line />,
+      onClick: () => {
+        setOpen(false)
+        onDetailExpand?.(false)
+        setShowSwitchModal(true)
+      },
+    } : undefined,
+  ].filter((op): op is Operation => Boolean(op))
+
   return (
     <div>
       {!onlyShowDetail && (
@@ -252,78 +303,10 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
           )}
           {/* operations */}
-          <div className='flex flex-wrap items-center gap-1 self-stretch'>
-            <Button
-              size={'small'}
-              variant={'secondary'}
-              className='gap-[1px]'
-              onClick={() => {
-                setOpen(false)
-                onDetailExpand?.(false)
-                setShowEditModal(true)
-              }}
-            >
-              <RiEditLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-              <span className='system-xs-medium text-components-button-secondary-text'>{t('app.editApp')}</span>
-            </Button>
-            <Button
-              size={'small'}
-              variant={'secondary'}
-              className='gap-[1px]'
-              onClick={() => {
-                setOpen(false)
-                onDetailExpand?.(false)
-                setShowDuplicateModal(true)
-              }}>
-              <RiFileCopy2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
-              <span className='system-xs-medium text-components-button-secondary-text'>{t('app.duplicate')}</span>
-            </Button>
-            <Button
-              size={'small'}
-              variant={'secondary'}
-              className='gap-[1px]'
-              onClick={exportCheck}
-            >
-              <RiFileDownloadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-              <span className='system-xs-medium text-components-button-secondary-text'>{t('app.export')}</span>
-            </Button>
-            {appDetail.mode !== 'agent-chat'
-              && <>
-                {
-                  (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
-                    && <Button
-                      size={'small'}
-                      variant={'secondary'}
-                      className='gap-[1px]'
-                      onClick={() => {
-                        setOpen(false)
-                        onDetailExpand?.(false)
-                        setShowImportDSLModal(true)
-                      }}
-                    >
-                      <RiFileUploadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-                      <span className='system-xs-medium text-components-button-secondary-text'>{t('workflow.common.importDSL')}</span>
-                    </Button>
-                }
-                {
-                  (appDetail.mode === 'completion' || appDetail.mode === 'chat')
-                    && <Button
-                      size={'small'}
-                      variant={'secondary'}
-                      className='gap-[1px]'
-                      onClick={() => {
-                        setOpen(false)
-                        onDetailExpand?.(false)
-                        setShowSwitchModal(true)
-                      }}
-                    >
-                      <RiExchange2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
-                      <span className='system-xs-medium text-components-button-secondary-text'>{t('app.switch')}</span>
-                    </Button>
-                }
-              </>
-            }
-          </div>
+          <AppOperations
+            gap={4}
+            operations={operations}
+          />
         </div>
         <div className='flex flex-1'>
           <CardView
