@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Generator
-from mimetypes import guess_extension
+from mimetypes import guess_extension, guess_type
 from typing import Optional
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
@@ -57,10 +57,13 @@ class DatasourceFileMessageTransformer:
             elif message.type == DatasourceMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
                 meta = message.meta or {}
-
-                mimetype = meta.get("mime_type", "application/octet-stream")
                 # get filename from meta
                 filename = meta.get("file_name", None)
+
+                mimetype = meta.get("mime_type")
+                if not mimetype:
+                    mimetype = guess_type(filename)[0] or "application/octet-stream"
+                
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, DatasourceMessage.BlobMessage):
