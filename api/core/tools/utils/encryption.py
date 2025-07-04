@@ -3,7 +3,8 @@ from typing import Any, Optional, Protocol
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
-from core.helper.provider_cache import GenericProviderCredentialsCache
+from core.helper.provider_cache import SingletonProviderCredentialsCache
+from core.tools.__base.tool_provider import ToolProviderController
 
 
 class ProviderConfigCache(Protocol):
@@ -123,13 +124,18 @@ class ProviderConfigEncrypter:
         return data
 
 
-def create_generic_encrypter(
-    tenant_id: str, config: list[BasicProviderConfig], provider_type: str, provider_identity: str
-):
-    cache = GenericProviderCredentialsCache(tenant_id=tenant_id, identity_id=f"{provider_type}.{provider_identity}")
-    encrypt = ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache)
-    return encrypt, cache
-
-
-def create_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
+def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache
+
+def create_tool_provider_encrypter(tenant_id: str, controller: ToolProviderController):
+    cache = SingletonProviderCredentialsCache(
+        tenant_id=tenant_id,
+        provider_type=controller.provider_type.value,
+        provider_identity=controller.entity.identity.name,
+    )
+    encrypt = ProviderConfigEncrypter(
+        tenant_id=tenant_id,
+        config=[x.to_basic_provider_config() for x in controller.get_credentials_schema()],
+        provider_config_cache=cache,
+    )
+    return encrypt, cache

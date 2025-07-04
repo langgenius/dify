@@ -47,7 +47,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
     ToolParameterConfigurationManager,
 )
-from core.tools.utils.encryption import ProviderConfigEncrypter, create_encrypter, create_generic_encrypter
+from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
@@ -222,7 +222,7 @@ class ToolManager:
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-            encrypter, _ = create_encrypter(
+            encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[
                     x.to_basic_provider_config()
@@ -248,11 +248,9 @@ class ToolManager:
 
         elif provider_type == ToolProviderType.API:
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
-            encrypter, _ = create_generic_encrypter(
+            encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=tenant_id,
-                config=[x.to_basic_provider_config() for x in api_provider.get_credentials_schema()],
-                provider_type=api_provider.provider_type.value,
-                provider_identity=api_provider.entity.identity.name,
+                controller=api_provider,
             )
             return cast(
                 ApiTool,
@@ -740,15 +738,12 @@ class ToolManager:
             ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
         )
         # init tool configuration
-        tool_configuration = ProviderConfigEncrypter.create_cached(
+        encrypter, _ = create_tool_provider_encrypter(
             tenant_id=tenant_id,
-            config=[x.to_basic_provider_config() for x in controller.get_credentials_schema()],
-            provider_type=controller.provider_type.value,
-            provider_identity=controller.entity.identity.name,
+            controller=controller,
         )
 
-        decrypted_credentials = tool_configuration.decrypt(credentials)
-        masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)
+        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)
