@@ -213,6 +213,11 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               name={item.name}
               type={item.type}
               description={item.description}
+              subItems={item.subItems.map(item => ({
+                name: item.name,
+                type: item.type,
+                description: item.description,
+              }))}
             />
           ))
         }
