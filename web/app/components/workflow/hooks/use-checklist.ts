@@ -33,6 +33,7 @@ import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/ty
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
+import useNodesAvailableVarList from './use-nodes-available-var-list'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -44,6 +45,10 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+
+  console.log('==========================nodes: ', nodes)
+  const map = useNodesAvailableVarList(nodes)
+  console.log('==========================map: ', map)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -84,8 +89,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         if (provider_type === CollectionType.workflow)
           toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
       }
-
-      if (node.data.type === BlockEnum.Agent) {
+      else if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -95,6 +99,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           strategy,
           language,
           isReadyForCheckValid,
+        }
+      }
+      else {
+        moreDataForCheckValid = {
+          node,
+          ...map[node.id],
         }
       }
 
