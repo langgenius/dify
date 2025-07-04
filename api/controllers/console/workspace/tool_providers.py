@@ -19,7 +19,7 @@ from controllers.console.wraps import (
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import ToolProviderCredentialType
+from core.tools.entities.tool_entities import CredentialType
 from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
@@ -122,7 +122,7 @@ class ToolBuiltinProviderAddApi(Resource):
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        if args["type"] not in ToolProviderCredentialType.values():
+        if args["type"] not in CredentialType.values():
             raise ValueError(f"Invalid credential type: {args['type']}")
 
         return BuiltinToolManageService.add_builtin_tool_provider(
@@ -131,7 +131,7 @@ class ToolBuiltinProviderAddApi(Resource):
             provider=provider,
             credentials=args["credentials"],
             name=args["name"],
-            api_type=ToolProviderCredentialType.of(args["type"]),
+            api_type=CredentialType.of(args["type"]),
         )
 
 
@@ -378,7 +378,7 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_provider_credentials_schema(
-                provider, ToolProviderCredentialType.of(credential_type), tenant_id
+                provider, CredentialType.of(credential_type), tenant_id
             )
         )
 
@@ -747,7 +747,7 @@ class ToolOAuthCallback(Resource):
             tenant_id=tenant_id,
             provider=provider,
             credentials=dict(credentials),
-            api_type=ToolProviderCredentialType.OAUTH2,
+            api_type=CredentialType.OAUTH2,
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth/plugin/{provider}/tool/success")
 

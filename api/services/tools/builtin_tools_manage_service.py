@@ -19,7 +19,7 @@ from core.tools.entities.api_entities import (
     ToolProviderCredentialApiEntity,
     ToolProviderCredentialInfoApiEntity,
 )
-from core.tools.entities.tool_entities import ToolProviderCredentialType
+from core.tools.entities.tool_entities import CredentialType
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -96,7 +96,7 @@ class BuiltinToolManageService:
 
     @staticmethod
     def list_builtin_provider_credentials_schema(
-        provider_name: str, credential_type: ToolProviderCredentialType, tenant_id: str
+        provider_name: str, credential_type: CredentialType, tenant_id: str
     ):
         """
         list builtin provider credentials schema
@@ -123,7 +123,7 @@ class BuiltinToolManageService:
             raise ValueError(f"you have not added provider {provider}")
 
         try:
-            if ToolProviderCredentialType.of(db_provider.credential_type).is_editable():
+            if CredentialType.of(db_provider.credential_type).is_editable():
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
                 if not provider_controller.need_credentials:
                     raise ValueError(f"provider {provider} does not need credentials")
@@ -166,7 +166,7 @@ class BuiltinToolManageService:
     @staticmethod
     def add_builtin_tool_provider(
         user_id: str,
-        api_type: ToolProviderCredentialType,
+        api_type: CredentialType,
         tenant_id: str,
         provider: str,
         credentials: dict,
@@ -237,7 +237,7 @@ class BuiltinToolManageService:
 
     @staticmethod
     def generate_builtin_tool_provider_name(
-        tenant_id: str, provider: str, credential_type: ToolProviderCredentialType
+        tenant_id: str, provider: str, credential_type: CredentialType
     ) -> str:
         try:
             db_providers = (

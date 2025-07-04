@@ -37,9 +37,9 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
-    ToolProviderCredentialType,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
@@ -240,7 +240,7 @@ class ToolManager:
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
                         credentials=encrypter.decrypt(builtin_provider.credentials),
-                        credential_type=ToolProviderCredentialType.of(builtin_provider.credential_type),
+                        credential_type=CredentialType.of(builtin_provider.credential_type),
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,

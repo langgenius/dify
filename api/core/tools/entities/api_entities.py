@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderCredentialType, ToolProviderType
+from core.tools.entities.tool_entities import CredentialType, ToolProviderType
 
 
 class ToolApiEntity(BaseModel):
@@ -76,7 +76,7 @@ class ToolProviderCredentialApiEntity(BaseModel):
     id: str = Field(description="The unique id of the credential")
     name: str = Field(description="The name of the credential")
     provider: str = Field(description="The provider of the credential")
-    credential_type: ToolProviderCredentialType = Field(description="The type of the credential")
+    credential_type: CredentialType = Field(description="The type of the credential")
     is_default: bool = Field(
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )

@@ -15,8 +15,8 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    CredentialType,
     ToolParameter,
-    ToolProviderCredentialType,
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -113,9 +113,9 @@ class ToolTransformService:
         schema = {
             x.to_basic_provider_config().name: x
             for x in provider_controller.get_credentials_schema_by_type(
-                ToolProviderCredentialType.of(db_provider.credential_type)
+                CredentialType.of(db_provider.credential_type)
                 if db_provider
-                else ToolProviderCredentialType.API_KEY
+                else CredentialType.API_KEY
             )
         }
 
@@ -139,7 +139,7 @@ class ToolTransformService:
                     config=[
                         x.to_basic_provider_config()
                         for x in provider_controller.get_credentials_schema_by_type(
-                            ToolProviderCredentialType.of(db_provider.credential_type)
+                            CredentialType.of(db_provider.credential_type)
                         )
                     ],
                     cache=ToolProviderCredentialsCache(
@@ -329,7 +329,7 @@ class ToolTransformService:
             id=provider.id,
             name=provider.name,
             provider=provider.provider,
-            credential_type=ToolProviderCredentialType.of(provider.credential_type),
+            credential_type=CredentialType.of(provider.credential_type),
             is_default=provider.is_default,
             credentials=credentials,
         )

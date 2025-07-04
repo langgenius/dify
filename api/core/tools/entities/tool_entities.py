@@ -445,30 +445,30 @@ class ToolSelector(BaseModel):
         return self.model_dump()
 
 
-class ToolProviderCredentialType(enum.StrEnum):
+class CredentialType(enum.StrEnum):
     API_KEY = "api-key"
     OAUTH2 = "oauth2"
 
     def get_name(self):
-        if self == ToolProviderCredentialType.API_KEY:
+        if self == CredentialType.API_KEY:
             return "API KEY"
-        elif self == ToolProviderCredentialType.OAUTH2:
+        elif self == CredentialType.OAUTH2:
             return "AUTH"
         else:
             return self.value.replace("-", " ").upper()
 
     def is_editable(self):
-        return self == ToolProviderCredentialType.API_KEY
+        return self == CredentialType.API_KEY
 
     def is_validate_allowed(self):
-        return self == ToolProviderCredentialType.API_KEY
+        return self == CredentialType.API_KEY
 
     @classmethod
     def values(cls):
         return [item.value for item in cls]
 
     @classmethod
-    def of(cls, credential_type: str) -> "ToolProviderCredentialType":
+    def of(cls, credential_type: str) -> "CredentialType":
         type_name = credential_type.lower()
         if type_name == "api-key":
             return cls.API_KEY
