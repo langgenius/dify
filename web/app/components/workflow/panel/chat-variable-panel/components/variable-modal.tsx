@@ -17,6 +17,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import BoolValue from './bool-value'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -33,6 +34,7 @@ type ObjectValueItem = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Boolean,
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
@@ -157,6 +159,8 @@ const ChatVariableModal = ({
       setEditInJSON(true)
     if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
       setEditInJSON(false)
+    if(v === ChatVarType.Boolean)
+      setValue(true)
     setType(v)
   }
 
@@ -343,6 +347,12 @@ const ChatVariableModal = ({
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}
                 type='number'
+              />
+            )}
+            {type === ChatVarType.Boolean && (
+              <BoolValue
+                value={value}
+                onChange={setValue}
               />
             )}
             {type === ChatVarType.Object && !editInJSON && (
