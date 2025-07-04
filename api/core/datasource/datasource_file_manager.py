@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 import hashlib
 import hmac
 import logging
@@ -91,6 +92,7 @@ class DatasourceFileManager:
             used=False,
             hash=hashlib.sha3_256(file_binary).hexdigest(),
             source_url="",
+            created_at=datetime.now(),
         )
 
         db.session.add(upload_file)
@@ -138,6 +140,7 @@ class DatasourceFileManager:
             used=False,
             hash=hashlib.sha3_256(blob).hexdigest(),
             source_url=file_url,
+            created_at=datetime.now(),
         )
 
         db.session.add(upload_file)
