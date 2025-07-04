@@ -3,7 +3,7 @@ import {
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { BlockEnum, type Node, type NodeOutPutVar, type ValueSelector, type Var } from '@/app/components/workflow/types'
 type Params = {
   onlyLeafNodeVar?: boolean
   hideEnv?: boolean
@@ -47,6 +47,8 @@ const useNodesAvailableVarList = (nodes: Node[], {
   nodes.forEach((node) => {
     const nodeId = node.id
     const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
+    if (node.data.type === BlockEnum.Loop)
+      availableNodes.push(node)
 
     const {
       parentNode: iterationNode,
@@ -60,7 +62,6 @@ const useNodesAvailableVarList = (nodes: Node[], {
       hideEnv,
       hideChatVar,
     })
-
     const result = {
       node,
       availableVars,
