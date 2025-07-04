@@ -116,6 +116,7 @@ export enum DatasetAttr {
   DATA_PUBLIC_LOOP_NODE_MAX_COUNT = 'data-public-loop-node-max-count',
   DATA_PUBLIC_MAX_ITERATIONS_NUM = 'data-public-max-iterations-num',
   DATA_PUBLIC_MAX_TREE_DEPTH = 'data-public-max-tree-depth',
+  DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME = 'data-public-allow-unsafe-data-scheme',
   DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
   DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
   DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',

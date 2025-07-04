@@ -4,6 +4,7 @@
  * Includes preprocessing for LaTeX and custom "think" tags.
  */
 import { flow } from 'lodash-es'
+import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
@@ -84,6 +85,9 @@ export const customUrlTransform = (uri: string): string | undefined => {
 
   const scheme = uri.substring(0, colonIndex + 1).toLowerCase()
   if (PERMITTED_SCHEME_REGEX.test(scheme))
+    return uri
+
+  if (ALLOW_UNSAFE_DATA_SCHEME && scheme === 'data:')
     return uri
 
   return undefined
