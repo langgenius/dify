@@ -43,7 +43,7 @@ def upgrade():
     with op.batch_alter_table('tool_builtin_providers', schema=None) as batch_op:
         batch_op.add_column(sa.Column('name', sa.String(length=256), server_default=sa.text("'API KEY 1'::character varying"), nullable=False))
         batch_op.add_column(sa.Column('is_default', sa.Boolean(), server_default=sa.text('false'), nullable=False))
-        batch_op.add_column(sa.Column('credential_type', sa.String(length=32), server_default=sa.text("'api_key'::character varying"), nullable=False))
+        batch_op.add_column(sa.Column('credential_type', sa.String(length=32), server_default=sa.text("'api-key'::character varying"), nullable=False))
         batch_op.drop_constraint(batch_op.f('unique_builtin_tool_provider'), type_='unique')
 
     # ### end Alembic commands ###
