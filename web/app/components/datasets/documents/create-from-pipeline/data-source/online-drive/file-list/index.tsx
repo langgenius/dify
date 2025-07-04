@@ -12,6 +12,8 @@ type FileListProps = {
   resetKeywords: () => void
   updateKeywords: (keywords: string) => void
   searchResultsLength: number
+  handleSelectFile: (file: OnlineDriveFile) => void
+  handleOpenFolder: (file: OnlineDriveFile) => void
 }
 
 const FileList = ({
@@ -22,6 +24,8 @@ const FileList = ({
   resetKeywords,
   updateKeywords,
   searchResultsLength,
+  handleSelectFile,
+  handleOpenFolder,
 }: FileListProps) => {
   const [inputValue, setInputValue] = useState(keywords)
 
@@ -58,6 +62,8 @@ const FileList = ({
         selectedFileList={selectedFileList}
         keywords={keywords}
         handleResetKeywords={handleResetKeywords}
+        handleOpenFolder={handleOpenFolder}
+        handleSelectFile={handleSelectFile}
       />
     </div>
   )

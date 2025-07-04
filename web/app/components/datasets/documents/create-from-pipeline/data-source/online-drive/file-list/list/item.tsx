@@ -40,6 +40,7 @@ const Item = ({
     if (disabled) return
     if (isBucket || isFolder)
       onOpen(file)
+    if (isBucket) return // Do not select bucket
     onSelect(file)
   }, [disabled, file, isBucket, isFolder, onOpen, onSelect])
 
@@ -61,11 +62,16 @@ const Item = ({
       >
         <div
           className={cn(
-            'flex grow items-center gap-x-1 py-0.5',
+            'flex grow items-center gap-x-1 overflow-hidden py-0.5',
             disabled && 'opacity-30',
           )}>
           <FileIcon type={file.type} fileName={file.key} className='shrink-0' />
-          <span className='system-sm-medium grow text-text-secondary'>{file.key}</span>
+          <span
+            className='system-sm-medium grow truncate text-text-secondary'
+            title={file.key}
+          >
+            {file.key}
+          </span>
           {!isFolder && file.size && (
             <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(file.size)}</span>
           )}

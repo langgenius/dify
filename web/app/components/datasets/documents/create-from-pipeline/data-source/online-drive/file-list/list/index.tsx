@@ -8,6 +8,8 @@ type FileListProps = {
   selectedFileList: string[]
   keywords: string
   handleResetKeywords: () => void
+  handleSelectFile: (file: OnlineDriveFile) => void
+  handleOpenFolder: (file: OnlineDriveFile) => void
 }
 
 const List = ({
@@ -15,6 +17,8 @@ const List = ({
   selectedFileList,
   keywords,
   handleResetKeywords,
+  handleSelectFile,
+  handleOpenFolder,
 }: FileListProps) => {
   const isEmptyFolder = fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = fileList.length === 0 && keywords.length > 0
@@ -41,9 +45,8 @@ const List = ({
                   key={file.key}
                   file={file}
                   isSelected={isSelected}
-                  onSelect={(file) => { console.log(file) }}
-                  onOpen={(file) => { console.log(file) }}
-                  disabled
+                  onSelect={handleSelectFile}
+                  onOpen={handleOpenFolder}
                 />
               )
             })
