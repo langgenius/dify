@@ -20,7 +20,7 @@ import type {
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore } from '../store'
+import { useDataSourceStoreWithSelector } from '../store'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -41,16 +41,16 @@ const WebsiteCrawl = ({
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const crawlResult = useDataSourceStore(state => state.crawlResult)
-  const setCrawlResult = useDataSourceStore(state => state.setCrawlResult)
-  const step = useDataSourceStore(state => state.step)
-  const setStep = useDataSourceStore(state => state.setStep)
-  const checkedCrawlResult = useDataSourceStore(state => state.websitePages)
-  const setWebsitePages = useDataSourceStore(state => state.setWebsitePages)
-  const previewWebsitePageRef = useDataSourceStore(state => state.previewWebsitePageRef)
-  const previewIndex = useDataSourceStore(state => state.previewIndex)
-  const setCurrentWebsite = useDataSourceStore(state => state.setCurrentWebsite)
-  const setPreviewIndex = useDataSourceStore(state => state.setPreviewIndex)
+  const crawlResult = useDataSourceStoreWithSelector(state => state.crawlResult)
+  const setCrawlResult = useDataSourceStoreWithSelector(state => state.setCrawlResult)
+  const step = useDataSourceStoreWithSelector(state => state.step)
+  const setStep = useDataSourceStoreWithSelector(state => state.setStep)
+  const checkedCrawlResult = useDataSourceStoreWithSelector(state => state.websitePages)
+  const setWebsitePages = useDataSourceStoreWithSelector(state => state.setWebsitePages)
+  const previewWebsitePageRef = useDataSourceStoreWithSelector(state => state.previewWebsitePageRef)
+  const previewIndex = useDataSourceStoreWithSelector(state => state.previewIndex)
+  const setCurrentWebsite = useDataSourceStoreWithSelector(state => state.setCurrentWebsite)
+  const setPreviewIndex = useDataSourceStoreWithSelector(state => state.setPreviewIndex)
 
   const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
   const { data: paramsConfig, isFetching: isFetchingParams } = usePreProcessingParams.current({

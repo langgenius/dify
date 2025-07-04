@@ -15,7 +15,7 @@ import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
-import { useDataSourceStore } from '../store'
+import { useDataSourceStoreWithSelector } from '../store'
 import produce from 'immer'
 
 const FILES_NUMBER_LIMIT = 20
@@ -32,10 +32,10 @@ const LocalFile = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
-  const fileList = useDataSourceStore(state => state.localFileList)
-  const setFileList = useDataSourceStore(state => state.setLocalFileList)
-  const setCurrentFile = useDataSourceStore(state => state.setCurrentLocalFile)
-  const previewFileRef = useDataSourceStore(state => state.previewLocalFileRef)
+  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
+  const setFileList = useDataSourceStoreWithSelector(state => state.setLocalFileList)
+  const setCurrentFile = useDataSourceStoreWithSelector(state => state.setCurrentLocalFile)
+  const previewFileRef = useDataSourceStoreWithSelector(state => state.previewLocalFileRef)
   const [dragging, setDragging] = useState(false)
 
   const dropRef = useRef<HTMLDivElement>(null)

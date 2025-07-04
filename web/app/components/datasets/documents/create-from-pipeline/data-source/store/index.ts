@@ -25,10 +25,18 @@ export const createDataSourceStore = () => {
   }))
 }
 
-export const useDataSourceStore = <T>(selector: (state: DataSourceShape) => T): T => {
+export const useDataSourceStoreWithSelector = <T>(selector: (state: DataSourceShape) => T): T => {
   const store = useContext(DataSourceContext)
   if (!store)
     throw new Error('Missing DataSourceContext.Provider in the tree')
 
   return useStore(store, selector)
+}
+
+export const useDataSourceStore = () => {
+  const store = useContext(DataSourceContext)
+  if (!store)
+    throw new Error('Missing DataSourceContext.Provider in the tree')
+
+  return store
 }

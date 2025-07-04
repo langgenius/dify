@@ -16,14 +16,15 @@ import CloseButton from './close-button'
 import Header from './header'
 import FooterTips from './footer-tips'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
-import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
-  const fileList = useDataSourceStore(state => state.localFileList)
-  const onlineDocuments = useDataSourceStore(state => state.onlineDocuments)
-  const websitePages = useDataSourceStore(state => state.websitePages)
-  const selectedFileList = useDataSourceStore(state => state.selectedFileList)
+  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
+  const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
+  const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
+  const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
+  const { bucket } = useDataSourceStore().getState()
   const [datasource, setDatasource] = useState<Datasource>()
 
   const {
@@ -82,13 +83,19 @@ const TestRunPanel = () => {
     }
     if (datasourceType === DatasourceType.websiteCrawl)
       datasourceInfoList.push(websitePages[0])
+    if (datasourceType === DatasourceType.onlineDrive) {
+      datasourceInfoList.push({
+        bucket,
+        file: selectedFileList[0],
+      })
+    }
     handleRun({
       inputs: data,
       start_node_id: datasource.nodeId,
       datasource_type: datasourceType,
       datasource_info_list: datasourceInfoList,
     })
-  }, [datasource, datasourceType, fileList, handleRun, onlineDocuments, websitePages])
+  }, [bucket, datasource, datasourceType, fileList, handleRun, onlineDocuments, selectedFileList, websitePages])
 
   return (
     <div

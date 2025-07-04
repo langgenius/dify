@@ -10,7 +10,7 @@ import { ssePost } from '@/service/base'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore } from '../store'
+import { useDataSourceStoreWithSelector } from '../store'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -24,16 +24,16 @@ const OnlineDocuments = ({
   nodeData,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const documentsData = useDataSourceStore(state => state.documentsData)
-  const setDocumentsData = useDataSourceStore(state => state.setDocumentsData)
-  const searchValue = useDataSourceStore(state => state.searchValue)
-  const setSearchValue = useDataSourceStore(state => state.setSearchValue)
-  const currentWorkspaceId = useDataSourceStore(state => state.currentWorkspaceId)
-  const setCurrentWorkspaceId = useDataSourceStore(state => state.setCurrentWorkspaceId)
-  const setOnlineDocuments = useDataSourceStore(state => state.setOnlineDocuments)
-  const setCurrentDocument = useDataSourceStore(state => state.setCurrentDocument)
-  const selectedPagesId = useDataSourceStore(state => state.selectedPagesId)
-  const setSelectedPagesId = useDataSourceStore(state => state.setSelectedPagesId)
+  const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
+  const setDocumentsData = useDataSourceStoreWithSelector(state => state.setDocumentsData)
+  const searchValue = useDataSourceStoreWithSelector(state => state.searchValue)
+  const setSearchValue = useDataSourceStoreWithSelector(state => state.setSearchValue)
+  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
+  const setCurrentWorkspaceId = useDataSourceStoreWithSelector(state => state.setCurrentWorkspaceId)
+  const setOnlineDocuments = useDataSourceStoreWithSelector(state => state.setOnlineDocuments)
+  const setCurrentDocument = useDataSourceStoreWithSelector(state => state.setCurrentDocument)
+  const selectedPagesId = useDataSourceStoreWithSelector(state => state.selectedPagesId)
+  const setSelectedPagesId = useDataSourceStoreWithSelector(state => state.setSelectedPagesId)
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
     const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {

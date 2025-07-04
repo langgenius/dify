@@ -7,6 +7,7 @@ type FileListProps = {
   fileList: OnlineDriveFile[]
   selectedFileList: string[]
   keywords: string
+  isInPipeline: boolean
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
@@ -19,6 +20,7 @@ const List = ({
   handleResetKeywords,
   handleSelectFile,
   handleOpenFolder,
+  isInPipeline,
 }: FileListProps) => {
   const isEmptyFolder = fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = fileList.length === 0 && keywords.length > 0
@@ -47,6 +49,7 @@ const List = ({
                   isSelected={isSelected}
                   onSelect={handleSelectFile}
                   onOpen={handleOpenFolder}
+                  isMultipleChoice={!isInPipeline}
                 />
               )
             })

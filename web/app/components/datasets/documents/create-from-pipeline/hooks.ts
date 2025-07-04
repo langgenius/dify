@@ -6,7 +6,7 @@ import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
-import { useDataSourceStore } from './data-source/store'
+import { useDataSourceStoreWithSelector } from './data-source/store'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -63,10 +63,10 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
 }
 
 export const useLocalFile = () => {
-  const fileList = useDataSourceStore(state => state.localFileList)
-  const previewFileRef = useDataSourceStore(state => state.previewLocalFileRef)
-  const currentLocalFile = useDataSourceStore(state => state.currentLocalFile)
-  const setCurrentFile = useDataSourceStore(state => state.setCurrentLocalFile)
+  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
+  const previewFileRef = useDataSourceStoreWithSelector(state => state.previewLocalFileRef)
+  const currentLocalFile = useDataSourceStoreWithSelector(state => state.currentLocalFile)
+  const setCurrentFile = useDataSourceStoreWithSelector(state => state.setCurrentLocalFile)
 
   const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
 
@@ -84,10 +84,10 @@ export const useLocalFile = () => {
 }
 
 export const useOnlineDocuments = () => {
-  const onlineDocuments = useDataSourceStore(state => state.onlineDocuments)
-  const previewOnlineDocumentRef = useDataSourceStore(state => state.previewOnlineDocumentRef)
-  const setCurrentDocument = useDataSourceStore(state => state.setCurrentDocument)
-  const currentDocument = useDataSourceStore(state => state.currentDocument)
+  const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
+  const previewOnlineDocumentRef = useDataSourceStoreWithSelector(state => state.previewOnlineDocumentRef)
+  const setCurrentDocument = useDataSourceStoreWithSelector(state => state.setCurrentDocument)
+  const currentDocument = useDataSourceStoreWithSelector(state => state.currentDocument)
 
   const hidePreviewOnlineDocument = useCallback(() => {
     setCurrentDocument(undefined)

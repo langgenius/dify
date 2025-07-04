@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ssePost } from '@/service/base'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import Toast from '@/app/components/base/toast'
-import { useDataSourceStore } from '../store'
+import { useDataSourceStoreWithSelector } from '../store'
 import { convertOnlineDriveDataToFileList } from './utils'
 import produce from 'immer'
 
@@ -24,18 +24,18 @@ const OnlineDrive = ({
   isInPipeline = false,
 }: OnlineDriveProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const prefix = useDataSourceStore(state => state.prefix)
-  const setPrefix = useDataSourceStore(state => state.setPrefix)
-  const keywords = useDataSourceStore(state => state.keywords)
-  const setKeywords = useDataSourceStore(state => state.setKeywords)
-  const bucket = useDataSourceStore(state => state.bucket)
-  const setBucket = useDataSourceStore(state => state.setBucket)
-  const startAfter = useDataSourceStore(state => state.startAfter)
-  const setStartAfter = useDataSourceStore(state => state.setStartAfter)
-  const selectedFileList = useDataSourceStore(state => state.selectedFileList)
-  const setSelectedFileList = useDataSourceStore(state => state.setSelectedFileList)
-  const fileList = useDataSourceStore(state => state.fileList)
-  const setFileList = useDataSourceStore(state => state.setFileList)
+  const prefix = useDataSourceStoreWithSelector(state => state.prefix)
+  const setPrefix = useDataSourceStoreWithSelector(state => state.setPrefix)
+  const keywords = useDataSourceStoreWithSelector(state => state.keywords)
+  const setKeywords = useDataSourceStoreWithSelector(state => state.setKeywords)
+  const bucket = useDataSourceStoreWithSelector(state => state.bucket)
+  const setBucket = useDataSourceStoreWithSelector(state => state.setBucket)
+  const startAfter = useDataSourceStoreWithSelector(state => state.startAfter)
+  const setStartAfter = useDataSourceStoreWithSelector(state => state.setStartAfter)
+  const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
+  const setSelectedFileList = useDataSourceStoreWithSelector(state => state.setSelectedFileList)
+  const fileList = useDataSourceStoreWithSelector(state => state.fileList)
+  const setFileList = useDataSourceStoreWithSelector(state => state.setFileList)
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
@@ -128,6 +128,7 @@ const OnlineDrive = ({
         searchResultsLength={fileList.length}
         handleSelectFile={handleSelectFile}
         handleOpenFolder={handleOpenFolder}
+        isInPipeline={isInPipeline}
       />
     </div>
   )
