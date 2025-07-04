@@ -35,7 +35,12 @@ import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
+import { AutoUpdateLine } from '../../base/icons/src/vender/system'
+import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import { getMarketplaceUrl } from '@/utils/var'
+import useReferenceSetting from '../plugin-page/use-reference-setting'
+import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
+import { useAppContext } from '@/context/app-context'
 
 const i18nPrefix = 'plugin.action'
 
@@ -51,6 +56,8 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
+    const { userProfile: { timezone } } = useAppContext()
+
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
@@ -97,8 +104,24 @@ const DetailHeader = ({
     setFalse: hideUpdateModal,
   }] = useBoolean(false)
 
-  const handleUpdate = async () => {
+  const { referenceSetting } = useReferenceSetting()
+  const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const isAutoUpgradeEnabled = useMemo(() => {
+    if(!autoUpgradeInfo)
+      return false
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
+      return true
+    return false
+  }, [autoUpgradeInfo, plugin_id])
+
+  const [isDowngrade, setIsDowngrade] = useState(false)
+  const handleUpdate = async (isDowngrade?: boolean) => {
     if (isFromMarketplace) {
+      setIsDowngrade(!!isDowngrade)
       showUpdateModal()
       return
     }
@@ -165,9 +188,6 @@ const DetailHeader = ({
     }
   }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
-  // #plugin TODO# used in apps
-  // const usedInApps = 3
-
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3')}>
       <div className="flex">
@@ -186,7 +206,7 @@ const DetailHeader = ({
               currentVersion={version}
               onSelect={(state) => {
                 setTargetVersion(state)
-                handleUpdate()
+                handleUpdate(state.isDowngrade)
               }}
               trigger={
                 <Badge
@@ -206,6 +226,18 @@ const DetailHeader = ({
                 />
               }
             />
+            {/* Auto update info */}
+            {isAutoUpgradeEnabled && (
+              <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
+                {/* add a a div to fix tooltip hover not show problem */}
+                <div>
+                  <Badge className='mr-1 cursor-pointer px-1'>
+                    <AutoUpdateLine className='size-3' />
+                  </Badge>
+                </div>
+              </Tooltip>
+            )}
+
             {(hasNewVersion || isFromGitHub) && (
               <Button variant='secondary-accent' size='small' className='!h-5' onClick={() => {
                 if (isFromMarketplace) {
@@ -290,6 +322,7 @@ const DetailHeader = ({
       {
         isShowUpdateModal && (
           <UpdateFromMarketplace
+            pluginId={plugin_id}
             payload={{
               category: detail.declaration.category,
               originalPackageInfo: {
@@ -303,6 +336,7 @@ const DetailHeader = ({
             }}
             onCancel={hideUpdateModal}
             onSave={handleUpdatedFromMarketplace}
+            isShowDowngradeWarningModal={isDowngrade && isAutoUpgradeEnabled}
           />
         )
       }

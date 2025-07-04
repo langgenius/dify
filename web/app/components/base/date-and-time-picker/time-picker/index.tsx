@@ -20,6 +20,9 @@ const TimePicker = ({
   onChange,
   onClear,
   renderTrigger,
+  title,
+  minuteFilter,
+  popupClassName,
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -142,14 +145,15 @@ const TimePicker = ({
           </div>
         )}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-50'>
+      <PortalToFollowElemContent className={cn('z-50', popupClassName)}>
         <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
           {/* Header */}
-          <Header />
+          <Header title={title} />
 
           {/* Time Options */}
           <Options
             selectedTime={selectedTime}
+            minuteFilter={minuteFilter}
             handleSelectHour={handleSelectHour}
             handleSelectMinute={handleSelectMinute}
             handleSelectPeriod={handleSelectPeriod}
