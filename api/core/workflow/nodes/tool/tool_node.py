@@ -381,11 +381,11 @@ class ToolNode(BaseNode[ToolNodeData]):
             elif isinstance(json_output, list):
                 # If json is a list with multiple elements, create a dictionary containing all data
                 json_output = {"data": json_output}
-            
+
             # Ensure json_output is a dictionary type
             if not isinstance(json_output, dict):
                 json_output = {"data": json_output}
-            
+
             # Add agent_logs to json output
             json_output["agent_logs"] = [
                 {

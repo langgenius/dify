@@ -1,0 +1,144 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2006 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+from __future__ import print_function
+import zipfile
+from xml.sax import make_parser,handler
+from xml.sax.xmlreader import InputSource
+import xml.sax.saxutils
+import sys
+from odf.namespaces import TEXTNS, TABLENS, DRAWNS
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
+
+
+def getxmlpart(odffile, xmlfile):
+    """ Get the content out of the ODT file"""
+    z = zipfile.ZipFile(odffile)
+    content = z.read(xmlfile)
+    z.close()
+    return content
+
+
+
+#
+# Extract headings from content.xml
+#
+class ODTHeadingHandler(handler.ContentHandler):
+    """ Extract headings from content.xml of an ODT file """
+    def __init__(self, eater):
+        self.r = eater
+        self.data = []
+        self.level = 0
+
+    def characters(self, data):
+        self.data.append(data)
+
+    def startElementNS(self, tag, qname, attrs):
+        if tag == (TEXTNS, 'h'):
+            self.level = 0
+            for (att,value) in attrs.items():
+                if att == (TEXTNS, 'outline-level'):
+                    self.level = int(value)
+            self.data = []
+
+    def endElementNS(self, tag, qname):
+        if tag == (TEXTNS, 'h'):
+            str = ''.join(self.data)
+            self.data = []
+            self.r.append("%d%*s%s" % (self.level, self.level, '', str))
+
+class ODTSheetHandler(handler.ContentHandler):
+    """ Extract sheet names from content.xml of an ODS file """
+    def __init__(self, eater):
+        self.r = eater
+
+    def startElementNS(self, tag, qname, attrs):
+        if tag == (TABLENS, 'table'):
+            sheetname =  attrs.get((TABLENS, 'name'))
+            if sheetname:
+                self.r.append(sheetname)
+
+class ODTSlideHandler(handler.ContentHandler):
+    """ Extract headings from content.xml of an ODT file """
+    def __init__(self, eater):
+        self.r = eater
+        self.data = []
+        self.pagenum = 0
+
+    def characters(self, data):
+        self.data.append(data)
+
+    def startElementNS(self, tag, qname, attrs):
+        if tag == (DRAWNS, 'page'):
+            self.pagenum = self.pagenum + 1
+            self.r.append("SLIDE %d: %s" % ( self.pagenum, attrs.get((DRAWNS, 'name'),'')))
+        if tag == (TEXTNS, 'p'):
+            self.data = []
+
+    def endElementNS(self, tag, qname):
+        if tag == (TEXTNS, 'p'):
+            str = ''.join(self.data)
+            self.data = []
+            if len(str) > 0:
+                self.r.append(" " + str)
+
+def odtheadings(odtfile):
+    mimetype = getxmlpart(odtfile,'mimetype')
+    content = getxmlpart(odtfile,'content.xml')
+    lines = []
+    parser = make_parser()
+    parser.setFeature(handler.feature_namespaces, 1)
+    if not isinstance(mimetype, str):
+        mimetype=mimetype.decode("utf-8")
+    if mimetype in ('application/vnd.oasis.opendocument.text',
+      'application/vnd.oasis.opendocument.text-template'):
+        parser.setContentHandler(ODTHeadingHandler(lines))
+    elif mimetype in ('application/vnd.oasis.opendocument.spreadsheet',
+      'application/vnd.oasis.opendocument.spreadsheet-template'):
+        parser.setContentHandler(ODTSheetHandler(lines))
+    elif mimetype in ('application/vnd.oasis.opendocument.presentation'
+      'application/vnd.oasis.opendocument.presentation-template'):
+        parser.setContentHandler(ODTSlideHandler(lines))
+    else:
+        print ("Unsupported fileformat")
+        sys.exit(2)
+    parser.setErrorHandler(handler.ErrorHandler())
+
+    inpsrc = InputSource()
+    if not isinstance(content, str):
+        content=content.decode("utf-8")
+    inpsrc.setByteStream(StringIO(content))
+    parser.parse(inpsrc)
+    return lines
+
+
+if __name__ == "__main__":
+    filler = "          "
+    for heading in odtheadings(sys.argv[1]):
+        print (heading)
+
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

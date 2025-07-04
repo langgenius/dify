@@ -1,0 +1,190 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2007-2009 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+from __future__ import print_function
+
+import zipfile, sys, getopt, mimetypes
+try:
+    from urllib2 import urlopen, quote, unquote
+except ImportError:
+    from urllib.request import urlopen, quote, unquote
+try:
+    from urlparse import urlunsplit, urlsplit
+except ImportError:
+    from urllib.parse import urlunsplit, urlsplit
+from odf.opendocument import load
+from odf.draw import Image
+
+if sys.version_info[0]==3: unicode=str
+
+#sys.tracebacklimit = 0
+
+# Variable to count the number of retrieval failures
+failures = 0
+
+# Set to one if quiet behaviour is wanted
+quiet = 0
+
+# If set will write every url to import
+verbose = 0
+
+# Dictionary with new pictures. Key is original file path
+# Item is newfilename
+newpictures = {}
+doc = None
+
+def importpicture(href):
+    """ Add the picture to the ZIP file
+        Returns the new path name to the file in the zip archive
+        If it is unable to import, then it returns the original href
+        Sideeffect: add line to manifest
+    """
+    global doc, newpictures, failures, verbose
+
+    # Check that it is not already in the manifest
+    if href in doc.Pictures: return href
+
+    image = None
+    if verbose: print ("Importing", href, file=sys.stderr)
+    if href[:7] == "http://" or href[:8] == "https://" or href[:6] == "ftp://":
+        # There is a bug in urlopen: It can't open urls with non-ascii unicode
+        # characters. Convert to UTF-8 and then use percent encoding
+        try:
+            goodhref = href.encode('ascii')
+        except:
+            o = list(urlsplit(href))
+            o[2] = quote(o[2].encode('utf-8'))
+            goodhref = urlunsplit(o)
+        if goodhref in newpictures:
+            if verbose: print ("already imported", file=sys.stderr)
+            return newpictures[goodhref]  # Already imported
+        try:
+            f = urlopen(goodhref.decode("utf-8"))
+            image = f.read()
+            headers = f.info()
+            f.close()
+            # Get the mimetype from the headerlines
+            c_t = headers['Content-Type'].split(';')[0].strip()
+            if c_t: mediatype = c_t.split(';')[0].strip()
+            if verbose: print ("OK", file=sys.stderr)
+        except:
+            failures += 1
+            if verbose: print ("failed", file=sys.stderr)
+            return href
+        # Remove query string
+        try: href= href[:href.rindex('?')]
+        except: pass
+        try:
+            lastslash = href[href.rindex('/'):]
+            ext = lastslash[lastslash.rindex('.'):]
+        except: ext = mimetypes.guess_extension(mediatype)
+    # Everything is a simple path.
+    else:
+        goodhref = href
+        if href[:3] == '../':
+            if directory is None:
+                goodhref = unquote(href[3:])
+            else:
+                goodhref = unquote(directory + href[2:])
+        if goodhref in newpictures:
+            if verbose: print ("already imported", file=sys.stderr)
+            return newpictures[goodhref]  # Already imported
+        mediatype, encoding = mimetypes.guess_type(goodhref)
+        if mediatype is None:
+            mediatype = ''
+            try: ext = goodhref[goodhref.rindex('.'):]
+            except: ext=''
+        else:
+            ext = mimetypes.guess_extension(mediatype)
+        try:
+            image = file(goodhref).read()
+            if verbose: print ("OK", file=sys.stderr)
+        except:
+            failures += 1
+            if verbose: print ("failed", file=sys.stderr)
+            return href
+    # If we have a picture to import, the image variable contains it
+    # and manifestfn, ext and mediatype has a value
+    if image:
+        manifestfn = doc.addPictureFromString(image, unicode(mediatype))
+        newpictures[goodhref] = manifestfn
+        return manifestfn
+
+    if verbose: print ("not imported", file=sys.stderr)
+    return href
+
+def exitwithusage(exitcode=2):
+    """ Print out usage information and exit """
+    print ("Usage: %s [-q] [-v] [-o output] [inputfile]" % sys.argv[0], file=sys.stderr)
+    print ("\tInputfile must be OpenDocument format", file=sys.stderr)
+    sys.exit(exitcode)
+
+outputfile = None
+writefile = True
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "qvo:")
+except getopt.GetoptError:
+    exitwithusage()
+
+for o, a in opts:
+    if o == "-o":
+        outputfile = a
+        writefile = True
+    if o == "-q":
+        quiet = 1
+    if o == "-v":
+        verbose = 1
+
+if len(args) == 0:
+    try:
+        doc = load(sys.stdin)
+        directory = None
+    except:
+        print ("Couldn't open OpenDocument file", file=sys.stderr)
+        exitwithusage()
+else:
+    fn = unicode(args[0])
+    if not zipfile.is_zipfile(fn):
+        exitwithusage()
+    dirinx = max(fn.rfind('\\'), fn.rfind('/'))
+    if dirinx >= 0: directory = fn[:dirinx]
+    else: directory = "."
+    doc = load(fn)
+
+for image in doc.getElementsByType(Image):
+    href = image.getAttribute('href')
+    newhref = importpicture(href)
+    image.setAttribute('href',newhref)
+
+if writefile:
+    if outputfile is None:
+        doc.save(fn)
+    else:
+        doc.save(unicode(outputfile))
+
+
+if quiet == 0 and failures > 0:
+    print ("Couldn't import %d image(s)" % failures, file=sys.stderr)
+sys.exit( int(failures > 0) )
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

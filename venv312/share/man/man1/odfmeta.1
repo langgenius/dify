@@ -1,0 +1,277 @@
+.\"     Title: odfmeta
+.\"    Author: S\(/oren Roug
+.\" Generator: DocBook XSL Stylesheets v1.74.0 <http://docbook.sf.net/>
+.\"      Date: 03/15/2009
+.\"    Manual: User commands
+.\"    Source: odfpy
+.\"  Language: English
+.\"
+.TH "ODFMETA" "1" "03/15/2009" "odfpy" "User commands"
+.\" -----------------------------------------------------------------
+.\" * (re)Define some macros
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" toupper - uppercase a string (locale-aware)
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de toupper
+.tr aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ
+\\$*
+.tr aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz
+..
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" SH-xref - format a cross-reference to an SH section
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de SH-xref
+.ie n \{\
+.\}
+.toupper \\$*
+.el \{\
+\\$*
+.\}
+..
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" SH - level-one heading that works better for non-TTY output
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de1 SH
+.\" put an extra blank line of space above the head in non-TTY output
+.if t \{\
+.sp 1
+.\}
+.sp \\n[PD]u
+.nr an-level 1
+.set-an-margin
+.nr an-prevailing-indent \\n[IN]
+.fi
+.in \\n[an-margin]u
+.ti 0
+.HTML-TAG ".NH \\n[an-level]"
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+\." make the size of the head bigger
+.ps +3
+.ft B
+.ne (2v + 1u)
+.ie n \{\
+.\" if n (TTY output), use uppercase
+.toupper \\$*
+.\}
+.el \{\
+.nr an-break-flag 0
+.\" if not n (not TTY), use normal case (not uppercase)
+\\$1
+.in \\n[an-margin]u
+.ti 0
+.\" if not n (not TTY), put a border/line under subheading
+.sp -.6
+\l'\n(.lu'
+.\}
+..
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" SS - level-two heading that works better for non-TTY output
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de1 SS
+.sp \\n[PD]u
+.nr an-level 1
+.set-an-margin
+.nr an-prevailing-indent \\n[IN]
+.fi
+.in \\n[IN]u
+.ti \\n[SN]u
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.ps \\n[PS-SS]u
+\." make the size of the head bigger
+.ps +2
+.ft B
+.ne (2v + 1u)
+.if \\n[.$] \&\\$*
+..
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" BB/BE - put background/screen (filled box) around block of text
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de BB
+.if t \{\
+.sp -.5
+.br
+.in +2n
+.ll -2n
+.gcolor red
+.di BX
+.\}
+..
+.de EB
+.if t \{\
+.if "\\$2"adjust-for-leading-newline" \{\
+.sp -1
+.\}
+.br
+.di
+.in
+.ll
+.gcolor
+.nr BW \\n(.lu-\\n(.i
+.nr BH \\n(dn+.5v
+.ne \\n(BHu+.5v
+.ie "\\$2"adjust-for-leading-newline" \{\
+\M[\\$1]\h'1n'\v'+.5v'\D'P \\n(BWu 0 0 \\n(BHu -\\n(BWu 0 0 -\\n(BHu'\M[]
+.\}
+.el \{\
+\M[\\$1]\h'1n'\v'-.5v'\D'P \\n(BWu 0 0 \\n(BHu -\\n(BWu 0 0 -\\n(BHu'\M[]
+.\}
+.in 0
+.sp -.5v
+.nf
+.BX
+.in
+.sp .5v
+.fi
+.\}
+..
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" BM/EM - put colored marker in margin next to block of text
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.de BM
+.if t \{\
+.br
+.ll -2n
+.gcolor red
+.di BX
+.\}
+..
+.de EM
+.if t \{\
+.br
+.di
+.ll
+.gcolor
+.nr BH \\n(dn
+.ne \\n(BHu
+\M[\\$1]\D'P -.75n 0 0 \\n(BHu -(\\n[.i]u - \\n(INu - .75n) 0 0 -\\n(BHu'\M[]
+.in 0
+.nf
+.BX
+.in
+.fi
+.\}
+..
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "Name"
+odfmeta \- List or change the metadata of an ODF file
+.SH "Synopsis"
+.fam C
+.HP \w'\fBodfmeta\fR\ 'u
+\fBodfmeta\fR [\-l] [\-v] [\-V] [\-c] [\-d] [\-x\ \fImetafield\fR...] [\-X\ \fImetafield\fR...] [\-a\ \fImetafield\fR...] [\-A\ \fImetafield\fR...] [\-I\ \fImetafield\fR...] [\-o\ \fIpath\fR] \fIpath\fR
+.fam
+.SH "Description"
+.PP
+\fBodfmeta\fR
+is a program that will list or change the metadata in an OpenDocument file\&. This is useful for version control systems\&. You can change title, keywords, description etc\&.
+.PP
+
+\(lqPath\(rq
+is assumed to be an OpenDocument file of text, spreadsheet or presentation type\&.
+.SH "Options"
+.PP
+\-l
+.RS 4
+List (extract) all known metadata fields\&.
+.RE
+.PP
+\-v or \-V
+.RS 4
+Print the version number of the ODF document
+\fIformat\fR\&. If you use \-V it will print "version:" before the number for compatibility with \-X\&. The version number can\'t be modified\&.
+.RE
+.PP
+\-c
+.RS 4
+Make field values continous by normalizing white space\&. Might be convenient when postprocessing with standard (line oriented) text utilities\&.
+.RE
+.PP
+\-d
+.RS 4
+Update the modification date to the current date and time\&.
+.RE
+.PP
+\-x \fImetafield\fR
+.RS 4
+Extract the contents of this metafield from the file\&. Known field names are creation\-date, creator, date, description, editing\-cycles, editing\-duration, generator, initial\-creator, keyword, language, print\-date, printed\-by, subject, title, user\-defined\&. All other names are assumed to be user defined\&.
+.RE
+.PP
+\-X \fImetafield\fR
+.RS 4
+Same as \-x, but also preserves/includes the field name\&.
+.RE
+.PP
+\-a \fImetafield\fR
+.RS 4
+Append a custom metafield to the metadata; but only if a similar field does not exist yet\&.
+.RE
+.PP
+\-A \fImetafield\fR
+.RS 4
+Append a custom metafield to the metadata in any case\&.
+.RE
+.PP
+\-I \fImetafield\fR
+.RS 4
+Append a custom metafield to the metadata and remove any existing similar field\&.
+.RE
+.PP
+\-o \fIpath\fR
+.RS 4
+Filename to write modified ODT file to\&. If no
+\fB\-o\fR
+option is provided, the ODT file will be written to stdout\&.
+.RE
+.SH "Examples"
+.sp
+.if n \{\
+.RS 4
+.\}
+.fam C
+.ps -1
+.nf
+.if t \{\
+.sp -1
+.\}
+.BB lightgray adjust-for-leading-newline
+.sp -1
+
+odfmeta \-l odf\-file\&.odt
+odfmeta \-I "title:The Little Engine That Could" \-A subject:I\-think\-I\-can \-o newfile\&.odt source\&.odt
+.EB lightgray adjust-for-leading-newline
+.if t \{\
+.sp 1
+.\}
+.fi
+.fam
+.ps +1
+.if n \{\
+.RE
+.\}
+.SH "See Also"
+.PP
+
+\fBformail\fR(1),
+\fBid3tag\fR(1)
+.SH "Bugs"
+.PP
+All known versions of OpenOffice\&.org keep only four <meta:user\-defined> elements\&. If you add more than those, you\'ll loose them next time you save with OpenOffice\&.org\&. KOffice keeps only one <meta:keyword> element\&.
+.SH "Author"
+.PP
+\fBS\(/oren Roug\fR
+.RS 4
+Original author
+.RE

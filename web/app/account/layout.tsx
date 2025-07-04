@@ -21,7 +21,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <HeaderWrapper>
                   <Header />
                 </HeaderWrapper>
-                <div className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg'>
+                <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
                   {children}
                 </div>
               </ModalContextProvider>

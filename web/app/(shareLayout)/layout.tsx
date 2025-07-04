@@ -8,10 +8,12 @@ import { AccessMode } from '@/models/access-control'
 import { getAppAccessModeByAppCode } from '@/service/share'
 
 const Layout: FC<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }> = ({ children }) => {
   const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
-  const setWebAppAccessMode = useGlobalPublicStore(s => s.setWebAppAccessMode)
+  const setWebAppAccessMode = useGlobalPublicStore(
+    s => s.setWebAppAccessMode,
+  )
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -26,25 +28,34 @@ const Layout: FC<{
 
       let appCode: string | null = null
       if (redirectUrl) {
-        const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+        const url = new URL(
+          `${window.location.origin}${decodeURIComponent(redirectUrl)}`,
+        )
         appCode = url.pathname.split('/').pop() || null
       }
-      else {
+ else {
         appCode = pathname.split('/').pop() || null
       }
 
-      if (!appCode)
-        return
+      if (!appCode) return
       setIsLoading(true)
       const ret = await getAppAccessModeByAppCode(appCode)
       setWebAppAccessMode(ret?.accessMode || AccessMode.PUBLIC)
       setIsLoading(false)
     })()
-  }, [pathname, redirectUrl, setWebAppAccessMode, isGlobalPending, systemFeatures.webapp_auth.enabled])
+  }, [
+    pathname,
+    redirectUrl,
+    setWebAppAccessMode,
+    isGlobalPending,
+    systemFeatures.webapp_auth.enabled,
+  ])
   if (isLoading || isGlobalPending) {
-    return <div className='flex h-full w-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return (
     <div className="h-full min-w-[300px] pb-[env(safe-area-inset-bottom)]">

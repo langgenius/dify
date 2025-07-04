@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
+import {
+  COUNT_DOWN_KEY,
+  COUNT_DOWN_TIME_MS,
+} from '../components/signin/countdown'
 import { emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -47,58 +50,85 @@ export default function CheckCode() {
         params.set('email', encodeURIComponent(email))
         router.push(`/reset-password/check-code?${params.toString()}`)
       }
-      else if (res.code === 'account_not_found') {
+ else if (res.code === 'account_not_found') {
         Toast.notify({
           type: 'error',
           message: t('login.error.registrationNotAllowed'),
         })
       }
-      else {
+ else {
         Toast.notify({
           type: 'error',
           message: res.data,
         })
       }
     }
-    catch (error) {
+ catch (error) {
       console.error(error)
     }
-    finally {
+ finally {
       setIsLoading(false)
     }
   }
 
-  return <div className='flex flex-col gap-3'>
-    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
-      <RiLockPasswordLine className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
-    </div>
-    <div className='pb-4 pt-2'>
-      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.resetPassword')}</h2>
-      <p className='body-md-regular mt-2 text-text-secondary'>
-        {t('login.resetPasswordDesc')}
-      </p>
-    </div>
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      </div>
+      <div className="pb-4 pt-2">
+        <h2 className="title-4xl-semi-bold text-text-primary">
+          {t('login.resetPassword')}
+        </h2>
+        <p className="body-md-regular mt-2 text-text-secondary">
+          {t('login.resetPasswordDesc')}
+        </p>
+      </div>
 
-    <form onSubmit={noop}>
-      <input type='text' className='hidden' />
-      <div className='mb-2'>
-        <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
-        <div className='mt-1'>
-          <Input id='email' type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+      <form onSubmit={noop}>
+        <input type="text" className="hidden" />
+        <div className="mb-2">
+          <label
+            htmlFor="email"
+            className="system-md-semibold my-2 text-text-secondary"
+          >
+            {t('login.email')}
+          </label>
+          <div className="mt-1">
+            <Input
+              id="email"
+              type="email"
+              disabled={loading}
+              value={email}
+              placeholder={t('login.emailPlaceholder') as string}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="mt-3">
+            <Button
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+              className="w-full"
+              onClick={handleGetEMailVerificationCode}
+            >
+              {t('login.sendVerificationCode')}
+            </Button>
+          </div>
         </div>
-        <div className='mt-3'>
-          <Button loading={loading} disabled={loading} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.sendVerificationCode')}</Button>
-        </div>
+      </form>
+      <div className="py-2">
+        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
-    </form>
-    <div className='py-2'>
-      <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
+      <Link
+        href={`/signin?${searchParams.toString()}`}
+        className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary"
+      >
+        <div className="inline-block rounded-full bg-background-default-dimmed p-1">
+          <RiArrowLeftLine size={12} />
+        </div>
+        <span className="system-xs-regular ml-2">{t('login.backToLogin')}</span>
+      </Link>
     </div>
-    <Link href={`/signin?${searchParams.toString()}`} className='flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary'>
-      <div className='inline-block rounded-full bg-background-default-dimmed p-1'>
-        <RiArrowLeftLine size={12} />
-      </div>
-      <span className='system-xs-regular ml-2'>{t('login.backToLogin')}</span>
-    </Link>
-  </div>
+  )
 }

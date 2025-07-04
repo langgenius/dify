@@ -33,7 +33,12 @@ const ForgotPasswordForm = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const { register, trigger, getValues, formState: { errors } } = useForm<AccountFormValues>({
+  const {
+    register,
+    trigger,
+    getValues,
+    formState: { errors },
+  } = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: { email: '' },
   })
@@ -44,12 +49,10 @@ const ForgotPasswordForm = () => {
         url: '/forgot-password',
         body: { email },
       })
-      if (res.result === 'success')
-        setIsEmailSent(true)
-
+      if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     }
-    catch (error) {
+ catch (error) {
       console.error('Request failed:', error)
     }
   }
@@ -58,7 +61,7 @@ const ForgotPasswordForm = () => {
     if (isEmailSent) {
       router.push('/signin')
     }
-    else {
+ else {
       const isValid = await trigger('email')
       if (isValid) {
         const email = getValues('email')
@@ -78,45 +81,59 @@ const ForgotPasswordForm = () => {
     })
   }, [])
 
-  return (
-    loading
-      ? <Loading />
-      : <>
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-text-primary">
-            {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
-          </h2>
-          <p className='mt-1 text-sm text-text-secondary'>
-            {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
-          </p>
-        </div>
-        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="relative">
-            <form>
-              {!isEmailSent && (
-                <div className='mb-5'>
-                  <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <Input
-                      {...register('email')}
-                      placeholder={t('login.emailPlaceholder') || ''}
-                    />
-                    {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
-                  </div>
+  return loading ? (
+    <Loading />
+  ) : (
+    <>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="text-[32px] font-bold text-text-primary">
+          {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          {isEmailSent
+            ? t('login.checkEmailForResetLink')
+            : t('login.forgotPasswordDesc')}
+        </p>
+      </div>
+      <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="relative">
+          <form>
+            {!isEmailSent && (
+              <div className="mb-5">
+                <label
+                  htmlFor="email"
+                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
+                >
+                  {t('login.email')}
+                </label>
+                <div className="mt-1">
+                  <Input
+                    {...register('email')}
+                    placeholder={t('login.emailPlaceholder') || ''}
+                  />
+                  {errors.email && (
+                    <span className="text-sm text-red-400">
+                      {t(`${errors.email?.message}`)}
+                    </span>
+                  )}
                 </div>
-              )}
-              <div>
-                <Button variant='primary' className='w-full' onClick={handleSendResetPasswordClick}>
-                  {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
-                </Button>
               </div>
-            </form>
-          </div>
+            )}
+            <div>
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleSendResetPasswordClick}
+              >
+                {isEmailSent
+                  ? t('login.backToSignIn')
+                  : t('login.sendResetLink')}
+              </Button>
+            </div>
+          </form>
         </div>
-      </>
+      </div>
+    </>
   )
 }
 

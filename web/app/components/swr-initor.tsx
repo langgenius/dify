@@ -11,15 +11,17 @@ import {
 } from '@/app/education-apply/constants'
 
 type SwrInitorProps = {
-  children: ReactNode
+  children: ReactNode;
 }
-const SwrInitor = ({
-  children,
-}: SwrInitorProps) => {
+const SwrInitor = ({ children }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
-  const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+  const consoleToken = decodeURIComponent(
+    searchParams.get('access_token') || '',
+  )
+  const refreshToken = decodeURIComponent(
+    searchParams.get('refresh_token') || '',
+  )
   const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
   const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
   const pathname = usePathname()
@@ -27,8 +29,7 @@ const SwrInitor = ({
 
   const isSetupFinished = useCallback(async () => {
     try {
-      if (localStorage.getItem('setup_status') === 'finished')
-        return true
+      if (localStorage.getItem('setup_status') === 'finished') return true
       const setUpStatus = await fetchSetupStatus()
       if (setUpStatus.step !== 'finished') {
         localStorage.removeItem('setup_status')
@@ -37,7 +38,7 @@ const SwrInitor = ({
       localStorage.setItem('setup_status', 'finished')
       return true
     }
-    catch (error) {
+ catch (error) {
       console.error(error)
       return false
     }
@@ -56,11 +57,19 @@ const SwrInitor = ({
           router.replace('/install')
           return
         }
-        if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
+        if (
+          !(
+            (consoleToken && refreshToken)
+            || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
+          )
+        ) {
           router.replace('/signin')
           return
         }
-        if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
+        if (
+          searchParams.has('access_token')
+          || searchParams.has('refresh_token')
+        ) {
           consoleToken && localStorage.setItem('console_token', consoleToken)
           refreshToken && localStorage.setItem('refresh_token', refreshToken)
           router.replace(pathname)
@@ -68,22 +77,31 @@ const SwrInitor = ({
 
         setInit(true)
       }
-      catch {
+ catch {
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, router, pathname, searchParams, consoleToken, refreshToken, consoleTokenFromLocalStorage, refreshTokenFromLocalStorage])
+  }, [
+    isSetupFinished,
+    router,
+    pathname,
+    searchParams,
+    consoleToken,
+    refreshToken,
+    consoleTokenFromLocalStorage,
+    refreshTokenFromLocalStorage,
+  ])
 
-  return init
-    ? (
-      <SWRConfig value={{
+  return init ? (
+    <SWRConfig
+      value={{
         shouldRetryOnError: false,
         revalidateOnFocus: false,
-      }}>
-        {children}
-      </SWRConfig>
-    )
-    : null
+      }}
+    >
+      {children}
+    </SWRConfig>
+  ) : null
 }
 
 export default SwrInitor

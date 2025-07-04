@@ -1,0 +1,241 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2006 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+#
+
+# OpenDocument can be a complete office document in a single
+# XML document. This script will take such a document and create
+# a package
+import io
+import zipfile,time, sys, getopt
+import xml.sax, xml.sax.saxutils
+from odf import manifest
+
+class SplitWriter:
+    def __init__(self):
+        self.activefiles = []
+        self._content = []
+        self._meta = []
+        self._styles = []
+        self._settings = []
+
+        self.files = {'content': self._content, 'meta': self._meta,
+                 'styles':self._styles, 'settings': self._settings }
+
+    def write(self, str):
+        for f in self.activefiles:
+            f.append(str)
+
+    def activate(self, filename):
+        file = self.files[filename]
+        if file not in self.activefiles:
+            self.activefiles.append(file)
+
+    def deactivate(self, filename):
+        file = self.files[filename]
+        if file in self.activefiles:
+            self.activefiles.remove(file)
+
+odmimetypes = {
+ 'application/vnd.oasis.opendocument.text':                  '.odt',
+ 'application/vnd.oasis.opendocument.text-template':         '.ott',
+ 'application/vnd.oasis.opendocument.graphics':              '.odg',
+ 'application/vnd.oasis.opendocument.graphics-template':     '.otg',
+ 'application/vnd.oasis.opendocument.presentation':          '.odp',
+ 'application/vnd.oasis.opendocument.presentation-template': '.otp',
+ 'application/vnd.oasis.opendocument.spreadsheet':           '.ods',
+ 'application/vnd.oasis.opendocument.spreadsheet-template':  '.ots',
+ 'application/vnd.oasis.opendocument.chart':                 '.odc',
+ 'application/vnd.oasis.opendocument.chart-template':        '.otc',
+ 'application/vnd.oasis.opendocument.image':                 '.odi',
+ 'application/vnd.oasis.opendocument.image-template':        '.oti',
+ 'application/vnd.oasis.opendocument.formula':               '.odf',
+ 'application/vnd.oasis.opendocument.formula-template':      '.otf',
+ 'application/vnd.oasis.opendocument.text-master':           '.odm',
+ 'application/vnd.oasis.opendocument.text-web':              '.oth',
+}
+
+OFFICENS       = u"urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+base = xml.sax.saxutils.XMLGenerator
+
+class odfsplitter(base):
+
+    def __init__(self):
+        self._mimetype = ''
+        self.output = SplitWriter()
+        self._prefixes = []
+        base.__init__(self, self.output, 'utf-8')
+
+    def startPrefixMapping(self, prefix, uri):
+        base.startPrefixMapping(self, prefix, uri)
+        self._prefixes.append('xmlns:%s="%s"' % (prefix, uri))
+
+    def startElementNS(self, name, qname, attrs):
+        if name == (OFFICENS, u"document"):
+            self._mimetype = attrs.get((OFFICENS, "mimetype"))
+        elif name == (OFFICENS, u"meta"):
+            self.output.activate('meta')
+
+        elif name == (OFFICENS, u"settings"):
+            self.output.activate('settings')
+        elif name == (OFFICENS, u"scripts"):
+            self.output.activate('content')
+        elif name == (OFFICENS, u"font-face-decls"):
+            self.output.activate('content')
+            self.output.activate('styles')
+        elif name == (OFFICENS, u"styles"):
+            self.output.activate('styles')
+        elif name == (OFFICENS, u"automatic-styles"):
+            self.output.activate('content')
+            self.output.activate('styles')
+        elif name == (OFFICENS, u"master-styles"):
+            self.output.activate('styles')
+        elif name == (OFFICENS, u"body"):
+            self.output.activate('content')
+        base.startElementNS(self, name, qname, attrs)
+
+    def endElementNS(self, name, qname):
+        base.endElementNS(self, name, qname)
+        if name == (OFFICENS, u"meta"):
+            self.output.deactivate('meta')
+        elif name == (OFFICENS, u"settings"):
+            self.output.deactivate('settings')
+        elif name == (OFFICENS, u"scripts"):
+            self.output.deactivate('content')
+        elif name == (OFFICENS, u"font-face-decls"):
+            self.output.deactivate('content')
+            self.output.deactivate('styles')
+        elif name == (OFFICENS, u"styles"):
+            self.output.deactivate('styles')
+        elif name == (OFFICENS, u"automatic-styles"):
+            self.output.deactivate('content')
+            self.output.deactivate('styles')
+        elif name == (OFFICENS, u"master-styles"):
+            self.output.deactivate('styles')
+        elif name == (OFFICENS, u"body"):
+            self.output.deactivate('content')
+
+
+    def content(self):
+        """ Return the content inside a wrapper called <office:document-content>
+        """
+        prefixes = ' '.join(self._prefixes)
+        return  ''.join(['<?xml version="1.0" encoding="UTF-8"?>\n<office:document-content %s office:version="1.0">' % prefixes] + list(map(lambda x: x.decode("utf-8"), self.output._content)) + ['</office:document-content>'])
+
+    def settings(self):
+        prefixes =  ' '.join(self._prefixes).encode('utf-8')
+        return ''.join( ['<?xml version="1.0" encoding="UTF-8"?>\n<office:document-settings %s office:version="1.0">' % prefixes] + self.output._settings + ['''</office:document-settings>'''])
+
+    def styles(self):
+        prefixes =  ' '.join(self._prefixes)
+        return ''.join( ['<?xml version="1.0" encoding="UTF-8"?>\n<office:document-styles %s office:version="1.0">' % prefixes] + list(map(lambda x: x.decode("utf-8"), self.output._styles)) + ['''</office:document-styles>'''])
+
+    def meta(self):
+        prefixes =  ' '.join(self._prefixes)
+        return ''.join( ['<?xml version="1.0" encoding="UTF-8"?>\n<office:document-meta %s office:version="1.0">' % prefixes] + list(map(lambda x: x.decode("utf-8"), self.output._meta)) + ['''</office:document-meta>'''])
+
+def usage():
+   sys.stderr.write("Usage: %s [-o outputfile] [-s] inputfile\n" % sys.argv[0])
+
+def manifestxml(m):
+    """ Generates the content of the manifest.xml file """
+    xml=io.StringIO()
+    xml.write(u"<?xml version='1.0' encoding='UTF-8'?>\n")
+    m.toXml(0,xml)
+    return xml.getvalue()
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "o:s", ["output=","suffix"])
+except getopt.GetoptError:
+    usage()
+    sys.exit(2)
+
+outputfile = '-'
+addsuffix = False
+
+for o, a in opts:
+    if o in ("-o", "--output"):
+        outputfile = a
+    if o in ("-s", "--suffix"):
+        addsuffix = True
+
+if len(args) > 1:
+    usage()
+    sys.exit(2)
+
+odfs = odfsplitter()
+parser = xml.sax.make_parser()
+parser.setFeature(xml.sax.handler.feature_namespaces, 1)
+parser.setContentHandler(odfs)
+if len(args) == 0:
+    parser.parse(sys.stdin)
+else:
+    parser.parse(open(args[0],"r"))
+
+mimetype = odfs._mimetype
+suffix = odmimetypes.get(mimetype,'.xxx')
+
+if outputfile == '-':
+    if sys.stdout.isatty():
+        sys.stderr.write("Won't write ODF file to terminal\n")
+        sys.exit(1)
+    z = zipfile.ZipFile(sys.stdout,"w")
+else:
+    if addsuffix:
+        outputfile = outputfile + suffix
+    z = zipfile.ZipFile(outputfile,"w")
+
+now = time.localtime()[:6]
+
+# Write mimetype
+zi = zipfile.ZipInfo('mimetype', now)
+zi.compress_type = zipfile.ZIP_STORED
+z.writestr(zi,mimetype)
+
+# Write content
+zi = zipfile.ZipInfo("content.xml", now)
+zi.compress_type = zipfile.ZIP_DEFLATED
+z.writestr(zi,odfs.content() )
+# Write styles
+zi = zipfile.ZipInfo("styles.xml", now)
+zi.compress_type = zipfile.ZIP_DEFLATED
+z.writestr(zi,odfs.styles() )
+
+# Write meta
+zi = zipfile.ZipInfo("meta.xml", now)
+zi.compress_type = zipfile.ZIP_DEFLATED
+z.writestr(zi,odfs.meta() )
+
+m = manifest.Manifest()
+m.addElement(manifest.FileEntry(fullpath="/", mediatype=mimetype))
+m.addElement(manifest.FileEntry(fullpath="content.xml",mediatype="text/xml"))
+m.addElement(manifest.FileEntry(fullpath="styles.xml", mediatype="text/xml"))
+m.addElement(manifest.FileEntry(fullpath="meta.xml",   mediatype="text/xml"))
+
+# Write manifest
+zi = zipfile.ZipInfo("META-INF/manifest.xml", now)
+zi.compress_type = zipfile.ZIP_DEFLATED
+z.writestr(zi, manifestxml(m).encode("utf-8") )
+z.close()
+
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

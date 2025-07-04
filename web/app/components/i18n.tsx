@@ -7,23 +7,22 @@ import type { Locale } from '@/i18n'
 import { setLocaleOnClient } from '@/i18n'
 
 export type II18nProps = {
-  locale: Locale
-  children: React.ReactNode
+  locale: Locale;
+  children: React.ReactNode;
 }
-const I18n: FC<II18nProps> = ({
-  locale,
-  children,
-}) => {
+const I18n: FC<II18nProps> = ({ locale, children }) => {
   useEffect(() => {
     setLocaleOnClient(locale, false)
   }, [locale])
 
   return (
-    <I18NContext.Provider value={{
-      locale,
-      i18n: {},
-      setLocaleOnClient,
-    }}>
+    <I18NContext.Provider
+      value={{
+        locale,
+        i18n: {},
+        setLocaleOnClient,
+      }}
+    >
       {children}
     </I18NContext.Provider>
   )

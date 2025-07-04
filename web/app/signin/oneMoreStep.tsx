@@ -15,18 +15,18 @@ import Toast from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
 
 type IState = {
-  formState: 'processing' | 'error' | 'success' | 'initial'
-  invitation_code: string
-  interface_language: string
-  timezone: string
+  formState: 'processing' | 'error' | 'success' | 'initial';
+  invitation_code: string;
+  interface_language: string;
+  timezone: string;
 }
 
 type IAction =
-  | { type: 'failed', payload: null }
-  | { type: 'invitation_code', value: string }
-  | { type: 'interface_language', value: string }
-  | { type: 'timezone', value: string }
-  | { type: 'formState', value: 'processing' }
+  | { type: 'failed'; payload: null }
+  | { type: 'invitation_code'; value: string }
+  | { type: 'interface_language'; value: string }
+  | { type: 'timezone'; value: string }
+  | { type: 'formState'; value: 'processing' }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -62,31 +62,40 @@ const OneMoreStep = () => {
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { data, error } = useSWR(state.formState === 'processing'
-    ? {
-      url: '/account/init',
-      body: {
-        invitation_code: state.invitation_code,
-        interface_language: state.interface_language,
-        timezone: state.timezone,
-      },
-    }
-    : null, oneMoreStep)
+  const { data, error } = useSWR(
+    state.formState === 'processing'
+      ? {
+          url: '/account/init',
+          body: {
+            invitation_code: state.invitation_code,
+            interface_language: state.interface_language,
+            timezone: state.timezone,
+          },
+        }
+      : null,
+    oneMoreStep,
+  )
 
   useEffect(() => {
     if (error && error.status === 400) {
-      Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+      Toast.notify({
+        type: 'error',
+        message: t('login.invalidInvitationCode'),
+      })
       dispatch({ type: 'failed', payload: null })
     }
-    if (data)
-      router.push('/apps')
+    if (data) router.push('/apps')
   }, [data, error])
 
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">
+          {t('login.oneMoreStep')}
+        </h2>
+        <p className="body-md-regular mt-1 text-text-tertiary">
+          {t('login.createSample')}
+        </p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
@@ -96,16 +105,20 @@ const OneMoreStep = () => {
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
-                  <div className='w-[256px] text-xs font-medium'>
-                    <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
-                      <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
+                  <div className="w-[256px] text-xs font-medium">
+                    <div className="font-medium">{t('login.sendUsMail')}</div>
+                    <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
+                      <a href="mailto:request-invitation@langgenius.ai">
+                        request-invitation@langgenius.ai
+                      </a>
                     </div>
                   </div>
                 }
                 needsDelay
               >
-                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
+                <span className="cursor-pointer text-text-accent-secondary">
+                  {t('login.dontHave')}
+                </span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -115,13 +128,19 @@ const OneMoreStep = () => {
                 type="text"
                 placeholder={t('login.invitationCodePlaceholder') || ''}
                 onChange={(e) => {
-                  dispatch({ type: 'invitation_code', value: e.target.value.trim() })
+                  dispatch({
+                    type: 'invitation_code',
+                    value: e.target.value.trim(),
+                  })
                 }}
               />
             </div>
           </div>
-          <div className='mb-5'>
-            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+          <div className="mb-5">
+            <label
+              htmlFor="name"
+              className="system-md-semibold my-2 text-text-secondary"
+            >
               {t('login.interfaceLanguage')}
             </label>
             <div className="mt-1">
@@ -129,13 +148,19 @@ const OneMoreStep = () => {
                 defaultValue={LanguagesSupported[0]}
                 items={languages.filter(item => item.supported)}
                 onSelect={(item) => {
-                  dispatch({ type: 'interface_language', value: item.value as typeof LanguagesSupported[number] })
+                  dispatch({
+                    type: 'interface_language',
+                    value: item.value as (typeof LanguagesSupported)[number],
+                  })
                 }}
               />
             </div>
           </div>
-          <div className='mb-4'>
-            <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
+          <div className="mb-4">
+            <label
+              htmlFor="timezone"
+              className="system-md-semibold text-text-tertiary"
+            >
               {t('login.timezone')}
             </label>
             <div className="mt-1">
@@ -143,15 +168,18 @@ const OneMoreStep = () => {
                 defaultValue={state.timezone}
                 items={timezones}
                 onSelect={(item) => {
-                  dispatch({ type: 'timezone', value: item.value as typeof state.timezone })
+                  dispatch({
+                    type: 'timezone',
+                    value: item.value as typeof state.timezone,
+                  })
                 }}
               />
             </div>
           </div>
           <div>
             <Button
-              variant='primary'
-              className='w-full'
+              variant="primary"
+              className="w-full"
               disabled={state.formState === 'processing'}
               onClick={() => {
                 dispatch({ type: 'formState', value: 'processing' })
@@ -164,10 +192,13 @@ const OneMoreStep = () => {
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-accent-secondary'
-              target='_blank' rel='noopener noreferrer'
+              className="system-xs-medium text-text-accent-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
               href={docLink('/policies/agreement/README')}
-            >{t('login.license.link')}</Link>
+            >
+              {t('login.license.link')}
+            </Link>
           </div>
         </div>
       </div>

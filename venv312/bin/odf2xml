@@ -1,0 +1,81 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2008 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+#
+
+# OpenDocument can be a complete office document in a single
+# XML document. This script will create such a document.
+import sys, getopt, base64
+from odf.opendocument import load
+from odf.draw import Image, ObjectOle
+from odf.style import BackgroundImage
+from odf.text import ListLevelStyleImage
+from odf.office import BinaryData
+
+if sys.version_info[0]==3: unicode=str
+
+def usage():
+   sys.stderr.write("Usage: %s [-e] [-o outputfile] [inputfile]\n" % sys.argv[0])
+
+
+if __name__ == "__main__":
+    embedimage = False
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "o:e", ["output="])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    outputfile = '-'
+
+    for o, a in opts:
+        if o in ("-o", "--output"):
+            outputfile = a
+        if o == '-e':
+            embedimage = True
+
+    if len(args) > 1:
+        usage()
+        sys.exit(2)
+    if len(args) == 0:
+        d = load(sys.stdin)
+    else:
+        d = load(unicode(args[0]))
+    if embedimage:
+        images = d.getElementsByType(Image) + \
+           d.getElementsByType(BackgroundImage) +  \
+           d.getElementsByType(ObjectOle) + \
+           d.getElementsByType(ListLevelStyleImage)
+        for image in images:
+            href = image.getAttribute('href')
+            if href and href[:9] == "Pictures/":
+                p = d.Pictures[href]
+                bp = base64.encodestring(p[1])
+                image.addElement(BinaryData(text=bp))
+                image.removeAttribute('href')
+    xml = d.xml()
+    if outputfile == '-':
+       print (xml)
+    else:
+        open(outputfile,"wb").write(xml)
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

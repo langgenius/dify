@@ -1,0 +1,95 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2006 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+from odf.odf2xhtml import ODF2XHTML
+import zipfile
+import sys, os, smtplib, getopt
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.nonmultipart import MIMENonMultipart
+from email.mime.text import MIMEText
+from email.encoders import encode_base64
+
+if sys.version_info[0]==3: unicode=str
+
+def usage():
+   sys.stderr.write("Usage: %s [-f from] [-s subject] inputfile recipients...\n" % sys.argv[0])
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "f:s:", ["from=", "subject="])
+except getopt.GetoptError:
+    usage()
+    sys.exit(2)
+
+fromaddr = os.getlogin() + "@" + os.getenv('HOSTNAME','localhost')
+subject = None
+for o, a in opts:
+    if o in ("-f", "--from"):
+        fromaddr = a
+    if o in ("-s", "--subject"):
+        subject = a
+
+if len(args) < 2:
+    usage()
+    sys.exit(2)
+
+suffices = {
+ 'wmf':('image','x-wmf'),
+ 'png':('image','png'),
+ 'gif':('image','gif'),
+ 'jpg':('image','jpeg'),
+ 'jpeg':('image','jpeg')
+ }
+
+msg = MIMEMultipart('related',type="text/html")
+msg['From'] = fromaddr
+#   msg['Date'] = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+msg['To'] = ','.join(args[1:])
+msg.preamble = 'This is a multi-part message in MIME format.'
+msg.epilogue = ''
+odhandler = ODF2XHTML()
+result = odhandler.odf2xhtml(unicode(args[0]))
+if subject:
+    msg['Subject'] = subject
+else:
+    msg['Subject'] = odhandler.title
+htmlpart = MIMEText(result,'html','us-ascii')
+htmlpart['Content-Location'] = 'index.html'
+msg.attach(htmlpart)
+z = zipfile.ZipFile(unicode(args[0]))
+for file in z.namelist():
+    if file[0:9] == 'Pictures/':
+        suffix = file[file.rfind(".")+1:]
+        main,sub = suffices.get(suffix,('application','octet-stream')) 
+        img = MIMENonMultipart(main,sub)
+        img.set_payload(z.read(file))
+        img['Content-Location'] = "" + file
+        encode_base64(img)
+        msg.attach(img)
+z.close()
+
+server = smtplib.SMTP('localhost')
+#server.set_debuglevel(1)
+server.sendmail(fromaddr, args[1:], msg.as_string())
+server.quit()
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

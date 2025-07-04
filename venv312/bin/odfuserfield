@@ -1,0 +1,101 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2006-2007 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s): Michael Howitz, gocept gmbh & co. kg
+
+import sys
+import getopt
+
+import odf.userfield
+
+if sys.version_info[0]==3: unicode=str
+
+listfields = False
+Listfields = False
+xfields = []
+Xfields = []
+setfields = {}
+outputfile = None
+inputfile = None
+
+
+def exitwithusage(exitcode=2):
+    """ print out usage information """
+    sys.stderr.write("Usage: %s [-lL] [-xX metafield] [-s metafield:value]... "
+                     "[-o output] [inputfile]\n" % sys.argv[0])
+    sys.stderr.write("\tInputfile must be OpenDocument format\n")
+    sys.exit(exitcode)
+
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "lLs:o:x:X:")
+except getopt.GetoptError:
+    exitwithusage()
+
+if len(opts) == 0:
+    exitwithusage()
+
+for o, a in opts:
+    if o == '-s':
+        if a.find(":") >= 0:
+            k,v = a.split(":",1)
+        else:
+            k,v = (a, "")
+        if len(k) == 0:
+            exitwithusage()
+        setfields[unicode(k)] = unicode(v)
+    if o == '-l':
+        listfields = True
+        Listfields = False
+    if o == '-L':
+        Listfields = True
+        listfields = False
+    if o == "-x":
+        xfields.append(unicode(a))
+    if o == "-X":
+        Xfields.append(unicode(a))
+    if o == "-o":
+        outputfile = unicode(a)
+
+if len(args) != 0:
+    inputfile = unicode(args[0])
+
+user_fields = odf.userfield.UserFields(inputfile, outputfile)
+
+if xfields:
+    for value in user_fields.list_values(xfields):
+        print (value)
+
+if Listfields or Xfields:
+    if Listfields:
+        Xfields = None
+    for field_name, value_type, value in user_fields.list_fields_and_values(
+        Xfields):
+        print ("%s#%s:%s" % (field_name, value_type, value))
+    
+if listfields:
+    for value in user_fields.list_fields():
+        print (value)
+
+if setfields:
+    user_fields.update(setfields)
+
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

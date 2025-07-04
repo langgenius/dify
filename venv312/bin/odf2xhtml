@@ -1,0 +1,59 @@
+#!/home/zdj/value/dify/venv312/bin/python3.12
+# -*- coding: utf-8 -*-
+# Copyright (C) 2007 Søren Roug, European Environment Agency
+#
+# This is free software.  You may redistribute it under the terms
+# of the Apache license and the GNU General Public License Version
+# 2 or at your option any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# Contributor(s):
+#
+from odf.odf2xhtml import ODF2XHTML
+import sys, getopt
+
+if sys.version_info[0]==3: unicode=str
+
+from io import StringIO
+
+def usage():
+   sys.stderr.write("Usage: %s [-p] inputfile\n" % sys.argv[0])
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "ep", ["plain","embedable"])
+except getopt.GetoptError:
+    usage()
+    sys.exit(2)
+
+generatecss = True
+embedable = False
+for o, a in opts:
+    if o in ("-p", "--plain"):
+        generatecss = False
+    if o in ("-e", "--embedable"):
+        embedable = True
+
+if len(args) != 1:
+    usage()
+    sys.exit(2)
+
+odhandler = ODF2XHTML(generatecss, embedable)
+try:
+   result = odhandler.odf2xhtml(unicode(args[0]))
+except:
+    sys.stderr.write("Unable to open file %s or file is not OpenDocument\n" % args[0])
+    sys.exit(1)
+sys.stdout.write(result)
+
+
+# Local Variables: ***
+# mode: python     ***
+# End:             ***

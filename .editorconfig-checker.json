@@ -1,0 +1,12 @@
+{
+    "disabled_rules": {
+        "*:*": ["indent_style", "end_of_line", "max_line_length"],
+        "*.json": ["trim_trailing_whitespace"]
+    },
+    "exclude": [
+        "venv312",
+        "web/public",
+        "web/app/components/base/icons",
+        "docker"
+    ]
+}
