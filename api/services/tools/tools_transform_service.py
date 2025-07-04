@@ -21,7 +21,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.encryption import create_encrypter, create_generic_encrypter
+from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
@@ -115,9 +115,7 @@ class ToolTransformService:
         schema = {
             x.to_basic_provider_config().name: x
             for x in provider_controller.get_credentials_schema_by_type(
-                CredentialType.of(db_provider.credential_type)
-                if db_provider
-                else CredentialType.API_KEY
+                CredentialType.of(db_provider.credential_type) if db_provider else CredentialType.API_KEY
             )
         }
 
@@ -136,7 +134,7 @@ class ToolTransformService:
                 credentials = db_provider.credentials
 
                 # init tool configuration
-                encrypter, _ = create_encrypter(
+                encrypter, _ = create_provider_encrypter(
                     tenant_id=db_provider.tenant_id,
                     config=[
                         x.to_basic_provider_config()
@@ -289,11 +287,9 @@ class ToolTransformService:
 
         if decrypt_credentials:
             # init tool configuration
-            encrypter, _ = create_generic_encrypter(
+            encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=db_provider.tenant_id,
-                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
-                provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name,
+                controller=provider_controller,
             )
 
             # decrypt the credentials and mask the credentials

@@ -24,7 +24,7 @@ from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidatio
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import create_encrypter
+from core.tools.utils.encryption import create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
@@ -225,7 +225,7 @@ class BuiltinToolManageService:
         provider: str,
         provider_controller: BuiltinToolProviderController,
     ):
-        encrypter, cache = create_encrypter(
+        encrypter, cache = create_provider_encrypter(
             tenant_id=tenant_id,
             config=[
                 x.to_basic_provider_config()
@@ -396,7 +396,7 @@ class BuiltinToolManageService:
         """
         tool_provider = ToolProviderID(provider)
         provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-        encrypter, _ = create_encrypter(
+        encrypter, _ = create_provider_encrypter(
             tenant_id=tenant_id,
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
             cache=NoOpProviderCredentialCache(),
@@ -608,7 +608,7 @@ class BuiltinToolManageService:
                 session.add(custom_client_params)
 
             if client_params is not None:
-                encrypter, _ = create_encrypter(
+                encrypter, _ = create_provider_encrypter(
                     tenant_id=tenant_id,
                     config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                     cache=NoOpProviderCredentialCache(),
@@ -647,7 +647,7 @@ class BuiltinToolManageService:
             if not isinstance(provider_controller, BuiltinToolProviderController):
                 raise ValueError(f"Provider {provider} is not a builtin or plugin provider")
 
-            encrypter, _ = create_encrypter(
+            encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                 cache=NoOpProviderCredentialCache(),

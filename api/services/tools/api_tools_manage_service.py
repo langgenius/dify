@@ -18,7 +18,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import ProviderConfigEncrypter, create_generic_encrypter
+from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
@@ -164,15 +164,11 @@ class ApiToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # encrypt credentials
-        tool_configuration = ProviderConfigEncrypter(
+        encrypter, _ = create_tool_provider_encrypter(
             tenant_id=tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name,
+            controller=provider_controller,
         )
-
-        encrypted_credentials = tool_configuration.encrypt(credentials)
-        db_provider.credentials_str = json.dumps(encrypted_credentials)
+        db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
         db.session.add(db_provider)
         db.session.commit()
@@ -297,11 +293,9 @@ class ApiToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # get original credentials if exists
-        encrypter, cache = create_generic_encrypter(
+        encrypter, cache = create_tool_provider_encrypter(
             tenant_id=tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name,
+            controller=provider_controller,
         )
 
         original_credentials = encrypter.decrypt(provider.credentials)
@@ -416,11 +410,9 @@ class ApiToolManageService:
 
         # decrypt credentials
         if db_provider.id:
-            encrypter, _ = create_generic_encrypter(
+            encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=tenant_id,
-                config=list(provider_controller.get_credentials_schema()),
-                provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name,
+                controller=provider_controller,
             )
             decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
