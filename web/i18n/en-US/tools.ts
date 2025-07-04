@@ -38,7 +38,7 @@ const translation = {
     },
     mcp: {
       title: 'No MCP tool available',
-      tip: 'Add a MCP server',
+      tip: 'Add an MCP server',
     },
     agent: {
       title: 'No agent strategy available',
