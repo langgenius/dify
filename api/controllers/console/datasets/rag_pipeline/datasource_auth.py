@@ -1,3 +1,5 @@
+import random
+
 from flask import redirect, request
 from flask_login import current_user  # type: ignore
 from flask_restful import (  # type: ignore
@@ -109,7 +111,7 @@ class DatasourceAuth(Resource):
                 provider=args["provider"],
                 plugin_id=args["plugin_id"],
                 credentials=args["credentials"],
-                name=args["name"],
+                name="test" + str(random.randint(1, 1000000)),
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))

@@ -147,10 +147,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                             provider_type=datasource_type,
                         )
                     )
-                    yield from self._transform_message(
+                    yield from self._transform_datasource_file_message(
                         messages=online_drive_result,
                         parameters_for_log=parameters_for_log,
                         datasource_info=datasource_info,
+                        variable_pool=variable_pool,
+                        datasource_type=datasource_type,
                     )
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     yield RunCompletedEvent(
@@ -466,3 +468,72 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
     @classmethod
     def version(cls) -> str:
         return "1"
+
+    def _transform_datasource_file_message(
+        self,
+        messages: Generator[DatasourceMessage, None, None],
+        parameters_for_log: dict[str, Any],
+        datasource_info: dict[str, Any],
+        variable_pool: VariablePool,
+        datasource_type: DatasourceProviderType,
+    ) -> Generator:
+        """
+        Convert ToolInvokeMessages into tuple[plain_text, files]
+        """
+        # transform message and handle file storage
+        message_stream = DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
+            messages=messages,
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            conversation_id=None,
+        )
+        file = None
+        for message in message_stream:
+            if message.type == DatasourceMessage.MessageType.BINARY_LINK:
+                assert isinstance(message.message, DatasourceMessage.TextMessage)
+
+                url = message.message.text
+                if message.meta:
+                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.DATASOURCE_FILE)
+                else:
+                    transfer_method = FileTransferMethod.DATASOURCE_FILE
+
+                datasource_file_id = str(url).split("/")[-1].split(".")[0]
+
+                with Session(db.engine) as session:
+                    stmt = select(UploadFile).where(UploadFile.id == datasource_file_id)
+                    datasource_file = session.scalar(stmt)
+                    if datasource_file is None:
+                        raise ToolFileError(f"Tool file {datasource_file_id} does not exist")
+
+                mapping = {
+                    "datasource_file_id": datasource_file_id,
+                    "type": file_factory.get_file_type_by_mime_type(datasource_file.mime_type),
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
+                )
+        variable_pool.add([self.node_id, "file"], [file])
+        for key, value in datasource_info.items():
+            # construct new key list
+            new_key_list = ["file", key]
+            self._append_variables_recursively(
+                variable_pool=variable_pool,
+                node_id=self.node_id,
+                variable_key_list=new_key_list,
+                variable_value=value,
+            )
+        yield RunCompletedEvent(
+            run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=parameters_for_log,
+                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                outputs={
+                    "file_info": datasource_info,
+                    "datasource_type": datasource_type,
+                },
+            )
+        )
