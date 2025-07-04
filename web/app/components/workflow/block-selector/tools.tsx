@@ -43,7 +43,6 @@ const Blocks = ({
   indexBarClassName,
   selectedTools,
   canChooseMCPTool,
-  hasScrollBar,
 }: ToolsProps) => {
   // const tools: any = []
   const { t } = useTranslation()
@@ -127,6 +126,7 @@ const Blocks = ({
             onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
             canChooseMCPTool={canChooseMCPTool}
+            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
           />
         ) : (
           <ToolListTreeView
@@ -140,8 +140,6 @@ const Blocks = ({
           />
         )
       )}
-
-      {isShowLetterIndex && <IndexBar hasScrollBar={!!hasScrollBar} letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }

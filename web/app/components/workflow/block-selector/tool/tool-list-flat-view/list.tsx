@@ -11,6 +11,7 @@ import { useMemo } from 'react'
 type Props = {
   payload: ToolWithProvider[]
   isShowLetterIndex: boolean
+  indexBar: React.ReactNode
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
@@ -25,6 +26,7 @@ const ToolViewFlatView: FC<Props> = ({
   letters,
   payload,
   isShowLetterIndex,
+  indexBar,
   hasSearchText,
   onSelect,
   canNotSelectMultiple,
@@ -43,29 +45,31 @@ const ToolViewFlatView: FC<Props> = ({
     return res
   }, [payload, letters])
   return (
-    <div>
-      {payload.map(tool => (
-        <div
-          key={tool.id}
-          ref={(el) => {
-            const letter = firstLetterToolIds[tool.id]
-            if (letter)
-              toolRefs.current[letter] = el
-          }}
-        >
-          <Tool
-            payload={tool}
-            viewType={ViewType.flat}
-            isShowLetterIndex={isShowLetterIndex}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-          />
-        </div>
-      ))}
+    <div className='flex w-full'>
+      <div className='mr-1 grow'>
+        {payload.map(tool => (
+          <div
+            key={tool.id}
+            ref={(el) => {
+              const letter = firstLetterToolIds[tool.id]
+              if (letter)
+                toolRefs.current[letter] = el
+            }}
+          >
+            <Tool
+              payload={tool}
+              viewType={ViewType.flat}
+              hasSearchText={hasSearchText}
+              onSelect={onSelect}
+              canNotSelectMultiple={canNotSelectMultiple}
+              onSelectMultiple={onSelectMultiple}
+              selectedTools={selectedTools}
+              canChooseMCPTool={canChooseMCPTool}
+            />
+          </div>
+        ))}
+      </div>
+      {isShowLetterIndex && indexBar}
     </div>
   )
 }

@@ -74,17 +74,16 @@ type IndexBarProps = {
   letters: string[]
   itemRefs: RefObject<{ [key: string]: HTMLElement | null }>
   className?: string
-  hasScrollBar: boolean
 }
 
-const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className, hasScrollBar }) => {
+const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
   const handleIndexClick = (letter: string) => {
     const element = itemRefs.current?.[letter]
     if (element)
       element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className={classNames('index-bar absolute right-0 top-36 flex flex-col items-center w-6 justify-center text-xs font-medium text-text-quaternary', hasScrollBar && 'right-3', className)}>
+    <div className={classNames('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
       <div className={classNames('absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
       {letters.map(letter => (
         <div className="cursor-pointer hover:text-text-secondary" key={letter} onClick={() => handleIndexClick(letter)}>

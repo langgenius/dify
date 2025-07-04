@@ -21,7 +21,6 @@ type Props = {
   className?: string
   payload: ToolWithProvider
   viewType: ViewType
-  isShowLetterIndex: boolean
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
@@ -34,7 +33,6 @@ const Tool: FC<Props> = ({
   className,
   payload,
   viewType,
-  isShowLetterIndex,
   hasSearchText,
   onSelect,
   canNotSelectMultiple,
@@ -145,7 +143,7 @@ const Tool: FC<Props> = ({
   return (
     <div
       key={payload.id}
-      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-6')}
+      className={cn('mb-1 last-of-type:mb-0')}
       ref={ref}
     >
       <div className={cn(className)}>
