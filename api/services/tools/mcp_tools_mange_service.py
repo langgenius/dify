@@ -12,7 +12,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.mcp_tool.provider import MCPToolProviderController
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.encryption import ProviderConfigEncrypter
 from extensions.ext_database import db
 from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService

@@ -2,7 +2,6 @@ import io
 from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
-from flask import redirect, send_file
 from flask_login import current_user
 from flask_restful import (
     Resource,
@@ -18,11 +17,6 @@ from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
-from controllers.console.wraps import (
-    account_initialization_required,
-    enterprise_license_required,
-    setup_required,
-)
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.oauth import OAuthHandler
@@ -97,10 +91,7 @@ class ToolBuiltinProviderInfoApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user = current_user
-
-        user_id = user.id
-        tenant_id = user.current_tenant_id
+        tenant_id = current_user.current_tenant_id
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
@@ -695,10 +686,7 @@ class ToolPluginOAuthApi(Resource):
             raise Forbidden()
 
         tenant_id = user.current_tenant_id
-        oauth_client_params = BuiltinToolManageService.get_oauth_client(
-            tenant_id=tenant_id,
-            provider=provider
-        )
+        oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
@@ -850,6 +838,7 @@ api.add_resource(ToolPluginOAuthApi, "/oauth/plugin/<path:provider>/tool/authori
 api.add_resource(ToolOAuthCallback, "/oauth/plugin/<path:provider>/tool/callback")
 
 api.add_resource(ToolOAuthCustomClient, "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
+
 
 class ToolProviderMCPApi(Resource):
     @setup_required

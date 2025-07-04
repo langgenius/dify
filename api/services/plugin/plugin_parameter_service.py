@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.encryption import ProviderConfigEncrypter
 from extensions.ext_database import db
 from models.tools import BuiltinToolProvider
 

@@ -46,14 +46,12 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
-    ProviderConfigEncrypter,
     ToolParameterConfigurationManager,
-    create_encrypter,
-    create_generic_encrypter,
 )
+from core.tools.utils.encryption import create_encrypter, create_generic_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
@@ -762,15 +760,15 @@ class ToolManager:
             ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
         )
         # init tool configuration
-        tool_configuration = create_encrypter(
+        encrypter, _ = create_encrypter(
             tenant_id=tenant_id,
             config=[x.to_basic_provider_config() for x in controller.get_credentials_schema()],
-            provider_type=controller.provider_type.value,
-            provider_identity=controller.entity.identity.name,
+            cache=ToolProviderCredentialsCache(
+                tenant_id=tenant_id, provider=provider, credential_id=provider_obj.id
+            ),
         )
 
-        decrypted_credentials = tool_configuration.decrypt(credentials)
-        masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)
+        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)

@@ -5,8 +5,8 @@ from typing import Any, Optional, Union, cast
 from yarl import URL
 
 from configs import dify_config
-from core.mcp.types import Tool as MCPTool
 from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.mcp.types import Tool as MCPTool
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -21,7 +21,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.utils.configuration import create_encrypter, create_generic_encrypter
+from core.tools.utils.encryption import create_encrypter, create_generic_encrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
