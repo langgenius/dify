@@ -45,7 +45,8 @@ const NodePosition = ({
     >
       <div
         className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation()
           setViewport({
             x: (clientWidth - 400 - nodeWidth * zoom) / 2 - nodePosition.x * zoom,
             y: (clientHeight - nodeHeight * zoom) / 2 - nodePosition.y * zoom,
