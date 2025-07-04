@@ -61,7 +61,7 @@ const EducationApplyAge = () => {
           onConfirm: handleModalConfirm,
         })
       }
- else {
+else {
         notify({
           type: 'error',
           message: t('education.submitError'),

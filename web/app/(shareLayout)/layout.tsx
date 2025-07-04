@@ -33,7 +33,7 @@ const Layout: FC<{
         )
         appCode = url.pathname.split('/').pop() || null
       }
- else {
+else {
         appCode = pathname.split('/').pop() || null
       }
 

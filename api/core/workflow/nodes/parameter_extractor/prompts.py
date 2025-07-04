@@ -108,8 +108,8 @@ Here are the chat histories between human and assistant, inside <histories></his
 ### Structure
 Here is the structure of the expected output, I should always follow the output structure.
 {{γγγ
-  'properties1': 'relevant text extracted from input',
-  'properties2': 'relevant text extracted from input',
+'properties1': 'relevant text extracted from input',
+'properties2': 'relevant text extracted from input',
 }}γγγ
 
 ### Input Text

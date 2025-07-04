@@ -41,7 +41,7 @@ def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
         dedent(
             """\
         address:
-                   city: Example City
+                city: Example City
             country: Example Country
         age: 30
         gender: male

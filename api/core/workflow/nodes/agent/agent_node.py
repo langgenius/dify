@@ -103,7 +103,7 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
-            agent_thoughts = []
+            agent_thoughts: list = []
 
             from core.tools.entities.tool_entities import ToolInvokeMessage
 

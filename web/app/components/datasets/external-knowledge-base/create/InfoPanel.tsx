@@ -24,9 +24,9 @@ const InfoPanel = () => {
             {t('dataset.connectDatasetIntro.content.end')}
           </span>
           <a className='system-sm-regular self-stretch text-text-accent'
-             href={docLink('/guides/knowledge-base/connect-external-knowledge-base')}
-             target='_blank'
-             rel="noopener noreferrer">
+            href={docLink('/guides/knowledge-base/connect-external-knowledge-base')}
+            target='_blank'
+            rel="noopener noreferrer">
             {t('dataset.connectDatasetIntro.learnMore')}
           </a>
         </p>

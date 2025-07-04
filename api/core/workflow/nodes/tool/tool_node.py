@@ -371,7 +371,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 yield agent_log
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output = json.copy()
+        json_output: dict[str, Any] | list[dict[str, Any]] = json.copy()
         if agent_logs:
             if not json_output:
                 json_output = {}
@@ -387,19 +387,20 @@ class ToolNode(BaseNode[ToolNodeData]):
                 json_output = {"data": json_output}
 
             # Add agent_logs to json output
-            json_output["agent_logs"] = [
-                {
-                    "id": log.id,
-                    "parent_id": log.parent_id,
-                    "error": log.error,
-                    "status": log.status,
-                    "data": log.data,
-                    "label": log.label,
-                    "metadata": log.metadata,
-                    "node_id": log.node_id,
-                }
-                for log in agent_logs
-            ]
+            if isinstance(json_output, dict):
+                json_output["agent_logs"] = [
+                    {
+                        "id": log.id,
+                        "parent_id": log.parent_id,
+                        "error": log.error,
+                        "status": log.status,
+                        "data": log.data,
+                        "label": log.label,
+                        "metadata": log.metadata,
+                        "node_id": log.node_id,
+                    }
+                    for log in agent_logs
+                ]
 
         yield RunCompletedEvent(
             run_result=NodeRunResult(

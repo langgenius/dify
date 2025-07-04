@@ -95,24 +95,24 @@ class CouchbaseVector(BaseVector):
     "sourceName": "Embeddings",
     "sourceUUID": "2242e4a25b4decd6650c9c7b3afa1dbf",
     "planParams": {
-      "maxPartitionsPerPIndex": 1024,
-      "indexPartitions": 1
+    "maxPartitionsPerPIndex": 1024,
+    "indexPartitions": 1
     },
     "params": {
-      "doc_config": {
+    "doc_config": {
         "docid_prefix_delim": "",
         "docid_regexp": "",
         "mode": "scope.collection.type_field",
         "type_field": "type"
-      },
-      "mapping": {
+    },
+    "mapping": {
         "analysis": { },
         "default_analyzer": "standard",
         "default_datetime_parser": "dateTimeOptional",
         "default_field": "_all",
         "default_mapping": {
-          "dynamic": true,
-          "enabled": true
+        "dynamic": true,
+        "enabled": true
         },
         "default_type": "_default",
         "docvalues_dynamic": false,
@@ -120,51 +120,51 @@ class CouchbaseVector(BaseVector):
         "store_dynamic": true,
         "type_field": "_type",
         "types": {
-          "collection_name": {
+        "collection_name": {
             "dynamic": true,
             "enabled": true,
             "properties": {
-              "embedding": {
+            "embedding": {
                 "dynamic": false,
                 "enabled": true,
                 "fields": [
-                  {
+                {
                     "dims": 1536,
                     "index": true,
                     "name": "embedding",
                     "similarity": "dot_product",
                     "type": "vector",
                     "vector_index_optimized_for": "recall"
-                  }
+                }
                 ]
-              },
-              "metadata": {
+            },
+            "metadata": {
                 "dynamic": true,
                 "enabled": true
-              },
-              "text": {
+            },
+            "text": {
                 "dynamic": false,
                 "enabled": true,
                 "fields": [
-                  {
+                {
                     "index": true,
                     "name": "text",
                     "store": true,
                     "type": "text"
-                  }
+                }
                 ]
-              }
             }
-          }
+            }
         }
-      },
-      "store": {
+        }
+    },
+    "store": {
         "indexType": "scorch",
         "segmentVersion": 16
-      }
+    }
     },
     "sourceParams": { }
-  }
+}
 """)
             index_definition["name"] = self._collection_name + "_search"
             index_definition["uuid"] = uuid

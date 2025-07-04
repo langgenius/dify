@@ -1064,24 +1064,24 @@ class ProviderConfigurations(BaseModel):
         Get available models.
 
         If preferred provider type is `system`:
-          Get the current **system mode** if provider supported,
-          if all system modes are not available (no quota), it is considered to be the **custom credential mode**.
-          If there is no model configured in custom mode, it is treated as no_configure.
+        Get the current **system mode** if provider supported,
+        if all system modes are not available (no quota), it is considered to be the **custom credential mode**.
+        If there is no model configured in custom mode, it is treated as no_configure.
         system > custom > no_configure
 
         If preferred provider type is `custom`:
-          If custom credentials are configured, it is treated as custom mode.
-          Otherwise, get the current **system mode** if supported,
-          If all system modes are not available (no quota), it is treated as no_configure.
+        If custom credentials are configured, it is treated as custom mode.
+        Otherwise, get the current **system mode** if supported,
+        If all system modes are not available (no quota), it is treated as no_configure.
         custom > system > no_configure
 
         If real mode is `system`, use system credentials to get models,
-          paid quotas > provider free quotas > system free quotas
-          include pre-defined models (exclude GPT-4, status marked as `no_permission`).
+        paid quotas > provider free quotas > system free quotas
+        include pre-defined models (exclude GPT-4, status marked as `no_permission`).
         If real mode is `custom`, use workspace custom credentials to get models,
-          include pre-defined models, custom models(manual append).
+        include pre-defined models, custom models(manual append).
         If real mode is `no_configure`, only return pre-defined models from `model runtime`.
-          (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
+        (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
         model status marked as `active` is available.
 
         :param provider: provider name

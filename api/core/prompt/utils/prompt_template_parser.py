@@ -13,10 +13,10 @@ class PromptTemplateParser:
 
     1. Template variables must be enclosed in `{{}}`.
     2. The template variable Key can only be: letters + numbers + underscore, with a maximum length of 16 characters,
-       and can only start with letters and underscores.
+    and can only start with letters and underscores.
     3. The template variable Key cannot contain new lines or spaces, and must comply with rule 2.
     4. In addition to the above, 3 types of special template variable Keys are accepted:
-       `{{#histories#}}` `{{#query#}}` `{{#context#}}`. No other `{{##}}` template variables are allowed.
+    `{{#histories#}}` `{{#query#}}` `{{#context#}}`. No other `{{##}}` template variables are allowed.
     """
 
     def __init__(self, template: str, with_variable_tmpl: bool = False):

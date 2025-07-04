@@ -65,29 +65,29 @@ class ProviderManager:
         Including:
         1. Basic information of the provider
         2. Hosting configuration information, including:
-          (1. Whether to enable (support) hosting type, if enabled, the following information exists
-          (2. List of hosting type provider configurations
-              (including quota type, quota limit, current remaining quota, etc.)
-          (3. The current hosting type in use (whether there is a quota or not)
-              paid quotas > provider free quotas > hosting trial quotas
-          (4. Unified credentials for hosting providers
+        (1. Whether to enable (support) hosting type, if enabled, the following information exists
+        (2. List of hosting type provider configurations
+            (including quota type, quota limit, current remaining quota, etc.)
+        (3. The current hosting type in use (whether there is a quota or not)
+            paid quotas > provider free quotas > hosting trial quotas
+        (4. Unified credentials for hosting providers
         3. Custom configuration information, including:
-          (1. Whether to enable (support) custom type, if enabled, the following information exists
-          (2. Custom provider configuration (including credentials)
-          (3. List of custom provider model configurations (including credentials)
+        (1. Whether to enable (support) custom type, if enabled, the following information exists
+        (2. Custom provider configuration (including credentials)
+        (3. List of custom provider model configurations (including credentials)
         4. Hosting/custom preferred provider type.
         Provide methods:
         - Get the current configuration (including credentials)
         - Get the availability and status of the hosting configuration: active available,
-          quota_exceeded insufficient quota, unsupported hosting
+        quota_exceeded insufficient quota, unsupported hosting
         - Get the availability of custom configuration
-          Custom provider available conditions:
-          (1. custom provider credentials available
-          (2. at least one custom model credentials available
+        Custom provider available conditions:
+        (1. custom provider credentials available
+        (2. at least one custom model credentials available
         - Verify, update, and delete custom provider configuration
         - Verify, update, and delete custom provider model configuration
         - Get the list of available models (optional provider filtering, model type filtering)
-          Append custom provider models to the list
+        Append custom provider models to the list
         - Get provider instance
         - Switch selection priority
 

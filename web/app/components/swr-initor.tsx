@@ -38,7 +38,7 @@ const SwrInitor = ({ children }: SwrInitorProps) => {
       localStorage.setItem('setup_status', 'finished')
       return true
     }
- catch (error) {
+catch (error) {
       console.error(error)
       return false
     }
@@ -77,7 +77,7 @@ const SwrInitor = ({ children }: SwrInitorProps) => {
 
         setInit(true)
       }
- catch {
+catch {
         router.replace('/signin')
       }
     })()

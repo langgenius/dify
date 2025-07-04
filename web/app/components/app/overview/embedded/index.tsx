@@ -29,16 +29,16 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}${basePath}/chatbot/${token}"
- style="width: 100%; height: 100%; min-height: 700px"
- frameborder="0"
- allow="microphone">
+src="${url}${basePath}/chatbot/${token}"
+style="width: 100%; height: 100%; min-height: 700px"
+frameborder="0"
+allow="microphone">
 </iframe>`,
   },
   scripts: {
     getContent: (url: string, token: string, primaryColor: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = {
+window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
         ? `,
   isDev: true`
@@ -54,12 +54,12 @@ const OPTION_MAP = {
     // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
     // name: 'YOU CAN DEFINE USER NAME HERE',
   },
- }
+}
 </script>
 <script
- src="${url}${basePath}/embed.min.js"
- id="${token}"
- defer>
+src="${url}${basePath}/embed.min.js"
+id="${token}"
+defer>
 </script>
 <style>
   #dify-chatbot-bubble-button {

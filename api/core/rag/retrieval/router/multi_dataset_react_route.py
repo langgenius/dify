@@ -24,8 +24,8 @@ Provide only ONE action per $JSON_BLOB, as shown:
 
 ```
 {{
-  "action": $TOOL_NAME,
-  "action_input": $INPUT
+"action": $TOOL_NAME,
+"action_input": $INPUT
 }}
 ```
 
@@ -43,8 +43,8 @@ Thought: I know what to respond
 Action:
 ```
 {{
-  "action": "Final Answer",
-  "action_input": "Final response to human"
+"action": "Final Answer",
+"action_input": "Final response to human"
 }}
 ```"""  # noqa: E501
 

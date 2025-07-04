@@ -23,12 +23,12 @@ class RedisClientWrapper:
 
     Attributes:
         _client (redis.Redis): The actual Redis client instance. It remains None until
-                               initialized with the `initialize` method.
+                            initialized with the `initialize` method.
 
     Methods:
         initialize(client): Initializes the Redis client if it hasn't been initialized already.
         __getattr__(item): Delegates attribute access to the Redis client, raising an error
-                           if the client is not initialized.
+                        if the client is not initialized.
     """
 
     def __init__(self):

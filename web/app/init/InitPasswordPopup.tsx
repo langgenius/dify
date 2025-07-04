@@ -27,11 +27,11 @@ const InitPasswordPopup = () => {
         setValidated(true)
         router.push('/install') // or render setup form
       }
- else {
+else {
         throw new Error('Validation failed')
       }
     }
- catch (e: any) {
+catch (e: any) {
       Toast.notify({
         type: 'error',
         message: e.message,

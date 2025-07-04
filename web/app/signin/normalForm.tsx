@@ -82,11 +82,11 @@ const NormalForm = () => {
         setWorkSpaceName(checkRes?.data?.workspace_name || '')
       }
     }
- catch (error) {
+catch (error) {
       console.error(error)
       setAllMethodsAreDisabled(true)
     }
- finally {
+finally {
       setIsLoading(false)
     }
   }, [

@@ -13,8 +13,8 @@ Provide only ONE action per $JSON_BLOB, as shown:
 
 ```
 {
-  "action": $TOOL_NAME,
-  "action_input": $ACTION_INPUT
+"action": $TOOL_NAME,
+"action_input": $ACTION_INPUT
 }
 ```
 
@@ -32,8 +32,8 @@ Thought: I know what to respond
 Action:
 ```
 {
-  "action": "Final Answer",
-  "action_input": "Final response to human"
+"action": "Final Answer",
+"action_input": "Final response to human"
 }
 ```
 
@@ -62,8 +62,8 @@ Provide only ONE action per $JSON_BLOB, as shown:
 
 ```
 {
-  "action": $TOOL_NAME,
-  "action_input": $ACTION_INPUT
+"action": $TOOL_NAME,
+"action_input": $ACTION_INPUT
 }
 ```
 
@@ -81,8 +81,8 @@ Thought: I know what to respond
 Action:
 ```
 {
-  "action": "Final Answer",
-  "action_input": "Final response to human"
+"action": "Final Answer",
+"action_input": "Final response to human"
 }
 ```
 

@@ -98,7 +98,7 @@ const InstallForm = () => {
         localStorage.setItem('setup_status', 'finished')
         router.push('/signin')
       }
- else {
+else {
         fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
           if (res.status === 'not_started') router.push('/init')
         })

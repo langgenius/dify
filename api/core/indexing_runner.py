@@ -323,7 +323,7 @@ class IndexingRunner:
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                        image_upload_file_is: {}".format(upload_file_id)
                         )
                     db.session.delete(image_file)
 

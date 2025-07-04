@@ -52,7 +52,7 @@ const ForgotPasswordForm = () => {
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     }
- catch (error) {
+catch (error) {
       console.error('Request failed:', error)
     }
   }
@@ -61,7 +61,7 @@ const ForgotPasswordForm = () => {
     if (isEmailSent) {
       router.push('/signin')
     }
- else {
+else {
       const isValid = await trigger('email')
       if (isValid) {
         const email = getValues('email')

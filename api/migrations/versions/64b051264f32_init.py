@@ -139,7 +139,7 @@ def upgrade():
 
     op.create_table('celery_taskmeta',
     sa.Column('id', sa.Integer(), nullable=False,
-              server_default=sa.text('nextval(\'task_id_sequence\')')),
+            server_default=sa.text('nextval(\'task_id_sequence\')')),
     sa.Column('task_id', sa.String(length=155), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=True),
     sa.Column('result', sa.PickleType(), nullable=True),
@@ -156,7 +156,7 @@ def upgrade():
     )
     op.create_table('celery_tasksetmeta',
     sa.Column('id', sa.Integer(), nullable=False,
-              server_default=sa.text('nextval(\'taskset_id_sequence\')')),
+            server_default=sa.text('nextval(\'taskset_id_sequence\')')),
     sa.Column('taskset_id', sa.String(length=155), nullable=True),
     sa.Column('result', sa.PickleType(), nullable=True),
     sa.Column('date_done', sa.DateTime(), nullable=True),

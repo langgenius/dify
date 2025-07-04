@@ -47,7 +47,7 @@ const AppOperations = ({ operations, gap }: {
         updatedEntries[id] = true
         width += gap + childWidth
       }
- else {
+else {
         if (i === childrens.length - 1 && width + childWidth <= containerWidth)
           updatedEntries[id] = true
         else

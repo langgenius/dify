@@ -207,14 +207,14 @@ class TiDBVector(BaseVector):
             select_statement = sql_text(f"""
                 SELECT meta, text, distance
                 FROM (
-                  SELECT
+                SELECT
                     meta,
                     text,
                     {tidb_dist_func}(vector, :query_vector_str) AS distance
-                  FROM {self._collection_name}
-                  {where_clause}
-                  ORDER BY distance ASC
-                  LIMIT :top_k
+                FROM {self._collection_name}
+                {where_clause}
+                ORDER BY distance ASC
+                LIMIT :top_k
                 ) t
                 WHERE distance <= :distance
                 """)

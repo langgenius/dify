@@ -336,7 +336,7 @@ class DatasetApi(DatasetApiResource):
 
         Returns:
             dict: A dictionary with a key 'result' and a value 'success'
-                  if the dataset was successfully deleted. Omitted in HTTP response.
+                if the dataset was successfully deleted. Omitted in HTTP response.
             int: HTTP status code 204 indicating that the operation was successful.
 
         Raises:

@@ -12,9 +12,9 @@ Automatically identify the language of the user’s input (e.g. English, Chinese
 3. Output Format
 Return **only** a valid JSON object with these exact keys and no additional text:
 {
-  "Language Type": "<Detected language>",
-  "Your Reasoning": "<Brief explanation in that language>",
-  "Your Output": "<Intention + Subject>"
+"Language Type": "<Detected language>",
+"Your Reasoning": "<Brief explanation in that language>",
+"Your Output": "<Intention + Subject>"
 }
 
 User Input:
@@ -207,48 +207,48 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 **User Input:** I need name and age
 **JSON Schema Output:**
 {
-  "type": "object",
-  "properties": {
+"type": "object",
+"properties": {
     "name": { "type": "string" },
     "age": { "type": "number" }
-  },
-  "required": ["name", "age"]
+},
+"required": ["name", "age"]
 }
 
 ### Example 2:
 **User Input:** I want to store information about books including title, author, publication year and optional page count
 **JSON Schema Output:**
 {
-  "type": "object",
-  "properties": {
+"type": "object",
+"properties": {
     "title": { "type": "string" },
     "author": { "type": "string" },
     "publicationYear": { "type": "integer" },
     "pageCount": { "type": "integer" }
-  },
-  "required": ["title", "author", "publicationYear"]
+},
+"required": ["title", "author", "publicationYear"]
 }
 
 ### Example 3:
 **User Input:** Create a schema for user profiles with email, password, and age (must be at least 18)
 **JSON Schema Output:**
 {
-  "type": "object",
-  "properties": {
+"type": "object",
+"properties": {
     "email": {
-      "type": "string",
-      "format": "email"
+    "type": "string",
+    "format": "email"
     },
     "password": {
-      "type": "string",
-      "minLength": 8
+    "type": "string",
+    "minLength": 8
     },
     "age": {
-      "type": "integer",
-      "minimum": 18
+    "type": "integer",
+    "minimum": 18
     }
-  },
-  "required": ["email", "password", "age"]
+},
+"required": ["email", "password", "age"]
 }
 
 ### Example 4:

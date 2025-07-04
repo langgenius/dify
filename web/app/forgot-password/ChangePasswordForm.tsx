@@ -76,7 +76,7 @@ const ChangePasswordForm = () => {
       })
       setShowSuccess(true)
     }
- catch {
+catch {
       await revalidateToken()
     }
   }, [confirmPassword, password, revalidateToken, searchParams, valid])

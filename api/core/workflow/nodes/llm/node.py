@@ -911,8 +911,8 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         There are two kinds of multimodal outputs:
 
-          - Inlined data encoded in base64, which would be saved to storage directly.
-          - Remote files referenced by an url, which would be downloaded and then saved to storage.
+        - Inlined data encoded in base64, which would be saved to storage directly.
+        - Remote files referenced by an url, which would be downloaded and then saved to storage.
 
         Currently, only image files are supported.
         """

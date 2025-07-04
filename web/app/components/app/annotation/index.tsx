@@ -82,7 +82,7 @@ const Annotation: FC<Props> = (props) => {
       setList(data as AnnotationItem[])
       setTotal(total)
     }
- finally {
+finally {
       setIsLoading(false)
     }
   }

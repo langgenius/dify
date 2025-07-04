@@ -43,9 +43,9 @@ class LicenseLimitationModel(BaseModel):
         Determine whether the requested amount can be allocated.
 
         Returns True if:
-         - this limit is not active, or
-         - the limit is zero (unlimited), or
-         - there is enough remaining quota.
+        - this limit is not active, or
+        - the limit is zero (unlimited), or
+        - there is enough remaining quota.
         """
         if not self.enabled or self.limit == 0:
             return True
