@@ -215,3 +215,8 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+
+web/.env.local.save
+core/
+my_changes.patch
+*.save
