@@ -74,7 +74,6 @@ const Tabs: FC<TabsProps> = ({
       {
         activeTab === TabsEnum.Tools && (
           <AllTools
-            className='w-[400px]'
             searchText={searchText}
             onSelect={onSelect}
             tags={tags}
