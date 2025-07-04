@@ -10,12 +10,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.file import helpers as file_helpers
 from core.helper import encrypter
-from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from core.tools.utils.encryption import create_encrypter
 from models.base import Base
 
 from .engine import db
@@ -328,11 +326,13 @@ class MCPToolProvider(Base):
 
     @property
     def decrypted_credentials(self) -> dict:
+        from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
+        from core.tools.utils.encryption import create_provider_encrypter
 
         provider_controller = MCPToolProviderController._from_db(self)
 
-        return create_encrypter(
+        return create_provider_encrypter(
             tenant_id=self.tenant_id,
             config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
             cache=NoOpProviderCredentialCache(),
