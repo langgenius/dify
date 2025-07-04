@@ -8,9 +8,9 @@ from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import (
+    CredentialType,
     OAuthSchema,
     ToolEntity,
-    ToolProviderCredentialType,
     ToolProviderEntity,
     ToolProviderType,
 )
@@ -111,7 +111,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
         :return: the credentials schema
         """
-        return self.get_credentials_schema_by_type(ToolProviderCredentialType.API_KEY.value)
+        return self.get_credentials_schema_by_type(CredentialType.API_KEY.value)
 
     def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
         """
@@ -120,9 +120,9 @@ class BuiltinToolProviderController(ToolProviderController):
         :param credential_type: the type of the credential
         :return: the credentials schema of the provider
         """
-        if credential_type == ToolProviderCredentialType.OAUTH2.value:
+        if credential_type == CredentialType.OAUTH2.value:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
-        if credential_type == ToolProviderCredentialType.API_KEY.value:
+        if credential_type == CredentialType.API_KEY.value:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
         raise ValueError(f"Invalid credential type: {credential_type}")
     
@@ -140,9 +140,9 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         types = []
         if self.entity.credentials_schema is not None:
-            types.append(ToolProviderCredentialType.API_KEY.value)
+            types.append(CredentialType.API_KEY.value)
         if self.entity.oauth_schema is not None:
-            types.append(ToolProviderCredentialType.OAUTH2.value)
+            types.append(CredentialType.OAUTH2.value)
         return types
 
     def get_tools(self) -> list[BuiltinTool]:

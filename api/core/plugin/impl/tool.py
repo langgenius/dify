@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderCredentialType
+from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
 
 
 class PluginToolManager(BasePluginClient):
@@ -78,7 +78,7 @@ class PluginToolManager(BasePluginClient):
         tool_provider: str,
         tool_name: str,
         credentials: dict[str, Any],
-        credential_type: ToolProviderCredentialType,
+        credential_type: CredentialType,
         tool_parameters: dict[str, Any],
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
