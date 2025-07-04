@@ -370,21 +370,16 @@ class ToolNode(BaseNode[ToolNodeData]):
 
                 yield agent_log
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output = json.copy()
-        if agent_logs:
-            if not json_output:
-                json_output = {}
-            elif isinstance(json_output, list) and len(json_output) == 1:
+        json_output: dict[str, Any] = {}
+        if json:
+            if isinstance(json, list) and len(json) == 1:
                 # If json is a list with only one element, convert it to a dictionary
-                json_output = json_output[0] if isinstance(json_output[0], dict) else {"data": json_output[0]}
-            elif isinstance(json_output, list):
+                json_output = json[0] if isinstance(json[0], dict) else {"data": json[0]}
+            elif isinstance(json, list):
                 # If json is a list with multiple elements, create a dictionary containing all data
-                json_output = {"data": json_output}
+                json_output = {"data": json}
 
-            # Ensure json_output is a dictionary type
-            if not isinstance(json_output, dict):
-                json_output = {"data": json_output}
-
+        if agent_logs:
             # Add agent_logs to json output
             json_output["agent_logs"] = [
                 {
@@ -402,8 +397,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files),
-                 "json": json_output, **variables},
+                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,

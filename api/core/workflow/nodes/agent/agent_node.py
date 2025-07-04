@@ -103,7 +103,7 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
-            agent_thoughts = []
+            agent_thoughts: list = []
 
             from core.tools.entities.tool_entities import ToolInvokeMessage
 
@@ -130,10 +130,10 @@ class AgentNode(ToolNode):
             from core.tools.entities.tool_entities import ToolInvokeMessage
 
             def enhanced_message_stream():
-
                 yield thought_log_message
 
                 yield from message_stream
+
             yield from self._transform_message(
                 message_stream,
                 {
@@ -141,7 +141,7 @@ class AgentNode(ToolNode):
                     "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
                 },
                 parameters_for_log,
-                agent_thoughts
+                agent_thoughts,
             )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
