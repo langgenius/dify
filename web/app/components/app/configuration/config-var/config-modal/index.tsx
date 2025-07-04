@@ -7,7 +7,6 @@ import produce from 'immer'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
-import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
@@ -20,6 +19,8 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import type { Item as SelectItem } from './type-select'
+import TypeSelector from './type-select'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -77,23 +78,56 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
   }, [])
 
-  const handleTypeChange = useCallback((type: InputVarType) => {
-    return () => {
-      const newPayload = produce(tempPayload, (draft) => {
-        draft.type = type
-        if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
-          (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
-            if (key !== 'max_length')
-              (draft as any)[key] = (DEFAULT_FILE_UPLOAD_SETTING as any)[key]
-          })
-          if (type === InputVarType.multiFiles)
-            draft.max_length = DEFAULT_FILE_UPLOAD_SETTING.max_length
-        }
-        if (type === InputVarType.paragraph)
-          draft.max_length = DEFAULT_VALUE_MAX_LEN
-      })
-      setTempPayload(newPayload)
-    }
+  const selectOptions: SelectItem[] = [
+    {
+      name: t('appDebug.variableConfig.text-input'),
+      value: InputVarType.textInput,
+    },
+    {
+      name: t('appDebug.variableConfig.paragraph'),
+      value: InputVarType.paragraph,
+    },
+    {
+      name: t('appDebug.variableConfig.select'),
+      value: InputVarType.select,
+    },
+    {
+      name: t('appDebug.variableConfig.number'),
+      value: InputVarType.number,
+    },
+    {
+      name: t('appDebug.variableConfig.boolean'),
+      value: InputVarType.boolean,
+    },
+    ...(supportFile ? [
+      {
+        name: t('appDebug.variableConfig.single-file'),
+        value: InputVarType.singleFile,
+      },
+      {
+        name: t('appDebug.variableConfig.multi-files'),
+        value: InputVarType.multiFiles,
+      },
+    ] : []),
+  ]
+
+  const handleTypeChange = useCallback((item: SelectItem) => {
+    const type = item.value as InputVarType
+
+    const newPayload = produce(tempPayload, (draft) => {
+      draft.type = type
+      if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+        (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
+          if (key !== 'max_length')
+            (draft as any)[key] = (DEFAULT_FILE_UPLOAD_SETTING as any)[key]
+        })
+        if (type === InputVarType.multiFiles)
+          draft.max_length = DEFAULT_FILE_UPLOAD_SETTING.max_length
+      }
+      if (type === InputVarType.paragraph)
+        draft.max_length = DEFAULT_VALUE_MAX_LEN
+    })
+    setTempPayload(newPayload)
   }, [tempPayload])
 
   const handleVarKeyBlur = useCallback((e: any) => {
@@ -120,15 +154,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
       return
-
-    // TODO: check if key already exists. should the consider the edit case
-    // if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
-    //   Toast.notify({
-    //     type: 'error',
-    //     message: t('appDebug.varKeyError.keyAlreadyExists', { key: tempPayload.variable }),
-    //   })
-    //   return
-    // }
 
     if (!tempPayload.label) {
       Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.labelNameRequired') })
@@ -183,18 +208,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
     >
       <div className='mb-8' ref={modalRef} tabIndex={-1}>
         <div className='space-y-2'>
-
           <Field title={t('appDebug.variableConfig.fieldType')}>
-            <div className='grid grid-cols-3 gap-2'>
-              <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={handleTypeChange(InputVarType.textInput)} />
-              <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={handleTypeChange(InputVarType.paragraph)} />
-              <SelectTypeItem type={InputVarType.select} selected={type === InputVarType.select} onClick={handleTypeChange(InputVarType.select)} />
-              <SelectTypeItem type={InputVarType.number} selected={type === InputVarType.number} onClick={handleTypeChange(InputVarType.number)} />
-              {supportFile && <>
-                <SelectTypeItem type={InputVarType.singleFile} selected={type === InputVarType.singleFile} onClick={handleTypeChange(InputVarType.singleFile)} />
-                <SelectTypeItem type={InputVarType.multiFiles} selected={type === InputVarType.multiFiles} onClick={handleTypeChange(InputVarType.multiFiles)} />
-              </>}
-            </div>
+            <TypeSelector value={type} items={selectOptions} onSelect={handleTypeChange} />
           </Field>
 
           <Field title={t('appDebug.variableConfig.varName')}>

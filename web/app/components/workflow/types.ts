@@ -175,6 +175,7 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  boolean = 'boolean',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
