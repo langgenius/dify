@@ -60,6 +60,7 @@ const FileList = ({
         inputValue={inputValue}
         keywords={keywords}
         bucket={bucket}
+        isInPipeline={isInPipeline}
         handleInputChange={handleInputChange}
         searchResultsLength={searchResultsLength}
         handleResetKeywords={handleResetKeywords}

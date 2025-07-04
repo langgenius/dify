@@ -66,12 +66,12 @@ const Item = ({
             'flex grow items-center gap-x-1 overflow-hidden py-0.5',
             disabled && 'opacity-30',
           )}>
-          <FileIcon type={file.type} fileName={file.key} className='shrink-0' />
+          <FileIcon type={file.type} fileName={file.displayName} className='shrink-0' />
           <span
             className='system-sm-medium grow truncate text-text-secondary'
-            title={file.key}
+            title={file.displayName}
           >
-            {file.key}
+            {file.displayName}
           </span>
           {!isFolder && file.size && (
             <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(file.size)}</span>

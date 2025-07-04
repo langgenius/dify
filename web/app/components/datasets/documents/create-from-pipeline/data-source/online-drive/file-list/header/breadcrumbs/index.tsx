@@ -1,0 +1,98 @@
+import React, { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useDataSourceStore } from '../../../../store'
+import Bucket from './bucket'
+import BreadcrumbItem from './item'
+
+type BreadcrumbsProps = {
+  prefix: string[]
+  keywords: string
+  bucket: string
+  searchResultsLength: number
+  isInPipeline: boolean
+}
+
+const Breadcrumbs = ({
+  prefix,
+  keywords,
+  bucket,
+  searchResultsLength,
+  isInPipeline,
+}: BreadcrumbsProps) => {
+  const { t } = useTranslation()
+  const { setFileList, setSelectedFileList, setPrefix, setBucket } = useDataSourceStore().getState()
+  const showSearchResult = !!keywords && searchResultsLength > 0
+  const isRoot = prefix.length === 0 && bucket === ''
+
+  const breadcrumbs = useMemo(() => {
+    const displayBreadcrumbNum = isInPipeline ? 2 : 3
+    const prefixToDisplay = prefix.slice(0, displayBreadcrumbNum - 1)
+    const collapsedBreadcrumbs = prefix.slice(displayBreadcrumbNum - 1, prefix.length - 1)
+    return {
+      original: prefix,
+      needCollapsed: prefix.length > displayBreadcrumbNum,
+      prefixBreadcrumbs: prefixToDisplay,
+      collapsedBreadcrumbs,
+      lastBreadcrumb: prefix[prefix.length - 1],
+    }
+  }, [isInPipeline, prefix])
+
+  const handleBackToBucketList = useCallback(() => {
+    setFileList([])
+    setSelectedFileList([])
+    setBucket('')
+    setPrefix([])
+  }, [setBucket, setFileList, setPrefix, setSelectedFileList])
+
+  const handleClickBreadcrumb = useCallback((index: number) => {
+    const newPrefix = breadcrumbs.prefixBreadcrumbs.slice(0, index - 1)
+    setFileList([])
+    setSelectedFileList([])
+    setPrefix(newPrefix)
+  }, [breadcrumbs.prefixBreadcrumbs, setFileList, setPrefix, setSelectedFileList])
+
+  return (
+    <div className='flex grow items-center py-1'>
+      {showSearchResult && (
+        <div className='system-sm-medium text-test-secondary px-[5px] py-1'>
+          {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
+            searchResultsLength,
+            folderName: prefix.length > 0 ? prefix[prefix.length - 1] : bucket,
+          })}
+        </div>
+      )}
+      {!showSearchResult && isRoot && (
+        <div className='system-sm-medium text-test-secondary px-[5px] py-1'>
+          {t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
+        </div>
+      )}
+      {!showSearchResult && !isRoot && (
+        <div className='flex items-center gap-x-0.5'>
+          {bucket && (
+            <Bucket handleBackToBucketList={handleBackToBucketList} />
+          )}
+          {!breadcrumbs.needCollapsed && (
+            <>
+              {breadcrumbs.original.map((breadcrumb, index) => {
+                const isLast = index === breadcrumbs.original.length - 1
+                return (
+                  <BreadcrumbItem
+                    key={`${breadcrumb}-${index}`}
+                    index={index}
+                    handleClick={handleClickBreadcrumb}
+                    name={breadcrumb}
+                    isActive={isLast}
+                    showSeparator={!isLast}
+                    disabled={isLast}
+                  />
+                )
+              })}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default React.memo(Breadcrumbs)

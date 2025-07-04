@@ -43,13 +43,14 @@ const OnlineDrive = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDrive = useCallback(async () => {
+    const prefixString = prefix.length > 0 ? `${prefix.join('/')}/` : ''
     setIsLoading(true)
     ssePost(
       datasourceNodeRunURL,
       {
         body: {
           inputs: {
-            prefix: prefix.join('/'),
+            prefix: prefixString,
             bucket,
             start_after: startAfter,
             max_keys: 30, // Adjust as needed
@@ -111,11 +112,12 @@ const OnlineDrive = ({
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
-      setBucket(file.key)
+      setBucket(file.displayName)
     }
     else {
+      const key = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
       const newPrefix = produce(prefix, (draft) => {
-        const newList = file.key.split('/')
+        const newList = key.split('/')
         draft.push(...newList)
       })
       setPrefix(newPrefix)

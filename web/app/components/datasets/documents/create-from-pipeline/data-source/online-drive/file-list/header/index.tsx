@@ -11,6 +11,7 @@ type HeaderProps = {
   searchResultsLength: number
   handleInputChange: React.ChangeEventHandler<HTMLInputElement>
   handleResetKeywords: () => void
+  isInPipeline: boolean
 }
 
 const Header = ({
@@ -18,6 +19,7 @@ const Header = ({
   inputValue,
   keywords,
   bucket,
+  isInPipeline,
   searchResultsLength,
   handleInputChange,
   handleResetKeywords,
@@ -31,6 +33,7 @@ const Header = ({
         keywords={keywords}
         bucket={bucket}
         searchResultsLength={searchResultsLength}
+        isInPipeline={isInPipeline}
       />
       <Input
         value={inputValue}

@@ -18,16 +18,20 @@ export const convertOnlineDriveDataToFileList = (data: OnlineDriveData[]): Onlin
     data.forEach((item) => {
       fileList.push({
         key: item.bucket,
+        displayName: item.bucket,
         type: OnlineDriveFileType.bucket,
       })
     })
   }
   else {
     data[0].files.forEach((file) => {
+      const isFileType = isFile(file.key)
+      const filePathList = file.key.split('/')
       fileList.push({
         key: file.key,
-        size: isFile(file.key) ? file.size : undefined,
-        type: isFile(file.key) ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
+        displayName: `${isFileType ? filePathList.pop() : filePathList[filePathList.length - 2]}${isFileType ? '' : '/'}`,
+        size: isFileType ? file.size : undefined,
+        type: isFileType ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
       })
     })
   }
