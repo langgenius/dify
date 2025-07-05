@@ -193,7 +193,6 @@ const MarkdownForm = ({ node }: any) => {
                 type="hidden"
                 name={child.properties.name}
                 value={formValues[child.properties.name] || child.properties.value || ''}
-                readOnly
               />
             )
           }
