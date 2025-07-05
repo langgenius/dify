@@ -31,7 +31,7 @@ const translation = {
       enableWarning: 'アーカイブされたファイルは有効にできません',
       sync: '同期',
       pause: '一時停止',
-      resume: '履歴書',
+      resume: '再開',
     },
     index: {
       enable: '有効にする',

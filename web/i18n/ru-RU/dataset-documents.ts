@@ -29,7 +29,7 @@ const translation = {
       delete: 'Удалить',
       enableWarning: 'Архивный файл не может быть включен',
       sync: 'Синхронизировать',
-      resume: 'Резюме',
+      resume: 'Продовжити',
       pause: 'Пауза',
     },
     index: {

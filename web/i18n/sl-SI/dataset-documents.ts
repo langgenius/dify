@@ -29,8 +29,8 @@ const translation = {
       delete: 'Izbriši',
       enableWarning: 'Arhivirane datoteke ni mogoče omogočiti',
       sync: 'Sinhroniziraj',
-      pause: 'Pavza',
-      resume: 'Življenjepis',
+      pause: 'Zaustavi',
+      resume: 'Nadaljuj',
     },
     index: {
       enable: 'Omogoči',
@@ -334,7 +334,7 @@ const translation = {
     previewTip: 'Predogled odstavkov bo na voljo po zaključku vdelave',
     hierarchical: 'Starš-otrok',
     childMaxTokens: 'Otrok',
-    pause: 'Pavza',
+    pause: 'Zaustavi',
     parentMaxTokens: 'Starš',
   },
   segment: {
