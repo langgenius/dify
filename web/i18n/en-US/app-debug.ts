@@ -222,6 +222,10 @@ const translation = {
       title: 'Document',
       description: 'Enable Document will allows the model to take in documents and answer questions about them.',
     },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Enable Audio will allow the model to process audio files for transcription and analysis.',
+    },
   },
   codegen: {
     title: 'Code Generator',
