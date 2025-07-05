@@ -10,7 +10,11 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities import TextPromptMessageContent, UserPromptMessage
+from core.model_runtime.entities import (
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
@@ -252,8 +256,7 @@ class AgentNode(ToolNode):
                 if parameter.type == "model-selector":
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
-                    # memory config
-                    history_prompt_messages = []
+                    history_prompt_messages: list[dict[str, Any]] = []
                     if node_data.memory:
                         memory = self._fetch_memory(model_instance)
                         if memory:
@@ -263,7 +266,57 @@ class AgentNode(ToolNode):
                             history_prompt_messages = [
                                 prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
                             ]
-                    value["history_prompt_messages"] = history_prompt_messages
+
+                    # Strip file attachments from memory to prevent cross-turn leakage
+                    def _strip_files_from_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                        stripped: list[dict[str, Any]] = []
+                        for m in messages:
+                            if m.get("role") == "user" and isinstance(m.get("content"), list):
+                                # Keep only text content, remove file attachments
+                                contents = [
+                                    c
+                                    for c in m["content"]
+                                    if not (isinstance(c, dict) and c.get("type") and c.get("type") != "text")
+                                ]
+                                if not contents:
+                                    contents = []
+                                m = {**m, "content": contents}
+                            stripped.append(m)
+                        return stripped
+
+                    history_prompt_messages = _strip_files_from_history(history_prompt_messages)
+
+                    # Check if this agent node references sys.files
+                    def _input_uses_sys_files(_agent_input):
+                        if _agent_input.type == "variable":
+                            return _agent_input.value == ["sys", SystemVariableKey.FILES.value]
+                        if _agent_input.type in {"mixed", "constant"}:
+                            return "sys.files" in str(_agent_input.value)
+                        return False
+
+                    uses_sys_files_for_node: bool = any(
+                        _input_uses_sys_files(inp) for inp in node_data.agent_parameters.values()
+                    )
+
+                    if uses_sys_files_for_node:
+
+                        def _strip_files_from_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                            stripped: list[dict[str, Any]] = []
+                            for m in messages:
+                                if m.get("role") == "user" and isinstance(m.get("content"), list):
+                                    contents = [
+                                        c
+                                        for c in m["content"]
+                                        if not (isinstance(c, dict) and c.get("type") and c.get("type") != "text")
+                                    ]
+                                    if not contents:
+                                        contents = []
+                                    m = {**m, "content": contents}
+                                stripped.append(m)
+                            return stripped
+
+                        history_prompt_messages = _strip_files_from_history(history_prompt_messages)
+
                     if model_schema:
                         # remove structured output feature to support old version agent plugin
                         model_schema = self._remove_unsupported_model_features_for_old_version(model_schema)
@@ -271,6 +324,7 @@ class AgentNode(ToolNode):
                     else:
                         value["entity"] = None
 
+                    # Extract current query and files for potential inclusion
                     current_query_segment = variable_pool.get(["sys", SystemVariableKey.QUERY.value])
                     current_files_segment = variable_pool.get(["sys", SystemVariableKey.FILES.value])
 
@@ -280,23 +334,31 @@ class AgentNode(ToolNode):
 
                             prompt_contents: list = [TextPromptMessageContent(data=current_query)]
 
+                            # Collect files from current turn
                             files: list = []
                             if isinstance(current_files_segment, FileSegment):
                                 files = [current_files_segment.value]
                             elif isinstance(current_files_segment, ArrayFileSegment):
                                 files = list(current_files_segment.value)
 
-                            if files:
+                            # Add current turn files only if node uses sys.files and files exist
+                            if files and uses_sys_files_for_node:
                                 for f in files:
                                     try:
-                                        prompt_contents.append(file_manager.to_prompt_message_content(f))
+                                        prompt_contents.append(
+                                            file_manager.to_prompt_message_content(
+                                                f,
+                                                image_detail_config=ImagePromptMessageContent.DETAIL.LOW,
+                                            )
+                                        )
                                     except Exception:
                                         continue
 
-                            synthetic_user_prompt = UserPromptMessage(
-                                content=prompt_contents if files else current_query
-                            )
-                            history_prompt_messages.append(synthetic_user_prompt.model_dump(mode="json"))
+                                # Append synthetic user message with current turn attachments
+                                synthetic_user_prompt = UserPromptMessage(content=prompt_contents)
+                                history_prompt_messages.append(synthetic_user_prompt.model_dump(mode="json"))
+
+                            value["history_prompt_messages"] = history_prompt_messages
             result[parameter_name] = value
 
         return result
