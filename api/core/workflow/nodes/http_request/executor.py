@@ -225,7 +225,7 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or file.transfer_method == 'remote_url':
                                 file_tuple = (
                                     file.filename,
                                     file_manager.download(file),
@@ -390,7 +390,7 @@ class Executor:
                     body_string += content.decode("utf-8")
                 except UnicodeDecodeError:
                     # fix: decode binary content
-                    pass
+                    body_string += f"[Binary data of {len(content)} bytes]"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
