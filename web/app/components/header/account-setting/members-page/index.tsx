@@ -70,7 +70,6 @@ const MembersPage = () => {
               {isCurrentWorkspaceOwner && <span>
                 <Tooltip
                   popupContent={t('common.account.editWorkspaceInfo')}
-                  needsDelay
                 >
                   <div
                     className='cursor-pointer rounded-md p-1 hover:bg-black/5'
