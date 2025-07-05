@@ -39,11 +39,10 @@ const MarkdownForm = ({ node }: any) => {
     const initialValues: { [key: string]: any } = {}
     node.children.forEach((child: any) => {
       if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName)) {
-        if (child.tagName === SUPPORTED_TAGS.INPUT && child.properties.type === SUPPORTED_TYPES.HIDDEN) {
-          initialValues[child.properties.name] = child.properties.value || ''
-        } else {
-          initialValues[child.properties.name] = child.properties.value
-        }
+        initialValues[child.properties.name] = 
+          (child.tagName === SUPPORTED_TAGS.INPUT && child.properties.type === SUPPORTED_TYPES.HIDDEN)
+            ? (child.properties.value || '')
+            : child.properties.value
       }
     })
     setFormValues(initialValues)
