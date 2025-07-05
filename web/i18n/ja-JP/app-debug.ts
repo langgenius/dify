@@ -392,6 +392,9 @@ const translation = {
       atLeastOneOption: '少なくとも 1 つのオプションが必要です',
       optionRepeat: '繰り返しオプションがあります',
     },
+    'defaultValue': 'デフォルト値',
+    'noDefaultValue': 'デフォルト値なし',
+    'selectDefaultValue': 'デフォルト値を選択',
   },
   vision: {
     name: 'ビジョン',
