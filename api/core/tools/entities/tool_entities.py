@@ -115,7 +115,7 @@ class ToolInvokeMessage(BaseModel):
         text: str
 
     class JsonMessage(BaseModel):
-        json_object: dict
+        json_object: dict | list
 
     class BlobMessage(BaseModel):
         blob: bytes
