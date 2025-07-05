@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, Union
+from urllib.parse import urlparse
 
 from extensions.ext_database import db
 from models.model import Message
@@ -60,3 +61,83 @@ def generate_dotted_order(
         return current_segment
 
     return f"{parent_dotted_order}.{current_segment}"
+
+
+def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", "http")) -> str:
+    """
+    Validate and normalize URL with proper error handling
+
+    Args:
+        url: The URL to validate
+        default_url: Default URL to use if input is None or empty
+        allowed_schemes: Tuple of allowed URL schemes (default: https, http)
+
+    Returns:
+        Normalized URL string
+
+    Raises:
+        ValueError: If URL format is invalid or scheme not allowed
+    """
+    if not url or url.strip() == "":
+        return default_url
+
+    # Parse URL to validate format
+    parsed = urlparse(url)
+
+    # Check if scheme is allowed
+    if parsed.scheme not in allowed_schemes:
+        raise ValueError(f"URL scheme must be one of: {', '.join(allowed_schemes)}")
+
+    # Reconstruct URL with only scheme, netloc (removing path, query, fragment)
+    normalized_url = f"{parsed.scheme}://{parsed.netloc}"
+
+    return normalized_url
+
+
+def validate_url_with_path(url: str, default_url: str, required_suffix: str | None = None) -> str:
+    """
+    Validate URL that may include path components
+
+    Args:
+        url: The URL to validate
+        default_url: Default URL to use if input is None or empty
+        required_suffix: Optional suffix that URL must end with
+
+    Returns:
+        Validated URL string
+
+    Raises:
+        ValueError: If URL format is invalid or doesn't match required suffix
+    """
+    if not url or url.strip() == "":
+        return default_url
+
+    # Parse URL to validate format
+    parsed = urlparse(url)
+
+    # Check if scheme is allowed
+    if parsed.scheme not in ("https", "http"):
+        raise ValueError("URL must start with https:// or http://")
+
+    # Check required suffix if specified
+    if required_suffix and not url.endswith(required_suffix):
+        raise ValueError(f"URL should end with {required_suffix}")
+
+    return url
+
+
+def validate_project_name(project: str, default_name: str) -> str:
+    """
+    Validate and normalize project name
+
+    Args:
+        project: Project name to validate
+        default_name: Default name to use if input is None or empty
+
+    Returns:
+        Normalized project name
+    """
+    if not project or project.strip() == "":
+        return default_name
+
+    return project.strip()
