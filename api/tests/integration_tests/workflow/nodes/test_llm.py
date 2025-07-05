@@ -287,3 +287,121 @@ def test_extract_json():
     ]
     result = {"name": "test", "age": 123}
     assert all(_parse_structured_output(item) == result for item in llm_texts)
+
+
+@pytest.mark.parametrize(
+    ("thinking_tags_enabled", "should_preserve_tags"),
+    [
+        ("true", True),  # LLM_NODE_THINKING_TAGS_ENABLED=true -> tags should be preserved
+        ("false", False),  # LLM_NODE_THINKING_TAGS_ENABLED=false -> tags should be removed
+    ],
+)
+def test_execute_llm_with_thinking_tags(flask_req_ctx, thinking_tags_enabled, should_preserve_tags):
+    """Test LLM node with thinking tags removal controlled via environment variable."""
+    import os
+
+    with patch.dict(os.environ, {"LLM_NODE_THINKING_TAGS_ENABLED": thinking_tags_enabled}):
+        # Reload the module to pick up the environment variable change
+        import importlib
+
+        from core.workflow.nodes.llm import node
+
+        importlib.reload(node)
+
+        node_instance = init_llm_node(
+            config={
+                "id": "llm",
+                "data": {
+                    "title": f"thinking tags test ({'preserved' if should_preserve_tags else 'removed'})",
+                    "type": "llm",
+                    "model": {
+                        "provider": "langgenius/openrouter",
+                        "name": "qwen/qwen-2.5-72b-instruct",
+                        "mode": "chat",
+                        "completion_params": {},
+                    },
+                    "prompt_template": [
+                        {
+                            "role": "system",
+                            "text": "you are a helpful assistant.",
+                        },
+                        {"role": "user", "text": "Say hello"},
+                    ],
+                    "memory": None,
+                    "context": {"enabled": False},
+                    "vision": {"enabled": False},
+                },
+            },
+        )
+
+        # Create mock LLM result with thinking tags
+        mock_usage = LLMUsage(
+            prompt_tokens=10,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal("1000"),
+            prompt_price=Decimal("0.00001"),
+            completion_tokens=15,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal("1000"),
+            completion_price=Decimal("0.00003"),
+            total_tokens=25,
+            total_price=Decimal("0.00004"),
+            currency="USD",
+            latency=0.3,
+        )
+
+        # Mock response with thinking tags (simulating Qwen reasoning behavior)
+        mock_message = AssistantPromptMessage(
+            content="<think>Let me think about this greeting...</think>Hello! How can I help you today?"
+        )
+
+        mock_llm_result = LLMResult(
+            model="qwen/qwen-2.5-72b-instruct",
+            prompt_messages=[],
+            message=mock_message,
+            usage=mock_usage,
+        )
+
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_llm.return_value = mock_llm_result
+
+        mock_model_config = MagicMock()
+        mock_model_config.mode = "chat"
+        mock_model_config.provider = "langgenius/openrouter"
+        mock_model_config.model = "qwen/qwen-2.5-72b-instruct"
+        mock_model_config.provider_model_bundle.configuration.tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
+
+        def mock_fetch_model_config_func(_node_data_model):
+            return mock_model_instance, mock_model_config
+
+        def mock_get_model_instance(_self, **kwargs):
+            return mock_model_instance
+
+        with (
+            patch.object(node_instance, "_fetch_model_config", mock_fetch_model_config_func),
+            patch("core.model_manager.ModelManager.get_model_instance", mock_get_model_instance),
+        ):
+            # Execute node
+            result = node_instance._run()
+            assert isinstance(result, Generator)
+
+            # Verify behavior based on the parameter
+            for item in result:
+                if isinstance(item, RunCompletedEvent):
+                    assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                    output_text = item.run_result.outputs.get("text")
+                    assert output_text is not None
+
+                    if should_preserve_tags:
+                        # Verify thinking tags are preserved when enabled
+                        assert "<think>" in output_text
+                        assert "</think>" in output_text
+                        assert "Let me think about this greeting..." in output_text
+                        assert "Hello! How can I help you today?" in output_text
+                    else:
+                        # Verify thinking tags are removed when disabled
+                        assert "<think>" not in output_text
+                        assert "</think>" not in output_text
+                        assert "Hello! How can I help you today?" in output_text
+                        # Verify thinking content is not in output
+                        assert "Let me think about this greeting..." not in output_text

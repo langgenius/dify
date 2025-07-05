@@ -1,4 +1,6 @@
 import base64
+import importlib
+import os
 import uuid
 from collections.abc import Sequence
 from typing import Optional
@@ -6,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+import core.workflow.nodes.llm.node
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
@@ -662,3 +665,104 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         assert list(gen) == []
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
+
+
+class TestThinkingTagsRemoval:
+    """Test cases for thinking tags removal functionality in LLM Node."""
+
+    def test_remove_single_thinking_tag(self, llm_node):
+        """Test removal of single thinking tag block."""
+        input_text = "<think>This is my thinking process</think>Hello, how can I help you?"
+        expected = "Hello, how can I help you?"
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_remove_multiple_thinking_tags(self, llm_node):
+        """Test removal of multiple thinking tag blocks."""
+        input_text = "<think>First thought</think>Hello<think>Second thought</think> World!"
+        expected = "Hello World!"
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_remove_multiline_thinking_tag(self, llm_node):
+        """Test removal of multiline thinking tag blocks."""
+        input_text = """<think>
+This is a multiline
+thinking process
+with multiple lines
+</think>Final answer here."""
+        expected = "Final answer here."
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_case_insensitive_removal(self, llm_node):
+        """Test case-insensitive thinking tag removal."""
+        input_text = "<THINK>Uppercase thinking</THINK>Response"
+        expected = "Response"
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_no_thinking_tags(self, llm_node):
+        """Test text without thinking tags remains unchanged."""
+        input_text = "Hello, this is a normal response without thinking tags."
+        expected = input_text
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_empty_string(self, llm_node):
+        """Test empty string handling."""
+        input_text = ""
+        expected = ""
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_only_thinking_tag(self, llm_node):
+        """Test string with only thinking tag."""
+        input_text = "<think>Only thinking, no response</think>"
+        expected = ""
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_whitespace_handling(self, llm_node):
+        """Test proper whitespace handling after tag removal."""
+        input_text = "<think>Thinking</think>   Response with spaces"
+        expected = "Response with spaces"
+
+        result = llm_node._remove_thinking_tags(input_text)
+        assert result == expected
+
+    def test_none_input(self, llm_node):
+        """Test None input handling."""
+        result = llm_node._remove_thinking_tags(None)
+        assert result is None
+
+    def test_non_string_input(self, llm_node):
+        """Test non-string input handling."""
+        result = llm_node._remove_thinking_tags(123)
+        assert result == 123
+
+    @mock.patch.dict("os.environ", {"LLM_NODE_THINKING_TAGS_ENABLED": "true"})
+    def test_environment_variable_enabled(self):
+        """Test that environment variable is properly read when enabled."""
+        importlib.reload(core.workflow.nodes.llm.node)
+        assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is True
+
+    @mock.patch.dict("os.environ", {"LLM_NODE_THINKING_TAGS_ENABLED": "false"})
+    def test_environment_variable_disabled(self):
+        """Test that environment variable is properly read when disabled."""
+        importlib.reload(core.workflow.nodes.llm.node)
+        assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is False
+
+    def test_environment_variable_default(self):
+        """Test that environment variable defaults to True."""
+        with mock.patch.dict("os.environ"):
+            os.environ.pop("LLM_NODE_THINKING_TAGS_ENABLED", None)
+            importlib.reload(core.workflow.nodes.llm.node)
+            assert core.workflow.nodes.llm.node.LLM_NODE_THINKING_TAGS_ENABLED is True
