@@ -29,7 +29,7 @@ const translation = {
       delete: 'حذف',
       enableWarning: 'فایل بایگانی شده نمی‌تواند فعال شود',
       sync: 'همگام‌سازی',
-      resume: 'رزومه',
+      resume: 'ادامه',
       pause: 'مکث',
     },
     index: {

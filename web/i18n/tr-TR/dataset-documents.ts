@@ -30,7 +30,7 @@ const translation = {
       enableWarning: 'Arşivlenmiş dosya etkinleştirilemez',
       sync: 'Senkronize et',
       pause: 'Duraklat',
-      resume: 'Özgeçmiş',
+      resume: 'Devam Et',
     },
     index: {
       enable: 'Etkinleştir',
