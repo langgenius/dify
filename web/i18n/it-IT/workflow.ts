@@ -688,6 +688,7 @@ const translation = {
       inputVars: 'Variabili di Input',
       outputVars: {
         className: 'Nome Classe',
+        usage: 'Informazioni sull\'utilizzo del modello',
       },
       class: 'Classe',
       classNamePlaceholder: 'Scrivi il nome della tua classe',
@@ -702,6 +703,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variabile di Input',
+      outputVars: {
+        isSuccess: 'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
+        errorReason: 'Motivo dell\'errore',
+        usage: 'Informazioni sull\'utilizzo del modello',
+      },
       extractParameters: 'Estrai Parametri',
       importFromTool: 'Importa dagli strumenti',
       addExtractParameter: 'Aggiungi Parametro Estratto',
@@ -724,9 +730,6 @@ const translation = {
       reasoningMode: 'Modalità di ragionamento',
       reasoningModeTip:
         'Puoi scegliere la modalità di ragionamento appropriata in base alla capacità del modello di rispondere alle istruzioni per la chiamata delle funzioni o i prompt.',
-      isSuccess:
-        'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
-      errorReason: 'Motivo dell\'errore',
     },
     iteration: {
       deleteTitle: 'Eliminare Nodo Iterazione?',

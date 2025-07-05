@@ -129,6 +129,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
               type='string'
               description={t(`${i18nPrefix}.outputVars.className`)}
             />
+            <VarItem
+              name='usage'
+              type='object'
+              description={t(`${i18nPrefix}.outputVars.usage`)}
+            />
           </>
         </OutputVars>
       </div>

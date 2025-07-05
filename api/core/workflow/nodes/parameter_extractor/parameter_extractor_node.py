@@ -253,7 +253,12 @@ class ParameterExtractorNode(BaseNode):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs={"__is_success": 1 if not error else 0, "__reason": error, **result},
+            outputs={
+                "__is_success": 1 if not error else 0,
+                "__reason": error,
+                "__usage": jsonable_encoder(usage),
+                **result,
+            },
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                 WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,

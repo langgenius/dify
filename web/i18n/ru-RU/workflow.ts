@@ -669,6 +669,7 @@ const translation = {
       inputVars: 'Входные переменные',
       outputVars: {
         className: 'Имя класса',
+        usage: 'Информация об использовании модели',
       },
       class: 'Класс',
       classNamePlaceholder: 'Введите имя вашего класса',
@@ -682,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Входная переменная',
+      outputVars: {
+        isSuccess: 'Успешно. В случае успеха значение равно 1, в случае сбоя - 0.',
+        errorReason: 'Причина ошибки',
+        usage: 'Информация об использовании модели',
+      },
       extractParameters: 'Извлечь параметры',
       importFromTool: 'Импортировать из инструментов',
       addExtractParameter: 'Добавить параметр для извлечения',
@@ -701,8 +707,6 @@ const translation = {
       advancedSetting: 'Расширенные настройки',
       reasoningMode: 'Режим рассуждения',
       reasoningModeTip: 'Вы можете выбрать соответствующий режим рассуждения, основываясь на способности модели реагировать на инструкции для вызова функций или подсказки.',
-      isSuccess: 'Успешно. В случае успеха значение равно 1, в случае сбоя - 0.',
-      errorReason: 'Причина ошибки',
     },
     iteration: {
       deleteTitle: 'Удалить узел итерации?',

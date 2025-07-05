@@ -667,6 +667,7 @@ const translation = {
     questionClassifiers: {
       outputVars: {
         className: 'Ime razreda',
+        usage: 'Informacije o uporabi modela',
       },
       instruction: 'Navodilo',
       addClass: 'Dodaj razred',
@@ -692,16 +693,19 @@ const translation = {
         requiredContent: 'Zahtevano se uporablja le kot referenca za sklepanje modela in ne kot obvezno validacijo izhodnih parametrov.',
       },
       extractParameters: 'Izvleči parametre',
-      errorReason: 'Razlog za napako',
       instruction: 'Navodilo',
       instructionTip: 'Vnesite dodatna navodila, da pomagate izvleku parametrov razumeti, kako izvleči parametre.',
       reasoningMode: 'Način razmišljanja',
-      isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
       importFromTool: 'Uvoz iz orodij',
       advancedSetting: 'Napredno nastavitev',
       addExtractParameter: 'Dodaj parameter za ekstrakcijo',
       extractParametersNotSet: 'Parameterji za ekstrakcijo niso nastavljeni',
       inputVar: 'Vhodna spremenljivka',
+      outputVars: {
+        isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
+        errorReason: 'Razlog za napako',
+        usage: 'Informacije o uporabi modela',
+      },
       reasoningModeTip: 'Lahko izberete ustrezen način razmišljanja glede na sposobnost modela, da se odzove na navodila za klic funkcij ali pozive.',
     },
     iteration: {

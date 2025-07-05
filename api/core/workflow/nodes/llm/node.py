@@ -221,15 +221,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                 jinja2_variables=self.node_data.prompt_config.jinja2_variables,
             )
 
-            process_data = {
-                "model_mode": model_config.mode,
-                "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                    model_mode=model_config.mode, prompt_messages=prompt_messages
-                ),
-                "model_provider": model_config.provider,
-                "model_name": model_config.model,
-            }
-
             # handle invoke result
             generator = self._invoke_llm(
                 node_data_model=self.node_data.model,
@@ -252,6 +243,17 @@ class LLMNode(BaseNode[LLMNodeData]):
                     break
                 elif isinstance(event, LLMStructuredOutput):
                     structured_output = event
+
+            process_data = {
+                "model_mode": model_config.mode,
+                "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+                    model_mode=model_config.mode, prompt_messages=prompt_messages
+                ),
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
+                "model_provider": model_config.provider,
+                "model_name": model_config.model,
+            }
 
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
             if structured_output:
