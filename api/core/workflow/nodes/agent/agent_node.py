@@ -299,22 +299,7 @@ class AgentNode(ToolNode):
                     )
 
                     if uses_sys_files_for_node:
-
-                        def _strip_files_from_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-                            stripped: list[dict[str, Any]] = []
-                            for m in messages:
-                                if m.get("role") == "user" and isinstance(m.get("content"), list):
-                                    contents = [
-                                        c
-                                        for c in m["content"]
-                                        if not (isinstance(c, dict) and c.get("type") and c.get("type") != "text")
-                                    ]
-                                    if not contents:
-                                        contents = []
-                                    m = {**m, "content": contents}
-                                stripped.append(m)
-                            return stripped
-
+                        # History already stripped once above; ensure it's stripped (idempotent call)
                         history_prompt_messages = _strip_files_from_history(history_prompt_messages)
 
                     if model_schema:
