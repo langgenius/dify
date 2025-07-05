@@ -11,6 +11,7 @@ import httpx
 
 from configs import dify_config
 from core.file import file_manager
+from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
@@ -225,28 +226,32 @@ class Executor:
                     files: dict[str, list[tuple[str | None, bytes, str]]] = {}
                     for key, files_in_segment in files_list:
                         for file in files_in_segment:
-                            if file.related_id is not None:
+                            if file.related_id is not None or file.transfer_method == FileTransferMethod.REMOTE_URL:
+                                downloaded_file = file_manager.download(file)
                                 file_tuple = (
                                     file.filename,
-                                    file_manager.download(file),
+                                    downloaded_file,
                                     file.mime_type or "application/octet-stream",
                                 )
                                 if key not in files:
                                     files[key] = []
                                 files[key].append(file_tuple)
 
-                    # convert files to list for httpx request
+                    # convert files dictionary to list for httpx request
+                    self.files = []
+                    for key, file_tuples in files.items():
+                        for file_tuple in file_tuples:
+                            self.files.append((key, file_tuple))
+
                     # If there are no actual files, we still need to force httpx to use `multipart/form-data`.
                     # This is achieved by inserting a harmless placeholder file that will be ignored by the server.
-                    if not files:
+                    if not self.files:
                         self.files = [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
-                    if files:
-                        self.files = []
-                        for key, file_tuples in files.items():
-                            for file_tuple in file_tuples:
-                                self.files.append((key, file_tuple))
 
-                    self.data = form_data
+                    # Only set self.data if there are text fields. If only files are present, self.data should be None,
+                    # which tells httpx to build the request body from self.files.
+                    if form_data:
+                        self.data = form_data
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
@@ -390,7 +395,7 @@ class Executor:
                     body_string += content.decode("utf-8")
                 except UnicodeDecodeError:
                     # fix: decode binary content
-                    pass
+                    body_string += f"[Binary data of {len(content)} bytes]"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
