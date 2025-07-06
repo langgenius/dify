@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from core.helper import encrypter
+from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -195,8 +196,7 @@ class MCPToolManageService:
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=mcp_provider.tenant_id,
             config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.provider_id,
+            provider_config_cache=NoOpProviderCredentialCache(),
         )
         credentials = tool_configuration.encrypt(credentials)
         mcp_provider.updated_at = datetime.now()
