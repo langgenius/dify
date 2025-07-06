@@ -61,7 +61,7 @@ class OAuthClientProvider:
         return OAuthTokens(
             access_token=credentials.get("access_token", ""),
             token_type=credentials.get("token_type", "Bearer"),
-            expires_in=int(credentials.get("expires_in", "3600")),
+            expires_in=int(credentials.get("expires_in", "3600") or 3600),
             refresh_token=credentials.get("refresh_token", ""),
         )
 
