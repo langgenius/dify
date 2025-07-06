@@ -132,6 +132,8 @@ const translation = {
       value: 'मान',
       valuePlaceholder: 'पर्यावरण मान',
       secretTip: 'संवेदनशील जानकारी या डेटा को परिभाषित करने के लिए उपयोग किया जाता है, DSL सेटिंग्स लीक रोकथाम के लिए कॉन्फ़िगर की गई हैं।',
+      description: 'विवरण',
+      descriptionPlaceholder: 'चर का वर्णन करें',
     },
     export: {
       title: 'गुप्त पर्यावरण चर निर्यात करें?',

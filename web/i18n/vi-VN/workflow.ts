@@ -129,6 +129,8 @@ const translation = {
       value: 'Giá trị',
       valuePlaceholder: 'giá trị môi trường',
       secretTip: 'Được sử dụng để xác định thông tin hoặc dữ liệu nhạy cảm, với cài đặt DSL được cấu hình để ngăn chặn rò rỉ.',
+      description: 'Mô tả',
+      descriptionPlaceholder: 'Mô tả biến',
     },
     export: {
       title: 'Xuất biến môi trường bí mật?',

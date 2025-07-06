@@ -462,6 +462,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          description: env.description,
         }
       }) as Var[]
       break
@@ -472,7 +473,7 @@ const formatItem = (
         return {
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
-          des: chatVar.description,
+          description: chatVar.description,
         }
       }) as Var[]
       break

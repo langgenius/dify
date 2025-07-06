@@ -129,6 +129,8 @@ const translation = {
       value: 'Wartość',
       valuePlaceholder: 'wartość środowiska',
       secretTip: 'Używane do definiowania wrażliwych informacji lub danych, z ustawieniami DSL skonfigurowanymi do zapobiegania wyciekom.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisz zmienną',
     },
     export: {
       title: 'Eksportować tajne zmienne środowiskowe?',

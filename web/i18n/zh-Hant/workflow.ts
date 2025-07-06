@@ -129,6 +129,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '環境值',
       secretTip: '用於定義敏感信息或數據，DSL 設置配置為防止洩露。',
+      description: '描述',
+      descriptionPlaceholder: '描述此變數',
     },
     export: {
       title: '導出機密環境變數？',
