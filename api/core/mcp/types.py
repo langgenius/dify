@@ -1192,7 +1192,7 @@ class OAuthClientInformation(BaseModel):
 
 
 class OAuthClientInformationFull(OAuthClientInformation):
-    client_name: str
+    client_name: str | None = None
     redirect_uris: list[str]
     scope: Optional[str] = None
     grant_types: Optional[list[str]] = None
