@@ -28,7 +28,6 @@ type ToolsProps = {
   indexBarClassName?: string
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  hasScrollBar?: boolean
 }
 const Blocks = ({
   onSelect,
