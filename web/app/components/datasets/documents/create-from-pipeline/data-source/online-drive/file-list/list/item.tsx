@@ -51,15 +51,26 @@ const Item = ({
       onClick={handleClickItem}
     >
       {!isBucket && isMultipleChoice && (
-        <Checkbox className='shrink-0' id={file.key} checked={isSelected} onCheck={handleSelect} />
+        <Checkbox
+          className='shrink-0'
+          disabled={disabled}
+          id={file.key}
+          checked={isSelected}
+          onCheck={handleSelect}
+        />
       )}
       {!isBucket && !isMultipleChoice && (
-        <Radio className='shrink-0' isChecked={isSelected} onCheck={handleSelect} />
+        <Radio
+          className='shrink-0'
+          disabled={disabled}
+          isChecked={isSelected}
+          onCheck={handleSelect}
+        />
       )}
       <Wrapper
         popupContent={t('datasetPipeline.onlineDrive.notSupportedFileType')}
         position='top-end'
-        offset={{ mainAxis: 4, crossAxis: 104 }}
+        offset={{ mainAxis: 4, crossAxis: -104 }}
       >
         <div
           className={cn(

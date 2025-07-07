@@ -1,9 +1,13 @@
+import React, { useMemo } from 'react'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import Item from './item'
 import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
 import Loading from '@/app/components/base/loading'
 import { RiLoader2Line } from '@remixicon/react'
+import { useFileSupportTypes } from '@/service/use-common'
+import { isFile } from '../../utils'
+import { getFileExtension } from './utils'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
@@ -30,6 +34,11 @@ const List = ({
   const isPartLoading = isLoading && fileList.length > 0
   const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
+  const { data: supportFileTypesRes } = useFileSupportTypes()
+  const supportedFileTypes = useMemo(() => {
+    if (!supportFileTypesRes) return []
+    return Array.from(new Set(supportFileTypesRes.allowed_extensions.map(item => item.toLowerCase())))
+  }, [supportFileTypesRes])
 
   return (
     <div className='grow overflow-hidden p-1 pt-0'>
@@ -53,11 +62,14 @@ const List = ({
           {
             fileList.map((file) => {
               const isSelected = selectedFileList.includes(file.key)
+              const extension = getFileExtension(file.key)
+              const disabled = isFile(file.key) && !supportedFileTypes.includes(extension)
               return (
                 <Item
                   key={file.key}
                   file={file}
                   isSelected={isSelected}
+                  disabled={disabled}
                   onSelect={handleSelectFile}
                   onOpen={handleOpenFolder}
                   isMultipleChoice={!isInPipeline}
@@ -78,4 +90,4 @@ const List = ({
   )
 }
 
-export default List
+export default React.memo(List)
