@@ -1,6 +1,5 @@
 import dataclasses
 import secrets
-from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -191,11 +190,6 @@ class TestWorkflowDraftVariableService:
         service._api_node_execution_repo = Mock()
         service._api_node_execution_repo.get_execution_by_id.return_value = None
 
-
-        # Mock the repository to return None (no execution record found)
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = None
-
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
 
@@ -204,7 +198,7 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        mock_variable.editable = True
+        # Variable is editable by default from factory method
 
         result = service._reset_node_var_or_sys_var(workflow, variable)
 
@@ -229,16 +223,6 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.process_data_dict = {"test_var": "process_value"}
-        mock_execution.outputs_dict = {"test_var": "output_value"}
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
-
-
-        # Create mock execution record
-        mock_execution = Mock(spec=WorkflowNodeExecutionModel)
         mock_execution.outputs_dict = {"test_var": "output_value"}
 
         # Mock the repository to return the execution record
@@ -253,7 +237,7 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        mock_variable.editable = True
+        # Variable is editable by default from factory method
 
         # Mock workflow methods
         mock_node_config = {"type": "test_node"}
@@ -295,9 +279,11 @@ class TestWorkflowDraftVariableService:
         assert "cannot reset system variable" in str(exc_info.value)
         assert f"variable_id={variable.id}" in str(exc_info.value)
 
-    def test_reset_editable_system_variable_succeeds(self, mock_session):
+    def test_reset_editable_system_variable_succeeds(self):
         """Test that resetting an editable system variable succeeds"""
-        service = WorkflowDraftVariableService(mock_session)
+        mock_session = Mock(spec=Session)
+        mock_session_maker = Mock()
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -329,7 +315,9 @@ class TestWorkflowDraftVariableService:
 
     def test_reset_query_system_variable_succeeds(self, mock_session):
         """Test that resetting query system variable (another editable one) succeeds"""
-        service = WorkflowDraftVariableService(mock_session)
+        mock_session = Mock(spec=Session)
+        mock_session_maker = Mock()
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
