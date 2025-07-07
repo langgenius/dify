@@ -103,9 +103,9 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     if (datasourceType === DatasourceType.onlineDrive)
-      return isShowVectorSpaceFull || !onlineDriveFileList.length
+      return isShowVectorSpaceFull || !selectedFileList.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, onlineDriveFileList.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
