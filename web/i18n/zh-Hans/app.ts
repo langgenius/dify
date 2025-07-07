@@ -185,6 +185,10 @@ const translation = {
       title: '编织',
       description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
     },
+    aliyun: {
+      title: '大模型可观测',
+      description: '阿里云提供的SaaS化可观测平台，一键开启Dify应用的监控追踪和评估。',
+    },
   },
   appSelector: {
     label: '应用',

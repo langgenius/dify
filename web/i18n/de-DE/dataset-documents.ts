@@ -28,6 +28,8 @@ const translation = {
       delete: 'Löschen',
       enableWarning: 'Archivierte Datei kann nicht aktiviert werden',
       sync: 'Synchronisieren',
+      resume: 'Fortsetzen',
+      pause: 'Pause',
     },
     index: {
       enable: 'Aktivieren',

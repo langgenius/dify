@@ -29,6 +29,8 @@ const translation = {
       delete: 'Удалить',
       enableWarning: 'Архивный файл не может быть включен',
       sync: 'Синхронизировать',
+      resume: 'Продовжити',
+      pause: 'Пауза',
     },
     index: {
       enable: 'Включить',

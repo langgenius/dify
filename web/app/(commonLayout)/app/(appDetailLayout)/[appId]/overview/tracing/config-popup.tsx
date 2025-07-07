@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -29,7 +29,8 @@ export type PopupProps = {
   langFuseConfig: LangFuseConfig | null
   opikConfig: OpikConfig | null
   weaveConfig: WeaveConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
+  aliyunConfig: AliyunConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -46,6 +47,7 @@ const ConfigPopup: FC<PopupProps> = ({
   langFuseConfig,
   opikConfig,
   weaveConfig,
+  aliyunConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -69,7 +71,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -79,8 +81,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig
-  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig
 
   const switchContent = (
     <Switch
@@ -167,6 +169,19 @@ const ConfigPopup: FC<PopupProps> = ({
       key="weave-provider-panel"
     />
   )
+
+  const aliyunPanel = (
+    <ProviderPanel
+      type={TracingProvider.aliyun}
+      readOnly={readOnly}
+      config={aliyunConfig}
+      hasConfigured={!!aliyunConfig}
+      onConfig={handleOnConfig(TracingProvider.aliyun)}
+      isChosen={chosenProvider === TracingProvider.aliyun}
+      onChoose={handleOnChoose(TracingProvider.aliyun)}
+      key="alyun-provider-panel"
+    />
+  )
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
@@ -187,6 +202,9 @@ const ConfigPopup: FC<PopupProps> = ({
 
     if (phoenixConfig)
       configuredPanels.push(phoenixPanel)
+
+    if (aliyunConfig)
+      configuredPanels.push(aliyunPanel)
 
     return configuredPanels
   }
@@ -212,6 +230,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!weaveConfig)
       notConfiguredPanels.push(weavePanel)
 
+    if (!aliyunConfig)
+      notConfiguredPanels.push(aliyunPanel)
+
     return notConfiguredPanels
   }
 
@@ -226,6 +247,8 @@ const ConfigPopup: FC<PopupProps> = ({
       return langFuseConfig
     if (currentProvider === TracingProvider.opik)
       return opikConfig
+    if (currentProvider === TracingProvider.aliyun)
+      return aliyunConfig
     return weaveConfig
   }
 
@@ -273,6 +296,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 {weavePanel}
                 {arizePanel}
                 {phoenixPanel}
+                {aliyunPanel}
               </div>
             </>
           )

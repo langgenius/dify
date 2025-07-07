@@ -7,4 +7,5 @@ export const docURL = {
   [TracingProvider.langfuse]: 'https://docs.langfuse.com',
   [TracingProvider.opik]: 'https://www.comet.com/docs/opik/tracing/integrations/dify#setup-instructions',
   [TracingProvider.weave]: 'https://weave-docs.wandb.ai/',
+  [TracingProvider.aliyun]: 'https://help.aliyun.com/zh/arms/tracing-analysis/untitled-document-1750672984680',
 }
