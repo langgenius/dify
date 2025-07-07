@@ -1,9 +1,9 @@
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+import type { AliyunConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { App, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {
-  id: string
+  id: strin
   name: string
   description: string
   mode: AppMode
@@ -166,5 +166,5 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig
 }

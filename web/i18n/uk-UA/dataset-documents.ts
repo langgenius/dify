@@ -28,6 +28,8 @@ const translation = {
       delete: 'Видалити',
       enableWarning: 'Архівований файл неможливо активувати',
       sync: 'Синхронізувати',
+      pause: 'Пауза',
+      resume: 'Продовжити',
     },
     index: {
       enable: 'Активувати',

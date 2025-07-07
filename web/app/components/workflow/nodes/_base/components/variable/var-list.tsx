@@ -8,7 +8,7 @@ import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
@@ -38,6 +38,8 @@ const VarList: FC<Props> = ({
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
+      replaceSpaceWithUnderscreInVarNameInput(e.target)
+
       const newKey = e.target.value
       const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
       if (!isValid) {

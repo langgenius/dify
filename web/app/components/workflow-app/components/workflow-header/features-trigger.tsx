@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useNodes } from 'reactflow'
+import { useStore as useReactflowStore } from 'reactflow'
 import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -22,7 +22,6 @@ import {
   BlockEnum,
   InputVarType,
 } from '@/app/components/workflow/types'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
@@ -42,9 +41,9 @@ const FeaturesTrigger = () => {
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
-  const nodes = useNodes<StartNodeType>()
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  const startVariables = startNode?.data.variables
+  const startVariables = useReactflowStore(
+    s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
+  )
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
