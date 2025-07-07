@@ -62,7 +62,7 @@ def mock_tool_file():
 @pytest.fixture
 def mock_http_head():
     def _mock_response(filename, size, content_type):
-        response = Response(
+        return Response(
             status_code=200,
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
@@ -70,8 +70,6 @@ def mock_http_head():
                 "Content-Type": content_type,
             },
         )
-        response.request = MagicMock()
-        return response
 
     with patch("factories.file_factory.ssrf_proxy.head") as mock_head:
         mock_head.return_value = _mock_response("remote_test.jpg", 2048, "image/jpeg")
