@@ -304,6 +304,8 @@ class WorkflowDraftVariableService:
 
     def reset_variable(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         variable_type = variable.get_variable_type()
+        if variable_type == DraftVariableType.SYS and not is_system_variable_editable(variable.name):
+            raise VariableResetError(f"cannot reset system variable, variable_id={variable.id}")
         if variable_type == DraftVariableType.CONVERSATION:
             return self._reset_conv_var(workflow, variable)
         else:
