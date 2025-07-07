@@ -19,16 +19,14 @@ class SMTPClient:
     def send(self, mail: dict):
         smtp = None
         try:
-            if self.use_tls:
-                if self.opportunistic_tls:
-                    smtp = smtplib.SMTP(self.server, self.port, timeout=10)
-                    # Send EHLO command with the HELO domain name as the server address
-                    smtp.ehlo(self.server)
-                    smtp.starttls()
-                    # Resend EHLO command to identify the TLS session
-                    smtp.ehlo(self.server)
-                else:
-                    smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10)
+            # Always use STARTTLS for ports like 587 (Office365/modern SMTP)
+            if self.port == 465:
+                smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10)
+            elif self.use_tls or self.opportunistic_tls:
+                smtp = smtplib.SMTP(self.server, self.port, timeout=10)
+                smtp.ehlo(self.server)
+                smtp.starttls()
+                smtp.ehlo(self.server)
             else:
                 smtp = smtplib.SMTP(self.server, self.port, timeout=10)
 
@@ -43,10 +41,10 @@ class SMTPClient:
             msg.attach(MIMEText(mail["html"], "html"))
 
             smtp.sendmail(self._from, mail["to"], msg.as_string())
-        except smtplib.SMTPException as e:
+        except smtplib.SMTPException:
             logging.exception("SMTP error occurred")
             raise
-        except TimeoutError as e:
+        except TimeoutError:
             logging.exception("Timeout occurred while sending email")
             raise
         except Exception as e:
