@@ -250,12 +250,14 @@ def _build_from_remote_url(
 
 def _get_remote_file_info(url: str):
     file_size = -1
-    filename = ""
+    filename = url.split("/")[-1].split("?")[0] or "unknown_file"
+    mime_type = mimetypes.guess_type(filename)[0] or ""
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise ValueError(f"Failed to fetch remote file info from {url}, status code: {resp.status_code}")
 
-    content_disposition = resp.headers.get("Content-Disposition")
+    content_disposition = resp.headers.get("Content-Disposition", "")
     if content_disposition:
         # Use regex to parse filename from content-disposition header
         # RFC 2616, Section 19.5.1
@@ -266,7 +268,6 @@ def _get_remote_file_info(url: str):
     if not filename:
         filename = url.split("/")[-1].split("?")[0] or "unknown_file"
 
-    mime_type = resp.headers.get("Content-Type", "")
     if not mime_type:
         mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     else:
