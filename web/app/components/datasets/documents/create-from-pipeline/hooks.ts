@@ -1,12 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { AddDocumentsStep } from './types'
 import type { DataSourceOption } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
-import { CrawlStep } from '@/models/datasets'
-import { useDataSourceStoreWithSelector } from './data-source/store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -66,13 +64,14 @@ export const useLocalFile = () => {
   const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
   const previewFileRef = useDataSourceStoreWithSelector(state => state.previewLocalFileRef)
   const currentLocalFile = useDataSourceStoreWithSelector(state => state.currentLocalFile)
-  const setCurrentFile = useDataSourceStoreWithSelector(state => state.setCurrentLocalFile)
+  const dataSourceStore = useDataSourceStore()
 
   const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
 
   const hidePreviewLocalFile = useCallback(() => {
-    setCurrentFile(undefined)
-  }, [setCurrentFile])
+    const { setCurrentLocalFile } = dataSourceStore.getState()
+    setCurrentLocalFile(undefined)
+  }, [dataSourceStore])
 
   return {
     fileList,
@@ -86,12 +85,13 @@ export const useLocalFile = () => {
 export const useOnlineDocuments = () => {
   const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
   const previewOnlineDocumentRef = useDataSourceStoreWithSelector(state => state.previewOnlineDocumentRef)
-  const setCurrentDocument = useDataSourceStoreWithSelector(state => state.setCurrentDocument)
   const currentDocument = useDataSourceStoreWithSelector(state => state.currentDocument)
+  const dataSourceStore = useDataSourceStore()
 
   const hidePreviewOnlineDocument = useCallback(() => {
+    const { setCurrentDocument } = dataSourceStore.getState()
     setCurrentDocument(undefined)
-  }, [setCurrentDocument])
+  }, [dataSourceStore])
 
   return {
     onlineDocuments,
@@ -102,44 +102,31 @@ export const useOnlineDocuments = () => {
 }
 
 export const useWebsiteCrawl = () => {
-  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
-  const [crawlResult, setCrawlResult] = useState<CrawlResult | undefined>()
-  const [step, setStep] = useState<CrawlStep>(CrawlStep.init)
-  const [previewIndex, setPreviewIndex] = useState<number>(-1)
-
-  const previewWebsitePage = useRef<CrawlResultItem>(websitePages[0])
-
-  const updateCurrentWebsite = useCallback((website: CrawlResultItem, index: number) => {
-    setCurrentWebsite(website)
-    setPreviewIndex(index)
-  }, [])
+  const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
+  const currentWebsite = useDataSourceStoreWithSelector(state => state.currentWebsite)
+  const previewWebsitePageRef = useDataSourceStoreWithSelector(state => state.previewWebsitePageRef)
+  const dataSourceStore = useDataSourceStore()
 
   const hideWebsitePreview = useCallback(() => {
+    const { setCurrentWebsite, setPreviewIndex } = dataSourceStore.getState()
     setCurrentWebsite(undefined)
     setPreviewIndex(-1)
-  }, [])
-
-  const updataCheckedCrawlResultChange = useCallback((checkedCrawlResult: CrawlResultItem[]) => {
-    setWebsitePages(checkedCrawlResult)
-    previewWebsitePage.current = checkedCrawlResult[0]
-  }, [])
+  }, [dataSourceStore])
 
   return {
     websitePages,
-    crawlResult,
-    setCrawlResult,
-    step,
-    setStep,
-    previewWebsitePage,
-    updataCheckedCrawlResultChange,
+    previewWebsitePageRef,
     currentWebsite,
-    updateCurrentWebsite,
-    previewIndex,
     hideWebsitePreview,
   }
 }
 
 export const useOnlineDrive = () => {
-  return {}
+  const fileList = useDataSourceStoreWithSelector(state => state.fileList)
+  const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
+
+  return {
+    fileList,
+    selectedFileList,
+  }
 }
