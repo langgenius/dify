@@ -31,8 +31,8 @@ const getNodeInfo = (nodeId: string, nodes: Node[]) => {
 const useNodesAvailableVarList = (nodes: Node[], {
   onlyLeafNodeVar,
   filterVar,
-  hideEnv,
-  hideChatVar,
+  hideEnv = false,
+  hideChatVar = false,
   passedInAvailableNodes,
 }: Params = {
     onlyLeafNodeVar: false,
