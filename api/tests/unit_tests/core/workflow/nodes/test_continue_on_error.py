@@ -17,6 +17,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -167,12 +168,12 @@ class ContinueOnErrorTestHelper:
         """Helper method to create a graph engine instance for testing"""
         graph = Graph.init(graph_config=graph_config)
         variable_pool = VariablePool(
-            system_variables={
-                SystemVariableKey.QUERY: "clear",
-                SystemVariableKey.FILES: [],
-                SystemVariableKey.CONVERSATION_ID: "abababa",
-                SystemVariableKey.USER_ID: "aaa",
-            },
+            system_variables=SystemVariable(
+                user_id="aaa",
+                files=[],
+                query="clear",
+                conversation_id="abababa",
+            ),
             user_inputs=user_inputs or {"uid": "takato"},
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
