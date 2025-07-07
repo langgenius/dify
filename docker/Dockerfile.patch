@@ -1,8 +1,6 @@
 FROM langgenius/dify-api:1.5.1
 
-USER root
 RUN apt-get update && apt-get install -y git \
     && rm -rf /var/lib/apt/lists/*
-USER app
 
 # docker build -f docker/Dockerfile.patch -t land007/dify-api:1.5.1 .
