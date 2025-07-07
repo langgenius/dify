@@ -113,7 +113,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         if (!errorMessage) {
           const availableVars = map[node.id].availableVars
 
-          usedVars.forEach((variable) => {
+          for (const variable of usedVars) {
             const isEnv = isENV(variable)
             const isConvVar = isConversationVar(variable)
             const isSysVar = isSystemVar(variable)
