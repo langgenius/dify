@@ -16,7 +16,7 @@ from core.model_runtime.entities.message_entities import PromptMessageContentUni
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from factories import file_factory
-from models.model import AppMode, Conversation, Message, MessageFile
+from models.model import AppMode, Conversation, Message, MessageFile, NodeFileUsage
 from models.workflow import WorkflowRun
 
 
@@ -26,7 +26,11 @@ class TokenBufferMemory:
         self.model_instance = model_instance
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
+        self,
+        max_token_limit: int = 2000,
+        message_limit: Optional[int] = None,
+        *,
+        allowed_node_id: str | None = None,
     ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
@@ -70,8 +74,45 @@ class TokenBufferMemory:
         messages = list(reversed(thread_messages))
 
         prompt_messages: list[PromptMessage] = []
+
+        # Attachment filtering strategy
+        #   • allowed_node_id is None      → keep files used by ANY node (shared memory)
+        #   • allowed_node_id == ""       → strip ALL attachments
+        #   • allowed_node_id == <node id> → keep only files this node used
+
+        allowed_upload_ids: set[str] | None = None
+
+        if allowed_node_id == "":
+            allowed_upload_ids = set()  # keep none → strip all attachments
+        elif allowed_node_id is None:
+            # Shared memory: allow files used by any node
+            usage_rows = (
+                db.session.query(NodeFileUsage.upload_file_id)
+                .filter(NodeFileUsage.conversation_id == self.conversation.id)
+                .all()
+            )
+            allowed_upload_ids = {str(r[0]) for r in usage_rows}
+        else:
+            # Node-specific filtering
+            usage_rows = (
+                db.session.query(NodeFileUsage.upload_file_id)
+                .filter(
+                    NodeFileUsage.conversation_id == self.conversation.id,
+                    NodeFileUsage.node_id == allowed_node_id,
+                )
+                .all()
+            )
+            allowed_upload_ids = {str(r[0]) for r in usage_rows}
+
         for message in messages:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+
+            # If attachment filtering is enabled, filter MessageFile list first.
+            if allowed_upload_ids is not None:
+                files = [
+                    f for f in files if f.upload_file_id and str(f.upload_file_id) in allowed_upload_ids
+                ]
+
             if files:
                 file_extra_config = None
                 if self.conversation.mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:

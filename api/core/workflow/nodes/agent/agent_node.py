@@ -34,8 +34,7 @@ from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories.agent_factory import get_plugin_agent_strategy
-from models.model import Conversation
-
+from models.model import Conversation, NodeFileUsage
 
 class AgentNode(ToolNode):
     """
@@ -257,35 +256,6 @@ class AgentNode(ToolNode):
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
                     history_prompt_messages: list[dict[str, Any]] = []
-                    if node_data.memory:
-                        memory = self._fetch_memory(model_instance)
-                        if memory:
-                            prompt_messages = memory.get_history_prompt_messages(
-                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None
-                            )
-                            history_prompt_messages = [
-                                prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
-                            ]
-
-                    # Strip file attachments from memory to prevent cross-turn leakage
-                    def _strip_files_from_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-                        stripped: list[dict[str, Any]] = []
-                        for m in messages:
-                            if m.get("role") == "user" and isinstance(m.get("content"), list):
-                                # Keep only text content, remove file attachments
-                                contents = [
-                                    c
-                                    for c in m["content"]
-                                    if not (isinstance(c, dict) and c.get("type") and c.get("type") != "text")
-                                ]
-                                if not contents:
-                                    contents = []
-                                m = {**m, "content": contents}
-                            stripped.append(m)
-                        return stripped
-
-                    history_prompt_messages = _strip_files_from_history(history_prompt_messages)
-
                     # Check if this agent node references sys.files
                     def _input_uses_sys_files(_agent_input):
                         if _agent_input.type == "variable":
@@ -298,9 +268,19 @@ class AgentNode(ToolNode):
                         _input_uses_sys_files(inp) for inp in node_data.agent_parameters.values()
                     )
 
-                    if uses_sys_files_for_node:
-                        # History already stripped once above; ensure it's stripped (idempotent call)
-                        history_prompt_messages = _strip_files_from_history(history_prompt_messages)
+                    conv_var = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+                    conversation_id_val = conv_var.value if isinstance(conv_var, StringSegment) else None
+
+                    if node_data.memory:
+                        memory = self._fetch_memory(model_instance)
+                        if memory:
+                            prompt_messages = memory.get_history_prompt_messages(
+                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None,
+                                allowed_node_id=None if uses_sys_files_for_node else "",
+                            )
+                            history_prompt_messages = [
+                                prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
+                            ]
 
                     if model_schema:
                         # remove structured output feature to support old version agent plugin
@@ -340,8 +320,40 @@ class AgentNode(ToolNode):
                                         continue
 
                                 # Append synthetic user message with current turn attachments
-                                synthetic_user_prompt = UserPromptMessage(content=prompt_contents)
+                                synthetic_user_prompt = UserPromptMessage(
+                                    content=prompt_contents,
+                                    name=f"__SYS_FILES__|{self.node_id}",  # mark with node id for future filtering
+                                )
                                 history_prompt_messages.append(synthetic_user_prompt.model_dump(mode="json"))
+
+                                # Persist usage to durable table
+                                try:
+                                    if conversation_id_val:
+                                        with Session(db.engine) as session:
+                                            for f in files:
+                                                upload_id = getattr(f, "related_id", None)
+                                                if not upload_id:
+                                                    continue
+
+                                                # Upsert-ish: skip if record already exists
+                                                exists_stmt = select(NodeFileUsage.id).where(
+                                                    NodeFileUsage.conversation_id == conversation_id_val,
+                                                    NodeFileUsage.node_id == self.node_id,
+                                                    NodeFileUsage.upload_file_id == upload_id,
+                                                )
+                                                if not session.scalar(exists_stmt):
+                                                    session.add(
+                                                        NodeFileUsage(
+                                                            conversation_id=conversation_id_val,
+                                                            node_id=self.node_id,
+                                                            upload_file_id=upload_id,
+                                                            message_id=None,
+                                                        )
+                                                    )
+                                            session.commit()
+                                except Exception:
+                                    # ignore if failed to persist
+                                    pass
 
                             value["history_prompt_messages"] = history_prompt_messages
             result[parameter_name] = value

@@ -1747,6 +1747,27 @@ class MessageAgentThought(Base):
                 return {}
 
 
+class NodeFileUsage(Base):
+    __tablename__ = "node_file_usage"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="node_file_usage_pkey"),
+        db.Index("node_file_usage_conversation_id_idx", "conversation_id"),
+        db.Index("node_file_usage_node_id_idx", "node_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
+    message_id = db.Column(StringUUID, db.ForeignKey("messages.id"), nullable=True)
+    node_id = db.Column(db.String(64), nullable=False)
+    upload_file_id = db.Column(StringUUID, db.ForeignKey("upload_files.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return "<NodeFileUsage conversation_id={cid} node_id={nid} upload_file_id={fid}>".format(
+            cid=self.conversation_id, nid=self.node_id, fid=self.upload_file_id
+        )
+
+
 class DatasetRetrieverResource(Base):
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
