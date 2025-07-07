@@ -21,7 +21,7 @@ const Breadcrumbs = ({
   isInPipeline,
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
-  const { setFileList, setSelectedFileList, setPrefix, setBucket } = useDataSourceStore().getState()
+  const dataSourceStore = useDataSourceStore()
   const showSearchResult = !!keywords && searchResultsLength > 0
   const isRoot = prefix.length === 0 && bucket === ''
 
@@ -43,24 +43,27 @@ const Breadcrumbs = ({
   }, [displayBreadcrumbNum, prefix])
 
   const handleBackToBucketList = useCallback(() => {
+    const { setFileList, setSelectedFileList, setPrefix, setBucket } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileList([])
     setBucket('')
     setPrefix([])
-  }, [setBucket, setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
+    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileList([])
     setPrefix([])
-  }, [setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
+    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
     const newPrefix = prefix.slice(0, index - 1)
     setFileList([])
     setSelectedFileList([])
     setPrefix(newPrefix)
-  }, [prefix, setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore, prefix])
 
   return (
     <div className='flex grow items-center py-1'>

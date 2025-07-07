@@ -12,11 +12,12 @@ export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[]
   return data.length > 1 || (data.length === 1 && data[0].files.length === 0)
 }
 
-export const convertOnlineDriveDataToFileList = (data: OnlineDriveData[], prefix: string[]): OnlineDriveFile[] => {
+export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[]): { fileList: OnlineDriveFile[], isTruncated: boolean } => {
   const fileList: OnlineDriveFile[] = []
+  let isTruncated = false
 
   if (data.length === 0)
-    return fileList
+    return { fileList, isTruncated }
 
   if (isBucketListInitiation(data, prefix)) {
     data.forEach((item) => {
@@ -38,6 +39,7 @@ export const convertOnlineDriveDataToFileList = (data: OnlineDriveData[], prefix
         type: isFileType ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
       })
     })
+    isTruncated = data[0].is_truncated ?? false
   }
-  return fileList
+  return { fileList, isTruncated }
 }

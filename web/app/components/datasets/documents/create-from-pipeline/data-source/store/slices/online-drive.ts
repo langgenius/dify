@@ -14,6 +14,8 @@ export type OnlineDriveSliceShape = {
   setFileList: (fileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
+  isTruncated: boolean
+  setIsTruncated: (isTruncated: boolean) => void
 }
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set) => {
@@ -41,6 +43,10 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     bucket: '',
     setBucket: (bucket: string) => set(() => ({
       bucket,
+    })),
+    isTruncated: false,
+    setIsTruncated: (isTruncated: boolean) => set(() => ({
+      isTruncated,
     })),
   })
 }

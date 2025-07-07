@@ -24,7 +24,7 @@ const TestRunPanel = () => {
   const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
   const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
   const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
-  const { bucket } = useDataSourceStore().getState()
+  const dataSourceStore = useDataSourceStore()
   const [datasource, setDatasource] = useState<Datasource>()
 
   const {
@@ -84,6 +84,7 @@ const TestRunPanel = () => {
     if (datasourceType === DatasourceType.websiteCrawl)
       datasourceInfoList.push(websitePages[0])
     if (datasourceType === DatasourceType.onlineDrive) {
+      const { bucket } = dataSourceStore.getState()
       datasourceInfoList.push({
         bucket,
         key: selectedFileList[0],
@@ -95,7 +96,7 @@ const TestRunPanel = () => {
       datasource_type: datasourceType,
       datasource_info_list: datasourceInfoList,
     })
-  }, [bucket, datasource, datasourceType, fileList, handleRun, onlineDocuments, selectedFileList, websitePages])
+  }, [dataSourceStore, datasource, datasourceType, fileList, handleRun, onlineDocuments, selectedFileList, websitePages])
 
   return (
     <div
