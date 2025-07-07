@@ -941,6 +941,7 @@ const translation = {
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    relationsTab: '关系',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
@@ -965,6 +966,14 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+    },
+    relations: {
+      dependencies: '依赖',
+      dependents: '被依赖',
+      dependenciesDescription: '本节点依赖的其他节点',
+      dependentsDescription: '依赖于本节点的其他节点',
+      noDependencies: '无依赖',
+      noDependents: '无被依赖',
     },
   },
 }
