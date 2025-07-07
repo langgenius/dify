@@ -21,7 +21,6 @@ import PluginList, { type ListProps } from '@/app/components/workflow/block-sele
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import useCheckVerticalScrollbar from './use-check-vertical-scrollbar'
 
 type AllToolsProps = {
   className?: string
@@ -107,7 +106,6 @@ const AllTools = ({
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
-  const hasVerticalScrollbar = useCheckVerticalScrollbar(wrapElemRef)
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   return (
@@ -150,7 +148,6 @@ const AllTools = ({
           hasSearchText={!!searchText}
           selectedTools={selectedTools}
           canChooseMCPTool={canChooseMCPTool}
-          hasScrollBar={hasVerticalScrollbar}
         />
         {/* Plugins from marketplace */}
         {enable_marketplace && <PluginList
