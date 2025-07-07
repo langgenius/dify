@@ -317,16 +317,16 @@ class IndexingRunner:
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    if image_file is None:
+                        continue
                     try:
-                        if image_file:
-                            storage.delete(image_file.key)
+                        storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
                                           image_upload_file_is: {}".format(upload_file_id)
                         )
-                    if image_file:
-                        db.session.delete(image_file)
+                    db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
