@@ -14,7 +14,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.provider_manager import ProviderManager
-from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
@@ -105,8 +105,6 @@ class AgentNode(ToolNode):
             # convert tool messages
             agent_thoughts: list = []
 
-            from core.tools.entities.tool_entities import ToolInvokeMessage
-
             thought_log_message = ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.LOG,
                 message=ToolInvokeMessage.LogMessage(
@@ -126,8 +124,6 @@ class AgentNode(ToolNode):
                     },
                 ),
             )
-
-            from core.tools.entities.tool_entities import ToolInvokeMessage
 
             def enhanced_message_stream():
                 yield thought_log_message
