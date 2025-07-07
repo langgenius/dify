@@ -1,8 +1,6 @@
 from collections.abc import Mapping
 from typing import Any, cast
 
-from sqlalchemy.orm import Session
-
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -66,7 +64,6 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from models.workflow import Workflow
 
 
@@ -699,22 +696,3 @@ class WorkflowBasedAppRunner:
 
     def _publish_event(self, event: AppQueueEvent) -> None:
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
-
-    def _save_draft_var_for_event(self, event: BaseNodeEvent):
-        run_result = event.route_node_state.node_run_result
-        if run_result is None:
-            return
-        process_data = run_result.process_data
-        outputs = run_result.outputs
-        with Session(bind=db.engine) as session, session.begin():
-            draft_var_saver = DraftVariableSaver(
-                session=session,
-                app_id=self._app_id,
-                node_id=event.node_id,
-                node_type=event.node_type,
-                # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
-                invoke_from=self._queue_manager._invoke_from,
-                node_execution_id=event.id,
-                enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
-            )
-            draft_var_saver.save(process_data=process_data, outputs=outputs)
