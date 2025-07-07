@@ -196,6 +196,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - default
 
   # ssrf_proxy server
   # for more information, please refer to
