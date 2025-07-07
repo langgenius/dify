@@ -27,6 +27,7 @@ import {
 } from '@/service/use-tools'
 import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { fetchAppDetail } from '@/service/apps'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -36,6 +37,7 @@ function MCPServiceCard({
   appInfo,
 }: IAppCardProps) {
   const { t } = useTranslation()
+  const appId = appInfo.id
   const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
   const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
@@ -43,11 +45,33 @@ function MCPServiceCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
-  const { data: currentWorkflow } = useAppWorkflow(appInfo.id)
-  const { data: detail } = useMCPServerDetail(appInfo.id)
+  const isAdvancedApp = appInfo?.mode === 'advanced-chat' || appInfo?.mode === 'workflow'
+  const isBasicApp = !isAdvancedApp
+  const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
+  const [basicAppConfig, setBasicAppConfig] = useState<any>({})
+  const basicAppInputForm = useMemo(() => {
+    if(!isBasicApp || !basicAppConfig?.user_input_form)
+      return []
+    return basicAppConfig.user_input_form.map((item: any) => {
+      const type = Object.keys(item)[0]
+      return {
+        ...item[type],
+        type: type || 'text-input',
+      }
+    })
+  }, [basicAppConfig.user_input_form, isBasicApp])
+  useEffect(() => {
+    if(isBasicApp && appId) {
+      (async () => {
+        const res = await fetchAppDetail({ url: '/apps', id: appId })
+        setBasicAppConfig(res?.model_config || {})
+      })()
+    }
+  }, [appId, isBasicApp])
+  const { data: detail } = useMCPServerDetail(appId)
   const { id, status, server_code } = detail ?? {}
 
-  const appUnpublished = !currentWorkflow?.graph
+  const appUnpublished = isAdvancedApp ? !currentWorkflow?.graph : !basicAppConfig.updated_at
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
@@ -56,15 +80,18 @@ function MCPServiceCard({
   const [activated, setActivated] = useState(serverActivated)
 
   const latestParams = useMemo(() => {
-    if (!currentWorkflow?.graph)
-      return []
-    const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
-    return startNode?.data.variables as any[] || []
-  }, [currentWorkflow])
+    if(isAdvancedApp) {
+      if (!currentWorkflow?.graph)
+        return []
+      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
+      return startNode?.data.variables as any[] || []
+    }
+    return basicAppInputForm
+  }, [currentWorkflow, basicAppInputForm, isAdvancedApp])
 
   const onGenCode = async () => {
     await refreshMCPServerCode(detail?.id || '')
-    invalidateMCPServerDetail(appInfo.id)
+    invalidateMCPServerDetail(appId)
   }
 
   const onChangeStatus = async (state: boolean) => {
@@ -76,23 +103,23 @@ function MCPServiceCard({
       }
 
       await updateMCPServer({
-        appID: appInfo.id,
+        appID: appId,
         id: id || '',
         description: detail?.description || '',
         parameters: detail?.parameters || {},
         status: 'active',
       })
-      invalidateMCPServerDetail(appInfo.id)
+      invalidateMCPServerDetail(appId)
     }
     else {
       await updateMCPServer({
-        appID: appInfo.id,
+        appID: appId,
         id: id || '',
         description: detail?.description || '',
         parameters: detail?.parameters || {},
         status: 'inactive',
       })
-      invalidateMCPServerDetail(appInfo.id)
+      invalidateMCPServerDetail(appId)
     }
   }
 
@@ -106,7 +133,7 @@ function MCPServiceCard({
     setActivated(serverActivated)
   }, [serverActivated])
 
-  if (!currentWorkflow)
+  if (!currentWorkflow && isAdvancedApp)
     return null
 
   return (
@@ -190,7 +217,7 @@ function MCPServiceCard({
       {showMCPServerModal && (
         <MCPServerModal
           show={showMCPServerModal}
-          appID={appInfo.id}
+          appID={appId}
           data={serverPublished ? detail : undefined}
           latestParams={latestParams}
           onHide={handleServerModalHide}

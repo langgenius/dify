@@ -32,7 +32,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
-  const showMCPCard = isInPanel && (appDetail?.mode === 'advanced-chat' || appDetail?.mode === 'workflow')
+  const showMCPCard = isInPanel
 
   const updateAppDetail = async () => {
     try {
