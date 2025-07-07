@@ -128,7 +128,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
                 errorMessage = t('workflow.errorMsg.invalidVariable')
               }
             }
-          })
+          }
         }
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {

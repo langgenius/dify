@@ -67,9 +67,9 @@ const useNodesAvailableVarList = (nodes: Node[], {
       availableVars,
       availableNodes,
     }
-    map[nodeId] = result
+    nodeAvailabilityMap[nodeId] = result
   })
-  return map
+  return nodeAvailabilityMap
 }
 
 export default useNodesAvailableVarList
