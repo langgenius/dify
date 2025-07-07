@@ -59,6 +59,8 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Relations from './relations'
+import { RelationType } from './relations/types'
 
 type BasePanelProps = {
   children: ReactNode
@@ -419,6 +421,30 @@ const BasePanel: FC<BasePanelProps> = ({
             isPaused={isPaused}
             {...passedLogParams}
           />
+        )}
+
+        {tabType === TabType.relations && (
+          <>
+            <div className='border-t-[0.5px] border-divider-regular p-4'>
+              <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
+                {t('workflow.debug.relations.dependencies').toLocaleUpperCase()}
+              </div>
+              <div className='system-xs-regular mb-2 text-text-tertiary'>
+                {t('workflow.debug.relations.dependenciesDescription')}
+              </div>
+              <Relations selectedNode={{ id, data } as Node} relationType={RelationType.dependencies}/>
+            </div>
+            <Split />
+            <div className='border-t-[0.5px] border-divider-regular p-4'>
+              <div className='system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary'>
+                {t('workflow.debug.relations.dependents').toLocaleUpperCase()}
+              </div>
+              <div className='system-xs-regular mb-2 text-text-tertiary'>
+                {t('workflow.debug.relations.dependentsDescription')}
+              </div>
+              <Relations selectedNode={{ id, data } as Node} relationType={RelationType.dependents}/>
+            </div>
+          </>
         )}
       </div>
     </div>
