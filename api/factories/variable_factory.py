@@ -2,8 +2,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 from uuid import uuid4
 
-from shapely import is_valid
-
 from configs import dify_config
 from core.file import File
 from core.variables.exc import VariableError

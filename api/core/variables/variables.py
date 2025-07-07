@@ -5,7 +5,6 @@ from uuid import uuid4
 from pydantic import Discriminator, Field, Tag
 
 from core.helper import encrypter
-from core.variables.segment_group import SegmentGroup
 
 from .segments import (
     ArrayAnySegment,
