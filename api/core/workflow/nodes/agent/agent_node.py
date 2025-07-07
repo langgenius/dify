@@ -36,6 +36,7 @@ from extensions.ext_database import db
 from factories.agent_factory import get_plugin_agent_strategy
 from models.model import Conversation, NodeFileUsage
 
+
 class AgentNode(ToolNode):
     """
     Agent Node
@@ -256,6 +257,7 @@ class AgentNode(ToolNode):
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
                     history_prompt_messages: list[dict[str, Any]] = []
+
                     # Check if this agent node references sys.files
                     def _input_uses_sys_files(_agent_input):
                         if _agent_input.type == "variable":

@@ -109,9 +109,7 @@ class TokenBufferMemory:
 
             # If attachment filtering is enabled, filter MessageFile list first.
             if allowed_upload_ids is not None:
-                files = [
-                    f for f in files if f.upload_file_id and str(f.upload_file_id) in allowed_upload_ids
-                ]
+                files = [f for f in files if f.upload_file_id and str(f.upload_file_id) in allowed_upload_ids]
 
             if files:
                 file_extra_config = None
