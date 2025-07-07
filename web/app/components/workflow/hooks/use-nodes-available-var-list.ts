@@ -42,7 +42,7 @@ const useNodesAvailableVarList = (nodes: Node[], {
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
 
-  const map: { [key: string ]: { availableVars: NodeOutPutVar[], availableNodes: Node[] } } = {}
+  const nodeAvailabilityMap: { [key: string ]: { availableVars: NodeOutPutVar[], availableNodes: Node[] } } = {}
 
   nodes.forEach((node) => {
     const nodeId = node.id
