@@ -31,6 +31,14 @@ class TTSTool(BuiltinTool):
             model_type=ModelType.TTS,
             model=model,
         )
+        if not voice:
+            voices = model_instance.get_tts_voices()
+            if voices:
+                voice = voices[0].get("value")
+                if not voice:
+                    raise ValueError("Sorry, no voice available.")
+            else:
+                raise ValueError("Sorry, no voice available.")
         tts = model_instance.invoke_tts(
             content_text=tool_parameters.get("text"),  # type: ignore
             user=user_id,
