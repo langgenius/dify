@@ -29,6 +29,8 @@ const translation = {
       delete: 'ลบ',
       enableWarning: 'ไม่สามารถเปิดใช้งานไฟล์ที่เก็บถาวรได้',
       sync: 'ซิงค์',
+      pause: 'หยุด',
+      resume: 'ดำเนิน',
     },
     index: {
       enable: 'เปิด',

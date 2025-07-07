@@ -98,7 +98,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   }, [])
 
   return (
-    <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', hideTopMenu && 'pt-2', className)}>
+    <div className={classNames('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
       {!hideTopMenu && (
         <div className='flex items-center justify-between pl-2 pr-1 pt-1'>
           <div className='system-xs-semibold-uppercase py-0.5 text-text-secondary'>

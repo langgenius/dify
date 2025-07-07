@@ -722,6 +722,8 @@ html[data-theme="light"] {
   --color-util-colors-midnight-midnight-600: #5d698d;
   --color-util-colors-midnight-midnight-700: #3e465e;
 
+  --color-third-party-Arize: #000000;
+  --color-third-party-Phoenix: #000000;
   --color-third-party-LangChain: #1c3c3c;
   --color-third-party-Langfuse: #000000;
   --color-third-party-Github: #1b1f24;

@@ -29,6 +29,8 @@ const translation = {
       delete: 'Sil',
       enableWarning: 'Arşivlenmiş dosya etkinleştirilemez',
       sync: 'Senkronize et',
+      pause: 'Duraklat',
+      resume: 'Devam Et',
     },
     index: {
       enable: 'Etkinleştir',

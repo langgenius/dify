@@ -29,6 +29,8 @@ const translation = {
       delete: 'حذف',
       enableWarning: 'فایل بایگانی شده نمی‌تواند فعال شود',
       sync: 'همگام‌سازی',
+      resume: 'ادامه',
+      pause: 'مکث',
     },
     index: {
       enable: 'فعال کردن',
