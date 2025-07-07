@@ -537,8 +537,15 @@ services:
       redis:
         condition: service_started
     volumes:
-      # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ../my_endnode_streaming.patch:/app/my_endnode_streaming.patch
+    command: >
+      sh -c "if [ -f /app/my_endnode_streaming.patch ]; then \
+        cd /app && \
+        git apply --check my_endnode_streaming.patch && \
+        git apply my_endnode_streaming.patch || echo 'Patch already applied or not applicable'; \
+      fi; \
+      exec /start-api.sh"
     networks:
       - ssrf_proxy_network
       - default
@@ -564,8 +571,15 @@ services:
       redis:
         condition: service_started
     volumes:
-      # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ../my_endnode_streaming.patch:/app/my_endnode_streaming.patch
+    command: >
+      sh -c "if [ -f /app/my_endnode_streaming.patch ]; then \
+        cd /app && \
+        git apply --check my_endnode_streaming.patch && \
+        git apply my_endnode_streaming.patch || echo 'Patch already applied or not applicable'; \
+      fi; \
+      exec /start-worker.sh"
     networks:
       - ssrf_proxy_network
       - default
