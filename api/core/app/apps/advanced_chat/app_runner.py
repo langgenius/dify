@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.moderation.base import ModerationError
+from core.variables.variables import VariableUnion
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.system_variable import SystemVariable
@@ -152,7 +153,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
-                conversation_variables=conversation_variables,
+                # TODO(QuantumGhost): find a better way to resolve typing issue.
+                conversation_variables=cast(list[VariableUnion], conversation_variables),
             )
 
             # init graph

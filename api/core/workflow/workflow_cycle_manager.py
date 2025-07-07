@@ -60,7 +60,7 @@ class WorkflowCycleManager:
 
         # Iterate over SystemVariable fields using Pydantic's model_fields
         if self._workflow_system_variables:
-            for field_name, value in self._workflow_system_variables.to_dict():
+            for field_name, value in self._workflow_system_variables.to_dict().items():
                 if field_name == SystemVariableKey.CONVERSATION_ID:
                     continue
                 inputs[f"sys.{field_name}"] = value

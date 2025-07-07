@@ -3,7 +3,7 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -15,6 +15,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
+from core.variables.variables import VariableUnion
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
@@ -692,7 +693,7 @@ def _setup_variable_pool(
         system_variables=system_variable,
         user_inputs=user_inputs,
         environment_variables=workflow.environment_variables,
-        conversation_variables=conversation_variables,
+        conversation_variables=cast(list[VariableUnion], conversation_variables),
     )
 
     return variable_pool
