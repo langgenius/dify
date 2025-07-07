@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -16,6 +17,7 @@ from services.app_generate_service import AppGenerateService
 """
 Apply to MCP HTTP streamable server with stateless http
 """
+logger = logging.getLogger(__name__)
 
 
 class MCPServerRequestHandler:
@@ -101,8 +103,10 @@ class MCPServerRequestHandler:
             else:
                 return self.error_response(METHOD_NOT_FOUND, f"Method not found: {self.request_type}")
         except ValueError as e:
+            logger.exception("Invalid params")
             return self.error_response(INVALID_PARAMS, str(e))
         except Exception as e:
+            logger.exception("Internal server error")
             return self.error_response(INTERNAL_ERROR, f"Internal server error: {str(e)}")
 
     def handle_notification(self):
@@ -192,7 +196,7 @@ class MCPServerRequestHandler:
                 continue
             if item.required:
                 required.append(item.variable)
-            description = self.mcp_server.parameters_dict[item.label]
+            description = self.mcp_server.parameters_dict[item.variable]
             parameters[item.variable]["description"] = description
             if item.type in (VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH):
                 parameters[item.variable]["type"] = "string"
