@@ -25,6 +25,11 @@ const Dropdown = ({
     setOpen(prev => !prev)
   }, [])
 
+  const handleBreadCrumbClick = useCallback((index: number) => {
+    onBreadcrumbClick(index)
+    setOpen(false)
+  }, [onBreadcrumbClick])
+
   return (
     <PortalToFollowElem
       open={open}
@@ -50,7 +55,7 @@ const Dropdown = ({
         <Menu
           breadcrumbs={breadcrumbs}
           startIndex={startIndex}
-          onBreadcrumbClick={onBreadcrumbClick}
+          onBreadcrumbClick={handleBreadCrumbClick}
         />
       </PortalToFollowElemContent>
       <span className='system-xs-regular text-divider-deep'>/</span>

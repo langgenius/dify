@@ -59,7 +59,7 @@ const Breadcrumbs = ({
 
   const handleClickBreadcrumb = useCallback((index: number) => {
     const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
-    const newPrefix = prefix.slice(0, index - 1)
+    const newPrefix = prefix.slice(0, index + 1)
     setFileList([])
     setSelectedFileList([])
     setPrefix(newPrefix)
