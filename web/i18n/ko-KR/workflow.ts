@@ -740,6 +740,7 @@ const translation = {
       instructionTip:
         '매개변수 추출기가 매개변수를 추출하는 방법을 이해하는 데 도움이 되는 추가 지시를 입력하세요.',
       advancedSetting: '고급 설정',
+      reasoningMode: '추론 모드',
       reasoningModeTip:
         '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
       isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
