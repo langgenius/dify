@@ -144,18 +144,26 @@ class TestUrlSigner:
         assert len(nonces) == 5
 
     @patch("configs.dify_config.SECRET_KEY", "test-secret-key-12345")
-    def test_should_produce_consistent_signatures(self):
+    @patch("time.time", return_value=1234567890)
+    @patch("os.urandom", return_value=b"\xab\xcd\xef\x12\x34\x56\x78\x90\xab\xcd\xef\x12\x34\x56\x78\x90")
+    def test_should_produce_consistent_signatures(self, mock_urandom, mock_time):
         """Test that same inputs produce same signature - ensures deterministic behavior"""
         sign_key = "test-sign-key"
         prefix = "test-prefix"
-        timestamp = "1234567890"
-        nonce = "abcdef1234567890abcdef1234567890"
 
-        # Generate signature multiple times with same inputs
-        sign1 = UrlSigner._sign(sign_key, timestamp, nonce, prefix)
-        sign2 = UrlSigner._sign(sign_key, timestamp, nonce, prefix)
+        # Generate signature multiple times with same inputs (time and nonce are mocked)
+        params1 = UrlSigner.get_signed_url_params(sign_key, prefix)
+        params2 = UrlSigner.get_signed_url_params(sign_key, prefix)
 
-        assert sign1 == sign2
+        # With mocked time and random, should produce identical results
+        assert params1.timestamp == params2.timestamp
+        assert params1.nonce == params2.nonce
+        assert params1.sign == params2.sign
+
+        # Verify the signature is valid
+        assert UrlSigner.verify(
+            sign_key=sign_key, timestamp=params1.timestamp, nonce=params1.nonce, sign=params1.sign, prefix=prefix
+        )
 
     @patch("configs.dify_config.SECRET_KEY", "test-secret-key-12345")
     def test_should_handle_empty_strings(self):
