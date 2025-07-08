@@ -1,5 +1,6 @@
 import contextvars
 import logging
+import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
@@ -133,7 +134,10 @@ class IterationNode(BaseNode[IterationNodeData]):
         variable_pool.add([self.node_id, "item"], iterator_list_value[0])
 
         # init graph engine
+        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
         from core.workflow.graph_engine.graph_engine import GraphEngine, GraphEngineThreadPool
+
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         graph_engine = GraphEngine(
             tenant_id=self.tenant_id,
@@ -146,7 +150,7 @@ class IterationNode(BaseNode[IterationNodeData]):
             call_depth=self.workflow_call_depth,
             graph=iteration_graph,
             graph_config=graph_config,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             thread_pool_id=self.thread_pool_id,
