@@ -359,7 +359,7 @@ class BaseSession(
                     if response_queue is not None:
                         response_queue.put(message.message.root)
                     else:
-                        self._handle_incoming(RuntimeError(f"Received response with an unknown request ID: {message}"))
+                        self._handle_incoming(RuntimeError(f"Server Error: {message}"))
             except queue.Empty:
                 continue
             except Exception as e:
