@@ -59,6 +59,7 @@ app_detail_fields = {
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
     "tracing": fields.Raw,
     "use_icon_as_answer_icon": fields.Boolean,
+    "always_new_chat": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -94,6 +95,7 @@ app_partial_fields = {
     "model_config": fields.Nested(model_config_partial_fields, attribute="app_model_config", allow_null=True),
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
     "use_icon_as_answer_icon": fields.Boolean,
+    "always_new_chat": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -147,6 +149,7 @@ site_fields = {
     "app_base_url": fields.String,
     "show_workflow_steps": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
+    "always_new_chat": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -175,6 +178,7 @@ app_detail_fields_with_site = {
     "site": fields.Nested(site_fields),
     "api_base_url": fields.String,
     "use_icon_as_answer_icon": fields.Boolean,
+    "always_new_chat": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -201,6 +205,7 @@ app_site_fields = {
     "prompt_public": fields.Boolean,
     "show_workflow_steps": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
+    "always_new_chat": fields.Boolean,
 }
 
 leaked_dependency_fields = {"type": fields.String, "value": fields.Raw, "current_identifier": fields.String}

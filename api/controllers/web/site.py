@@ -40,6 +40,7 @@ class AppSiteApi(WebApiResource):
         "prompt_public": fields.Boolean,
         "show_workflow_steps": fields.Boolean,
         "use_icon_as_answer_icon": fields.Boolean,
+        "always_new_chat": fields.Boolean,
     }
 
     app_fields = {

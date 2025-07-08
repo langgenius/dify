@@ -51,6 +51,7 @@ export type ConfigParams = {
   icon_background?: string
   show_workflow_steps: boolean
   use_icon_as_answer_icon: boolean
+  always_new_chat: boolean
   enable_sso?: boolean
 }
 
@@ -80,6 +81,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     default_language,
     show_workflow_steps,
     use_icon_as_answer_icon,
+    always_new_chat,
   } = appInfo.site
   const [inputInfo, setInputInfo] = useState({
     title,
@@ -92,6 +94,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
     use_icon_as_answer_icon,
+    always_new_chat,
     enable_sso: appInfo.enable_sso,
   })
   const [language, setLanguage] = useState(default_language)
@@ -128,13 +131,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
       use_icon_as_answer_icon,
+      always_new_chat,
       enable_sso: appInfo.enable_sso,
     })
     setLanguage(default_language)
     setAppIcon(icon_type === 'image'
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! })
-  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
+  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon, always_new_chat])
 
   const onHide = () => {
     onClose()
@@ -196,6 +200,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
+      always_new_chat: inputInfo.always_new_chat,
       enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
@@ -289,6 +294,19 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 />
               </div>
               <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t('app.answerIcon.description')}</p>
+            </div>
+          )}
+          {/* always new chat */}
+          {isChat && (
+            <div className='w-full'>
+              <div className='flex items-center justify-between'>
+                <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t('app.alwaysNewChat.title')}</div>
+                <Switch
+                  defaultValue={inputInfo.always_new_chat}
+                  onChange={v => setInputInfo({ ...inputInfo, always_new_chat: v })}
+                />
+              </div>
+              <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t('app.alwaysNewChat.description')}</p>
             </div>
           )}
           {/* language */}

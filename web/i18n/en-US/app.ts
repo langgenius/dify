@@ -117,6 +117,10 @@ const translation = {
     description: 'Whether to use the web app icon to replace 🤖 in the shared application',
     descriptionInExplore: 'Whether to use the web app icon to replace 🤖 in Explore',
   },
+  alwaysNewChat: {
+    title: 'Always start a new chat',
+    description: 'Ignore previous conversation and open a new one when users visit the web app',
+  },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
   switchTip: 'not allow',
