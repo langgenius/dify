@@ -537,6 +537,7 @@ const translation = {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
       },
+      verifySSL: '驗證 SSL 證書',
     },
     code: {
       inputVars: '輸入變量',

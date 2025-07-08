@@ -565,6 +565,7 @@ const translation = {
         title: 'cURL 에서 가져오기',
         placeholder: '여기에 cURL 문자열 붙여 넣기',
       },
+      verifySSL: 'SSL 인증서 확인',
     },
     code: {
       inputVars: '입력 변수',

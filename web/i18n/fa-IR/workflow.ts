@@ -537,6 +537,7 @@ const translation = {
         title: 'وارد کردن از cURL',
         placeholder: 'رشته cURL را اینجا بچسبانید',
       },
+      verifySSL: 'گواهی SSL را تأیید کنید',
     },
     code: {
       inputVars: 'متغیرهای ورودی',

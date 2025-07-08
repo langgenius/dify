@@ -537,6 +537,7 @@ const translation = {
         placeholder: 'Lipiți șirul cURL aici',
         title: 'Importați din cURL',
       },
+      verifySSL: 'Verifică certificatul SSL',
     },
     code: {
       inputVars: 'Variabile de intrare',

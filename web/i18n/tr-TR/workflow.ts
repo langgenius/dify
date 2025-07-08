@@ -538,6 +538,7 @@ const translation = {
         placeholder: 'cURL dizesini buraya yapıştırın',
         title: 'cURL\'den içe aktar',
       },
+      verifySSL: 'SSL Sertifikasını Doğrula',
     },
     code: {
       inputVars: 'Giriş Değişkenleri',

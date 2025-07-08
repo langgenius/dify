@@ -537,6 +537,7 @@ const translation = {
         title: 'นําเข้าจาก cURL',
         placeholder: 'วางสตริง cURL ที่นี่',
       },
+      verifySSL: 'ตรวจสอบใบรับรอง SSL',
     },
     code: {
       inputVars: 'ตัวแปรอินพุต',

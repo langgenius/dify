@@ -539,6 +539,7 @@ const translation = {
       value: 'Vrednost',
       params: 'Parametri',
       insertVarPlaceholder: 'vnesite \'/\' za vstavljanje spremenljivke',
+      verifySSL: 'Preverite SSL certifikat',
     },
     code: {
       searchDependencies: 'Išči odvisnosti',

@@ -543,6 +543,7 @@ const translation = {
         title: 'cURL からインポート',
         placeholder: 'ここに cURL 文字列を貼り付けます',
       },
+      verifySSL: 'SSL証明書を確認する',
     },
     code: {
       inputVars: '入力変数',

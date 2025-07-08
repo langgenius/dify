@@ -550,6 +550,7 @@ const translation = {
         placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
         title: 'cURL से आयात करें',
       },
+      verifySSL: 'SSL प्रमाणपत्र की पुष्टि करें',
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',

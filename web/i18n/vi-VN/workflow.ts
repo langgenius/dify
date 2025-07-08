@@ -537,6 +537,7 @@ const translation = {
         title: 'Nhập từ cURL',
         placeholder: 'Dán chuỗi cURL vào đây',
       },
+      verifySSL: 'Xác thực chứng chỉ SSL',
     },
     code: {
       inputVars: 'Biến đầu vào',

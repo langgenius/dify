@@ -537,6 +537,7 @@ const translation = {
         title: 'Імпорт з cURL',
         placeholder: 'Вставте сюди рядок cURL',
       },
+      verifySSL: 'Перевірити SSL сертифікат',
     },
     code: {
       inputVars: 'Вхідні змінні',

@@ -543,6 +543,7 @@ const translation = {
         title: '导入 cURL',
         placeholder: '粘贴 cURL 字符串',
       },
+      verifySSL: '验证 SSL 证书',
     },
     code: {
       inputVars: '输入变量',

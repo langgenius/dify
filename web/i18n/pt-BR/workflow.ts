@@ -537,6 +537,7 @@ const translation = {
         placeholder: 'Cole a string cURL aqui',
         title: 'Importar do cURL',
       },
+      verifySSL: 'Verificar o certificado SSL',
     },
     code: {
       inputVars: 'Variáveis de entrada',
