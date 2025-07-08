@@ -52,7 +52,8 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, datasetList, hasNextPage, fetchNextPage, isFetching])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorRef])
 
   return (
     <>

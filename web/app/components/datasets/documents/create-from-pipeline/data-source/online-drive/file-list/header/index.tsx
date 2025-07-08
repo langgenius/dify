@@ -2,6 +2,7 @@ import React from 'react'
 import Breadcrumbs from './breadcrumbs'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
+import type { OnlineDriveFile } from '@/models/pipeline'
 
 type HeaderProps = {
   prefix: string[]
@@ -12,6 +13,12 @@ type HeaderProps = {
   handleInputChange: React.ChangeEventHandler<HTMLInputElement>
   handleResetKeywords: () => void
   isInPipeline: boolean
+  getOnlineDriveFiles: (params: {
+    prefix?: string[]
+    bucket?: string
+    startAfter?: string
+    fileList?: OnlineDriveFile[]
+  }) => void
 }
 
 const Header = ({
@@ -23,6 +30,7 @@ const Header = ({
   searchResultsLength,
   handleInputChange,
   handleResetKeywords,
+  getOnlineDriveFiles,
 }: HeaderProps) => {
   const { t } = useTranslation()
 
@@ -34,6 +42,7 @@ const Header = ({
         bucket={bucket}
         searchResultsLength={searchResultsLength}
         isInPipeline={isInPipeline}
+        getOnlineDriveFiles={getOnlineDriveFiles}
       />
       <Input
         value={inputValue}

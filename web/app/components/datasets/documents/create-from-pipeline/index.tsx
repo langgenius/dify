@@ -113,17 +113,6 @@ const CreateFormPipeline = () => {
     return false
   }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
 
-  const showSelect = useMemo(() => {
-    if (datasourceType === DatasourceType.onlineDocument) {
-      const pagesCount = currentWorkspace?.pages.length ?? 0
-      return pagesCount > 0
-    }
-    if (datasourceType === DatasourceType.onlineDrive) {
-      const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
-      return !isBucketList && onlineDriveFileList.length > 0
-    }
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
-
   const supportedFileTypes = useMemo(() => {
     if (!supportFileTypesRes) return []
     return Array.from(new Set(supportFileTypesRes.allowed_extensions.map(item => item.toLowerCase())))
@@ -133,6 +122,23 @@ const CreateFormPipeline = () => {
     file_size_limit: 15,
     batch_count_limit: 5,
   }, [fileUploadConfigResponse])
+
+  const showSelect = useMemo(() => {
+    if (datasourceType === DatasourceType.onlineDocument) {
+      const pagesCount = currentWorkspace?.pages.length ?? 0
+      return pagesCount > 0
+    }
+    if (datasourceType === DatasourceType.onlineDrive) {
+      const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
+      return !isBucketList && onlineDriveFileList.filter((item) => {
+        if (item.type === 'bucket') return false
+        if (item.type === 'folder') return true
+        if (item.type === 'file')
+          return supportedFileTypes.includes(getFileExtension(item.key))
+        return false
+      }).length > 0
+    }
+  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList, supportedFileTypes])
 
   const totalOptions = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)

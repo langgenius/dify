@@ -19,6 +19,12 @@ type FileListProps = {
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
+  getOnlineDriveFiles: (params: {
+    prefix?: string[]
+    bucket?: string
+    startAfter?: string
+    fileList?: OnlineDriveFile[]
+  }) => void
 }
 
 const List = ({
@@ -31,6 +37,7 @@ const List = ({
   isInPipeline,
   isLoading,
   isTruncated,
+  getOnlineDriveFiles,
 }: FileListProps) => {
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>()
@@ -40,15 +47,18 @@ const List = ({
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
         const { setStartAfter } = dataSourceStore.getState()
-        if (entries[0].isIntersecting && isTruncated && !isLoading)
+        if (entries[0].isIntersecting && isTruncated && !isLoading) {
           setStartAfter(fileList[fileList.length - 1].key)
+          getOnlineDriveFiles({ startAfter: fileList[fileList.length - 1].key })
+        }
       }, {
         rootMargin: '100px',
       })
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, dataSourceStore, isTruncated, isLoading, fileList])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorRef])
 
   const isAllLoading = isLoading && fileList.length === 0 && keywords.length === 0
   const isPartLoading = isLoading && fileList.length > 0

@@ -4,6 +4,7 @@ import { useDataSourceStore } from '../../../../store'
 import Bucket from './bucket'
 import BreadcrumbItem from './item'
 import Dropdown from './dropdown'
+import type { OnlineDriveFile } from '@/models/pipeline'
 
 type BreadcrumbsProps = {
   prefix: string[]
@@ -11,6 +12,12 @@ type BreadcrumbsProps = {
   bucket: string
   searchResultsLength: number
   isInPipeline: boolean
+  getOnlineDriveFiles: (params: {
+    prefix?: string[]
+    bucket?: string
+    startAfter?: string
+    fileList?: OnlineDriveFile[]
+  }) => void
 }
 
 const Breadcrumbs = ({
@@ -19,6 +26,7 @@ const Breadcrumbs = ({
   bucket,
   searchResultsLength,
   isInPipeline,
+  getOnlineDriveFiles,
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
   const dataSourceStore = useDataSourceStore()
@@ -48,14 +56,23 @@ const Breadcrumbs = ({
     setSelectedFileList([])
     setBucket('')
     setPrefix([])
-  }, [dataSourceStore])
+    getOnlineDriveFiles({
+      prefix: [],
+      bucket: '',
+      fileList: [],
+    })
+  }, [dataSourceStore, getOnlineDriveFiles])
 
   const handleClickBucketName = useCallback(() => {
     const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileList([])
     setPrefix([])
-  }, [dataSourceStore])
+    getOnlineDriveFiles({
+      prefix: [],
+      fileList: [],
+    })
+  }, [dataSourceStore, getOnlineDriveFiles])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
     const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
@@ -63,12 +80,16 @@ const Breadcrumbs = ({
     setFileList([])
     setSelectedFileList([])
     setPrefix(newPrefix)
-  }, [dataSourceStore, prefix])
+    getOnlineDriveFiles({
+      prefix: newPrefix,
+      fileList: [],
+    })
+  }, [dataSourceStore, getOnlineDriveFiles, prefix])
 
   return (
-    <div className='flex grow items-center overflow-hidden py-1'>
+    <div className='flex grow items-center overflow-hidden'>
       {showSearchResult && (
-        <div className='system-sm-medium text-test-secondary px-[5px] py-1'>
+        <div className='system-sm-medium text-test-secondary px-[5px]'>
           {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
             searchResultsLength,
             folderName: prefix.length > 0 ? prefix[prefix.length - 1] : bucket,
@@ -76,7 +97,7 @@ const Breadcrumbs = ({
         </div>
       )}
       {!showSearchResult && isRoot && (
-        <div className='system-sm-medium text-test-secondary px-[5px] py-1'>
+        <div className='system-sm-medium text-test-secondary px-[5px]'>
           {t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
         </div>
       )}

@@ -38,8 +38,17 @@ const OnlineDrive = ({
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
-  const getOnlineDrive = useCallback(async () => {
-    const prefixString = prefix.length > 0 ? `${prefix.join('/')}/` : ''
+  const getOnlineDriveFiles = useCallback(async (params: {
+    prefix?: string[]
+    bucket?: string
+    startAfter?: string
+    fileList?: OnlineDriveFile[]
+  }) => {
+    const _prefix = params.prefix ?? prefix
+    const _bucket = params.bucket ?? bucket
+    const _startAfter = params.startAfter ?? startAfter
+    const _fileList = params.fileList ?? fileList
+    const prefixString = _prefix.length > 0 ? `${_prefix.join('/')}/` : ''
     setIsLoading(true)
     ssePost(
       datasourceNodeRunURL,
@@ -47,8 +56,8 @@ const OnlineDrive = ({
         body: {
           inputs: {
             prefix: prefixString,
-            bucket,
-            start_after: startAfter,
+            bucket: _bucket,
+            start_after: _startAfter,
             max_keys: 30, // Adjust as needed
           },
           datasource_type: DatasourceType.onlineDrive,
@@ -57,8 +66,8 @@ const OnlineDrive = ({
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           const { setFileList, setIsTruncated } = dataSourceStore.getState()
-          const { fileList: newFileList, isTruncated } = convertOnlineDriveData(documentsData.data, prefix)
-          setFileList([...fileList, ...newFileList])
+          const { fileList: newFileList, isTruncated } = convertOnlineDriveData(documentsData.data, _prefix)
+          setFileList([..._fileList, ...newFileList])
           setIsTruncated(isTruncated)
           setIsLoading(false)
         },
@@ -71,12 +80,13 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [prefix, datasourceNodeRunURL, bucket, startAfter, dataSourceStore, fileList])
+  }, [prefix, bucket, startAfter, datasourceNodeRunURL, dataSourceStore, fileList])
 
   useEffect(() => {
-    getOnlineDrive()
+    if (fileList.length > 0) return
+    getOnlineDriveFiles({})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bucket, prefix, startAfter])
+  }, [])
 
   const onlineDriveFileList = useMemo(() => {
     if (keywords)
@@ -117,6 +127,7 @@ const OnlineDrive = ({
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
       setBucket(file.displayName)
+      getOnlineDriveFiles({ bucket: file.displayName, fileList: [] })
     }
     else {
       setSelectedFileList([])
@@ -125,8 +136,9 @@ const OnlineDrive = ({
         draft.push(displayName)
       })
       setPrefix(newPrefix)
+      getOnlineDriveFiles({ prefix: newPrefix, fileList: [] })
     }
-  }, [dataSourceStore, prefix])
+  }, [dataSourceStore, getOnlineDriveFiles, prefix])
 
   return (
     <div className='flex flex-col gap-y-2'>
@@ -148,6 +160,7 @@ const OnlineDrive = ({
         isInPipeline={isInPipeline}
         isLoading={isLoading}
         isTruncated={isTruncated}
+        getOnlineDriveFiles={getOnlineDriveFiles}
       />
     </div>
   )

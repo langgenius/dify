@@ -44,7 +44,7 @@ const Dropdown = ({
         <button
           type='button'
           className={cn(
-            'rounded-md p-1',
+            'flex size-6 items-center justify-center rounded-md',
             open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
           )}
         >

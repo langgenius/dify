@@ -5,7 +5,6 @@ import { useNodes } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useCallback, useMemo, useState } from 'react'
-import type { OnlineDriveFile } from '@/models/pipeline'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
@@ -56,28 +55,4 @@ export const useDatasourceOptions = () => {
   }, [datasourceNodes])
 
   return options
-}
-
-export const useOnlineDrive = () => {
-  const [prefix, setPrefix] = useState<string[]>([])
-  const [keywords, setKeywords] = useState('')
-  const [bucket, setBucket] = useState('')
-  const [startAfter, setStartAfter] = useState('')
-  const [selectedFileList, setSelectedFileList] = useState<string[]>([])
-  const [fileList, setFileList] = useState<OnlineDriveFile[]>([])
-
-  return {
-    prefix,
-    setPrefix,
-    keywords,
-    setKeywords,
-    bucket,
-    setBucket,
-    startAfter,
-    setStartAfter,
-    selectedFileList,
-    setSelectedFileList,
-    fileList,
-    setFileList,
-  }
 }
