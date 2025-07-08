@@ -69,6 +69,7 @@ class QAChunk(BaseModel):
     answer: str
 
 
+
 class QAStructureChunk(BaseModel):
     """
     QAStructureChunk.
