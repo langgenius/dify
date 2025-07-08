@@ -23,10 +23,11 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
+from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
+from fields.workflow_run_fields import workflow_run_node_execution_fields, workflow_node_ai_modify_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
@@ -788,6 +789,43 @@ class DraftWorkflowNodeLastRunApi(Resource):
             raise NotFound("last run not found")
         return node_exec
 
+class DraftWorkflowNodeAiModifyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_node_ai_modify_fields)
+    def post(self, app_model: App, node_id: str):
+        parser = reqparse.RequestParser()
+        parser.add_argument("current", type=str, required=False, location="json")
+        parser.add_argument("model_config", type=dict, required=False, location="json")
+        args = parser.parse_args()
+        workflow_service = WorkflowService()
+        workflow_draft = workflow_service.get_draft_workflow(app_model)
+        if not workflow_draft:
+            raise NotFound("Workflow not found")
+        node_last_execution = workflow_service.get_node_last_run(
+            app_model=app_model,
+            workflow=workflow_draft,
+            node_id=node_id,
+        )
+        if node_last_execution is None:
+            raise NotFound("last run not found")
+        result = LLMGenerator.generate_prompt_optimization(
+            tenant_id= app_model.tenant_id,
+            message=args.get("message", ""),
+            last_run= {
+                "inputs": node_last_execution.inputs,
+                "process_data": node_last_execution.process_data,
+                "outputs": node_last_execution.outputs,
+            },
+            current=args.get("current", ""),
+            model_config=args.get("model_config", {}),
+        )
+        return result
+
+
+
 
 api.add_resource(
     DraftWorkflowApi,
@@ -856,4 +894,8 @@ api.add_resource(
 api.add_resource(
     DraftWorkflowNodeLastRunApi,
     "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
+)
+api.add_resource(
+    DraftWorkflowNodeAiModifyApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/ai-modify"
 )
