@@ -94,6 +94,16 @@ class OpsService:
                 new_decrypt_tracing_config.update({"project_url": project_url})
             except Exception:
                 new_decrypt_tracing_config.update({"project_url": "https://wandb.ai/"})
+
+        if tracing_provider == "aliyun" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://arms.console.aliyun.com/"})
+
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
 

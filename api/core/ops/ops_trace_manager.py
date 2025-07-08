@@ -41,28 +41,6 @@ from tasks.ops_trace_task import process_trace_tasks
 class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
-            case TracingProviderEnum.ARIZE:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
-                from core.ops.entities.config_entity import ArizeConfig
-
-                return {
-                    "config_class": ArizeConfig,
-                    "secret_keys": ["api_key", "space_id"],
-                    "other_keys": ["project", "endpoint"],
-                    "trace_instance": ArizePhoenixDataTrace,
-                }
-
-            case TracingProviderEnum.PHOENIX:
-                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
-                from core.ops.entities.config_entity import PhoenixConfig
-
-                return {
-                    "config_class": PhoenixConfig,
-                    "secret_keys": ["api_key"],
-                    "other_keys": ["project", "endpoint"],
-                    "trace_instance": ArizePhoenixDataTrace,
-                }
-
             case TracingProviderEnum.LANGFUSE:
                 from core.ops.entities.config_entity import LangfuseConfig
                 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
@@ -126,6 +104,17 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "other_keys": ["project", "endpoint"],
                     "trace_instance": ArizePhoenixDataTrace,
                 }
+            case TracingProviderEnum.ALIYUN:
+                from core.ops.aliyun_trace.aliyun_trace import AliyunDataTrace
+                from core.ops.entities.config_entity import AliyunConfig
+
+                return {
+                    "config_class": AliyunConfig,
+                    "secret_keys": ["license_key"],
+                    "other_keys": ["endpoint", "app_name"],
+                    "trace_instance": AliyunDataTrace,
+                }
+
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 

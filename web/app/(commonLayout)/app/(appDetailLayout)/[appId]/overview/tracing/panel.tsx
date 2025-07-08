@@ -7,12 +7,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -69,6 +69,7 @@ const Panel: FC = () => {
     [TracingProvider.langfuse]: LangfuseIcon,
     [TracingProvider.opik]: OpikIcon,
     [TracingProvider.weave]: WeaveIcon,
+    [TracingProvider.aliyun]: AliyunIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
@@ -78,7 +79,8 @@ const Panel: FC = () => {
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig)
+  const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig)
 
   const fetchTracingConfig = async () => {
     const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
@@ -99,6 +101,9 @@ const Panel: FC = () => {
     const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
     if (!weaveHasNotConfig)
       setWeaveConfig(weaveConfig as WeaveConfig)
+    const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
+    if (!aliyunHasNotConfig)
+      setAliyunConfig(aliyunConfig as AliyunConfig)
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
@@ -116,6 +121,8 @@ const Panel: FC = () => {
       setOpikConfig(tracing_config as OpikConfig)
     else if (provider === TracingProvider.weave)
       setWeaveConfig(tracing_config as WeaveConfig)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(tracing_config as AliyunConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -131,6 +138,8 @@ const Panel: FC = () => {
       setOpikConfig(null)
     else if (provider === TracingProvider.weave)
       setWeaveConfig(null)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -191,6 +200,7 @@ const Panel: FC = () => {
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
                 weaveConfig={weaveConfig}
+                aliyunConfig={aliyunConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
@@ -228,6 +238,7 @@ const Panel: FC = () => {
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
                 weaveConfig={weaveConfig}
+                aliyunConfig={aliyunConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
