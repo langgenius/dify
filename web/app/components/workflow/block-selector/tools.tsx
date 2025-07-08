@@ -100,11 +100,7 @@ const Blocks = ({
     <div className={classNames('max-w-[100%] p-1', className)}>
       {
         !tools.length && hasSearchText && (
-          // <div className='flex h-[257px] flex-col items-center justify-center'>
-            // <SearchMenu className='size-8 text-text-tertiary' />
-            // Small spacing for marketplace search results
-            <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
-          // </div>
+          <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
         )
       }
       {!tools.length && !hasSearchText && (
