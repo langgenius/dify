@@ -19,6 +19,13 @@ import cn from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import BoolValue from './bool-value'
 import ArrayBoolList from './array-bool-list'
+import {
+  arrayBoolPlaceholder,
+  arrayNumberPlaceholder,
+  arrayObjectPlaceholder,
+  arrayStringPlaceholder,
+  objectPlaceholder,
+} from '@/app/components/workflow/panel/chat-variable-panel/utils'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -42,39 +49,6 @@ const typeList = [
   ChatVarType.ArrayBoolean,
   ChatVarType.ArrayObject,
 ]
-
-const objectPlaceholder = `#  example
-#  {
-#     "name": "ray",
-#     "age": 20
-#  }`
-const arrayStringPlaceholder = `#  example
-#  [
-#     "value1",
-#     "value2"
-#  ]`
-const arrayNumberPlaceholder = `#  example
-#  [
-#     100,
-#     200
-#  ]`
-const arrayObjectPlaceholder = `#  example
-#  [
-#     {
-#       "name": "ray",
-#       "age": 20
-#     },
-#     {
-#       "name": "lily",
-#       "age": 18
-#     }
-#  ]`
-
-const arrayBoolPlaceholder = `#  example
-#  [
-#     "True",
-#     "False"
-#  ]`
 
 const ChatVariableModal = ({
   chatVar,

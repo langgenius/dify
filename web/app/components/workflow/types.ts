@@ -262,6 +262,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',

@@ -18,33 +18,15 @@ import {
   ValueType,
   VarType,
 } from '@/app/components/workflow/types'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
-const objectPlaceholder = `#  example
-#  {
-#     "name": "ray",
-#     "age": 20
-#  }`
-const arrayStringPlaceholder = `#  example
-#  [
-#     "value1",
-#     "value2"
-#  ]`
-const arrayNumberPlaceholder = `#  example
-#  [
-#     100,
-#     200
-#  ]`
-const arrayObjectPlaceholder = `#  example
-#  [
-#     {
-#       "name": "ray",
-#       "age": 20
-#     },
-#     {
-#       "name": "lily",
-#       "age": 18
-#     }
-#  ]`
+import {
+  arrayBoolPlaceholder,
+  arrayNumberPlaceholder,
+  arrayObjectPlaceholder,
+  arrayStringPlaceholder,
+  objectPlaceholder,
+} from '@/app/components/workflow/panel/chat-variable-panel/utils'
 
 type FormItemProps = {
   nodeId: string
@@ -83,6 +65,8 @@ const FormItem = ({
       return arrayNumberPlaceholder
     if (var_type === VarType.arrayObject)
       return arrayObjectPlaceholder
+    if (var_type === VarType.arrayBoolean)
+      return arrayBoolPlaceholder
     return objectPlaceholder
   }, [var_type])
 
@@ -121,8 +105,16 @@ const FormItem = ({
         )
       }
       {
+        value_type === ValueType.constant && var_type === VarType.boolean && (
+          <BoolValue
+            value={value}
+            onChange={handleChange}
+          />
+        )
+      }
+      {
         value_type === ValueType.constant
-        && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
+        && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject || var_type === VarType.arrayBoolean)
         && (
           <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
             <CodeEditor
