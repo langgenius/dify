@@ -176,6 +176,23 @@ class AliyunConfig(BaseTracingConfig):
     license_key: str
     endpoint: str
 
+    @field_validator("app_name")
+    @classmethod
+    def app_name_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "dify_app")
+
+    @field_validator("license_key")
+    @classmethod
+    def license_key_validator(cls, v, info: ValidationInfo):
+        if not v or v.strip() == "":
+            raise ValueError("License key cannot be empty")
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
+
 
 OPS_FILE_PATH = "ops_trace/"
 OPS_TRACE_FAILED_KEY = "FAILED_OPS_TRACE"
