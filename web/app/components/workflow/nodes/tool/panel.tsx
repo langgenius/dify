@@ -14,8 +14,9 @@ import Loading from '@/app/components/base/loading'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../llm/types'
-import ToolAuth from '@/app/components/tools/tool-auth'
-import Authorization from '@/app/components/tools/tool-auth/authorization'
+import {
+  PluginAuth,
+} from '@/app/components/plugins/plugin-auth'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -56,8 +57,9 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   return (
     <div className='pt-2'>
       <div className='px-4 py-2'>
-        <ToolAuth />
-        <Authorization />
+        <PluginAuth
+          provider={currCollection?.name}
+        />
       </div>
       {!readOnly && isShowAuthBtn && (
         <>

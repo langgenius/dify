@@ -8,13 +8,14 @@ import type { ButtonProps } from '@/app/components/base/button'
 import OAuthClientSettings from './oauth-client-settings'
 import cn from '@/utils/classnames'
 
-type AddOAuthButtonProps = {
+export type AddOAuthButtonProps = {
   buttonVariant?: ButtonProps['variant']
   buttonText?: string
   className?: string
   buttonLeftClassName?: string
   buttonRightClassName?: string
   dividerClassName?: string
+  disabled?: boolean
 }
 const AddOAuthButton = ({
   buttonVariant = 'primary',
@@ -23,6 +24,7 @@ const AddOAuthButton = ({
   buttonLeftClassName,
   buttonRightClassName,
   dividerClassName,
+  disabled,
 }: AddOAuthButtonProps) => {
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
 
@@ -34,6 +36,7 @@ const AddOAuthButton = ({
           'grow px-0 py-0 hover:bg-components-button-primary-bg',
           className,
         )}
+        disabled={disabled}
       >
         <div className={cn(
           'flex h-full grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
