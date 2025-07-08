@@ -4,6 +4,7 @@ import re
 from typing import Optional, cast
 
 import json_repair
+from pydantic import BaseModel
 
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
@@ -13,7 +14,7 @@ from core.llm_generator.prompts import (
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
-    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE, PROMPT_OPTIMIZATION_METAPROMPT_SYSTEM,
 )
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
@@ -394,3 +395,55 @@ class LLMGenerator:
         except Exception as e:
             logging.exception(f"Failed to invoke LLM model, model: {model_config.get('name')}")
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
+
+    @staticmethod
+    def generate_prompt_optimization(
+        tenant_id: str,
+        message: str,
+        last_run: dict,
+        current: str,
+        model_config: dict,
+    ) -> dict:
+        prompt_messages = [
+            SystemPromptMessage(content=PROMPT_OPTIMIZATION_METAPROMPT_SYSTEM),
+            UserPromptMessage(content=json.dumps({
+                "current": current,
+                "last_run": last_run,
+                "message": message,
+            }))
+        ]
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+        model_parameters = model_config.get("model_parameters", {})
+        try:
+            response = cast(
+                LLMResult,
+                model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages),
+                    model_parameters=model_parameters,
+                    stream=False
+                ),
+            )
+            raw_content = response.message.content
+            if not isinstance(raw_content, str):
+                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+            cleaned_content = re.sub(r'^[^{]*({.*})[^}]*$', r'\1', raw_content, flags=re.DOTALL)
+            result = json.loads(cleaned_content)
+            return {
+                "message": result.get("message", ""),
+                "modified": result.get("modified", ""),
+            }
+        except InvokeError as e:
+            error = str(e)
+            return {
+                "error": f"Failed to invoke LLM model for prompt optimization. Error: {error}",
+            }
+        except Exception as e:
+            logging.exception(f"Failed to invoke LLM model for prompt optimization, model: {model_config.get('name')}")
+            return {
+                "error": f"An unexpected error occurred: {str(e)}",
+            }
