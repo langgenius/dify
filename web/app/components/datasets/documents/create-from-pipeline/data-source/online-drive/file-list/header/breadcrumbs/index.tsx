@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDataSourceStore } from '../../../../store'
 import Bucket from './bucket'
 import BreadcrumbItem from './item'
+import Dropdown from './dropdown'
 
 type BreadcrumbsProps = {
   prefix: string[]
@@ -20,7 +21,7 @@ const Breadcrumbs = ({
   isInPipeline,
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
-  const { setFileList, setSelectedFileList, setPrefix, setBucket } = useDataSourceStore().getState()
+  const dataSourceStore = useDataSourceStore()
   const showSearchResult = !!keywords && searchResultsLength > 0
   const isRoot = prefix.length === 0 && bucket === ''
 
@@ -42,24 +43,27 @@ const Breadcrumbs = ({
   }, [displayBreadcrumbNum, prefix])
 
   const handleBackToBucketList = useCallback(() => {
+    const { setFileList, setSelectedFileList, setPrefix, setBucket } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileList([])
     setBucket('')
     setPrefix([])
-  }, [setBucket, setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
+    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileList([])
     setPrefix([])
-  }, [setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
-    const newPrefix = breadcrumbs.prefixBreadcrumbs.slice(0, index - 1)
+    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
+    const newPrefix = prefix.slice(0, index - 1)
     setFileList([])
     setSelectedFileList([])
     setPrefix(newPrefix)
-  }, [breadcrumbs.prefixBreadcrumbs, setFileList, setPrefix, setSelectedFileList])
+  }, [dataSourceStore, prefix])
 
   return (
     <div className='flex grow items-center py-1'>
@@ -104,6 +108,33 @@ const Breadcrumbs = ({
                   />
                 )
               })}
+            </>
+          )}
+          {breadcrumbs.needCollapsed && (
+            <>
+              {breadcrumbs.prefixBreadcrumbs.map((breadcrumb, index) => {
+                return (
+                  <BreadcrumbItem
+                    key={`${breadcrumb}-${index}`}
+                    index={index}
+                    handleClick={handleClickBreadcrumb}
+                    name={breadcrumb}
+                  />
+                )
+              })}
+              <Dropdown
+                startIndex={breadcrumbs.prefixBreadcrumbs.length}
+                breadcrumbs={breadcrumbs.collapsedBreadcrumbs}
+                onBreadcrumbClick={handleClickBreadcrumb}
+              />
+              <BreadcrumbItem
+                index={prefix.length - 1}
+                handleClick={handleClickBreadcrumb}
+                name={breadcrumbs.lastBreadcrumb}
+                isActive={true}
+                disabled={true}
+                showSeparator={false}
+              />
             </>
           )}
         </div>

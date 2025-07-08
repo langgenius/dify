@@ -27,8 +27,9 @@ import Processing from './processing'
 import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useWebsiteCrawl } from './hooks'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
 import DataSourceProvider from './data-source/store/provider'
+import { useDataSourceStore } from './data-source/store'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -39,6 +40,7 @@ const CreateFormPipeline = () => {
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
   const [batchId, setBatchId] = useState('')
   const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
+  const dataSourceStore = useDataSourceStore()
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
@@ -66,27 +68,44 @@ const CreateFormPipeline = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
-    previewWebsitePage,
+    previewWebsitePageRef,
     currentWebsite,
     hideWebsitePreview,
   } = useWebsiteCrawl()
-  // const { } = useOnlineDrive()
+  const {
+    fileList: onlineDriveFileList,
+    selectedFileList,
+  } = useOnlineDrive()
 
-  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
   const datasourceType = datasource?.nodeData.provider_type
+  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
+  const isShowVectorSpaceFull = useMemo(() => {
+    if (!datasource)
+      return false
+    if (datasourceType === DatasourceType.localFile)
+      return allFileLoaded && isVectorSpaceFull && enableBilling
+    if (datasourceType === DatasourceType.onlineDocument)
+      return onlineDocuments.length > 0 && isVectorSpaceFull && enableBilling
+    if (datasourceType === DatasourceType.websiteCrawl)
+      return websitePages.length > 0 && isVectorSpaceFull && enableBilling
+    if (datasourceType === DatasourceType.onlineDrive)
+      return onlineDriveFileList.length > 0 && isVectorSpaceFull && enableBilling
+    return false
+  }, [allFileLoaded, datasource, datasourceType, enableBilling, isVectorSpaceFull, onlineDocuments.length, onlineDriveFileList.length, websitePages.length])
+  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasourceType === DatasourceType.localFile)
-      return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
+      return isShowVectorSpaceFull || !fileList.length || !allFileLoaded
     if (datasourceType === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !onlineDocuments.length
     if (datasourceType === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
+    if (datasourceType === DatasourceType.onlineDrive)
+      return isShowVectorSpaceFull || !selectedFileList.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
@@ -117,7 +136,7 @@ const CreateFormPipeline = () => {
       datasourceInfoList.push(documentInfo)
     }
     if (datasourceType === DatasourceType.websiteCrawl)
-      datasourceInfoList.push(previewWebsitePage.current)
+      datasourceInfoList.push(previewWebsitePageRef.current!)
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
       inputs: data,
@@ -130,7 +149,7 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, datasourceType, pipelineId, previewFileRef, previewOnlineDocumentRef, previewWebsitePage, runPublishedPipeline])
+  }, [datasource, datasourceType, previewWebsitePageRef, runPublishedPipeline, pipelineId, previewFileRef, previewOnlineDocumentRef])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -167,6 +186,17 @@ const CreateFormPipeline = () => {
         datasourceInfoList.push(websitePage)
       })
     }
+    if (datasourceType === DatasourceType.onlineDrive) {
+      if (datasourceType === DatasourceType.onlineDrive) {
+        const { bucket } = dataSourceStore.getState()
+        selectedFileList.forEach((key) => {
+          datasourceInfoList.push({
+            bucket,
+            key,
+          })
+        })
+      }
+    }
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
       inputs: data,
@@ -181,7 +211,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websitePages])
+  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileList, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -208,9 +238,9 @@ const CreateFormPipeline = () => {
   }, [onClickPreview, previewOnlineDocumentRef])
 
   const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
-    previewWebsitePage.current = website
+    previewWebsitePageRef.current = website
     onClickPreview()
-  }, [onClickPreview, previewWebsitePage])
+  }, [onClickPreview, previewWebsitePageRef])
 
   if (isFetchingPipelineInfo) {
     return (

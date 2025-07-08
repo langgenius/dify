@@ -8,8 +8,8 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ssePost } from '@/service/base'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import Toast from '@/app/components/base/toast'
-import { useDataSourceStoreWithSelector } from '../store'
-import { convertOnlineDriveDataToFileList } from './utils'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import { convertOnlineDriveData } from './utils'
 import produce from 'immer'
 
 type OnlineDriveProps = {
@@ -25,17 +25,13 @@ const OnlineDrive = ({
 }: OnlineDriveProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const prefix = useDataSourceStoreWithSelector(state => state.prefix)
-  const setPrefix = useDataSourceStoreWithSelector(state => state.setPrefix)
   const keywords = useDataSourceStoreWithSelector(state => state.keywords)
-  const setKeywords = useDataSourceStoreWithSelector(state => state.setKeywords)
   const bucket = useDataSourceStoreWithSelector(state => state.bucket)
-  const setBucket = useDataSourceStoreWithSelector(state => state.setBucket)
   const startAfter = useDataSourceStoreWithSelector(state => state.startAfter)
-  const setStartAfter = useDataSourceStoreWithSelector(state => state.setStartAfter)
   const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
-  const setSelectedFileList = useDataSourceStoreWithSelector(state => state.setSelectedFileList)
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
-  const setFileList = useDataSourceStoreWithSelector(state => state.setFileList)
+  const isTruncated = useDataSourceStoreWithSelector(state => state.isTruncated)
+  const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
 
   const datasourceNodeRunURL = !isInPipeline
@@ -60,8 +56,10 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const newFileList = convertOnlineDriveDataToFileList(documentsData.data)
+          const { setFileList, setIsTruncated } = dataSourceStore.getState()
+          const { fileList: newFileList, isTruncated } = convertOnlineDriveData(documentsData.data, prefix)
           setFileList([...fileList, ...newFileList])
+          setIsTruncated(isTruncated)
           setIsLoading(false)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
@@ -73,7 +71,7 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [bucket, datasourceNodeRunURL, prefix, fileList, setFileList, startAfter])
+  }, [prefix, datasourceNodeRunURL, bucket, startAfter, dataSourceStore, fileList])
 
   useEffect(() => {
     getOnlineDrive()
@@ -87,14 +85,18 @@ const OnlineDrive = ({
   }, [fileList, keywords])
 
   const updateKeywords = useCallback((keywords: string) => {
+    const { setKeywords } = dataSourceStore.getState()
     setKeywords(keywords)
-  }, [setKeywords])
+  }, [dataSourceStore])
 
   const resetPrefix = useCallback(() => {
+    const { setKeywords } = dataSourceStore.getState()
+
     setKeywords('')
-  }, [setKeywords])
+  }, [dataSourceStore])
 
   const handleSelectFile = useCallback((file: OnlineDriveFile) => {
+    const { setSelectedFileList } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.bucket) return
     const newSelectedFileList = produce(selectedFileList, (draft) => {
       if (draft.includes(file.key)) {
@@ -107,9 +109,10 @@ const OnlineDrive = ({
       }
     })
     setSelectedFileList(newSelectedFileList)
-  }, [isInPipeline, selectedFileList, setSelectedFileList])
+  }, [dataSourceStore, isInPipeline, selectedFileList])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
+    const { setPrefix, setBucket, setFileList } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
@@ -122,7 +125,7 @@ const OnlineDrive = ({
       })
       setPrefix(newPrefix)
     }
-  }, [prefix, setBucket, setFileList, setPrefix])
+  }, [dataSourceStore, prefix])
 
   return (
     <div className='flex flex-col gap-y-2'>
@@ -143,6 +146,7 @@ const OnlineDrive = ({
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
         isLoading={isLoading}
+        isTruncated={isTruncated}
       />
     </div>
   )

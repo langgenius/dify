@@ -34,19 +34,17 @@ const Datasets = ({
     keyword: keywords,
   })
   const resetDatasetList = useResetDatasetList()
-  const loadingStateRef = useRef(false)
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>()
 
   useEffect(() => {
-    loadingStateRef.current = isFetching
     document.title = `${t('dataset.knowledge')} - Dify`
-  }, [isFetching, t])
+  }, [t])
 
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage)
+        if (entries[0].isIntersecting && hasNextPage && !isFetching)
           fetchNextPage()
       }, {
         rootMargin: '100px',
@@ -54,7 +52,7 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, datasetList, hasNextPage, fetchNextPage])
+  }, [anchorRef, datasetList, hasNextPage, fetchNextPage, isFetching])
 
   return (
     <>
