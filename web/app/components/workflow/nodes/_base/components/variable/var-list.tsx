@@ -75,8 +75,16 @@ const VarList: FC<Props> = ({
           if (isSupportConstantValue)
             draft[index].variable_type = VarKindType.variable
 
-          if (!draft[index].variable)
-            draft[index].variable = value[value.length - 1]
+          if (!draft[index].variable) {
+            const variables = draft.map(v => v.variable)
+            let newVarName = value[value.length - 1]
+            let count = 1
+            while (variables.includes(newVarName)) {
+              newVarName = `${value[value.length - 1]}_${count}`
+              count++
+            }
+            draft[index].variable = newVarName
+          }
         }
         else {
           draft[index].variable_type = VarKindType.constant
