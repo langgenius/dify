@@ -136,6 +136,14 @@ const translation = {
       notConfigured: 'Cấu hình nhà cung cấp để bật theo dõi',
       moreProvider: 'Thêm nhà cung cấp',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Khả năng quan sát LLM cấp doanh nghiệp, đánh giá trực tuyến và ngoại tuyến, giám sát và thử nghiệm—được hỗ trợ bởi OpenTelemetry. Được thiết kế đặc biệt cho các ứng dụng dựa trên LLM và tác nhân.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Nền tảng mã nguồn mở và dựa trên OpenTelemetry cho khả năng quan sát, đánh giá, kỹ thuật prompt và thử nghiệm cho quy trình làm việc và tác nhân LLM của bạn.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Nền tảng phát triển tất cả trong một cho mọi bước của vòng đời ứng dụng được hỗ trợ bởi LLM.',

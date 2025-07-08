@@ -28,6 +28,8 @@ const translation = {
       delete: '삭제',
       enableWarning: '아카이브된 파일은 활성화할 수 없습니다.',
       sync: '동기화',
+      resume: '이력서',
+      pause: '일시 중지',
     },
     index: {
       enable: '활성화',

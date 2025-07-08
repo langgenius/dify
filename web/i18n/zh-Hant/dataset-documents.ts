@@ -28,6 +28,8 @@ const translation = {
       delete: '刪除',
       enableWarning: '歸檔的檔案無法啟用',
       sync: '同步',
+      resume: '恢復',
+      pause: '暫停',
     },
     index: {
       enable: '啟用中',

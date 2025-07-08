@@ -136,7 +136,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
   useEffect(() => {
+    if (!enable_marketplace) return
     if (query) {
       fetchPlugins({
         query,
