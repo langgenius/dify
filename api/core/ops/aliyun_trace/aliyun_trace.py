@@ -372,6 +372,7 @@ class AliyunDataTrace(BaseTraceInstance):
     ) -> SpanData:
         process_data = node_execution.process_data or {}
         outputs = node_execution.outputs or {}
+        usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
         return SpanData(
             trace_id=trace_id,
             parent_span_id=workflow_span_id,
@@ -385,9 +386,9 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_FRAMEWORK: "dify",
                 GEN_AI_MODEL_NAME: process_data.get("model_name", ""),
                 GEN_AI_SYSTEM: process_data.get("model_provider", ""),
-                GEN_AI_USAGE_INPUT_TOKENS: str(outputs.get("usage", {}).get("prompt_tokens", 0)),
-                GEN_AI_USAGE_OUTPUT_TOKENS: str(outputs.get("usage", {}).get("completion_tokens", 0)),
-                GEN_AI_USAGE_TOTAL_TOKENS: str(outputs.get("usage", {}).get("total_tokens", 0)),
+                GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
+                GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
+                GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
                 GEN_AI_PROMPT: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
                 GEN_AI_COMPLETION: str(outputs.get("text", "")),
                 GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason", ""),
