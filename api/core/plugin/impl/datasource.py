@@ -56,6 +56,41 @@ class PluginDatasourceManager(BasePluginClient):
                 tool.identity.provider = provider.declaration.identity.name
 
         return all_response
+    
+    def fetch_installed_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
+        """
+        Fetch datasource providers for the given tenant.
+        """
+
+        def transformer(json_response: dict[str, Any]) -> dict:
+            if json_response.get("data"):
+                for provider in json_response.get("data", []):
+                    declaration = provider.get("declaration", {}) or {}
+                    provider_name = declaration.get("identity", {}).get("name")
+                    for datasource in declaration.get("datasources", []):
+                        datasource["identity"]["provider"] = provider_name
+
+            return json_response
+
+        response = self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/datasources",
+            list[PluginDatasourceProviderEntity],
+            params={"page": 1, "page_size": 256},
+            transformer=transformer,
+        )
+
+        for provider in response:
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
+
+        for provider in response:
+            provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
+
+            # override the provider name for each tool to plugin_id/provider_name
+            for tool in provider.declaration.datasources:
+                tool.identity.provider = provider.declaration.identity.name
+
+        return response
 
     def fetch_datasource_provider(self, tenant_id: str, provider_id: str) -> PluginDatasourceProviderEntity:
         """
