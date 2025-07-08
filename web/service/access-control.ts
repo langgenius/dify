@@ -3,6 +3,7 @@ import { get, post } from './base'
 import { getAppAccessMode, getUserCanAccess } from './share'
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const NAME_SPACE = 'access-control'
 
@@ -79,15 +80,18 @@ export const useGetAppAccessMode = ({ appId, isInstalledApp = true, enabled }: {
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string; isInstalledApp?: boolean; enabled: boolean }) => {
+export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true }: { appId?: string; isInstalledApp?: boolean; }) => {
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],
-    queryFn: () => getUserCanAccess(appId!, isInstalledApp),
-    enabled: !!appId && enabled,
+    queryFn: () => {
+      if (systemFeatures.webapp_auth.enabled)
+        return getUserCanAccess(appId!, isInstalledApp)
+      else
+        return { result: true }
+    },
+    enabled: !!appId,
     staleTime: 0,
     gcTime: 0,
-    initialData: {
-      result: !enabled,
-    },
   })
 }
