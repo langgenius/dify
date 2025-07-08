@@ -85,14 +85,6 @@ const TextGeneration: FC<IMainProps> = ({
 
   const router = useRouter()
   const pathname = usePathname()
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (params.has('mode')) {
-      params.delete('mode')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)

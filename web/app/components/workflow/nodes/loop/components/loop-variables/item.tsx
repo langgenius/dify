@@ -10,6 +10,8 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
 
 type ItemProps = {
   item: LoopVariable
@@ -21,7 +23,22 @@ const Item = ({
   handleUpdateLoopVariable,
 }: ItemProps) => {
   const { t } = useTranslation()
+
+  const checkVariableName = (value: string) => {
+    const { isValid, errorMessageKey } = checkKeys([value], false)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('workflow.env.modal.name') }),
+      })
+      return false
+    }
+    return true
+  }
   const handleUpdateItemLabel = useCallback((e: any) => {
+    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    if (!!e.target.value && !checkVariableName(e.target.value))
+      return
     handleUpdateLoopVariable(item.id, { label: e.target.value })
   }, [item.id, handleUpdateLoopVariable])
 
@@ -44,6 +61,7 @@ const Item = ({
           <Input
             value={item.label}
             onChange={handleUpdateItemLabel}
+            onBlur={e => checkVariableName(e.target.value)}
             autoFocus={!item.label}
             placeholder={t('workflow.nodes.loop.variableName')}
           />

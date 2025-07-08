@@ -1,4 +1,5 @@
 import json
+import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -102,6 +103,36 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
+            agent_thoughts: list = []
+
+            from core.tools.entities.tool_entities import ToolInvokeMessage
+
+            thought_log_message = ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.LOG,
+                message=ToolInvokeMessage.LogMessage(
+                    id=str(uuid.uuid4()),
+                    label=f"Agent Strategy: {cast(AgentNodeData, self.node_data).agent_strategy_name}",
+                    parent_id=None,
+                    error=None,
+                    status=ToolInvokeMessage.LogMessage.LogStatus.START,
+                    data={
+                        "strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                        "parameters": parameters_for_log,
+                        "thought_process": "Agent strategy execution started",
+                    },
+                    metadata={
+                        "icon": self.agent_strategy_icon,
+                        "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                    },
+                ),
+            )
+
+            from core.tools.entities.tool_entities import ToolInvokeMessage
+
+            def enhanced_message_stream():
+                yield thought_log_message
+
+                yield from message_stream
 
             yield from self._transform_message(
                 message_stream,
@@ -110,6 +141,7 @@ class AgentNode(ToolNode):
                     "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
                 },
                 parameters_for_log,
+                agent_thoughts,
             )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
@@ -158,7 +190,10 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template expects a string template,
                 # but if passing a dict, convert to JSON string first before rendering
                 try:
-                    parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    else:
+                        parameter_value = str(agent_input.value)
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
@@ -166,7 +201,8 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
                 try:
-                    parameter_value = json.loads(parameter_value)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.loads(parameter_value)
                 except json.JSONDecodeError:
                     parameter_value = parameter_value
             else:
