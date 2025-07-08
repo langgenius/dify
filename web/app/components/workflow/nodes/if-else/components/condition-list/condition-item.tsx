@@ -37,6 +37,7 @@ import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -133,12 +134,12 @@ const ConditionItem = ({
 
   const isArrayValue = fileAttr?.key === 'transfer_method' || fileAttr?.key === 'type'
 
-  const handleUpdateConditionValue = useCallback((value: string) => {
-    if (value === condition.value || (isArrayValue && value === condition.value?.[0]))
+  const handleUpdateConditionValue = useCallback((value: string | boolean) => {
+    if (value === condition.value || (isArrayValue && value === (condition.value as string[])?.[0]))
       return
     const newCondition = {
       ...condition,
-      value: isArrayValue ? [value] : value,
+      value: isArrayValue ? [value as string] : value,
     }
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition, isArrayValue])
@@ -257,7 +258,7 @@ const ConditionItem = ({
           />
         </div>
         {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && (
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && condition.varType !== VarType.boolean && (
             <div className='max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1'>
               <ConditionInput
                 disabled={disabled}
@@ -265,6 +266,16 @@ const ConditionItem = ({
                 onChange={handleUpdateConditionValue}
                 nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
+              />
+            </div>
+          )
+        }
+        {
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType === VarType.boolean && (
+            <div className='p-1'>
+              <BoolValue
+                value={condition.value as boolean}
+                onChange={handleUpdateConditionValue}
               />
             </div>
           )

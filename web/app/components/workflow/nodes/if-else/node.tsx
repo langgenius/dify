@@ -26,7 +26,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         if (isEmptyRelatedOperator(c.comparison_operator!))
           return true
 
-        return !!c.value
+        return typeof c.value === 'boolean' ? true : !!c.value
       })
       return isSet
     }
@@ -34,7 +34,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
       if (isEmptyRelatedOperator(condition.comparison_operator!))
         return true
 
-      return !!condition.value
+      return typeof condition.value === 'boolean' ? true : !!condition.value
     }
   }, [])
   const conditionNotSet = (<div className='flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary'>
