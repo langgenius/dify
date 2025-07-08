@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -36,11 +37,25 @@ class TestUrlSigner:
 
         signed_url = UrlSigner.get_signed_url(base_url, sign_key, prefix)
 
-        # Verify URL contains all required parameters
-        assert signed_url.startswith(base_url)
-        assert "timestamp=" in signed_url
-        assert "nonce=" in signed_url
-        assert "sign=" in signed_url
+        # Parse URL and verify structure
+        parsed = urlparse(signed_url)
+        assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == base_url
+
+        # Verify query parameters
+        query_params = parse_qs(parsed.query)
+        assert "timestamp" in query_params
+        assert "nonce" in query_params
+        assert "sign" in query_params
+
+        # Verify each parameter has exactly one value
+        assert len(query_params["timestamp"]) == 1
+        assert len(query_params["nonce"]) == 1
+        assert len(query_params["sign"]) == 1
+
+        # Verify parameter values are not empty
+        assert query_params["timestamp"][0]
+        assert query_params["nonce"][0]
+        assert query_params["sign"][0]
 
     @patch("configs.dify_config.SECRET_KEY", "test-secret-key-12345")
     def test_should_verify_valid_signature(self):
