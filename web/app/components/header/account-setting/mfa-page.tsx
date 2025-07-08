@@ -1,0 +1,325 @@
+'use client'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { RiShieldKeyholeLine, RiCheckboxCircleFill, RiLoader2Line } from '@remixicon/react'
+import Toast from '../../base/toast'
+import Button from '../../base/button'
+import Input from '../../base/input'
+import Modal from '../../base/modal'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+// API service functions
+const mfaService = {
+  getStatus: async () => {
+    const token = localStorage.getItem('console_token')
+    const response = await fetch('/console/api/account/mfa/status', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (!response.ok) throw new Error('Failed to fetch MFA status')
+    return response.json()
+  },
+  
+  initSetup: async () => {
+    const token = localStorage.getItem('console_token')
+    const response = await fetch('/console/api/account/mfa/setup', { 
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    if (!response.ok) throw new Error('Failed to initialize MFA setup')
+    return response.json()
+  },
+  
+  completeSetup: async (totpToken: string, password: string) => {
+    const token = localStorage.getItem('console_token')
+    const response = await fetch('/console/api/account/mfa/setup/complete', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ totp_token: totpToken }),
+    })
+    if (!response.ok) throw new Error('Failed to complete MFA setup')
+    return response.json()
+  },
+  
+  disable: async (password: string) => {
+    const token = localStorage.getItem('console_token')
+    const response = await fetch('/console/api/account/mfa/disable', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ password }),
+    })
+    if (!response.ok) throw new Error('Failed to disable MFA')
+    return response.json()
+  },
+}
+
+export default function MFAPage() {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  
+  // State
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false)
+  const [isDisableModalOpen, setIsDisableModalOpen] = useState(false)
+  const [setupStep, setSetupStep] = useState<'qr' | 'verify' | 'backup'>('qr')
+  const [totpToken, setTotpToken] = useState('')
+  const [password, setPassword] = useState('')
+  const [qrData, setQrData] = useState<{ secret: string; qr_code: string } | null>(null)
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  
+  // Query MFA status
+  const { data: mfaStatus, isLoading } = useQuery({
+    queryKey: ['mfa-status'],
+    queryFn: mfaService.getStatus,
+  })
+  
+  
+  // Mutations
+  const initSetupMutation = useMutation({
+    mutationFn: mfaService.initSetup,
+    onSuccess: (data) => {
+      setQrData(data)
+      setIsSetupModalOpen(true)
+      setSetupStep('qr')
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('common.somethingWentWrong') })
+    },
+  })
+  
+  const completeSetupMutation = useMutation({
+    mutationFn: ({ totpToken, password }: { totpToken: string; password: string }) => 
+      mfaService.completeSetup(totpToken, password),
+    onSuccess: (data) => {
+      setBackupCodes(data.backup_codes)
+      setSetupStep('backup')
+      queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('mfa.invalidToken') })
+    },
+  })
+  
+  const disableMutation = useMutation({
+    mutationFn: mfaService.disable,
+    onSuccess: () => {
+      setIsDisableModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
+      Toast.notify({ type: 'success', message: t('mfa.disabledSuccess') })
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('mfa.invalidPassword') })
+    },
+  })
+  
+  const handleSetupStart = () => {
+    initSetupMutation.mutate()
+  }
+  
+  const handleVerifyToken = () => {
+    if (totpToken.length !== 6) {
+      Toast.notify({ type: 'error', message: t('mfa.tokenLength') })
+      return
+    }
+    completeSetupMutation.mutate({ totpToken, password: '' })
+  }
+  
+  const handleDisable = () => {
+    disableMutation.mutate(password)
+  }
+  
+  const handleCopyBackupCodes = () => {
+    const codesText = backupCodes.join('\n')
+    navigator.clipboard.writeText(codesText)
+    Toast.notify({ type: 'success', message: t('mfa.copied') })
+  }
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <RiLoader2Line className="animate-spin w-6 h-6 text-text-tertiary" />
+      </div>
+    )
+  }
+  
+  return (
+    <div className="relative">
+      <div className="mb-2 rounded-xl bg-background-section p-6">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-sm">
+          <RiShieldKeyholeLine className="h-5 w-5 text-text-accent" />
+        </div>
+        <div className="system-sm-medium mb-1 text-text-secondary">{t('mfa.description')}</div>
+        <div className="system-xs-regular text-text-tertiary">
+          {t('mfa.securityTip')}
+        </div>
+      </div>
+      
+      <div className="rounded-xl border border-components-panel-border bg-components-panel-bg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-components-icon-bg-blue-ghost">
+              <RiShieldKeyholeLine className="h-5 w-5 text-components-icon-text-blue" />
+            </div>
+            <div>
+              <div className="system-sm-semibold text-text-primary">{t('mfa.authenticatorApp')}</div>
+              <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('mfa.authenticatorDescription')}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {mfaStatus?.enabled && (
+              <RiCheckboxCircleFill className="h-5 w-5 text-text-success" />
+            )}
+            <Button
+              variant={mfaStatus?.enabled ? 'secondary' : 'primary'}
+              onClick={() => {
+                if (mfaStatus?.enabled) {
+                  setIsDisableModalOpen(true);
+                } else {
+                  handleSetupStart();
+                }
+              }}
+              loading={initSetupMutation.isPending}
+            >
+              {mfaStatus?.enabled ? t('mfa.disable') : t('mfa.enable')}
+            </Button>
+          </div>
+        </div>
+        
+        {mfaStatus?.enabled && mfaStatus?.setup_at && (
+          <div className="mt-3 system-xs-regular text-text-tertiary">
+            {t('mfa.enabledAt', { date: new Date(mfaStatus.setup_at).toLocaleDateString() })}
+          </div>
+        )}
+      </div>
+      
+      {/* Setup Modal */}
+      <Modal
+        isShow={isSetupModalOpen}
+        onClose={() => setIsSetupModalOpen(false)}
+        title={t('mfa.setupTitle')}
+        className="!max-w-md"
+      >
+        {setupStep === 'qr' && qrData && (
+          <div className="space-y-4">
+            <p className="system-sm-regular text-text-secondary">{t('mfa.scanQRCode')}</p>
+            <div className="flex justify-center">
+              <img src={qrData.qr_code} alt="MFA QR Code" className="w-[200px] h-[200px]" />
+            </div>
+            <div className="p-3 bg-components-panel-bg-blur rounded-lg border border-components-panel-border">
+              <p className="system-xs-regular text-text-tertiary mb-1">{t('mfa.secretKey')}</p>
+              <code className="system-xs-regular font-mono break-all text-text-secondary">{qrData.secret}</code>
+            </div>
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => setSetupStep('verify')}
+            >
+              {t('mfa.next')}
+            </Button>
+          </div>
+        )}
+        
+        {setupStep === 'verify' && (
+          <div className="space-y-4">
+            <p className="system-sm-regular text-text-secondary">{t('mfa.enterToken')}</p>
+            <Input
+              value={totpToken}
+              onChange={e => setTotpToken(e.target.value)}
+              placeholder="000000"
+              maxLength={6}
+              className="text-center text-2xl font-mono"
+            />
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={handleVerifyToken}
+              loading={completeSetupMutation.isPending}
+              disabled={totpToken.length !== 6}
+            >
+              {t('mfa.verify')}
+            </Button>
+          </div>
+        )}
+        
+        {setupStep === 'backup' && (
+          <div className="space-y-4">
+            <div className="p-4 bg-util-colors-warning-warning-100 border border-util-colors-warning-warning-300 rounded-lg">
+              <p className="system-sm-semibold text-util-colors-warning-warning-700 mb-2">{t('mfa.backupCodesTitle')}</p>
+              <p className="system-xs-regular text-util-colors-warning-warning-600">{t('mfa.backupCodesWarning')}</p>
+            </div>
+            <div className="p-4 bg-components-panel-bg-blur rounded-lg border border-components-panel-border">
+              <div className="grid grid-cols-2 gap-2">
+                {backupCodes.map((code, index) => (
+                  <code key={index} className="system-sm-regular font-mono text-text-secondary">{code}</code>
+                ))}
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={handleCopyBackupCodes}
+              >
+                {t('mfa.copy')}
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1"
+                onClick={() => {
+                  setIsSetupModalOpen(false)
+                  Toast.notify({ type: 'success', message: t('mfa.enabledSuccess') })
+                }}
+              >
+                {t('mfa.done')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+      
+      {/* Disable Modal */}
+      <Modal
+        isShow={isDisableModalOpen}
+        onClose={() => setIsDisableModalOpen(false)}
+        title={t('mfa.disableTitle')}
+        className="!max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="system-sm-regular text-text-secondary">{t('mfa.disableDescription')}</p>
+          <Input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={t('common.account.password')}
+          />
+          <div className="flex space-x-3">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setIsDisableModalOpen(false)}
+            >
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              variant="warning"
+              className="flex-1"
+              onClick={handleDisable}
+              loading={disableMutation.isPending}
+              disabled={!password}
+            >
+              {t('mfa.disable')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}

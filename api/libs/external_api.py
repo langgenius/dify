@@ -1,3 +1,4 @@
+import binascii
 import re
 import sys
 from typing import Any
@@ -19,6 +20,7 @@ class ExternalApi(Api):
         :type e: Exception
 
         """
+        print(f"[ERROR HANDLER DEBUG] Exception type: {type(e).__name__}, message: {str(e)}")
         got_request_exception.send(current_app, exception=e)
 
         headers = Headers()
@@ -41,13 +43,31 @@ class ExternalApi(Api):
                 default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
             headers = e.get_response().headers
-        elif isinstance(e, ValueError):
+        elif isinstance(e, binascii.Error):
             status_code = 400
+            print(f"[ERROR HANDLER] binascii.Error caught: {str(e)}")
+            import traceback
+            traceback.print_exc()
             default_data = {
-                "code": "invalid_param",
-                "message": str(e),
+                "code": "mfa_token_invalid", 
+                "message": "Invalid MFA token format",
                 "status": status_code,
             }
+        elif isinstance(e, ValueError):
+            status_code = 400
+            error_message = str(e)
+            if "Non-base32" in error_message:
+                default_data = {
+                    "code": "mfa_token_invalid",
+                    "message": "Invalid MFA token format",
+                    "status": status_code,
+                }
+            else:
+                default_data = {
+                    "code": "invalid_param",
+                    "message": error_message,
+                    "status": status_code,
+                }
         elif isinstance(e, AppInvokeQuotaExceededError):
             status_code = 429
             default_data = {

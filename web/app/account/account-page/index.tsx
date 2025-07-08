@@ -3,11 +3,13 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiGraduationCapFill,
+  RiShieldKeyholeLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import DeleteAccount from '../delete-account'
 import s from './index.module.css'
 import AvatarWithEdit from './AvatarWithEdit'
+import MFAPage from '@/app/components/header/account-setting/mfa-page'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import Modal from '@/app/components/base/modal'
@@ -48,6 +50,7 @@ export default function AccountPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showMFAModal, setShowMFAModal] = useState(false)
 
   const handleEditName = () => {
     setEditNameModalVisible(true)
@@ -183,6 +186,16 @@ export default function AccountPage() {
           </div>
         )
       }
+      <div className='mb-8 flex justify-between gap-2'>
+        <div>
+          <div className='system-sm-semibold mb-1 text-text-secondary'>{t('common.settings.mfa')}</div>
+          <div className='body-xs-regular mb-2 text-text-tertiary'>{t('mfa.description')}</div>
+        </div>
+        <Button onClick={() => setShowMFAModal(true)}>
+          <RiShieldKeyholeLine className='mr-2 h-4 w-4' />
+          {t('common.settings.mfa')}
+        </Button>
+      </div>
       <div className='mb-6 border-[1px] border-divider-subtle' />
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.langGeniusAccount')}</div>
@@ -314,6 +327,18 @@ export default function AccountPage() {
             onCancel={() => setShowDeleteAccountModal(false)}
             onConfirm={() => setShowDeleteAccountModal(false)}
           />
+        )
+      }
+      {
+        showMFAModal && (
+          <Modal
+            isShow
+            onClose={() => setShowMFAModal(false)}
+            title={t('common.settings.mfa')}
+            className="!max-w-2xl"
+          >
+            <MFAPage />
+          </Modal>
         )
       }
     </>

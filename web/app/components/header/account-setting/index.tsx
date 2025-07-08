@@ -16,10 +16,13 @@ import {
   RiPuzzle2Fill,
   RiPuzzle2Line,
   RiTranslate2,
+  RiShieldKeyholeLine,
+  RiShieldKeyholeFill,
 } from '@remixicon/react'
 import Button from '../../base/button'
 import MembersPage from './members-page'
 import LanguagePage from './language-page'
+import MFAPage from './mfa-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
@@ -117,6 +120,12 @@ export default function AccountSetting({
       name: t('common.settings.generalGroup'),
       items: [
         {
+          key: 'mfa',
+          name: t('common.settings.mfa'),
+          icon: <RiShieldKeyholeLine className={iconClassName} />,
+          activeIcon: <RiShieldKeyholeFill className={iconClassName} />,
+        },
+        {
           key: 'language',
           name: t('common.settings.language'),
           icon: <RiTranslate2 className={iconClassName} />,
@@ -165,9 +174,12 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
-                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text')}
+                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text'
+                          )}
                           title={item.name}
-                          onClick={() => setActiveMenu(item.key)}
+                          onClick={() => {
+                            setActiveMenu(item.key);
+                          }}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className='truncate'>{item.name}</div>}
@@ -186,7 +198,9 @@ export default function AccountSetting({
               variant='tertiary'
               size='large'
               className='px-2'
-              onClick={onCancel}
+              onClick={() => {
+                onCancel();
+              }}
             >
               <RiCloseLine className='h-5 w-5' />
             </Button>
@@ -219,6 +233,7 @@ export default function AccountSetting({
               {activeMenu === 'data-source' && <DataSourcePage />}
               {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
               {activeMenu === 'custom' && <CustomPage />}
+              {activeMenu === 'mfa' && <MFAPage />}
               {activeMenu === 'language' && <LanguagePage />}
             </div>
           </div>

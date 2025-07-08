@@ -1,0 +1,332 @@
+import json
+import unittest
+from unittest.mock import Mock, patch
+from datetime import datetime
+
+from flask import Flask
+from flask_restful import Api
+
+from controllers.console.auth.login import LoginApi
+from controllers.console.auth.error import MFARequiredError, MFATokenRequiredError
+from models.account import Account, AccountMFASettings
+
+
+class TestLoginMFAIntegration(unittest.TestCase):
+    def setUp(self):
+        self.app = Flask(__name__)
+        self.app.config['TESTING'] = True
+        self.api = Api(self.app)
+        
+        # Register login endpoint
+        self.api.add_resource(LoginApi, '/login')
+        
+        self.client = self.app.test_client()
+        
+        # Mock account
+        self.mock_account = Mock(spec=Account)
+        self.mock_account.id = "test-account-id"
+        self.mock_account.email = "test@example.com"
+        
+        # Mock MFA settings
+        self.mock_mfa_settings = Mock(spec=AccountMFASettings)
+        self.mock_mfa_settings.account_id = self.mock_account.id
+        self.mock_mfa_settings.enabled = False
+        self.mock_mfa_settings.secret = "TESTSECRET123"
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    @patch('controllers.console.auth.login.TenantService.get_join_tenants')
+    @patch('controllers.console.auth.login.AccountService.login')
+    @patch('controllers.console.auth.login.AccountService.reset_login_error_rate_limit')
+    @patch('controllers.console.auth.login.extract_remote_ip')
+    def test_login_without_mfa_success(self, mock_extract_ip, mock_reset_limit, mock_login_service, 
+                                     mock_get_tenants, mock_is_mfa_required, mock_authenticate,
+                                     mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test successful login without MFA enabled."""
+        # Setup mocks
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = self.mock_account
+        mock_is_mfa_required.return_value = False
+        mock_get_tenants.return_value = [Mock()]  # At least one tenant
+        mock_extract_ip.return_value = "127.0.0.1"
+        
+        token_pair_mock = Mock()
+        token_pair_mock.model_dump.return_value = {
+            "access_token": "test_access_token",
+            "refresh_token": "test_refresh_token"
+        }
+        mock_login_service.return_value = token_pair_mock
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            response = self.client.post('/login', json={
+                "email": "test@example.com",
+                "password": "test_password"
+            })
+            
+            self.assertEqual(response.status_code, 200)
+            data = json.loads(response.data)
+            self.assertEqual(data["result"], "success")
+            self.assertIn("access_token", data["data"])
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    def test_login_with_mfa_required_no_token(self, mock_is_mfa_required, mock_authenticate,
+                                            mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test login fails when MFA is required but no token provided."""
+        # Setup mocks
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = self.mock_account
+        mock_is_mfa_required.return_value = True
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            # Mock the MFARequiredError to be raised
+            with patch('controllers.console.auth.login.MFARequiredError') as mock_mfa_error:
+                mock_mfa_error.side_effect = Exception("MFA required")
+                
+                with self.assertRaises(Exception):
+                    response = self.client.post('/login', json={
+                        "email": "test@example.com",
+                        "password": "test_password"
+                    })
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    @patch('controllers.console.auth.login.MFAService.authenticate_with_mfa')
+    def test_login_with_mfa_invalid_token(self, mock_auth_mfa, mock_is_mfa_required, mock_authenticate,
+                                        mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test login fails with invalid MFA token."""
+        # Setup mocks
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = self.mock_account
+        mock_is_mfa_required.return_value = True
+        mock_auth_mfa.return_value = False  # Invalid token
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            # Mock the MFATokenRequiredError to be raised
+            with patch('controllers.console.auth.login.MFATokenRequiredError') as mock_token_error:
+                mock_token_error.side_effect = Exception("Invalid MFA token")
+                
+                with self.assertRaises(Exception):
+                    response = self.client.post('/login', json={
+                        "email": "test@example.com",
+                        "password": "test_password",
+                        "mfa_token": "invalid_token"
+                    })
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    @patch('controllers.console.auth.login.MFAService.authenticate_with_mfa')
+    @patch('controllers.console.auth.login.TenantService.get_join_tenants')
+    @patch('controllers.console.auth.login.AccountService.login')
+    @patch('controllers.console.auth.login.AccountService.reset_login_error_rate_limit')
+    @patch('controllers.console.auth.login.extract_remote_ip')
+    def test_login_with_mfa_valid_token_success(self, mock_extract_ip, mock_reset_limit, 
+                                              mock_login_service, mock_get_tenants, mock_auth_mfa,
+                                              mock_is_mfa_required, mock_authenticate,
+                                              mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test successful login with valid MFA token."""
+        # Setup mocks
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = self.mock_account
+        mock_is_mfa_required.return_value = True
+        mock_auth_mfa.return_value = True  # Valid token
+        mock_get_tenants.return_value = [Mock()]  # At least one tenant
+        mock_extract_ip.return_value = "127.0.0.1"
+        
+        token_pair_mock = Mock()
+        token_pair_mock.model_dump.return_value = {
+            "access_token": "test_access_token",
+            "refresh_token": "test_refresh_token"
+        }
+        mock_login_service.return_value = token_pair_mock
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            response = self.client.post('/login', json={
+                "email": "test@example.com",
+                "password": "test_password",
+                "mfa_token": "123456"
+            })
+            
+            self.assertEqual(response.status_code, 200)
+            data = json.loads(response.data)
+            self.assertEqual(data["result"], "success")
+            self.assertIn("access_token", data["data"])
+            
+            # Verify MFA authentication was called
+            mock_auth_mfa.assert_called_once_with(self.mock_account, "123456")
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    @patch('controllers.console.auth.login.MFAService.authenticate_with_mfa')
+    @patch('controllers.console.auth.login.TenantService.get_join_tenants')
+    @patch('controllers.console.auth.login.AccountService.login')
+    @patch('controllers.console.auth.login.AccountService.reset_login_error_rate_limit')
+    @patch('controllers.console.auth.login.extract_remote_ip')
+    def test_login_with_mfa_backup_code_success(self, mock_extract_ip, mock_reset_limit, 
+                                               mock_login_service, mock_get_tenants, mock_auth_mfa,
+                                               mock_is_mfa_required, mock_authenticate,
+                                               mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test successful login with valid backup code."""
+        # Setup mocks
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = self.mock_account
+        mock_is_mfa_required.return_value = True
+        mock_auth_mfa.return_value = True  # Valid backup code
+        mock_get_tenants.return_value = [Mock()]  # At least one tenant
+        mock_extract_ip.return_value = "127.0.0.1"
+        
+        token_pair_mock = Mock()
+        token_pair_mock.model_dump.return_value = {
+            "access_token": "test_access_token",
+            "refresh_token": "test_refresh_token"
+        }
+        mock_login_service.return_value = token_pair_mock
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            response = self.client.post('/login', json={
+                "email": "test@example.com",
+                "password": "test_password",
+                "mfa_token": "BACKUP123"  # Backup code format
+            })
+            
+            self.assertEqual(response.status_code, 200)
+            data = json.loads(response.data)
+            self.assertEqual(data["result"], "success")
+            self.assertIn("access_token", data["data"])
+            
+            # Verify MFA authentication was called with backup code
+            mock_auth_mfa.assert_called_once_with(self.mock_account, "BACKUP123")
+
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    def test_login_mfa_flow_order(self, mock_is_mfa_required, mock_authenticate,
+                                 mock_rate_limit, mock_freeze_check, mock_system_features):
+        """Test that MFA check happens after password authentication."""
+        # Setup mocks - password auth fails
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        
+        # Mock password authentication failure
+        from services.errors.account import AccountPasswordError
+        mock_authenticate.side_effect = AccountPasswordError()
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled, \
+             patch('controllers.console.auth.login.AccountService.add_login_error_rate_limit') as mock_add_limit:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+            
+            # Mock the EmailOrPasswordMismatchError
+            with patch('controllers.console.auth.login.EmailOrPasswordMismatchError') as mock_error:
+                mock_error.side_effect = Exception("Email or password mismatch")
+                
+                with self.assertRaises(Exception):
+                    response = self.client.post('/login', json={
+                        "email": "test@example.com",
+                        "password": "wrong_password",
+                        "mfa_token": "123456"
+                    })
+                
+                # MFA check should not be called if password auth fails
+                mock_is_mfa_required.assert_not_called()
+
+
+class TestMFAEndToEndFlow(unittest.TestCase):
+    """End-to-end tests for complete MFA flow."""
+    
+    def setUp(self):
+        self.app = Flask(__name__)
+        self.app.config['TESTING'] = True
+        self.client = self.app.test_client()
+
+    @patch('services.mfa_service.MFAService.generate_secret')
+    @patch('services.mfa_service.MFAService.generate_qr_code')
+    @patch('services.mfa_service.MFAService.verify_totp')
+    @patch('services.mfa_service.MFAService.generate_backup_codes')
+    @patch('services.mfa_service.db.session')
+    def test_complete_mfa_setup_flow(self, mock_session, mock_gen_codes, mock_verify, mock_gen_qr, mock_gen_secret):
+        """Test complete MFA setup flow from init to completion."""
+        from services.mfa_service import MFAService
+        from models.account import Account
+        
+        # Mock account
+        account = Mock(spec=Account)
+        account.id = "test-id"
+        account.email = "test@example.com"
+        
+        # Setup mocks
+        mock_gen_secret.return_value = "TESTSECRET123"
+        mock_gen_qr.return_value = "data:image/png;base64,test"
+        mock_verify.return_value = True
+        mock_gen_codes.return_value = ["CODE1", "CODE2", "CODE3"]
+        
+        # Step 1: Initialize MFA setup
+        with patch('services.mfa_service.MFAService.get_or_create_mfa_settings') as mock_get_settings:
+            mfa_settings = Mock()
+            mfa_settings.enabled = False
+            mfa_settings.secret = None
+            mock_get_settings.return_value = mfa_settings
+            
+            setup_data = MFAService.generate_mfa_setup_data(account)
+            
+            self.assertEqual(setup_data["secret"], "TESTSECRET123")
+            self.assertEqual(setup_data["qr_code"], "data:image/png;base64,test")
+            self.assertEqual(mfa_settings.secret, "TESTSECRET123")
+        
+        # Step 2: Complete MFA setup
+        with patch('services.mfa_service.MFAService.get_or_create_mfa_settings') as mock_get_settings:
+            mfa_settings.secret = "TESTSECRET123"
+            mock_get_settings.return_value = mfa_settings
+            
+            result = MFAService.setup_mfa(account, "123456")
+            
+            self.assertTrue(mfa_settings.enabled)
+            self.assertEqual(result["backup_codes"], ["CODE1", "CODE2", "CODE3"])
+            self.assertIsNotNone(mfa_settings.setup_at)
+
+
+if __name__ == '__main__':
+    unittest.main()

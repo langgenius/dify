@@ -35,12 +35,16 @@ const MenuDialog = ({
 
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-[60]" onClose={noop}>
-        <div className="fixed inset-0">
-          <div className="flex min-h-full flex-col items-center justify-center">
+      <Dialog as="div" className="relative z-[60]" onClose={close}>
+        <TransitionChild>
+          <div className="fixed inset-0 bg-black/20 pointer-events-none" />
+        </TransitionChild>
+        
+        <div className="fixed inset-0 overflow-y-auto pointer-events-none">
+          <div className="flex min-h-full flex-col items-center justify-center pointer-events-none">
             <TransitionChild>
               <DialogPanel className={cn(
-                'relative h-full w-full grow overflow-hidden bg-background-sidenav-bg p-0 text-left align-middle backdrop-blur-md transition-all',
+                'relative h-full w-full grow overflow-hidden bg-background-sidenav-bg p-0 text-left align-middle backdrop-blur-md transition-all pointer-events-auto',
                 'duration-300 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',

@@ -299,3 +299,24 @@ class TenantPluginPermission(Base):
         db.String(16), nullable=False, server_default="everyone"
     )
     debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+
+
+class AccountMFASettings(Base):
+    __tablename__ = "account_mfa_settings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="account_mfa_settings_pkey"),
+        db.UniqueConstraint("account_id", name="unique_account_mfa_settings"),
+        db.Index("account_mfa_settings_account_id_idx", "account_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    account_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey("accounts.id"), nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    secret = db.Column(db.String(255), nullable=True)
+    backup_codes = db.Column(db.Text, nullable=True)
+    setup_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # Relationship
+    account = db.relationship("Account", backref=db.backref("mfa_settings", uselist=False, cascade="all, delete-orphan"))

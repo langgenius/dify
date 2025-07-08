@@ -30,7 +30,8 @@ WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
 
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=6144"
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 
