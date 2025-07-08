@@ -23,7 +23,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("uuid_generate_v4()")),
         sa.Column("conversation_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("message_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("node_id", sa.String(length=64), nullable=False, index=True),
+        sa.Column("node_id", sa.String(length=255), nullable=False, index=True),
         sa.Column("upload_file_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["conversation_id"], ["conversations.id"],),

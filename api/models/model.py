@@ -1758,7 +1758,7 @@ class NodeFileUsage(Base):
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
     message_id = db.Column(StringUUID, db.ForeignKey("messages.id"), nullable=True)
-    node_id = db.Column(db.String(64), nullable=False)
+    node_id = db.Column(db.String(255), nullable=False)
     upload_file_id = db.Column(StringUUID, db.ForeignKey("upload_files.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
