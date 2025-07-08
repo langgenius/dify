@@ -604,6 +604,8 @@ class PipelineGenerator(BaseAppGenerator):
             name = datasource_info["page"]["page_name"]
         elif datasource_type == "website_crawl":
             name = datasource_info["title"]
+        elif datasource_type == "online_drive":
+            name = datasource_info["key"]
         else:
             raise ValueError(f"Unsupported datasource type: {datasource_type}")
 
