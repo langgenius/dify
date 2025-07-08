@@ -85,7 +85,7 @@ const Item = ({
           >
             {file.displayName}
           </span>
-          {!isFolder && file.size && (
+          {!isFolder && typeof file.size === 'number' && (
             <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(file.size)}</span>
           )}
         </div>

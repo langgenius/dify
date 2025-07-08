@@ -66,7 +66,7 @@ const Breadcrumbs = ({
   }, [dataSourceStore, prefix])
 
   return (
-    <div className='flex grow items-center py-1'>
+    <div className='flex grow items-center overflow-hidden py-1'>
       {showSearchResult && (
         <div className='system-sm-medium text-test-secondary px-[5px] py-1'>
           {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
@@ -81,7 +81,7 @@ const Breadcrumbs = ({
         </div>
       )}
       {!showSearchResult && !isRoot && (
-        <div className='flex items-center gap-x-0.5'>
+        <div className='flex w-full items-center gap-x-0.5 overflow-hidden'>
           {bucket && (
             <Bucket
               bucketName={bucket}

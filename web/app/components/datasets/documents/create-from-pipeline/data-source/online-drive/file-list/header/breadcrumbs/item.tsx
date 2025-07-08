@@ -28,16 +28,17 @@ const BreadcrumbItem = ({
       <button
         type='button'
         className={cn(
-          'rounded-md px-[5px] py-1',
+          'max-w-full shrink truncate rounded-md px-[5px] py-1',
           isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}
         onClick={handleClickItem}
+        title={name}
       >
         {name}
       </button>
-      {showSeparator && <span className='system-xs-regular text-divider-deep'>/</span>}
+      {showSeparator && <span className='system-xs-regular shrink-0 text-divider-deep'>/</span>}
     </>
   )
 }

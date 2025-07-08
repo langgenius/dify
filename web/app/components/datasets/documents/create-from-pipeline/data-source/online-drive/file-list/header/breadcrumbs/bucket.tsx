@@ -34,7 +34,7 @@ const Bucket = ({
       >
         <button
           type='button'
-          className='flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+          className='flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
           onClick={handleBackToBucketList}
         >
           <BucketsGray />
@@ -44,16 +44,17 @@ const Bucket = ({
       <button
         type='button'
         className={cn(
-          'rounded-md px-[5px] py-1',
+          'max-w-full shrink truncate rounded-md px-[5px] py-1',
           isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}
         onClick={handleClickItem}
+        title={bucketName}
       >
         {bucketName}
       </button>
-      {showSeparator && <span className='system-xs-regular text-divider-deep'>/</span>}
+      {showSeparator && <span className='system-xs-regular shrink-0 text-divider-deep'>/</span>}
     </>
   )
 }
