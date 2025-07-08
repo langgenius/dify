@@ -41,7 +41,7 @@ def _default_message_handler(
     message: RequestResponder[types.ServerRequest, types.ClientResult] | types.ServerNotification | Exception,
 ) -> None:
     if isinstance(message, Exception):
-        raise message
+        raise ValueError(str(message))
     elif isinstance(message, (types.ServerNotification | RequestResponder)):
         pass
 

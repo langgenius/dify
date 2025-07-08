@@ -9,6 +9,7 @@ from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.mcp import types
 from core.mcp.types import INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND
+from core.mcp.utils import create_mcp_error_response
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.model import App, AppMCPServer, AppMode, EndUser
@@ -20,7 +21,7 @@ Apply to MCP HTTP streamable server with stateless http
 logger = logging.getLogger(__name__)
 
 
-class MCPServerRequestHandler:
+class MCPServerStreamableHTTPRequestHandler:
     def __init__(
         self, app: App, request: types.ClientRequest | types.ClientNotification, user_input_form: list[VariableEntity]
     ):
@@ -78,17 +79,8 @@ class MCPServerRequestHandler:
         yield sse_content
 
     def error_response(self, code: int, message: str, data=None):
-        error_data = types.ErrorData(code=code, message=message, data=data)
-        json_response = types.JSONRPCError(
-            jsonrpc="2.0",
-            id=(self.request.root.model_extra or {}).get("id", 1) or 1,
-            error=error_data,
-        )
-        json_data = json.dumps(jsonable_encoder(json_response))
-
-        sse_content = f"event: message\ndata: {json_data}\n\n".encode()
-
-        yield sse_content
+        request_id = (self.request.root.model_extra or {}).get("id", 1) or 1
+        return create_mcp_error_response(request_id, code, message, data)
 
     def handle(self):
         handle_map = {
@@ -158,7 +150,7 @@ class MCPServerRequestHandler:
             args = {"inputs": args}
         else:
             args = {"query": args["query"], "inputs": {k: v for k, v in args.items() if k != "query"}}
-        response = AppGenerateService.generate(self.app, self.end_user, args, InvokeFrom.MCP_SERVER, streaming=False)
+        response = AppGenerateService.generate(self.app, self.end_user, args, InvokeFrom.SERVICE_API, streaming=False)
         if isinstance(response, Mapping):
             answer = ""
             if self.app.mode in {
@@ -196,7 +188,12 @@ class MCPServerRequestHandler:
                 continue
             if item.required:
                 required.append(item.variable)
-            description = self.mcp_server.parameters_dict[item.variable]
+            # if the workflow republished, the parameters not changed
+            # we should not raise error here
+            try:
+                description = self.mcp_server.parameters_dict[item.variable]
+            except KeyError:
+                description = ""
             parameters[item.variable]["description"] = description
             if item.type in (VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH):
                 parameters[item.variable]["type"] = "string"

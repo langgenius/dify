@@ -1,6 +1,10 @@
+import json
+
 import httpx
 
 from configs import dify_config
+from core.mcp.types import ErrorData, JSONRPCError
+from core.model_runtime.utils.encoders import jsonable_encoder
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
@@ -98,3 +102,16 @@ def ssrf_proxy_sse_connect(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         if not client_provided:
             client.close()
         raise
+
+
+def create_mcp_error_response(request_id: int | str | None, code: int, message: str, data=None):
+    """Create MCP error response"""
+    error_data = ErrorData(code=code, message=message, data=data)
+    json_response = JSONRPCError(
+        jsonrpc="2.0",
+        id=request_id or 1,
+        error=error_data,
+    )
+    json_data = json.dumps(jsonable_encoder(json_response))
+    sse_content = f"event: message\ndata: {json_data}\n\n".encode()
+    yield sse_content
