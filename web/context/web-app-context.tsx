@@ -1,9 +1,10 @@
 'use client'
 
+import type { ChatConfig } from '@/app/components/base/chat/types'
 import Loading from '@/app/components/base/loading'
 import { AccessMode } from '@/models/access-control'
-import { useAppAccessModeByCode } from '@/service/use-share'
-import type { App } from '@/types/app'
+import type { AppData, AppMeta } from '@/models/share'
+import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
@@ -13,19 +14,31 @@ import { create } from 'zustand'
 type WebAppStore = {
   shareCode: string | null
   updateShareCode: (shareCode: string | null) => void
-  appInfo: App | null
-  updateAppInfo: (appInfo: App | null) => void
+  appInfo: AppData | null
+  updateAppInfo: (appInfo: AppData | null) => void
+  appParams: ChatConfig | null
+  updateAppParams: (appParams: ChatConfig | null) => void
   webAppAccessMode: AccessMode
   updateWebAppAccessMode: (accessMode: AccessMode) => void
+  appMeta: AppMeta | null
+  updateWebAppMeta: (appMeta: AppMeta | null) => void
+  userCanAccessApp: boolean
+  updateUserCanAccessApp: (canAccess: boolean) => void
 }
 
 export const useWebAppStore = create<WebAppStore>(set => ({
   shareCode: null,
   updateShareCode: (shareCode: string | null) => set(() => ({ shareCode })),
   appInfo: null,
-  updateAppInfo: (appInfo: App | null) => set(() => ({ appInfo })),
+  updateAppInfo: (appInfo: AppData | null) => set(() => ({ appInfo })),
+  appParams: null,
+  updateAppParams: (appParams: ChatConfig | null) => set(() => ({ appParams })),
   webAppAccessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   updateWebAppAccessMode: (accessMode: AccessMode) => set(() => ({ webAppAccessMode: accessMode })),
+  appMeta: null,
+  updateWebAppMeta: (appMeta: AppMeta | null) => set(() => ({ appMeta })),
+  userCanAccessApp: false,
+  updateUserCanAccessApp: (canAccess: boolean) => set(() => ({ userCanAccessApp: canAccess })),
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
@@ -55,7 +68,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     setShareCode(newShareCode)
     updateShareCode(newShareCode)
   }, [pathname, redirectUrlParam, updateShareCode])
-  const { isFetching, data: accessModeResult } = useAppAccessModeByCode(shareCode)
+  const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
