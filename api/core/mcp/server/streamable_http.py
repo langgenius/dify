@@ -122,7 +122,7 @@ class MCPServerStreamableHTTPRequestHandler:
         return types.InitializeResult(
             protocolVersion=types.SERVER_LATEST_PROTOCOL_VERSION,
             capabilities=self.capabilities,
-            serverInfo=types.Implementation(name="Dify", version=dify_config.CURRENT_VERSION),
+            serverInfo=types.Implementation(name="Dify", version=dify_config.project.version),
             instructions=self.mcp_server.description,
         )
 
