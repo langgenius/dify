@@ -178,6 +178,10 @@ const translation = {
     descriptionInExplore: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong Khám phá hay không',
     title: 'Sử dụng biểu tượng web app để thay thế 🤖',
   },
+  alwaysNewChat: {
+    title: 'Luôn bắt đầu cuộc trò chuyện mới',
+    description: 'Bỏ qua cuộc trò chuyện trước đó và mở cuộc trò chuyện mới khi người dùng truy cập ứng dụng web',
+  },
   importFromDSLFile: 'Từ tệp DSL',
   importFromDSL: 'Nhập từ DSL',
   importFromDSLUrlPlaceholder: 'Dán liên kết DSL vào đây',

@@ -185,6 +185,10 @@ const translation = {
     title: 'Użyj ikony web app, aby zastąpić 🤖',
     descriptionInExplore: 'Czy używać ikony aplikacji internetowej do zastępowania 🤖 w Eksploruj',
   },
+  alwaysNewChat: {
+    title: 'Zawsze rozpocznij nowy czat',
+    description: 'Ignoruj poprzednią rozmowę i otwórz nowy czat, gdy użytkownicy odwiedzą aplikację webową',
+  },
   importFromDSL: 'Importowanie z DSL',
   importFromDSLUrl: 'Z adresu URL',
   importFromDSLFile: 'Z pliku DSL',

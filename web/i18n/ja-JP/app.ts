@@ -186,6 +186,10 @@ const translation = {
     description: '共有アプリケーションの中で Web アプリアイコンを使用して🤖を置き換えるかどうか',
     descriptionInExplore: 'Explore で Web アプリアイコンを使用して🤖を置き換えるかどうか',
   },
+  alwaysNewChat: {
+    title: '常に新しいチャットを開始',
+    description: '以前の会話を無視し、ユーザーがWebアプリにアクセスしたときに新しいチャットを開く',
+  },
   newAppFromTemplate: {
     sidebar: {
       Agent: 'エージェント',

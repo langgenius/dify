@@ -200,6 +200,10 @@ const translation = {
     descriptionInExplore:
       'Explore 에서 web app 아이콘을 사용하여 바꿀🤖지 여부',
   },
+  alwaysNewChat: {
+    title: '항상 새로운 채팅 시작',
+    description: '이전 대화를 무시하고 사용자가 웹 앱을 방문할 때 새로운 채팅을 시작',
+  },
   importFromDSL: 'DSL 에서 가져오기',
   importFromDSLFile: 'DSL 파일에서',
   importFromDSLUrl: 'URL 에서',

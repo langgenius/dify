@@ -178,6 +178,10 @@ const translation = {
     descriptionInExplore: 'Si se debe usar el icono de la aplicación web para reemplazarlo 🤖 en Explore',
     description: 'Si se va a usar el icono de la aplicación web para reemplazarlo 🤖 en la aplicación compartida',
   },
+  alwaysNewChat: {
+    title: 'Siempre iniciar un nuevo chat',
+    description: 'Ignorar la conversación anterior y abrir un nuevo chat cuando los usuarios visiten la aplicación web',
+  },
   importFromDSLUrl: 'URL de origen',
   importFromDSLUrlPlaceholder: 'Pegar enlace DSL aquí',
   importFromDSL: 'Importar desde DSL',

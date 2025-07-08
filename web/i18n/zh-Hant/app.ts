@@ -177,6 +177,10 @@ const translation = {
     title: '使用 web app 圖示取代 🤖',
     description: '是否在共享應用程式中使用 web app 圖示進行取代 🤖',
   },
+  alwaysNewChat: {
+    title: '總是開始新對話',
+    description: '忽略之前的對話，當用戶訪問網頁應用時打開一個新對話',
+  },
   importFromDSLUrl: '寄件者 URL',
   importFromDSL: '從 DSL 導入',
   importFromDSLFile: '從 DSL 檔',

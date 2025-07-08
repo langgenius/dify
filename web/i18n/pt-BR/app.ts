@@ -178,6 +178,10 @@ const translation = {
     description: 'Se o ícone web app deve ser usado para substituir 🤖 no aplicativo compartilhado',
     title: 'Use o ícone do web app para substituir 🤖',
   },
+  alwaysNewChat: {
+    title: 'Sempre iniciar um novo chat',
+    description: 'Ignorar conversa anterior e abrir um novo chat quando usuários visitarem o aplicativo web',
+  },
   importFromDSLUrlPlaceholder: 'Cole o link DSL aqui',
   importFromDSLUrl: 'Do URL',
   importFromDSLFile: 'Do arquivo DSL',

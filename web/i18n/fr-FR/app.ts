@@ -178,6 +178,10 @@ const translation = {
     title: 'Utiliser l’icône web app pour remplacer 🤖',
     descriptionInExplore: 'Utilisation de l’icône web app pour remplacer 🤖 dans Explore',
   },
+  alwaysNewChat: {
+    title: 'Toujours commencer un nouveau chat',
+    description: 'Ignorer la conversation précédente et ouvrir un nouveau chat quand les utilisateurs visitent l\'application web',
+  },
   importFromDSLUrlPlaceholder: 'Collez le lien DSL ici',
   importFromDSL: 'Importation à partir d’une DSL',
   importFromDSLUrl: 'À partir de l’URL',

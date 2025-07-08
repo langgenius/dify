@@ -118,6 +118,10 @@ const translation = {
     description: '是否使用 web app 图标替换分享的应用界面中的 🤖',
     descriptionInExplore: '是否使用 web app 图标替换 Explore 界面中的 🤖',
   },
+  alwaysNewChat: {
+    title: '总是开始新对话',
+    description: '忽略之前的对话，当用户访问网页应用时打开一个新对话',
+  },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
   switchTip: '不能够',

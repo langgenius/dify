@@ -178,6 +178,10 @@ const translation = {
     title: 'Değiştirmek 🤖 için web app simgesini kullanın',
     description: 'Paylaşılan uygulamada değiştirmek 🤖 için web app simgesinin kullanılıp kullanılmayacağı',
   },
+  alwaysNewChat: {
+    title: 'Her zaman yeni sohbet başlat',
+    description: 'Önceki konuşmayı göz ardı et ve kullanıcılar web uygulamasını ziyaret ettiğinde yeni sohbet aç',
+  },
   mermaid: {
     handDrawn: 'Elle çizilmiş',
     classic: 'Klasik',
