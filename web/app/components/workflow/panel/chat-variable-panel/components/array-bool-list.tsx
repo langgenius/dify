@@ -39,7 +39,7 @@ const ArrayValueList: FC<Props> = ({
 
   const handleItemAdd = useCallback(() => {
     const newList = produce(list, (draft: any[]) => {
-      draft.push(undefined)
+      draft.push(true)
     })
     onChange(newList)
   }, [list, onChange])

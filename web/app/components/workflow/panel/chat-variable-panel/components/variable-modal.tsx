@@ -134,12 +134,16 @@ const ChatVariableModal = ({
         return value || ''
       case ChatVarType.Number:
         return value || 0
+      case ChatVarType.Boolean:
+        return value === undefined ? true : value
       case ChatVarType.Object:
         return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
         return value?.filter(Boolean) || []
+      case ChatVarType.ArrayBoolean:
+        return value || []
     }
   }
 
@@ -218,6 +222,11 @@ const ChatVariableModal = ({
         setValue(value?.length ? value : [undefined])
       }
     }
+
+    if(type === ChatVarType.ArrayBoolean) {
+      if(editInJSON)
+        setEditorContent(JSON.stringify(value.map((item: boolean) => item ? 'True' : 'False')))
+    }
     setEditInJSON(editInJSON)
   }
 
@@ -229,7 +238,16 @@ const ChatVariableModal = ({
     else {
       setEditorContent(content)
       try {
-        const newValue = JSON.parse(content)
+        let newValue = JSON.parse(content)
+        if(type === ChatVarType.ArrayBoolean) {
+          newValue = newValue.map((item: string) => {
+            if (item === 'True' || item === 'true')
+              return true
+            if (item === 'False' || item === 'false')
+              return false
+            return undefined
+          }).filter((item?: boolean) => item !== undefined)
+        }
         setValue(newValue)
       }
       catch {
@@ -387,9 +405,9 @@ const ChatVariableModal = ({
                 onChange={setValue}
               />
             )}
-            {type === ChatVarType.ArrayNumber && !editInJSON && (
+            {type === ChatVarType.ArrayBoolean && !editInJSON && (
               <ArrayBoolList
-                list={value}
+                list={value || [true]}
                 onChange={setValue}
               />
             )}
