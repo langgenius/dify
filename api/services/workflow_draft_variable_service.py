@@ -44,10 +44,6 @@ class VariableResetError(WorkflowDraftVariableError):
     pass
 
 
-class UpdateNotSupportedError(WorkflowDraftVariableError):
-    pass
-
-
 class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #

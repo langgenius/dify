@@ -123,25 +123,6 @@ class StrLen:
         return value
 
 
-class FloatRange:
-    """Restrict input to an float in a range (inclusive)"""
-
-    def __init__(self, low, high, argument="argument"):
-        self.low = low
-        self.high = high
-        self.argument = argument
-
-    def __call__(self, value):
-        value = _get_float(value)
-        if value < self.low or value > self.high:
-            error = "Invalid {arg}: {val}. {arg} must be within the range {lo} - {hi}".format(
-                arg=self.argument, val=value, lo=self.low, hi=self.high
-            )
-            raise ValueError(error)
-
-        return value
-
-
 class DatetimeString:
     def __init__(self, format, argument="argument"):
         self.format = format
