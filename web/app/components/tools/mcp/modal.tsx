@@ -96,7 +96,7 @@ const MCPModal = ({
     }
     catch (e) {
       console.error('Failed to fetch remote icon:', e)
-      Toast.notify({ type: 'error', message: 'Failed to fetch remote icon' })
+      Toast.notify({ type: 'warning', message: 'Failed to fetch remote icon' })
     }
     finally {
       setIsFetchingIcon(false)
