@@ -112,13 +112,14 @@ const OnlineDrive = ({
   }, [dataSourceStore, isInPipeline, selectedFileList])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { setPrefix, setBucket, setFileList } = dataSourceStore.getState()
+    const { setPrefix, setBucket, setFileList, setSelectedFileList } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
       setBucket(file.displayName)
     }
     else {
+      setSelectedFileList([])
       const displayName = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
       const newPrefix = produce(prefix, (draft) => {
         draft.push(displayName)
