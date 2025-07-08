@@ -32,6 +32,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
+from models.enums import MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             input=trace_info.inputs,
             output=message_data.answer,
             metadata=metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
+            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
             status_message=message_data.error or "",
             usage=generation_usage,
         )
@@ -339,7 +340,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
+            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
             status_message=message_data.error or "",
             usage=generation_usage,
         )

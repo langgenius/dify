@@ -2,20 +2,92 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
+from core.ops.utils import validate_project_name, validate_url, validate_url_with_path
+
 
 class TracingProviderEnum(StrEnum):
+    ARIZE = "arize"
+    PHOENIX = "phoenix"
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
     WEAVE = "weave"
+    ALIYUN = "aliyun"
 
 
 class BaseTracingConfig(BaseModel):
     """
-    Base model class for tracing
+    Base model class for tracing configurations
     """
 
-    ...
+    @classmethod
+    def validate_endpoint_url(cls, v: str, default_url: str) -> str:
+        """
+        Common endpoint URL validation logic
+
+        Args:
+            v: URL value to validate
+            default_url: Default URL to use if input is None or empty
+
+        Returns:
+            Validated and normalized URL
+        """
+        return validate_url(v, default_url)
+
+    @classmethod
+    def validate_project_field(cls, v: str, default_name: str) -> str:
+        """
+        Common project name validation logic
+
+        Args:
+            v: Project name to validate
+            default_name: Default name to use if input is None or empty
+
+        Returns:
+            Validated project name
+        """
+        return validate_project_name(v, default_name)
+
+
+class ArizeConfig(BaseTracingConfig):
+    """
+    Model class for Arize tracing config.
+    """
+
+    api_key: str | None = None
+    space_id: str | None = None
+    project: str | None = None
+    endpoint: str = "https://otlp.arize.com"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "default")
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://otlp.arize.com")
+
+
+class PhoenixConfig(BaseTracingConfig):
+    """
+    Model class for Phoenix tracing config.
+    """
+
+    api_key: str | None = None
+    project: str | None = None
+    endpoint: str = "https://app.phoenix.arize.com"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "default")
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://app.phoenix.arize.com")
 
 
 class LangfuseConfig(BaseTracingConfig):
@@ -29,13 +101,8 @@ class LangfuseConfig(BaseTracingConfig):
 
     @field_validator("host")
     @classmethod
-    def set_value(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "https://api.langfuse.com"
-        if not v.startswith("https://") and not v.startswith("http://"):
-            raise ValueError("host must start with https:// or http://")
-
-        return v
+    def host_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://api.langfuse.com")
 
 
 class LangSmithConfig(BaseTracingConfig):
@@ -49,13 +116,9 @@ class LangSmithConfig(BaseTracingConfig):
 
     @field_validator("endpoint")
     @classmethod
-    def set_value(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "https://api.smith.langchain.com"
-        if not v.startswith("https://"):
-            raise ValueError("endpoint must start with https://")
-
-        return v
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        # LangSmith only allows HTTPS
+        return validate_url(v, "https://api.smith.langchain.com", allowed_schemes=("https",))
 
 
 class OpikConfig(BaseTracingConfig):
@@ -71,22 +134,12 @@ class OpikConfig(BaseTracingConfig):
     @field_validator("project")
     @classmethod
     def project_validator(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "Default Project"
-
-        return v
+        return cls.validate_project_field(v, "Default Project")
 
     @field_validator("url")
     @classmethod
     def url_validator(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "https://www.comet.com/opik/api/"
-        if not v.startswith(("https://", "http://")):
-            raise ValueError("url must start with https:// or http://")
-        if not v.endswith("/api/"):
-            raise ValueError("url should ends with /api/")
-
-        return v
+        return validate_url_with_path(v, "https://www.comet.com/opik/api/", required_suffix="/api/")
 
 
 class WeaveConfig(BaseTracingConfig):
@@ -102,21 +155,43 @@ class WeaveConfig(BaseTracingConfig):
 
     @field_validator("endpoint")
     @classmethod
-    def set_value(cls, v, info: ValidationInfo):
-        if v is None or v == "":
-            v = "https://trace.wandb.ai"
-        if not v.startswith("https://"):
-            raise ValueError("endpoint must start with https://")
-
-        return v
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        # Weave only allows HTTPS for endpoint
+        return validate_url(v, "https://trace.wandb.ai", allowed_schemes=("https",))
 
     @field_validator("host")
     @classmethod
-    def validate_host(cls, v, info: ValidationInfo):
-        if v is not None and v != "":
-            if not v.startswith(("https://", "http://")):
-                raise ValueError("host must start with https:// or http://")
+    def host_validator(cls, v, info: ValidationInfo):
+        if v is not None and v.strip() != "":
+            return validate_url(v, v, allowed_schemes=("https", "http"))
         return v
+
+
+class AliyunConfig(BaseTracingConfig):
+    """
+    Model class for Aliyun tracing config.
+    """
+
+    app_name: str = "dify_app"
+    license_key: str
+    endpoint: str
+
+    @field_validator("app_name")
+    @classmethod
+    def app_name_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "dify_app")
+
+    @field_validator("license_key")
+    @classmethod
+    def license_key_validator(cls, v, info: ValidationInfo):
+        if not v or v.strip() == "":
+            raise ValueError("License key cannot be empty")
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
 
 
 OPS_FILE_PATH = "ops_trace/"

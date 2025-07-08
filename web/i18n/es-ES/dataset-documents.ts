@@ -29,6 +29,8 @@ const translation = {
       delete: 'Eliminar',
       enableWarning: 'El archivo archivado no puede habilitarse',
       sync: 'Sincronizar',
+      resume: 'Reanudar',
+      pause: 'Pausa',
     },
     index: {
       enable: 'Habilitar',

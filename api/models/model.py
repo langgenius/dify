@@ -892,15 +892,6 @@ class Conversation(Base):
         }
 
 
-class MessageStatus(StrEnum):
-    """
-    Message Status Enum
-    """
-
-    NORMAL = "normal"
-    ERROR = "error"
-
-
 class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (

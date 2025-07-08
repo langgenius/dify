@@ -948,9 +948,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.Answer: {
-      res = (data as AnswerNodeType).variables?.map((v) => {
-        return v.value_selector
-      })
+      res = matchNotSystemVars([(data as AnswerNodeType).answer])
       break
     }
     case BlockEnum.LLM: {
@@ -977,6 +975,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
       break
     }
     case BlockEnum.Code: {
@@ -996,6 +995,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
+
+      const classes = payload.classes.map(c => c.name)
+      res.push(...matchNotSystemVars(classes))
       break
     }
     case BlockEnum.HttpRequest: {

@@ -19,7 +19,8 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
-from models.model import Message, MessageStatus
+from models.enums import MessageStatus
+from models.model import Message
 
 logger = logging.getLogger(__name__)
 

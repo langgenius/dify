@@ -28,6 +28,8 @@ const translation = {
       delete: 'Usuń',
       enableWarning: 'Zarchiwizowany plik nie może zostać włączony',
       sync: 'Synchronizuj',
+      resume: 'Wznawiać',
+      pause: 'Pauza',
     },
     index: {
       enable: 'Włącz',
