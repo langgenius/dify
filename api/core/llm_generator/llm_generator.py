@@ -4,7 +4,6 @@ import re
 from typing import Optional, cast
 
 import json_repair
-from pydantic import BaseModel
 
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
@@ -12,9 +11,10 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
+    PROMPT_OPTIMIZATION_METAPROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
-    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE, PROMPT_OPTIMIZATION_METAPROMPT_SYSTEM,
+    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult

@@ -361,4 +361,4 @@ Both your input and output should be in JSON format.
 ! Above is the schema for output content !
 
 Your output must strictly follow the schema format, do not output any content outside of the JSON body.
-"""
+"""  # noqa: E501
