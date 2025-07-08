@@ -24,7 +24,7 @@ import {
   useFormatTimeFromNow,
 } from '@/app/components/workflow/hooks'
 import Divider from '@/app/components/base/divider'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useToastContext } from '@/app/components/base/toast'
@@ -39,7 +39,7 @@ import Confirm from '@/app/components/base/confirm'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import type { IconInfo } from '@/models/datasets'
 
-const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
 const Popup = () => {
   const { t } = useTranslation()
@@ -191,7 +191,7 @@ const Popup = () => {
                   <div className='flex gap-0.5'>
                     {PUBLISH_SHORTCUT.map(key => (
                       <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
-                        {key}
+                        {getKeyboardKeyNameBySystem(key)}
                       </span>
                     ))}
                   </div>

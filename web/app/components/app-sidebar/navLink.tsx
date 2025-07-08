@@ -48,18 +48,18 @@ export default function NavLink({
         type='button'
         disabled
         className={classNames(
-          'opacity-30 text-components-menu-item-text hover:bg-state-base-hover group flex items-center h-9 rounded-md py-2 system-sm-medium cursor-not-allowed',
-          mode === 'expand' ? 'px-3' : 'px-2.5',
+          'system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-state-base-hover',
+          mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
         )}
         title={mode === 'collapse' ? name : ''}
         aria-disabled
       >
         <NavIcon
           className={classNames(
-            'h-4 w-4 flex-shrink-0',
+            'h-4 w-4 shrink-0',
             mode === 'expand' ? 'mr-2' : 'mr-0',
           )}
-          aria-hidden="true"
+          aria-hidden='true'
         />
         {mode === 'expand' && name}
       </button>
@@ -71,18 +71,20 @@ export default function NavLink({
       key={name}
       href={href}
       className={classNames(
-        isActive ? 'bg-state-accent-active text-text-accent font-semibold' : 'text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
-        'group flex items-center h-9 rounded-md py-2 system-sm-medium',
-        mode === 'expand' ? 'px-3' : 'px-2.5',
+        isActive
+          ? 'system-sm-semibold border-b-[0.25px] border-l-[0.75px] border-r-[0.25px] border-t-[0.75px] border-effects-highlight-lightmode-off bg-state-accent-active text-text-accent-light-mode-only'
+          : 'system-sm-medium text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
+        'flex h-8 items-center rounded-lg',
+        mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
       )}
       title={mode === 'collapse' ? name : ''}
     >
       <NavIcon
         className={classNames(
-          'h-4 w-4 flex-shrink-0',
+          'h-4 w-4 shrink-0',
           mode === 'expand' ? 'mr-2' : 'mr-0',
         )}
-        aria-hidden="true"
+        aria-hidden='true'
       />
       {mode === 'expand' && name}
     </Link>

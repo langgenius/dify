@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useShallow } from 'zustand/react/shallow'
-import { RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppInfo from './app-info'
@@ -11,6 +10,10 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
+import Divider from '../base/divider'
+import { useHover, useKeyPress } from 'ahooks'
+import ToggleButton from './toggle-button'
+import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -33,15 +36,18 @@ const AppDetailNav = ({
     appSidebarExpand: state.appSidebarExpand,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
+  const sidebarRef = React.useRef<HTMLDivElement>(null)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const expand = appSidebarExpand === 'expand'
 
-  const handleToggle = (state: string) => {
-    setAppSidebarExpand(state === 'expand' ? 'collapse' : 'expand')
-  }
+  const handleToggle = useCallback(() => {
+    setAppSidebarExpand(appSidebarExpand === 'expand' ? 'collapse' : 'expand')
+  }, [appSidebarExpand, setAppSidebarExpand])
 
-  // // Check if the current path is a workflow canvas & fullscreen
+  const isHoveringSidebar = useHover(sidebarRef)
+
+  // Check if the current path is a workflow canvas & fullscreen
   const pathname = usePathname()
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
@@ -60,16 +66,22 @@ const AppDetailNav = ({
     }
   }, [appSidebarExpand, setAppSidebarExpand])
 
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.b`, (e) => {
+    e.preventDefault()
+    handleToggle()
+  }, { exactMatch: true, useCapture: true })
+
   if (inWorkflowCanvas && hideHeader) {
- return (
+    return (
       <div className='flex w-0 shrink-0'>
         <AppSidebarDropdown navigation={navigation} />
       </div>
     )
-}
+  }
 
   return (
     <div
+      ref={sidebarRef}
       className={`
         flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all
         ${expand ? 'w-[216px]' : 'w-14'}
@@ -91,14 +103,30 @@ const AppDetailNav = ({
           />
         )}
       </div>
-      <div className='px-4'>
-        <div className={cn('mx-auto mt-1 h-[1px] bg-divider-subtle', !expand && 'w-6')} />
+      <div className='relative px-4 py-2'>
+        <Divider
+          type='horizontal'
+          bgStyle={expand ? 'gradient' : 'solid'}
+          className={cn(
+            'my-0 h-px',
+            expand
+              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              : 'bg-divider-subtle',
+          )}
+        />
+        {!isMobile && isHoveringSidebar && (
+          <ToggleButton
+            className='absolute -right-3 top-[-3.5px] z-20'
+            expand={expand}
+            handleToggle={handleToggle}
+          />
+        )}
       </div>
       <nav
-        className={`
-          grow space-y-1
-          ${expand ? 'p-4' : 'px-2.5 py-4'}
-        `}
+        className={cn(
+          'flex grow flex-col gap-y-0.5',
+          expand ? 'px-3 py-2' : 'p-3',
+        )}
       >
         {navigation.map((item, index) => {
           return (
@@ -113,27 +141,6 @@ const AppDetailNav = ({
           )
         })}
       </nav>
-      {
-        !isMobile && (
-          <div
-            className={`
-              shrink-0 py-3
-              ${expand ? 'px-6' : 'px-4'}
-            `}
-          >
-            <div
-              className='flex h-6 w-6 cursor-pointer items-center justify-center'
-              onClick={() => handleToggle(appSidebarExpand)}
-            >
-              {
-                expand
-                  ? <RiLayoutRight2Line className='h-5 w-5 text-components-menu-item-text' />
-                  : <RiLayoutLeft2Line className='h-5 w-5 text-components-menu-item-text' />
-              }
-            </div>
-          </div>
-        )
-      }
     </div>
   )
 }
