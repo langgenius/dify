@@ -30,6 +30,8 @@ import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
 import DataSourceProvider from './data-source/store/provider'
 import { useDataSourceStore } from './data-source/store'
+import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
+import { getFileExtension } from './data-source/online-drive/file-list/list/utils'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -46,6 +48,8 @@ const CreateFormPipeline = () => {
   const formRef = useRef<any>(null)
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: supportFileTypesRes } = useFileSupportTypes()
 
   const {
     steps,
@@ -61,8 +65,10 @@ const CreateFormPipeline = () => {
     hidePreviewLocalFile,
   } = useLocalFile()
   const {
+    currentWorkspace,
     onlineDocuments,
     currentDocument,
+    PagesMapAndSelectedPagesId,
     previewOnlineDocumentRef,
     hidePreviewOnlineDocument,
   } = useOnlineDocuments()
@@ -106,6 +112,60 @@ const CreateFormPipeline = () => {
       return isShowVectorSpaceFull || !selectedFileList.length
     return false
   }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
+
+  const showSelect = useMemo(() => {
+    if (datasourceType === DatasourceType.onlineDocument) {
+      const pagesCount = currentWorkspace?.pages.length ?? 0
+      return pagesCount > 0
+    }
+    if (datasourceType === DatasourceType.onlineDrive) {
+      const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
+      return !isBucketList && onlineDriveFileList.length > 0
+    }
+  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
+
+  const supportedFileTypes = useMemo(() => {
+    if (!supportFileTypesRes) return []
+    return Array.from(new Set(supportFileTypesRes.allowed_extensions.map(item => item.toLowerCase())))
+  }, [supportFileTypesRes])
+
+  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
+    file_size_limit: 15,
+    batch_count_limit: 5,
+  }, [fileUploadConfigResponse])
+
+  const totalOptions = useMemo(() => {
+    if (datasourceType === DatasourceType.onlineDocument)
+      return currentWorkspace?.pages.length
+    if (datasourceType === DatasourceType.onlineDrive) {
+      return onlineDriveFileList.filter((item) => {
+        if (item.type === 'bucket') return false
+        if (item.type === 'folder') return true
+        if (item.type === 'file')
+          return supportedFileTypes.includes(getFileExtension(item.key))
+        return false
+      }).length
+    }
+  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList, supportedFileTypes])
+
+  const selectedOptions = useMemo(() => {
+    if (datasourceType === DatasourceType.onlineDocument)
+      return onlineDocuments.length
+    if (datasourceType === DatasourceType.onlineDrive)
+      return selectedFileList.length
+  }, [datasourceType, onlineDocuments.length, selectedFileList.length])
+
+  const tip = useMemo(() => {
+    if (datasourceType === DatasourceType.onlineDocument)
+      return t('datasetPipeline.addDocuments.selectOnlineDocumentTip', { count: 50 })
+    if (datasourceType === DatasourceType.onlineDrive) {
+      return t('datasetPipeline.addDocuments.selectOnlineDriveTip', {
+        count: fileUploadConfig.batch_count_limit,
+        fileSize: fileUploadConfig.file_size_limit,
+      })
+    }
+    return ''
+  }, [datasourceType, fileUploadConfig.batch_count_limit, fileUploadConfig.file_size_limit, t])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
@@ -242,6 +302,35 @@ const CreateFormPipeline = () => {
     onClickPreview()
   }, [onClickPreview, previewWebsitePageRef])
 
+  const handleSelectAll = useCallback(() => {
+    const { setOnlineDocuments, setSelectedFileList, setSelectedPagesId } = dataSourceStore.getState()
+    if (datasourceType === DatasourceType.onlineDocument) {
+      const allIds = currentWorkspace?.pages.map(page => page.page_id) || []
+      if (onlineDocuments.length < allIds.length) {
+        const selectedPages = Array.from(allIds).map(pageId => PagesMapAndSelectedPagesId[pageId])
+        setOnlineDocuments(selectedPages)
+        setSelectedPagesId(new Set(allIds))
+      }
+      else {
+        setOnlineDocuments([])
+        setSelectedPagesId(new Set())
+      }
+    }
+    if (datasourceType === DatasourceType.onlineDrive) {
+      const allKeys = onlineDriveFileList.filter((item) => {
+        if (item.type === 'bucket') return false
+        if (item.type === 'folder') return true
+        if (item.type === 'file')
+          return supportedFileTypes.includes(getFileExtension(item.key))
+        return false
+      }).map(file => file.key)
+      if (selectedFileList.length < allKeys.length)
+        setSelectedFileList(allKeys)
+      else
+        setSelectedFileList([])
+    }
+  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileList.length, supportedFileTypes])
+
   if (isFetchingPipelineInfo) {
     return (
       <Loading type='app' />
@@ -295,7 +384,15 @@ const CreateFormPipeline = () => {
                   {isShowVectorSpaceFull && (
                     <VectorSpaceFull />
                   )}
-                  <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
+                  <Actions
+                    showSelect={showSelect}
+                    totalOptions={totalOptions}
+                    selectedOptions={selectedOptions}
+                    onSelectAll={handleSelectAll}
+                    disabled={nextBtnDisabled}
+                    handleNextStep={handleNextStep}
+                    tip={tip}
+                  />
                 </div>
               )
             }

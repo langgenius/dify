@@ -106,6 +106,8 @@ const translation = {
       learnMore: 'Learn more',
     },
     characters: 'characters',
+    selectOnlineDocumentTip: 'Process up to {{count}} pages',
+    selectOnlineDriveTip: 'Process up to {{count}} files, maximum {{fileSize}} MB each',
   },
   documentSettings: {
     title: 'Document Settings',

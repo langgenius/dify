@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import type { OnlineDriveFile } from '@/models/pipeline'
+import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
 import Item from './item'
 import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
 import Loading from '@/app/components/base/loading'
 import { RiLoader2Line } from '@remixicon/react'
 import { useFileSupportTypes } from '@/service/use-common'
-import { isFile } from '../../utils'
 import { getFileExtension } from './utils'
 import { useDataSourceStore } from '../../../store'
 
@@ -84,7 +83,7 @@ const List = ({
             fileList.map((file) => {
               const isSelected = selectedFileList.includes(file.key)
               const extension = getFileExtension(file.key)
-              const disabled = isFile(file.key) && !supportedFileTypes.includes(extension)
+              const disabled = file.type === OnlineDriveFileType.file && !supportedFileTypes.includes(extension)
               return (
                 <Item
                   key={file.key}

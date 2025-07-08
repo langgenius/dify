@@ -23,7 +23,7 @@ export type OnlineDriveData = {
 
 export type DataSourceNodeCompletedResponse = {
   event: 'datasource_completed'
-  data: OnlineDriveData[]
+  data: any
   time_consuming: number
 }
 

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -83,10 +84,28 @@ export const useLocalFile = () => {
 }
 
 export const useOnlineDocuments = () => {
+  const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
+  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
   const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
   const previewOnlineDocumentRef = useDataSourceStoreWithSelector(state => state.previewOnlineDocumentRef)
   const currentDocument = useDataSourceStoreWithSelector(state => state.currentDocument)
   const dataSourceStore = useDataSourceStore()
+
+  const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
+
+  const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
+    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+      next.pages.forEach((page) => {
+        prev[page.page_id] = {
+          ...page,
+          workspace_id: next.workspace_id,
+        }
+      })
+
+      return prev
+    }, {})
+    return pagesMap
+  }, [documentsData])
 
   const hidePreviewOnlineDocument = useCallback(() => {
     const { setCurrentDocument } = dataSourceStore.getState()
@@ -94,8 +113,10 @@ export const useOnlineDocuments = () => {
   }, [dataSourceStore])
 
   return {
+    currentWorkspace,
     onlineDocuments,
     currentDocument,
+    PagesMapAndSelectedPagesId,
     previewOnlineDocumentRef,
     hidePreviewOnlineDocument,
   }

@@ -106,6 +106,8 @@ const translation = {
       learnMore: '了解更多',
     },
     characters: '字符',
+    selectOnlineDocumentTip: '最多处理 {{count}} 页',
+    selectOnlineDriveTip: '最多处理 {{count}} 个文件，每个文件最大 {{fileSize}} MB',
   },
   documentSettings: {
     title: '文档设置',
