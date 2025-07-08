@@ -1,7 +1,7 @@
 """add always_new_chat boolean field to apps and sites (default true)
 
 Revision ID: 0001_add_always_new_chat
-Revises: 
+Revises:
 Create Date: 2025-07-08 00:00:00.000000
 """
 
@@ -21,4 +21,4 @@ def upgrade():
 
 def downgrade():
     for table in ('apps', 'sites'):
-        op.drop_column(table, 'always_new_chat') 
+        op.drop_column(table, 'always_new_chat')

@@ -120,6 +120,7 @@ export const useEmbeddedChatbot = () => {
     defaultValue: {},
   })
   const allowResetChat = !conversationId
+  const [userSelectedConversation, setUserSelectedConversation] = useState(false)
   const currentConversationId = useMemo(() => {
     if (appData?.site?.always_new_chat && !userSelectedConversation)
       return ''
@@ -164,8 +165,6 @@ export const useEmbeddedChatbot = () => {
   )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
-  const [userSelectedConversation, setUserSelectedConversation] = useState(false)
-
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
