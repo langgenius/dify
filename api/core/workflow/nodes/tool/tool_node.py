@@ -285,7 +285,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                         for key, value in msg_metadata.items()
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
-                if message.message.json_object:
+                if message.message.json_object is not None:
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
@@ -392,9 +392,9 @@ class ToolNode(BaseNode[ToolNodeData]):
         # Step 2: normalize JSON into {"data": [...]}
         if json:
             if isinstance(json, list):
-                json_output.append({"data": json})
+                json_output.extend(json)
             else:
-                json_output.append({"data": [json]})
+                json_output.append(json)
         else:
             json_output.append({"data": []})
 
