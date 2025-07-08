@@ -139,7 +139,7 @@ export const useResetConversationVar = (appId: string) => {
 export const useResetToLastRunValue = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'reset to last run value', appId],
-    mutationFn: async (varId: string) => {
+    mutationFn: async (varId: string): Promise<{ value: any }> => {
       return put(`apps/${appId}/workflows/draft/variables/${varId}/reset`)
     },
   })

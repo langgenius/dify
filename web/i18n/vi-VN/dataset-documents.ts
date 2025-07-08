@@ -388,6 +388,8 @@ const translation = {
     clearFilter: 'Bộ lọc rõ ràng',
     chunk: 'Khúc',
     edited: 'EDITED',
+    keywordDuplicate: 'Từ khóa đã tồn tại',
+    keywordEmpty: 'Từ khóa không được để trống',
   },
 }
 
