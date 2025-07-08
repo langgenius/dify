@@ -100,6 +100,12 @@ class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass
 
 
+# The `VariableUnion`` type is used to enable serialization and deserialization with Pydantic.
+# Use `Variable` for type hinting when serialization is not required.
+#
+# Note:
+# - All variants in `VariableUnion` must inherit from the `Variable` class.
+# - The union must include all non-abstract subclasses of `Segment`, except:
 VariableUnion: TypeAlias = Annotated[
     (
         Annotated[NoneVariable, Tag(SegmentType.NONE)]

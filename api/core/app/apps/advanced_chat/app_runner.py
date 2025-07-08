@@ -153,7 +153,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
-                # TODO(QuantumGhost): find a better way to resolve typing issue.
+                # Based on the definition of `VariableUnion`,
+                # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
                 conversation_variables=cast(list[VariableUnion], conversation_variables),
             )
 

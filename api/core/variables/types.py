@@ -43,8 +43,11 @@ class SegmentType(StrEnum):
 
     @classmethod
     def infer_segment_type(cls, value: Any) -> Optional["SegmentType"]:
-        """Try to infer the SegmentType from the Python type of
-        the `value` parameter.
+        """
+        Attempt to infer the `SegmentType` based on the Python type of the `value` parameter.
+
+        Returns `None` if no appropriate `SegmentType` can be determined for the given `value`.
+        For example, this may occur if the input is a generic Python object of type `object`.
         """
 
         if isinstance(value, list):

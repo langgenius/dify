@@ -34,10 +34,6 @@ class VariablePool(BaseModel):
         description="User inputs",
         default_factory=dict,
     )
-    # system_variables: Mapping[SystemVariableKey, Any] = Field(
-    #     description="System variables",
-    #     default_factory=dict,
-    # )
     system_variables: SystemVariable = Field(
         description="System variables",
     )
@@ -92,6 +88,8 @@ class VariablePool(BaseModel):
         # Ensure the first-level key exists in the dictionary
         if key not in self.variable_dictionary:
             self.variable_dictionary[key] = {}
+        # Based on the definition of `VariableUnion`,
+        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
         self.variable_dictionary[key][hash_key] = cast(VariableUnion, variable)
 
     @classmethod
@@ -199,7 +197,3 @@ class VariablePool(BaseModel):
     @classmethod
     def loads(cls, json_data: str) -> "VariablePool":
         return VariablePool.model_validate_json(json_data)
-
-    def reload_storage_keys_for_file_types(self):
-        # TODO
-        pass

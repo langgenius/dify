@@ -693,7 +693,9 @@ def _setup_variable_pool(
         system_variables=system_variable,
         user_inputs=user_inputs,
         environment_variables=workflow.environment_variables,
-        conversation_variables=cast(list[VariableUnion], conversation_variables),
+        # Based on the definition of `VariableUnion`,
+        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+        conversation_variables=cast(list[VariableUnion], conversation_variables),  #
     )
 
     return variable_pool

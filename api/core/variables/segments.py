@@ -1,7 +1,7 @@
 import json
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
@@ -205,7 +205,15 @@ def get_segment_discriminator(v: Any) -> SegmentType | None:
         return None
 
 
-SegmentUnion = Annotated[
+# The `SegmentUnion`` type is used to enable serialization and deserialization with Pydantic.
+# Use `Segment` for type hinting when serialization is not required.
+#
+# Note:
+# - All variants in `SegmentUnion` must inherit from the `Segment` class.
+# - The union must include all non-abstract subclasses of `Segment`, except:
+#   - `SegmentGroup`, which is not added to the variable pool.
+#   - `Variable` and its subclasses, which are handled by `VariableUnion`.
+SegmentUnion: TypeAlias = Annotated[
     (
         Annotated[NoneSegment, Tag(SegmentType.NONE)]
         | Annotated[StringSegment, Tag(SegmentType.STRING)]
