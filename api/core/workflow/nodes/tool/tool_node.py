@@ -374,7 +374,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
         json_output: list[dict[str, Any]] = []
 
-        # Step 1: append each agent log as its own dict
+        # Step 1: append each agent log as its own dict.
         if agent_logs:
             for log in agent_logs:
                 json_output.append(
@@ -389,7 +389,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                         "node_id": log.node_id,
                     }
                 )
-        # Step 2: normalize JSON into {"data": [...]}
+        # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
         if json:
             if isinstance(json, list):
                 json_output.extend(json)
