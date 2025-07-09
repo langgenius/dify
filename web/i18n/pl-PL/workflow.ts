@@ -129,6 +129,8 @@ const translation = {
       value: 'Wartość',
       valuePlaceholder: 'wartość środowiska',
       secretTip: 'Używane do definiowania wrażliwych informacji lub danych, z ustawieniami DSL skonfigurowanymi do zapobiegania wyciekom.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisz zmienną',
     },
     export: {
       title: 'Eksportować tajne zmienne środowiskowe?',
@@ -536,6 +538,10 @@ const translation = {
       curl: {
         placeholder: 'Wklej tutaj ciąg cURL',
         title: 'Importowanie z cURL',
+      },
+      verifySSL: {
+        title: 'Zweryfikuj certyfikat SSL',
+        warningTooltip: 'Wyłączenie weryfikacji SSL nie jest zalecane w środowiskach produkcyjnych. Powinno to być używane tylko w rozwoju lub testowaniu, ponieważ naraża połączenie na zagrożenia bezpieczeństwa, takie jak ataki typu man-in-the-middle.',
       },
     },
     code: {

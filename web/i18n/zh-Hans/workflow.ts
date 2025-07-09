@@ -127,6 +127,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '变量值',
       secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
+      description: '描述',
+      descriptionPlaceholder: '变量的描述',
     },
     export: {
       title: '导出 Secret 类型环境变量？',
@@ -548,6 +550,10 @@ const translation = {
       curl: {
         title: '导入 cURL',
         placeholder: '粘贴 cURL 字符串',
+      },
+      verifySSL: {
+        title: '验证 SSL 证书',
+        warningTooltip: '不建议在生产环境中禁用 SSL 验证。这仅应在开发或测试中使用，因为它会使连接容易受到诸如中间人攻击等安全威胁。',
       },
     },
     code: {

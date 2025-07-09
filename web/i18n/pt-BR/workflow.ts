@@ -129,6 +129,8 @@ const translation = {
       value: 'Valor',
       valuePlaceholder: 'valor da env',
       secretTip: 'Usado para definir informações ou dados sensíveis, com configurações DSL configuradas para prevenção de vazamentos.',
+      description: 'Descrição',
+      descriptionPlaceholder: 'Descreva a variável',
     },
     export: {
       title: 'Exportar variáveis de ambiente secretas?',
@@ -536,6 +538,10 @@ const translation = {
       curl: {
         placeholder: 'Cole a string cURL aqui',
         title: 'Importar do cURL',
+      },
+      verifySSL: {
+        title: 'Verificar o certificado SSL',
+        warningTooltip: 'Desabilitar a verificação SSL não é recomendado para ambientes de produção. Isso deve ser usado apenas em desenvolvimento ou teste, pois torna a conexão vulnerável a ameaças de segurança, como ataques man-in-the-middle.',
       },
     },
     code: {

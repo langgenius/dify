@@ -127,6 +127,8 @@ const translation = {
       value: 'Value',
       valuePlaceholder: 'env value',
       secretTip: 'Used to define sensitive information or data, with DSL settings configured for leak prevention.',
+      description: 'Description',
+      descriptionPlaceholder: 'Describe the variable',
     },
     export: {
       title: 'Export Secret environment variables?',
@@ -547,6 +549,10 @@ const translation = {
       curl: {
         title: 'Import from cURL',
         placeholder: 'Paste cURL string here',
+      },
+      verifySSL: {
+        title: 'Verify SSL Certificate',
+        warningTooltip: 'Disabling SSL verification is not recommended for production environments. This should only be used in development or testing, as it makes the connection vulnerable to security threats like man-in-the-middle attacks.',
       },
     },
     code: {

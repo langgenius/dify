@@ -59,6 +59,11 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import {
+  AuthorizedInNode,
+  PluginAuth,
+} from '@/app/components/plugins/plugin-auth'
+import { canFindTool } from '@/utils'
 
 type BasePanelProps = {
   children: ReactNode
@@ -215,6 +220,22 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
+  const buildInTools = useStore(s => s.buildInTools)
+  const currCollection = useMemo(() => {
+    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
+  }, [buildInTools, data.provider_id])
+  const showPluginAuth = useMemo(() => {
+    return data.type === BlockEnum.Tool && currCollection?.allow_delete && !currCollection.is_team_authorization
+  }, [currCollection, data.type])
+  const handleAuthorizationItemClick = useCallback((id: string) => {
+    handleNodeDataUpdate({
+      id,
+      data: {
+        credential_id: id === '__workspace_default__' ? undefined : id,
+      },
+    })
+  }, [handleNodeDataUpdate])
+
   if(logParams.showSpecialResultPanel) {
     return (
     <div className={cn(
@@ -347,12 +368,39 @@ const BasePanel: FC<BasePanelProps> = ({
               onChange={handleDescriptionChange}
             />
           </div>
-          <div className='pl-4'>
-            <Tab
-              value={tabType}
-              onChange={setTabType}
-            />
-          </div>
+          {
+            showPluginAuth && (
+              <PluginAuth
+                provider={currCollection?.name}
+              >
+                <div className='pl-4'>
+                  <Tab
+                    value={tabType}
+                    onChange={setTabType}
+                  />
+                </div>
+              </PluginAuth>
+            )
+          }
+          {
+            !showPluginAuth && (
+              <div className='flex items-center justify-between pl-4 pr-3'>
+                <Tab
+                  value={tabType}
+                  onChange={setTabType}
+                />
+                {
+                  currCollection?.allow_delete && (
+                    <AuthorizedInNode
+                      provider={currCollection?.name}
+                      onAuthorizationItemClick={handleAuthorizationItemClick}
+                      credentialId={data.credential_id}
+                    />
+                  )
+                }
+              </div>
+            )
+          }
           <Split />
         </div>
 

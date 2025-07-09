@@ -129,6 +129,8 @@ const translation = {
       value: 'Giá trị',
       valuePlaceholder: 'giá trị môi trường',
       secretTip: 'Được sử dụng để xác định thông tin hoặc dữ liệu nhạy cảm, với cài đặt DSL được cấu hình để ngăn chặn rò rỉ.',
+      description: 'Mô tả',
+      descriptionPlaceholder: 'Mô tả biến',
     },
     export: {
       title: 'Xuất biến môi trường bí mật?',
@@ -536,6 +538,10 @@ const translation = {
       curl: {
         title: 'Nhập từ cURL',
         placeholder: 'Dán chuỗi cURL vào đây',
+      },
+      verifySSL: {
+        title: 'Xác thực chứng chỉ SSL',
+        warningTooltip: 'Việc vô hiệu hóa xác minh SSL không được khuyến khích cho các môi trường sản xuất. Điều này chỉ nên được sử dụng trong phát triển hoặc thử nghiệm, vì nó làm cho kết nối dễ bị tổn thương trước các mối đe dọa an ninh như cuộc tấn công man-in-the-middle.',
       },
     },
     code: {

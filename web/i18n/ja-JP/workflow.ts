@@ -127,6 +127,8 @@ const translation = {
       value: '値',
       valuePlaceholder: '変数値を入力',
       secretTip: 'この変数は機密情報やデータを定義するために使用されます。DSL をエクスポートするときに漏洩防止メカニズムを設定されます。',
+      description: '説明',
+      descriptionPlaceholder: '変数の説明を入力',
     },
     export: {
       title: 'シークレット環境変数をエクスポートしますか？',
@@ -542,6 +544,10 @@ const translation = {
       curl: {
         title: 'cURL からインポート',
         placeholder: 'ここに cURL 文字列を貼り付けます',
+      },
+      verifySSL: {
+        title: 'SSL証明書を確認する',
+        warningTooltip: 'SSL検証を無効にすることは、本番環境では推奨されません。これは開発またはテストのみに使用すべきであり、中間者攻撃などのセキュリティ脅威に対して接続を脆弱にするためです。',
       },
     },
     code: {

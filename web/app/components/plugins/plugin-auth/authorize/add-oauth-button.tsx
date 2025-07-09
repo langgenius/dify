@@ -1,0 +1,72 @@
+import {
+  memo,
+  useState,
+} from 'react'
+import { RiEqualizer2Line } from '@remixicon/react'
+import Button from '@/app/components/base/button'
+import type { ButtonProps } from '@/app/components/base/button'
+import OAuthClientSettings from './oauth-client-settings'
+import cn from '@/utils/classnames'
+
+export type AddOAuthButtonProps = {
+  buttonVariant?: ButtonProps['variant']
+  buttonText?: string
+  className?: string
+  buttonLeftClassName?: string
+  buttonRightClassName?: string
+  dividerClassName?: string
+  disabled?: boolean
+}
+const AddOAuthButton = ({
+  buttonVariant = 'primary',
+  buttonText = 'use oauth',
+  className,
+  buttonLeftClassName,
+  buttonRightClassName,
+  dividerClassName,
+  disabled,
+}: AddOAuthButtonProps) => {
+  const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        variant={buttonVariant}
+        className={cn(
+          'grow px-0 py-0 hover:bg-components-button-primary-bg',
+          className,
+        )}
+        disabled={disabled}
+      >
+        <div className={cn(
+          'flex h-full grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
+          buttonLeftClassName,
+        )}>
+          {buttonText}
+        </div>
+        <div className={cn(
+          'h-4 w-[1px] bg-text-primary-on-surface opacity-[0.15]',
+          dividerClassName,
+        )}></div>
+        <div
+          className={cn(
+            'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
+            buttonRightClassName,
+          )}
+          onClick={() => setIsOAuthSettingsOpen(true)}
+        >
+          <RiEqualizer2Line className='h-4 w-4' />
+        </div>
+      </Button>
+      {
+        isOAuthSettingsOpen && (
+          <OAuthClientSettings
+            onClose={() => setIsOAuthSettingsOpen(false)}
+          />
+        )
+      }
+    </>
+  )
+}
+
+export default memo(AddOAuthButton)

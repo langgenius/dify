@@ -135,6 +135,8 @@ const translation = {
       valuePlaceholder: '환경 값',
       secretTip:
         '민감한 정보나 데이터를 정의하는 데 사용되며, DSL 설정은 유출 방지를 위해 구성됩니다.',
+      description: '설명',
+      descriptionPlaceholder: '변수에 대해 설명하세요',
     },
     export: {
       title: '비밀 환경 변수를 내보내시겠습니까?',
@@ -564,6 +566,10 @@ const translation = {
       curl: {
         title: 'cURL 에서 가져오기',
         placeholder: '여기에 cURL 문자열 붙여 넣기',
+      },
+      verifySSL: {
+        title: 'SSL 인증서 확인',
+        warningTooltip: 'SSL 검증을 비활성화하는 것은 프로덕션 환경에서는 권장되지 않습니다. 이는 연결이 중간자 공격과 같은 보안 위협에 취약하게 만들므로 개발 또는 테스트에서만 사용해야 합니다.',
       },
     },
     code: {

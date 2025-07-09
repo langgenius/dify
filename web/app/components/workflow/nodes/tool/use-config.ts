@@ -13,7 +13,7 @@ import {
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
-import type { InputVar, Var } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import {
   useFetchToolsData,
   useNodesReadOnly,
