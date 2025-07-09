@@ -12,8 +12,6 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import { RiInformation2Line } from '@remixicon/react'
-import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -21,78 +19,15 @@ import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import Tooltip from '@/app/components/base/tooltip'
-import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
-import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
-import NoLinkedAppsPanel from '@/app/components/datasets/no-linked-apps-panel'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import useDocumentTitle from '@/hooks/use-document-title'
+import ExtraInfo from '@/app/components/datasets/extra-info'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { datasetId: string }
 }
-
-type IExtraInfoProps = {
-  relatedApps?: RelatedAppResponse
-  documentCount?: number
-  expand: boolean
-}
-
-const ExtraInfo = React.memo(({
-  relatedApps,
-  documentCount,
-  expand,
-}: IExtraInfoProps) => {
-  const { t } = useTranslation()
-
-  const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
-  const relatedAppsTotal = relatedApps?.data?.length || 0
-
-  return (
-    <>
-      {!expand && (
-        <div className='flex items-center gap-x-0.5 p-2 pb-3'>
-          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
-            <div className='system-md-semibold-uppercase text-text-secondary'>
-              {documentCount ?? '--'}
-            </div>
-            <div className='system-2xs-medium-uppercase text-text-tertiary'>
-              {t('common.datasetMenus.documents')}
-            </div>
-          </div>
-          <div className='py-2 pl-0.5 pr-1.5'>
-            <Divider className='text-test-divider-regular h-full w-fit' />
-          </div>
-          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
-            <div className='system-md-semibold-uppercase text-text-secondary'>
-              {relatedAppsTotal ?? '--'}
-            </div>
-            <Tooltip
-              position='top-start'
-              noDecoration
-              needsDelay
-              popupContent={
-                hasRelatedApps ? (
-                  <LinkedAppsPanel
-                    relatedApps={relatedApps.data}
-                    isMobile={expand}
-                  />
-                ) : <NoLinkedAppsPanel />
-              }
-            >
-              <div className='system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary'>
-                <span>{t('common.datasetMenus.relatedApp')}</span>
-                <RiInformation2Line className='size-3' />
-              </div>
-            </Tooltip>
-          </div>
-        </div>
-      )}
-    </>
-  )
-})
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
@@ -186,13 +121,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
             navigation={navigation}
             extraInfo={
               !isCurrentWorkspaceDatasetOperator
-                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'collapse'} documentCount={datasetRes?.document_count} />
+                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }
             iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
           />
         )}
-        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
+        <div className='grow overflow-hidden bg-background-default-subtle'>{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

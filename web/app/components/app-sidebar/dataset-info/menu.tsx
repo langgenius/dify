@@ -19,36 +19,18 @@ const Menu = ({
 }: MenuProps) => {
   const { t } = useTranslation()
 
-  const onClickRename = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    openRenameModal()
-  }
-
-  const onClickExport = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    handleExportPipeline()
-  }
-
-  const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    detectIsUsedByApp()
-  }
-
   return (
     <div className='flex w-[200px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
       <div className='flex flex-col p-1'>
         <MenuItem
           Icon={RiEditLine}
           name={t('common.operation.edit')}
-          handleClick={onClickRename}
+          handleClick={openRenameModal}
         />
         <MenuItem
           Icon={RiFileDownloadLine}
           name={t('datasetPipeline.operations.exportPipeline')}
-          handleClick={onClickExport}
+          handleClick={handleExportPipeline}
         />
       </div>
       {showDelete && (
@@ -58,7 +40,7 @@ const Menu = ({
             <MenuItem
               Icon={RiDeleteBinLine}
               name={t('common.operation.delete')}
-              handleClick={onClickDelete}
+              handleClick={detectIsUsedByApp}
             />
           </div>
         </>

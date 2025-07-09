@@ -19,36 +19,18 @@ const Operations = ({
 }: OperationsProps) => {
   const { t } = useTranslation()
 
-  const onClickRename = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    openRenameModal()
-  }
-
-  const onClickExport = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    handleExportPipeline()
-  }
-
-  const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    detectIsUsedByApp()
-  }
-
   return (
     <div className='relative flex w-full flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5'>
       <div className='flex flex-col p-1'>
         <OperationItem
           Icon={RiEditLine}
           name={t('common.operation.edit')}
-          handleClick={onClickRename}
+          handleClick={openRenameModal}
         />
         <OperationItem
           Icon={RiFileDownloadLine}
           name={t('datasetPipeline.operations.exportPipeline')}
-          handleClick={onClickExport}
+          handleClick={handleExportPipeline}
         />
       </div>
       {showDelete && (
@@ -58,7 +40,7 @@ const Operations = ({
             <OperationItem
               Icon={RiDeleteBinLine}
               name={t('common.operation.delete')}
-              handleClick={onClickDelete}
+              handleClick={detectIsUsedByApp}
             />
           </div>
         </>

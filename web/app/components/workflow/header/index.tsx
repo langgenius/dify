@@ -21,6 +21,7 @@ const Header = ({
 }: HeaderProps) => {
   const pathname = usePathname()
   const inWorkflowCanvas = pathname.endsWith('/workflow')
+  const isPipelineCanvas = pathname.endsWith('/pipeline')
   const {
     normal,
     restoring,
@@ -32,7 +33,7 @@ const Header = ({
     <div
       className='absolute left-0 top-0 z-10 flex h-14 w-full items-center justify-between bg-mask-top2bottom-gray-50-to-transparent px-3'
     >
-      {inWorkflowCanvas && maximizeCanvas && <div className='h-14 w-[52px]' />}
+      {(inWorkflowCanvas || isPipelineCanvas) && maximizeCanvas && <div className='h-14 w-[52px]' />}
       {
         normal && (
           <HeaderInNormal

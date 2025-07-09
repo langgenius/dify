@@ -14,6 +14,7 @@ import Divider from '../base/divider'
 import { useHover, useKeyPress } from 'ahooks'
 import ToggleButton from './toggle-button'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
+import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -50,6 +51,7 @@ const AppDetailNav = ({
   // Check if the current path is a workflow canvas & fullscreen
   const pathname = usePathname()
   const inWorkflowCanvas = pathname.endsWith('/workflow')
+  const isPipelineCanvas = pathname.endsWith('/pipeline')
   const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
   const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
   const { eventEmitter } = useEventEmitterContextContext()
@@ -75,6 +77,14 @@ const AppDetailNav = ({
     return (
       <div className='flex w-0 shrink-0'>
         <AppSidebarDropdown navigation={navigation} />
+      </div>
+    )
+  }
+
+  if (isPipelineCanvas && hideHeader) {
+    return (
+      <div className='flex w-0 shrink-0'>
+        <DatasetSidebarDropdown navigation={navigation} />
       </div>
     )
   }
