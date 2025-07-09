@@ -113,8 +113,6 @@ def test_execute_llm(flask_req_ctx):
         },
     )
 
-    credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
-
     # Create a proper LLM result with real entities
     mock_usage = LLMUsage(
         prompt_tokens=30,

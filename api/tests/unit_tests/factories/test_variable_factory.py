@@ -14,9 +14,7 @@ from core.variables import (
     ArrayStringVariable,
     FloatVariable,
     IntegerVariable,
-    ObjectSegment,
     SecretVariable,
-    SegmentType,
     StringVariable,
 )
 from core.variables.exc import VariableError
