@@ -539,6 +539,10 @@ const translation = {
         placeholder: 'Lipiți șirul cURL aici',
         title: 'Importați din cURL',
       },
+      verifySSL: {
+        title: 'Verifică certificatul SSL',
+        warningTooltip: 'Dezactivarea verificării SSL nu este recomandată pentru medii de producție. Acest lucru ar trebui să fie folosit doar în dezvoltare sau testare, deoarece face conexiunea vulnerabilă la amenințări de securitate, cum ar fi atacurile man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Variabile de intrare',
