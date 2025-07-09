@@ -30,8 +30,7 @@ import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
 import DataSourceProvider from './data-source/store/provider'
 import { useDataSourceStore } from './data-source/store'
-import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
-import { getFileExtension } from './data-source/online-drive/file-list/list/utils'
+import { useFileUploadConfig } from '@/service/use-common'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -49,7 +48,6 @@ const CreateFormPipeline = () => {
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesRes } = useFileSupportTypes()
 
   const {
     steps,
@@ -113,11 +111,6 @@ const CreateFormPipeline = () => {
     return false
   }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
 
-  const supportedFileTypes = useMemo(() => {
-    if (!supportFileTypesRes) return []
-    return Array.from(new Set(supportFileTypesRes.allowed_extensions.map(item => item.toLowerCase())))
-  }, [supportFileTypesRes])
-
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
     batch_count_limit: 5,
@@ -131,28 +124,20 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDrive) {
       const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
       return !isBucketList && onlineDriveFileList.filter((item) => {
-        if (item.type === 'bucket') return false
-        if (item.type === 'folder') return true
-        if (item.type === 'file')
-          return supportedFileTypes.includes(getFileExtension(item.key))
-        return false
+        return item.type !== 'bucket'
       }).length > 0
     }
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList, supportedFileTypes])
+  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
 
   const totalOptions = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
       return currentWorkspace?.pages.length
     if (datasourceType === DatasourceType.onlineDrive) {
       return onlineDriveFileList.filter((item) => {
-        if (item.type === 'bucket') return false
-        if (item.type === 'folder') return true
-        if (item.type === 'file')
-          return supportedFileTypes.includes(getFileExtension(item.key))
-        return false
+        return item.type !== 'bucket'
       }).length
     }
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList, supportedFileTypes])
+  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
 
   const selectedOptions = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
@@ -324,18 +309,14 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const allKeys = onlineDriveFileList.filter((item) => {
-        if (item.type === 'bucket') return false
-        if (item.type === 'folder') return true
-        if (item.type === 'file')
-          return supportedFileTypes.includes(getFileExtension(item.key))
-        return false
+        return item.type !== 'bucket'
       }).map(file => file.key)
       if (selectedFileList.length < allKeys.length)
         setSelectedFileList(allKeys)
       else
         setSelectedFileList([])
     }
-  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileList.length, supportedFileTypes])
+  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileList.length])
 
   if (isFetchingPipelineInfo) {
     return (
