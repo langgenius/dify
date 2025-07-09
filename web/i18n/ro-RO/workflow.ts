@@ -129,6 +129,8 @@ const translation = {
       value: 'Valoare',
       valuePlaceholder: 'valoare mediu',
       secretTip: 'Utilizat pentru a defini informații sau date sensibile, cu setări DSL configurate pentru prevenirea scurgerilor.',
+      description: 'Descriere',
+      descriptionPlaceholder: 'Descrieți variabila',
     },
     export: {
       title: 'Exportă variabile de mediu secrete?',

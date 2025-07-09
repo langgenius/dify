@@ -127,6 +127,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '变量值',
       secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
+      description: '描述',
+      descriptionPlaceholder: '变量的描述',
     },
     export: {
       title: '导出 Secret 类型环境变量？',

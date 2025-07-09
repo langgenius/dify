@@ -129,6 +129,8 @@ const translation = {
       value: 'مقدار',
       valuePlaceholder: 'مقدار متغیر',
       secretTip: 'برای تعریف اطلاعات حساس یا داده‌ها، با تنظیمات DSL برای جلوگیری از نشت پیکربندی شده است.',
+      description: 'توضیحات',
+      descriptionPlaceholder: 'متغیر را توصیف کنید',
     },
     export: {
       title: 'آیا متغیرهای محیطی مخفی را صادر کنید؟',

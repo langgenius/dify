@@ -129,6 +129,8 @@ const translation = {
       value: 'valeur',
       valuePlaceholder: 'Valeur de l\'env',
       secretTip: 'Utilisé pour définir des informations ou des données sensibles, avec des paramètres DSL configurés pour la prévention des fuites.',
+      description: 'Description',
+      descriptionPlaceholder: 'Décrivez la variable',
     },
     export: {
       title: 'Exporter des variables d\'environnement secrètes?',
