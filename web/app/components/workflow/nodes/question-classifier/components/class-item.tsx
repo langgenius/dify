@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Topic } from '../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { uniqueId } from 'lodash-es'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -29,6 +30,11 @@ const ClassItem: FC<Props> = ({
   filterVar,
 }) => {
   const { t } = useTranslation()
+  const [instanceId, setInstanceId] = useState(uniqueId())
+
+  useEffect(() => {
+    setInstanceId(`${nodeId}-${uniqueId()}`)
+  }, [nodeId])
 
   const handleNameChange = useCallback((value: string) => {
     onChange({ ...payload, name: value })
@@ -52,6 +58,7 @@ const ClassItem: FC<Props> = ({
       nodesOutputVars={availableVars}
       availableNodes={availableNodesWithParent}
       readOnly={readonly} // ?
+      instanceId={instanceId}
       justVar // ?
       isSupportFileVar // ?
     />

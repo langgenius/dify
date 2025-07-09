@@ -28,6 +28,8 @@ const translation = {
       delete: 'Excluir',
       enableWarning: 'O arquivo arquivado não pode ser habilitado',
       sync: 'Sincronizar',
+      resume: 'Retomar',
+      pause: 'Pausa',
     },
     index: {
       enable: 'Habilitar',

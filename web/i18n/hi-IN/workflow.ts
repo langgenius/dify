@@ -685,6 +685,7 @@ const translation = {
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         className: 'क्लास नाम',
+        usage: 'मॉडल उपयोग जानकारी',
       },
       class: 'क्लास',
       classNamePlaceholder: 'अपना क्लास नाम लिखें',
@@ -699,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'इनपुट वेरिएबल',
+      outputVars: {
+        isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
+        errorReason: 'त्रुटि का कारण',
+        usage: 'मॉडल उपयोग जानकारी',
+      },
       extractParameters: 'पैरामीटर्स निकालें',
       importFromTool: 'उपकरणों से आयात करें',
       addExtractParameter: 'एक्सट्रेक्ट पैरामीटर जोड़ें',
@@ -721,8 +727,6 @@ const translation = {
       reasoningMode: 'रीज़निंग मोड',
       reasoningModeTip:
         'फ़ंक्शन कॉलिंग या प्रॉम्प्ट्स के लिए निर्देशों का जवाब देने की मॉडल की क्षमता के आधार पर उपयुक्त रीज़निंग मोड चुन सकते हैं।',
-      isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
-      errorReason: 'त्रुटि का कारण',
     },
     iteration: {
       deleteTitle: 'इटरेशन नोड हटाएं?',

@@ -669,6 +669,7 @@ const translation = {
       inputVars: 'Variabile de intrare',
       outputVars: {
         className: 'Nume clasă',
+        usage: 'Informații de utilizare a modelului',
       },
       class: 'Clasă',
       classNamePlaceholder: 'Scrieți numele clasei',
@@ -682,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variabilă de intrare',
+      outputVars: {
+        isSuccess: 'Este succes. În caz de succes valoarea este 1, în caz de eșec valoarea este 0.',
+        errorReason: 'Motivul erorii',
+        usage: 'Informații de utilizare a modelului',
+      },
       extractParameters: 'Extrageți parametrii',
       importFromTool: 'Importă din instrumente',
       addExtractParameter: 'Adăugați parametru de extragere',
@@ -701,8 +707,6 @@ const translation = {
       advancedSetting: 'Setare avansată',
       reasoningMode: 'Mod de raționament',
       reasoningModeTip: 'Puteți alege modul de raționament potrivit în funcție de capacitatea modelului de a răspunde la instrucțiuni pentru apelarea funcțiilor sau prompturi.',
-      isSuccess: 'Este succes. În caz de succes valoarea este 1, în caz de eșec valoarea este 0.',
-      errorReason: 'Motivul erorii',
     },
     iteration: {
       deleteTitle: 'Ștergeți nodul de iterație?',

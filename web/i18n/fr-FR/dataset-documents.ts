@@ -28,6 +28,8 @@ const translation = {
       delete: 'Supprimer',
       enableWarning: 'Le fichier archivé ne peut pas être activé',
       sync: 'Synchroniser',
+      pause: 'Pause',
+      resume: 'Reprendre',
     },
     index: {
       enable: 'Activer',
