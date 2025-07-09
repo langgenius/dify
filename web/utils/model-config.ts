@@ -132,7 +132,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
     }
     if (item.type === 'number' || item.type === 'boolean') {
       userInputs.push({
-        number: {
+        [item.type]: {
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
@@ -173,7 +173,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
   return userInputs
 }
 
-export const formatBooleanInputs = (useInputs: PromptVariable[] | null, inputs: Record<string, string | number | object | boolean>) => {
+export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean>) => {
   if(!useInputs)
     return inputs
   const res = { ...(inputs || {}) }
