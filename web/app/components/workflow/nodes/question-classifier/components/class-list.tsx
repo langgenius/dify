@@ -76,18 +76,29 @@ const ClassList: FC<Props> = ({
     >
       {
         list.map((item, index) => {
+          const canDrag = (() => {
+            if (readonly)
+              return false
+
+            if (topicCount < 2)
+              return false
+
+            return true
+          })()
           return (
             <div key={item.id}
                 className={cn(
                   'group relative rounded-[10px] bg-components-panel-bg',
                   `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
             )}>
-              <RiDraggable className={cn(
+              {canDrag && <RiDraggable className={cn(
                 'handle absolute left-0 top-3 hidden h-3 w-3 cursor-pointer text-text-quaternary',
                 topicCount > 1 && 'group-hover:block',
-              )} />
+              )} />}
               <div className={`ml-${handleSideWidth}`}>
                 <Item
+                  className={cn(canDrag && 'handle')}
+                  headerClassName={cn(canDrag && 'cursor-grab')}
                   nodeId={nodeId}
                   key={list[index].id}
                   payload={item}
