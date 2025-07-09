@@ -15,10 +15,9 @@ def check_upgradable_plugin_task():
     click.echo(click.style("Start check upgradable plugin.", fg="green"))
     start_at = time.perf_counter()
 
-    now_seconds_of_day = time.time() % 86400  # we assume the tz is UTC
+    now_seconds_of_day = time.time() % 86400 - 30  # we assume the tz is UTC
     click.echo(click.style("Now seconds of day: {}".format(now_seconds_of_day), fg="green"))
 
-    # 获取需要在下一个AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL内执行的策略
     strategies = (
         db.session.query(TenantPluginAutoUpgradeStrategy)
         .filter(
