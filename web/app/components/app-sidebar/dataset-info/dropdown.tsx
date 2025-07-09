@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import Confirm from '../../base/confirm'
+import { useRouter } from 'next/navigation'
 
 type DropDownProps = {
   expand: boolean
@@ -24,6 +25,7 @@ const DropDown = ({
   expand,
 }: DropDownProps) => {
   const { t } = useTranslation()
+  const { replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
@@ -91,12 +93,13 @@ const DropDown = ({
     try {
       await deleteDataset(dataset.id)
       Toast.notify({ type: 'success', message: t('dataset.datasetDeleted') })
-      refreshDataset()
+      resetDatasetList()
+      replace('/datasets')
     }
     finally {
       setShowConfirmDelete(false)
     }
-  }, [dataset.id, refreshDataset, t])
+  }, [dataset.id, replace, resetDatasetList, t])
 
   return (
     <PortalToFollowElem

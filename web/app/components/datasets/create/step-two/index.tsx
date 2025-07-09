@@ -64,6 +64,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -509,7 +510,7 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
-                              || (rules.parent_mode && rules.subchunk_segmentation)
+        || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)
@@ -555,6 +556,7 @@ const StepTwo = ({
   })
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+  const resetDatasetList = useResetDatasetList()
 
   const createHandle = async () => {
     const params = getCreationParams()
@@ -584,6 +586,7 @@ const StepTwo = ({
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
+    resetDatasetList()
     onStepChange && onStepChange(+1)
     isSetting && onSave && onSave()
   }
