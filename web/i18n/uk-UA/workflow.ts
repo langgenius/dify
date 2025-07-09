@@ -129,6 +129,8 @@ const translation = {
       value: 'Значення',
       valuePlaceholder: 'значення середовища',
       secretTip: 'Використовується для визначення конфіденційної інформації або даних, з налаштуваннями DSL, сконфігурованими для запобігання витоку.',
+      description: 'Опис',
+      descriptionPlaceholder: 'Опишіть змінну',
     },
     export: {
       title: 'Експортувати секретні змінні середовища?',
@@ -669,6 +671,7 @@ const translation = {
       inputVars: 'Вхідні змінні',
       outputVars: {
         className: 'Назва класу',
+        usage: 'Інформація про використання моделі',
       },
       class: 'Клас',
       classNamePlaceholder: 'Напишіть назву вашого класу',
@@ -682,6 +685,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Вхідна змінна',
+      outputVars: {
+        isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
+        errorReason: 'Причина помилки',
+        usage: 'Інформація про використання моделі',
+      },
       extractParameters: 'Витягти параметри',
       importFromTool: 'Імпорт з інструментів',
       addExtractParameter: 'Додати параметр витягування',
@@ -701,8 +709,6 @@ const translation = {
       advancedSetting: 'Розширене налаштування',
       reasoningMode: 'Режим інференції',
       reasoningModeTip: 'Ви можете вибрати відповідний режим інференції залежно від здатності моделі реагувати на інструкції щодо викликів функцій або запитів.',
-      isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
-      errorReason: 'Причина помилки',
     },
     iteration: {
       deleteTitle: 'Видалити вузол ітерації?',

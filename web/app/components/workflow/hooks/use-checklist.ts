@@ -9,6 +9,7 @@ import type {
   CommonNodeType,
   Edge,
   Node,
+  ValueSelector,
 } from '../types'
 import { BlockEnum } from '../types'
 import {
@@ -39,6 +40,8 @@ import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/ty
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
+import useNodesAvailableVarList from './use-nodes-available-var-list'
+import { getNodeUsedVars, isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -52,6 +55,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const { getStartNodes } = useWorkflow()
   const getToolIcon = useGetToolIcon()
+
+  const map = useNodesAvailableVarList(nodes)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -84,6 +89,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
       let moreDataForCheckValid
+      let usedVars: ValueSelector[] = []
 
       if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
@@ -104,10 +110,34 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           isReadyForCheckValid,
         }
       }
+      else {
+        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+      }
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        const { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+        let { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+
+        if (!errorMessage) {
+          const availableVars = map[node.id].availableVars
+
+          for (const variable of usedVars) {
+            const isEnv = isENV(variable)
+            const isConvVar = isConversationVar(variable)
+            const isSysVar = isSystemVar(variable)
+            if (!isEnv && !isConvVar && !isSysVar) {
+              const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
+              if (usedNode) {
+                const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
+                if (!usedVar)
+                  errorMessage = t('workflow.errorMsg.invalidVariable')
+              }
+              else {
+                errorMessage = t('workflow.errorMsg.invalidVariable')
+              }
+            }
+          }
+        }
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
             id: node.id,
@@ -258,7 +288,7 @@ export const useChecklistBeforePublish = () => {
 
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
-    for(let i = 0; i < isRequiredNodesType.length; i++) {
+    for (let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
       if (!filteredNodes.find(node => node.data.type === type)) {
         notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })

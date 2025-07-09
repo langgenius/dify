@@ -151,6 +151,14 @@ const translation = {
       notConfigured: '配置提供商以启用追踪',
       moreProvider: '更多提供商',
     },
+    arize: {
+      title: 'Arize',
+      description: '企业级LLM可观测性、在线和离线评估、监控和实验平台，基于OpenTelemetry构建，专为LLM和代理驱动的应用程序设计。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '开源且基于OpenTelemetry的可观测性、评估、提示工程和实验平台，适用于您的LLM工作流程和代理。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
@@ -177,6 +185,10 @@ const translation = {
     weave: {
       title: '编织',
       description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
+    },
+    aliyun: {
+      title: '大模型可观测',
+      description: '阿里云提供的SaaS化可观测平台，一键开启Dify应用的监控追踪和评估。',
     },
   },
   appSelector: {

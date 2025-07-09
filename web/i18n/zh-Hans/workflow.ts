@@ -128,6 +128,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '变量值',
       secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
+      description: '描述',
+      descriptionPlaceholder: '变量的描述',
     },
     export: {
       title: '导出 Secret 类型环境变量？',
@@ -682,6 +684,7 @@ const translation = {
       inputVars: '输入变量',
       outputVars: {
         className: '分类名称',
+        usage: '模型用量信息',
       },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
@@ -695,6 +698,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '输入变量',
+      outputVars: {
+        isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
+        errorReason: '错误原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取参数',
       importFromTool: '从工具导入',
       addExtractParameter: '添加提取参数',
@@ -714,8 +722,6 @@ const translation = {
       advancedSetting: '高级设置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根据模型对于 Function calling 或 Prompt 的指令响应能力选择合适的推理模式',
-      isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
-      errorReason: '错误原因',
     },
     iteration: {
       deleteTitle: '删除迭代节点？',

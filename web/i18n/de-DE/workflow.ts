@@ -129,6 +129,8 @@ const translation = {
       value: 'Wert',
       valuePlaceholder: 'Umgebungswert',
       secretTip: 'Wird verwendet, um sensible Informationen oder Daten zu definieren, wobei DSL-Einstellungen zur Verhinderung von Lecks konfiguriert sind.',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Beschreiben Sie die Variable',
     },
     export: {
       title: 'Geheime Umgebungsvariablen exportieren?',
@@ -669,6 +671,7 @@ const translation = {
       inputVars: 'Eingabevariablen',
       outputVars: {
         className: 'Klassennamen',
+        usage: 'Nutzungsinformationen des Modells',
       },
       class: 'Klasse',
       classNamePlaceholder: 'Geben Sie Ihren Klassennamen ein',
@@ -682,6 +685,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Eingabevariable',
+      outputVars: {
+        isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
+        errorReason: 'Fehlergrund',
+        usage: 'Nutzungsinformationen des Modells',
+      },
       extractParameters: 'Parameter extrahieren',
       importFromTool: 'Aus Tools importieren',
       addExtractParameter: 'Extraktionsparameter hinzufügen',
@@ -701,8 +709,6 @@ const translation = {
       advancedSetting: 'Erweiterte Einstellung',
       reasoningMode: 'Schlussfolgerungsmodus',
       reasoningModeTip: 'Sie können den entsprechenden Schlussfolgerungsmodus basierend auf der Fähigkeit des Modells wählen, auf Anweisungen zur Funktionsaufruf- oder Eingabeaufforderungen zu reagieren.',
-      isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
-      errorReason: 'Fehlergrund',
     },
     iteration: {
       deleteTitle: 'Iterationsknoten löschen?',

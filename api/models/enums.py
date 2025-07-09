@@ -23,3 +23,12 @@ class DraftVariableType(StrEnum):
     NODE = "node"
     SYS = "sys"
     CONVERSATION = "conversation"
+
+
+class MessageStatus(StrEnum):
+    """
+    Message Status Enum
+    """
+
+    NORMAL = "normal"
+    ERROR = "error"

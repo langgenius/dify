@@ -129,6 +129,8 @@ const translation = {
       value: 'مقدار',
       valuePlaceholder: 'مقدار متغیر',
       secretTip: 'برای تعریف اطلاعات حساس یا داده‌ها، با تنظیمات DSL برای جلوگیری از نشت پیکربندی شده است.',
+      description: 'توضیحات',
+      descriptionPlaceholder: 'متغیر را توصیف کنید',
     },
     export: {
       title: 'آیا متغیرهای محیطی مخفی را صادر کنید؟',
@@ -669,6 +671,7 @@ const translation = {
       inputVars: 'متغیرهای ورودی',
       outputVars: {
         className: 'نام کلاس',
+        usage: 'اطلاعات استفاده از مدل',
       },
       class: 'کلاس',
       classNamePlaceholder: 'نام کلاس خود را بنویسید',
@@ -682,6 +685,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'متغیر ورودی',
+      outputVars: {
+        isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
+        errorReason: 'دلیل خطا',
+        usage: 'اطلاعات استفاده از مدل',
+      },
       extractParameters: 'استخراج پارامترها',
       importFromTool: 'وارد کردن از ابزارها',
       addExtractParameter: 'افزودن پارامتر استخراج شده',
@@ -701,8 +709,6 @@ const translation = {
       advancedSetting: 'تنظیمات پیشرفته',
       reasoningMode: 'حالت استدلال',
       reasoningModeTip: 'می‌توانید حالت استدلال مناسب را بر اساس توانایی مدل برای پاسخ به دستورات برای فراخوانی عملکردها یا پیشنهادات انتخاب کنید.',
-      isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
-      errorReason: 'دلیل خطا',
     },
     iteration: {
       deleteTitle: 'حذف نود تکرار؟',

@@ -157,6 +157,7 @@ export type EnvironmentVariable = {
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
+  description: string
 }
 
 export type ConversationVariable = {

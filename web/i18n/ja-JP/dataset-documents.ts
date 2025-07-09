@@ -30,6 +30,8 @@ const translation = {
       delete: '削除',
       enableWarning: 'アーカイブされたファイルは有効にできません',
       sync: '同期',
+      pause: '一時停止',
+      resume: '再開',
     },
     index: {
       enable: '有効にする',

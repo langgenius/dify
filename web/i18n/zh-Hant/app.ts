@@ -136,6 +136,14 @@ const translation = {
       notConfigured: '配置提供商以啟用追蹤',
       moreProvider: '更多提供商',
     },
+    arize: {
+      title: 'Arize',
+      description: '企業級LLM可觀測性、線上與離線評估、監控和實驗平台，基於OpenTelemetry構建，專為LLM和代理驅動的應用程式設計。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '開源且基於OpenTelemetry的可觀測性、評估、提示工程和實驗平台，適用於您的LLM工作流程和代理。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: '一個全方位的開發者平台，用於 LLM 驅動的應用程式生命週期的每個步驟。',

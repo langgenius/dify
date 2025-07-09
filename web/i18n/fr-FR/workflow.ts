@@ -129,6 +129,8 @@ const translation = {
       value: 'valeur',
       valuePlaceholder: 'Valeur de l\'env',
       secretTip: 'Utilisé pour définir des informations ou des données sensibles, avec des paramètres DSL configurés pour la prévention des fuites.',
+      description: 'Description',
+      descriptionPlaceholder: 'Décrivez la variable',
     },
     export: {
       title: 'Exporter des variables d\'environnement secrètes?',
@@ -669,6 +671,7 @@ const translation = {
       inputVars: 'Variables de saisie',
       outputVars: {
         className: 'Nom de la classe',
+        usage: 'Informations sur l\'utilisation du modèle',
       },
       class: 'Classe',
       classNamePlaceholder: 'Écrivez le nom de votre classe',
@@ -682,6 +685,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variable de saisie',
+      outputVars: {
+        isSuccess: 'Est réussi. En cas de succès, la valeur est 1, en cas d\'échec, la valeur est 0.',
+        errorReason: 'Raison de l\'erreur',
+        usage: 'Informations sur l\'utilisation du modèle',
+      },
       extractParameters: 'Extraire des paramètres',
       importFromTool: 'Importer des outils',
       addExtractParameter: 'Ajouter un paramètre d\'extraction',
@@ -701,8 +709,6 @@ const translation = {
       advancedSetting: 'Paramètre avancé',
       reasoningMode: 'Mode de raisonnement',
       reasoningModeTip: 'Vous pouvez choisir le mode de raisonnement approprié en fonction de la capacité du modèle à répondre aux instructions pour les appels de fonction ou les invites.',
-      isSuccess: 'Est réussi. En cas de succès, la valeur est 1, en cas d\'échec, la valeur est 0.',
-      errorReason: 'Raison de l\'erreur',
     },
     iteration: {
       deleteTitle: 'Supprimer le nœud d\'itération?',
