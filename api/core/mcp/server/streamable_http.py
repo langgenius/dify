@@ -7,6 +7,7 @@ from configs import dify_config
 from controllers.web.passport import generate_session_id
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types
 from core.mcp.types import INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND
 from core.mcp.utils import create_mcp_error_response
@@ -146,13 +147,32 @@ class MCPServerStreamableHTTPRequestHandler:
         args = request.params.arguments
         if not args:
             raise ValueError("No arguments provided")
-        if self.app.mode in {AppMode.COMPLETION.value, AppMode.WORKFLOW.value}:
+        if self.app.mode in {AppMode.WORKFLOW.value}:
             args = {"inputs": args}
+        elif self.app.mode in {AppMode.COMPLETION.value}:
+            args = {"query": "", "inputs": args}
         else:
             args = {"query": args["query"], "inputs": {k: v for k, v in args.items() if k != "query"}}
-        response = AppGenerateService.generate(self.app, self.end_user, args, InvokeFrom.SERVICE_API, streaming=False)
+        response = AppGenerateService.generate(
+            self.app,
+            self.end_user,
+            args,
+            InvokeFrom.SERVICE_API,
+            streaming=self.app.mode == AppMode.AGENT_CHAT.value,
+        )
+        answer = ""
+        if isinstance(response, RateLimitGenerator):
+            for item in response.generator:
+                data = item
+                if isinstance(data, str) and data.startswith("data: "):
+                    try:
+                        json_str = data[6:].strip()
+                        parsed_data = json.loads(json_str)
+                        if parsed_data.get("event") == "agent_thought":
+                            answer += parsed_data.get("thought", "")
+                    except json.JSONDecodeError:
+                        continue
         if isinstance(response, Mapping):
-            answer = ""
             if self.app.mode in {
                 AppMode.ADVANCED_CHAT.value,
                 AppMode.COMPLETION.value,
@@ -165,8 +185,7 @@ class MCPServerStreamableHTTPRequestHandler:
             else:
                 raise ValueError("Invalid app mode")
             # Not support image yet
-            return types.CallToolResult(content=[types.TextContent(text=answer, type="text")])
-        return None
+        return types.CallToolResult(content=[types.TextContent(text=answer, type="text")])
 
     def retrieve_end_user(self):
         return (
