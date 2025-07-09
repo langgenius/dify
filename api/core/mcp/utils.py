@@ -6,8 +6,6 @@ from configs import dify_config
 from core.mcp.types import ErrorData, JSONRPCError
 from core.model_runtime.utils.encoders import jsonable_encoder
 
-SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
-
 HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
@@ -57,7 +55,7 @@ def create_ssrf_proxy_mcp_http_client(
         )
 
 
-def ssrf_proxy_sse_connect(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
+def ssrf_proxy_sse_connect(url, **kwargs):
     """Connect to SSE endpoint with SSRF proxy protection.
 
     This function creates an SSE connection using the configured proxy settings
@@ -65,7 +63,6 @@ def ssrf_proxy_sse_connect(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
     Args:
         url: The SSE endpoint URL
-        max_retries: Maximum number of retry attempts
         **kwargs: Additional arguments passed to the SSE connection
 
     Returns:

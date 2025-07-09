@@ -39,14 +39,19 @@ class MCPTool(Tool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
+        from core.tools.errors import ToolInvokeError
+
         try:
             with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
                 tool_parameters = self._handle_none_parameter(tool_parameters)
                 result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPAuthError as e:
-            raise ValueError("Please auth the tool first")
+            raise ToolInvokeError("Please auth the tool first") from e
         except MCPConnectionError as e:
-            raise ValueError(f"Failed to connect to MCP server: {e}")
+            raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
+        except Exception as e:
+            raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
+
         for content in result.content:
             if isinstance(content, TextContent):
                 yield self.create_text_message(content.text)

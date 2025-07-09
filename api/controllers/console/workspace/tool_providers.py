@@ -15,7 +15,7 @@ from controllers.console import api
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.auth.auth_provider import OAuthClientProvider
-from core.mcp.error import MCPAuthError
+from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
@@ -942,8 +942,14 @@ class ToolMCPAuthApi(Resource):
 
         except MCPAuthError:
             auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
-
             return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
+        except MCPError as e:
+            MCPToolManageService.update_mcp_provider_credentials(
+                mcp_provider=provider,
+                credentials={},
+                authed=False,
+            )
+            raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 
 class ToolMCPDetailApi(Resource):

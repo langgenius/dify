@@ -185,7 +185,6 @@ class StreamableHTTPTransport:
 
             with ssrf_proxy_sse_connect(
                 self.url,
-                2,
                 headers=headers,
                 timeout=httpx.Timeout(self.timeout.seconds, read=self.sse_read_timeout.seconds),
                 client=client,
@@ -215,7 +214,6 @@ class StreamableHTTPTransport:
 
         with ssrf_proxy_sse_connect(
             self.url,
-            2,
             headers=headers,
             timeout=httpx.Timeout(self.timeout.seconds, read=ctx.sse_read_timeout.seconds),
             client=ctx.client,

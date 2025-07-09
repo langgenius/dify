@@ -1,13 +1,14 @@
 import hashlib
 import json
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.mcp.error import MCPAuthError, MCPConnectionError
+from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -120,7 +121,7 @@ class MCPToolManageService:
                 tools = mcp_client.list_tools()
         except MCPAuthError as e:
             raise ValueError("Please auth the tool first")
-        except MCPConnectionError as e:
+        except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
         mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
         mcp_provider.authed = True
@@ -174,7 +175,7 @@ class MCPToolManageService:
             server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
 
             if server_url_hash != mcp_provider.server_url_hash:
-                cls._re_auth_mcp_provider(mcp_provider, provider_id, tenant_id)
+                cls._re_connect_mcp_provider(mcp_provider, provider_id, tenant_id)
                 mcp_provider.server_url_hash = server_url_hash
         try:
             db.session.commit()
@@ -191,7 +192,9 @@ class MCPToolManageService:
                 raise
 
     @classmethod
-    def update_mcp_provider_credentials(cls, mcp_provider: MCPToolProvider, credentials: dict, authed: bool = False):
+    def update_mcp_provider_credentials(
+        cls, mcp_provider: MCPToolProvider, credentials: dict[str, Any], authed: bool = False
+    ):
         provider_controller = MCPToolProviderController._from_db(mcp_provider)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=mcp_provider.tenant_id,
@@ -202,11 +205,13 @@ class MCPToolManageService:
         mcp_provider.updated_at = datetime.now()
         mcp_provider.encrypted_credentials = json.dumps({**mcp_provider.credentials, **credentials})
         mcp_provider.authed = authed
+        if not authed:
+            mcp_provider.tools = "[]"
         db.session.commit()
 
     @classmethod
-    def _re_auth_mcp_provider(cls, mcp_provider: MCPToolProvider, provider_id: str, tenant_id: str):
-        """re-auth mcp provider"""
+    def _re_connect_mcp_provider(cls, mcp_provider: MCPToolProvider, provider_id: str, tenant_id: str):
+        """re-connect mcp provider"""
         try:
             with MCPClient(
                 mcp_provider.decrypted_server_url,
@@ -221,6 +226,7 @@ class MCPToolManageService:
         except MCPAuthError:
             mcp_provider.authed = False
             mcp_provider.tools = "[]"
-
+        except MCPError as e:
+            raise ValueError(f"Failed to re-connect MCP server: {e}") from e
         # reset credentials
         mcp_provider.encrypted_credentials = "{}"
