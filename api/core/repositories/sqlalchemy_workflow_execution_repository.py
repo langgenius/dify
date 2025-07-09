@@ -17,6 +17,7 @@ from core.workflow.entities.workflow_execution import (
 )
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.helper import extract_tenant_id
 from models import (
     Account,
     CreatorUserRole,
@@ -67,7 +68,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             )
 
         # Extract tenant_id from user
-        tenant_id: str | None = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+        tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
         self._tenant_id = tenant_id
