@@ -1,11 +1,12 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -190,6 +191,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         messages: Generator[ToolInvokeMessage, None, None],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
+        agent_thoughts: Optional[list] = None,
     ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -208,7 +210,7 @@ class ToolNode(BaseNode[ToolNodeData]):
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
-
+        llm_usage: LLMUsage | None = None
         variables: dict[str, Any] = {}
 
         for message in message_stream:
@@ -276,9 +278,10 @@ class ToolNode(BaseNode[ToolNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if self.node_type == NodeType.AGENT:
-                    msg_metadata = message.message.json_object.pop("execution_metadata", {})
+                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                    llm_usage = LLMUsage.from_metadata(msg_metadata)
                     agent_execution_metadata = {
-                        key: value
+                        WorkflowNodeExecutionMetadataKey(key): value
                         for key, value in msg_metadata.items()
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
@@ -366,17 +369,42 @@ class ToolNode(BaseNode[ToolNodeData]):
                     agent_logs.append(agent_log)
 
                 yield agent_log
+        # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
+        json_output: dict[str, Any] = {}
+        if json:
+            if isinstance(json, list) and len(json) == 1:
+                # If json is a list with only one element, convert it to a dictionary
+                json_output = json[0] if isinstance(json[0], dict) else {"data": json[0]}
+            elif isinstance(json, list):
+                # If json is a list with multiple elements, create a dictionary containing all data
+                json_output = {"data": json}
 
+        if agent_logs:
+            # Add agent_logs to json output
+            json_output["agent_logs"] = [
+                {
+                    "id": log.id,
+                    "parent_id": log.parent_id,
+                    "error": log.error,
+                    "status": log.status,
+                    "data": log.data,
+                    "label": log.label,
+                    "metadata": log.metadata,
+                    "node_id": log.node_id,
+                }
+                for log in agent_logs
+            ]
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json, **variables},
+                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
                     WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
+                llm_usage=llm_usage,
             )
         )
 

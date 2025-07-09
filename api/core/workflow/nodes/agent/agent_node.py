@@ -1,4 +1,5 @@
 import json
+import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -13,7 +14,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.provider_manager import ProviderManager
-from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
@@ -102,6 +103,32 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
+            agent_thoughts: list = []
+
+            thought_log_message = ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.LOG,
+                message=ToolInvokeMessage.LogMessage(
+                    id=str(uuid.uuid4()),
+                    label=f"Agent Strategy: {cast(AgentNodeData, self.node_data).agent_strategy_name}",
+                    parent_id=None,
+                    error=None,
+                    status=ToolInvokeMessage.LogMessage.LogStatus.START,
+                    data={
+                        "strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                        "parameters": parameters_for_log,
+                        "thought_process": "Agent strategy execution started",
+                    },
+                    metadata={
+                        "icon": self.agent_strategy_icon,
+                        "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                    },
+                ),
+            )
+
+            def enhanced_message_stream():
+                yield thought_log_message
+
+                yield from message_stream
 
             yield from self._transform_message(
                 message_stream,
@@ -110,6 +137,7 @@ class AgentNode(ToolNode):
                     "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
                 },
                 parameters_for_log,
+                agent_thoughts,
             )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(

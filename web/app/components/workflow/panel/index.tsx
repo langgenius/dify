@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { memo, useCallback, useEffect, useRef } from 'react'
-import { useNodes } from 'reactflow'
-import type { CommonNodeType } from '../types'
+import { useStore as useReactflow } from 'reactflow'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
@@ -61,8 +61,18 @@ const useResizeObserver = (
 const Panel: FC<PanelProps> = ({
   components,
 }) => {
-  const nodes = useNodes<CommonNodeType>()
-  const selectedNode = nodes.find(node => node.data.selected)
+  const selectedNode = useReactflow(useShallow((s) => {
+    const nodes = s.getNodes()
+    const currentNode = nodes.find(node => node.data.selected)
+
+    if (currentNode) {
+      return {
+        id: currentNode.id,
+        type: currentNode.type,
+        data: currentNode.data,
+      }
+    }
+  }))
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const isRestoring = useStore(s => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)

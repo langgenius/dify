@@ -103,7 +103,7 @@ class GraphEngine:
         call_depth: int,
         graph: Graph,
         graph_config: Mapping[str, Any],
-        variable_pool: VariablePool,
+        graph_runtime_state: GraphRuntimeState,
         max_execution_steps: int,
         max_execution_time: int,
         thread_pool_id: Optional[str] = None,
@@ -140,7 +140,7 @@ class GraphEngine:
             call_depth=call_depth,
         )
 
-        self.graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        self.graph_runtime_state = graph_runtime_state
 
         self.max_execution_steps = max_execution_steps
         self.max_execution_time = max_execution_time
