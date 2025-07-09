@@ -309,6 +309,7 @@ class ToolProviderIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
+    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     tags: Optional[list[ToolLabelEnum]] = Field(
         default=[],
