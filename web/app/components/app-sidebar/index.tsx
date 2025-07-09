@@ -82,25 +82,22 @@ const AppDetailNav = ({
   return (
     <div
       ref={sidebarRef}
-      className={`
-        flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all
-        ${expand ? 'w-[216px]' : 'w-14'}
-      `}
+      className={cn(
+        'flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all',
+        expand ? 'w-[216px]' : 'w-14',
+      )}
     >
       <div
-        className={`
-          shrink-0
-          ${expand ? 'p-2' : 'p-1'}
-        `}
+        className={cn(
+          'shrink-0',
+          expand ? 'p-2' : 'p-1',
+        )}
       >
         {iconType === 'app' && (
           <AppInfo expand={expand} />
         )}
         {iconType !== 'app' && (
-          <DatasetInfo
-            expand={expand}
-            extraInfo={extraInfo && extraInfo(appSidebarExpand)}
-          />
+          <DatasetInfo expand={expand} />
         )}
       </div>
       <div className='relative px-4 py-2'>
@@ -141,6 +138,7 @@ const AppDetailNav = ({
           )
         })}
       </nav>
+      {iconType !== 'app' && extraInfo && extraInfo(appSidebarExpand)}
     </div>
   )
 }

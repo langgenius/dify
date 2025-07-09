@@ -29,6 +29,7 @@ const translation = {
     dataSource: 'Data Source',
     saveAndProcess: 'Save & Process',
     preview: 'Preview',
+    exportPipeline: 'Export Pipeline',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',

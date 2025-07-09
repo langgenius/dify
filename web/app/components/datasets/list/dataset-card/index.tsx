@@ -22,6 +22,7 @@ import Operations from './operations'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { useExportPipelineDSL } from '@/service/use-pipeline'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -45,6 +46,7 @@ const DatasetCard = ({
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const [exporting, setExporting] = useState(false)
 
   const isExternalProvider = useMemo(() => {
     return dataset.provider === EXTERNAL_PROVIDER
@@ -80,6 +82,36 @@ const DatasetCard = ({
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time * 1_000).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
+
+  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+
+  const handleExportPipeline = useCallback(async (include = false) => {
+    const { pipeline_id, name } = dataset
+    if (!pipeline_id)
+      return
+
+    if (exporting)
+      return
+
+    try {
+      setExporting(true)
+      const { data } = await exportPipelineConfig({
+        pipelineId: pipeline_id,
+        include,
+      })
+      const a = document.createElement('a')
+      const file = new Blob([data], { type: 'application/yaml' })
+      a.href = URL.createObjectURL(file)
+      a.download = `${name}.yml`
+      a.click()
+    }
+    catch {
+      Toast.notify({ type: 'error', message: t('app.exportFailed') })
+    }
+    finally {
+      setExporting(false)
+    }
+  }, [dataset, exportPipelineConfig, exporting, t])
 
   const detectIsUsedByApp = useCallback(async () => {
     try {
@@ -234,6 +266,7 @@ const DatasetCard = ({
                   setShowRenameModal(true)
                 }}
                 detectIsUsedByApp={detectIsUsedByApp}
+                handleExportPipeline={handleExportPipeline}
               />
             }
             className={'z-20 min-w-[186px]'}

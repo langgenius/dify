@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
 import {
-  RiAttachmentLine,
   RiEqualizer2Fill,
   RiEqualizer2Line,
   RiFileTextFill,
@@ -14,7 +13,6 @@ import {
   RiFocus2Line,
 } from '@remixicon/react'
 import { RiInformation2Line } from '@remixicon/react'
-import classNames from '@/utils/classnames'
 import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
@@ -22,7 +20,6 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
@@ -49,7 +46,6 @@ const ExtraInfo = React.memo(({
   expand,
 }: IExtraInfoProps) => {
   const { t } = useTranslation()
-  const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -57,7 +53,7 @@ const ExtraInfo = React.memo(({
   return (
     <>
       {!expand && (
-        <div className='flex items-center gap-x-0.5'>
+        <div className='flex items-center gap-x-0.5 p-2 pb-3'>
           <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
             <div className='system-md-semibold-uppercase text-text-secondary'>
               {documentCount ?? '--'}
@@ -74,7 +70,7 @@ const ExtraInfo = React.memo(({
               {relatedAppsTotal ?? '--'}
             </div>
             <Tooltip
-              position='bottom-start'
+              position='top-start'
               noDecoration
               needsDelay
               popupContent={
@@ -92,13 +88,6 @@ const ExtraInfo = React.memo(({
               </div>
             </Tooltip>
           </div>
-        </div>
-      )}
-
-      {expand && (
-        <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
-          {relatedAppsTotal ?? '--'}
-          <RiAttachmentLine className='size-4 text-text-secondary' />
         </div>
       )}
     </>

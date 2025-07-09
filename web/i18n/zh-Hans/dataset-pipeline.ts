@@ -29,6 +29,7 @@ const translation = {
     dataSource: '数据源',
     saveAndProcess: '保存并处理',
     preview: '预览',
+    exportPipeline: '导出 pipeline',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
