@@ -16,7 +16,7 @@ depends_on = None
 
 def upgrade():
     for table in ('apps', 'sites'):
-        op.add_column(table, sa.Column('always_new_chat', sa.Boolean(), nullable=False, server_default=sa.text('true')))
+        op.add_column(table, sa.Column('always_new_chat', sa.Boolean(), nullable=False, server_default=sa.text('false')))
 
 
 def downgrade():

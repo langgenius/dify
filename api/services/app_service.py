@@ -235,7 +235,7 @@ class AppService:
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
-        app.always_new_chat = args.get("always_new_chat", True)
+        app.always_new_chat = args.get("always_new_chat", False)
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
