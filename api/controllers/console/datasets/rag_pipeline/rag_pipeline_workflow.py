@@ -959,6 +959,27 @@ class DatasourceListApi(Resource):
         return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(tenant_id))
 
 
+class RagPipelineWorkflowLastRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    @marshal_with(workflow_run_node_execution_fields)
+    def get(self, pipeline: Pipeline, node_id: str):
+        rag_pipeline_service = RagPipelineService()
+        workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
+        if not workflow:
+            raise NotFound("Workflow not found")
+        node_exec = rag_pipeline_service.get_node_last_run(
+            pipeline=pipeline,
+            workflow=workflow,
+            node_id=node_id,
+        )
+        if node_exec is None:
+            raise NotFound("last run not found")
+        return node_exec
+
+
 api.add_resource(
     DraftRagPipelineApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft",
@@ -1067,4 +1088,8 @@ api.add_resource(
 api.add_resource(
     DraftRagPipelineFirstStepApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters",
+)
+api.add_resource(
+    RagPipelineWorkflowLastRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run",
 )

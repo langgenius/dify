@@ -693,6 +693,13 @@ class PipelineGenerator(BaseAppGenerator):
                         all_files,
                         datasource_info,
                     )
+                else:
+                    all_files.append(
+                        {
+                            "key": datasource_info.get("key", ""),
+                            "bucket": datasource_info.get("bucket", None),
+                        }
+                    )
             return all_files
         else:
             return datasource_info_list
