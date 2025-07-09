@@ -190,7 +190,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
     // setCurrKey(key)
     setCurrIndex(index)
-    if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number') {
+    if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number' && type !== 'boolean') {
       handleOpenExternalDataToolModal({ key, type, index, name, config, icon, icon_background }, promptVariables)
       return
     }

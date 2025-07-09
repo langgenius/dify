@@ -172,6 +172,7 @@ const FormItem: FC<Props> = ({
           <BoolInput
             name={payload.label as string}
             value={!!value}
+            required={payload.required}
             onChange={onChange}
           />
         )}

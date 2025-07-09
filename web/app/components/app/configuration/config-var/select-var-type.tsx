@@ -65,6 +65,7 @@ const SelectVarType: FC<Props> = ({
             <SelectItem type={InputVarType.paragraph} value='paragraph' text={t('appDebug.variableConfig.paragraph')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.select} value='select' text={t('appDebug.variableConfig.select')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.number} value='number' text={t('appDebug.variableConfig.number')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.boolean} value='boolean' text={t('appDebug.variableConfig.boolean')} onClick={handleChange}></SelectItem>
           </div>
           <div className='h-[1px] border-t border-components-panel-border'></div>
           <div className='p-1'>
