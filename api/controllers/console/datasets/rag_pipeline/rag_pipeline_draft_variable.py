@@ -10,7 +10,6 @@ from controllers.console import api
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
-from controllers.console.app.wraps import get_app_model
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -21,12 +20,11 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
-from models import App, AppMode, db
+from models import db
 from models.dataset import Pipeline
 from models.workflow import WorkflowDraftVariable
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
-from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -399,8 +397,20 @@ api.add_resource(
     RagPipelineVariableCollectionApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables",
 )
-api.add_resource(RagPipelineNodeVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
-api.add_resource(RagPipelineVariableApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>")
-api.add_resource(RagPipelineVariableResetApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
-api.add_resource(RagPipelineSystemVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables")
-api.add_resource(RagPipelineEnvironmentVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
+api.add_resource(
+    RagPipelineNodeVariableCollectionApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables",
+)
+api.add_resource(
+    RagPipelineVariableApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>"
+)
+api.add_resource(
+    RagPipelineVariableResetApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset"
+)
+api.add_resource(
+    RagPipelineSystemVariableCollectionApi, "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables"
+)
+api.add_resource(
+    RagPipelineEnvironmentVariableCollectionApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables",
+)

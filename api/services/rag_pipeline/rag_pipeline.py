@@ -1090,19 +1090,20 @@ class RagPipelineService:
         db.session.add(pipeline_customized_template)
         db.session.commit()
 
-
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
-            return (
-                db.session.query(Workflow)
-                .filter(
-                    Workflow.tenant_id == pipeline.tenant_id,
-                    Workflow.app_id == pipeline.id,
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                )
-                .count()
-            ) > 0
-    
-    def get_node_last_run(self, pipeline: Pipeline, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
+        return (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+            .count()
+        ) > 0
+
+    def get_node_last_run(
+        self, pipeline: Pipeline, workflow: Workflow, node_id: str
+    ) -> WorkflowNodeExecutionModel | None:
         # TODO(QuantumGhost): This query is not fully covered by index.
         criteria = (
             WorkflowNodeExecutionModel.tenant_id == pipeline.tenant_id,

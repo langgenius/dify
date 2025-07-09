@@ -960,7 +960,6 @@ class DatasourceListApi(Resource):
 
 
 class RagPipelineWorkflowLastRunApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
