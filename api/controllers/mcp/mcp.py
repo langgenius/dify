@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import api
 from core.app.app_config.entities import VariableEntity
+from core.mcp import types
 from core.mcp.server.streamable_http import MCPServerStreamableHTTPRequestHandler
 from core.mcp.types import ClientNotification, ClientRequest
 from core.mcp.utils import create_mcp_error_response
@@ -31,22 +32,26 @@ class MCPAppApi(Resource):
 
         server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
         if not server:
-            return helper.compact_generate_response(create_mcp_error_response(request_id, -32001, "Server Not Found"))
+            return helper.compact_generate_response(
+                create_mcp_error_response(request_id, types.INVALID_REQUEST, "Server Not Found")
+            )
 
         if server.status != AppMCPServerStatus.ACTIVE:
             return helper.compact_generate_response(
-                create_mcp_error_response(request_id, -32001, "Server is not active")
+                create_mcp_error_response(request_id, types.INVALID_REQUEST, "Server is not active")
             )
 
         app = db.session.query(App).filter(App.id == server.app_id).first()
         if not app:
-            return helper.compact_generate_response(create_mcp_error_response(request_id, -32001, "App Not Found"))
+            return helper.compact_generate_response(
+                create_mcp_error_response(request_id, types.INVALID_REQUEST, "App Not Found")
+            )
 
         if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app.workflow
             if workflow is None:
                 return helper.compact_generate_response(
-                    create_mcp_error_response(request_id, -32001, "App is unavailable")
+                    create_mcp_error_response(request_id, types.INVALID_REQUEST, "App is unavailable")
                 )
 
             user_input_form = workflow.user_input_form(to_old_structure=True)
@@ -54,7 +59,7 @@ class MCPAppApi(Resource):
             app_model_config = app.app_model_config
             if app_model_config is None:
                 return helper.compact_generate_response(
-                    create_mcp_error_response(request_id, -32001, "App is unavailable")
+                    create_mcp_error_response(request_id, types.INVALID_REQUEST, "App is unavailable")
                 )
 
             features_dict = app_model_config.to_dict()
@@ -77,7 +82,7 @@ class MCPAppApi(Resource):
                 )
         except ValidationError as e:
             return helper.compact_generate_response(
-                create_mcp_error_response(request_id, -32602, f"Invalid user_input_form: {str(e)}")
+                create_mcp_error_response(request_id, types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
             )
 
         try:
@@ -88,7 +93,7 @@ class MCPAppApi(Resource):
                 request = notification
             except ValidationError as e:
                 return helper.compact_generate_response(
-                    create_mcp_error_response(request_id, -32602, f"Invalid MCP request: {str(e)}")
+                    create_mcp_error_response(request_id, types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
                 )
 
         mcp_server_handler = MCPServerStreamableHTTPRequestHandler(app, request, converted_user_input_form)
