@@ -92,7 +92,7 @@ export type CommonNodeType<T = {}> = {
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
-} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
+} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name' | 'credential_id'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean

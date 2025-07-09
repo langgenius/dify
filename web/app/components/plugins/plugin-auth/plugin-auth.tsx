@@ -7,9 +7,11 @@ import { CredentialTypeEnum } from './types'
 
 type PluginAuthProps = {
   provider?: string
+  children?: React.ReactNode
 }
 const PluginAuth = ({
   provider = '',
+  children,
 }: PluginAuthProps) => {
   const { data } = useGetPluginToolCredentialInfo(provider)
   const { isCurrentWorkspaceManager } = useAppContext()
@@ -30,7 +32,7 @@ const PluginAuth = ({
         )
       }
       {
-        isAuthorized && (
+        isAuthorized && !children && (
           <Authorized
             provider={provider}
             credentials={data?.credentials}
@@ -39,6 +41,9 @@ const PluginAuth = ({
             disabled={!isCurrentWorkspaceManager}
           />
         )
+      }
+      {
+        isAuthorized && children
       }
     </>
   )

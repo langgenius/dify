@@ -30,6 +30,7 @@ export type ToolDefaultValue = {
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
+  credential_id?: string
 }
 
 export type ToolValue = {

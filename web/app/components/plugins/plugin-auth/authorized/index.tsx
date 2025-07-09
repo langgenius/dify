@@ -13,6 +13,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import cn from '@/utils/classnames'
@@ -35,6 +38,16 @@ type AuthorizedProps = {
   canOAuth?: boolean
   canApiKey?: boolean
   disabled?: boolean
+  renderTrigger?: (open?: boolean) => React.ReactNode
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  offset?: PortalToFollowElemOptions['offset']
+  placement?: PortalToFollowElemOptions['placement']
+  triggerPopupSameWidth?: boolean
+  popupClassName?: string
+  disableSetDefault?: boolean
+  onItemClick?: (id: string) => void
+  extraAuthorizationItems?: Credential[]
 }
 const Authorized = ({
   provider,
@@ -42,10 +55,27 @@ const Authorized = ({
   canOAuth,
   canApiKey,
   disabled,
+  renderTrigger,
+  isOpen,
+  onOpenChange,
+  offset = 8,
+  placement = 'bottom-start',
+  triggerPopupSameWidth = true,
+  popupClassName,
+  disableSetDefault,
+  onItemClick,
+  extraAuthorizationItems,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isLocalOpen, setIsLocalOpen] = useState(false)
+  const mergedIsOpen = isOpen ?? isLocalOpen
+  const setMergedIsOpen = useCallback((open: boolean) => {
+    if (onOpenChange)
+      onOpenChange(open)
+
+    setIsLocalOpen(open)
+  }, [onOpenChange])
   const oAuthCredentials = credentials.filter(credential => credential.credential_type === CredentialTypeEnum.OAUTH2)
   const apiKeyCredentials = credentials.filter(credential => credential.credential_type === CredentialTypeEnum.API_KEY)
   const pendingOperationCredentialId = useRef<string | null>(null)
@@ -98,28 +128,57 @@ const Authorized = ({
   return (
     <>
       <PortalToFollowElem
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        placement='bottom-start'
-        offset={8}
-        triggerPopupSameWidth
+        open={mergedIsOpen}
+        onOpenChange={setMergedIsOpen}
+        placement={placement}
+        offset={offset}
+        triggerPopupSameWidth={triggerPopupSameWidth}
       >
         <PortalToFollowElemTrigger
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setMergedIsOpen(!mergedIsOpen)}
           asChild
         >
-          <Button
-            className={cn(
-              'w-full',
-              isOpen && 'bg-components-button-secondary-bg-hover',
-            )}>
-            <Indicator className='mr-2' />
-            {credentials.length} Authorizations
-            <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
-          </Button>
+          {
+            renderTrigger
+              ? renderTrigger(mergedIsOpen)
+              : (
+                <Button
+                  className={cn(
+                    'w-full',
+                    isOpen && 'bg-components-button-secondary-bg-hover',
+                  )}>
+                  <Indicator className='mr-2' />
+                  {credentials.length} Authorizations
+                  <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
+                </Button>
+              )
+          }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[100]'>
-          <div className='max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+          <div className={cn(
+            'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
+            popupClassName,
+          )}>
+            {
+              !!extraAuthorizationItems?.length && (
+                <div className='p-1'>
+                  {
+                    extraAuthorizationItems.map(credential => (
+                      <Item
+                        key={credential.id}
+                        credential={credential}
+                        disabled={disabled}
+                        onItemClick={onItemClick}
+                        disableRename
+                        disableEdit
+                        disableDelete
+                        disableSetDefault
+                      />
+                    ))
+                  }
+                </div>
+              )
+            }
             <div className='py-1'>
               {
                 !!oAuthCredentials.length && (
@@ -153,6 +212,8 @@ const Authorized = ({
                           onDelete={openConfirm}
                           onEdit={handleEdit}
                           onSetDefault={handleSetDefault}
+                          disableSetDefault={disableSetDefault}
+                          onItemClick={onItemClick}
                         />
                       ))
                     }
@@ -195,6 +256,7 @@ const Authorized = ({
               pendingOperationCredentialId.current = null
             }}
             onRemove={handleRemove}
+            disabled={disabled}
           />
         )
       }

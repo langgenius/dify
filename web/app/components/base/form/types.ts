@@ -38,7 +38,7 @@ export type FormSchema = {
   required: boolean
   default?: any
   tooltip?: string | TypeWithI18N
-  show_on: FormShowOnObject[]
+  show_on?: FormShowOnObject[]
   url?: string
   scope?: string
 }
@@ -46,6 +46,6 @@ export type FormSchema = {
 export type FormValues = Record<string, any>
 
 export type FromRefObject = {
-    getFormStore: () => AnyFormApi['store']
+    getForm: () => AnyFormApi
 }
 export type FormRef = ForwardedRef<FromRefObject>

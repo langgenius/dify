@@ -71,6 +71,7 @@ export const useUpdatePluginToolCredential = (
 ) => {
   return useMutation({
     mutationFn: (params: {
+      credential_id: string
       credentials: Record<string, any>
       type: CredentialTypeEnum
       name?: string

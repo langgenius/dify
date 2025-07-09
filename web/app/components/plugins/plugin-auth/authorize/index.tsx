@@ -36,7 +36,7 @@ const Authorize = ({
     }
 
     return {
-      buttonText: !canApiKey ? 'Use OAuth Authorization' : '',
+      buttonText: !canApiKey ? 'Use OAuth Authorization' : 'Use OAuth',
     }
   }, [canApiKey, theme])
 
@@ -50,7 +50,7 @@ const Authorize = ({
     }
     return {
       provider,
-      buttonText: !canOAuth ? 'API Key Authorization Configuration' : '',
+      buttonText: !canOAuth ? 'API Key Authorization Configuration' : 'Use API Key',
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
     }
   }, [canOAuth, theme, provider])

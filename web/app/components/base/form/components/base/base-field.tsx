@@ -4,6 +4,7 @@ import {
   useMemo,
 } from 'react'
 import type { AnyFieldApi } from '@tanstack/react-form'
+import { useStore } from '@tanstack/react-form'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import type { FormSchema } from '@/app/components/base/form/types'
@@ -17,6 +18,7 @@ export type BaseFieldProps = {
   inputClassName?: string
   formSchema: FormSchema
   field: AnyFieldApi
+  disabled?: boolean
 }
 const BaseField = ({
   fieldClassName,
@@ -25,6 +27,7 @@ const BaseField = ({
   inputClassName,
   formSchema,
   field,
+  disabled,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
   const {
@@ -35,9 +38,13 @@ const BaseField = ({
     if (isValidElement(label))
       return label
 
+    if (typeof label === 'string')
+      return label
+
     if (typeof label === 'object' && label !== null)
       return renderI18nObject(label as Record<string, string>)
   }, [label, renderI18nObject])
+  const value = useStore(field.form.store, s => s.values[field.name])
 
   return (
     <div className={cn(fieldClassName)}>
@@ -48,23 +55,27 @@ const BaseField = ({
         {
           formSchema.type === FormTypeEnum.textInput && (
             <Input
-              className={cn(inputClassName)}
               id={field.name}
-              value={field.state.value}
+              name={field.name}
+              className={cn(inputClassName)}
+              value={value}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
+              disabled={disabled}
             />
           )
         }
         {
           formSchema.type === FormTypeEnum.secretInput && (
             <Input
+              id={field.name}
+              name={field.name}
               type='password'
               className={cn(inputClassName)}
-              id={field.name}
-              value={field.state.value}
+              value={value}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
+              disabled={disabled}
             />
           )
         }

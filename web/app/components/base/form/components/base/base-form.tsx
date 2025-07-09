@@ -24,6 +24,7 @@ export type BaseFormProps = {
   defaultValues?: Record<string, any>
   formClassName?: string
   ref?: FormRef
+  disabled?: boolean
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -35,6 +36,7 @@ const BaseForm = ({
   inputContainerClassName,
   inputClassName,
   ref,
+  disabled,
 }: BaseFormProps) => {
   const form = useForm({
     defaultValues,
@@ -42,8 +44,8 @@ const BaseForm = ({
 
   useImperativeHandle(ref, () => {
     return {
-      getFormStore() {
-        return form.store
+      getForm() {
+        return form
       },
     }
   }, [form])
@@ -60,18 +62,21 @@ const BaseForm = ({
           labelClassName={labelClassName}
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
+          disabled={disabled}
         />
       )
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
 
   if (!formSchemas?.length)
     return null
 
   return (
-    <form className={cn(formClassName)}>
+    <form
+      className={cn(formClassName)}
+    >
       {
         formSchemas.map((formSchema) => {
           return (

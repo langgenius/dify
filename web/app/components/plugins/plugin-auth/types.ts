@@ -7,7 +7,8 @@ export type Credential = {
   id: string
   name: string
   provider: string
-  credential_type: CredentialTypeEnum
+  credential_type?: CredentialTypeEnum
   is_default: boolean
-  credentials: Record<string, any>
+  credentials?: Record<string, any>
+  isWorkspaceDefault?: boolean
 }

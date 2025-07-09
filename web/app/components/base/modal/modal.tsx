@@ -25,6 +25,7 @@ type ModalProps = {
   onExtraButtonClick?: () => void
   footerSlot?: React.ReactNode
   bottomSlot?: React.ReactNode
+  disabled?: boolean
 }
 const Modal = ({
   onClose,
@@ -42,13 +43,14 @@ const Modal = ({
   onExtraButtonClick,
   footerSlot,
   bottomSlot,
+  disabled,
 }: ModalProps) => {
   const { t } = useTranslation()
 
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent
-        className='z-[999999] flex h-full w-full items-center justify-center bg-background-overlay'
+        className='z-[9998] flex h-full w-full items-center justify-center bg-background-overlay'
         onClick={onClose}
       >
         <div
@@ -88,6 +90,7 @@ const Modal = ({
                   <Button
                     variant={extraButtonVariant}
                     onClick={onExtraButtonClick}
+                    disabled={disabled}
                   >
                     {extraButtonText || t('common.operation.remove')}
                   </Button>
@@ -97,6 +100,7 @@ const Modal = ({
             }
             <Button
               onClick={onCancel}
+              disabled={disabled}
             >
               {cancelButtonText || t('common.operation.cancel')}
             </Button>
@@ -104,6 +108,7 @@ const Modal = ({
               className='ml-2'
               variant='primary'
               onClick={onConfirm}
+              disabled={disabled}
             >
               {confirmButtonText || t('common.operation.save')}
             </Button>

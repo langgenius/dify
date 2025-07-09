@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,8 +15,10 @@ import {
   useUpdatePluginToolCredential,
 } from '@/service/use-plugins-auth'
 import { CredentialTypeEnum } from '../types'
+import { transformFormSchemasSecretInput } from '../utils'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import type { FromRefObject } from '@/app/components/base/form/types'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
 
 export type ApiKeyModalProps = {
@@ -23,34 +26,65 @@ export type ApiKeyModalProps = {
   onClose?: () => void
   editValues?: Record<string, any>
   onRemove?: () => void
+  disabled?: boolean
 }
 const ApiKeyModal = ({
   provider,
   onClose,
   editValues,
   onRemove,
+  disabled,
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { data } = useGetPluginToolCredentialSchema(provider, CredentialTypeEnum.API_KEY)
+  const { data = [] } = useGetPluginToolCredentialSchema(provider, CredentialTypeEnum.API_KEY)
+  const formSchemas = useMemo(() => {
+    return [
+      {
+        type: FormTypeEnum.textInput,
+        name: '__name__',
+        label: 'Authorization name',
+        required: false,
+      },
+      ...data,
+    ]
+  }, [data])
   const { mutateAsync: addPluginToolCredential } = useAddPluginToolCredential(provider)
   const { mutateAsync: updatePluginToolCredential } = useUpdatePluginToolCredential(provider)
   const invalidatePluginToolCredentialInfo = useInvalidPluginToolCredentialInfo(provider)
   const formRef = useRef<FromRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    const store = formRef.current?.getFormStore()
-    const values = store?.state.values
+    const form = formRef.current?.getForm()
+    const store = form?.store
+    const {
+      __name__,
+      __credential_id__,
+      ...values
+    } = store?.state.values
+    const isPristineSecretInputNames: string[] = []
+    formSchemas.forEach((schema) => {
+      if (schema.type === FormTypeEnum.secretInput) {
+        const fieldMeta = form?.getFieldMeta(schema.name)
+        if (fieldMeta?.isPristine)
+          isPristineSecretInputNames.push(schema.name)
+      }
+    })
+
+    const transformedValues = transformFormSchemasSecretInput(isPristineSecretInputNames, values)
 
     if (editValues) {
       await updatePluginToolCredential({
-        credentials: values,
+        credentials: transformedValues,
+        credential_id: __credential_id__,
         type: CredentialTypeEnum.API_KEY,
+        name: __name__ || '',
       })
     }
     else {
       await addPluginToolCredential({
-        credentials: values,
+        credentials: transformedValues,
         type: CredentialTypeEnum.API_KEY,
+        name: __name__ || '',
       })
     }
     notify({
@@ -60,7 +94,7 @@ const ApiKeyModal = ({
 
     onClose?.()
     invalidatePluginToolCredentialInfo()
-  }, [addPluginToolCredential, onClose, invalidatePluginToolCredentialInfo, updatePluginToolCredential, notify, t, editValues])
+  }, [addPluginToolCredential, onClose, invalidatePluginToolCredentialInfo, updatePluginToolCredential, notify, t, editValues, formSchemas])
 
   return (
     <Modal
@@ -96,11 +130,13 @@ const ApiKeyModal = ({
       onConfirm={handleConfirm}
       showExtraButton={!!editValues}
       onExtraButtonClick={onRemove}
+      disabled={disabled}
     >
       <AuthForm
         ref={formRef}
-        formSchemas={data}
+        formSchemas={formSchemas}
         defaultValues={editValues}
+        disabled={disabled}
       />
     </Modal>
   )
