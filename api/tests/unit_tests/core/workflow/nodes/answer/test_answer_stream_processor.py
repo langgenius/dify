@@ -3,7 +3,6 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
     NodeRunStartedEvent,
@@ -15,6 +14,7 @@ from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeSta
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.system_variable import SystemVariable
 
 
 def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:
@@ -180,12 +180,12 @@ def test_process():
     graph = Graph.init(graph_config=graph_config)
 
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa",
+            files=[],
+            query="what's the weather in SF",
+            conversation_id="abababa",
+        ),
         user_inputs={},
     )
 

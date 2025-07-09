@@ -7,12 +7,13 @@ from core.workflow.nodes.http_request import (
 )
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
 from core.workflow.nodes.http_request.executor import Executor
+from core.workflow.system_variable import SystemVariable
 
 
 def test_executor_with_json_body_and_number_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "number"], 42)
@@ -65,7 +66,7 @@ def test_executor_with_json_body_and_number_variable():
 def test_executor_with_json_body_and_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -120,7 +121,7 @@ def test_executor_with_json_body_and_object_variable():
 def test_executor_with_json_body_and_nested_object_variable():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
@@ -174,7 +175,7 @@ def test_executor_with_json_body_and_nested_object_variable():
 
 
 def test_extract_selectors_from_template_with_newline():
-    variable_pool = VariablePool()
+    variable_pool = VariablePool(system_variables=SystemVariable.empty())
     variable_pool.add(("node_id", "custom_query"), "line1\nline2")
     node_data = HttpRequestNodeData(
         title="Test JSON Body with Nested Object Variable",
@@ -201,7 +202,7 @@ def test_extract_selectors_from_template_with_newline():
 def test_executor_with_form_data():
     # Prepare the variable pool
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(["pre_node_id", "text_field"], "Hello, World!")
@@ -280,7 +281,11 @@ def test_init_headers():
             authorization=HttpRequestNodeAuthorization(type="no-auth"),
         )
         timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
-        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+        return Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+        )
 
     executor = create_executor("aa\n cc:")
     executor._init_headers()
@@ -310,7 +315,11 @@ def test_init_params():
             authorization=HttpRequestNodeAuthorization(type="no-auth"),
         )
         timeout = HttpRequestNodeTimeout(connect=10, read=30, write=30)
-        return Executor(node_data=node_data, timeout=timeout, variable_pool=VariablePool())
+        return Executor(
+            node_data=node_data,
+            timeout=timeout,
+            variable_pool=VariablePool(system_variables=SystemVariable.empty()),
+        )
 
     # Test basic key-value pairs
     executor = create_executor("key1:value1\nkey2:value2")

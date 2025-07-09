@@ -91,9 +91,13 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = StringVariable.model_validate(mapping)
         case SegmentType.SECRET:
             result = SecretVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, int):
+        case SegmentType.NUMBER | SegmentType.INTEGER if isinstance(value, int):
+            mapping = dict(mapping)
+            mapping["value_type"] = SegmentType.INTEGER
             result = IntegerVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, float):
+        case SegmentType.NUMBER | SegmentType.FLOAT if isinstance(value, float):
+            mapping = dict(mapping)
+            mapping["value_type"] = SegmentType.FLOAT
             result = FloatVariable.model_validate(mapping)
         case SegmentType.NUMBER if not isinstance(value, float | int):
             raise VariableError(f"invalid number value {value}")
@@ -119,6 +123,8 @@ def infer_segment_type_from_value(value: Any, /) -> SegmentType:
 
 
 def build_segment(value: Any, /) -> Segment:
+    # NOTE: If you have runtime type information available, consider using the `build_segment_with_type`
+    # below
     if value is None:
         return NoneSegment()
     if isinstance(value, str):
@@ -134,12 +140,17 @@ def build_segment(value: Any, /) -> Segment:
     if isinstance(value, list):
         items = [build_segment(item) for item in value]
         types = {item.value_type for item in items}
-        if len(types) != 1 or all(isinstance(item, ArraySegment) for item in items):
+        if all(isinstance(item, ArraySegment) for item in items):
             return ArrayAnySegment(value=value)
+        elif len(types) != 1:
+            if types.issubset({SegmentType.NUMBER, SegmentType.INTEGER, SegmentType.FLOAT}):
+                return ArrayNumberSegment(value=value)
+            return ArrayAnySegment(value=value)
+
         match types.pop():
             case SegmentType.STRING:
                 return ArrayStringSegment(value=value)
-            case SegmentType.NUMBER:
+            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
                 return ArrayNumberSegment(value=value)
             case SegmentType.OBJECT:
                 return ArrayObjectSegment(value=value)
@@ -151,6 +162,22 @@ def build_segment(value: Any, /) -> Segment:
                 # This should be unreachable.
                 raise ValueError(f"not supported value {value}")
     raise ValueError(f"not supported value {value}")
+
+
+_segment_factory: Mapping[SegmentType, type[Segment]] = {
+    SegmentType.NONE: NoneSegment,
+    SegmentType.STRING: StringSegment,
+    SegmentType.INTEGER: IntegerSegment,
+    SegmentType.FLOAT: FloatSegment,
+    SegmentType.FILE: FileSegment,
+    SegmentType.OBJECT: ObjectSegment,
+    # Array types
+    SegmentType.ARRAY_ANY: ArrayAnySegment,
+    SegmentType.ARRAY_STRING: ArrayStringSegment,
+    SegmentType.ARRAY_NUMBER: ArrayNumberSegment,
+    SegmentType.ARRAY_OBJECT: ArrayObjectSegment,
+    SegmentType.ARRAY_FILE: ArrayFileSegment,
+}
 
 
 def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
@@ -190,7 +217,7 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
         if segment_type == SegmentType.NONE:
             return NoneSegment()
         else:
-            raise TypeMismatchError(f"Expected {segment_type}, but got None")
+            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got None")
 
     # Handle empty list special case for array types
     if isinstance(value, list) and len(value) == 0:
@@ -205,21 +232,25 @@ def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
         elif segment_type == SegmentType.ARRAY_FILE:
             return ArrayFileSegment(value=value)
         else:
-            raise TypeMismatchError(f"Expected {segment_type}, but got empty list")
+            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got empty list")
 
-    # Build segment using existing logic to infer actual type
-    inferred_segment = build_segment(value)
-    inferred_type = inferred_segment.value_type
-
+    inferred_type = SegmentType.infer_segment_type(value)
     # Type compatibility checking
+    if inferred_type is None:
+        raise TypeMismatchError(
+            f"Type mismatch: expected {segment_type}, but got python object, type={type(value)}, value={value}"
+        )
     if inferred_type == segment_type:
-        return inferred_segment
-
-    # Type mismatch - raise error with descriptive message
-    raise TypeMismatchError(
-        f"Type mismatch: expected {segment_type}, but value '{value}' "
-        f"(type: {type(value).__name__}) corresponds to {inferred_type}"
-    )
+        segment_class = _segment_factory[segment_type]
+        return segment_class(value_type=segment_type, value=value)
+    elif segment_type == SegmentType.NUMBER and inferred_type in (
+        SegmentType.INTEGER,
+        SegmentType.FLOAT,
+    ):
+        segment_class = _segment_factory[inferred_type]
+        return segment_class(value_type=inferred_type, value=value)
+    else:
+        raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got {inferred_type}, value={value}")
 
 
 def segment_to_variable(
@@ -247,6 +278,6 @@ def segment_to_variable(
             name=name,
             description=description,
             value=segment.value,
-            selector=selector,
+            selector=list(selector),
         ),
     )

@@ -7,14 +7,9 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.variables import (
-    ArrayNumberSegment,
-    ArrayObjectSegment,
-    ArrayStringSegment,
     IntegerSegment,
-    ObjectSegment,
     Segment,
     SegmentType,
-    StringSegment,
 )
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -39,6 +34,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
+from factories.variable_factory import TypeMismatchError, build_segment_with_type
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool
@@ -505,23 +501,21 @@ class LoopNode(BaseNode[LoopNodeData]):
         return variable_mapping
 
     @staticmethod
-    def _get_segment_for_constant(var_type: str, value: Any) -> Segment:
+    def _get_segment_for_constant(var_type: SegmentType, value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        segment_mapping: dict[str, tuple[type[Segment], SegmentType]] = {
-            "string": (StringSegment, SegmentType.STRING),
-            "number": (IntegerSegment, SegmentType.NUMBER),
-            "object": (ObjectSegment, SegmentType.OBJECT),
-            "array[string]": (ArrayStringSegment, SegmentType.ARRAY_STRING),
-            "array[number]": (ArrayNumberSegment, SegmentType.ARRAY_NUMBER),
-            "array[object]": (ArrayObjectSegment, SegmentType.ARRAY_OBJECT),
-        }
         if var_type in ["array[string]", "array[number]", "array[object]"]:
-            if value:
+            if value and isinstance(value, str):
                 value = json.loads(value)
             else:
                 value = []
-        segment_info = segment_mapping.get(var_type)
-        if not segment_info:
-            raise ValueError(f"Invalid variable type: {var_type}")
-        segment_class, value_type = segment_info
-        return segment_class(value=value, value_type=value_type)
+        try:
+            return build_segment_with_type(var_type, value)
+        except TypeMismatchError as type_exc:
+            # Attempt to parse the value as a JSON-encoded string, if applicable.
+            if not isinstance(value, str):
+                raise
+            try:
+                value = json.loads(value)
+            except ValueError:
+                raise type_exc
+            return build_segment_with_type(var_type, value)

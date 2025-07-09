@@ -16,7 +16,7 @@ class StartNode(BaseNode[StartNodeData]):
 
     def _run(self) -> NodeRunResult:
         node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.system_variables
+        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
 
         # TODO: System variables should be directly accessible, no need for special handling
         # Set system variables as node outputs.

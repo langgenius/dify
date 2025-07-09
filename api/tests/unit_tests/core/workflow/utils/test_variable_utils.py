@@ -10,7 +10,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_simple_dict_value(self):
         """Test appending a simple dictionary value"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["output"]
         variable_value = {"name": "John", "age": 30}
@@ -33,7 +33,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_object_segment_value(self):
         """Test appending an ObjectSegment value"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["result"]
 
@@ -60,7 +60,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_nested_dict_value(self):
         """Test appending a nested dictionary value"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["data"]
 
@@ -97,7 +97,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_non_dict_value(self):
         """Test appending a non-dictionary value (should not recurse)"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["simple"]
         variable_value = "simple_string"
@@ -114,7 +114,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_segment_non_object_value(self):
         """Test appending a Segment that is not ObjectSegment (should not recurse)"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["text"]
         variable_value = StringSegment(value="Hello World")
@@ -132,7 +132,7 @@ class TestAppendVariablesRecursively:
 
     def test_append_empty_dict_value(self):
         """Test appending an empty dictionary value"""
-        pool = VariablePool()
+        pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["empty"]
         variable_value: dict[str, Any] = {}
