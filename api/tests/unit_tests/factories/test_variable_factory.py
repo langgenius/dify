@@ -418,8 +418,6 @@ def test_build_segment_file_array_with_different_file_types():
 
 @st.composite
 def _generate_file(draw) -> File:
-    file_id = draw(st.text(min_size=1, max_size=10))
-    tenant_id = draw(st.text(min_size=1, max_size=10))
     file_type, mime_type, extension = draw(
         st.sampled_from(
             [
