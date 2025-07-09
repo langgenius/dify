@@ -111,7 +111,7 @@ class DatasourceAuth(Resource):
                 provider=args["provider"],
                 plugin_id=args["plugin_id"],
                 credentials=args["credentials"],
-                name="test" + str(random.randint(1, 1000000)),
+                name="test" + str(random.randint(1, 1000000)),  # noqa: S311
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
