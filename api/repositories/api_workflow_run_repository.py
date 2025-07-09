@@ -38,11 +38,12 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional, Protocol
 
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
 
 
-class APIWorkflowRunRepository(Protocol):
+class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     """
     Protocol for service-layer WorkflowRun repository operations.
 

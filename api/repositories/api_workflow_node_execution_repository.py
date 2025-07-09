@@ -9,15 +9,15 @@ The service repository handles operations that require access to database-specif
 tenant_id, app_id, triggered_from, etc., which are not part of the core domain model.
 """
 
-from abc import abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional, Protocol
 
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel
 
 
-class DifyAPIWorkflowNodeExecutionRepository(Protocol):
+class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
     """
     Protocol for service-layer operations on WorkflowNodeExecutionModel.
 
@@ -38,7 +38,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
     - Supports cleanup and maintenance operations
     """
 
-    @abstractmethod
     def get_node_last_execution(
         self,
         tenant_id: str,
@@ -63,7 +62,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def get_executions_by_workflow_run(
         self,
         tenant_id: str,
@@ -86,7 +84,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def get_execution_by_id(
         self,
         execution_id: str,
@@ -107,7 +104,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def delete_expired_executions(
         self,
         tenant_id: str,
@@ -130,7 +126,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def delete_executions_by_app(
         self,
         tenant_id: str,
@@ -153,7 +148,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def get_expired_executions_batch(
         self,
         tenant_id: str,
@@ -176,7 +170,6 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def delete_executions_by_ids(
         self,
         execution_ids: Sequence[str],
