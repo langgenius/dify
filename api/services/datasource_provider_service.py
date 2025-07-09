@@ -131,7 +131,6 @@ class DatasourceProviderService:
             )
 
         return copy_credentials_list
-    
 
     def get_all_datasource_credentials(self, tenant_id: str) -> list[dict]:
         """
@@ -144,19 +143,21 @@ class DatasourceProviderService:
         datasources = manager.fetch_installed_datasource_providers(tenant_id)
         datasource_credentials = []
         for datasource in datasources:
-            credentials = self.get_datasource_credentials(tenant_id=tenant_id,
-                                                          provider=datasource.provider,
-                                                          plugin_id=datasource.plugin_id)
-            datasource_credentials.append({
-                "provider": datasource.provider,
-                "plugin_id": datasource.plugin_id,
-                "plugin_unique_identifier": datasource.plugin_unique_identifier,
-                "icon": datasource.declaration.identity.icon,
-                "name": datasource.declaration.identity.name,
-                "description": datasource.declaration.identity.description.model_dump(),
-                "author": datasource.declaration.identity.author,
-                "credentials": credentials,
-            })
+            credentials = self.get_datasource_credentials(
+                tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+            )
+            datasource_credentials.append(
+                {
+                    "provider": datasource.provider,
+                    "plugin_id": datasource.plugin_id,
+                    "plugin_unique_identifier": datasource.plugin_unique_identifier,
+                    "icon": datasource.declaration.identity.icon,
+                    "name": datasource.declaration.identity.name,
+                    "description": datasource.declaration.identity.description.model_dump(),
+                    "author": datasource.declaration.identity.author,
+                    "credentials": credentials,
+                }
+            )
         return datasource_credentials
 
     def get_real_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:

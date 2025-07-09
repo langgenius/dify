@@ -63,7 +63,7 @@ class DatasourceFileMessageTransformer:
                 mimetype = meta.get("mime_type")
                 if not mimetype:
                     mimetype = guess_type(filename)[0] or "application/octet-stream"
-                
+
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, DatasourceMessage.BlobMessage):

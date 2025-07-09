@@ -56,7 +56,7 @@ class PluginDatasourceManager(BasePluginClient):
                 tool.identity.provider = provider.declaration.identity.name
 
         return all_response
-    
+
     def fetch_installed_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
         """
         Fetch datasource providers for the given tenant.
