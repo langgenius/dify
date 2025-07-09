@@ -40,9 +40,11 @@ export const useResetDatasetList = () => {
   return useReset([...DatasetListKey])
 }
 
+export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
+
 export const useDatasetDetail = (datasetId: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'detail', datasetId],
+    queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
     queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
     enabled: !!datasetId,
   })

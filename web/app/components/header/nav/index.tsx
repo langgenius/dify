@@ -42,6 +42,7 @@ const Nav = ({
   useEffect(() => {
     if (pathname === link)
       setLinkLastSearchParams(searchParams.toString())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams])
 
   return (
@@ -53,11 +54,11 @@ const Nav = ({
       <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
           onClick={() => setAppDetail()}
-          className={classNames(`
-            flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]
-            ${isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text'}
-            ${curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover'}
-          `)}
+          className={classNames(
+            'flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
+            isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',
+            curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover',
+          )}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

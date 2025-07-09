@@ -1,19 +1,68 @@
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuItem from './menu-item'
-import { RiEditLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
+import Divider from '../../base/divider'
 
-const Menu = () => {
+type MenuProps = {
+  showDelete: boolean
+  openRenameModal: () => void
+  handleExportPipeline: () => void
+  detectIsUsedByApp: () => void
+}
+
+const Menu = ({
+  showDelete,
+  openRenameModal,
+  handleExportPipeline,
+  detectIsUsedByApp,
+}: MenuProps) => {
   const { t } = useTranslation()
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
+
+  const onClickRename = async (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    openRenameModal()
+  }
+
+  const onClickExport = async (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    handleExportPipeline()
+  }
+
+  const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    detectIsUsedByApp()
+  }
 
   return (
     <div className='flex w-[200px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
       <div className='flex flex-col p-1'>
-        <MenuItem Icon={RiEditLine} name={t('common.operation.edit')} handleClick={noop} />
+        <MenuItem
+          Icon={RiEditLine}
+          name={t('common.operation.edit')}
+          handleClick={onClickRename}
+        />
+        <MenuItem
+          Icon={RiFileDownloadLine}
+          name={t('datasetPipeline.operations.exportPipeline')}
+          handleClick={onClickExport}
+        />
       </div>
+      {showDelete && (
+        <>
+          <Divider type='horizontal' className='my-0 bg-divider-subtle' />
+          <div className='flex flex-col p-1'>
+            <MenuItem
+              Icon={RiDeleteBinLine}
+              name={t('common.operation.delete')}
+              handleClick={onClickDelete}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 }

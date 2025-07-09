@@ -45,14 +45,18 @@ const DatasetNav = () => {
         id: currentDataset.id,
         name: currentDataset.name,
         icon: currentDataset.icon_info.icon,
+        icon_type: currentDataset.icon_info.icon_type,
         icon_background: currentDataset.icon_info.icon_background,
+        icon_url: currentDataset.icon_info.icon_url,
       } as Omit<NavItem, 'link'>}
       navigationItems={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
         link: dataset.provider === 'external' ? `/datasets/${dataset.id}/hitTesting` : `/datasets/${dataset.id}/documents`,
         icon: dataset.icon_info.icon,
+        icon_type: dataset.icon_info.icon_type,
         icon_background: dataset.icon_info.icon_background,
+        icon_url: dataset.icon_info.icon_url,
       })) as NavItem[]}
       createText={t('common.menus.newDataset')}
       onCreate={() => router.push(`${basePath}/datasets/create`)}

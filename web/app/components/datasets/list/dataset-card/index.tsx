@@ -83,6 +83,10 @@ const DatasetCard = ({
     return dayjs(time * 1_000).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
 
+  const openRenameModal = useCallback(() => {
+    setShowRenameModal(true)
+  }, [])
+
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
   const handleExportPipeline = useCallback(async (include = false) => {
@@ -117,13 +121,12 @@ const DatasetCard = ({
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+      setShowConfirmDelete(true)
     }
     catch (e: any) {
       const res = await e.json()
       Toast.notify({ type: 'error', message: res?.message || 'Unknown error' })
     }
-
-    setShowConfirmDelete(true)
   }, [dataset.id, t])
 
   const onConfirmDelete = useCallback(async () => {
@@ -133,9 +136,9 @@ const DatasetCard = ({
       if (onSuccess)
         onSuccess()
     }
-    catch {
+    finally {
+      setShowConfirmDelete(false)
     }
-    setShowConfirmDelete(false)
   }, [dataset.id, onSuccess, t])
 
   useEffect(() => {
@@ -262,11 +265,9 @@ const DatasetCard = ({
             htmlContent={
               <Operations
                 showDelete={!isCurrentWorkspaceDatasetOperator}
-                openRenameModal={() => {
-                  setShowRenameModal(true)
-                }}
-                detectIsUsedByApp={detectIsUsedByApp}
+                openRenameModal={openRenameModal}
                 handleExportPipeline={handleExportPipeline}
+                detectIsUsedByApp={detectIsUsedByApp}
               />
             }
             className={'z-20 min-w-[186px]'}
