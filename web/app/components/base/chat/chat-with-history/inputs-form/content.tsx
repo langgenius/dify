@@ -6,6 +6,7 @@ import Textarea from '@/app/components/base/textarea'
 import { PortalSelect } from '@/app/components/base/select'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
+import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 
 type Props = {
   showTip?: boolean
@@ -42,12 +43,14 @@ const InputsFormContent = ({ showTip }: Props) => {
     <div className='space-y-4'>
       {visibleInputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
-          <div className='flex h-6 items-center gap-1'>
-            <div className='system-md-semibold text-text-secondary'>{form.label}</div>
-            {!form.required && (
-              <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
-            )}
-          </div>
+          {form.type !== InputVarType.boolean && (
+            <div className='flex h-6 items-center gap-1'>
+              <div className='system-md-semibold text-text-secondary'>{form.label}</div>
+              {!form.required && (
+                <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
+              )}
+            </div>
+          )}
           {form.type === InputVarType.textInput && (
             <Input
               value={inputsFormValue?.[form.variable] || ''}
@@ -68,6 +71,14 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={e => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
+            />
+          )}
+          {form.type === InputVarType.boolean && (
+            <BoolInput
+              name={form.label}
+              value={!!inputsFormValue?.[form.variable]}
+              required={form.required}
+              onChange={value => handleFormChange(form.variable, value)}
             />
           )}
           {form.type === InputVarType.select && (

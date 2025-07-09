@@ -173,7 +173,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
   return userInputs
 }
 
-export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean>) => {
+export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean> | null) => {
   if(!useInputs)
     return inputs
   const res = { ...(inputs || {}) }
