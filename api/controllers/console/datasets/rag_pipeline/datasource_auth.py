@@ -177,7 +177,8 @@ class DatasourceAuthUpdateDeleteApi(Resource):
             raise ValueError(str(ex))
 
         return {"result": "success"}, 201
-    
+
+
 class DatasourceAuthListApi(Resource):
     @setup_required
     @login_required
@@ -188,6 +189,7 @@ class DatasourceAuthListApi(Resource):
             tenant_id=current_user.current_tenant_id
         )
         return {"result": datasources}, 200
+
 
 # Import Rag Pipeline
 api.add_resource(
