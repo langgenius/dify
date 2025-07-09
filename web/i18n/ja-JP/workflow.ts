@@ -543,7 +543,10 @@ const translation = {
         title: 'cURL からインポート',
         placeholder: 'ここに cURL 文字列を貼り付けます',
       },
-      verifySSL: 'SSL証明書を確認する',
+      verifySSL: {
+        title: 'SSL証明書を確認する',
+        warningTooltip: 'SSL検証を無効にすることは、本番環境では推奨されません。これは開発またはテストのみに使用すべきであり、中間者攻撃などのセキュリティ脅威に対して接続を脆弱にするためです。',
+      },
     },
     code: {
       inputVars: '入力変数',

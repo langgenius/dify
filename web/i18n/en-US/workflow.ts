@@ -542,7 +542,10 @@ const translation = {
         title: 'Import from cURL',
         placeholder: 'Paste cURL string here',
       },
-      verifySSL: 'Verify SSL Certificate',
+      verifySSL: {
+        title: 'Verify SSL Certificate',
+        warningTooltip: 'Disabling SSL verification is not recommended for production environments. This should only be used in development or testing, as it makes the connection vulnerable to security threats like man-in-the-middle attacks.',
+      },
     },
     code: {
       inputVars: 'Input Variables',

@@ -537,7 +537,10 @@ const translation = {
         placeholder: 'Wklej tutaj ciąg cURL',
         title: 'Importowanie z cURL',
       },
-      verifySSL: 'Zweryfikuj certyfikat SSL',
+      verifySSL: {
+        title: 'Zweryfikuj certyfikat SSL',
+        warningTooltip: 'Wyłączenie weryfikacji SSL nie jest zalecane w środowiskach produkcyjnych. Powinno to być używane tylko w rozwoju lub testowaniu, ponieważ naraża połączenie na zagrożenia bezpieczeństwa, takie jak ataki typu man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',

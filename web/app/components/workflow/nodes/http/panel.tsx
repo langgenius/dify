@@ -127,7 +127,8 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.verifySSL`)}
+          title={t(`${i18nPrefix}.verifySSL.title`)}
+          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
           operations={
             <Switch
               defaultValue={!!inputs.ssl_verify}

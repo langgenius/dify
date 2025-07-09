@@ -565,7 +565,10 @@ const translation = {
         title: 'cURL 에서 가져오기',
         placeholder: '여기에 cURL 문자열 붙여 넣기',
       },
-      verifySSL: 'SSL 인증서 확인',
+      verifySSL: {
+        title: 'SSL 인증서 확인',
+        warningTooltip: 'SSL 검증을 비활성화하는 것은 프로덕션 환경에서는 권장되지 않습니다. 이는 연결이 중간자 공격과 같은 보안 위협에 취약하게 만들므로 개발 또는 테스트에서만 사용해야 합니다.',
+      },
     },
     code: {
       inputVars: '입력 변수',

@@ -537,7 +537,10 @@ const translation = {
         title: 'Importieren von cURL',
         placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
       },
-      verifySSL: 'SSL-Zertifikat überprüfen',
+      verifySSL: {
+        title: 'SSL-Zertifikat überprüfen',
+        warningTooltip: 'Das Deaktivieren der SSL-Überprüfung wird für Produktionsumgebungen nicht empfohlen. Dies sollte nur in der Entwicklung oder im Test verwendet werden, da es die Verbindung anfällig für Sicherheitsbedrohungen wie Man-in-the-Middle-Angriffe macht.',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',

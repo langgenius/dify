@@ -543,7 +543,10 @@ const translation = {
         title: '导入 cURL',
         placeholder: '粘贴 cURL 字符串',
       },
-      verifySSL: '验证 SSL 证书',
+      verifySSL: {
+        title: '验证 SSL 证书',
+        warningTooltip: '不建议在生产环境中禁用 SSL 验证。这仅应在开发或测试中使用，因为它会使连接容易受到诸如中间人攻击等安全威胁。',
+      },
     },
     code: {
       inputVars: '输入变量',

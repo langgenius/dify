@@ -539,7 +539,10 @@ const translation = {
       value: 'Vrednost',
       params: 'Parametri',
       insertVarPlaceholder: 'vnesite \'/\' za vstavljanje spremenljivke',
-      verifySSL: 'Preverite SSL certifikat',
+      verifySSL: {
+        title: 'Preverite SSL certifikat',
+        warningTooltip: 'Onemogočanje preverjanja SSL ni priporočljivo za proizvodna okolja. To bi se moralo uporabljati le pri razvoju ali testiranju, saj povezavo izpostavi varnostnim grožnjam, kot so napadi človek-v-sredini.',
+      },
     },
     code: {
       searchDependencies: 'Išči odvisnosti',

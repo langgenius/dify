@@ -538,7 +538,10 @@ const translation = {
         placeholder: 'cURL dizesini buraya yapıştırın',
         title: 'cURL\'den içe aktar',
       },
-      verifySSL: 'SSL Sertifikasını Doğrula',
+      verifySSL: {
+        title: 'SSL Sertifikasını Doğrula',
+        warningTooltip: 'SSL doğrulamasını devre dışı bırakmak, üretim ortamları için önerilmez. Bu yalnızca geliştirme veya test aşamalarında kullanılmalıdır, çünkü bağlantıyı adam ortada saldırıları gibi güvenlik tehditlerine karşı savunmasız hale getirir.',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',

@@ -537,7 +537,10 @@ const translation = {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
       },
-      verifySSL: '驗證 SSL 證書',
+      verifySSL: {
+        title: '驗證 SSL 證書',
+        warningTooltip: '不建議在生產環境中禁用SSL驗證。這僅應用於開發或測試，因為這樣會使連接容易受到中間人攻擊等安全威脅的威脅。',
+      },
     },
     code: {
       inputVars: '輸入變量',
