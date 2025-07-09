@@ -25,6 +25,31 @@ from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
     from models.account import Account
+    from models.model import EndUser
+
+
+def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+    """
+    Extract tenant_id from Account or EndUser object.
+
+    Args:
+        user: Account or EndUser object
+
+    Returns:
+        tenant_id string if available, None otherwise
+
+    Raises:
+        ValueError: If user is neither Account nor EndUser
+    """
+    from models.account import Account
+    from models.model import EndUser
+
+    if isinstance(user, Account):
+        return user.current_tenant_id
+    elif isinstance(user, EndUser):
+        return user.tenant_id
+    else:
+        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):

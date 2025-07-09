@@ -222,10 +222,10 @@ class OpikDataTrace(BaseTraceInstance):
                 )
 
                 try:
-                    if outputs.get("usage"):
-                        total_tokens = outputs["usage"].get("total_tokens", 0)
-                        prompt_tokens = outputs["usage"].get("prompt_tokens", 0)
-                        completion_tokens = outputs["usage"].get("completion_tokens", 0)
+                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    total_tokens = usage_data.get("total_tokens", 0)
+                    prompt_tokens = usage_data.get("prompt_tokens", 0)
+                    completion_tokens = usage_data.get("completion_tokens", 0)
                 except Exception:
                     logger.error("Failed to extract usage", exc_info=True)
 
