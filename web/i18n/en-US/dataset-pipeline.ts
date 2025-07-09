@@ -30,6 +30,7 @@ const translation = {
     saveAndProcess: 'Save & Process',
     preview: 'Preview',
     exportPipeline: 'Export Pipeline',
+    convert: 'Convert',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',
@@ -125,6 +126,16 @@ const translation = {
     emptyFolder: 'This folder is empty',
     emptySearchResult: 'No items were found',
     resetKeywords: 'Reset keywords',
+  },
+  conversion: {
+    title: 'Convert to Knowledge Pipeline',
+    descriptionChunk1: 'You can now convert your existing knowledge base to use the Knowledge Pipeline for document processing',
+    descriptionChunk2: ' — a more open and flexible approach with access to plugins from our marketplace. This will apply the new processing method to all future documents.',
+    warning: 'This action cannot be undone',
+    confirm: {
+      title: 'Confirmation',
+      content: 'This action is permanent. You won\'t be able to revert to the previous method.Please confirm to convert.',
+    },
   },
 }
 

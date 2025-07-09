@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
@@ -23,6 +23,8 @@ import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vend
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import useDocumentTitle from '@/hooks/use-document-title'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -34,9 +36,18 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     children,
     params: { datasetId },
   } = props
+  const { t } = useTranslation()
   const pathname = usePathname()
   const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
-  const { t } = useTranslation()
+  const isPipelineCanvas = pathname.endsWith('/pipeline')
+  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === 'workflow-canvas-maximize')
+      setHideHeader(v.payload)
+  })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const media = useBreakpoints()
@@ -75,15 +86,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      if (datasetRes?.runtime_mode === 'rag_pipeline') {
-        baseNavigation.unshift({
-          name: t('common.datasetMenus.pipeline'),
-          href: `/datasets/${datasetId}/pipeline`,
-          icon: PipelineLine as RemixiconComponentType,
-          selectedIcon: PipelineFill as RemixiconComponentType,
-          disabled: false,
-        })
-      }
+      baseNavigation.unshift({
+        name: t('common.datasetMenus.pipeline'),
+        href: `/datasets/${datasetId}/pipeline`,
+        icon: PipelineLine as RemixiconComponentType,
+        selectedIcon: PipelineFill as RemixiconComponentType,
+        disabled: false,
+      })
       baseNavigation.unshift({
         name: t('common.datasetMenus.documents'),
         href: `/datasets/${datasetId}/documents`,
@@ -94,7 +103,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.runtime_mode])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
@@ -110,7 +119,12 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return <Loading type='app' />
 
   return (
-    <div className='flex grow overflow-hidden'>
+    <div
+      className={cn(
+        'flex grow overflow-hidden',
+        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl border-t border-effects-highlight',
+      )}
+    >
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,

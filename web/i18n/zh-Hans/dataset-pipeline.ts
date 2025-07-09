@@ -30,6 +30,7 @@ const translation = {
     saveAndProcess: '保存并处理',
     preview: '预览',
     exportPipeline: '导出 pipeline',
+    convert: '转换',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
@@ -125,6 +126,16 @@ const translation = {
     emptyFolder: '此文件夹为空',
     emptySearchResult: '未找到任何项目',
     resetKeywords: '重置关键词',
+  },
+  conversion: {
+    title: '转换为知识库 pipeline',
+    descriptionChunk1: '您现在可以将现有知识库转换为使用知识库 pipeline 来处理文档',
+    descriptionChunk2: ' —— 这是一种更开放、更灵活的方式，可以访问我们市场中的插件。新的处理方式将应用到后续添加的所有文档。',
+    warning: '此操作无法撤销',
+    confirm: {
+      title: '确认',
+      content: '此操作是永久性的。您将无法恢复到之前的方式。请确认转换。',
+    },
   },
 }
 

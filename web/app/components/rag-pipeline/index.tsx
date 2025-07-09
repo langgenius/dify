@@ -12,6 +12,8 @@ import Loading from '@/app/components/base/loading'
 import { createRagPipelineSliceSlice } from './store'
 import RagPipelineMain from './components/rag-pipeline-main'
 import { usePipelineInit } from './hooks'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import Conversion from './conversion'
 
 const RagPipeline = () => {
   const {
@@ -53,6 +55,11 @@ const RagPipeline = () => {
 }
 
 const RagPipelineWrapper = () => {
+  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+
+  if (!pipelineId)
+    return <Conversion />
+
   return (
     <WorkflowContextProvider
       injectWorkflowStoreSliceFn={createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn}
