@@ -25,6 +25,7 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import BoolInput from './bool-input'
 
 type Props = {
   payload: InputVar
@@ -92,6 +93,7 @@ const FormItem: FC<Props> = ({
     return ''
   })()
 
+  const isBooleanType = type === InputVarType.boolean
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
@@ -113,7 +115,7 @@ const FormItem: FC<Props> = ({
 
   return (
     <div className={cn(className)}>
-      {!isArrayLikeType && (
+      {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
           <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
           {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
@@ -165,6 +167,14 @@ const FormItem: FC<Props> = ({
             />
           )
         }
+
+        { isBooleanType && (
+          <BoolInput
+            name={payload.label as string}
+            value={!!value}
+            onChange={onChange}
+          />
+        )}
 
         {
           type === InputVarType.json && (
