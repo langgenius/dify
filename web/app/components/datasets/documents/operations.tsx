@@ -3,17 +3,17 @@ import { useContext } from 'use-context-selector'
 import { ToastContext } from '../../base/toast'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import type { OperationName } from './types'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import Switch from '../../base/switch'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import Tooltip from '../../base/tooltip'
 import Divider from '../../base/divider'
 import cn from '@/utils/classnames'
-import { RiArchive2Line, RiDeleteBinLine, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill } from '@remixicon/react'
+import { RiArchive2Line, RiDeleteBinLine, RiEditLine, RiEqualizer2Line, RiLoopLeftLine, RiMoreFill, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import CustomPopover from '../../base/popover'
 import s from './style.module.css'
 import { DataSourceType } from '@/models/datasets'
@@ -29,6 +29,7 @@ type OperationsProps = {
     id: string
     data_source_type: string
     doc_form: string
+    display_status?: string
   }
   datasetId: string
   onUpdate: (operationName?: string) => void
@@ -44,12 +45,12 @@ const Operations = ({
   scene = 'list',
   className = '',
 }: OperationsProps) => {
-  const { t } = useTranslation()
-  const router = useRouter()
-  const { id, enabled = false, archived = false, data_source_type } = detail || {}
+  const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
+  const { t } = useTranslation()
+  const router = useRouter()
   const { mutateAsync: archiveDocument } = useDocumentArchive()
   const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
   const { mutateAsync: enableDocument } = useDocumentEnable()
@@ -57,6 +58,8 @@ const Operations = ({
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
+  const { mutateAsync: pauseDocument } = useDocumentPause()
+  const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
@@ -79,6 +82,12 @@ const Operations = ({
           opApi = syncDocument
         else
           opApi = syncWebsite
+        break
+      case 'pause':
+        opApi = pauseDocument
+        break
+      case 'resume':
+        opApi = resumeDocument
         break
       default:
         opApi = deleteDocument
@@ -180,6 +189,18 @@ const Operations = ({
                   )}
                   <Divider className='my-1' />
                 </>
+              )}
+              {!archived && display_status?.toLowerCase() === 'indexing' && (
+                <div className={s.actionItem} onClick={() => onOperate('pause')}>
+                  <RiPauseCircleLine className='h-4 w-4 text-text-tertiary' />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.pause')}</span>
+                </div>
+              )}
+              {!archived && display_status?.toLowerCase() === 'paused' && (
+                <div className={s.actionItem} onClick={() => onOperate('resume')}>
+                  <RiPlayCircleLine className='h-4 w-4 text-text-tertiary' />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.resume')}</span>
+                </div>
               )}
               {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
                 <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
