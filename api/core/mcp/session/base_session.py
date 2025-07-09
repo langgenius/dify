@@ -179,10 +179,7 @@ class BaseSession(
 
     def check_receiver_status(self) -> None:
         if self._receiver_future.done():
-            try:
-                self._receiver_future.result()
-            except Exception as e:
-                raise e
+            self._receiver_future.result()
 
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None

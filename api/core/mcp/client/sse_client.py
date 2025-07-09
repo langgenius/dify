@@ -284,7 +284,7 @@ def sse_client(
         try:
             with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
                 with ssrf_proxy_sse_connect(
-                    url, 2, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
+                    url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
                 ) as event_source:
                     event_source.response.raise_for_status()
 
