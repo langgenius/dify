@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import { useEdgesInteractions } from '../../../hooks'
@@ -61,7 +61,6 @@ const ClassList: FC<Props> = ({
     }
   }, [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId])
 
-  const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
   const topicCount = list.length
   const handleSideWidth = 3
   // Todo Remove; edit topic name
@@ -81,7 +80,6 @@ const ClassList: FC<Props> = ({
             <div key={item.id}
                 className={cn(
                   'group relative rounded-[10px] bg-components-panel-bg',
-                  willDeleteCaseId === item.id && 'bg-state-destructive-hover',
                   `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
             )}>
               <RiDraggable className={cn(
