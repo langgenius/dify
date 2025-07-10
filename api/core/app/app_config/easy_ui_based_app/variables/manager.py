@@ -47,6 +47,7 @@ class BasicVariablesConfigManager:
                 VariableEntityType.PARAGRAPH,
                 VariableEntityType.NUMBER,
                 VariableEntityType.SELECT,
+                VariableEntityType.JSON,
             }:
                 variable = variables[variable_type]
                 variable_entities.append(
@@ -96,7 +97,7 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
+            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool", "json"}:
                 raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
 
             form_item = item[key]
