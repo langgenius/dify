@@ -12,8 +12,6 @@ import { useTranslation } from 'react-i18next'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation()
-  const shareCode = useWebAppStore(s => s.shareCode)
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
@@ -21,7 +19,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { isFetching: isFetchingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
   const { isFetching: isFetchingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
   const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
-  const { isFetching: isFetchingUserCanAccessApp, data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
+  const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
     if (appInfo)
@@ -75,7 +73,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>
     </div>
   }
-  if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta || isFetchingUserCanAccessApp) {
+  if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
     return <div className='flex h-full items-center justify-center'>
       <Loading />
     </div>
