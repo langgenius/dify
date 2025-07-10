@@ -111,6 +111,15 @@ const TimePicker = ({
   const displayValue = value?.format(timeFormat) || ''
   const placeholderDate = isOpen && selectedTime ? selectedTime.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
 
+  const inputElem = (
+    <input
+      className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
+      readOnly
+      value={isOpen ? '' : displayValue}
+      placeholder={placeholderDate}
+    />
+  )
   return (
     <PortalToFollowElem
       open={isOpen}
@@ -118,18 +127,16 @@ const TimePicker = ({
       placement='bottom-end'
     >
       <PortalToFollowElemTrigger>
-        {renderTrigger ? (renderTrigger()) : (
+        {renderTrigger ? (renderTrigger({
+          inputElem,
+          onClick: handleClickTrigger,
+          isOpen,
+        })) : (
           <div
             className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
             onClick={handleClickTrigger}
           >
-            <input
-              className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
-            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
-              readOnly
-              value={isOpen ? '' : displayValue}
-              placeholder={placeholderDate}
-            />
+            {inputElem}
             <RiTimeLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
