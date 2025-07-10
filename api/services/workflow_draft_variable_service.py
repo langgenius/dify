@@ -21,7 +21,6 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
-from extensions.ext_database import db
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
 from models import App, Conversation
@@ -118,10 +117,22 @@ class DraftVarLoader(VariableLoader):
 class WorkflowDraftVariableService:
     _session: Session
 
-    def __init__(self, session: Session, session_maker: sessionmaker | None = None) -> None:
+    def __init__(self, session: Session) -> None:
+        """
+        Initialize the WorkflowDraftVariableService with a SQLAlchemy session.
+
+        Args:
+            session (Session): The SQLAlchemy session used to execute database queries.
+            The provided session must be bound to an `Engine` object, not a specific `Connection`.
+
+        Raises:
+            AssertionError: If the provided session is not bound to an `Engine` object.
+        """
         self._session = session
-        if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        engine = session.get_bind()
+        # Ensure the session is bound to a engine.
+        assert isinstance(engine, Engine)
+        session_maker = sessionmaker(bind=engine, expire_on_commit=False)
         self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
