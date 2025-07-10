@@ -366,6 +366,7 @@ const translation = {
       },
       insertVarTip: 'Vstavite spremenljivko',
       outputVars: 'Izhodne spremenljivke',
+      typeSwitch: {},
     },
     start: {
       outputVars: {

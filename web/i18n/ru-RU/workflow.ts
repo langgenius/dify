@@ -364,6 +364,7 @@ const translation = {
         retryFailedTimes: 'Повторные попытки {{times}} не увенчались успехом',
         retries: '{{число}} Повторных попыток',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'обязательно',

@@ -364,6 +364,7 @@ const translation = {
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'gerekli',

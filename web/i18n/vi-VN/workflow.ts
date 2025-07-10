@@ -364,6 +364,7 @@ const translation = {
         times: 'lần',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'bắt buộc',

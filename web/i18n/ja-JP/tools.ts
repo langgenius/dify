@@ -228,7 +228,6 @@ const translation = {
       publishTip: 'アプリが公開されていません。まずアプリを公開してください。',
     },
   },
-
 }
 
 export default translation
