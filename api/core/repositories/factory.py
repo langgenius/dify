@@ -6,6 +6,7 @@ allowing users to configure different repository backends through string paths.
 """
 
 import importlib
+import inspect
 import logging
 from typing import Any, Union
 
@@ -99,7 +100,6 @@ class DifyCoreRepositoryFactory:
         Raises:
             RepositoryImportError: If the constructor doesn't accept required parameters
         """
-        import inspect
 
         try:
             signature = inspect.signature(repository_class.__init__)
