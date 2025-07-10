@@ -48,13 +48,18 @@ export type DatePickerFooterProps = {
   handleConfirmDate: () => void
 }
 
+export type TriggerParams = {
+  isOpen: boolean
+  inputElem: React.ReactNode
+  onClick: (e: React.MouseEvent) => void
+}
 export type TimePickerProps = {
   value: Dayjs | undefined
   timezone?: string
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
-  renderTrigger?: () => React.ReactNode
+  renderTrigger?: (props: TriggerParams) => React.ReactNode
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
   popupClassName?: string

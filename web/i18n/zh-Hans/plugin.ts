@@ -161,6 +161,8 @@ const translation = {
       noFound: '未找到插件',
       noInstalled: '未安装插件',
     },
+    updateSettings: '更新设置',
+    changeTimezone: '要更改时区，请前往<setTimezone>设置</setTimezone>',
   },
   pluginInfoModal: {
     title: '插件信息',
