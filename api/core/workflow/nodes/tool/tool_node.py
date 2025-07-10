@@ -339,10 +339,12 @@ class ToolNode(BaseNode[ToolNodeData]):
                                 if provider.name == dict_metadata["provider"]
                             )
                             icon = builtin_tool.icon
+                            icon_dark = builtin_tool.icon_dark
                         except StopIteration:
                             pass
 
                         dict_metadata["icon"] = icon
+                        dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata
                 agent_log = AgentLogEvent(
                     id=message.message.id,
