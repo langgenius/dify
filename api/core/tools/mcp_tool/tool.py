@@ -56,7 +56,14 @@ class MCPTool(Tool):
             if isinstance(content, TextContent):
                 yield self.create_text_message(content.text)
                 try:
-                    yield self.create_json_message(json.loads(content.text))
+                    content_json = json.loads(content.text)
+                    if isinstance(content_json, dict):
+                        yield self.create_json_message(content_json)
+                    elif isinstance(content_json, list):
+                        for item in content_json:
+                            yield self.create_json_message(item)
+                    else:
+                        pass
                 except json.JSONDecodeError:
                     pass
 
