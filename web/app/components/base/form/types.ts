@@ -31,6 +31,13 @@ export enum FormTypeEnum {
   dynamicSelect = 'dynamic-select',
 }
 
+export type FormOption = {
+  label: TypeWithI18N | string
+  value: string
+  show_on: FormShowOnObject[]
+  icon?: string
+}
+
 export type FormSchema = {
   type: FormTypeEnum
   name: string
@@ -41,6 +48,9 @@ export type FormSchema = {
   show_on?: FormShowOnObject[]
   url?: string
   scope?: string
+  help?: string | TypeWithI18N
+  placeholder?: string | TypeWithI18N
+  options?: FormOption[]
 }
 
 export type FormValues = Record<string, any>

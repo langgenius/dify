@@ -72,8 +72,7 @@ export const useUpdatePluginCredential = (
   return useMutation({
     mutationFn: (params: {
       credential_id: string
-      credentials: Record<string, any>
-      type: CredentialTypeEnum
+      credentials?: Record<string, any>
       name?: string
     }) => {
       return post(url, { body: params })

@@ -27,7 +27,6 @@ type Props = {
   onSwitchChange?: (value: boolean) => void
   onDelete?: () => void
   noAuth?: boolean
-  onAuth?: () => void
   isError?: boolean
   errorTip?: any
   uninstalled?: boolean
@@ -35,6 +34,7 @@ type Props = {
   onInstall?: () => void
   versionMismatch?: boolean
   open: boolean
+  authRemoved?: boolean
 }
 
 const ToolItem = ({
@@ -47,13 +47,13 @@ const ToolItem = ({
   onSwitchChange,
   onDelete,
   noAuth,
-  onAuth,
   uninstalled,
   installInfo,
   onInstall,
   isError,
   errorTip,
   versionMismatch,
+  authRemoved,
 }: Props) => {
   const { t } = useTranslation()
   const providerNameText = providerName?.split('/').pop()
@@ -113,9 +113,15 @@ const ToolItem = ({
         </div>
       )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
-        <Button variant='secondary' size='small' onClick={onAuth}>
+        <Button variant='secondary' size='small'>
           {t('tools.notAuthorized')}
           <Indicator className='ml-2' color='orange' />
+        </Button>
+      )}
+      {!isError && !uninstalled && !versionMismatch && authRemoved && (
+        <Button variant='secondary' size='small'>
+          {t('plugin.auth.authRemoved')}
+          <Indicator className='ml-2' color='red' />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (

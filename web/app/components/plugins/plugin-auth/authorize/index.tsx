@@ -2,6 +2,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import AddOAuthButton from './add-oauth-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
 import AddApiKeyButton from './add-api-key-button'
@@ -24,10 +25,11 @@ const Authorize = ({
   canApiKey,
   disabled,
 }: AuthorizeProps) => {
+  const { t } = useTranslation()
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
-        buttonText: !canApiKey ? 'Add OAuth Authorization' : 'Add OAuth',
+        buttonText: !canApiKey ? t('plugin.auth.useOAuthAuth') : t('plugin.auth.addOAuth'),
         buttonVariant: 'secondary',
         className: 'hover:bg-components-button-secondary-bg',
         buttonLeftClassName: 'hover:bg-components-button-secondary-bg-hover',
@@ -38,25 +40,25 @@ const Authorize = ({
     }
 
     return {
-      buttonText: !canApiKey ? 'Use OAuth Authorization' : 'Use OAuth',
+      buttonText: !canApiKey ? t('plugin.auth.useOAuthAuth') : t('plugin.auth.addOAuth'),
       pluginPayload,
     }
-  }, [canApiKey, theme, pluginPayload])
+  }, [canApiKey, theme, pluginPayload, t])
 
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
         pluginPayload,
         buttonVariant: 'secondary',
-        buttonText: !canOAuth ? 'API Key Authorization Configuration' : 'Add API Key',
+        buttonText: !canOAuth ? t('plugin.auth.useApiAuth') : t('plugin.auth.addApi'),
       }
     }
     return {
       pluginPayload,
-      buttonText: !canOAuth ? 'API Key Authorization Configuration' : 'Use API Key',
+      buttonText: !canOAuth ? t('plugin.auth.useApiAuth') : t('plugin.auth.addApi'),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
     }
-  }, [canOAuth, theme, pluginPayload])
+  }, [canOAuth, theme, pluginPayload, t])
 
   return (
     <>

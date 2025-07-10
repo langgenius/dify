@@ -31,6 +31,7 @@ import {
   useDeletePluginCredentialHook,
   useInvalidPluginCredentialInfoHook,
   useSetPluginDefaultCredentialHook,
+  useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
 
 type AuthorizedProps = {
@@ -49,6 +50,7 @@ type AuthorizedProps = {
   disableSetDefault?: boolean
   onItemClick?: (id: string) => void
   extraAuthorizationItems?: Credential[]
+  showItemSelectedIcon?: boolean
 }
 const Authorized = ({
   pluginPayload,
@@ -66,6 +68,7 @@ const Authorized = ({
   disableSetDefault,
   onItemClick,
   extraAuthorizationItems,
+  showItemSelectedIcon,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -125,6 +128,17 @@ const Authorized = ({
     })
     invalidatePluginCredentialInfo()
   }, [setPluginDefaultCredential, invalidatePluginCredentialInfo, notify, t])
+  const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
+  const handleRename = useCallback(async (payload: {
+      credential_id: string
+      name: string
+    }) => {
+    await updatePluginCredential(payload)
+    notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+  }, [updatePluginCredential, notify, t])
 
   return (
     <>
@@ -149,7 +163,12 @@ const Authorized = ({
                     isOpen && 'bg-components-button-secondary-bg-hover',
                   )}>
                   <Indicator className='mr-2' />
-                  {credentials.length} Authorizations
+                  {credentials.length}&nbsp;
+                  {
+                    credentials.length > 1
+                      ? t('plugin.auth.authorizations')
+                      : t('plugin.auth.authorization')
+                  }
                   <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
                 </Button>
               )
@@ -160,31 +179,35 @@ const Authorized = ({
             'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
           )}>
-            {
-              !!extraAuthorizationItems?.length && (
-                <div className='p-1'>
-                  {
-                    extraAuthorizationItems.map(credential => (
-                      <Item
-                        key={credential.id}
-                        credential={credential}
-                        disabled={disabled}
-                        onItemClick={onItemClick}
-                        disableRename
-                        disableEdit
-                        disableDelete
-                        disableSetDefault
-                      />
-                    ))
-                  }
-                </div>
-              )
-            }
             <div className='py-1'>
+              {
+                !!extraAuthorizationItems?.length && (
+                  <div className='p-1'>
+                    {
+                      extraAuthorizationItems.map(credential => (
+                        <Item
+                          key={credential.id}
+                          credential={credential}
+                          disabled={disabled}
+                          onItemClick={onItemClick}
+                          disableRename
+                          disableEdit
+                          disableDelete
+                          disableSetDefault
+                          showSelectedIcon={showItemSelectedIcon}
+                        />
+                      ))
+                    }
+                  </div>
+                )
+              }
               {
                 !!oAuthCredentials.length && (
                   <div className='p-1'>
-                    <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
+                    <div className={cn(
+                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      showItemSelectedIcon && 'pl-7',
+                    )}>
                       OAuth
                     </div>
                     {
@@ -192,6 +215,14 @@ const Authorized = ({
                         <Item
                           key={credential.id}
                           credential={credential}
+                          disabled={disabled}
+                          disableEdit
+                          onDelete={openConfirm}
+                          onSetDefault={handleSetDefault}
+                          onRename={handleRename}
+                          disableSetDefault={disableSetDefault}
+                          onItemClick={onItemClick}
+                          showSelectedIcon={showItemSelectedIcon}
                         />
                       ))
                     }
@@ -201,7 +232,10 @@ const Authorized = ({
               {
                 !!apiKeyCredentials.length && (
                   <div className='p-1'>
-                    <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
+                    <div className={cn(
+                      'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
+                      showItemSelectedIcon && 'pl-7',
+                    )}>
                       API Keys
                     </div>
                     {
@@ -214,7 +248,10 @@ const Authorized = ({
                           onEdit={handleEdit}
                           onSetDefault={handleSetDefault}
                           disableSetDefault={disableSetDefault}
+                          disableRename
                           onItemClick={onItemClick}
+                          onRename={handleRename}
+                          showSelectedIcon={showItemSelectedIcon}
                         />
                       ))
                     }
