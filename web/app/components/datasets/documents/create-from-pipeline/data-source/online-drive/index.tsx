@@ -29,6 +29,7 @@ const OnlineDrive = ({
   const bucket = useDataSourceStoreWithSelector(state => state.bucket)
   const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
+  const currentNodeIdRef = useDataSourceStoreWithSelector(state => state.currentNodeIdRef)
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -82,10 +83,28 @@ const OnlineDrive = ({
   }, [prefix, bucket, datasourceNodeRunURL, dataSourceStore, fileList])
 
   useEffect(() => {
-    if (fileList.length > 0) return
-    getOnlineDriveFiles({})
+    if (nodeId !== currentNodeIdRef.current) {
+      const { setFileList, setBucket, setPrefix, setKeywords, setSelectedFileList } = dataSourceStore.getState()
+      setFileList([])
+      setBucket('')
+      setPrefix([])
+      setKeywords('')
+      setSelectedFileList([])
+      currentNodeIdRef.current = nodeId
+      getOnlineDriveFiles({
+        prefix: [],
+        bucket: '',
+        fileList: [],
+        startAfter: '',
+      })
+    }
+    else {
+      // Avoid fetching files when come back from next step
+      if (fileList.length > 0) return
+      getOnlineDriveFiles({})
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [nodeId])
 
   const onlineDriveFileList = useMemo(() => {
     if (keywords)

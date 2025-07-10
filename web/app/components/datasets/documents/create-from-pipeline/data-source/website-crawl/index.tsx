@@ -20,7 +20,7 @@ import type {
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStoreWithSelector } from '../store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -42,15 +42,10 @@ const WebsiteCrawl = ({
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const crawlResult = useDataSourceStoreWithSelector(state => state.crawlResult)
-  const setCrawlResult = useDataSourceStoreWithSelector(state => state.setCrawlResult)
   const step = useDataSourceStoreWithSelector(state => state.step)
-  const setStep = useDataSourceStoreWithSelector(state => state.setStep)
   const checkedCrawlResult = useDataSourceStoreWithSelector(state => state.websitePages)
-  const setWebsitePages = useDataSourceStoreWithSelector(state => state.setWebsitePages)
-  const previewWebsitePageRef = useDataSourceStoreWithSelector(state => state.previewWebsitePageRef)
   const previewIndex = useDataSourceStoreWithSelector(state => state.previewIndex)
-  const setCurrentWebsite = useDataSourceStoreWithSelector(state => state.setCurrentWebsite)
-  const setPreviewIndex = useDataSourceStoreWithSelector(state => state.setPreviewIndex)
+  const dataSourceStore = useDataSourceStore()
 
   const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
   const { data: paramsConfig, isFetching: isFetchingParams } = usePreProcessingParams.current({
@@ -63,6 +58,31 @@ const WebsiteCrawl = ({
       setControlFoldOptions(Date.now())
   }, [step])
 
+  useEffect(() => {
+    const {
+      setStep,
+      setCrawlResult,
+      setWebsitePages,
+      setPreviewIndex,
+      setCurrentWebsite,
+      currentNodeIdRef,
+      previewWebsitePageRef,
+    } = dataSourceStore.getState()
+    if (nodeId !== currentNodeIdRef.current) {
+      setStep(CrawlStep.init)
+      setCrawlResult(undefined)
+      setCurrentWebsite(undefined)
+      setWebsitePages([])
+      setPreviewIndex(0)
+      previewWebsitePageRef.current = undefined
+      setCrawledNum(0)
+      setTotalNum(0)
+      setCrawlErrorMessage('')
+      currentNodeIdRef.current = nodeId
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeId])
+
   const isInit = step === CrawlStep.init
   const isCrawlFinished = step === CrawlStep.finished
   const isRunning = step === CrawlStep.running
@@ -72,16 +92,20 @@ const WebsiteCrawl = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const handleCheckedCrawlResultChange = useCallback((checkedCrawlResult: CrawlResultItem[]) => {
+    const { setWebsitePages, previewWebsitePageRef } = dataSourceStore.getState()
     setWebsitePages(checkedCrawlResult)
     previewWebsitePageRef.current = checkedCrawlResult[0]
-  }, [previewWebsitePageRef, setWebsitePages])
+  }, [dataSourceStore])
 
   const handlePreview = useCallback((website: CrawlResultItem, index: number) => {
+    const { setCurrentWebsite, setPreviewIndex } = dataSourceStore.getState()
     setCurrentWebsite(website)
     setPreviewIndex(index)
-  }, [setCurrentWebsite, setPreviewIndex])
+  }, [dataSourceStore])
 
   const handleRun = useCallback(async (value: Record<string, any>) => {
+    const { setStep, setCrawlResult } = dataSourceStore.getState()
+
     setStep(CrawlStep.running)
     ssePost(
       datasourceNodeRunURL,
@@ -120,7 +144,7 @@ const WebsiteCrawl = ({
         },
       },
     )
-  }, [datasourceNodeRunURL, handleCheckedCrawlResultChange, setCrawlResult, setStep, t])
+  }, [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, t])
 
   const handleSubmit = useCallback((value: Record<string, any>) => {
     handleRun(value)

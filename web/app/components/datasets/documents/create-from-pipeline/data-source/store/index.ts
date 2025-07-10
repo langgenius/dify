@@ -1,6 +1,8 @@
 import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
 import { DataSourceContext } from './provider'
+import type { CommonShape } from './slices/common'
+import { createCommonSlice } from './slices/common'
 import type { LocalFileSliceShape } from './slices/local-file'
 import { createLocalFileSlice } from './slices/local-file'
 import type { OnlineDocumentSliceShape } from './slices/online-document'
@@ -11,6 +13,7 @@ import type { OnlineDriveSliceShape } from './slices/online-drive'
 import { createOnlineDriveSlice } from './slices/online-drive'
 
 export type DataSourceShape =
+  CommonShape &
   LocalFileSliceShape &
   OnlineDocumentSliceShape &
   WebsiteCrawlSliceShape &
@@ -18,6 +21,7 @@ export type DataSourceShape =
 
 export const createDataSourceStore = () => {
   return createStore<DataSourceShape>((...args) => ({
+    ...createCommonSlice(...args),
     ...createLocalFileSlice(...args),
     ...createOnlineDocumentSlice(...args),
     ...createWebsiteCrawlSlice(...args),

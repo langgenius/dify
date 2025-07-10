@@ -10,7 +10,7 @@ import { ssePost } from '@/service/base'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStoreWithSelector } from '../store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -25,15 +25,11 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
-  const setDocumentsData = useDataSourceStoreWithSelector(state => state.setDocumentsData)
   const searchValue = useDataSourceStoreWithSelector(state => state.searchValue)
-  const setSearchValue = useDataSourceStoreWithSelector(state => state.setSearchValue)
-  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
-  const setCurrentWorkspaceId = useDataSourceStoreWithSelector(state => state.setCurrentWorkspaceId)
-  const setOnlineDocuments = useDataSourceStoreWithSelector(state => state.setOnlineDocuments)
-  const setCurrentDocument = useDataSourceStoreWithSelector(state => state.setCurrentDocument)
   const selectedPagesId = useDataSourceStoreWithSelector(state => state.selectedPagesId)
-  const setSelectedPagesId = useDataSourceStoreWithSelector(state => state.setSelectedPagesId)
+  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
+  const currentNodeIdRef = useDataSourceStoreWithSelector(state => state.currentNodeIdRef)
+  const dataSourceStore = useDataSourceStore()
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
     const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
@@ -64,6 +60,7 @@ const OnlineDocuments = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
+          const { setDocumentsData, setCurrentWorkspaceId } = dataSourceStore.getState()
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
           setCurrentWorkspaceId(documentsData.data[0].workspace_id)
         },
@@ -75,34 +72,58 @@ const OnlineDocuments = ({
         },
       },
     )
-  }, [datasourceNodeRunURL, setCurrentWorkspaceId, setDocumentsData])
+  }, [dataSourceStore, datasourceNodeRunURL])
 
   useEffect(() => {
-    if (!documentsData.length)
+    if (nodeId !== currentNodeIdRef.current) {
+      const {
+        setDocumentsData,
+        setCurrentWorkspaceId,
+        setSearchValue,
+        setSelectedPagesId,
+        setOnlineDocuments,
+        setCurrentDocument,
+      } = dataSourceStore.getState()
+      setDocumentsData([])
+      setCurrentWorkspaceId('')
+      setSearchValue('')
+      setSelectedPagesId(new Set())
+      setOnlineDocuments([])
+      setCurrentDocument(undefined)
+      currentNodeIdRef.current = nodeId
       getOnlineDocuments()
+    }
+    else {
+      // Avoid fetching documents when come back from next step
+      if (!documentsData.length)
+        getOnlineDocuments()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [nodeId])
 
   const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
   const handleSearchValueChange = useCallback((value: string) => {
+    const { setSearchValue } = dataSourceStore.getState()
     setSearchValue(value)
-  }, [setSearchValue])
+  }, [dataSourceStore])
 
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
+    const { setCurrentWorkspaceId } = dataSourceStore.getState()
     setCurrentWorkspaceId(workspaceId)
-  }, [setCurrentWorkspaceId])
+  }, [dataSourceStore])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
+    const { setSelectedPagesId, setOnlineDocuments } = dataSourceStore.getState()
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
-
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     setOnlineDocuments(selectedPages)
-  }, [setSelectedPagesId, setOnlineDocuments, PagesMapAndSelectedPagesId])
+  }, [dataSourceStore, PagesMapAndSelectedPagesId])
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
+    const { setCurrentDocument } = dataSourceStore.getState()
     setCurrentDocument(PagesMapAndSelectedPagesId[previewPageId])
-  }, [PagesMapAndSelectedPagesId, setCurrentDocument])
+  }, [PagesMapAndSelectedPagesId, dataSourceStore])
 
   const headerInfo = useMemo(() => {
     return {
