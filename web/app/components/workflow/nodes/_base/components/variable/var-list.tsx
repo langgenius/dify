@@ -44,7 +44,7 @@ const VarList: FC<Props> = ({
     const id = uuid4()
     return {
       id,
-      p: { ...item },
+      v: { ...item },
     }
   })
 
@@ -123,7 +123,7 @@ const VarList: FC<Props> = ({
     <ReactSortable
       className='space-y-2'
       list={payloadWithIds}
-      setList={(list) => { onChange(list.map(item => item.p)) }}
+      setList={(list) => { onChange(list.map(item => item.v)) }}
       handle='.handle'
       ghostClass='opacity-50'
       animation={150}
