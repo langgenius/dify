@@ -6,7 +6,6 @@ import {
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import DeleteAccount from '../delete-account'
-import s from './index.module.css'
 import AvatarWithEdit from './AvatarWithEdit'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
@@ -21,6 +20,7 @@ import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import EmailChangeModal from './email-change-modal'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -48,6 +48,7 @@ export default function AccountPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showUpdateEmail, setShowUpdateEmail] = useState(false)
 
   const handleEditName = () => {
     setEditNameModalVisible(true)
@@ -123,10 +124,17 @@ export default function AccountPage() {
   }
 
   const renderAppItem = (item: IItem) => {
+    const { icon, icon_background, icon_type, icon_url } = item as any
     return (
       <div className='flex px-3 py-1'>
         <div className='mr-3'>
-          <AppIcon size='tiny' />
+          <AppIcon
+            size='tiny'
+            iconType={icon_type}
+            icon={icon}
+            background={icon_background}
+            imageUrl={icon_url}
+          />
         </div>
         <div className='system-sm-medium mt-[3px] text-text-secondary'>{item.name}</div>
       </div>
@@ -170,6 +178,9 @@ export default function AccountPage() {
           <div className='system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled '>
             <span className='pl-1'>{userProfile.email}</span>
           </div>
+          <div className='system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text' onClick={() => setShowUpdateEmail(true)}>
+            {t('common.operation.change')}
+          </div>
         </div>
       </div>
       {
@@ -190,7 +201,7 @@ export default function AccountPage() {
         {!!apps.length && (
           <Collapse
             title={`${t('common.account.showAppLength', { length: apps.length })}`}
-            items={apps.map(app => ({ key: app.id, name: app.name }))}
+            items={apps.map(app => ({ ...app, key: app.id, name: app.name }))}
             renderItem={renderAppItem}
             wrapperClassName='mt-2'
           />
@@ -202,7 +213,7 @@ export default function AccountPage() {
           <Modal
             isShow
             onClose={() => setEditNameModalVisible(false)}
-            className={s.modal}
+            className='!w-[420px] !p-6'
           >
             <div className='title-2xl-semi-bold mb-6 text-text-primary'>{t('common.account.editName')}</div>
             <div className={titleClassName}>{t('common.account.name')}</div>
@@ -231,7 +242,7 @@ export default function AccountPage() {
               setEditPasswordModalVisible(false)
               resetPasswordForm()
             }}
-            className={s.modal}
+            className='!w-[420px] !p-6'
           >
             <div className='title-2xl-semi-bold mb-6 text-text-primary'>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</div>
             {userProfile.is_password_set && (
@@ -316,6 +327,13 @@ export default function AccountPage() {
           />
         )
       }
+      {showUpdateEmail && (
+        <EmailChangeModal
+          show={showUpdateEmail}
+          onClose={() => setShowUpdateEmail(false)}
+          email={userProfile.email}
+        />
+      )}
     </>
   )
 }
