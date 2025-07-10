@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import Toast from '@/app/components/base/toast'
-import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
+import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 
@@ -64,10 +64,10 @@ const OnlineDocuments = ({
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
           setCurrentWorkspaceId(documentsData.data[0].workspace_id)
         },
-        onError: (message: string) => {
+        onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           Toast.notify({
             type: 'error',
-            message,
+            message: error.error,
           })
         },
       },

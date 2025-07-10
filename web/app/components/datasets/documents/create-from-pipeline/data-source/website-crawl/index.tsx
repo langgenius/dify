@@ -17,6 +17,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import type {
   DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
@@ -138,8 +139,8 @@ const WebsiteCrawl = ({
           setCrawlErrorMessage('')
           setStep(CrawlStep.finished)
         },
-        onError: (message: string) => {
-          setCrawlErrorMessage(message || t(`${I18N_PREFIX}.unknownError`))
+        onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
+          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`))
           setStep(CrawlStep.finished)
         },
       },
