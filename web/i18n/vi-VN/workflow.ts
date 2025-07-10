@@ -129,6 +129,8 @@ const translation = {
       value: 'Giá trị',
       valuePlaceholder: 'giá trị môi trường',
       secretTip: 'Được sử dụng để xác định thông tin hoặc dữ liệu nhạy cảm, với cài đặt DSL được cấu hình để ngăn chặn rò rỉ.',
+      description: 'Mô tả',
+      descriptionPlaceholder: 'Mô tả biến',
     },
     export: {
       title: 'Xuất biến môi trường bí mật?',
@@ -362,6 +364,7 @@ const translation = {
         times: 'lần',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'bắt buộc',
@@ -537,6 +540,10 @@ const translation = {
         title: 'Nhập từ cURL',
         placeholder: 'Dán chuỗi cURL vào đây',
       },
+      verifySSL: {
+        title: 'Xác thực chứng chỉ SSL',
+        warningTooltip: 'Việc vô hiệu hóa xác minh SSL không được khuyến khích cho các môi trường sản xuất. Điều này chỉ nên được sử dụng trong phát triển hoặc thử nghiệm, vì nó làm cho kết nối dễ bị tổn thương trước các mối đe dọa an ninh như cuộc tấn công man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Biến đầu vào',
@@ -669,6 +676,7 @@ const translation = {
       inputVars: 'Biến đầu vào',
       outputVars: {
         className: 'Tên lớp',
+        usage: 'Thông tin sử dụng mô hình',
       },
       class: 'Lớp',
       classNamePlaceholder: 'Viết tên lớp của bạn',
@@ -682,6 +690,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Biến đầu vào',
+      outputVars: {
+        isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
+        errorReason: 'Lý do lỗi',
+        usage: 'Thông tin sử dụng mô hình',
+      },
       extractParameters: 'Trích xuất tham số',
       importFromTool: 'Nhập từ công cụ',
       addExtractParameter: 'Thêm tham số trích xuất',
@@ -701,8 +714,6 @@ const translation = {
       advancedSetting: 'Cài đặt nâng cao',
       reasoningMode: 'Chế độ suy luận',
       reasoningModeTip: 'Bạn có thể chọn chế độ suy luận phù hợp dựa trên khả năng của mô hình để phản hồi các hướng dẫn về việc gọi hàm hoặc prompt.',
-      isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
-      errorReason: 'Lý do lỗi',
     },
     iteration: {
       deleteTitle: 'Xóa nút lặp?',

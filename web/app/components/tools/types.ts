@@ -29,6 +29,7 @@ export enum CollectionType {
   custom = 'api',
   model = 'model',
   workflow = 'workflow',
+  mcp = 'mcp',
 }
 
 export type Emoji = {
@@ -50,6 +51,10 @@ export type Collection = {
   labels: string[]
   plugin_id?: string
   letter?: string
+  // MCP Server
+  server_url?: string
+  updated_at?: number
+  server_identifier?: string
 }
 
 export type ToolParameter = {
@@ -167,4 +172,12 @@ export type WorkflowToolProviderResponse = {
     parameters: ParamItem[]
   }
   privacy_policy: string
+}
+
+export type MCPServerDetail = {
+  id: string
+  server_code: string
+  description: string
+  status: string
+  parameters?: Record<string, string>
 }

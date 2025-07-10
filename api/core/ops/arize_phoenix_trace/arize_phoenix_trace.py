@@ -213,11 +213,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     if model:
                         node_metadata["ls_model_name"] = model
 
-                    usage = json.loads(node_execution.outputs).get("usage", {}) if node_execution.outputs else {}
-                    if usage:
-                        node_metadata["total_tokens"] = usage.get("total_tokens", 0)
-                        node_metadata["prompt_tokens"] = usage.get("prompt_tokens", 0)
-                        node_metadata["completion_tokens"] = usage.get("completion_tokens", 0)
+                    outputs = json.loads(node_execution.outputs).get("usage", {})
+                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    if usage_data:
+                        node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
+                        node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
+                        node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
                 elif node_execution.node_type == "dataset_retrieval":
                     span_kind = OpenInferenceSpanKindValues.RETRIEVER.value
                 elif node_execution.node_type == "tool":
@@ -246,14 +247,19 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         if model:
                             node_span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model)
 
-                        usage = json.loads(node_execution.outputs).get("usage", {}) if node_execution.outputs else {}
-                        if usage:
-                            node_span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, usage.get("total_tokens", 0))
+                        outputs = json.loads(node_execution.outputs).get("usage", {})
+                        usage_data = (
+                            process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                        )
+                        if usage_data:
                             node_span.set_attribute(
-                                SpanAttributes.LLM_TOKEN_COUNT_PROMPT, usage.get("prompt_tokens", 0)
+                                SpanAttributes.LLM_TOKEN_COUNT_TOTAL, usage_data.get("total_tokens", 0)
                             )
                             node_span.set_attribute(
-                                SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, usage.get("completion_tokens", 0)
+                                SpanAttributes.LLM_TOKEN_COUNT_PROMPT, usage_data.get("prompt_tokens", 0)
+                            )
+                            node_span.set_attribute(
+                                SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, usage_data.get("completion_tokens", 0)
                             )
                 finally:
                     node_span.end(end_time=datetime_to_nanos(finished_at))

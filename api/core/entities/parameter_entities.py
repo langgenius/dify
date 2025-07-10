@@ -21,6 +21,9 @@ class CommonParameterType(StrEnum):
     DYNAMIC_SELECT = "dynamic-select"
 
     # TOOL_SELECTOR = "tool-selector"
+    # MCP object and array type parameters
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class AppSelectorScope(StrEnum):
