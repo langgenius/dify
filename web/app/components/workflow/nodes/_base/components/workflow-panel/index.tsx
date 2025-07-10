@@ -63,6 +63,7 @@ import {
   AuthorizedInNode,
   PluginAuth,
 } from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
 
 type BasePanelProps = {
@@ -227,14 +228,14 @@ const BasePanel: FC<BasePanelProps> = ({
   const showPluginAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currCollection?.allow_delete && !currCollection.is_team_authorization
   }, [currCollection, data.type])
-  const handleAuthorizationItemClick = useCallback((id: string) => {
+  const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdate({
       id,
       data: {
-        credential_id: id === '__workspace_default__' ? undefined : id,
+        credential_id: credential_id === '__workspace_default__' ? undefined : credential_id,
       },
     })
-  }, [handleNodeDataUpdate])
+  }, [handleNodeDataUpdate, id])
 
   if(logParams.showSpecialResultPanel) {
     return (
@@ -371,7 +372,10 @@ const BasePanel: FC<BasePanelProps> = ({
           {
             showPluginAuth && (
               <PluginAuth
-                provider={currCollection?.name}
+                pluginPayload={{
+                  provider: currCollection?.name || '',
+                  category: AuthCategory.tool,
+                }}
               >
                 <div className='pl-4'>
                   <Tab
@@ -392,7 +396,10 @@ const BasePanel: FC<BasePanelProps> = ({
                 {
                   currCollection?.allow_delete && (
                     <AuthorizedInNode
-                      provider={currCollection?.name}
+                      pluginPayload={{
+                        provider: currCollection?.name || '',
+                        category: AuthCategory.tool,
+                      }}
                       onAuthorizationItemClick={handleAuthorizationItemClick}
                       credentialId={data.credential_id}
                     />

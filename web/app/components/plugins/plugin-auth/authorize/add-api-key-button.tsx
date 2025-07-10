@@ -5,15 +5,16 @@ import {
 import Button from '@/app/components/base/button'
 import type { ButtonProps } from '@/app/components/base/button'
 import ApiKeyModal from './api-key-modal'
+import type { PluginPayload } from '../types'
 
 export type AddApiKeyButtonProps = {
-  provider?: string
+  pluginPayload: PluginPayload
   buttonVariant?: ButtonProps['variant']
   buttonText?: string
   disabled?: boolean
 }
 const AddApiKeyButton = ({
-  provider = '',
+  pluginPayload,
   buttonVariant = 'secondary-accent',
   buttonText = 'use api key',
   disabled,
@@ -33,7 +34,7 @@ const AddApiKeyButton = ({
       {
         isApiKeyModalOpen && (
           <ApiKeyModal
-            provider={provider}
+            pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
           />
         )

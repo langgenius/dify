@@ -6,9 +6,10 @@ import AddOAuthButton from './add-oauth-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
 import AddApiKeyButton from './add-api-key-button'
 import type { AddApiKeyButtonProps } from './add-api-key-button'
+import type { PluginPayload } from '../types'
 
 type AuthorizeProps = {
-  provider?: string
+  pluginPayload: PluginPayload
   theme?: 'primary' | 'secondary'
   showDivider?: boolean
   canOAuth?: boolean
@@ -16,7 +17,7 @@ type AuthorizeProps = {
   disabled?: boolean
 }
 const Authorize = ({
-  provider = '',
+  pluginPayload,
   theme = 'primary',
   showDivider = true,
   canOAuth,
@@ -32,28 +33,30 @@ const Authorize = ({
         buttonLeftClassName: 'hover:bg-components-button-secondary-bg-hover',
         buttonRightClassName: 'hover:bg-components-button-secondary-bg-hover',
         dividerClassName: 'bg-divider-regular opacity-100',
+        pluginPayload,
       }
     }
 
     return {
       buttonText: !canApiKey ? 'Use OAuth Authorization' : 'Use OAuth',
+      pluginPayload,
     }
-  }, [canApiKey, theme])
+  }, [canApiKey, theme, pluginPayload])
 
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
-        provider,
+        pluginPayload,
         buttonVariant: 'secondary',
         buttonText: !canOAuth ? 'API Key Authorization Configuration' : 'Add API Key',
       }
     }
     return {
-      provider,
+      pluginPayload,
       buttonText: !canOAuth ? 'API Key Authorization Configuration' : 'Use API Key',
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
     }
-  }, [canOAuth, theme, provider])
+  }, [canOAuth, theme, pluginPayload])
 
   return (
     <>

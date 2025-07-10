@@ -37,6 +37,7 @@ import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
 
 const i18nPrefix = 'plugin.action'
@@ -275,7 +276,10 @@ const DetailHeader = ({
       {
         category === PluginType.tool && (
           <PluginAuth
-            provider={provider?.name}
+            pluginPayload={{
+              provider: provider?.name || '',
+              category: AuthCategory.tool,
+            }}
           />
         )
       }

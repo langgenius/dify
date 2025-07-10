@@ -1,26 +1,28 @@
 import {
   memo,
   useCallback,
-  useMemo,
   useState,
 } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import cn from '@/utils/classnames'
-import type { Credential } from './types'
+import type {
+  Credential,
+  PluginPayload,
+} from './types'
 import {
   Authorized,
   usePluginAuth,
 } from '.'
 
 type AuthorizedInNodeProps = {
-  provider: string
+  pluginPayload: PluginPayload
   onAuthorizationItemClick: (id: string) => void
   credentialId?: string
 }
 const AuthorizedInNode = ({
-  provider = '',
+  pluginPayload,
   onAuthorizationItemClick,
   credentialId,
 }: AuthorizedInNodeProps) => {
@@ -30,29 +32,40 @@ const AuthorizedInNode = ({
     canOAuth,
     credentials,
     disabled,
-  } = usePluginAuth(provider, isOpen)
-  const label = useMemo(() => {
-    if (!credentialId)
-      return 'Workspace default'
-    const credential = credentials.find(c => c.id === credentialId)
-
-    if (!credential)
-      return 'Auth removed'
-
-    return credential.name
-  }, [credentials, credentialId])
+  } = usePluginAuth(pluginPayload, isOpen || !!credentialId)
   const renderTrigger = useCallback((open?: boolean) => {
+    let label = ''
+    let removed = false
+    if (!credentialId) {
+      label = 'Workspace default'
+    }
+    else {
+      const credential = credentials.find(c => c.id === credentialId)
+      label = credential ? credential.name : 'Auth removed'
+      removed = !credential
+    }
     return (
       <Button
         size='small'
-        className={cn(open && 'bg-components-button-ghost-bg-hover')}
+        className={cn(
+          open && !removed && 'bg-components-button-ghost-bg-hover',
+          removed && 'bg-transparent text-text-destructive',
+        )}
       >
-        <Indicator className='mr-1.5' />
+        <Indicator
+          className='mr-1.5'
+          color={removed ? 'red' : 'green'}
+        />
         {label}
-        <RiArrowDownSLine className='h-3.5 w-3.5 text-components-button-ghost-text' />
+        <RiArrowDownSLine
+          className={cn(
+            'h-3.5 w-3.5 text-components-button-ghost-text',
+            removed && 'text-text-destructive',
+          )}
+        />
       </Button>
     )
-  }, [label])
+  }, [credentialId, credentials])
   const extraAuthorizationItems: Credential[] = [
     {
       id: '__workspace_default__',
@@ -72,7 +85,7 @@ const AuthorizedInNode = ({
 
   return (
     <Authorized
-      provider={provider}
+      pluginPayload={pluginPayload}
       credentials={credentials}
       canOAuth={canOAuth}
       canApiKey={canApiKey}
