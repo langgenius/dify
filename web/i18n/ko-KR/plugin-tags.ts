@@ -16,7 +16,7 @@ const translation = {
     image: '이미지',
     design: '디자인',
     business: '사업',
-    agent: '대리인',
+    agent: '에이전트',
   },
   allTags: '모든 태그',
   searchTags: '검색 태그',

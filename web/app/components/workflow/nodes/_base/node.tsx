@@ -49,7 +49,9 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 type BaseNodeProps = {
   children: ReactElement
-} & NodeProps
+  id: NodeProps['id']
+  data: NodeProps['data']
+}
 
 const BaseNode: FC<BaseNodeProps> = ({
   id,

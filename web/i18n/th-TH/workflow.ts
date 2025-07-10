@@ -129,6 +129,8 @@ const translation = {
       value: 'ค่า',
       valuePlaceholder: 'ค่า env',
       secretTip: 'ใช้เพื่อกําหนดข้อมูลหรือข้อมูลที่ละเอียดอ่อน โดยมีการตั้งค่า DSL ที่กําหนดค่าไว้เพื่อป้องกันการรั่วไหล',
+      description: 'คำอธิบาย',
+      descriptionPlaceholder: 'อธิบายตัวแปร',
     },
     export: {
       title: 'ส่งออกตัวแปรสภาพแวดล้อม Secret หรือไม่',
@@ -537,6 +539,10 @@ const translation = {
         title: 'นําเข้าจาก cURL',
         placeholder: 'วางสตริง cURL ที่นี่',
       },
+      verifySSL: {
+        title: 'ตรวจสอบใบรับรอง SSL',
+        warningTooltip: 'การปิดการตรวจสอบ SSL ไม่แนะนำให้ใช้ในสภาพแวดล้อมการผลิต ควรใช้เฉพาะในระหว่างการพัฒนาหรือการทดสอบเท่านั้น เนื่องจากจะทำให้การเชื่อมต่อมีความเสี่ยงต่อภัยคุกคามด้านความปลอดภัย เช่น การโจมตีแบบ Man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'ตัวแปรอินพุต',
@@ -668,6 +674,7 @@ const translation = {
       inputVars: 'ตัวแปรอินพุต',
       outputVars: {
         className: 'ชื่อคลาส',
+        usage: 'ข้อมูลการใช้งานรุ่น',
       },
       class: 'ประเภท',
       classNamePlaceholder: 'เขียนชื่อชั้นเรียนของคุณ',
@@ -681,6 +688,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'ตัวแปรอินพุต',
+      outputVars: {
+        isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
+        errorReason: 'สาเหตุข้อผิดพลาด',
+        usage: 'ข้อมูลการใช้งานรุ่น',
+      },
       extractParameters: 'แยกพารามิเตอร์',
       importFromTool: 'นําเข้าจากเครื่องมือ',
       addExtractParameter: 'เพิ่มพารามิเตอร์การแยกข้อมูล',
@@ -700,8 +712,6 @@ const translation = {
       advancedSetting: 'การตั้งค่าขั้นสูง',
       reasoningMode: 'โหมดการให้เหตุผล',
       reasoningModeTip: 'คุณสามารถเลือกโหมดการให้เหตุผลที่เหมาะสมตามความสามารถของโมเดลในการตอบสนองต่อคําแนะนําสําหรับการเรียกใช้ฟังก์ชันหรือข้อความแจ้ง',
-      isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
-      errorReason: 'สาเหตุข้อผิดพลาด',
     },
     iteration: {
       deleteTitle: 'ลบโหนดการทําซ้ํา?',

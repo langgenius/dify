@@ -7,12 +7,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { LangfuseIcon, LangsmithIcon, OpikIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -62,24 +62,33 @@ const Panel: FC = () => {
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
-  const InUseProviderIcon
-    = inUseTracingProvider === TracingProvider.langSmith
-      ? LangsmithIcon
-      : inUseTracingProvider === TracingProvider.langfuse
-        ? LangfuseIcon
-        : inUseTracingProvider === TracingProvider.opik
-          ? OpikIcon
-          : inUseTracingProvider === TracingProvider.weave
-            ? WeaveIcon
-            : LangsmithIcon
+  const providerIconMap: Record<TracingProvider, React.FC<{ className?: string }>> = {
+    [TracingProvider.arize]: ArizeIcon,
+    [TracingProvider.phoenix]: PhoenixIcon,
+    [TracingProvider.langSmith]: LangsmithIcon,
+    [TracingProvider.langfuse]: LangfuseIcon,
+    [TracingProvider.opik]: OpikIcon,
+    [TracingProvider.weave]: WeaveIcon,
+    [TracingProvider.aliyun]: AliyunIcon,
+  }
+  const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
+  const [arizeConfig, setArizeConfig] = useState<ArizeConfig | null>(null)
+  const [phoenixConfig, setPhoenixConfig] = useState<PhoenixConfig | null>(null)
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig)
+  const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig)
 
   const fetchTracingConfig = async () => {
+    const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
+    if (!arizeHasNotConfig)
+      setArizeConfig(arizeConfig as ArizeConfig)
+    const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
+    if (!phoenixHasNotConfig)
+      setPhoenixConfig(phoenixConfig as PhoenixConfig)
     const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
     if (!langSmithHasNotConfig)
       setLangSmithConfig(langSmithConfig as LangSmithConfig)
@@ -92,12 +101,19 @@ const Panel: FC = () => {
     const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
     if (!weaveHasNotConfig)
       setWeaveConfig(weaveConfig as WeaveConfig)
+    const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
+    if (!aliyunHasNotConfig)
+      setAliyunConfig(aliyunConfig as AliyunConfig)
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
     const { tracing_config } = await doFetchTracingConfig({ appId, provider })
-    if (provider === TracingProvider.langSmith)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(tracing_config as ArizeConfig)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(tracing_config as PhoenixConfig)
+    else if (provider === TracingProvider.langSmith)
       setLangSmithConfig(tracing_config as LangSmithConfig)
     else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(tracing_config as LangFuseConfig)
@@ -105,10 +121,16 @@ const Panel: FC = () => {
       setOpikConfig(tracing_config as OpikConfig)
     else if (provider === TracingProvider.weave)
       setWeaveConfig(tracing_config as WeaveConfig)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(tracing_config as AliyunConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === TracingProvider.langSmith)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(null)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(null)
+    else if (provider === TracingProvider.langSmith)
       setLangSmithConfig(null)
     else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(null)
@@ -116,6 +138,8 @@ const Panel: FC = () => {
       setOpikConfig(null)
     else if (provider === TracingProvider.weave)
       setWeaveConfig(null)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -170,10 +194,13 @@ const Panel: FC = () => {
                 onStatusChange={handleTracingEnabledChange}
                 chosenProvider={inUseTracingProvider}
                 onChooseProvider={handleChooseProvider}
+                arizeConfig={arizeConfig}
+                phoenixConfig={phoenixConfig}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
                 weaveConfig={weaveConfig}
+                aliyunConfig={aliyunConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
@@ -205,10 +232,13 @@ const Panel: FC = () => {
                 onStatusChange={handleTracingEnabledChange}
                 chosenProvider={inUseTracingProvider}
                 onChooseProvider={handleChooseProvider}
+                arizeConfig={arizeConfig}
+                phoenixConfig={phoenixConfig}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
                 weaveConfig={weaveConfig}
+                aliyunConfig={aliyunConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}

@@ -123,18 +123,19 @@ export const useInvalidAllLastRun = (appId: string) => {
 
 const useConversationVarValuesKey = [NAME_SPACE, 'conversation-variable']
 
-export const useConversationVarValues = (appId: string) => {
+export const useConversationVarValues = (url?: string) => {
   return useQuery({
-    queryKey: [...useConversationVarValuesKey, appId],
+    enabled: !!url,
+    queryKey: [...useConversationVarValuesKey, url],
     queryFn: async () => {
-      const { items } = (await get(`apps/${appId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(url || '')) as { items: VarInInspect[] }
       return items
     },
   })
 }
 
-export const useInvalidateConversationVarValues = (appId: string) => {
-  return useInvalid([...useConversationVarValuesKey, appId])
+export const useInvalidateConversationVarValues = (url: string) => {
+  return useInvalid([...useConversationVarValuesKey, url])
 }
 
 export const useResetConversationVar = (appId: string) => {
@@ -156,18 +157,19 @@ export const useResetToLastRunValue = (appId: string) => {
 }
 
 export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
-export const useSysVarValues = (appId: string) => {
+export const useSysVarValues = (url?: string) => {
   return useQuery({
-    queryKey: [...useSysVarValuesKey, appId],
+    enabled: !!url,
+    queryKey: [...useSysVarValuesKey, url],
     queryFn: async () => {
-      const { items } = (await get(`apps/${appId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
+      const { items } = (await get(url || '')) as { items: VarInInspect[] }
       return items
     },
   })
 }
 
-export const useInvalidateSysVarValues = (appId: string) => {
-  return useInvalid([...useSysVarValuesKey, appId])
+export const useInvalidateSysVarValues = (url: string) => {
+  return useInvalid([...useSysVarValuesKey, url])
 }
 
 export const useDeleteAllInspectorVars = (appId: string) => {

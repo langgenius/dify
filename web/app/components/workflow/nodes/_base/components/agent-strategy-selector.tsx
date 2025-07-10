@@ -137,6 +137,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   } = useMarketplacePlugins()
 
   useEffect(() => {
+    if (!enable_marketplace) return
     if (query) {
       fetchPlugins({
         query,
