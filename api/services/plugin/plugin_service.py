@@ -353,26 +353,30 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        # collect actual plugin_unique_identifiers
+        actual_plugin_unique_identifiers = []
+        metas = []
+
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
                 # already downloaded, skip
+                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
+                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
             except Exception:
                 # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
-                manager.upload_pkg(tenant_id, pkg, verify_signature)
+                upload_result = manager.upload_pkg(tenant_id, pkg, verify_signature)
+                # use upload_result plugin_unique_identifier
+                actual_plugin_unique_identifiers.append(upload_result.unique_identifier)
+                metas.append({"plugin_unique_identifier": upload_result.unique_identifier})
 
         return manager.install_from_identifiers(
             tenant_id,
-            plugin_unique_identifiers,
+            actual_plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
-            [
-                {
-                    "plugin_unique_identifier": plugin_unique_identifier,
-                }
-                for plugin_unique_identifier in plugin_unique_identifiers
-            ],
+            metas,
         )
 
     @staticmethod
