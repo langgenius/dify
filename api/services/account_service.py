@@ -16,7 +16,7 @@ from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import redis_client, redis_fallback
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
@@ -28,6 +28,7 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
 from models.model import DifySetup
@@ -495,6 +496,7 @@ class AccountService:
         return account
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def add_login_error_rate_limit(email: str) -> None:
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -504,6 +506,7 @@ class AccountService:
         redis_client.setex(key, dify_config.LOGIN_LOCKOUT_DURATION, count)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_login_error_rate_limit(email: str) -> bool:
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -516,11 +519,13 @@ class AccountService:
         return False
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def reset_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def add_forgot_password_error_rate_limit(email: str) -> None:
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -530,6 +535,7 @@ class AccountService:
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -542,11 +548,13 @@ class AccountService:
         return False
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_email_send_ip_limit(ip_address: str):
         minute_key = f"email_send_ip_limit_minute:{ip_address}"
         freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
@@ -602,6 +610,17 @@ class TenantService:
         tenant = Tenant(name=name)
 
         db.session.add(tenant)
+        db.session.commit()
+
+        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+            tenant_id=tenant.id,
+            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            upgrade_time_of_day=0,
+            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            exclude_plugins=[],
+            include_plugins=[],
+        )
+        db.session.add(plugin_upgrade_strategy)
         db.session.commit()
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)

@@ -364,6 +364,7 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Tentatives',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'requis',

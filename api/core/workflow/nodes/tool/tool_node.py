@@ -285,7 +285,8 @@ class ToolNode(BaseNode[ToolNodeData]):
                         for key, value in msg_metadata.items()
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
-                json.append(message.message.json_object)
+                if message.message.json_object is not None:
+                    json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
@@ -369,31 +370,31 @@ class ToolNode(BaseNode[ToolNodeData]):
                     agent_logs.append(agent_log)
 
                 yield agent_log
-        # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
-        json_output: dict[str, Any] = {}
-        if json:
-            if isinstance(json, list) and len(json) == 1:
-                # If json is a list with only one element, convert it to a dictionary
-                json_output = json[0] if isinstance(json[0], dict) else {"data": json[0]}
-            elif isinstance(json, list):
-                # If json is a list with multiple elements, create a dictionary containing all data
-                json_output = {"data": json}
 
+        # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
+        json_output: list[dict[str, Any]] = []
+
+        # Step 1: append each agent log as its own dict.
         if agent_logs:
-            # Add agent_logs to json output
-            json_output["agent_logs"] = [
-                {
-                    "id": log.id,
-                    "parent_id": log.parent_id,
-                    "error": log.error,
-                    "status": log.status,
-                    "data": log.data,
-                    "label": log.label,
-                    "metadata": log.metadata,
-                    "node_id": log.node_id,
-                }
-                for log in agent_logs
-            ]
+            for log in agent_logs:
+                json_output.append(
+                    {
+                        "id": log.id,
+                        "parent_id": log.parent_id,
+                        "error": log.error,
+                        "status": log.status,
+                        "data": log.data,
+                        "label": log.label,
+                        "metadata": log.metadata,
+                        "node_id": log.node_id,
+                    }
+                )
+        # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
+        if json:
+            json_output.extend(json)
+        else:
+            json_output.append({"data": []})
+
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

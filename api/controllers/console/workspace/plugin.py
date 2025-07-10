@@ -533,7 +533,8 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
             raise ValueError(e)
 
         return jsonable_encoder({"options": options})
-    
+
+
 class PluginChangePreferencesApi(Resource):
     @setup_required
     @login_required
@@ -597,29 +598,26 @@ class PluginFetchPreferencesApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         permission = PluginPermissionService.get_permission(tenant_id)
+        permission_dict = {
+            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
+            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+        }
 
-        if not permission:
-            permission = {
-                "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
-            }
-        else:
-            permission = {
-                "install_permission": permission.install_permission,
-                "debug_permission": permission.debug_permission,
-            }
+        if permission:
+            permission_dict["install_permission"] = permission.install_permission
+            permission_dict["debug_permission"] = permission.debug_permission
 
         auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id)
-        if not auto_upgrade:
-            auto_upgrade = {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
-                "upgrade_time_of_day": 0,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-                "exclude_plugins": [],
-                "include_plugins": [],
-            }
-        else:
-            auto_upgrade = {
+        auto_upgrade_dict = {
+            "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            "upgrade_time_of_day": 0,
+            "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            "exclude_plugins": [],
+            "include_plugins": [],
+        }
+
+        if auto_upgrade:
+            auto_upgrade_dict = {
                 "strategy_setting": auto_upgrade.strategy_setting,
                 "upgrade_time_of_day": auto_upgrade.upgrade_time_of_day,
                 "upgrade_mode": auto_upgrade.upgrade_mode,
@@ -627,7 +625,7 @@ class PluginFetchPreferencesApi(Resource):
                 "include_plugins": auto_upgrade.include_plugins,
             }
 
-        return jsonable_encoder({"permission": permission, "auto_upgrade": auto_upgrade})
+        return jsonable_encoder({"permission": permission_dict, "auto_upgrade": auto_upgrade_dict})
 
 
 class PluginAutoUpgradeExcludePluginApi(Resource):
