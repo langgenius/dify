@@ -10,6 +10,10 @@ import type { ValueSelector, Var, Variable } from '@/app/components/workflow/typ
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
+import { ReactSortable } from 'react-sortablejs'
+import { v4 as uuid4 } from 'uuid'
+import { RiDraggable } from '@remixicon/react'
+import cn from '@/utils/classnames'
 
 type Props = {
   nodeId: string
@@ -35,6 +39,14 @@ const VarList: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
+
+  const payloadWithIds = list.map((item) => {
+    const id = uuid4()
+    return {
+      id,
+      p: { ...item },
+    }
+  })
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,36 +117,56 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
+  const varCount = list.length
+
   return (
-    <div className='space-y-2'>
-      {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
-          <Input
-            wrapperClassName='w-[120px]'
-            disabled={readonly}
-            value={list[index].variable}
-            onChange={handleVarNameChange(index)}
-            placeholder={t('workflow.common.variableNamePlaceholder')!}
-          />
-          <VarReferencePicker
-            nodeId={nodeId}
-            readonly={readonly}
-            isShowNodeName
-            className='grow'
-            value={item.variable_type === VarKindType.constant ? (item.value || '') : (item.value_selector || [])}
-            isSupportConstantValue={isSupportConstantValue}
-            onChange={handleVarReferenceChange(index)}
-            defaultVarKindType={item.variable_type}
-            onlyLeafNodeVar={onlyLeafNodeVar}
-            filterVar={filterVar}
-            isSupportFileVar={isSupportFileVar}
-          />
-          {!readonly && (
-            <RemoveButton onClick={handleVarRemove(index)}/>
-          )}
-        </div>
-      ))}
-    </div>
+    <ReactSortable
+      className='space-y-2'
+      list={payloadWithIds}
+      setList={(list) => { onChange(list.map(item => item.p)) }}
+      handle='.handle'
+      ghostClass='opacity-50'
+      animation={150}
+    >
+      {list.map((item, index) => {
+        const canDrag = (() => {
+          if (readonly)
+            return false
+          return varCount > 1
+        })()
+        return (
+          <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
+            <Input
+              wrapperClassName='w-[120px]'
+              disabled={readonly}
+              value={list[index].variable}
+              onChange={handleVarNameChange(index)}
+              placeholder={t('workflow.common.variableNamePlaceholder')!}
+            />
+            <VarReferencePicker
+              nodeId={nodeId}
+              readonly={readonly}
+              isShowNodeName
+              className='grow'
+              value={item.variable_type === VarKindType.constant ? (item.value || '') : (item.value_selector || [])}
+              isSupportConstantValue={isSupportConstantValue}
+              onChange={handleVarReferenceChange(index)}
+              defaultVarKindType={item.variable_type}
+              onlyLeafNodeVar={onlyLeafNodeVar}
+              filterVar={filterVar}
+              isSupportFileVar={isSupportFileVar}
+            />
+            {!readonly && (
+              <RemoveButton onClick={handleVarRemove(index)}/>
+            )}
+            {canDrag && <RiDraggable className={cn(
+              'handle absolute -left-4 top-3 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+              'group-hover:block',
+            )} />}
+          </div>
+        )
+      })}
+    </ReactSortable>
   )
 }
 export default React.memo(VarList)
