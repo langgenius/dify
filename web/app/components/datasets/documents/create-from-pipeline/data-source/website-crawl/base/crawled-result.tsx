@@ -15,6 +15,7 @@ type CrawledResultProps = {
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview?: (payload: CrawlResultItem, index: number) => void
+  showPreview?: boolean
   usedTime: number
   isMultipleChoice?: boolean
 }
@@ -27,6 +28,7 @@ const CrawledResult = ({
   onSelectedChange,
   usedTime,
   onPreview,
+  showPreview = false,
   isMultipleChoice = true,
 }: CrawledResultProps) => {
   const { t } = useTranslation()
@@ -81,7 +83,7 @@ const CrawledResult = ({
               onCheckChange={handleItemCheckChange(item)}
               isPreview={index === previewIndex}
               onPreview={handlePreview.bind(null, index)}
-              showPreview={!!onPreview}
+              showPreview={showPreview}
               isMultipleChoice={isMultipleChoice}
             />
           ))}

@@ -73,7 +73,7 @@ const WebsiteCrawl = ({
       setCrawlResult(undefined)
       setCurrentWebsite(undefined)
       setWebsitePages([])
-      setPreviewIndex(0)
+      setPreviewIndex(-1)
       setCrawledNum(0)
       setTotalNum(0)
       setCrawlErrorMessage('')
@@ -195,6 +195,7 @@ const WebsiteCrawl = ({
               usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
               previewIndex={previewIndex}
               onPreview={handlePreview}
+              showPreview={!isInPipeline}
               isMultipleChoice={!isInPipeline} // only support single choice in test run
             />
           )}

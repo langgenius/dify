@@ -315,7 +315,14 @@ const CreateFormPipeline = () => {
   }, [dataSourceStore, onClickPreview])
 
   const handleSelectAll = useCallback(() => {
-    const { setOnlineDocuments, setSelectedFileKeys, setSelectedPagesId } = dataSourceStore.getState()
+    const {
+      onlineDocuments,
+      fileList: onlineDriveFileList,
+      selectedFileKeys,
+      setOnlineDocuments,
+      setSelectedFileKeys,
+      setSelectedPagesId,
+    } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.onlineDocument) {
       const allIds = currentWorkspace?.pages.map(page => page.page_id) || []
       if (onlineDocuments.length < allIds.length) {
@@ -337,7 +344,7 @@ const CreateFormPipeline = () => {
       else
         setSelectedFileKeys([])
     }
-  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileKeys.length])
+  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 
   if (isFetchingPipelineInfo) {
     return (
