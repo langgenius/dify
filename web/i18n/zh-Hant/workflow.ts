@@ -364,6 +364,7 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}}重試',
       },
+      typeSwitch: {},
     },
     start: {
       required: '必填',

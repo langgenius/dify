@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue, ToolValue } from './types'
+import type { ToolTypeEnum } from './types'
 import { ViewType } from './view-type-select'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
@@ -15,25 +16,34 @@ import ToolListFlatView from './tool/tool-list-flat-view/list'
 import classNames from '@/utils/classnames'
 
 type ToolsProps = {
-  showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
+  toolType?: ToolTypeEnum
+  isAgent?: boolean
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 const Blocks = ({
-  showWorkflowEmpty,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   tools,
   viewType,
   hasSearchText,
+  toolType,
+  isAgent,
   className,
   indexBarClassName,
   selectedTools,
+  canChooseMCPTool,
 }: ToolsProps) => {
+  // const tools: any = []
   const { t } = useTranslation()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
@@ -87,15 +97,15 @@ const Blocks = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('p-1 max-w-[320px]', className)}>
+    <div className={classNames('max-w-[100%] p-1', className)}>
       {
-        !tools.length && !showWorkflowEmpty && (
-          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
+        !tools.length && hasSearchText && (
+          <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
         )
       }
-      {!tools.length && showWorkflowEmpty && (
+      {!tools.length && !hasSearchText && (
         <div className='py-10'>
-          <Empty />
+          <Empty type={toolType!} isAgent={isAgent}/>
         </div>
       )}
       {!!tools.length && (
@@ -107,19 +117,24 @@ const Blocks = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
+            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
           />
         ) : (
           <ToolListTreeView
             payload={treeViewToolsData}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         )
       )}
-
-      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }

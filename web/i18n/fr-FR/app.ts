@@ -172,6 +172,7 @@ const translation = {
       title: 'Tisser',
       description: 'Weave est une plateforme open-source pour évaluer, tester et surveiller les applications LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'S’il faut utiliser l’icône web app pour remplacer 🤖 dans l’application partagée',

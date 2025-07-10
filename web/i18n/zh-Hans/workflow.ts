@@ -232,6 +232,8 @@ const translation = {
     'utilities': '工具',
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
+    'allAdded': '已添加全部',
+    'addAll': '添加全部',
   },
   blocks: {
     'start': '开始',
@@ -368,6 +370,10 @@ const translation = {
         times: '次',
         ms: '毫秒',
         retries: '{{num}} 重试次数',
+      },
+      typeSwitch: {
+        input: '输入值',
+        variable: '使用变量',
       },
     },
     start: {
@@ -663,6 +669,9 @@ const translation = {
     tool: {
       authorize: '授权',
       inputVars: '输入变量',
+      settings: '设置',
+      insertPlaceholder1: '键入',
+      insertPlaceholder2: '插入变量',
       outputVars: {
         text: '工具生成的内容',
         files: {
@@ -890,6 +899,8 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+      clickToViewParameterSchema: '点击查看参数 schema',
+      parameterSchema: '参数 Schema',
     },
   },
   tracing: {
