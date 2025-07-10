@@ -72,6 +72,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             DatasetMetadataBinding.dataset_id == dataset_id,
             DatasetMetadataBinding.document_id == document_id,
         ).delete()
+        db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(

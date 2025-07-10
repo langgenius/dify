@@ -185,6 +185,7 @@ const translation = {
       title: 'Tkanje',
       description: 'Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.',
     },
+    aliyun: {},
   },
   mermaid: {
     handDrawn: 'Ročno narisano',

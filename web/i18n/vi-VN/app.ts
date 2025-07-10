@@ -172,6 +172,7 @@ const translation = {
       title: 'Dệt',
       description: 'Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

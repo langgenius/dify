@@ -192,6 +192,7 @@ const translation = {
       description:
         'Weave 는 LLM 애플리케이션을 평가하고 테스트하며 모니터링하기 위한 오픈 소스 플랫폼입니다.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description:

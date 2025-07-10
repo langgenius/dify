@@ -184,6 +184,7 @@ const translation = {
       title: 'Intrecciare',
       description: 'Weave è una piattaforma open-source per valutare, testare e monitorare le applicazioni LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Se utilizzare l\'icona web app per la sostituzione 🤖 nell\'applicazione condivisa',

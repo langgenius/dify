@@ -1,10 +1,11 @@
 import json
 import logging
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 from yarl import URL
 
 from configs import dify_config
+from core.mcp.types import Tool as MCPTool
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -21,7 +22,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,8 @@ class ToolTransformService:
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
-
+        elif provider_type == ToolProviderType.MCP.value:
+            return icon
         return ""
 
     @staticmethod
@@ -73,10 +75,18 @@ class ToolTransformService:
                     provider.icon = ToolTransformService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.icon
                     )
+                if isinstance(provider.icon_dark, str) and provider.icon_dark:
+                    provider.icon_dark = ToolTransformService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.icon_dark
+                    )
             else:
                 provider.icon = ToolTransformService.get_tool_provider_icon_url(
                     provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
                 )
+                if provider.icon_dark:
+                    provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
+                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+                    )
 
     @classmethod
     def builtin_provider_to_user_provider(
@@ -94,6 +104,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
+            icon_dark=provider_controller.entity.identity.icon_dark,
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
@@ -177,6 +188,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
+            icon_dark=provider_controller.entity.identity.icon_dark,
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.WORKFLOW,
             masked_credentials={},
@@ -186,6 +198,41 @@ class ToolTransformService:
             tools=[],
             labels=labels or [],
         )
+
+    @staticmethod
+    def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
+        user = db_provider.load_user()
+        return ToolProviderApiEntity(
+            id=db_provider.server_identifier if not for_list else db_provider.id,
+            author=user.name if user else "Anonymous",
+            name=db_provider.name,
+            icon=db_provider.provider_icon,
+            type=ToolProviderType.MCP,
+            is_team_authorization=db_provider.authed,
+            server_url=db_provider.masked_server_url,
+            tools=ToolTransformService.mcp_tool_to_user_tool(
+                db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+            ),
+            updated_at=int(db_provider.updated_at.timestamp()),
+            label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
+            description=I18nObject(en_US="", zh_Hans=""),
+            server_identifier=db_provider.server_identifier,
+        )
+
+    @staticmethod
+    def mcp_tool_to_user_tool(mcp_provider: MCPToolProvider, tools: list[MCPTool]) -> list[ToolApiEntity]:
+        user = mcp_provider.load_user()
+        return [
+            ToolApiEntity(
+                author=user.name if user else "Anonymous",
+                name=tool.name,
+                label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
+                description=I18nObject(en_US=tool.description, zh_Hans=tool.description),
+                parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
+                labels=[],
+            )
+            for tool in tools
+        ]
 
     @classmethod
     def api_provider_to_user_provider(
@@ -304,3 +351,53 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
+
+    @staticmethod
+    def convert_mcp_schema_to_parameter(schema: dict) -> list["ToolParameter"]:
+        """
+        Convert MCP JSON schema to tool parameters
+
+        :param schema: JSON schema dictionary
+        :return: list of ToolParameter instances
+        """
+
+        def create_parameter(
+            name: str, description: str, param_type: str, required: bool, input_schema: dict | None = None
+        ) -> ToolParameter:
+            """Create a ToolParameter instance with given attributes"""
+            input_schema_dict: dict[str, Any] = {"input_schema": input_schema} if input_schema else {}
+            return ToolParameter(
+                name=name,
+                llm_description=description,
+                label=I18nObject(en_US=name),
+                form=ToolParameter.ToolParameterForm.LLM,
+                required=required,
+                type=ToolParameter.ToolParameterType(param_type),
+                human_description=I18nObject(en_US=description),
+                **input_schema_dict,
+            )
+
+        def process_properties(props: dict, required: list, prefix: str = "") -> list[ToolParameter]:
+            """Process properties recursively"""
+            TYPE_MAPPING = {"integer": "number", "float": "number"}
+            COMPLEX_TYPES = ["array", "object"]
+
+            parameters = []
+            for name, prop in props.items():
+                current_description = prop.get("description", "")
+                prop_type = prop.get("type", "string")
+
+                if isinstance(prop_type, list):
+                    prop_type = prop_type[0]
+                if prop_type in TYPE_MAPPING:
+                    prop_type = TYPE_MAPPING[prop_type]
+                input_schema = prop if prop_type in COMPLEX_TYPES else None
+                parameters.append(
+                    create_parameter(name, current_description, prop_type, name in required, input_schema)
+                )
+
+            return parameters
+
+        if schema.get("type") == "object" and "properties" in schema:
+            return process_properties(schema["properties"], schema.get("required", []))
+        return []

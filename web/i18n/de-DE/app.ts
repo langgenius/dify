@@ -174,6 +174,7 @@ const translation = {
       title: 'Weben',
       description: 'Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',

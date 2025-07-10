@@ -171,6 +171,7 @@ const translation = {
       title: '編織',
       description: 'Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',

@@ -172,6 +172,7 @@ const translation = {
       description: 'Weave é uma plataforma de código aberto para avaliar, testar e monitorar aplicações de LLM.',
       title: 'Trançar',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',

@@ -19,6 +19,7 @@ type SchemaNodeProps = {
   path: string[]
   parentPath?: string[]
   depth: number
+  readOnly?: boolean
 }
 
 // Support 10 levels of indentation
@@ -57,6 +58,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   path,
   parentPath,
   depth,
+  readOnly,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true)
   const hoveringProperty = useVisualEditorStore(state => state.hoveringProperty)
@@ -77,11 +79,13 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   }
 
   const handleMouseEnter = () => {
+    if(!readOnly) return
     if (advancedEditing || isAddingNewField) return
     setHoveringPropertyDebounced(path.join('.'))
   }
 
   const handleMouseLeave = () => {
+    if(!readOnly) return
     if (advancedEditing || isAddingNewField) return
     setHoveringPropertyDebounced(null)
   }
@@ -183,7 +187,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
       )}
 
       {
-        depth === 0 && !isAddingNewField && (
+        !readOnly && depth === 0 && !isAddingNewField && (
           <AddField />
         )
       }
