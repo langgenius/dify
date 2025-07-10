@@ -391,10 +391,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 )
         # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
         if json:
-            if isinstance(json, list):
-                json_output.extend(json)
-            else:
-                json_output.append(json)
+            json_output.extend(json)
         else:
             json_output.append({"data": []})
 
