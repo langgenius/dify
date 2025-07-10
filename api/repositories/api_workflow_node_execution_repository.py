@@ -95,6 +95,10 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         This method retrieves a specific execution by its unique identifier.
         Tenant filtering is optional for cases where the execution ID is globally unique.
 
+        When `tenant_id` is None, it's the caller's responsibility to ensure proper data isolation between tenants.
+        If the `execution_id` comes from untrusted sources (e.g., retrieved from an API request), the caller should 
+        set `tenant_id` to prevent horizontal privilege escalation.
+
         Args:
             execution_id: The execution identifier
             tenant_id: Optional tenant identifier for additional filtering
