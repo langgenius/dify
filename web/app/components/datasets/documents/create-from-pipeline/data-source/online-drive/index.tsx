@@ -27,7 +27,7 @@ const OnlineDrive = ({
   const prefix = useDataSourceStoreWithSelector(state => state.prefix)
   const keywords = useDataSourceStoreWithSelector(state => state.keywords)
   const bucket = useDataSourceStoreWithSelector(state => state.bucket)
-  const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
+  const selectedFileKeys = useDataSourceStoreWithSelector(state => state.selectedFileKeys)
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
   const currentNodeIdRef = useDataSourceStoreWithSelector(state => state.currentNodeIdRef)
   const dataSourceStore = useDataSourceStore()
@@ -43,7 +43,7 @@ const OnlineDrive = ({
     startAfter?: string
     fileList?: OnlineDriveFile[]
   }) => {
-    const { startAfter } = dataSourceStore.getState()
+    const { startAfter, prefix, bucket, fileList } = dataSourceStore.getState()
     const _prefix = params.prefix ?? prefix
     const _bucket = params.bucket ?? bucket
     const _startAfter = params.startAfter ?? startAfter.current
@@ -80,16 +80,22 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [prefix, bucket, datasourceNodeRunURL, dataSourceStore, fileList])
+  }, [datasourceNodeRunURL, dataSourceStore])
 
   useEffect(() => {
     if (nodeId !== currentNodeIdRef.current) {
-      const { setFileList, setBucket, setPrefix, setKeywords, setSelectedFileList } = dataSourceStore.getState()
+      const {
+        setFileList,
+        setBucket,
+        setPrefix,
+        setKeywords,
+        setSelectedFileKeys,
+      } = dataSourceStore.getState()
       setFileList([])
       setBucket('')
       setPrefix([])
       setKeywords('')
-      setSelectedFileList([])
+      setSelectedFileKeys([])
       currentNodeIdRef.current = nodeId
       getOnlineDriveFiles({
         prefix: [],
@@ -124,9 +130,9 @@ const OnlineDrive = ({
   }, [dataSourceStore])
 
   const handleSelectFile = useCallback((file: OnlineDriveFile) => {
-    const { setSelectedFileList } = dataSourceStore.getState()
+    const { selectedFileKeys, setSelectedFileKeys } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.bucket) return
-    const newSelectedFileList = produce(selectedFileList, (draft) => {
+    const newSelectedFileList = produce(selectedFileKeys, (draft) => {
       if (draft.includes(file.key)) {
         const index = draft.indexOf(file.key)
         draft.splice(index, 1)
@@ -136,11 +142,11 @@ const OnlineDrive = ({
         draft.push(file.key)
       }
     })
-    setSelectedFileList(newSelectedFileList)
-  }, [dataSourceStore, isInPipeline, selectedFileList])
+    setSelectedFileKeys(newSelectedFileList)
+  }, [dataSourceStore, isInPipeline])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { setPrefix, setBucket, setFileList, setSelectedFileList } = dataSourceStore.getState()
+    const { prefix, setPrefix, setBucket, setFileList, setSelectedFileKeys } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
@@ -148,7 +154,7 @@ const OnlineDrive = ({
       getOnlineDriveFiles({ bucket: file.displayName, fileList: [] })
     }
     else {
-      setSelectedFileList([])
+      setSelectedFileKeys([])
       const displayName = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
       const newPrefix = produce(prefix, (draft) => {
         draft.push(displayName)
@@ -156,7 +162,7 @@ const OnlineDrive = ({
       setPrefix(newPrefix)
       getOnlineDriveFiles({ prefix: newPrefix, fileList: [] })
     }
-  }, [dataSourceStore, getOnlineDriveFiles, prefix])
+  }, [dataSourceStore, getOnlineDriveFiles])
 
   return (
     <div className='flex flex-col gap-y-2'>
@@ -166,7 +172,7 @@ const OnlineDrive = ({
       />
       <FileList
         fileList={onlineDriveFileList}
-        selectedFileList={selectedFileList}
+        selectedFileKeys={selectedFileKeys}
         prefix={prefix}
         keywords={keywords}
         bucket={bucket}

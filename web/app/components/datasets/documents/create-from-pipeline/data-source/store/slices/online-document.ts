@@ -17,7 +17,7 @@ export type OnlineDocumentSliceShape = {
   previewOnlineDocumentRef: React.MutableRefObject<NotionPage | undefined>
 }
 
-export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set) => {
+export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set, get) => {
   return ({
     documentsData: [],
     setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) => set(() => ({
@@ -32,9 +32,13 @@ export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> =
       currentWorkspaceId: workspaceId,
     })),
     onlineDocuments: [],
-    setOnlineDocuments: (documents: NotionPage[]) => set(() => ({
-      onlineDocuments: documents,
-    })),
+    setOnlineDocuments: (documents: NotionPage[]) => {
+      set(() => ({
+        onlineDocuments: documents,
+      }))
+      const { previewOnlineDocumentRef } = get()
+      previewOnlineDocumentRef.current = documents[0]
+    },
     currentDocument: undefined,
     setCurrentDocument: (document: NotionPage | undefined) => set(() => ({
       currentDocument: document,

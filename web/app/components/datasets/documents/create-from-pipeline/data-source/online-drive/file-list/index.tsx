@@ -6,7 +6,7 @@ import { useDebounceFn } from 'ahooks'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
-  selectedFileList: string[]
+  selectedFileKeys: string[]
   prefix: string[]
   keywords: string
   bucket: string
@@ -27,7 +27,7 @@ type FileListProps = {
 
 const FileList = ({
   fileList,
-  selectedFileList,
+  selectedFileKeys,
   prefix,
   keywords,
   bucket,
@@ -75,7 +75,7 @@ const FileList = ({
       />
       <List
         fileList={fileList}
-        selectedFileList={selectedFileList}
+        selectedFileKeys={selectedFileKeys}
         keywords={keywords}
         handleResetKeywords={handleResetKeywords}
         handleOpenFolder={handleOpenFolder}

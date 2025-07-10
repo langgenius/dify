@@ -24,7 +24,7 @@ import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
-import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
+import type { InitialDocumentDetail, OnlineDriveFile, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
@@ -57,7 +57,6 @@ const CreateFormPipeline = () => {
   } = useAddDocumentsSteps()
   const {
     fileList,
-    previewFileRef,
     allFileLoaded,
     currentLocalFile,
     hidePreviewLocalFile,
@@ -67,18 +66,17 @@ const CreateFormPipeline = () => {
     onlineDocuments,
     currentDocument,
     PagesMapAndSelectedPagesId,
-    previewOnlineDocumentRef,
     hidePreviewOnlineDocument,
   } = useOnlineDocuments()
   const {
     websitePages,
-    previewWebsitePageRef,
     currentWebsite,
     hideWebsitePreview,
   } = useWebsiteCrawl()
   const {
     fileList: onlineDriveFileList,
-    selectedFileList,
+    selectedFileKeys,
+    selectedOnlineDriveFileList,
   } = useOnlineDrive()
 
   const datasourceType = datasource?.nodeData.provider_type
@@ -107,9 +105,9 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     if (datasourceType === DatasourceType.onlineDrive)
-      return isShowVectorSpaceFull || !selectedFileList.length
+      return isShowVectorSpaceFull || !selectedFileKeys.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileList.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileKeys.length])
 
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
@@ -143,8 +141,8 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDocument)
       return onlineDocuments.length
     if (datasourceType === DatasourceType.onlineDrive)
-      return selectedFileList.length
-  }, [datasourceType, onlineDocuments.length, selectedFileList.length])
+      return selectedFileKeys.length
+  }, [datasourceType, onlineDocuments.length, selectedFileKeys.length])
 
   const tip = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
@@ -163,9 +161,15 @@ const CreateFormPipeline = () => {
   const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
+    const {
+      previewLocalFileRef,
+      previewOnlineDocumentRef,
+      previewWebsitePageRef,
+      previewOnlineDriveFileRef,
+    } = dataSourceStore.getState()
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
-      const { id, name, type, size, extension, mime_type } = previewFileRef.current as File
+      const { id, name, type, size, extension, mime_type } = previewLocalFileRef.current as File
       const documentInfo = {
         related_id: id,
         name,
@@ -188,6 +192,14 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.websiteCrawl)
       datasourceInfoList.push(previewWebsitePageRef.current!)
+    if (datasourceType === DatasourceType.onlineDrive) {
+      const { bucket } = dataSourceStore.getState()
+      const { key } = previewOnlineDriveFileRef.current!
+      datasourceInfoList.push({
+        bucket,
+        key,
+      })
+    }
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
       inputs: data,
@@ -200,7 +212,7 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, datasourceType, previewWebsitePageRef, runPublishedPipeline, pipelineId, previewFileRef, previewOnlineDocumentRef])
+  }, [datasource, datasourceType, runPublishedPipeline, pipelineId, dataSourceStore])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -240,7 +252,7 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDrive) {
       if (datasourceType === DatasourceType.onlineDrive) {
         const { bucket } = dataSourceStore.getState()
-        selectedFileList.forEach((key) => {
+        selectedFileKeys.forEach((key) => {
           datasourceInfoList.push({
             bucket,
             key,
@@ -262,7 +274,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileList, websitePages])
+  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileKeys, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -279,22 +291,31 @@ const CreateFormPipeline = () => {
   }, [handlePreviewChunks, handleProcess])
 
   const handlePreviewFileChange = useCallback((file: DocumentItem) => {
-    previewFileRef.current = file
+    const { previewLocalFileRef } = dataSourceStore.getState()
+    previewLocalFileRef.current = file
     onClickPreview()
-  }, [onClickPreview, previewFileRef])
+  }, [dataSourceStore, onClickPreview])
 
   const handlePreviewOnlineDocumentChange = useCallback((page: NotionPage) => {
+    const { previewOnlineDocumentRef } = dataSourceStore.getState()
     previewOnlineDocumentRef.current = page
     onClickPreview()
-  }, [onClickPreview, previewOnlineDocumentRef])
+  }, [dataSourceStore, onClickPreview])
 
   const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
+    const { previewWebsitePageRef } = dataSourceStore.getState()
     previewWebsitePageRef.current = website
     onClickPreview()
-  }, [onClickPreview, previewWebsitePageRef])
+  }, [dataSourceStore, onClickPreview])
+
+  const handlePreviewOnlineDriveFileChange = useCallback((file: OnlineDriveFile) => {
+    const { previewOnlineDriveFileRef } = dataSourceStore.getState()
+    previewOnlineDriveFileRef.current = file
+    onClickPreview()
+  }, [dataSourceStore, onClickPreview])
 
   const handleSelectAll = useCallback(() => {
-    const { setOnlineDocuments, setSelectedFileList, setSelectedPagesId } = dataSourceStore.getState()
+    const { setOnlineDocuments, setSelectedFileKeys, setSelectedPagesId } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.onlineDocument) {
       const allIds = currentWorkspace?.pages.map(page => page.page_id) || []
       if (onlineDocuments.length < allIds.length) {
@@ -311,12 +332,12 @@ const CreateFormPipeline = () => {
       const allKeys = onlineDriveFileList.filter((item) => {
         return item.type !== 'bucket'
       }).map(file => file.key)
-      if (selectedFileList.length < allKeys.length)
-        setSelectedFileList(allKeys)
+      if (selectedFileKeys.length < allKeys.length)
+        setSelectedFileKeys(allKeys)
       else
-        setSelectedFileList([])
+        setSelectedFileKeys([])
     }
-  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileList.length])
+  }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType, onlineDocuments.length, onlineDriveFileList, selectedFileKeys.length])
 
   if (isFetchingPipelineInfo) {
     return (
@@ -440,9 +461,10 @@ const CreateFormPipeline = () => {
             <div className='flex h-full flex-col pl-2 pt-2'>
               <ChunkPreview
                 dataSourceType={datasourceType as DatasourceType}
-                files={fileList.map(file => file.file)}
+                localFiles={fileList.map(file => file.file)}
                 onlineDocuments={onlineDocuments}
                 websitePages={websitePages}
+                onlineDriveFiles={selectedOnlineDriveFileList}
                 isIdle={isIdle}
                 isPending={isPending && isPreview.current}
                 estimateData={estimateData}
@@ -450,6 +472,7 @@ const CreateFormPipeline = () => {
                 handlePreviewFileChange={handlePreviewFileChange}
                 handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
                 handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+                handlePreviewOnlineDriveFileChange={handlePreviewOnlineDriveFileChange}
               />
             </div>
           </div>

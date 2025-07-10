@@ -67,7 +67,6 @@ const WebsiteCrawl = ({
       setPreviewIndex,
       setCurrentWebsite,
       currentNodeIdRef,
-      previewWebsitePageRef,
     } = dataSourceStore.getState()
     if (nodeId !== currentNodeIdRef.current) {
       setStep(CrawlStep.init)
@@ -75,7 +74,6 @@ const WebsiteCrawl = ({
       setCurrentWebsite(undefined)
       setWebsitePages([])
       setPreviewIndex(0)
-      previewWebsitePageRef.current = undefined
       setCrawledNum(0)
       setTotalNum(0)
       setCrawlErrorMessage('')

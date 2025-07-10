@@ -14,13 +14,15 @@ import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from
 import { RiSearchEyeLine } from '@remixicon/react'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 
 type ChunkPreviewProps = {
   dataSourceType: DatasourceType
-  files: CustomFile[]
+  localFiles: CustomFile[]
   onlineDocuments: NotionPage[]
   websitePages: CrawlResultItem[]
+  onlineDriveFiles: OnlineDriveFile[]
   isIdle: boolean
   isPending: boolean
   estimateData: FileIndexingEstimateResponse | undefined
@@ -28,13 +30,15 @@ type ChunkPreviewProps = {
   handlePreviewFileChange: (file: DocumentItem) => void
   handlePreviewOnlineDocumentChange: (page: NotionPage) => void
   handlePreviewWebsitePageChange: (page: CrawlResultItem) => void
+  handlePreviewOnlineDriveFileChange: (file: OnlineDriveFile) => void
 }
 
 const ChunkPreview = ({
   dataSourceType,
-  files,
+  localFiles,
   onlineDocuments,
   websitePages,
+  onlineDriveFiles,
   isIdle,
   isPending,
   estimateData,
@@ -42,13 +46,15 @@ const ChunkPreview = ({
   handlePreviewFileChange,
   handlePreviewOnlineDocumentChange,
   handlePreviewWebsitePageChange,
+  handlePreviewOnlineDriveFileChange,
 }: ChunkPreviewProps) => {
   const { t } = useTranslation()
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
 
-  const [previewFile, setPreviewFile] = useState<DocumentItem>(files[0] as DocumentItem)
+  const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
   const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0])
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
+  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0])
 
   return (
     <PreviewContainer
@@ -58,7 +64,7 @@ const ChunkPreview = ({
         <div className='flex items-center gap-1'>
           {dataSourceType === DatasourceType.localFile
             && <PreviewDocumentPicker
-              files={files as Array<Required<CustomFile>>}
+              files={localFiles as Array<Required<CustomFile>>}
               onChange={(selected) => {
                 setPreviewFile(selected)
                 handlePreviewFileChange(selected)
@@ -105,6 +111,29 @@ const ChunkPreview = ({
                 {
                   id: previewWebsitePage?.source_url || '',
                   name: previewWebsitePage?.title || '',
+                  extension: 'md',
+                }
+              }
+            />
+          }
+          {dataSourceType === DatasourceType.onlineDrive
+            && <PreviewDocumentPicker
+              files={
+                onlineDriveFiles.map(file => ({
+                  id: file.key,
+                  name: file.displayName,
+                  extension: 'md',
+                }))
+              }
+              onChange={(selected) => {
+                const selectedFile = onlineDriveFiles.find(file => file.key === selected.id)
+                setPreviewOnlineDriveFile(selectedFile!)
+                handlePreviewOnlineDriveFileChange(selectedFile!)
+              }}
+              value={
+                {
+                  id: previewOnlineDriveFile?.key || '',
+                  name: previewOnlineDriveFile?.displayName || '',
                   extension: 'md',
                 }
               }

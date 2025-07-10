@@ -63,7 +63,6 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
 
 export const useLocalFile = () => {
   const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
-  const previewFileRef = useDataSourceStoreWithSelector(state => state.previewLocalFileRef)
   const currentLocalFile = useDataSourceStoreWithSelector(state => state.currentLocalFile)
   const dataSourceStore = useDataSourceStore()
 
@@ -76,7 +75,6 @@ export const useLocalFile = () => {
 
   return {
     fileList,
-    previewFileRef,
     allFileLoaded,
     currentLocalFile,
     hidePreviewLocalFile,
@@ -87,7 +85,6 @@ export const useOnlineDocuments = () => {
   const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
   const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
   const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
-  const previewOnlineDocumentRef = useDataSourceStoreWithSelector(state => state.previewOnlineDocumentRef)
   const currentDocument = useDataSourceStoreWithSelector(state => state.currentDocument)
   const dataSourceStore = useDataSourceStore()
 
@@ -117,7 +114,6 @@ export const useOnlineDocuments = () => {
     onlineDocuments,
     currentDocument,
     PagesMapAndSelectedPagesId,
-    previewOnlineDocumentRef,
     hidePreviewOnlineDocument,
   }
 }
@@ -125,7 +121,6 @@ export const useOnlineDocuments = () => {
 export const useWebsiteCrawl = () => {
   const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
   const currentWebsite = useDataSourceStoreWithSelector(state => state.currentWebsite)
-  const previewWebsitePageRef = useDataSourceStoreWithSelector(state => state.previewWebsitePageRef)
   const dataSourceStore = useDataSourceStore()
 
   const hideWebsitePreview = useCallback(() => {
@@ -136,7 +131,6 @@ export const useWebsiteCrawl = () => {
 
   return {
     websitePages,
-    previewWebsitePageRef,
     currentWebsite,
     hideWebsitePreview,
   }
@@ -144,10 +138,15 @@ export const useWebsiteCrawl = () => {
 
 export const useOnlineDrive = () => {
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
-  const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
+  const selectedFileKeys = useDataSourceStoreWithSelector(state => state.selectedFileKeys)
+
+  const selectedOnlineDriveFileList = useMemo(() => {
+    return selectedFileKeys.map(key => fileList.find(item => item.key === key)!)
+  }, [fileList, selectedFileKeys])
 
   return {
     fileList,
-    selectedFileList,
+    selectedFileKeys,
+    selectedOnlineDriveFileList,
   }
 }

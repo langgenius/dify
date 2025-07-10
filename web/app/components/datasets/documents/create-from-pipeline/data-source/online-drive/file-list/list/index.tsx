@@ -9,7 +9,7 @@ import { useDataSourceStore } from '../../../store'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
-  selectedFileList: string[]
+  selectedFileKeys: string[]
   keywords: string
   isInPipeline: boolean
   isLoading: boolean
@@ -26,7 +26,7 @@ type FileListProps = {
 
 const List = ({
   fileList,
-  selectedFileList,
+  selectedFileKeys,
   keywords,
   handleResetKeywords,
   handleSelectFile,
@@ -82,7 +82,7 @@ const List = ({
         <div className='flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5'>
           {
             fileList.map((file) => {
-              const isSelected = selectedFileList.includes(file.key)
+              const isSelected = selectedFileKeys.includes(file.key)
               return (
                 <Item
                   key={file.key}

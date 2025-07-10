@@ -16,12 +16,16 @@ export type WebsiteCrawlSliceShape = {
   previewWebsitePageRef: React.MutableRefObject<CrawlResultItem | undefined>
 }
 
-export const createWebsiteCrawlSlice: StateCreator<WebsiteCrawlSliceShape> = (set) => {
+export const createWebsiteCrawlSlice: StateCreator<WebsiteCrawlSliceShape> = (set, get) => {
   return ({
     websitePages: [],
-    setWebsitePages: (pages: CrawlResultItem[]) => set(() => ({
-      websitePages: pages,
-    })),
+    setWebsitePages: (pages: CrawlResultItem[]) => {
+      set(() => ({
+        websitePages: pages,
+      }))
+      const { previewWebsitePageRef } = get()
+      previewWebsitePageRef.current = pages[0]
+    },
     currentWebsite: undefined,
     setCurrentWebsite: (website: CrawlResultItem | undefined) => set(() => ({
       currentWebsite: website,

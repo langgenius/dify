@@ -8,8 +8,8 @@ export const usePluginDependencies = () => {
   const { mutateAsync: checkPipelineDependencies } = useCheckPipelineDependencies()
 
   const handleCheckPluginDependencies = useCallback(async (id: string, isPipeline = false) => {
-    const mutateAsync = isPipeline ? checkPipelineDependencies : checkWorkflowDependencies
-    const { leaked_dependencies } = await mutateAsync(id)
+    const checkDependencies = isPipeline ? checkPipelineDependencies : checkWorkflowDependencies
+    const { leaked_dependencies } = await checkDependencies(id)
     const { setDependencies } = usePluginDependenciesStore.getState()
     setDependencies(leaked_dependencies)
   }, [checkWorkflowDependencies, checkPipelineDependencies])

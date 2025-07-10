@@ -6,17 +6,18 @@ export type OnlineDriveSliceShape = {
   setPrefix: (prefix: string[]) => void
   keywords: string
   setKeywords: (keywords: string) => void
-  selectedFileList: string[]
-  setSelectedFileList: (selectedFileList: string[]) => void
+  selectedFileKeys: string[]
+  setSelectedFileKeys: (selectedFileKeys: string[]) => void
   fileList: OnlineDriveFile[]
   setFileList: (fileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
   startAfter: React.MutableRefObject<string>
   isTruncated: React.MutableRefObject<boolean>
+  previewOnlineDriveFileRef: React.MutableRefObject<OnlineDriveFile | undefined>
 }
 
-export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set) => {
+export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set, get) => {
   return ({
     prefix: [],
     setPrefix: (prefix: string[]) => set(() => ({
@@ -26,11 +27,15 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     setKeywords: (keywords: string) => set(() => ({
       keywords,
     })),
-    startAfter: { current: '' },
-    selectedFileList: [],
-    setSelectedFileList: (selectedFileList: string[]) => set(() => ({
-      selectedFileList,
-    })),
+    selectedFileKeys: [],
+    setSelectedFileKeys: (selectedFileKeys: string[]) => {
+      set(() => ({
+        selectedFileKeys,
+      }))
+      const key = selectedFileKeys[0]
+      const { fileList, previewOnlineDriveFileRef } = get()
+      previewOnlineDriveFileRef.current = fileList.find(file => file.key === key)
+    },
     fileList: [],
     setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
       fileList,
@@ -39,6 +44,8 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     setBucket: (bucket: string) => set(() => ({
       bucket,
     })),
+    startAfter: { current: '' },
     isTruncated: { current: false },
+    previewOnlineDriveFileRef: { current: undefined },
   })
 }

@@ -51,9 +51,9 @@ const Breadcrumbs = ({
   }, [displayBreadcrumbNum, prefix])
 
   const handleBackToBucketList = useCallback(() => {
-    const { setFileList, setSelectedFileList, setPrefix, setBucket } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileKeys, setPrefix, setBucket } = dataSourceStore.getState()
     setFileList([])
-    setSelectedFileList([])
+    setSelectedFileKeys([])
     setBucket('')
     setPrefix([])
     getOnlineDriveFiles({
@@ -64,9 +64,9 @@ const Breadcrumbs = ({
   }, [dataSourceStore, getOnlineDriveFiles])
 
   const handleClickBucketName = useCallback(() => {
-    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
     setFileList([])
-    setSelectedFileList([])
+    setSelectedFileKeys([])
     setPrefix([])
     getOnlineDriveFiles({
       prefix: [],
@@ -75,16 +75,16 @@ const Breadcrumbs = ({
   }, [dataSourceStore, getOnlineDriveFiles])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
-    const { setFileList, setSelectedFileList, setPrefix } = dataSourceStore.getState()
+    const { prefix, setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
     const newPrefix = prefix.slice(0, index + 1)
     setFileList([])
-    setSelectedFileList([])
+    setSelectedFileKeys([])
     setPrefix(newPrefix)
     getOnlineDriveFiles({
       prefix: newPrefix,
       fileList: [],
     })
-  }, [dataSourceStore, getOnlineDriveFiles, prefix])
+  }, [dataSourceStore, getOnlineDriveFiles])
 
   return (
     <div className='flex grow items-center overflow-hidden'>
