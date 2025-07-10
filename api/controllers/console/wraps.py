@@ -235,3 +235,14 @@ def email_password_login_enabled(view):
         abort(403)
 
     return decorated
+
+def enable_change_email(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_change_email:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+    return decorated
