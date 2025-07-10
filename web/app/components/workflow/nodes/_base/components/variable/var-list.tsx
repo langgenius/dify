@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
@@ -40,13 +40,13 @@ const VarList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const payloadWithIds = list.map((item) => {
+  const listWithIds = useMemo(() => list.map((item) => {
     const id = uuid4()
     return {
       id,
-      v: { ...item },
+      variable: { ...item },
     }
-  })
+  }), [list])
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,24 +122,25 @@ const VarList: FC<Props> = ({
   return (
     <ReactSortable
       className='space-y-2'
-      list={payloadWithIds}
-      setList={(list) => { onChange(list.map(item => item.v)) }}
+      list={listWithIds}
+      setList={(list) => { onChange(list.map(item => item.variable)) }}
       handle='.handle'
       ghostClass='opacity-50'
       animation={150}
     >
-      {list.map((item, index) => {
+      {listWithIds.map((item, index) => {
         const canDrag = (() => {
           if (readonly)
             return false
           return varCount > 1
         })()
+        const variable = item.variable
         return (
           <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
             <Input
               wrapperClassName='w-[120px]'
               disabled={readonly}
-              value={list[index].variable}
+              value={variable.variable}
               onChange={handleVarNameChange(index)}
               placeholder={t('workflow.common.variableNamePlaceholder')!}
             />
@@ -148,10 +149,10 @@ const VarList: FC<Props> = ({
               readonly={readonly}
               isShowNodeName
               className='grow'
-              value={item.variable_type === VarKindType.constant ? (item.value || '') : (item.value_selector || [])}
+              value={variable.variable_type === VarKindType.constant ? (variable.value || '') : (variable.value_selector || [])}
               isSupportConstantValue={isSupportConstantValue}
               onChange={handleVarReferenceChange(index)}
-              defaultVarKindType={item.variable_type}
+              defaultVarKindType={variable.variable_type}
               onlyLeafNodeVar={onlyLeafNodeVar}
               filterVar={filterVar}
               isSupportFileVar={isSupportFileVar}
