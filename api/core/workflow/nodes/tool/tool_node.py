@@ -316,7 +316,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
                 if message.message.metadata:
                     icon = tool_info.get("icon", "")
-                    icon_dark = None
+                    icon_dark = ""
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
                         manager = PluginInstaller()
