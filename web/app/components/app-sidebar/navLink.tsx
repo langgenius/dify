@@ -48,7 +48,7 @@ export default function NavLink({
         type='button'
         disabled
         className={classNames(
-          'system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-state-base-hover',
+          'system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
           mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
         )}
         title={mode === 'collapse' ? name : ''}
@@ -72,8 +72,8 @@ export default function NavLink({
       href={href}
       className={classNames(
         isActive
-          ? 'system-sm-semibold border-b-[0.25px] border-l-[0.75px] border-r-[0.25px] border-t-[0.75px] border-effects-highlight-lightmode-off bg-state-accent-active text-text-accent-light-mode-only'
-          : 'system-sm-medium text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
+          ? 'system-sm-semibold border-b-[0.25px] border-l-[0.75px] border-r-[0.25px] border-t-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active text-text-accent-light-mode-only'
+          : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
         'flex h-8 items-center rounded-lg',
         mode === 'expand' ? 'pl-3 pr-1' : 'px-1.5',
       )}
