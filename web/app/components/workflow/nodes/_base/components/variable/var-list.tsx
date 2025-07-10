@@ -136,7 +136,7 @@ const VarList: FC<Props> = ({
         })()
         const variable = item.variable
         return (
-          <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
+          <div className={cn('flex items-center space-x-1', 'group relative')} key={item.id || index}>
             <Input
               wrapperClassName='w-[120px]'
               disabled={readonly}
