@@ -10,7 +10,6 @@ import type { Topic } from '@/app/components/workflow/nodes/question-classifier/
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { ReactSortable } from 'react-sortablejs'
 import { noop } from 'lodash-es'
-import { RiDraggable } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
@@ -80,10 +79,7 @@ const ClassList: FC<Props> = ({
             if (readonly)
               return false
 
-            if (topicCount < 2)
-              return false
-
-            return true
+            return topicCount >= 2
           })()
           return (
             <div key={item.id}
@@ -91,11 +87,7 @@ const ClassList: FC<Props> = ({
                   'group relative rounded-[10px] bg-components-panel-bg',
                   `-ml-${handleSideWidth} min-h-[40px] px-0 py-0`,
             )}>
-              {canDrag && <RiDraggable className={cn(
-                'handle absolute left-0 top-3 hidden h-3 w-3 cursor-pointer text-text-quaternary',
-                topicCount > 1 && 'group-hover:block',
-              )} />}
-              <div className={`ml-${handleSideWidth}`}>
+              <div >
                 <Item
                   className={cn(canDrag && 'handle')}
                   headerClassName={cn(canDrag && 'cursor-grab')}
