@@ -1,9 +1,7 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiLoopLeftLine,
-} from '@remixicon/react'
+import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import {
   Mcp,
 } from '@/app/components/base/icons/src/vender/other'
@@ -209,7 +207,11 @@ function MCPServiceCard({
               variant='ghost'
               onClick={() => setShowMCPServerModal(true)}
             >
-              {serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}
+
+              <div className="flex items-center justify-center gap-[1px]">
+                    <RiEditLine className="h-3.5 w-3.5" />
+                    <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
+                  </div>
             </Button>
           </div>
         </div>
