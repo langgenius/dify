@@ -231,6 +231,8 @@ const translation = {
     'utilities': 'Utilities',
     'noResult': 'No match found',
     'agent': 'Agent Strategy',
+    'allAdded': 'All added',
+    'addAll': 'Add all',
   },
   blocks: {
     'start': 'Start',
@@ -367,6 +369,10 @@ const translation = {
         times: 'times',
         ms: 'ms',
         retries: '{{num}} Retries',
+      },
+      typeSwitch: {
+        input: 'Input value',
+        variable: 'Use variable',
       },
     },
     start: {
@@ -662,6 +668,9 @@ const translation = {
     tool: {
       authorize: 'Authorize',
       inputVars: 'Input Variables',
+      settings: 'Settings',
+      insertPlaceholder1: 'Type or press',
+      insertPlaceholder2: 'insert variable',
       outputVars: {
         text: 'tool generated content',
         files: {
@@ -889,6 +898,8 @@ const translation = {
         install: 'Install',
         cancel: 'Cancel',
       },
+      clickToViewParameterSchema: 'Click to view parameter schema',
+      parameterSchema: 'Parameter Schema',
     },
   },
   tracing: {

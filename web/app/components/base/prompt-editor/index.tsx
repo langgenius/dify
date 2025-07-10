@@ -64,8 +64,9 @@ import cn from '@/utils/classnames'
 export type PromptEditorProps = {
   instanceId?: string
   compact?: boolean
+  wrapperClassName?: string
   className?: string
-  placeholder?: string
+  placeholder?: string | JSX.Element
   placeholderClassName?: string
   style?: React.CSSProperties
   value?: string
@@ -85,6 +86,7 @@ export type PromptEditorProps = {
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
   compact,
+  wrapperClassName,
   className,
   placeholder,
   placeholderClassName,
@@ -147,10 +149,25 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className='relative min-h-5'>
+      <div className={cn('relative', wrapperClassName)}>
         <RichTextPlugin
-          contentEditable={<ContentEditable className={`${className} outline-none ${compact ? 'text-[13px] leading-5' : 'text-sm leading-6'} text-text-secondary`} style={style || {}} />}
-          placeholder={<Placeholder value={placeholder} className={cn('truncate', placeholderClassName)} compact={compact} />}
+          contentEditable={
+            <ContentEditable
+              className={cn(
+                'text-text-secondary outline-none',
+                compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+                className,
+              )}
+              style={style || {}}
+            />
+          }
+          placeholder={
+            <Placeholder
+              value={placeholder}
+              className={cn('truncate', placeholderClassName)}
+              compact={compact}
+            />
+          }
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
