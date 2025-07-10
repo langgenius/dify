@@ -364,6 +364,7 @@ const translation = {
         retryFailedTimes: '{{times}} ponawianie prób nie powiodło się',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'wymagane',

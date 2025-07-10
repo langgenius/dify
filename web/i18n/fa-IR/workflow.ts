@@ -364,6 +364,7 @@ const translation = {
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'الزامی',
