@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import cn from '@/utils/classnames'
-import type { DocumentItem, CustomFile as File, FileItem } from '@/models/datasets'
+import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { upload } from '@/service/base'
@@ -15,7 +15,7 @@ import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
-import { useDataSourceStoreWithSelector } from '../store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import produce from 'immer'
 
 const FILES_NUMBER_LIMIT = 20
@@ -33,9 +33,7 @@ const LocalFile = ({
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
   const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
-  const setFileList = useDataSourceStoreWithSelector(state => state.setLocalFileList)
-  const setCurrentFile = useDataSourceStoreWithSelector(state => state.setCurrentLocalFile)
-  const previewFileRef = useDataSourceStoreWithSelector(state => state.previewLocalFileRef)
+  const dataSourceStore = useDataSourceStore()
   const [dragging, setDragging] = useState(false)
 
   const dropRef = useRef<HTMLDivElement>(null)
@@ -69,6 +67,7 @@ const LocalFile = ({
   }, [fileUploadConfigResponse])
 
   const updateFile = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
+    const { setLocalFileList } = dataSourceStore.getState()
     const newList = produce(list, (draft) => {
       const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
       draft[targetIndex] = {
@@ -76,18 +75,19 @@ const LocalFile = ({
         progress,
       }
     })
-    setFileList(newList)
-    previewFileRef.current = newList[0].file as DocumentItem
-  }, [previewFileRef, setFileList])
+    setLocalFileList(newList)
+  }, [dataSourceStore])
 
   const updateFileList = useCallback((preparedFiles: FileItem[]) => {
-    setFileList(preparedFiles)
-  }, [setFileList])
+    const { setLocalFileList } = dataSourceStore.getState()
+    setLocalFileList(preparedFiles)
+  }, [dataSourceStore])
 
   const handlePreview = useCallback((file: File) => {
+    const { setCurrentLocalFile } = dataSourceStore.getState()
     if (file.id)
-      setCurrentFile(file)
-  }, [setCurrentFile])
+      setCurrentLocalFile(file)
+  }, [dataSourceStore])
 
   // utils
   const getFileType = (currentFile: File) => {

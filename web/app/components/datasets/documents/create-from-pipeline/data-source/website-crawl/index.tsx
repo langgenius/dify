@@ -91,9 +91,8 @@ const WebsiteCrawl = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const handleCheckedCrawlResultChange = useCallback((checkedCrawlResult: CrawlResultItem[]) => {
-    const { setWebsitePages, previewWebsitePageRef } = dataSourceStore.getState()
+    const { setWebsitePages } = dataSourceStore.getState()
     setWebsitePages(checkedCrawlResult)
-    previewWebsitePageRef.current = checkedCrawlResult[0]
   }, [dataSourceStore])
 
   const handlePreview = useCallback((website: CrawlResultItem, index: number) => {
