@@ -8,7 +8,7 @@ allowing users to configure different repository backends through string paths.
 import importlib
 import inspect
 import logging
-from typing import Any, Union
+from typing import Protocol, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -38,7 +38,7 @@ class DifyCoreRepositoryFactory:
     """
 
     @staticmethod
-    def _import_class(class_path: str) -> Any:
+    def _import_class(class_path: str) -> type:
         """
         Import a class from a module path string.
 
@@ -54,12 +54,14 @@ class DifyCoreRepositoryFactory:
         try:
             module_path, class_name = class_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
-            return getattr(module, class_name)
+            repo_class = getattr(module, class_name)
+            assert isinstance(repo_class, type)
+            return repo_class
         except (ValueError, ImportError, AttributeError) as e:
             raise RepositoryImportError(f"Cannot import repository class '{class_path}': {e}") from e
 
     @staticmethod
-    def _validate_repository_interface(repository_class: Any, expected_interface: Any) -> None:
+    def _validate_repository_interface(repository_class: type, expected_interface: type[Protocol]) -> None:  # type: ignore
         """
         Validate that a class implements the expected repository interface.
 
@@ -89,7 +91,7 @@ class DifyCoreRepositoryFactory:
             )
 
     @staticmethod
-    def _validate_constructor_signature(repository_class: Any, required_params: list[str]) -> None:
+    def _validate_constructor_signature(repository_class: type, required_params: list[str]) -> None:
         """
         Validate that a repository class constructor accepts required parameters.
 
@@ -102,7 +104,14 @@ class DifyCoreRepositoryFactory:
         """
 
         try:
-            signature = inspect.signature(repository_class.__init__)
+            # MyPy may flag the line below with the following error:
+            #
+            # > Accessing "__init__" on an instance is unsound, since
+            # > instance.__init__ could be from an incompatible subclass.
+            #
+            # Despite this, we need to ensure that the constructor of `repository_class`
+            # has a compatible signature.
+            signature = inspect.signature(repository_class.__init__)  # type: ignore[misc]
             param_names = list(signature.parameters.keys())
 
             # Remove 'self' parameter
