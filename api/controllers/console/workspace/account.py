@@ -384,7 +384,6 @@ class ChangeEmailSendEmailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -429,7 +428,6 @@ class ChangeEmailCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(account_fields)
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
