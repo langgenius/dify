@@ -12,48 +12,48 @@ import type { FormSchema } from '@/app/components/base/form/types'
 
 const NAME_SPACE = 'plugins-auth'
 
-export const useGetPluginToolCredentialInfo = (
-  provider: string,
+export const useGetPluginCredentialInfo = (
+  url: string,
 ) => {
   return useQuery({
-    enabled: !!provider,
-    queryKey: [NAME_SPACE, 'credential-info', provider],
+    enabled: !!url,
+    queryKey: [NAME_SPACE, 'credential-info', url],
     queryFn: () => get<{
         supported_credential_types: string[]
         credentials: Credential[]
         is_oauth_custom_client_enabled: boolean
-      }>(`/workspaces/current/tool-provider/builtin/${provider}/credential/info`),
+      }>(url),
     staleTime: 0,
   })
 }
 
-export const useInvalidPluginToolCredentialInfo = (
-  provider: string,
+export const useInvalidPluginCredentialInfo = (
+  url: string,
 ) => {
-  return useInvalid([NAME_SPACE, 'credential-info', provider])
+  return useInvalid([NAME_SPACE, 'credential-info', url])
 }
 
-export const useSetPluginToolDefaultCredential = (
-  provider: string,
+export const useSetPluginDefaultCredential = (
+  url: string,
 ) => {
   return useMutation({
     mutationFn: (id: string) => {
-      return post(`/workspaces/current/tool-provider/builtin/${provider}/default-credential`, { body: { id } })
+      return post(url, { body: { id } })
     },
   })
 }
 
-export const useGetPluginToolCredentialList = (
-  provider: string,
+export const useGetPluginCredentialList = (
+  url: string,
 ) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'credential-list', provider],
-    queryFn: () => get(`/workspaces/current/tool-provider/builtin/${provider}/credentials`),
+    queryKey: [NAME_SPACE, 'credential-list', url],
+    queryFn: () => get(url),
   })
 }
 
-export const useAddPluginToolCredential = (
-  provider: string,
+export const useAddPluginCredential = (
+  url: string,
 ) => {
   return useMutation({
     mutationFn: (params: {
@@ -61,13 +61,13 @@ export const useAddPluginToolCredential = (
       type: CredentialTypeEnum
       name?: string
     }) => {
-      return post(`/workspaces/current/tool-provider/builtin/${provider}/add`, { body: params })
+      return post(url, { body: params })
     },
   })
 }
 
-export const useUpdatePluginToolCredential = (
-  provider: string,
+export const useUpdatePluginCredential = (
+  url: string,
 ) => {
   return useMutation({
     mutationFn: (params: {
@@ -76,64 +76,63 @@ export const useUpdatePluginToolCredential = (
       type: CredentialTypeEnum
       name?: string
     }) => {
-      return post(`/workspaces/current/tool-provider/builtin/${provider}/update`, { body: params })
+      return post(url, { body: params })
     },
   })
 }
 
-export const useDeletePluginToolCredential = (
-  provider: string,
+export const useDeletePluginCredential = (
+  url: string,
 ) => {
   return useMutation({
     mutationFn: (params: { credential_id: string }) => {
-      return post(`/workspaces/current/tool-provider/builtin/${provider}/delete`, { body: params })
+      return post(url, { body: params })
     },
   })
 }
 
-export const useGetPluginToolCredentialSchema = (
-  provider: string,
-  credential_type: CredentialTypeEnum,
+export const useGetPluginCredentialSchema = (
+  url: string,
 ) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'credential-schema', provider, credential_type],
-    queryFn: () => get<FormSchema[]>(`/workspaces/current/tool-provider/builtin/${provider}/credential/schema/${credential_type}`),
+    queryKey: [NAME_SPACE, 'credential-schema', url],
+    queryFn: () => get<FormSchema[]>(url),
   })
 }
 
-export const useGetPluginToolOAuthUrl = (
-  provider: string,
+export const useGetPluginOAuthUrl = (
+  url: string,
 ) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'oauth-url', provider],
-    queryFn: () => get(`oauth/plugin/${provider}/tool/authorization-url`),
+    queryKey: [NAME_SPACE, 'oauth-url', url],
+    queryFn: () => get(url),
   })
 }
 
-export const useGetPluginToolOAuthClientSchema = (
-  provider: string,
+export const useGetPluginOAuthClientSchema = (
+  url: string,
 ) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'oauth-client-schema', provider],
-    queryFn: () => get(`/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`),
+    queryKey: [NAME_SPACE, 'oauth-client-schema', url],
+    queryFn: () => get(url),
   })
 }
 
-export const useSetPluginToolOAuthCustomClient = (
-  provider: string,
+export const useSetPluginOAuthCustomClient = (
+  url: string,
 ) => {
   return useMutation({
     mutationFn: (params) => {
-      return post(`/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`, { body: params })
+      return post(url, { body: params })
     },
   })
 }
 
-export const useGetPluginToolOAuthCustomClientSchema = (
-  provider: string,
+export const useGetPluginOAuthCustomClientSchema = (
+  url: string,
 ) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'oauth-custom-client-schema', provider],
-    queryFn: () => get(`/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`),
+    queryKey: [NAME_SPACE, 'oauth-custom-client-schema', url],
+    queryFn: () => get(url),
   })
 }

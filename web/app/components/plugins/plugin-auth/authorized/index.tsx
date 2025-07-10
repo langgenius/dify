@@ -25,15 +25,16 @@ import type { Credential } from '../types'
 import { CredentialTypeEnum } from '../types'
 import ApiKeyModal from '../authorize/api-key-modal'
 import Item from './item'
-import {
-  useDeletePluginToolCredential,
-  useInvalidPluginToolCredentialInfo,
-  useSetPluginToolDefaultCredential,
-} from '@/service/use-plugins-auth'
 import { useToastContext } from '@/app/components/base/toast'
+import type { PluginPayload } from '../types'
+import {
+  useDeletePluginCredentialHook,
+  useInvalidPluginCredentialInfoHook,
+  useSetPluginDefaultCredentialHook,
+} from '../hooks/use-credential'
 
 type AuthorizedProps = {
-  provider: string
+  pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
   canApiKey?: boolean
@@ -50,7 +51,7 @@ type AuthorizedProps = {
   extraAuthorizationItems?: Credential[]
 }
 const Authorized = ({
-  provider,
+  pluginPayload,
   credentials,
   canOAuth,
   canApiKey,
@@ -80,8 +81,8 @@ const Authorized = ({
   const apiKeyCredentials = credentials.filter(credential => credential.credential_type === CredentialTypeEnum.API_KEY)
   const pendingOperationCredentialId = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
-  const { mutateAsync: deletePluginToolCredential } = useDeletePluginToolCredential(provider)
-  const invalidatePluginToolCredentialInfo = useInvalidPluginToolCredentialInfo(provider)
+  const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)
+  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const openConfirm = useCallback((credentialId?: string) => {
     if (credentialId)
       pendingOperationCredentialId.current = credentialId
@@ -98,15 +99,15 @@ const Authorized = ({
       return
     }
 
-    await deletePluginToolCredential({ credential_id: pendingOperationCredentialId.current })
+    await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
     notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
     })
-    invalidatePluginToolCredentialInfo()
+    invalidatePluginCredentialInfo()
     setDeleteCredentialId(null)
     pendingOperationCredentialId.current = null
-  }, [deletePluginToolCredential, invalidatePluginToolCredentialInfo, notify, t])
+  }, [deletePluginCredential, invalidatePluginCredentialInfo, notify, t])
   const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
@@ -115,15 +116,15 @@ const Authorized = ({
   const handleRemove = useCallback(() => {
     setDeleteCredentialId(pendingOperationCredentialId.current)
   }, [])
-  const { mutateAsync: setPluginToolDefaultCredential } = useSetPluginToolDefaultCredential(provider)
+  const { mutateAsync: setPluginDefaultCredential } = useSetPluginDefaultCredentialHook(pluginPayload)
   const handleSetDefault = useCallback(async (id: string) => {
-    await setPluginToolDefaultCredential(id)
+    await setPluginDefaultCredential(id)
     notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
     })
-    invalidatePluginToolCredentialInfo()
-  }, [setPluginToolDefaultCredential, invalidatePluginToolCredentialInfo, notify, t])
+    invalidatePluginCredentialInfo()
+  }, [setPluginDefaultCredential, invalidatePluginCredentialInfo, notify, t])
 
   return (
     <>
@@ -224,7 +225,7 @@ const Authorized = ({
             <div className='h-[1px] bg-divider-subtle'></div>
             <div className='p-2'>
               <Authorize
-                provider={provider}
+                pluginPayload={pluginPayload}
                 theme='secondary'
                 showDivider={false}
                 canOAuth={canOAuth}
@@ -249,7 +250,7 @@ const Authorized = ({
       {
         !!editValues && (
           <ApiKeyModal
-            provider={provider}
+            pluginPayload={pluginPayload}
             editValues={editValues}
             onClose={() => {
               setEditValues(null)

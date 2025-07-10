@@ -8,28 +8,29 @@ import { useTranslation } from 'react-i18next'
 import { RiExternalLinkLine } from '@remixicon/react'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Modal from '@/app/components/base/modal/modal'
-import {
-  useAddPluginToolCredential,
-  useGetPluginToolCredentialSchema,
-  useInvalidPluginToolCredentialInfo,
-  useUpdatePluginToolCredential,
-} from '@/service/use-plugins-auth'
 import { CredentialTypeEnum } from '../types'
 import { transformFormSchemasSecretInput } from '../utils'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import type { FromRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
+import type { PluginPayload } from '../types'
+import {
+  useAddPluginCredentialHook,
+  useGetPluginCredentialSchemaHook,
+  useInvalidPluginCredentialInfoHook,
+  useUpdatePluginCredentialHook,
+} from '../hooks/use-credential'
 
 export type ApiKeyModalProps = {
-  provider: string
+  pluginPayload: PluginPayload
   onClose?: () => void
   editValues?: Record<string, any>
   onRemove?: () => void
   disabled?: boolean
 }
 const ApiKeyModal = ({
-  provider,
+  pluginPayload,
   onClose,
   editValues,
   onRemove,
@@ -37,7 +38,7 @@ const ApiKeyModal = ({
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { data = [] } = useGetPluginToolCredentialSchema(provider, CredentialTypeEnum.API_KEY)
+  const { data = [] } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
   const formSchemas = useMemo(() => {
     return [
       {
@@ -49,9 +50,9 @@ const ApiKeyModal = ({
       ...data,
     ]
   }, [data])
-  const { mutateAsync: addPluginToolCredential } = useAddPluginToolCredential(provider)
-  const { mutateAsync: updatePluginToolCredential } = useUpdatePluginToolCredential(provider)
-  const invalidatePluginToolCredentialInfo = useInvalidPluginToolCredentialInfo(provider)
+  const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
+  const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
+  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FromRefObject>(null)
   const handleConfirm = useCallback(async () => {
     const form = formRef.current?.getForm()
@@ -73,7 +74,7 @@ const ApiKeyModal = ({
     const transformedValues = transformFormSchemasSecretInput(isPristineSecretInputNames, values)
 
     if (editValues) {
-      await updatePluginToolCredential({
+      await updatePluginCredential({
         credentials: transformedValues,
         credential_id: __credential_id__,
         type: CredentialTypeEnum.API_KEY,
@@ -81,7 +82,7 @@ const ApiKeyModal = ({
       })
     }
     else {
-      await addPluginToolCredential({
+      await addPluginCredential({
         credentials: transformedValues,
         type: CredentialTypeEnum.API_KEY,
         name: __name__ || '',
@@ -93,8 +94,8 @@ const ApiKeyModal = ({
     })
 
     onClose?.()
-    invalidatePluginToolCredentialInfo()
-  }, [addPluginToolCredential, onClose, invalidatePluginToolCredentialInfo, updatePluginToolCredential, notify, t, editValues, formSchemas])
+    invalidatePluginCredentialInfo()
+  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues, formSchemas])
 
   return (
     <Modal

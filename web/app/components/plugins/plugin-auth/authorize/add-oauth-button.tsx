@@ -7,8 +7,10 @@ import Button from '@/app/components/base/button'
 import type { ButtonProps } from '@/app/components/base/button'
 import OAuthClientSettings from './oauth-client-settings'
 import cn from '@/utils/classnames'
+import type { PluginPayload } from '../types'
 
 export type AddOAuthButtonProps = {
+  pluginPayload: PluginPayload
   buttonVariant?: ButtonProps['variant']
   buttonText?: string
   className?: string

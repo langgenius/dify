@@ -42,6 +42,7 @@ import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
 import { useAppContext } from '@/context/app-context'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
 
 const i18nPrefix = 'plugin.action'
@@ -307,7 +308,10 @@ const DetailHeader = ({
       {
         category === PluginType.tool && (
           <PluginAuth
-            provider={provider?.name}
+            pluginPayload={{
+              provider: provider?.name || '',
+              category: AuthCategory.tool,
+            }}
           />
         )
       }

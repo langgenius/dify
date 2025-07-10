@@ -1,3 +1,14 @@
+export enum AuthCategory {
+  tool = 'tool',
+  datasource = 'datasource',
+  model = 'model',
+}
+
+export type PluginPayload = {
+  category: AuthCategory
+  provider: string
+}
+
 export enum CredentialTypeEnum {
   OAUTH2 = 'oauth2',
   API_KEY = 'api-key',
