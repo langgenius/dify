@@ -4,10 +4,9 @@ import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
 import useConfig from './use-config'
-import InputVarList from './components/input-var-list'
+import ToolForm from './components/tool-form'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Loading from '@/app/components/base/loading'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
@@ -26,8 +25,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     inputs,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
-    filterVar,
     toolSettingSchema,
     toolSettingValue,
     setToolSettingValue,
@@ -39,6 +36,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     currTool,
   } = useConfig(id, data)
 
+  const [collapsed, setCollapsed] = React.useState(false)
+
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
       <Loading />
@@ -47,21 +46,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      {!isShowAuthBtn && <>
-        <div className='space-y-4 px-4'>
+      {!isShowAuthBtn && (
+        <div className='relative'>
           {toolInputVarSchema.length > 0 && (
             <Field
+              className='px-4'
               title={t(`${i18nPrefix}.inputVars`)}
             >
-              <InputVarList
+              <ToolForm
                 readOnly={readOnly}
                 nodeId={id}
                 schema={toolInputVarSchema as any}
                 value={inputs.tool_parameters}
                 onChange={setInputVar}
-                filterVar={filterVar}
-                isSupportConstantValue
-                onOpen={handleOnVarOpen}
                 currentProvider={currCollection}
                 currentTool={currTool}
               />
@@ -69,24 +66,30 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           )}
 
           {toolInputVarSchema.length > 0 && toolSettingSchema.length > 0 && (
-            <Split />
+            <Split className='mt-1' />
           )}
 
-          <Form
-            className='space-y-4'
-            itemClassName='!py-0'
-            fieldLabelClassName='!text-[13px] !font-semibold !text-text-secondary uppercase'
-            value={toolSettingValue}
-            onChange={setToolSettingValue}
-            formSchemas={toolSettingSchema as any}
-            isEditMode={false}
-            showOnVariableMap={{}}
-            validating={false}
-            // inputClassName='!bg-gray-50'
-            readonly={readOnly}
-          />
+          {toolSettingSchema.length > 0 && (
+            <>
+              <OutputVars
+                title={t(`${i18nPrefix}.settings`)}
+                collapsed={collapsed}
+                onCollapse={setCollapsed}
+              >
+                <ToolForm
+                  readOnly={readOnly}
+                  nodeId={id}
+                  schema={toolSettingSchema as any}
+                  value={toolSettingValue}
+                  onChange={setToolSettingValue}
+                />
+              </OutputVars>
+              <Split />
+            </>
+          )}
         </div>
-      </>}
+      )}
+
       <div>
         <OutputVars>
           <>

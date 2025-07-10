@@ -181,6 +181,7 @@ function AppCard({
               icon={appInfo.icon}
               icon_background={appInfo.icon_background}
               name={basicName}
+              hideType
               type={
                 isApp
                   ? t('appOverview.overview.appInfo.explanation')

@@ -364,6 +364,7 @@ const translation = {
         retries: '{{num}} Reintentos',
         retry: 'Reintentar',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'requerido',

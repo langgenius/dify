@@ -172,6 +172,7 @@ const translation = {
       title: 'Dokuma',
       description: 'Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',

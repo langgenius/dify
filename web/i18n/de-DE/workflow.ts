@@ -364,6 +364,7 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'erforderlich',

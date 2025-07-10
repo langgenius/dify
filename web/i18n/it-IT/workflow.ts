@@ -379,6 +379,7 @@ const translation = {
         retryFailed: 'Nuovo tentativo non riuscito',
         ms: 'ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'richiesto',

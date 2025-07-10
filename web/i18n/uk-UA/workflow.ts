@@ -364,6 +364,7 @@ const translation = {
         retryFailedTimes: '{{times}} повторні спроби не вдалися',
         retryTimes: 'Повторіть спробу {{times}} у разі невдачі',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'обов\'язковий',

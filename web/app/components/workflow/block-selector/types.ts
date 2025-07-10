@@ -1,3 +1,5 @@
+import type { PluginMeta } from '../../plugins/types'
+
 export enum TabsEnum {
   Blocks = 'blocks',
   Tools = 'tools',
@@ -8,6 +10,7 @@ export enum ToolTypeEnum {
   BuiltIn = 'built-in',
   Custom = 'custom',
   Workflow = 'workflow',
+  MCP = 'mcp',
 }
 
 export enum BlockClassificationEnum {
@@ -31,10 +34,12 @@ export type ToolDefaultValue = {
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
   credential_id?: string
+  meta?: PluginMeta
 }
 
 export type ToolValue = {
   provider_name: string
+  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description?: string
