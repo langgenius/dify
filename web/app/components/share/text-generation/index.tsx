@@ -101,16 +101,16 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
+    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
     setSavedMessages(res.data)
-  }, [isInstalledApp, installedAppInfo?.id])
+  }, [isInstalledApp, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await saveMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await removeMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }

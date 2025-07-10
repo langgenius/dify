@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
-import { getAppAccessMode, getUserCanAccess } from './share'
+import { getUserCanAccess } from './share'
 import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -67,16 +67,6 @@ export const useUpdateAccessMode = () => {
         queryKey: [NAME_SPACE, 'app-whitelist-subjects'],
       })
     },
-  })
-}
-
-export const useGetAppAccessMode = ({ appId, isInstalledApp = true, enabled }: { appId?: string; isInstalledApp?: boolean; enabled: boolean }) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'app-access-mode', appId],
-    queryFn: () => getAppAccessMode(appId!, isInstalledApp),
-    enabled: !!appId && enabled,
-    staleTime: 0,
-    gcTime: 0,
   })
 }
 
