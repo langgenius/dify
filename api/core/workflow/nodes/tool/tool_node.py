@@ -316,6 +316,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
                 if message.message.metadata:
                     icon = tool_info.get("icon", "")
+                    icon_dark = None
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
                         manager = PluginInstaller()
@@ -327,6 +328,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                                 if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
                             )
                             icon = current_plugin.declaration.icon
+                            icon_dark = current_plugin.declaration.icon_dark
                         except StopIteration:
                             pass
                         try:
