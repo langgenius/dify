@@ -67,8 +67,9 @@ class ToolNode(BaseNode[ToolNodeData]):
         try:
             from core.tools.tool_manager import ToolManager
 
+            variable_pool = self.graph_runtime_state.variable_pool if self.node_data.version != "1" else None
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
+                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield RunCompletedEvent(
@@ -95,7 +96,6 @@ class ToolNode(BaseNode[ToolNodeData]):
             node_data=self.node_data,
             for_log=True,
         )
-
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
