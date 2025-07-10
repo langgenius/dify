@@ -12,7 +12,6 @@ type FileListProps = {
   selectedFileList: string[]
   keywords: string
   isInPipeline: boolean
-  isTruncated: boolean
   isLoading: boolean
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
@@ -34,7 +33,6 @@ const List = ({
   handleOpenFolder,
   isInPipeline,
   isLoading,
-  isTruncated,
   getOnlineDriveFiles,
 }: FileListProps) => {
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -44,9 +42,9 @@ const List = ({
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        const { setStartAfter } = dataSourceStore.getState()
-        if (entries[0].isIntersecting && isTruncated && !isLoading) {
-          setStartAfter(fileList[fileList.length - 1].key)
+        const { startAfter, isTruncated } = dataSourceStore.getState()
+        if (entries[0].isIntersecting && isTruncated.current && !isLoading) {
+          startAfter.current = fileList[fileList.length - 1].key
           getOnlineDriveFiles({ startAfter: fileList[fileList.length - 1].key })
         }
       }, {

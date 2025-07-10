@@ -6,16 +6,14 @@ export type OnlineDriveSliceShape = {
   setPrefix: (prefix: string[]) => void
   keywords: string
   setKeywords: (keywords: string) => void
-  startAfter: string
-  setStartAfter: (startAfter: string) => void
   selectedFileList: string[]
   setSelectedFileList: (selectedFileList: string[]) => void
   fileList: OnlineDriveFile[]
   setFileList: (fileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
-  isTruncated: boolean
-  setIsTruncated: (isTruncated: boolean) => void
+  startAfter: React.MutableRefObject<string>
+  isTruncated: React.MutableRefObject<boolean>
 }
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set) => {
@@ -28,10 +26,7 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     setKeywords: (keywords: string) => set(() => ({
       keywords,
     })),
-    startAfter: '',
-    setStartAfter: (startAfter: string) => set(() => ({
-      startAfter,
-    })),
+    startAfter: { current: '' },
     selectedFileList: [],
     setSelectedFileList: (selectedFileList: string[]) => set(() => ({
       selectedFileList,
@@ -44,9 +39,6 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set)
     setBucket: (bucket: string) => set(() => ({
       bucket,
     })),
-    isTruncated: false,
-    setIsTruncated: (isTruncated: boolean) => set(() => ({
-      isTruncated,
-    })),
+    isTruncated: { current: false },
   })
 }

@@ -27,10 +27,8 @@ const OnlineDrive = ({
   const prefix = useDataSourceStoreWithSelector(state => state.prefix)
   const keywords = useDataSourceStoreWithSelector(state => state.keywords)
   const bucket = useDataSourceStoreWithSelector(state => state.bucket)
-  const startAfter = useDataSourceStoreWithSelector(state => state.startAfter)
   const selectedFileList = useDataSourceStoreWithSelector(state => state.selectedFileList)
   const fileList = useDataSourceStoreWithSelector(state => state.fileList)
-  const isTruncated = useDataSourceStoreWithSelector(state => state.isTruncated)
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -44,9 +42,10 @@ const OnlineDrive = ({
     startAfter?: string
     fileList?: OnlineDriveFile[]
   }) => {
+    const { startAfter } = dataSourceStore.getState()
     const _prefix = params.prefix ?? prefix
     const _bucket = params.bucket ?? bucket
-    const _startAfter = params.startAfter ?? startAfter
+    const _startAfter = params.startAfter ?? startAfter.current
     const _fileList = params.fileList ?? fileList
     const prefixString = _prefix.length > 0 ? `${_prefix.join('/')}/` : ''
     setIsLoading(true)
@@ -65,10 +64,10 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setFileList, setIsTruncated } = dataSourceStore.getState()
-          const { fileList: newFileList, isTruncated } = convertOnlineDriveData(documentsData.data, _prefix)
+          const { setFileList, isTruncated } = dataSourceStore.getState()
+          const { fileList: newFileList, isTruncated: newIsTruncated } = convertOnlineDriveData(documentsData.data, _prefix, _bucket)
           setFileList([..._fileList, ...newFileList])
-          setIsTruncated(isTruncated)
+          isTruncated.current = newIsTruncated
           setIsLoading(false)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
@@ -80,7 +79,7 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [prefix, bucket, startAfter, datasourceNodeRunURL, dataSourceStore, fileList])
+  }, [prefix, bucket, datasourceNodeRunURL, dataSourceStore, fileList])
 
   useEffect(() => {
     if (fileList.length > 0) return
@@ -99,7 +98,7 @@ const OnlineDrive = ({
     setKeywords(keywords)
   }, [dataSourceStore])
 
-  const resetPrefix = useCallback(() => {
+  const resetKeywords = useCallback(() => {
     const { setKeywords } = dataSourceStore.getState()
 
     setKeywords('')
@@ -152,14 +151,13 @@ const OnlineDrive = ({
         prefix={prefix}
         keywords={keywords}
         bucket={bucket}
-        resetKeywords={resetPrefix}
+        resetKeywords={resetKeywords}
         updateKeywords={updateKeywords}
         searchResultsLength={onlineDriveFileList.length}
         handleSelectFile={handleSelectFile}
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
         isLoading={isLoading}
-        isTruncated={isTruncated}
         getOnlineDriveFiles={getOnlineDriveFiles}
       />
     </div>

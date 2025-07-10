@@ -7,19 +7,19 @@ export const isFile = (path: string): boolean => {
   return filePathRegex.test(path)
 }
 
-export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[]): boolean => {
-  if (prefix.length > 0) return false
+export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[], bucket: string): boolean => {
+  if (bucket || prefix.length > 0) return false
   return data.length > 1 || (data.length === 1 && data[0].files.length === 0)
 }
 
-export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[]): { fileList: OnlineDriveFile[], isTruncated: boolean } => {
+export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[], bucket: string): { fileList: OnlineDriveFile[], isTruncated: boolean } => {
   const fileList: OnlineDriveFile[] = []
   let isTruncated = false
 
   if (data.length === 0)
     return { fileList, isTruncated }
 
-  if (isBucketListInitiation(data, prefix)) {
+  if (isBucketListInitiation(data, prefix, bucket)) {
     data.forEach((item) => {
       fileList.push({
         key: item.bucket,
