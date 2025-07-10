@@ -54,7 +54,6 @@ class MCPTool(Tool):
 
         for content in result.content:
             if isinstance(content, TextContent):
-                yield self.create_text_message(content.text)
                 try:
                     content_json = json.loads(content.text)
                     if isinstance(content_json, dict):
@@ -63,9 +62,9 @@ class MCPTool(Tool):
                         for item in content_json:
                             yield self.create_json_message(item)
                     else:
-                        pass
+                        yield self.create_text_message(content.text)
                 except json.JSONDecodeError:
-                    pass
+                    yield self.create_text_message(content.text)
 
             elif isinstance(content, ImageContent):
                 yield self.create_blob_message(
