@@ -329,6 +329,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                             icon = current_plugin.declaration.icon
                         except StopIteration:
                             pass
+                        icon_dark = None
                         try:
                             builtin_tool = next(
                                 provider
