@@ -83,7 +83,7 @@ class TokenBufferMemory:
                         raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
                     file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
                 else:
-                    raise ValueError(f"Invalid app mode: {self.conversation.mode}")
+                    raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
                 detail = ImagePromptMessageContent.DETAIL.LOW
                 if file_extra_config and app_record:
