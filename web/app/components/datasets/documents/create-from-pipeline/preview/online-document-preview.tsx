@@ -46,7 +46,7 @@ const OnlineDocumentPreview = ({
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentPage.page_id])
 
   return (
     <div className='flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
