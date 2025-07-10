@@ -42,4 +42,5 @@ export type ToolValue = {
   parameters?: Record<string, any>
   enabled?: boolean
   extra?: Record<string, any>
+  credential_id?: string
 }
