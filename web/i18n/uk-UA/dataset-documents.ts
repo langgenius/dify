@@ -29,7 +29,7 @@ const translation = {
       enableWarning: 'Архівований файл неможливо активувати',
       sync: 'Синхронізувати',
       pause: 'Пауза',
-      resume: 'Резюме',
+      resume: 'Продовжити',
     },
     index: {
       enable: 'Активувати',

@@ -333,6 +333,9 @@ importers:
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.6.0
+      tldts:
+        specifier: ^7.0.9
+        version: 7.0.9
       use-context-selector:
         specifier: ^2.0.0
         version: 2.0.0(react@19.0.0)(scheduler@0.23.2)
@@ -8041,6 +8044,13 @@ packages:
   tinyspy@3.0.2:
     resolution: {integrity: sha512-n1cw8k1k0x4pgA2+9XrOkFydTerNcJ1zWCO5Nn9scWHTD+5tp8dghT2x1uduQePZTZgd3Tupf+x9BxJjeJi77Q==}
     engines: {node: '>=14.0.0'}
+
+  tldts-core@7.0.9:
+    resolution: {integrity: sha512-/FGY1+CryHsxF9SFiPZlMOcwQsfABkAvOJO5VEKE8TNifVEqgMF7+UVXHGhm1z4gPUfvVS/EYcwhiRU3vUa1ag==}
+
+  tldts@7.0.9:
+    resolution: {integrity: sha512-/nFtBeNs9nAKIAZE1i3ssOAroci8UqRldFVw5H6RCsNZw7NzDr+Yc3Ek7Tm8XSQKMzw7NSyRSszNxCM0ENsUbg==}
+    hasBin: true
 
   tmpl@1.0.5:
     resolution: {integrity: sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==}
@@ -18053,6 +18063,12 @@ snapshots:
   tinyrainbow@2.0.0: {}
 
   tinyspy@3.0.2: {}
+
+  tldts-core@7.0.9: {}
+
+  tldts@7.0.9:
+    dependencies:
+      tldts-core: 7.0.9
 
   tmpl@1.0.5: {}
 

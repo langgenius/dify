@@ -29,7 +29,7 @@ const translation = {
       enableWarning: 'Fișierul arhivat nu poate fi activat',
       sync: 'Sincronizează',
       pause: 'Pauză',
-      resume: 'Relua',
+      resume: 'Reia',
     },
     index: {
       enable: 'Activează',

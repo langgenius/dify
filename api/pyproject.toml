@@ -82,6 +82,8 @@ dependencies = [
     "weave~=0.51.0",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
+    "sseclient-py>=1.8.0",
+    "httpx-sse>=0.4.0",
     "sendgrid~=6.12.3",
 ]
 # Before adding new dependency, consider place it in

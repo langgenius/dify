@@ -1,5 +1,4 @@
 import json
-import os
 import time
 import uuid
 from collections.abc import Generator
@@ -112,8 +111,6 @@ def test_execute_llm(flask_req_ctx):
             },
         },
     )
-
-    credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
 
     # Create a proper LLM result with real entities
     mock_usage = LLMUsage(

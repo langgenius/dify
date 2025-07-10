@@ -47,6 +47,7 @@ class QdrantConfig(BaseModel):
     grpc_port: int = 6334
     prefer_grpc: bool = False
     replication_factor: int = 1
+    write_consistency_factor: int = 1
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith("path:"):
@@ -127,6 +128,7 @@ class QdrantVector(BaseVector):
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
                     replication_factor=self._client_config.replication_factor,
+                    write_consistency_factor=self._client_config.write_consistency_factor,
                 )
 
                 # create group_id payload index
