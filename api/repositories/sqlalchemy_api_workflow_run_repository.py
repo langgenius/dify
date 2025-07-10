@@ -25,7 +25,7 @@ from datetime import datetime
 from typing import Optional, cast
 
 from sqlalchemy import delete, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
@@ -45,7 +45,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository:
         session_maker: SQLAlchemy sessionmaker instance for database connections
     """
 
-    def __init__(self, session_maker: sessionmaker) -> None:
+    def __init__(self, session_maker: sessionmaker[Session]) -> None:
         """
         Initialize the repository with a sessionmaker.
 
@@ -86,17 +86,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository:
                     raise ValueError("Last workflow run not exists")
 
                 # Get records created before the last run's timestamp
-                workflow_runs = session.scalars(
-                    base_stmt.where(
-                        WorkflowRun.created_at < last_workflow_run.created_at,
-                        WorkflowRun.id != last_workflow_run.id,
-                    )
-                    .order_by(WorkflowRun.created_at.desc())
-                    .limit(limit)
-                ).all()
-            else:
-                # First page - get most recent records
-                workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
+                base_stmt = base_stmt.where(
+                    WorkflowRun.created_at < last_workflow_run.created_at,
+                    WorkflowRun.id != last_workflow_run.id,
+                )
+
+            # First page - get most recent records
+            workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
 
             # Check if there are more records for pagination
             has_more = False

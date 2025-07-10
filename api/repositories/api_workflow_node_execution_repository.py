@@ -96,7 +96,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         Tenant filtering is optional for cases where the execution ID is globally unique.
 
         When `tenant_id` is None, it's the caller's responsibility to ensure proper data isolation between tenants.
-        If the `execution_id` comes from untrusted sources (e.g., retrieved from an API request), the caller should 
+        If the `execution_id` comes from untrusted sources (e.g., retrieved from an API request), the caller should
         set `tenant_id` to prevent horizontal privilege escalation.
 
         Args:
