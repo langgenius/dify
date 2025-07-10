@@ -128,15 +128,14 @@ const VarList: FC<Props> = ({
       ghostClass='opacity-50'
       animation={150}
     >
-      {listWithIds.map((item, index) => {
+      {list.map((variable, index) => {
         const canDrag = (() => {
           if (readonly)
             return false
           return varCount > 1
         })()
-        const variable = item.variable
         return (
-          <div className={cn('flex items-center space-x-1', 'group relative')} key={item.id || index}>
+          <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
             <Input
               wrapperClassName='w-[120px]'
               disabled={readonly}
@@ -161,7 +160,7 @@ const VarList: FC<Props> = ({
               <RemoveButton onClick={handleVarRemove(index)}/>
             )}
             {canDrag && <RiDraggable className={cn(
-              'handle absolute -left-4 top-3 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+              'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
               'group-hover:block',
             )} />}
           </div>
