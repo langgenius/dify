@@ -97,23 +97,25 @@ const BlockIcon: FC<BlockIconProps> = ({
   className,
   toolIcon,
 }) => {
+  const isToolOrDataSource = type === BlockEnum.Tool || type === BlockEnum.DataSource
+
   return (
     <div className={
       cn(
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
-        !toolIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
+        !isToolOrDataSource && ICON_CONTAINER_BG_COLOR_MAP[type],
         toolIcon && '!shadow-none',
         className,
       )}
     >
       {
-        type !== BlockEnum.Tool && (
+        !isToolOrDataSource && (
           getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
         )
       }
       {
-        (type === BlockEnum.Tool || type === BlockEnum.DataSource) && toolIcon && (
+        isToolOrDataSource && toolIcon && (
           <>
             {
               typeof toolIcon === 'string'
