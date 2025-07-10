@@ -609,7 +609,7 @@ class PluginFetchPreferencesApi(Resource):
 
         auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id)
         auto_upgrade_dict = {
-            "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
             "upgrade_time_of_day": 0,
             "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
             "exclude_plugins": [],
