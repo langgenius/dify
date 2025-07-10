@@ -89,6 +89,7 @@ class MCPServerStreamableHTTPRequestHandler:
             types.ListToolsRequest: self.list_tools,
             types.CallToolRequest: self.invoke_tool,
             types.InitializedNotification: self.handle_notification,
+            types.PingRequest: self.handle_ping,
         }
         try:
             if self.request_type in handle_map:
@@ -104,6 +105,9 @@ class MCPServerStreamableHTTPRequestHandler:
 
     def handle_notification(self):
         return "ping"
+
+    def handle_ping(self):
+        return types.EmptyResult()
 
     def initialize(self):
         request = cast(types.InitializeRequest, self.request.root)
