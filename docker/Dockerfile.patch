@@ -1,0 +1,9 @@
+FROM langgenius/dify-api:1.5.1
+
+RUN apt-get update && apt-get install -y git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY my_endnode_streaming.patch /app/my_endnode_streaming.patch
+RUN cd /app && git apply my_endnode_streaming.patch
+
+# docker build -f docker/Dockerfile.patch -t land007/dify-api:1.5.1 .
