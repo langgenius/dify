@@ -160,6 +160,8 @@ const translation = {
       noFound: 'No plugins were found',
       noInstalled: 'No plugins installed',
     },
+    updateSettings: 'Update Settings',
+    changeTimezone: 'To change time zone, go to <setTimezone>Settings</setTimezone>',
   },
   pluginInfoModal: {
     title: 'Plugin info',
