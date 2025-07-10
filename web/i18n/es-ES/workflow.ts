@@ -537,6 +537,10 @@ const translation = {
         title: 'Importar desde cURL',
         placeholder: 'Pegar la cadena cURL aquí',
       },
+      verifySSL: {
+        title: 'Verificar el certificado SSL',
+        warningTooltip: 'Deshabilitar la verificación SSL no se recomienda para entornos de producción. Esto solo debe utilizarse en desarrollo o pruebas, ya que hace que la conexión sea vulnerable a amenazas de seguridad como ataques de intermediario.',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',

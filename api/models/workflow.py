@@ -15,6 +15,7 @@ from core.variables import utils as variable_utils
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
@@ -364,12 +365,7 @@ class Workflow(Base):
             self._environment_variables = "{}"
 
         # Get tenant_id from current_user (Account or EndUser)
-        if isinstance(current_user, Account):
-            # Account user
-            tenant_id = current_user.current_tenant_id
-        else:
-            # EndUser
-            tenant_id = current_user.tenant_id
+        tenant_id = extract_tenant_id(current_user)
 
         if not tenant_id:
             return []
@@ -396,12 +392,7 @@ class Workflow(Base):
             return
 
         # Get tenant_id from current_user (Account or EndUser)
-        if isinstance(current_user, Account):
-            # Account user
-            tenant_id = current_user.current_tenant_id
-        else:
-            # EndUser
-            tenant_id = current_user.tenant_id
+        tenant_id = extract_tenant_id(current_user)
 
         if not tenant_id:
             self._environment_variables = "{}"
