@@ -16,6 +16,7 @@ import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
+import { getFileExtension } from '../data-source/online-drive/file-list/list/utils'
 
 type ChunkPreviewProps = {
   dataSourceType: DatasourceType
@@ -122,7 +123,7 @@ const ChunkPreview = ({
                 onlineDriveFiles.map(file => ({
                   id: file.key,
                   name: file.displayName,
-                  extension: 'md',
+                  extension: getFileExtension(previewOnlineDriveFile?.displayName),
                 }))
               }
               onChange={(selected) => {
@@ -134,7 +135,7 @@ const ChunkPreview = ({
                 {
                   id: previewOnlineDriveFile?.key || '',
                   name: previewOnlineDriveFile?.displayName || '',
-                  extension: 'md',
+                  extension: getFileExtension(previewOnlineDriveFile?.displayName),
                 }
               }
             />

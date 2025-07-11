@@ -1,5 +1,5 @@
 'use client'
-
+import React from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import Link from 'next/link'
 import classNames from '@/utils/classnames'
@@ -22,13 +22,13 @@ export type NavLinkProps = {
   disabled?: boolean
 }
 
-export default function NavLink({
+const NavLink = ({
   name,
   href,
   iconMap,
   mode = 'expand',
   disabled = false,
-}: NavLinkProps) {
+}: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
   const formattedSegment = (() => {
     let res = segment?.toLowerCase()
@@ -90,3 +90,5 @@ export default function NavLink({
     </Link>
   )
 }
+
+export default React.memo(NavLink)

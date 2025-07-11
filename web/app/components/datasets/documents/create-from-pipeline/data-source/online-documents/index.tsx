@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -24,11 +25,17 @@ const OnlineDocuments = ({
   nodeData,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
-  const searchValue = useDataSourceStoreWithSelector(state => state.searchValue)
-  const selectedPagesId = useDataSourceStoreWithSelector(state => state.selectedPagesId)
-  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
-  const currentNodeIdRef = useDataSourceStoreWithSelector(state => state.currentNodeIdRef)
+  const {
+    documentsData,
+    searchValue,
+    selectedPagesId,
+    currentWorkspaceId,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    documentsData: state.documentsData,
+    searchValue: state.searchValue,
+    selectedPagesId: state.selectedPagesId,
+    currentWorkspaceId: state.currentWorkspaceId,
+  })))
   const dataSourceStore = useDataSourceStore()
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
@@ -75,15 +82,16 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL])
 
   useEffect(() => {
+    const {
+      setDocumentsData,
+      setCurrentWorkspaceId,
+      setSearchValue,
+      setSelectedPagesId,
+      setOnlineDocuments,
+      setCurrentDocument,
+      currentNodeIdRef,
+    } = dataSourceStore.getState()
     if (nodeId !== currentNodeIdRef.current) {
-      const {
-        setDocumentsData,
-        setCurrentWorkspaceId,
-        setSearchValue,
-        setSelectedPagesId,
-        setOnlineDocuments,
-        setCurrentDocument,
-      } = dataSourceStore.getState()
       setDocumentsData([])
       setCurrentWorkspaceId('')
       setSearchValue('')
