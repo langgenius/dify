@@ -140,7 +140,7 @@ const WebsiteCrawl = ({
             time_consuming: time_consuming ?? 0,
           }
           setCrawlResult(crawlResultData)
-          handleCheckedCrawlResultChange(crawlData || []) // default select the crawl result
+          handleCheckedCrawlResultChange(isInPipeline ? [crawlData[0]] : crawlData) // default select the crawl result
           setCrawlErrorMessage('')
           setStep(CrawlStep.finished)
         },
@@ -150,7 +150,7 @@ const WebsiteCrawl = ({
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, t])
+  }, [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, isInPipeline, t])
 
   const handleSubmit = useCallback((value: Record<string, any>) => {
     handleRun(value)
