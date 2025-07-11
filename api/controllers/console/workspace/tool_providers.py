@@ -165,8 +165,8 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
 
         args = parser.parse_args()
 
@@ -175,9 +175,9 @@ class ToolBuiltinProviderUpdateApi(Resource):
                 user_id=user_id,
                 tenant_id=tenant_id,
                 provider=provider,
-                credentials=args["credentials"],
                 credential_id=args["credential_id"],
-                name=args["name"],
+                credentials=args.get("credentials", None),
+                name=args.get("name", ""),
             )
             session.commit()
         return result
