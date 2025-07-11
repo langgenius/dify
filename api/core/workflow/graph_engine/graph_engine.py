@@ -14,9 +14,11 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
     BaseAgentEvent,
@@ -747,6 +749,11 @@ class GraphEngine:
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
                                         run_result.metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
+                                    )
+                                    # Update system variable total_tokens
+                                    self.graph_runtime_state.variable_pool.add(
+                                        (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.TOTAL_TOKENS.value),
+                                        self.graph_runtime_state.total_tokens,
                                     )
 
                                 if run_result.llm_usage:

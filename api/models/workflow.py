@@ -897,8 +897,8 @@ class ConversationVariable(Base):
         return variable_factory.build_conversation_variable_from_mapping(mapping)
 
 
-# Only `sys.query` and `sys.files` could be modified.
-_EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
+# Only `sys.query`, `sys.files`, and `sys.total_tokens` could be modified.
+_EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files", "total_tokens"])
 
 
 def _naive_utc_datetime():
