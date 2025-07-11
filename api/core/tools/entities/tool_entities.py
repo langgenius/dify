@@ -96,7 +96,8 @@ class ApiProviderAuthType(Enum):
     """
 
     NONE = "none"
-    API_KEY = "api_key"
+    API_KEY_HEADER = "api_key_header"
+    API_KEY_QUERY = "api_key_query"
 
     @classmethod
     def value_of(cls, value: str) -> "ApiProviderAuthType":

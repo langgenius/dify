@@ -79,13 +79,13 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   }
 
   const handleMouseEnter = () => {
-    if(!readOnly) return
+    if(readOnly) return
     if (advancedEditing || isAddingNewField) return
     setHoveringPropertyDebounced(path.join('.'))
   }
 
   const handleMouseLeave = () => {
-    if(!readOnly) return
+    if(readOnly) return
     if (advancedEditing || isAddingNewField) return
     setHoveringPropertyDebounced(null)
   }

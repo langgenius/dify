@@ -102,6 +102,7 @@ type IDebugConfiguration = {
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
   isAllowVideoUpload: boolean
   isShowDocumentConfig: boolean
+  isShowAudioConfig: boolean
   rerankSettingModalOpen: boolean
   setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
@@ -254,6 +255,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setVisionConfig: noop,
   isAllowVideoUpload: false,
   isShowDocumentConfig: false,
+  isShowAudioConfig: false,
   rerankSettingModalOpen: false,
   setRerankSettingModalOpen: noop,
 })
