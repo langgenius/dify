@@ -122,7 +122,7 @@ const DetailHeader = ({
   const { referenceSetting } = useReferenceSetting()
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
   const isAutoUpgradeEnabled = useMemo(() => {
-    if(!autoUpgradeInfo)
+    if (!autoUpgradeInfo)
       return false
     if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
       return true
