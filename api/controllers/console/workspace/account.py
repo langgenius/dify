@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
+    EmailAlreadyInUseError,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
@@ -492,6 +493,18 @@ class ChangeEmailResetApi(Resource):
 
         return updated_account
 
+class CheckEmailUnique(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        args = parser.parse_args()
+        with Session(db.engine) as session:
+            # check if email is already in use
+            account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
+            if account is not None:
+                raise EmailAlreadyInUseError()
+        return {"result": "success"}
 
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
@@ -513,5 +526,6 @@ api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
 api.add_resource(ChangeEmailSendEmailApi, "/account/change-email")
 api.add_resource(ChangeEmailCheckApi, "/account/change-email/validity")
 api.add_resource(ChangeEmailResetApi, "/account/change-email/reset")
+api.add_resource(CheckEmailUnique, "/account/change-email/check-email-unique")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
