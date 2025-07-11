@@ -502,7 +502,10 @@ class BuiltinToolManageService:
                 .first()
             )
             if system_client:
-                oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
+                try:
+                    oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
+                except Exception as e:
+                    raise ValueError(f"Error decrypting system oauth params: {e}")
 
             return oauth_params
 
