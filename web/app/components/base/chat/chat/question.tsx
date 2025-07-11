@@ -14,6 +14,7 @@ import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { User } from '@/app/components/base/icons/src/public/avatar'
+import { HIDE_CHAT_USER_ICON } from '@/config'
 import { Markdown } from '@/app/components/base/markdown'
 import { FileList } from '@/app/components/base/file-uploader'
 import ActionButton from '../../action-button'
@@ -162,15 +163,19 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className='mt-1 h-[18px]' />
       </div>
-      <div className='h-10 w-10 shrink-0'>
-        {
-          questionIcon || (
-            <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
-              <User className='h-full w-full' />
-            </div>
-          )
-        }
-      </div>
+      {
+        !HIDE_CHAT_USER_ICON && (
+          <div className='h-10 w-10 shrink-0'>
+            {
+              questionIcon || (
+                <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
+                  <User className='h-full w-full' />
+                </div>
+              )
+            }
+          </div>
+        )
+      }
     </div>
   )
 }

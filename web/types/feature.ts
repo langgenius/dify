@@ -120,4 +120,6 @@ export enum DatasetAttr {
   DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
   DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
   DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',
+  DATA_PUBLIC_HIDE_CHAT_USER_ICON = 'data-public-hide-chat-user-icon',
+  DATA_PUBLIC_HIDE_CHAT_BOT_ICON = 'data-public-hide-chat-bot-icon',
 }
