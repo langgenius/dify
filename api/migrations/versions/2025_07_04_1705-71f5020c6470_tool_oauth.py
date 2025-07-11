@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '71f5020c6470'
-down_revision = '16081485540c'
+down_revision = '58eb7bdb93fe'
 branch_labels = None
 depends_on = None
 
@@ -44,7 +44,7 @@ def upgrade():
         batch_op.add_column(sa.Column('credential_type', sa.String(length=32), server_default=sa.text("'api-key'::character varying"), nullable=False))
         batch_op.drop_constraint(batch_op.f('unique_builtin_tool_provider'), type_='unique')
         batch_op.create_unique_constraint(batch_op.f('unique_builtin_tool_provider'), ['tenant_id', 'provider', 'name'])
-        
+
     # ### end Alembic commands ###
 
 
