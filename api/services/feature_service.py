@@ -123,7 +123,6 @@ class FeatureModel(BaseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
-    allow_transfer_workspace: bool = True
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -230,7 +229,6 @@ class FeatureService:
 
         if features.billing.subscription.plan != "sandbox":
             features.webapp_copyright_enabled = True
-            features.allow_transfer_workspace = False
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
