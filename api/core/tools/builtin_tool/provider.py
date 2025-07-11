@@ -139,9 +139,9 @@ class BuiltinToolProviderController(ToolProviderController):
         returns the credential support type of the provider
         """
         types = []
-        if self.entity.credentials_schema is not None:
+        if self.entity.credentials_schema is not None and len(self.entity.credentials_schema) > 0:
             types.append(CredentialType.API_KEY.value)
-        if self.entity.oauth_schema is not None:
+        if self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) > 0:
             types.append(CredentialType.OAUTH2.value)
         return types
 
