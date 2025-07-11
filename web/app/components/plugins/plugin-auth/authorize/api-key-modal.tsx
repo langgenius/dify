@@ -11,7 +11,7 @@ import Modal from '@/app/components/base/modal/modal'
 import { CredentialTypeEnum } from '../types'
 import { transformFormSchemasSecretInput } from '../utils'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type { FromRefObject } from '@/app/components/base/form/types'
+import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -62,7 +62,7 @@ const ApiKeyModal = ({
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
-  const formRef = useRef<FromRefObject>(null)
+  const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     const form = formRef.current?.getForm()
     const store = form?.store

@@ -123,6 +123,9 @@ export const useGetPluginOAuthClientSchema = (
     queryFn: () => get<{
       schema: FormSchema[]
       is_oauth_custom_client_enabled: boolean
+      is_system_oauth_params_exists?: boolean
+      client_params?: Record<string, any>
+      redirect_uri?: string
     }>(url),
   })
 }
@@ -137,17 +140,5 @@ export const useSetPluginOAuthCustomClient = (
       }) => {
       return post<{ result: string }>(url, { body: params })
     },
-  })
-}
-
-export const useGetPluginOAuthCustomClientSchema = (
-  url: string,
-) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'oauth-custom-client-schema', url],
-    queryFn: () => get<{
-      client_id: string
-      client_secret: string
-    }>(url),
   })
 }

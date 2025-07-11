@@ -1,20 +1,20 @@
 import {
   memo,
   useCallback,
-  useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal/modal'
 import {
-  useGetPluginOAuthClientSchemaHook,
   useInvalidPluginCredentialInfoHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 import type { PluginPayload } from '../types'
-import Loading from '@/app/components/base/loading'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type { FromRefObject } from '@/app/components/base/form/types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { transformFormSchemasSecretInput } from '../utils'
 import { useToastContext } from '@/app/components/base/toast'
@@ -24,36 +24,36 @@ type OAuthClientSettingsProps = {
   onClose?: () => void
   editValues?: Record<string, any>
   disabled?: boolean
+  schemas: FormSchema[]
+  onAuth?: () => Promise<void>
 }
 const OAuthClientSettings = ({
   pluginPayload,
   onClose,
   editValues,
   disabled,
+  schemas,
+  onAuth,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const {
-    data,
-    isLoading,
-  } = useGetPluginOAuthClientSchemaHook(pluginPayload)
-  const formSchemas = useMemo(() => {
-    return data?.schema || []
-  }, [data])
-  const defaultValues = formSchemas.reduce((acc, schema) => {
+  const defaultValues = schemas.reduce((acc, schema) => {
     if (schema.default)
       acc[schema.name] = schema.default
     return acc
   }, {} as Record<string, any>)
   const { mutateAsync: setPluginOAuthCustomClient } = useSetPluginOAuthCustomClientHook(pluginPayload)
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
-  const formRef = useRef<FromRefObject>(null)
+  const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     const form = formRef.current?.getForm()
     const store = form?.store
-    const values = store?.state.values
+    const {
+      __oauth_client__,
+      ...values
+    } = store?.state.values
     const isPristineSecretInputNames: string[] = []
-    formSchemas.forEach((schema) => {
+    schemas.forEach((schema) => {
       if (schema.type === FormTypeEnum.secretInput) {
         const fieldMeta = form?.getFieldMeta(schema.name)
         if (fieldMeta?.isPristine)
@@ -74,36 +74,32 @@ const OAuthClientSettings = ({
 
     onClose?.()
     invalidatePluginCredentialInfo()
-  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t, formSchemas])
+  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t, schemas])
+
+  const handleConfirmAndAuthorize = useCallback(async () => {
+    await handleConfirm()
+    if (onAuth)
+      await onAuth()
+  }, [handleConfirm, onAuth])
   return (
     <Modal
-      title='Oauth client settings'
-      confirmButtonText='Save & Authorize'
-      cancelButtonText='Save only'
-      extraButtonText='Cancel'
+      title={t('plugin.auth.oauthClientSettings')}
+      confirmButtonText={t('plugin.auth.saveAndAuth')}
+      cancelButtonText={t('plugin.auth.saveOnly')}
+      extraButtonText={t('common.operation.cancel')}
       showExtraButton
       extraButtonVariant='secondary'
       onExtraButtonClick={onClose}
       onClose={onClose}
-      onConfirm={handleConfirm}
+      onCancel={handleConfirm}
+      onConfirm={handleConfirmAndAuthorize}
     >
-      {
-        isLoading && (
-          <div className='flex h-40 items-center justify-center'>
-            <Loading />
-          </div>
-        )
-      }
-      {
-        !isLoading && !!data?.schema.length && (
-          <AuthForm
-            ref={formRef}
-            formSchemas={formSchemas}
-            defaultValues={editValues || defaultValues}
-            disabled={disabled}
-          />
-        )
-      }
+      <AuthForm
+        ref={formRef}
+        formSchemas={schemas}
+        defaultValues={editValues || defaultValues}
+        disabled={disabled}
+      />
     </Modal>
   )
 }
