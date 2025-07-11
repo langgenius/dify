@@ -5,6 +5,7 @@ export type VarGroupItem = {
   variables: ValueSelector[]
 }
 export type VariableAssignerNodeType = CommonNodeType & VarGroupItem & {
+  aggregate_all?: boolean
   advanced_settings: {
     group_enabled: boolean
     groups: ({

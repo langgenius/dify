@@ -627,6 +627,8 @@ const translation = {
       },
       aggregationGroup: '聚合分组',
       aggregationGroupTip: '开启该功能后，变量聚合器内可以同时聚合多组变量',
+      aggregateAll: '聚合所有',
+      aggregateAllTip: '开启该功能后，变量聚合器将聚合所有输入变量到一个数组中，否则只会聚合第一个变量',
       addGroup: '添加分组',
       outputVars: {
         varDescribe: '{{groupName}}的输出变量',

@@ -33,6 +33,13 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     })
   }, [inputs, setInputs])
 
+  const handleAggregateAllChange = useCallback((checked: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.aggregate_all = checked
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleListOrTypeChangeInGroup = useCallback((groupId: string) => {
     return (payload: VarGroupItem) => {
       const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
@@ -208,6 +215,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     onRemoveVarConfirm,
     getAvailableVars,
     filterVar,
+    handleAggregateAllChange,
   }
 }
 

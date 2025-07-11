@@ -35,6 +35,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     onRemoveVarConfirm,
     getAvailableVars,
     filterVar,
+    handleAggregateAllChange,
   } = useConfig(id, data)
 
   return (
@@ -95,26 +96,41 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             />
           }
         />
+        <Field
+          title={t(`${i18nPrefix}.aggregateAll`)}
+          tooltip={t(`${i18nPrefix}.aggregateAllTip`)!}
+          operations={
+            <Switch
+              defaultValue={inputs.aggregate_all}
+              onChange={handleAggregateAllChange}
+              size='md'
+              disabled={readOnly}
+            />
+          }
+        />
       </div>
-      {isEnableGroup && (
+      <Split />
+      <OutputVars>
         <>
-          <Split />
-          <OutputVars>
-            <>
-              {inputs.advanced_settings?.groups.map((item, index) => (
-                <VarItem
-                  key={index}
-                  name={`${item.group_name}.output`}
-                  type={item.output_type}
-                  description={t(`${i18nPrefix}.outputVars.varDescribe`, {
-                    groupName: item.group_name,
-                  })}
-                />
-              ))}
-            </>
-          </OutputVars>
+          {isEnableGroup
+            ? inputs.advanced_settings?.groups.map((item, index) => (
+              <VarItem
+                key={index}
+                name={`${item.group_name}.output`}
+                type={item.output_type}
+                description={t(`${i18nPrefix}.outputVars.varDescribe`, {
+                  groupName: item.group_name,
+                })}
+              />
+            ))
+            : (
+              <VarItem
+                name='output'
+                type={inputs.output_type}
+              />
+            )}
         </>
-      )}
+      </OutputVars>
       <RemoveEffectVarConfirm
         isShow={isShowRemoveVarConfirm}
         onCancel={hideRemoveVarConfirm}
