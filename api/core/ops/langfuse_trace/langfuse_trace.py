@@ -32,6 +32,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
+from models.enums import MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -180,12 +181,9 @@ class LangFuseDataTrace(BaseTraceInstance):
                 prompt_tokens = 0
                 completion_tokens = 0
                 try:
-                    if outputs.get("usage"):
-                        prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
-                        completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
-                    else:
-                        prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
-                        completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    prompt_tokens = usage_data.get("prompt_tokens", 0)
+                    completion_tokens = usage_data.get("completion_tokens", 0)
                 except Exception:
                     logger.error("Failed to extract usage", exc_info=True)
 
@@ -293,7 +291,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             input=trace_info.inputs,
             output=message_data.answer,
             metadata=metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
+            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
             status_message=message_data.error or "",
             usage=generation_usage,
         )
@@ -339,7 +337,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
-            level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
+            level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
             status_message=message_data.error or "",
             usage=generation_usage,
         )

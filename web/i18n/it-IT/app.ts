@@ -145,6 +145,14 @@ const translation = {
       notConfigured: 'Configura il provider per abilitare il tracciamento',
       moreProvider: 'Altri Provider',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Osservabilità LLM di livello aziendale, valutazione online e offline, monitoraggio e sperimentazione—alimentata da OpenTelemetry. Progettata appositamente per applicazioni basate su LLM e agenti.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Piattaforma open-source basata su OpenTelemetry per osservabilità, valutazione, ingegneria dei prompt e sperimentazione per i tuoi flussi di lavoro e agenti LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description:
@@ -176,6 +184,7 @@ const translation = {
       title: 'Intrecciare',
       description: 'Weave è una piattaforma open-source per valutare, testare e monitorare le applicazioni LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Se utilizzare l\'icona web app per la sostituzione 🤖 nell\'applicazione condivisa',

@@ -36,7 +36,7 @@ import { useDocLink } from '@/context/i18n'
 
 export default function AppSelector() {
   const itemClassName = `
-    flex items-center w-full h-9 pl-3 pr-2 text-text-secondary system-md-regular
+    flex items-center w-full h-8 pl-3 pr-2 text-text-secondary system-md-regular
     rounded-lg hover:bg-state-base-hover cursor-pointer gap-1
   `
   const router = useRouter()
@@ -87,24 +87,24 @@ export default function AppSelector() {
                     backdrop-blur-sm focus:outline-none
                   "
                 >
-                  <MenuItem disabled>
-                    <div className='flex flex-nowrap items-center py-[13px] pl-3 pr-2'>
-                      <div className='grow'>
-                        <div className='system-md-medium break-all text-text-primary'>
-                          {userProfile.name}
-                          {isEducationAccount && (
-                            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
-                              <RiGraduationCapFill className='mr-1 h-3 w-3' />
-                              <span className='system-2xs-medium'>EDU</span>
-                            </PremiumBadge>
-                          )}
-                        </div>
-                        <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
-                      </div>
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
-                    </div>
-                  </MenuItem>
                   <div className="px-1 py-1">
+                    <MenuItem disabled>
+                      <div className='flex flex-nowrap items-center py-2 pl-3 pr-2'>
+                        <div className='grow'>
+                          <div className='system-md-medium break-all text-text-primary'>
+                            {userProfile.name}
+                            {isEducationAccount && (
+                              <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                                <RiGraduationCapFill className='mr-1 h-3 w-3' />
+                                <span className='system-2xs-medium'>EDU</span>
+                              </PremiumBadge>
+                            )}
+                          </div>
+                          <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
+                        </div>
+                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+                      </div>
+                    </MenuItem>
                     <MenuItem>
                       <Link
                         className={cn(itemClassName, 'group',

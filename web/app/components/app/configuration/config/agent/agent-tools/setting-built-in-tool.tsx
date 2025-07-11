@@ -24,10 +24,11 @@ import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWor
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import cn from '@/utils/classnames'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 
 type Props = {
   showBackButton?: boolean
-  collection: Collection
+  collection: Collection | ToolWithProvider
   isBuiltIn?: boolean
   isModel?: boolean
   toolName: string
@@ -51,9 +52,10 @@ const SettingBuiltInTool: FC<Props> = ({
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const { t } = useTranslation()
-
-  const [isLoading, setIsLoading] = useState(true)
-  const [tools, setTools] = useState<Tool[]>([])
+  const passedTools = (collection as ToolWithProvider).tools
+  const hasPassedTools = passedTools?.length > 0
+  const [isLoading, setIsLoading] = useState(!hasPassedTools)
+  const [tools, setTools] = useState<Tool[]>(hasPassedTools ? passedTools : [])
   const currTool = tools.find(tool => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const infoSchemas = formSchemas.filter(item => item.form === 'llm')
@@ -63,7 +65,7 @@ const SettingBuiltInTool: FC<Props> = ({
   const [currType, setCurrType] = useState('info')
   const isInfoActive = currType === 'info'
   useEffect(() => {
-    if (!collection)
+    if (!collection || hasPassedTools)
       return
 
     (async () => {

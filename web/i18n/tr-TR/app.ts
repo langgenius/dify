@@ -136,6 +136,14 @@ const translation = {
       notConfigured: 'İzlemeyi etkinleştirmek için sağlayıcıyı yapılandırın',
       moreProvider: 'Daha Fazla Sağlayıcı',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Kurumsal düzeyde LLM gözlemlenebilirliği, çevrimiçi ve çevrimdışı değerlendirme, izleme ve deneyler — OpenTelemetry ile desteklenmektedir. LLM ve ajan tabanlı uygulamalar için özel olarak tasarlanmıştır.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'LLM iş akışlarınız ve ajanlarınız için açık kaynaklı ve OpenTelemetry tabanlı gözlemlenebilirlik, değerlendirme, istem mühendisliği ve deney platformu.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'LLM destekli uygulama yaşam döngüsünün her adımı için her şeyi kapsayan bir geliştirici platformu.',
@@ -164,6 +172,7 @@ const translation = {
       title: 'Dokuma',
       description: 'Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',

@@ -129,33 +129,35 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
         <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
-          <div className='px-2 pt-2' onClick={e => e.stopPropagation()}>
-            {activeTab === TabsEnum.Blocks && (
-              <Input
-                showLeftIcon
-                showClearIcon
-                autoFocus
-                value={searchText}
-                placeholder={searchPlaceholder}
-                onChange={e => setSearchText(e.target.value)}
-                onClear={() => setSearchText('')}
-              />
-            )}
-            {activeTab === TabsEnum.Tools && (
-              <SearchBox
-                search={searchText}
-                onSearchChange={setSearchText}
-                tags={tags}
-                onTagsChange={setTags}
-                size='small'
-                placeholder={t('plugin.searchTools')!}
-              />
-            )}
-
-          </div>
           <Tabs
             activeTab={activeTab}
             onActiveTabChange={handleActiveTabChange}
+            filterElem={
+              <div className='relative m-2' onClick={e => e.stopPropagation()}>
+                {activeTab === TabsEnum.Blocks && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
+                {activeTab === TabsEnum.Tools && (
+                  <SearchBox
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    size='small'
+                    placeholder={t('plugin.searchTools')!}
+                    inputClassName='grow'
+                  />
+                )}
+              </div>
+            }
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}

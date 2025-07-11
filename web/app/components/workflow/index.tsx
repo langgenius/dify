@@ -42,6 +42,7 @@ import {
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
+  useSetWorkflowVarsWithValue,
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
@@ -82,7 +83,6 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
-import useSetWorkflowVarsWithValue from '../workflow-app/hooks/use-fetch-workflow-inspect-vars'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -234,6 +234,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
     handleFetchAllTools('workflow')
+    handleFetchAllTools('mcp')
   }, [handleFetchAllTools])
 
   const {

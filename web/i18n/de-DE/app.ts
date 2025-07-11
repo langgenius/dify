@@ -138,6 +138,14 @@ const translation = {
       notConfigured: 'Anbieter konfigurieren, um Nachverfolgung zu aktivieren',
       moreProvider: 'Weitere Anbieter',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Unternehmensgerechte LLM-Observierbarkeit, Online- und Offline-Bewertung, Überwachung und Experimentierung—unterstützt durch OpenTelemetry. Speziell für LLM- und agentenbasierte Anwendungen entwickelt.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Open-Source- und OpenTelemetry-basierte Plattform für Observierbarkeit, Bewertung, Prompt-Engineering und Experimentierung für Ihre LLM-Workflows und -Agenten.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Eine All-in-One-Entwicklerplattform für jeden Schritt des LLM-gesteuerten Anwendungslebenszyklus.',
@@ -166,6 +174,7 @@ const translation = {
       title: 'Weben',
       description: 'Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',

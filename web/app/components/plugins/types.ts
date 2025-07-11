@@ -462,9 +462,14 @@ export type StrategyDeclaration = {
   strategies: StrategyDetail[]
 }
 
+export type PluginMeta = {
+  version: string // the version of dify sdk
+}
+
 export type StrategyPluginDetail = {
   provider: string
   plugin_unique_identifier: string
   plugin_id: string
   declaration: StrategyDeclaration
+  meta: PluginMeta
 }
