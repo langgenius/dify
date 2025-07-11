@@ -266,6 +266,7 @@ const translation = {
   difyVersionNotCompatible: '当前 Dify 版本不兼容该插件，其最低版本要求为 {{minimalDifyVersion}}',
   auth: {
     default: '默认',
+    custom: '自定义',
     setDefault: '设为默认',
     useOAuth: '使用 OAuth',
     useOAuthAuth: '使用 OAuth 授权',
@@ -283,6 +284,8 @@ const translation = {
     authorizationName: '凭据名称',
     workspaceDefault: '工作区默认',
     authRemoved: '凭据已移除',
+    clientInfo: '由于未找到此工具提供者的系统客户端密钥，因此需要手动设置，对于 redirect_uri，请使用',
+    oauthClient: 'OAuth 客户端',
   },
 }
 

@@ -4,7 +4,6 @@ import {
   useGetPluginCredentialInfo,
   useGetPluginCredentialSchema,
   useGetPluginOAuthClientSchema,
-  useGetPluginOAuthCustomClientSchema,
   useGetPluginOAuthUrl,
   useInvalidPluginCredentialInfo,
   useSetPluginDefaultCredential,
@@ -72,10 +71,4 @@ export const useSetPluginOAuthCustomClientHook = (pluginPayload: PluginPayload) 
   const apiMap = useGetApi(pluginPayload)
 
   return useSetPluginOAuthCustomClient(apiMap.setCustomOauthClient)
-}
-
-export const useGetPluginOAuthCustomClientSchemaHook = (pluginPayload: PluginPayload) => {
-  const apiMap = useGetApi(pluginPayload)
-
-  return useGetPluginOAuthCustomClientSchema(apiMap.getCustomOAuthClient)
 }

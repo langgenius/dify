@@ -34,7 +34,7 @@ export enum FormTypeEnum {
 export type FormOption = {
   label: TypeWithI18N | string
   value: string
-  show_on: FormShowOnObject[]
+  show_on?: FormShowOnObject[]
   icon?: string
 }
 
@@ -51,11 +51,12 @@ export type FormSchema = {
   help?: string | TypeWithI18N
   placeholder?: string | TypeWithI18N
   options?: FormOption[]
+  labelClassName?: string
 }
 
 export type FormValues = Record<string, any>
 
-export type FromRefObject = {
+export type FormRefObject = {
     getForm: () => AnyFormApi
 }
-export type FormRef = ForwardedRef<FromRefObject>
+export type FormRef = ForwardedRef<FormRefObject>

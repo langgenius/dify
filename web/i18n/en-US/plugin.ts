@@ -266,6 +266,7 @@ const translation = {
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
   auth: {
     default: 'Default',
+    custom: 'Custom',
     setDefault: 'Set as default',
     useOAuth: 'Use OAuth',
     useOAuthAuth: 'Use OAuth Authorization',
@@ -283,6 +284,8 @@ const translation = {
     authorizationName: 'Authorization Name',
     workspaceDefault: 'Workspace Default',
     authRemoved: 'Auth removed',
+    clientInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
+    oauthClient: 'OAuth Client',
   },
 }
 
