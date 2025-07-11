@@ -236,6 +236,7 @@ def email_password_login_enabled(view):
 
     return decorated
 
+
 def enable_change_email(view):
     @wraps(view)
     def decorated(*args, **kwargs):
@@ -245,4 +246,5 @@ def enable_change_email(view):
 
         # otherwise, return 403
         abort(403)
+
     return decorated

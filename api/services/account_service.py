@@ -76,9 +76,7 @@ class AccountService:
     email_code_account_deletion_rate_limiter = RateLimiter(
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
-    change_email_rate_limiter = RateLimiter(
-        prefix="change_email_rate_limit", max_attempts=2, time_window=60 * 1
-    )
+    change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     LOGIN_MAX_ERROR_LIMITS = 5
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
@@ -498,7 +496,7 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "reset_password")
-    
+
     @classmethod
     def get_change_email_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "change_email")
@@ -600,7 +598,7 @@ class AccountService:
         if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
             return True
         return False
-    
+
     @staticmethod
     def reset_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"

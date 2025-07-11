@@ -25,13 +25,13 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str):
 
     # send change email mail using different languages
     try:
-        if phase == "old_email" :
+        if phase == "old_email":
             template = "change_mail_confirm_old_template_en-US.html"
         elif phase == "new_email":
             template = "change_mail_confirm_new_template_en-US.html"
         else:
             raise ValueError("Invalid phase")
-        
+
         if language == "zh-Hans":
             html_content = render_template(template, to=to, code=code)
             mail.send(to=to, subject="检测您现在的邮箱", html=html_content)
