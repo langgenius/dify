@@ -452,9 +452,9 @@ class PluginService:
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
-                # use upload_result plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(upload_result.unique_identifier)
-                metas.append({"plugin_unique_identifier": upload_result.unique_identifier})
+                # use response plugin_unique_identifier
+                actual_plugin_unique_identifiers.append(response.unique_identifier)
+                metas.append({"plugin_unique_identifier": response.unique_identifier})
 
         return manager.install_from_identifiers(
             tenant_id,
