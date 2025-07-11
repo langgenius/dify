@@ -35,10 +35,6 @@ class ToolOAuthSystemClient(Base):
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(db.Text, nullable=False)
 
-    @property
-    def oauth_params(self) -> dict:
-        return cast(dict, json.loads(self.encrypted_oauth_params))
-
 
 # tenant level tool oauth client params (client_id, client_secret, etc.)
 class ToolOAuthTenantClient(Base):
