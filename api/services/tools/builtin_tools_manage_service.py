@@ -121,7 +121,12 @@ class BuiltinToolManageService:
 
     @staticmethod
     def update_builtin_tool_provider(
-        user_id: str, tenant_id: str, provider: str, credentials: dict, credential_id: str, name: str | None = None
+        user_id: str,
+        tenant_id: str,
+        provider: str,
+        credential_id: str,
+        credentials: dict | None = None,
+        name: str | None = None,
     ):
         """
         update builtin tool provider
@@ -140,7 +145,7 @@ class BuiltinToolManageService:
                 raise ValueError(f"you have not added provider {provider}")
 
             try:
-                if CredentialType.of(db_provider.credential_type).is_editable():
+                if CredentialType.of(db_provider.credential_type).is_editable() and credentials:
                     provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
                     if not provider_controller.need_credentials:
                         raise ValueError(f"provider {provider} does not need credentials")
@@ -164,7 +169,7 @@ class BuiltinToolManageService:
                     cache.delete()
 
                 # update name if provided
-                if name is not None and name not in {"", db_provider.name}:
+                if name:
                     # check if the name is already used
                     if (
                         session.query(BuiltinToolProvider)
@@ -345,12 +350,16 @@ class BuiltinToolManageService:
             default_provider = providers[0]
             default_provider.is_default = True
             provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
-            encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
-                tenant_id, default_provider, default_provider.provider, provider_controller
-            )
 
             credentials: list[ToolProviderCredentialApiEntity] = []
+            encrypters = {}
             for provider in providers:
+                credential_type = provider.credential_type
+                if credential_type not in encrypters:
+                    encrypters[credential_type] = BuiltinToolManageService.create_tool_encrypter(
+                        tenant_id, provider, provider.provider, provider_controller
+                    )[0]
+                encrypter = encrypters[credential_type]
                 decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
