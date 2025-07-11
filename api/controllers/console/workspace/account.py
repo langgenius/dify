@@ -423,7 +423,7 @@ class ChangeEmailSendEmailApi(Resource):
 
         token = AccountService.send_change_email_email(
             account=account, email=args["email"], old_email=user_email, language=language, phase=args["phase"]
-        )  # noqa: E501
+        )
         return {"result": "success", "data": token}
 
 
