@@ -41,7 +41,7 @@ import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList from './use-nodes-available-var-list'
-import { getNodeUsedVars, isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
+import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -122,10 +122,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           const availableVars = map[node.id].availableVars
 
           for (const variable of usedVars) {
-            const isEnv = isENV(variable)
-            const isConvVar = isConversationVar(variable)
-            const isSysVar = isSystemVar(variable)
-            if (!isEnv && !isConvVar && !isSysVar) {
+            const isSpecialVars = isSpecialVar(variable[0])
+            if (!isSpecialVars) {
               const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
               if (usedNode) {
                 const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
@@ -165,7 +163,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, getStartNodes, getToolIcon, dataSourceList])
+  }, [nodes, getStartNodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map])
 
   return needWarningNodes
 }

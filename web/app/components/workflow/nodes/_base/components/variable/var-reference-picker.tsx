@@ -295,7 +295,7 @@ const VarReferencePicker: FC<Props> = ({
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
     const isRagVar = isRagVariableVar(value as ValueSelector)
-    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar
+    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isRagVar
     const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,

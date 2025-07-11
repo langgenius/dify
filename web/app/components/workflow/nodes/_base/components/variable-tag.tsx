@@ -14,7 +14,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
@@ -43,7 +43,8 @@ const VariableTag = ({
 
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
-  const isValid = Boolean(node) || isEnv || isChatVar
+  const isRagVar = isRagVariableVar(valueSelector)
+  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
   const isException = isExceptionVariable(variableName, node?.data.type)
