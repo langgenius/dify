@@ -15,7 +15,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -64,8 +64,9 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
+  const appId = useStore(s => s.appId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: workflowStore.getState().appId,
+    flowId: appId,
     ...useConfigsMap(),
   })
   const {
