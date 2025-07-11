@@ -248,3 +248,15 @@ def enable_change_email(view):
         abort(403)
 
     return decorated
+
+def is_allow_transfer_owner(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features()
+        if features.is_allow_transfer_owner:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated
