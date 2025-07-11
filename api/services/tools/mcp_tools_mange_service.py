@@ -69,7 +69,6 @@ class MCPToolManageService:
                     MCPToolProvider.server_url_hash == server_url_hash,
                     MCPToolProvider.server_identifier == server_identifier,
                 ),
-                MCPToolProvider.tenant_id == tenant_id,
             )
             .first()
         )
