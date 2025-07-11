@@ -164,7 +164,7 @@ class BuiltinToolManageService:
                     cache.delete()
 
                 # update name if provided
-                if name is not None and db_provider.name != name:
+                if name is not None and name not in {"", db_provider.name}:
                     # check if the name is already used
                     if (
                         session.query(BuiltinToolProvider)
@@ -221,7 +221,7 @@ class BuiltinToolManageService:
                         provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided
-                    if name is None:
+                    if name is None or name == "":
                         name = BuiltinToolManageService.generate_builtin_tool_provider_name(
                             session=session, tenant_id=tenant_id, provider=provider, credential_type=api_type
                         )
