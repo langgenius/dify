@@ -68,22 +68,17 @@ class MarkdownExtractor(BaseExtractor):
                 continue
             header_match = re.match(r"^#+\s", line)
             if header_match:
-                if current_header is not None:
-                    markdown_tups.append((current_header, current_text))
-
+                markdown_tups.append((current_header, current_text))
                 current_header = line
                 current_text = ""
             else:
                 current_text += line + "\n"
         markdown_tups.append((current_header, current_text))
 
-        if current_header is not None:
-            # pass linting, assert keys are defined
-            markdown_tups = [
-                (re.sub(r"#", "", cast(str, key)).strip(), re.sub(r"<.*?>", "", value)) for key, value in markdown_tups
-            ]
-        else:
-            markdown_tups = [(key, re.sub("\n", "", value)) for key, value in markdown_tups]
+        markdown_tups = [
+            (re.sub(r"#", "", cast(str, key)).strip() if key else None, re.sub(r"<.*?>", "", value))
+            for key, value in markdown_tups
+        ]
 
         return markdown_tups
 

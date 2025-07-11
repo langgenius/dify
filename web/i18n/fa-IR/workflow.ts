@@ -129,6 +129,8 @@ const translation = {
       value: 'مقدار',
       valuePlaceholder: 'مقدار متغیر',
       secretTip: 'برای تعریف اطلاعات حساس یا داده‌ها، با تنظیمات DSL برای جلوگیری از نشت پیکربندی شده است.',
+      description: 'توضیحات',
+      descriptionPlaceholder: 'متغیر را توصیف کنید',
     },
     export: {
       title: 'آیا متغیرهای محیطی مخفی را صادر کنید؟',
@@ -303,6 +305,8 @@ const translation = {
     changeBlock: 'تغییر گره',
     organizeBlocks: 'گره‌ها را سازماندهی کنید',
     addNextStep: 'مرحله بعدی را به این فرآیند اضافه کنید',
+    minimize: 'خروج از حالت تمام صفحه',
+    maximize: 'بیشینه‌سازی بوم',
   },
   nodes: {
     common: {
@@ -360,6 +364,7 @@ const translation = {
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'الزامی',
@@ -535,6 +540,10 @@ const translation = {
         title: 'وارد کردن از cURL',
         placeholder: 'رشته cURL را اینجا بچسبانید',
       },
+      verifySSL: {
+        title: 'گواهی SSL را تأیید کنید',
+        warningTooltip: 'غیرفعال کردن تأیید SSL برای محیط‌های تولید توصیه نمی‌شود. این فقط باید در توسعه یا آزمایش استفاده شود، زیرا این کار اتصال را در معرض تهدیدات امنیتی مانند حملات میانی قرار می‌دهد.',
+      },
     },
     code: {
       inputVars: 'متغیرهای ورودی',
@@ -667,6 +676,7 @@ const translation = {
       inputVars: 'متغیرهای ورودی',
       outputVars: {
         className: 'نام کلاس',
+        usage: 'اطلاعات استفاده از مدل',
       },
       class: 'کلاس',
       classNamePlaceholder: 'نام کلاس خود را بنویسید',
@@ -680,6 +690,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'متغیر ورودی',
+      outputVars: {
+        isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
+        errorReason: 'دلیل خطا',
+        usage: 'اطلاعات استفاده از مدل',
+      },
       extractParameters: 'استخراج پارامترها',
       importFromTool: 'وارد کردن از ابزارها',
       addExtractParameter: 'افزودن پارامتر استخراج شده',
@@ -699,8 +714,6 @@ const translation = {
       advancedSetting: 'تنظیمات پیشرفته',
       reasoningMode: 'حالت استدلال',
       reasoningModeTip: 'می‌توانید حالت استدلال مناسب را بر اساس توانایی مدل برای پاسخ به دستورات برای فراخوانی عملکردها یا پیشنهادات انتخاب کنید.',
-      isSuccess: 'موفقیت‌آمیز است. در صورت موفقیت مقدار 1 و در صورت شکست مقدار 0 است.',
-      errorReason: 'دلیل خطا',
     },
     iteration: {
       deleteTitle: 'حذف نود تکرار؟',
@@ -916,6 +929,35 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'این نود را اجرا کن',
+      description: 'نتایج آخرین اجرا در اینجا نمایش داده خواهد شد',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'شفاف',
+        stop: 'متوقف کن، برو',
+        running: 'وضعیت اجرای کشینگ',
+        normal: 'بازبینی متغیر',
+        cached: 'مشاهده متغیرهای کش شده',
+      },
+      chatNode: 'گفتگو',
+      edited: 'ویرایش شده',
+      systemNode: 'سیستم',
+      title: 'بازبینی متغیر',
+      clearAll: 'همه را بازنشانی کن',
+      emptyLink: 'بیشتر یاد بگیرید',
+      reset: 'تنظیم به آخرین مقدار اجرا شده',
+      view: 'مشاهده لاگ',
+      envNode: 'محیط زیست',
+      clearNode: 'کش متغیر کش شده را پاک کنید',
+      emptyTip: 'پس از عبور از یک گره روی بوم یا اجرای گره به صورت مرحله‌ای، می‌توانید مقدار فعلی متغیر گره را در بازرسی متغیر مشاهده کنید.',
+      resetConversationVar: 'متغیر گفتگو را به مقدار پیش‌فرض بازنشانی کنید',
+    },
+    settingsTab: 'تنظیمات',
+    lastRunTab: 'آخرین اجرا',
   },
 }
 

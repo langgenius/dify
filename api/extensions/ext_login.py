@@ -10,7 +10,7 @@ from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.account import Account, Tenant, TenantAccountJoin
-from models.model import EndUser
+from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 
 login_manager = flask_login.LoginManager()
@@ -71,6 +71,21 @@ def load_user_from_request(request_from_flask_login):
         if not end_user_id:
             raise Unauthorized("Invalid Authorization token.")
         end_user = db.session.query(EndUser).filter(EndUser.id == decoded["end_user_id"]).first()
+        if not end_user:
+            raise NotFound("End user not found.")
+        return end_user
+    elif request.blueprint == "mcp":
+        server_code = request.view_args.get("server_code") if request.view_args else None
+        if not server_code:
+            raise Unauthorized("Invalid Authorization token.")
+        app_mcp_server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
+        if not app_mcp_server:
+            raise NotFound("App MCP server not found.")
+        end_user = (
+            db.session.query(EndUser)
+            .filter(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
+            .first()
+        )
         if not end_user:
             raise NotFound("End user not found.")
         return end_user

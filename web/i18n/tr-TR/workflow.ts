@@ -129,6 +129,8 @@ const translation = {
       value: 'Değer',
       valuePlaceholder: 'env değeri',
       secretTip: 'Hassas bilgileri veya verileri tanımlamak için kullanılır, bilgi sızıntısını önlemek için DSL ayarları yapılandırılmıştır.',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Değişkeni açıklayın',
     },
     export: {
       title: 'Gizli çevre değişkenleri dışa aktarılsın mı?',
@@ -303,6 +305,8 @@ const translation = {
     addNextStep: 'Bu iş akışına bir sonraki adımı ekleyin',
     organizeBlocks: 'Düğümleri düzenle',
     selectNextStep: 'Sonraki Adımı Seç',
+    minimize: 'Tam Ekrandan Çık',
+    maximize: 'Kanvası Maksimize Et',
   },
   nodes: {
     common: {
@@ -360,6 +364,7 @@ const translation = {
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'gerekli',
@@ -536,6 +541,10 @@ const translation = {
         placeholder: 'cURL dizesini buraya yapıştırın',
         title: 'cURL\'den içe aktar',
       },
+      verifySSL: {
+        title: 'SSL Sertifikasını Doğrula',
+        warningTooltip: 'SSL doğrulamasını devre dışı bırakmak, üretim ortamları için önerilmez. Bu yalnızca geliştirme veya test aşamalarında kullanılmalıdır, çünkü bağlantıyı adam ortada saldırıları gibi güvenlik tehditlerine karşı savunmasız hale getirir.',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -668,6 +677,7 @@ const translation = {
       inputVars: 'Giriş Değişkenleri',
       outputVars: {
         className: 'Sınıf Adı',
+        usage: 'Model Kullanım Bilgileri',
       },
       class: 'Sınıf',
       classNamePlaceholder: 'Sınıf adınızı yazın',
@@ -681,6 +691,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Giriş Değişkeni',
+      outputVars: {
+        isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
+        errorReason: 'Hata Nedeni',
+        usage: 'Model Kullanım Bilgileri',
+      },
       extractParameters: 'Parametreleri Çıkar',
       importFromTool: 'Araçlardan içe aktar',
       addExtractParameter: 'Çıkarma Parametresi Ekle',
@@ -700,8 +715,6 @@ const translation = {
       advancedSetting: 'Gelişmiş Ayarlar',
       reasoningMode: 'Akıl Yürütme Modu',
       reasoningModeTip: 'Modelin fonksiyon çağırma veya istemler için talimatlara yanıt verme yeteneğine bağlı olarak uygun akıl yürütme modunu seçebilirsiniz.',
-      isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
-      errorReason: 'Hata Nedeni',
     },
     iteration: {
       deleteTitle: 'Yineleme Düğümünü Sil?',
@@ -917,6 +930,35 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Bu düğümü çalıştır',
+      description: 'Son çalışmanın sonuçları burada gösterilecektir.',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Açık',
+        running: 'Önbellek çalışma durumu',
+        normal: 'Değişken İncele',
+        cached: 'Önbelleklenmiş değişkenleri görüntüle',
+        stop: 'Koşmayı durdur',
+      },
+      envNode: 'Çevre',
+      title: 'Değişken İncele',
+      edited: 'Düzenlenmiş',
+      chatNode: 'Konuşma',
+      resetConversationVar: 'Konuşma değişkenini varsayılan değere sıfırla',
+      emptyLink: 'Daha fazla öğrenin',
+      clearAll: 'Hepsini sıfırla',
+      systemNode: 'Sistem',
+      clearNode: 'Önbelleklenmiş değişkeni temizle',
+      reset: 'Son çalıştırma değerine sıfırla',
+      view: 'Günlüğü görüntüle',
+      emptyTip: 'Bir düğümü kanvas üzerinde geçtikten veya bir düğümü adım adım çalıştırdıktan sonra, Düğüm Değişkeni\'ndeki mevcut değeri Değişken İncele\'de görüntüleyebilirsiniz.',
+    },
+    lastRunTab: 'Son Koşu',
+    settingsTab: 'Ayarlar',
   },
 }
 

@@ -133,6 +133,8 @@ const translation = {
       value: 'Valore',
       valuePlaceholder: 'valore env',
       secretTip: 'Utilizzato per definire informazioni o dati sensibili, con impostazioni DSL configurate per la prevenzione delle fughe.',
+      description: 'Descrizione',
+      descriptionPlaceholder: 'Descrivi la variabile',
     },
     export: {
       title: 'Esportare variabili d\'ambiente segrete?',
@@ -318,6 +320,8 @@ const translation = {
     selectNextStep: 'Seleziona il prossimo passo',
     organizeBlocks: 'Organizzare i nodi',
     addNextStep: 'Aggiungi il prossimo passo in questo flusso di lavoro',
+    minimize: 'Esci dalla modalità schermo intero',
+    maximize: 'Massimizza Canvas',
   },
   nodes: {
     common: {
@@ -375,6 +379,7 @@ const translation = {
         retryFailed: 'Nuovo tentativo non riuscito',
         ms: 'ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'richiesto',
@@ -551,6 +556,10 @@ const translation = {
         placeholder: 'Incolla qui la stringa cURL',
         title: 'Importazione da cURL',
       },
+      verifySSL: {
+        title: 'Verifica il certificato SSL',
+        warningTooltip: 'Disabilitare la verifica SSL non è raccomandato per gli ambienti di produzione. Questo dovrebbe essere utilizzato solo in sviluppo o test, poiché rende la connessione vulnerabile a minacce alla sicurezza come gli attacchi man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -686,6 +695,7 @@ const translation = {
       inputVars: 'Variabili di Input',
       outputVars: {
         className: 'Nome Classe',
+        usage: 'Informazioni sull\'utilizzo del modello',
       },
       class: 'Classe',
       classNamePlaceholder: 'Scrivi il nome della tua classe',
@@ -700,6 +710,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variabile di Input',
+      outputVars: {
+        isSuccess: 'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
+        errorReason: 'Motivo dell\'errore',
+        usage: 'Informazioni sull\'utilizzo del modello',
+      },
       extractParameters: 'Estrai Parametri',
       importFromTool: 'Importa dagli strumenti',
       addExtractParameter: 'Aggiungi Parametro Estratto',
@@ -722,9 +737,6 @@ const translation = {
       reasoningMode: 'Modalità di ragionamento',
       reasoningModeTip:
         'Puoi scegliere la modalità di ragionamento appropriata in base alla capacità del modello di rispondere alle istruzioni per la chiamata delle funzioni o i prompt.',
-      isSuccess:
-        'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
-      errorReason: 'Motivo dell\'errore',
     },
     iteration: {
       deleteTitle: 'Eliminare Nodo Iterazione?',
@@ -941,6 +953,35 @@ const translation = {
     currentDraft: 'Bozza attuale',
     restorationTip: 'Dopo il ripristino della versione, la bozza attuale verrà sovrascritta.',
     title: 'Versioni',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Esegui questo nodo',
+      description: 'I risultati dell\'ultima esecuzione verranno visualizzati qui',
+    },
+    variableInspect: {
+      trigger: {
+        cached: 'Visualizza le variabili memorizzate nella cache',
+        clear: 'Chiaro',
+        running: 'Caching stato di esecuzione',
+        normal: 'Ispezione Variabile',
+        stop: 'Ferma la corsa',
+      },
+      chatNode: 'Conversazione',
+      clearNode: 'Svuota la variabile cached',
+      envNode: 'Ambiente',
+      systemNode: 'Sistema',
+      title: 'Ispezione delle variabili',
+      edited: 'Modificato',
+      emptyLink: 'Scopri di più',
+      resetConversationVar: 'Reimposta la variabile della conversazione al valore predefinito',
+      view: 'Visualizza log',
+      clearAll: 'Ripristina tutto',
+      reset: 'Ripristina il valore dell\'ultima esecuzione',
+      emptyTip: 'Dopo aver eseguito un nodo sulla tela o eseguendo un nodo passo dopo passo, puoi visualizzare il valore attuale della variabile nodo in Ispeziona Variabile.',
+    },
+    settingsTab: 'Impostazioni',
+    lastRunTab: 'Ultima corsa',
   },
 }
 

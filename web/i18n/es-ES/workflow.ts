@@ -129,6 +129,8 @@ const translation = {
       value: 'Valor',
       valuePlaceholder: 'valor de env',
       secretTip: 'Se utiliza para definir información o datos sensibles, con configuraciones DSL configuradas para prevenir fugas.',
+      description: 'Descripción',
+      descriptionPlaceholder: 'Describa la variable',
     },
     export: {
       title: '¿Exportar variables de entorno secretas?',
@@ -303,6 +305,8 @@ const translation = {
     addNextStep: 'Agrega el siguiente paso en este flujo de trabajo',
     changeBlock: 'Cambiar Nodo',
     selectNextStep: 'Seleccionar siguiente paso',
+    maximize: 'Maximizar Canvas',
+    minimize: 'Salir de pantalla completa',
   },
   nodes: {
     common: {
@@ -360,6 +364,7 @@ const translation = {
         retries: '{{num}} Reintentos',
         retry: 'Reintentar',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'requerido',
@@ -533,6 +538,10 @@ const translation = {
         title: 'Importar desde cURL',
         placeholder: 'Pegar la cadena cURL aquí',
       },
+      verifySSL: {
+        title: 'Verificar el certificado SSL',
+        warningTooltip: 'Deshabilitar la verificación SSL no se recomienda para entornos de producción. Esto solo debe utilizarse en desarrollo o pruebas, ya que hace que la conexión sea vulnerable a amenazas de seguridad como ataques de intermediario.',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',
@@ -665,6 +674,7 @@ const translation = {
       inputVars: 'Variables de entrada',
       outputVars: {
         className: 'Nombre de la clase',
+        usage: 'Información de uso del modelo',
       },
       class: 'Clase',
       classNamePlaceholder: 'Escribe el nombre de tu clase',
@@ -678,6 +688,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variable de entrada',
+      outputVars: {
+        isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
+        errorReason: 'Motivo del error',
+        usage: 'Información de uso del modelo',
+      },
       extractParameters: 'Extraer parámetros',
       importFromTool: 'Importar desde herramientas',
       addExtractParameter: 'Agregar parámetro de extracción',
@@ -697,8 +712,6 @@ const translation = {
       advancedSetting: 'Configuración avanzada',
       reasoningMode: 'Modo de razonamiento',
       reasoningModeTip: 'Puede elegir el modo de razonamiento apropiado basado en la capacidad del modelo para responder a instrucciones para llamadas de funciones o indicaciones.',
-      isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
-      errorReason: 'Motivo del error',
     },
     iteration: {
       deleteTitle: '¿Eliminar nodo de iteración?',
@@ -914,6 +927,33 @@ const translation = {
     deletionTip: 'La eliminación es irreversible, por favor confirma.',
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Ejecuta este nodo',
+      description: 'Los resultados de la última ejecución se mostrarán aquí',
+    },
+    variableInspect: {
+      trigger: {
+        running: 'Estado de ejecución de la caché',
+        stop: 'Detén la carrera',
+        normal: 'Inspeccionar Variable',
+        cached: 'Ver variables en caché',
+      },
+      envNode: 'Medio ambiente',
+      chatNode: 'Conversación',
+      systemNode: 'Sistema',
+      view: 'Ver registro',
+      clearAll: 'Restablecer todo',
+      emptyLink: 'Aprender más',
+      title: 'Inspeccionar Variable',
+      reset: 'Restablecer al último valor ejecutado',
+      resetConversationVar: 'Restablecer la variable de conversación al valor predeterminado',
+      clearNode: 'Limpiar variable en caché',
+      emptyTip: 'Después de recorrer un nodo en el lienzo o ejecutar un nodo paso a paso, puedes ver el valor actual de la variable del nodo en Inspección de Variables.',
+    },
+    lastRunTab: 'Última ejecución',
+    settingsTab: 'Ajustes',
   },
 }
 

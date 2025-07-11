@@ -1,3 +1,4 @@
+import time
 from unittest.mock import patch
 
 import pytest
@@ -19,6 +20,7 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.code.code_node import CodeNode
@@ -172,6 +174,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -183,7 +186,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -299,6 +302,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         user_inputs={},
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -310,7 +314,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -479,6 +483,7 @@ def test_run_branch(mock_close, mock_remove):
         user_inputs={"uid": "takato"},
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -490,7 +495,7 @@ def test_run_branch(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -813,6 +818,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -824,7 +830,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )

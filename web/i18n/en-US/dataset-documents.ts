@@ -30,6 +30,8 @@ const translation = {
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
       sync: 'Sync',
+      pause: 'Pause',
+      resume: 'Resume',
     },
     index: {
       enable: 'Enable',
@@ -355,7 +357,9 @@ const translation = {
     newChildChunk: 'New Child Chunk',
     keywords: 'KEYWORDS',
     addKeyWord: 'Add keyword',
+    keywordEmpty: 'The keyword cannot be empty',
     keywordError: 'The maximum length of keyword is 20',
+    keywordDuplicate: 'The keyword already exists',
     characters_one: 'character',
     characters_other: 'characters',
     hitCount: 'Retrieval count',

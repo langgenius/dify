@@ -129,6 +129,8 @@ const translation = {
       value: 'Wartość',
       valuePlaceholder: 'wartość środowiska',
       secretTip: 'Używane do definiowania wrażliwych informacji lub danych, z ustawieniami DSL skonfigurowanymi do zapobiegania wyciekom.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisz zmienną',
     },
     export: {
       title: 'Eksportować tajne zmienne środowiskowe?',
@@ -303,6 +305,8 @@ const translation = {
     addNextStep: 'Dodaj następny krok w tym procesie roboczym',
     changeBlock: 'Zmień węzeł',
     organizeBlocks: 'Organizuj węzły',
+    minimize: 'Wyjdź z trybu pełnoekranowego',
+    maximize: 'Maksymalizuj płótno',
   },
   nodes: {
     common: {
@@ -360,6 +364,7 @@ const translation = {
         retryFailedTimes: '{{times}} ponawianie prób nie powiodło się',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'wymagane',
@@ -535,6 +540,10 @@ const translation = {
         placeholder: 'Wklej tutaj ciąg cURL',
         title: 'Importowanie z cURL',
       },
+      verifySSL: {
+        title: 'Zweryfikuj certyfikat SSL',
+        warningTooltip: 'Wyłączenie weryfikacji SSL nie jest zalecane w środowiskach produkcyjnych. Powinno to być używane tylko w rozwoju lub testowaniu, ponieważ naraża połączenie na zagrożenia bezpieczeństwa, takie jak ataki typu man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -667,6 +676,7 @@ const translation = {
       inputVars: 'Zmienne wejściowe',
       outputVars: {
         className: 'Nazwa klasy',
+        usage: 'Informacje o użyciu modelu',
       },
       class: 'Klasa',
       classNamePlaceholder: 'Napisz nazwę swojej klasy',
@@ -680,6 +690,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Zmienna wejściowa',
+      outputVars: {
+        isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
+        errorReason: 'Powód błędu',
+        usage: 'Informacje o użyciu modelu',
+      },
       extractParameters: 'Wyodrębnij parametry',
       importFromTool: 'Importuj z narzędzi',
       addExtractParameter: 'Dodaj parametr wyodrębniania',
@@ -699,8 +714,6 @@ const translation = {
       advancedSetting: 'Zaawansowane ustawienia',
       reasoningMode: 'Tryb wnioskowania',
       reasoningModeTip: 'Możesz wybrać odpowiedni tryb wnioskowania w zależności od zdolności modelu do reagowania na instrukcje dotyczące wywoływania funkcji lub zapytań.',
-      isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
-      errorReason: 'Powód błędu',
     },
     iteration: {
       deleteTitle: 'Usunąć węzeł iteracji?',
@@ -916,6 +929,35 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Uruchom ten węzeł',
+      description: 'Wyniki ostatniego uruchomienia będą wyświetlane tutaj',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Czysty',
+        running: 'Buforowanie statusu działania',
+        cached: 'Wyświetl zapisane zmienne',
+        stop: 'Zatrzymaj bieg',
+        normal: 'Inspekcja zmiennych',
+      },
+      title: 'Inspekcja zmiennych',
+      chatNode: 'Rozmowa',
+      envNode: 'Środowisko',
+      systemNode: 'System',
+      edited: 'Edytowany',
+      clearAll: 'Resetuj wszystko',
+      emptyLink: 'Dowiedz się więcej',
+      clearNode: 'Wyczyść pamięć podręczną zmiennej',
+      reset: 'Zresetuj do ostatniej wartości run',
+      view: 'Zobacz dziennik',
+      resetConversationVar: 'Zresetuj zmienną rozmowy do wartości domyślnej',
+      emptyTip: 'Po przejściu przez węzeł na kanwie lub uruchomieniu węzła krok po kroku, możesz zobaczyć bieżącą wartość zmiennej węzła w Inspektorze Zmiennych.',
+    },
+    settingsTab: 'Ustawienia',
+    lastRunTab: 'Ostatnie uruchomienie',
   },
 }
 

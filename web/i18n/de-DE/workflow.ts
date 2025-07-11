@@ -129,6 +129,8 @@ const translation = {
       value: 'Wert',
       valuePlaceholder: 'Umgebungswert',
       secretTip: 'Wird verwendet, um sensible Informationen oder Daten zu definieren, wobei DSL-Einstellungen zur Verhinderung von Lecks konfiguriert sind.',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Beschreiben Sie die Variable',
     },
     export: {
       title: 'Geheime Umgebungsvariablen exportieren?',
@@ -303,6 +305,8 @@ const translation = {
     addNextStep: 'Fügen Sie den nächsten Schritt in diesem Arbeitsablauf hinzu.',
     organizeBlocks: 'Knoten organisieren',
     changeBlock: 'Knoten ändern',
+    maximize: 'Maximiere die Leinwand',
+    minimize: 'Vollbildmodus beenden',
   },
   nodes: {
     common: {
@@ -360,6 +364,7 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'erforderlich',
@@ -535,6 +540,10 @@ const translation = {
         title: 'Importieren von cURL',
         placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
       },
+      verifySSL: {
+        title: 'SSL-Zertifikat überprüfen',
+        warningTooltip: 'Das Deaktivieren der SSL-Überprüfung wird für Produktionsumgebungen nicht empfohlen. Dies sollte nur in der Entwicklung oder im Test verwendet werden, da es die Verbindung anfällig für Sicherheitsbedrohungen wie Man-in-the-Middle-Angriffe macht.',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -667,6 +676,7 @@ const translation = {
       inputVars: 'Eingabevariablen',
       outputVars: {
         className: 'Klassennamen',
+        usage: 'Nutzungsinformationen des Modells',
       },
       class: 'Klasse',
       classNamePlaceholder: 'Geben Sie Ihren Klassennamen ein',
@@ -680,6 +690,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Eingabevariable',
+      outputVars: {
+        isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
+        errorReason: 'Fehlergrund',
+        usage: 'Nutzungsinformationen des Modells',
+      },
       extractParameters: 'Parameter extrahieren',
       importFromTool: 'Aus Tools importieren',
       addExtractParameter: 'Extraktionsparameter hinzufügen',
@@ -699,8 +714,6 @@ const translation = {
       advancedSetting: 'Erweiterte Einstellung',
       reasoningMode: 'Schlussfolgerungsmodus',
       reasoningModeTip: 'Sie können den entsprechenden Schlussfolgerungsmodus basierend auf der Fähigkeit des Modells wählen, auf Anweisungen zur Funktionsaufruf- oder Eingabeaufforderungen zu reagieren.',
-      isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
-      errorReason: 'Fehlergrund',
     },
     iteration: {
       deleteTitle: 'Iterationsknoten löschen?',
@@ -916,6 +929,35 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Führe diesen Knoten aus',
+      description: 'Die Ergebnisse des letzten Laufs werden hier angezeigt.',
+    },
+    variableInspect: {
+      trigger: {
+        normal: 'Variable untersuchen',
+        stop: 'Halt an',
+        running: 'Caching-Betriebsstatus',
+        clear: 'Klar',
+        cached: 'Cached-Variablen anzeigen',
+      },
+      title: 'Variable untersuchen',
+      clearAll: 'Alles zurücksetzen',
+      emptyLink: 'Erfahren Sie mehr',
+      view: 'Protokoll anzeigen',
+      systemNode: 'System',
+      edited: 'Bearbeitet',
+      clearNode: 'Cache-Variable löschen',
+      envNode: 'Umwelt',
+      chatNode: 'Gespräch',
+      resetConversationVar: 'Setze die Gesprächsvariable auf den Standardwert zurück',
+      reset: 'Auf den letzten Ausführungswert zurücksetzen',
+      emptyTip: 'Nachdem Sie einen Knoten auf der Leinwand durchlaufen oder einen Knoten Schritt für Schritt ausgeführt haben, können Sie den aktuellen Wert der Knotenvariable in der Variableninspektion anzeigen.',
+    },
+    settingsTab: 'Einstellungen',
+    lastRunTab: 'Letzte Ausführung',
   },
 }
 

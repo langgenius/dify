@@ -94,6 +94,7 @@ const translation = {
       unsupportedTitle: '不支持的 Action',
       unsupportedContent: '已安装的插件版本不提供这个 action。',
       unsupportedContent2: '点击切换版本',
+      unsupportedMCPTool: '当前选定的 Agent 策略插件版本不支持 MCP 工具。',
     },
     configureApp: '应用设置',
     configureModel: '模型设置',
@@ -154,6 +155,7 @@ const translation = {
     next: '下一步',
     pluginLoadError: '插件加载错误',
     pluginLoadErrorDesc: '此插件将不会被安装',
+    installWarning: '此插件不允许安装。',
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',

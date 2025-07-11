@@ -40,6 +40,10 @@ class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData  # type: ignore
     _node_type = NodeType.QUESTION_CLASSIFIER
 
+    @classmethod
+    def version(cls):
+        return "1"
+
     def _run(self):
         node_data = cast(QuestionClassifierNodeData, self.node_data)
         variable_pool = self.graph_runtime_state.variable_pool
@@ -141,7 +145,11 @@ class QuestionClassifierNode(LLMNode):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
-            outputs = {"class_name": category_name, "class_id": category_id}
+            outputs = {
+                "class_name": category_name,
+                "class_id": category_id,
+                "usage": jsonable_encoder(usage),
+            }
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

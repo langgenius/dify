@@ -138,14 +138,11 @@ class DatasetConfigManager:
         if not config.get("dataset_configs"):
             config["dataset_configs"] = {"retrieval_model": "single"}
 
+        if not isinstance(config["dataset_configs"], dict):
+            raise ValueError("dataset_configs must be of object type")
+
         if not config["dataset_configs"].get("datasets"):
             config["dataset_configs"]["datasets"] = {"strategy": "router", "datasets": []}
-
-        if not isinstance(config["dataset_configs"], dict):
-            raise ValueError("dataset_configs must be of object type")
-
-        if not isinstance(config["dataset_configs"], dict):
-            raise ValueError("dataset_configs must be of object type")
 
         need_manual_query_datasets = config.get("dataset_configs") and config["dataset_configs"].get(
             "datasets", {}

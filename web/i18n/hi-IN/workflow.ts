@@ -132,6 +132,8 @@ const translation = {
       value: 'मान',
       valuePlaceholder: 'पर्यावरण मान',
       secretTip: 'संवेदनशील जानकारी या डेटा को परिभाषित करने के लिए उपयोग किया जाता है, DSL सेटिंग्स लीक रोकथाम के लिए कॉन्फ़िगर की गई हैं।',
+      description: 'विवरण',
+      descriptionPlaceholder: 'चर का वर्णन करें',
     },
     export: {
       title: 'गुप्त पर्यावरण चर निर्यात करें?',
@@ -315,6 +317,8 @@ const translation = {
     addNextStep: 'इस कार्यप्रवाह में अगला कदम जोड़ें',
     selectNextStep: 'अगला कदम चुनें',
     organizeBlocks: 'नोड्स का आयोजन करें',
+    minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
+    maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
   },
   nodes: {
     common: {
@@ -372,6 +376,7 @@ const translation = {
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'आवश्यक',
@@ -548,6 +553,10 @@ const translation = {
         placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
         title: 'cURL से आयात करें',
       },
+      verifySSL: {
+        title: 'SSL प्रमाणपत्र की पुष्टि करें',
+        warningTooltip: 'SSL सत्यापन को अक्षम करना उत्पादन वातावरण के लिए अनुशंसित नहीं है। इसका उपयोग केवल विकास या परीक्षण में किया जाना चाहिए, क्योंकि यह कनेक्शन को मिडल-मैन हमलों जैसे सुरक्षा खतरों के लिए कमजोर बना देता है।',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -683,6 +692,7 @@ const translation = {
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         className: 'क्लास नाम',
+        usage: 'मॉडल उपयोग जानकारी',
       },
       class: 'क्लास',
       classNamePlaceholder: 'अपना क्लास नाम लिखें',
@@ -697,6 +707,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'इनपुट वेरिएबल',
+      outputVars: {
+        isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
+        errorReason: 'त्रुटि का कारण',
+        usage: 'मॉडल उपयोग जानकारी',
+      },
       extractParameters: 'पैरामीटर्स निकालें',
       importFromTool: 'उपकरणों से आयात करें',
       addExtractParameter: 'एक्सट्रेक्ट पैरामीटर जोड़ें',
@@ -719,8 +734,6 @@ const translation = {
       reasoningMode: 'रीज़निंग मोड',
       reasoningModeTip:
         'फ़ंक्शन कॉलिंग या प्रॉम्प्ट्स के लिए निर्देशों का जवाब देने की मॉडल की क्षमता के आधार पर उपयुक्त रीज़निंग मोड चुन सकते हैं।',
-      isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
-      errorReason: 'त्रुटि का कारण',
     },
     iteration: {
       deleteTitle: 'इटरेशन नोड हटाएं?',
@@ -936,6 +949,35 @@ const translation = {
     restorationTip: 'संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।',
     defaultName: 'अविभाजित संस्करण',
     deletionTip: 'हटाना अप्रतिबंधी है, कृपया पुष्टि करें।',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'इस नोड को चलाएँ',
+      description: 'अंतिम दौड़ के परिणाम यहाँ प्रदर्शित किए जाएंगे',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'स्पष्ट',
+        stop: 'रुको दौड़',
+        running: 'कैशिंग चल रहा स्थिति',
+        normal: 'चर चरखा',
+        cached: 'कैश की गई परिवर्तनीयताओं को देखें',
+      },
+      emptyLink: 'और जानें',
+      systemNode: 'प्रणाली',
+      chatNode: 'संवाद',
+      reset: 'अंतिम रन मान पर रीसेट करें',
+      view: 'लॉग देखें',
+      clearAll: 'सभी रीसेट करें',
+      title: 'चर चर के निरीक्षण',
+      edited: 'संशोधित किया गया',
+      envNode: 'पर्यावरण',
+      clearNode: 'कैश की गई वैरिएबल को साफ करें',
+      resetConversationVar: 'संवाद चर को डिफ़ॉल्ट मान पर रीसेट करें',
+      emptyTip: 'कैनवास पर एक नोड पर कदम रखने के बाद या चरण दर चरण एक नोड चलाने के बाद, आप वेरिएबल इंस्पेक्ट में नोड वेरिएबल का वर्तमान मान देख सकते हैं।',
+    },
+    settingsTab: 'सेटिंग्स',
+    lastRunTab: 'अंतिम रन',
   },
 }
 

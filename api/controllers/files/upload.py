@@ -87,7 +87,5 @@ class PluginUploadFileApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return tool_file, 201
-
 
 api.add_resource(PluginUploadFileApi, "/files/upload/for-plugin")

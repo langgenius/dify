@@ -3,6 +3,7 @@ import type { WorkflowDataUpdater } from '../types'
 import Run from '../run'
 import { useStore } from '../store'
 import { useWorkflowUpdate } from '../hooks'
+import { formatWorkflowRunIdentifier } from '../utils'
 
 const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
@@ -20,7 +21,7 @@ const Record = () => {
   return (
     <div className='flex h-full w-[400px] flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
       <div className='system-xl-semibold flex items-center justify-between p-4 pb-0 text-text-primary'>
-        {`Test Run#${historyWorkflowData?.sequence_number}`}
+        {`Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </div>
       <Run
         runID={historyWorkflowData?.id || ''}

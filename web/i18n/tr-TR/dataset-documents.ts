@@ -29,6 +29,8 @@ const translation = {
       delete: 'Sil',
       enableWarning: 'Arşivlenmiş dosya etkinleştirilemez',
       sync: 'Senkronize et',
+      pause: 'Duraklat',
+      resume: 'Devam Et',
     },
     index: {
       enable: 'Etkinleştir',
@@ -388,6 +390,8 @@ const translation = {
     chunks_other: 'Parçalar',
     editedAt: 'Şurada düzenlendi:',
     addChildChunk: 'Alt Parça Ekle',
+    keywordDuplicate: 'Anahtar kelime zaten var',
+    keywordEmpty: 'Anahtar kelime boş olamaz',
   },
 }
 

@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -54,6 +55,10 @@ class LoopNode(BaseNode[LoopNodeData]):
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """Run the node."""
         # Get inputs
@@ -97,7 +102,10 @@ class LoopNode(BaseNode[LoopNodeData]):
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
+        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
         from core.workflow.graph_engine.graph_engine import GraphEngine
+
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         graph_engine = GraphEngine(
             tenant_id=self.tenant_id,
@@ -110,7 +118,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             call_depth=self.workflow_call_depth,
             graph=loop_graph,
             graph_config=self.graph_config,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             thread_pool_id=self.thread_pool_id,
@@ -481,6 +489,13 @@ class LoopNode(BaseNode[LoopNodeData]):
             }
 
             variable_mapping.update(sub_node_variable_mapping)
+
+        for loop_variable in node_data.loop_variables or []:
+            if loop_variable.value_type == "variable":
+                assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
+                # add loop variable to variable mapping
+                selector = loop_variable.value
+                variable_mapping[f"{node_id}.{loop_variable.label}"] = selector
 
         # remove variable out from loop
         variable_mapping = {

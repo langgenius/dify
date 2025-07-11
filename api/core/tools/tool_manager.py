@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 from yarl import URL
 
@@ -13,9 +13,13 @@ from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.workflow.entities.variable_pool import VariablePool
+from services.tools.mcp_tools_mange_service import MCPToolManageService
 
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
@@ -49,7 +53,7 @@ from core.tools.utils.configuration import (
 )
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -156,7 +160,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool]:
+    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
 
@@ -292,6 +296,8 @@ class ToolManager:
             raise NotImplementedError("app provider not implemented")
         elif provider_type == ToolProviderType.PLUGIN:
             return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+        elif provider_type == ToolProviderType.MCP:
+            return cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
         else:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
@@ -302,6 +308,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -316,24 +323,9 @@ class ToolManager:
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
-        for parameter in parameters:
-            # check file types
-            if (
-                parameter.type
-                in {
-                    ToolParameter.ToolParameterType.SYSTEM_FILES,
-                    ToolParameter.ToolParameterType.FILE,
-                    ToolParameter.ToolParameterType.FILES,
-                }
-                and parameter.required
-            ):
-                raise ValueError(f"file type parameter {parameter.name} not supported in agent")
-
-            if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # save tool parameter to tool entity memory
-                value = parameter.init_frontend_parameter(agent_tool.tool_parameters.get(parameter.name))
-                runtime_parameters[parameter.name] = value
-
+        runtime_parameters = cls._convert_tool_parameters_type(
+            parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
+        )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
@@ -357,10 +349,12 @@ class ToolManager:
         node_id: str,
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the workflow tool runtime
         """
+
         tool_runtime = cls.get_tool_runtime(
             provider_type=workflow_tool.provider_type,
             provider_id=workflow_tool.provider_id,
@@ -369,15 +363,11 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         )
-        runtime_parameters = {}
+
         parameters = tool_runtime.get_merged_runtime_parameters()
-
-        for parameter in parameters:
-            # save tool parameter to tool entity memory
-            if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                value = parameter.init_frontend_parameter(workflow_tool.tool_configurations.get(parameter.name))
-                runtime_parameters[parameter.name] = value
-
+        runtime_parameters = cls._convert_tool_parameters_type(
+            parameters, variable_pool, workflow_tool.tool_configurations, typ="workflow"
+        )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
@@ -569,7 +559,7 @@ class ToolManager:
 
         filters = []
         if not typ:
-            filters.extend(["builtin", "api", "workflow"])
+            filters.extend(["builtin", "api", "workflow", "mcp"])
         else:
             filters.append(typ)
 
@@ -663,6 +653,10 @@ class ToolManager:
                         labels=labels.get(provider_controller.provider_id, []),
                     )
                     result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
+            if "mcp" in filters:
+                mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id, for_list=True)
+                for mcp_provider in mcp_providers:
+                    result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
 
@@ -697,6 +691,32 @@ class ToolManager:
         controller.load_bundled_tools(provider.tools)
 
         return controller, provider.credentials
+
+    @classmethod
+    def get_mcp_provider_controller(cls, tenant_id: str, provider_id: str) -> MCPToolProviderController:
+        """
+        get the api provider
+
+        :param tenant_id: the id of the tenant
+        :param provider_id: the id of the provider
+
+        :return: the provider controller, the credentials
+        """
+        provider: MCPToolProvider | None = (
+            db.session.query(MCPToolProvider)
+            .filter(
+                MCPToolProvider.server_identifier == provider_id,
+                MCPToolProvider.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if provider is None:
+            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+
+        controller = MCPToolProviderController._from_db(provider)
+
+        return controller
 
     @classmethod
     def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
@@ -827,6 +847,22 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
+    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict[str, str] | str:
+        try:
+            mcp_provider: MCPToolProvider | None = (
+                db.session.query(MCPToolProvider)
+                .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
+                .first()
+            )
+
+            if mcp_provider is None:
+                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+
+            return mcp_provider.provider_icon
+        except Exception:
+            return {"background": "#252525", "content": "\ud83d\ude01"}
+
+    @classmethod
     def get_tool_icon(
         cls,
         tenant_id: str,
@@ -863,8 +899,61 @@ class ToolManager:
                 except Exception:
                     return {"background": "#252525", "content": "\ud83d\ude01"}
             raise ValueError(f"plugin provider {provider_id} not found")
+        elif provider_type == ToolProviderType.MCP:
+            return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)
         else:
             raise ValueError(f"provider type {provider_type} not found")
+
+    @classmethod
+    def _convert_tool_parameters_type(
+        cls,
+        parameters: list[ToolParameter],
+        variable_pool: Optional[VariablePool],
+        tool_configurations: dict[str, Any],
+        typ: Literal["agent", "workflow", "tool"] = "workflow",
+    ) -> dict[str, Any]:
+        """
+        Convert tool parameters type
+        """
+        from core.workflow.nodes.tool.entities import ToolNodeData
+        from core.workflow.nodes.tool.exc import ToolParameterError
+
+        runtime_parameters = {}
+        for parameter in parameters:
+            if (
+                parameter.type
+                in {
+                    ToolParameter.ToolParameterType.SYSTEM_FILES,
+                    ToolParameter.ToolParameterType.FILE,
+                    ToolParameter.ToolParameterType.FILES,
+                }
+                and parameter.required
+                and typ == "agent"
+            ):
+                raise ValueError(f"file type parameter {parameter.name} not supported in agent")
+            # save tool parameter to tool entity memory
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                if variable_pool:
+                    config = tool_configurations.get(parameter.name, {})
+                    if not (config and isinstance(config, dict) and config.get("value") is not None):
+                        continue
+                    tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
+                    if tool_input.type == "variable":
+                        variable = variable_pool.get(tool_input.value)
+                        if variable is None:
+                            raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                        parameter_value = variable.value
+                    elif tool_input.type in {"mixed", "constant"}:
+                        segment_group = variable_pool.convert_template(str(tool_input.value))
+                        parameter_value = segment_group.text
+                    else:
+                        raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
+                    runtime_parameters[parameter.name] = parameter_value
+
+                else:
+                    value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
+                    runtime_parameters[parameter.name] = value
+        return runtime_parameters
 
 
 ToolManager.load_hardcoded_providers_cache()

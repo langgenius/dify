@@ -23,7 +23,7 @@ export type Props = {
   value?: string | object
   placeholder?: React.JSX.Element | string
   onChange?: (value: string) => void
-  title?: React.JSX.Element
+  title?: string | React.JSX.Element
   language: CodeLanguage
   headerRight?: React.JSX.Element
   readOnly?: boolean
@@ -140,6 +140,7 @@ const CodeEditor: FC<Props> = ({
         language={languageMap[language] || 'javascript'}
         theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
         value={outPutValue}
+        loading={<span className='text-text-primary'>Loading...</span>}
         onChange={handleEditorChange}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{

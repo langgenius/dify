@@ -281,6 +281,7 @@ def migrate_knowledge_vector_database():
         VectorType.ELASTICSEARCH,
         VectorType.OPENGAUSS,
         VectorType.TABLESTORE,
+        VectorType.MATRIXONE,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,

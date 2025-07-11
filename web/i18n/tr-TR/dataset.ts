@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'Meta veri adı boş olamaz',
       invalid: 'Meta verisi adı yalnızca küçük harfler, sayılar ve alt çizgiler içerebilir ve küçük bir harfle başlamalıdır.',
+      tooLong: 'Meta veri adı {{max}} karakteri geçemez',
     },
     batchEditMetadata: {
       multipleValue: 'Birden Fazla Değer',
