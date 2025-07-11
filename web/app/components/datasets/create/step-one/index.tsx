@@ -139,7 +139,7 @@ const StepOne = ({
             <div className={classNames(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
+                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                 )
