@@ -109,7 +109,10 @@ class ApiToolProvider(Base):
     """
 
     __tablename__ = "tool_api_providers"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),)
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),
+        db.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
+    )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the api provider
