@@ -11,11 +11,11 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
-    EmailAlreadyInUseError,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
@@ -380,6 +380,7 @@ class EducationAutoCompleteApi(Resource):
 
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
+
 class ChangeEmailSendEmailApi(Resource):
     @enable_change_email
     @setup_required
@@ -405,12 +406,12 @@ class ChangeEmailSendEmailApi(Resource):
         user_email = args["email"]
         if args["phase"] is not None and args["phase"] == "new_email":
             if args["token"] is None:
-                 raise InvalidTokenError()
+                raise InvalidTokenError()
 
             reset_data = AccountService.get_change_email_data(args["token"])
             if reset_data is None:
                 raise InvalidTokenError()
-            user_email = reset_data.get("email","")
+            user_email = reset_data.get("email", "")
 
             if user_email == current_user.email:
                 raise InvalidEmailError()
@@ -418,9 +419,11 @@ class ChangeEmailSendEmailApi(Resource):
             with Session(db.engine) as session:
                 account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
             if account is None:
-                raise AccountNotFound()           
+                raise AccountNotFound()
 
-        token = AccountService.send_change_email_email(account=account, email=args["email"], old_email=user_email, language=language, phase=args["phase"])  # noqa: E501
+        token = AccountService.send_change_email_email(
+            account=account, email=args["email"], old_email=user_email, language=language, phase=args["phase"]
+        )  # noqa: E501
         return {"result": "success", "data": token}
 
 
@@ -458,11 +461,12 @@ class ChangeEmailCheckApi(Resource):
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_change_email_token(
-            user_email, code=args["code"],old_email=token_data.get("old_email"), additional_data={}
+            user_email, code=args["code"], old_email=token_data.get("old_email"), additional_data={}
         )
 
         AccountService.reset_change_email_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+
 
 class ChangeEmailResetApi(Resource):
     @enable_change_email
@@ -488,10 +492,11 @@ class ChangeEmailResetApi(Resource):
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
             raise AccountNotFound()
-      
+
         updated_account = AccountService.update_account(current_user, email=args["new_email"])
 
         return updated_account
+
 
 class CheckEmailUnique(Resource):
     @setup_required
@@ -505,6 +510,7 @@ class CheckEmailUnique(Resource):
             if account is not None:
                 raise EmailAlreadyInUseError()
         return {"result": "success"}
+
 
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
