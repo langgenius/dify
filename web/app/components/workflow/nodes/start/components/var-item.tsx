@@ -52,7 +52,7 @@ const VarItem: FC<Props> = ({
   return (
     <div ref={ref} className={cn('flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md', className)}>
       <div className='flex w-0 grow items-center space-x-1'>
-        <Variable02 className='h-3.5 w-3.5 text-text-accent' />
+        <Variable02 className='h-3.5 w-3.5 text-text-accent group-hover:opacity-0' />
         <div title={payload.variable} className='max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary'>{payload.variable}</div>
         {payload.label && (<><div className='shrink-0 text-xs font-medium text-text-quaternary'>·</div>
           <div title={payload.label as string} className='max-w-[130px] truncate text-[13px] font-medium text-text-tertiary'>{payload.label as string}</div>

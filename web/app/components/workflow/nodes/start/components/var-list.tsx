@@ -93,7 +93,7 @@ const VarList: FC<Props> = ({
               varKeys={list.map(item => item.variable)}
             />
             {canDrag && <RiDraggable className={cn(
-              'handle absolute -left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
               'group-hover:block',
             )} />}
           </div>
