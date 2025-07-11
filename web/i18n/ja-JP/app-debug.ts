@@ -434,6 +434,7 @@ const translation = {
     writeOpener: 'オープナーを書く',
     placeholder: 'ここにオープナーメッセージを書いてください。変数を使用できます。{{variable}} を入力してみてください。',
     openingQuestion: '開始質問',
+    openingQuestionPlaceholder: '変数を使用できます。{{variable}} と入力してみてください。',
     noDataPlaceHolder:
       'ユーザーとの会話を開始すると、会話アプリケーションで彼らとのより密接な関係を築くのに役立ちます。',
     varTip: '変数を使用できます。{{variable}} を入力してみてください',
