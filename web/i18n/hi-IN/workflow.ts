@@ -376,6 +376,7 @@ const translation = {
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'आवश्यक',

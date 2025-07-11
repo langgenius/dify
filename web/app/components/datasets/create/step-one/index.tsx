@@ -1,5 +1,5 @@
 'use client'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightLine, RiFolder6Line } from '@remixicon/react'
 import FilePreview from '../file-preview'
@@ -95,24 +95,29 @@ const StepOne = ({
   const modalShowHandle = () => setShowModal(true)
   const modalCloseHandle = () => setShowModal(false)
 
-  const updateCurrentFile = (file: File) => {
+  const updateCurrentFile = useCallback((file: File) => {
     setCurrentFile(file)
-  }
-  const hideFilePreview = () => {
+  }, [])
+
+  const hideFilePreview = useCallback(() => {
     setCurrentFile(undefined)
-  }
+  }, [])
 
-  const updateCurrentPage = (page: NotionPage) => {
+  const updateCurrentPage = useCallback((page: NotionPage) => {
     setCurrentNotionPage(page)
-  }
+  }, [])
 
-  const hideNotionPagePreview = () => {
+  const hideNotionPagePreview = useCallback(() => {
     setCurrentNotionPage(undefined)
-  }
+  }, [])
 
-  const hideWebsitePreview = () => {
+  const updateWebsite = useCallback((website: CrawlResultItem) => {
+    setCurrentWebsite(website)
+  }, [])
+
+  const hideWebsitePreview = useCallback(() => {
     setCurrentWebsite(undefined)
-  }
+  }, [])
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
   const isInCreatePage = shouldShowDataSourceTypeList
@@ -139,7 +144,7 @@ const StepOne = ({
             <div className={classNames(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
+                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                 )
@@ -158,8 +163,8 @@ const StepOne = ({
                         if (dataSourceTypeDisable)
                           return
                         changeType(DataSourceType.FILE)
-                        hideFilePreview()
                         hideNotionPagePreview()
+                        hideWebsitePreview()
                       }}
                     >
                       <span className={cn(s.datasetIcon)} />
@@ -182,7 +187,7 @@ const StepOne = ({
                           return
                         changeType(DataSourceType.NOTION)
                         hideFilePreview()
-                        hideNotionPagePreview()
+                        hideWebsitePreview()
                       }}
                     >
                       <span className={cn(s.datasetIcon, s.notion)} />
@@ -201,7 +206,13 @@ const StepOne = ({
                           dataSourceType === DataSourceType.WEB && s.active,
                           dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                         )}
-                        onClick={() => changeType(DataSourceType.WEB)}
+                        onClick={() => {
+                          if (dataSourceTypeDisable)
+                            return
+                          changeType(DataSourceType.WEB)
+                          hideFilePreview()
+                          hideNotionPagePreview()
+                        }}
                       >
                         <span className={cn(s.datasetIcon, s.web)} />
                         <span
@@ -276,7 +287,7 @@ const StepOne = ({
                 <>
                   <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
                     <Website
-                      onPreview={setCurrentWebsite}
+                      onPreview={updateWebsite}
                       checkedCrawlResult={websitePages}
                       onCheckedCrawlResultChange={updateWebsitePages}
                       onCrawlProviderChange={onWebsiteCrawlProviderChange}

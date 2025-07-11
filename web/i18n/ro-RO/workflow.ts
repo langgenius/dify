@@ -364,6 +364,7 @@ const translation = {
         retries: '{{num}} Încercări',
         retryTimes: 'Reîncercați {{times}} ori în caz de eșec',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'necesar',

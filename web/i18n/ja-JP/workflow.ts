@@ -369,6 +369,7 @@ const translation = {
         ms: 'ミリ秒',
         retries: '再試行回数：{{num}}',
       },
+      typeSwitch: {},
     },
     start: {
       required: '必須',
