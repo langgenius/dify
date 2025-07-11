@@ -74,3 +74,8 @@ class EmailChangeLimitError(BaseHTTPException):
     error_code = "email_change_limit"
     description = "Too many failed email change attempts. Please try again in 24 hours."
     code = 429
+
+class EmailAlreadyInUseError(BaseHTTPException):
+    error_code = "email_already_in_use"
+    description = "A user with this email already exists."
+    code = 400
