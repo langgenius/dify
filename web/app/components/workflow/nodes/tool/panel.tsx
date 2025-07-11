@@ -46,8 +46,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      {!isShowAuthBtn && <>
-        <div className='space-y-4 px-4'>
+      {!isShowAuthBtn && (
+        <div className='relative'>
           {toolInputVarSchema.length > 0 && (
             <Field
               className='px-4'
@@ -88,7 +88,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             </>
           )}
         </div>
-      </>}
+      )}
+
       <div>
         <OutputVars>
           <>

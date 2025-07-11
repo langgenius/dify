@@ -14,6 +14,7 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import type { FromRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
+import Loading from '@/app/components/base/loading'
 import type { PluginPayload } from '../types'
 import {
   useAddPluginCredentialHook,
@@ -21,6 +22,7 @@ import {
   useInvalidPluginCredentialInfoHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -38,18 +40,25 @@ const ApiKeyModal = ({
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { data = [] } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
   const formSchemas = useMemo(() => {
     return [
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: 'Authorization name',
+        label: t('plugin.auth.authorizationName'),
         required: false,
       },
       ...data,
     ]
-  }, [data])
+  }, [data, t])
+  const defaultValues = formSchemas.reduce((acc, schema) => {
+    if (schema.default)
+      acc[schema.name] = schema.default
+    return acc
+  }, {} as Record<string, any>)
+  const secretInput = formSchemas.find(schema => schema.type === FormTypeEnum.secretInput)
+  const renderI18nObject = useRenderI18nObject()
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
@@ -77,7 +86,6 @@ const ApiKeyModal = ({
       await updatePluginCredential({
         credentials: transformedValues,
         credential_id: __credential_id__,
-        type: CredentialTypeEnum.API_KEY,
         name: __name__ || '',
       })
     }
@@ -100,19 +108,21 @@ const ApiKeyModal = ({
   return (
     <Modal
       size='md'
-      title='API Key Authorization Configuration'
-      subTitle='After configuring credentials, all members within the workspace can use this tool when orchestrating applications.'
+      title={t('plugin.auth.useApiAuth')}
+      subTitle={t('plugin.auth.useApiAuthDesc')}
       onClose={onClose}
       onCancel={onClose}
       footerSlot={
-        <a
-          className='system-xs-regular flex h-8 grow items-center text-text-accent'
-          href=''
-          target='_blank'
-        >
-          Get your API Key from OpenAI
-          <RiExternalLinkLine className='ml-1 h-3 w-3' />
-        </a>
+        secretInput && (
+          <a
+            className='system-xs-regular flex h-8 grow items-center text-text-accent'
+            href={secretInput?.url}
+            target='_blank'
+          >
+            {renderI18nObject(secretInput?.help as any)}
+            <RiExternalLinkLine className='ml-1 h-3 w-3' />
+          </a>
+        )
       }
       bottomSlot={
         <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
@@ -133,12 +143,23 @@ const ApiKeyModal = ({
       onExtraButtonClick={onRemove}
       disabled={disabled}
     >
-      <AuthForm
-        ref={formRef}
-        formSchemas={formSchemas}
-        defaultValues={editValues}
-        disabled={disabled}
-      />
+      {
+        isLoading && (
+          <div className='flex h-40 items-center justify-center'>
+            <Loading />
+          </div>
+        )
+      }
+      {
+        !isLoading && !!data.length && (
+          <AuthForm
+            ref={formRef}
+            formSchemas={formSchemas}
+            defaultValues={editValues || defaultValues}
+            disabled={disabled}
+          />
+        )
+      }
     </Modal>
   )
 }

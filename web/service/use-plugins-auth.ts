@@ -72,8 +72,7 @@ export const useUpdatePluginCredential = (
   return useMutation({
     mutationFn: (params: {
       credential_id: string
-      credentials: Record<string, any>
-      type: CredentialTypeEnum
+      credentials?: Record<string, any>
       name?: string
     }) => {
       return post(url, { body: params })
@@ -103,9 +102,16 @@ export const useGetPluginCredentialSchema = (
 export const useGetPluginOAuthUrl = (
   url: string,
 ) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'oauth-url', url],
-    queryFn: () => get(url),
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'oauth-url', url],
+    mutationFn: () => {
+      return get<
+      {
+        authorization_url: string
+        state: string
+        context_id: string
+      }>(url)
+    },
   })
 }
 
@@ -114,7 +120,10 @@ export const useGetPluginOAuthClientSchema = (
 ) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'oauth-client-schema', url],
-    queryFn: () => get(url),
+    queryFn: () => get<{
+      schema: FormSchema[]
+      is_oauth_custom_client_enabled: boolean
+    }>(url),
   })
 }
 
@@ -122,8 +131,11 @@ export const useSetPluginOAuthCustomClient = (
   url: string,
 ) => {
   return useMutation({
-    mutationFn: (params) => {
-      return post(url, { body: params })
+    mutationFn: (params: {
+        client_params: Record<string, any>
+        enable_oauth_custom_client: boolean
+      }) => {
+      return post<{ result: string }>(url, { body: params })
     },
   })
 }
@@ -133,6 +145,9 @@ export const useGetPluginOAuthCustomClientSchema = (
 ) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'oauth-custom-client-schema', url],
-    queryFn: () => get(url),
+    queryFn: () => get<{
+      client_id: string
+      client_secret: string
+    }>(url),
   })
 }

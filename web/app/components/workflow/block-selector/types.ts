@@ -33,8 +33,8 @@ export type ToolDefaultValue = {
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
-  meta?: PluginMeta
   credential_id?: string
+  meta?: PluginMeta
 }
 
 export type ToolValue = {
@@ -47,4 +47,5 @@ export type ToolValue = {
   parameters?: Record<string, any>
   enabled?: boolean
   extra?: Record<string, any>
+  credential_id?: string
 }

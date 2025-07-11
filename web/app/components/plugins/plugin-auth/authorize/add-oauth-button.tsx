@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useState,
 } from 'react'
 import { RiEqualizer2Line } from '@remixicon/react'
@@ -8,6 +9,10 @@ import type { ButtonProps } from '@/app/components/base/button'
 import OAuthClientSettings from './oauth-client-settings'
 import cn from '@/utils/classnames'
 import type { PluginPayload } from '../types'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import {
+  useGetPluginOAuthUrlHook,
+} from '../hooks/use-credential'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
@@ -20,6 +25,7 @@ export type AddOAuthButtonProps = {
   disabled?: boolean
 }
 const AddOAuthButton = ({
+  pluginPayload,
   buttonVariant = 'primary',
   buttonText = 'use oauth',
   className,
@@ -29,6 +35,20 @@ const AddOAuthButton = ({
   disabled,
 }: AddOAuthButtonProps) => {
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
+  const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
+
+  const handleOAuth = useCallback(async () => {
+    const { authorization_url } = await getPluginOAuthUrl()
+
+    if (authorization_url) {
+      openOAuthPopup(
+        authorization_url,
+        () => {
+          console.log('success')
+        },
+      )
+    }
+  }, [getPluginOAuthUrl])
 
   return (
     <>
@@ -39,6 +59,7 @@ const AddOAuthButton = ({
           className,
         )}
         disabled={disabled}
+        onClick={handleOAuth}
       >
         <div className={cn(
           'flex h-full grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
@@ -55,7 +76,10 @@ const AddOAuthButton = ({
             'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
             buttonRightClassName,
           )}
-          onClick={() => setIsOAuthSettingsOpen(true)}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsOAuthSettingsOpen(true)
+          }}
         >
           <RiEqualizer2Line className='h-4 w-4' />
         </div>
@@ -63,7 +87,9 @@ const AddOAuthButton = ({
       {
         isOAuthSettingsOpen && (
           <OAuthClientSettings
+            pluginPayload={pluginPayload}
             onClose={() => setIsOAuthSettingsOpen(false)}
+            disabled={disabled}
           />
         )
       }

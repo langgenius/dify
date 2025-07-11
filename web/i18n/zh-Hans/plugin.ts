@@ -264,6 +264,26 @@ const translation = {
   requestAPlugin: '申请插件',
   publishPlugins: '发布插件',
   difyVersionNotCompatible: '当前 Dify 版本不兼容该插件，其最低版本要求为 {{minimalDifyVersion}}',
+  auth: {
+    default: '默认',
+    setDefault: '设为默认',
+    useOAuth: '使用 OAuth',
+    useOAuthAuth: '使用 OAuth 授权',
+    addOAuth: '添加 OAuth',
+    setupOAuth: '设置 OAuth 客户端',
+    useApi: '使用 API Key',
+    addApi: '添加 API Key',
+    useApiAuth: 'API Key 授权配置',
+    useApiAuthDesc: '配置凭据后，工作区内的所有成员在编排应用时都可以使用此工具。',
+    oauthClientSettings: 'OAuth 客户端设置',
+    saveOnly: '仅保存',
+    saveAndAuth: '保存并授权',
+    authorization: '凭据',
+    authorizations: '凭据',
+    authorizationName: '凭据名称',
+    workspaceDefault: '工作区默认',
+    authRemoved: '凭据已移除',
+  },
 }
 
 export default translation
