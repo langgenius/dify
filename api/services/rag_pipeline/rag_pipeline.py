@@ -480,11 +480,25 @@ class RagPipelineService:
                     break
             if not datasource_node_data:
                 raise ValueError("Datasource node data not found")
+            
+            variables_map = {}
 
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
             for key, value in datasource_parameters.items():
-                if not user_inputs.get(key):
-                    user_inputs[key] = value["value"]
+                if value.get("value") and isinstance(value.get("value"), str):
+                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                    match = re.match(pattern, value["value"])
+                    if match:
+                        full_path = match.group(1)
+                        last_part = full_path.split(".")[-1]
+                        if last_part in user_inputs:
+                            variables_map[key] = user_inputs[last_part]
+                        else:
+                            variables_map[key] = value["value"]
+                    else:
+                        variables_map[key] = value["value"]
+                else:
+                    variables_map[key] = value["value"]
 
             from core.datasource.datasource_manager import DatasourceManager
 
@@ -562,7 +576,7 @@ class RagPipelineService:
                     website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
                         datasource_runtime.get_website_crawl(
                             user_id=account.id,
-                            datasource_parameters=user_inputs,
+                            datasource_parameters=variables_map,
                             provider_type=datasource_runtime.datasource_provider_type(),
                         )
                     )
