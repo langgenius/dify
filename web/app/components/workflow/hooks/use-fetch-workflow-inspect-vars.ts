@@ -6,7 +6,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { fetchAllInspectVars } from '@/service/workflow'
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { useConfigsMap } from './use-configs-map'
+import { useConfigsMap } from '../../workflow-app/hooks/use-configs-map'
 
 export const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
