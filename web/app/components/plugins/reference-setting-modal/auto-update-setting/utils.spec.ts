@@ -1,4 +1,3 @@
-// write unit test for convertLocalSecondsToUTCDaySeconds
 import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds } from './utils'
 
 describe('convertLocalSecondsToUTCDaySeconds', () => {
