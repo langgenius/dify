@@ -23,7 +23,7 @@ export const convertLocalSecondsToUTCDaySeconds = (secondsInDay: number, localTi
 }
 
 export const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if(!date) return 0
+  if (!date) return 0
   return date.hour() * 3600 + date.minute() * 60
 }
 
