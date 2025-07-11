@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Any
 
 from core.workflow.entities.node_entities import NodeRunResult
