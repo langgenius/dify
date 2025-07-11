@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useStore } from '../../workflow/store'
 import InputField from './input-field'
+import PluginDependency from '../../workflow/plugin-dependency'
 import RagPipelinePanel from './panel'
 import RagPipelineHeader from './rag-pipeline-header'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -26,8 +27,8 @@ const RagPipelineChildren = () => {
     handlePaneContextmenuCancel,
   } = usePanelInteractions()
   const {
-      exportCheck,
-      handleExportDSL,
+    exportCheck,
+    handleExportDSL,
   } = useDSL()
 
   eventEmitter?.useSubscription((v: any) => {
@@ -37,6 +38,7 @@ const RagPipelineChildren = () => {
 
   return (
     <>
+      <PluginDependency />
       {
         showImportDSLModal && (
           <UpdateDSLModal
