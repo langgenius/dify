@@ -83,18 +83,19 @@ const BasePanel: FC<BasePanelProps> = ({
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
 
+  const reservedCanvasWidth = 400 // 保证画布最小可见宽度
+
   const maxNodePanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720
-    if (!otherPanelWidth)
-      return workflowCanvasWidth - 400
 
-    return workflowCanvasWidth - otherPanelWidth - 400
+    const available = workflowCanvasWidth - (otherPanelWidth || 0) - reservedCanvasWidth
+    return Math.max(available, 400)
   }, [workflowCanvasWidth, otherPanelWidth])
 
   const updateNodePanelWidth = useCallback((width: number) => {
     // Ensure the width is within the min and max range
-    const newValue = Math.min(Math.max(width, 400), maxNodePanelWidth)
+    const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
     localStorage.setItem('workflow-node-panel-width', `${newValue}`)
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth])
@@ -118,8 +119,13 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     if (!workflowCanvasWidth)
       return
-    if (workflowCanvasWidth - 400 <= nodePanelWidth + otherPanelWidth)
-      debounceUpdate(workflowCanvasWidth - 400 - otherPanelWidth)
+
+    // If the total width of the three exceeds the canvas, shrink the node panel to the available range (at least 400px)
+    const total = nodePanelWidth + otherPanelWidth + reservedCanvasWidth
+    if (total > workflowCanvasWidth) {
+      const target = Math.max(workflowCanvasWidth - otherPanelWidth - reservedCanvasWidth, 400)
+      debounceUpdate(target)
+    }
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
 
   const { handleNodeSelect } = useNodesInteractions()
