@@ -83,7 +83,7 @@ export const getDateWithTimezone = (props: { date?: Dayjs, timezone?: string }) 
 // Asia/Shanghai -> UTC+8
 const DEFAULT_OFFSET_STR = 'UTC+0'
 export const convertTimezoneToOffsetStr = (timezone?: string) => {
-  if(!timezone)
+  if (!timezone)
     return DEFAULT_OFFSET_STR
   const tzItem = tz.find(item => item.value === timezone)
   if(!tzItem)
