@@ -83,7 +83,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
 
-  const reservedCanvasWidth = 400 // 保证画布最小可见宽度
+  const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
   const maxNodePanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
