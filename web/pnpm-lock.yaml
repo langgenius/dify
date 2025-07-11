@@ -374,7 +374,7 @@ importers:
         specifier: ^17.4.4
         version: 17.4.4
       '@next/eslint-plugin-next':
-        specifier: 15.3.5
+        specifier: ~15.3.5
         version: 15.3.5
       '@rgrove/parse-xml':
         specifier: ^4.1.0
