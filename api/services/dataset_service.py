@@ -384,13 +384,14 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
-            external_knowledge_binding = (
-                session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
-            )
+        external_knowledge_binding = (
+            db.session.query(ExternalKnowledgeBindings)
+            .filter_by(dataset_id=dataset_id)
+            .first()
+        )
 
-            if not external_knowledge_binding:
-                raise ValueError("External knowledge binding not found.")
+        if not external_knowledge_binding:
+            raise ValueError("External knowledge binding not found.")
 
         # Update binding if values have changed
         if (
@@ -399,7 +400,6 @@ class DatasetService:
         ):
             external_knowledge_binding.external_knowledge_id = external_knowledge_id
             external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):
