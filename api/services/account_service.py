@@ -55,7 +55,11 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_change_mail_task import send_change_mail_task
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
-from tasks.mail_owner_transfer_task import send_owner_transfer_confirm_task
+from tasks.mail_owner_transfer_task import (
+    send_new_owner_transfer_notify_email_task,
+    send_old_owner_transfer_notify_email_task,
+    send_owner_transfer_confirm_task,
+)
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
@@ -484,6 +488,44 @@ class AccountService:
         )
         cls.owner_transfer_rate_limiter.increment_rate_limit(account_email)
         return token
+
+    @classmethod
+    def send_old_owner_transfer_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+        workspace_name: Optional[str] = "",
+        new_owner_email: Optional[str] = "",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_old_owner_transfer_notify_email_task.delay(
+            language=language,
+            to=account_email,
+            workspace=workspace_name,
+            new_owner_email=new_owner_email,
+        )
+
+    @classmethod
+    def send_new_owner_transfer_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+        workspace_name: Optional[str] = "",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_new_owner_transfer_notify_email_task.delay(
+            language=language,
+            to=account_email,
+            workspace=workspace_name,
+        )
 
     @classmethod
     def generate_reset_password_token(

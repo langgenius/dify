@@ -266,6 +266,20 @@ class OwnerTransfer(Resource):
         try:
             assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, "owner", current_user)
+
+            AccountService.send_new_owner_transfer_notify_email(
+                account=member,
+                email=member.email,
+                workspace_name=current_user.current_tenant.name,
+            )
+
+            AccountService.send_old_owner_transfer_notify_email(
+                account=current_user,
+                email=current_user.email,
+                workspace_name=current_user.current_tenant.name,
+                new_owner_email=member.email,
+            )
+
         except Exception as e:
             raise ValueError(str(e))
 
