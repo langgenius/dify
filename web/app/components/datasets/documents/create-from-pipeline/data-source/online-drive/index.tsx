@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { convertOnlineDriveData } from './utils'
 import produce from 'immer'
+import { useShallow } from 'zustand/react/shallow'
 
 type OnlineDriveProps = {
   nodeId: string
@@ -24,12 +25,19 @@ const OnlineDrive = ({
   isInPipeline = false,
 }: OnlineDriveProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const prefix = useDataSourceStoreWithSelector(state => state.prefix)
-  const keywords = useDataSourceStoreWithSelector(state => state.keywords)
-  const bucket = useDataSourceStoreWithSelector(state => state.bucket)
-  const selectedFileKeys = useDataSourceStoreWithSelector(state => state.selectedFileKeys)
-  const fileList = useDataSourceStoreWithSelector(state => state.fileList)
-  const currentNodeIdRef = useDataSourceStoreWithSelector(state => state.currentNodeIdRef)
+  const {
+    prefix,
+    keywords,
+    bucket,
+    selectedFileKeys,
+    fileList,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    prefix: state.prefix,
+    keywords: state.keywords,
+    bucket: state.bucket,
+    selectedFileKeys: state.selectedFileKeys,
+    fileList: state.fileList,
+  })))
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
 
@@ -83,14 +91,15 @@ const OnlineDrive = ({
   }, [datasourceNodeRunURL, dataSourceStore])
 
   useEffect(() => {
+    const {
+      setFileList,
+      setBucket,
+      setPrefix,
+      setKeywords,
+      setSelectedFileKeys,
+      currentNodeIdRef,
+    } = dataSourceStore.getState()
     if (nodeId !== currentNodeIdRef.current) {
-      const {
-        setFileList,
-        setBucket,
-        setPrefix,
-        setKeywords,
-        setSelectedFileKeys,
-      } = dataSourceStore.getState()
       setFileList([])
       setBucket('')
       setPrefix([])

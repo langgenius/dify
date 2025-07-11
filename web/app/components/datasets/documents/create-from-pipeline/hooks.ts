@@ -6,6 +6,7 @@ import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
+import { useShallow } from 'zustand/react/shallow'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -62,8 +63,13 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
 }
 
 export const useLocalFile = () => {
-  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
-  const currentLocalFile = useDataSourceStoreWithSelector(state => state.currentLocalFile)
+  const {
+    localFileList: fileList,
+    currentLocalFile,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    localFileList: state.localFileList,
+    currentLocalFile: state.currentLocalFile,
+  })))
   const dataSourceStore = useDataSourceStore()
 
   const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
@@ -82,10 +88,17 @@ export const useLocalFile = () => {
 }
 
 export const useOnlineDocuments = () => {
-  const documentsData = useDataSourceStoreWithSelector(state => state.documentsData)
-  const currentWorkspaceId = useDataSourceStoreWithSelector(state => state.currentWorkspaceId)
-  const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
-  const currentDocument = useDataSourceStoreWithSelector(state => state.currentDocument)
+  const {
+    documentsData,
+    currentWorkspaceId,
+    onlineDocuments,
+    currentDocument,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    documentsData: state.documentsData,
+    currentWorkspaceId: state.currentWorkspaceId,
+    onlineDocuments: state.onlineDocuments,
+    currentDocument: state.currentDocument,
+  })))
   const dataSourceStore = useDataSourceStore()
 
   const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
@@ -119,8 +132,13 @@ export const useOnlineDocuments = () => {
 }
 
 export const useWebsiteCrawl = () => {
-  const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
-  const currentWebsite = useDataSourceStoreWithSelector(state => state.currentWebsite)
+  const {
+    websitePages,
+    currentWebsite,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    websitePages: state.websitePages,
+    currentWebsite: state.currentWebsite,
+  })))
   const dataSourceStore = useDataSourceStore()
 
   const hideWebsitePreview = useCallback(() => {
@@ -137,8 +155,13 @@ export const useWebsiteCrawl = () => {
 }
 
 export const useOnlineDrive = () => {
-  const fileList = useDataSourceStoreWithSelector(state => state.fileList)
-  const selectedFileKeys = useDataSourceStoreWithSelector(state => state.selectedFileKeys)
+  const {
+    fileList,
+    selectedFileKeys,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    fileList: state.fileList,
+    selectedFileKeys: state.selectedFileKeys,
+  })))
 
   const selectedOnlineDriveFileList = useMemo(() => {
     return selectedFileKeys.map(key => fileList.find(item => item.key === key)!)

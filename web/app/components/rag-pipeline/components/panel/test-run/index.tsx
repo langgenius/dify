@@ -17,13 +17,21 @@ import Header from './header'
 import FooterTips from './footer-tips'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useShallow } from 'zustand/react/shallow'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
-  const fileList = useDataSourceStoreWithSelector(state => state.localFileList)
-  const onlineDocuments = useDataSourceStoreWithSelector(state => state.onlineDocuments)
-  const websitePages = useDataSourceStoreWithSelector(state => state.websitePages)
-  const selectedFileKeys = useDataSourceStoreWithSelector(state => state.selectedFileKeys)
+  const {
+    localFileList: fileList,
+    onlineDocuments,
+    websitePages,
+    selectedFileKeys,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    localFileList: state.localFileList,
+    onlineDocuments: state.onlineDocuments,
+    websitePages: state.websitePages,
+    selectedFileKeys: state.selectedFileKeys,
+  })))
   const dataSourceStore = useDataSourceStore()
   const [datasource, setDatasource] = useState<Datasource>()
 

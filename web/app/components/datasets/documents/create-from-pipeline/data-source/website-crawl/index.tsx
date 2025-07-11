@@ -22,6 +22,7 @@ import type {
 } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -42,10 +43,17 @@ const WebsiteCrawl = ({
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const crawlResult = useDataSourceStoreWithSelector(state => state.crawlResult)
-  const step = useDataSourceStoreWithSelector(state => state.step)
-  const checkedCrawlResult = useDataSourceStoreWithSelector(state => state.websitePages)
-  const previewIndex = useDataSourceStoreWithSelector(state => state.previewIndex)
+  const {
+    crawlResult,
+    step,
+    checkedCrawlResult,
+    previewIndex,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    crawlResult: state.crawlResult,
+    step: state.step,
+    checkedCrawlResult: state.websitePages,
+    previewIndex: state.previewIndex,
+  })))
   const dataSourceStore = useDataSourceStore()
 
   const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
