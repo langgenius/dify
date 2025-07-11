@@ -109,7 +109,10 @@ class ApiToolProvider(Base):
     """
 
     __tablename__ = "tool_api_providers"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),)
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),
+        db.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
+    )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the api provider
@@ -326,18 +329,17 @@ class MCPToolProvider(Base):
 
     @property
     def decrypted_credentials(self) -> dict:
+        from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
-        from core.tools.utils.configuration import ProviderConfigEncrypter
+        from core.tools.utils.encryption import create_provider_encrypter
 
         provider_controller = MCPToolProviderController._from_db(self)
 
-        tool_configuration = ProviderConfigEncrypter(
+        return create_provider_encrypter(
             tenant_id=self.tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.provider_id,
-        )
-        return tool_configuration.decrypt(self.credentials, use_cache=False)
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+            cache=NoOpProviderCredentialCache(),
+        )[0].decrypt(self.credentials)
 
 
 class ToolModelInvoke(Base):
