@@ -377,6 +377,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             created_by=str(uuid.uuid4()),
             environment_variables=[],
             conversation_variables=conversation_vars,
+            rag_pipeline_variables=[],
         )
         return workflow
 
