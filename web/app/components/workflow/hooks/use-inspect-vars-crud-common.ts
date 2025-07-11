@@ -31,7 +31,6 @@ export const useInspectVarsCrudCommon = ({
   systemVarsUrl,
 }: Params) => {
   const workflowStore = useWorkflowStore()
-  console.log(conversationVarsUrl, flowId)
   const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl!)
   const { mutateAsync: doResetConversationVar } = useResetConversationVar(flowId)
   const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(flowId)

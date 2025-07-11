@@ -64,7 +64,10 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    flowId: workflowStore.getState().appId,
+    ...useConfigsMap(),
+  })
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
