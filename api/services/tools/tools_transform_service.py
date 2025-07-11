@@ -77,10 +77,18 @@ class ToolTransformService:
                     provider.icon = ToolTransformService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.icon
                     )
+                if isinstance(provider.icon_dark, str) and provider.icon_dark:
+                    provider.icon_dark = ToolTransformService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.icon_dark
+                    )
             else:
                 provider.icon = ToolTransformService.get_tool_provider_icon_url(
                     provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
                 )
+                if provider.icon_dark:
+                    provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
+                        provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
+                    )
 
     @classmethod
     def builtin_provider_to_user_provider(
@@ -98,6 +106,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
+            icon_dark=provider_controller.entity.identity.icon_dark,
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
@@ -165,11 +174,16 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         # package tool provider controller
+        auth_type = ApiProviderAuthType.NONE
+        credentials_auth_type = db_provider.credentials.get("auth_type")
+        if credentials_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+            auth_type = ApiProviderAuthType.API_KEY_HEADER
+        elif credentials_auth_type == "api_key_query":
+            auth_type = ApiProviderAuthType.API_KEY_QUERY
+
         controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
-            auth_type=ApiProviderAuthType.API_KEY
-            if db_provider.credentials["auth_type"] == "api_key"
-            else ApiProviderAuthType.NONE,
+            auth_type=auth_type,
         )
 
         return controller
@@ -194,6 +208,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
+            icon_dark=provider_controller.entity.identity.icon_dark,
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.WORKFLOW,
             masked_credentials={},

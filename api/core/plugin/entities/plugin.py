@@ -79,6 +79,7 @@ class PluginDeclaration(BaseModel):
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     description: I18nObject
     icon: str
+    icon_dark: Optional[str] = Field(default=None)
     label: I18nObject
     category: PluginCategory
     created_at: datetime.datetime

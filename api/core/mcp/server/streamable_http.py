@@ -89,6 +89,7 @@ class MCPServerStreamableHTTPRequestHandler:
             types.ListToolsRequest: self.list_tools,
             types.CallToolRequest: self.invoke_tool,
             types.InitializedNotification: self.handle_notification,
+            types.PingRequest: self.handle_ping,
         }
         try:
             if self.request_type in handle_map:
@@ -105,16 +106,19 @@ class MCPServerStreamableHTTPRequestHandler:
     def handle_notification(self):
         return "ping"
 
+    def handle_ping(self):
+        return types.EmptyResult()
+
     def initialize(self):
         request = cast(types.InitializeRequest, self.request.root)
         client_info = request.params.clientInfo
-        clinet_name = f"{client_info.name}@{client_info.version}"
+        client_name = f"{client_info.name}@{client_info.version}"
         if not self.end_user:
             end_user = EndUser(
                 tenant_id=self.app.tenant_id,
                 app_id=self.app.id,
                 type="mcp",
-                name=clinet_name,
+                name=client_name,
                 session_id=generate_session_id(),
                 external_user_id=self.mcp_server.id,
             )

@@ -12,7 +12,11 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    setup_required,
+)
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.error import MCPAuthError, MCPError

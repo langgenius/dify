@@ -78,8 +78,8 @@ class ApiTool(Tool):
         if "auth_type" not in credentials:
             raise ToolProviderCredentialValidationError("Missing auth_type")
 
-        if credentials["auth_type"] == "api_key":
-            api_key_header = "api_key"
+        if credentials["auth_type"] in ("api_key_header", "api_key"):  # backward compatibility:
+            api_key_header = "Authorization"
 
             if "api_key_header" in credentials:
                 api_key_header = credentials["api_key_header"]
@@ -99,6 +99,11 @@ class ApiTool(Tool):
                     pass
 
             headers[api_key_header] = credentials["api_key_value"]
+
+        elif credentials["auth_type"] == "api_key_query":
+            # For query parameter authentication, we don't add anything to headers
+            # The query parameter will be added in do_http_request method
+            pass
 
         needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
@@ -153,6 +158,15 @@ class ApiTool(Tool):
         body: Any = {}
         cookies = {}
         files = []
+
+        # Add API key to query parameters if auth_type is api_key_query
+        if self.runtime and self.runtime.credentials:
+            credentials = self.runtime.credentials
+            if credentials.get("auth_type") == "api_key_query":
+                api_key_query_param = credentials.get("api_key_query_param", "key")
+                api_key_value = credentials.get("api_key_value")
+                if api_key_value:
+                    params[api_key_query_param] = api_key_value
 
         # check parameters
         for parameter in self.api_bundle.openapi.get("parameters", []):
@@ -213,7 +227,8 @@ class ApiTool(Tool):
                         elif "default" in property:
                             body[name] = property["default"]
                         else:
-                            body[name] = None
+                            # omit optional parameters that weren't provided, instead of setting them to None
+                            pass
                     break
 
         # replace path parameters

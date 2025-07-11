@@ -28,6 +28,7 @@ class ToolProviderApiEntity(BaseModel):
     name: str  # identifier
     description: I18nObject
     icon: str | dict
+    icon_dark: Optional[str | dict] = Field(default=None, description="The dark icon of the tool")
     label: I18nObject  # label
     type: ToolProviderType
     masked_credentials: Optional[dict] = None
@@ -72,6 +73,7 @@ class ToolProviderApiEntity(BaseModel):
             "plugin_unique_identifier": self.plugin_unique_identifier,
             "description": self.description.to_dict(),
             "icon": self.icon,
+            "icon_dark": self.icon_dark,
             "label": self.label.to_dict(),
             "type": self.type.value,
             "team_credentials": self.masked_credentials,
