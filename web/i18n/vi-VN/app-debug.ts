@@ -287,6 +287,9 @@ const translation = {
       atLeastOneOption: 'Cần ít nhất một tùy chọn',
       optionRepeat: 'Có các tùy chọn trùng lặp',
     },
+    'defaultValue': 'Giá trị mặc định',
+    'noDefaultValue': 'Không có giá trị mặc định',
+    'selectDefaultValue': 'Chọn giá trị mặc định',
   },
   vision: {
     name: 'Thị giác',

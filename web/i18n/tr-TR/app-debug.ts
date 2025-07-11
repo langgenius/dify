@@ -329,6 +329,9 @@ const translation = {
       atLeastOneOption: 'En az bir seçenek gereklidir',
       optionRepeat: 'Yinelenen seçenekler var',
     },
+    defaultValue: 'Varsayılan değer',
+    noDefaultValue: 'Varsayılan değer yok',
+    selectDefaultValue: 'Varsayılan değer seç',
   },
   vision: {
     name: 'Görüş',
