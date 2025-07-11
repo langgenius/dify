@@ -66,7 +66,7 @@ def process_tenant_plugin_autoupgrade_check_task(
         if strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED:
             return
 
-        # 获取需要检查的插件
+        # get plugin_ids to check
         plugin_ids: list[tuple[str, str, str]] = []  # plugin_id, version, unique_identifier
         click.echo(click.style("Upgrade mode: {}".format(upgrade_mode), fg="green"))
 
@@ -84,7 +84,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                     )
 
         elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE:
-            # 获取所有插件并移除exclude的
+            # get all plugins and remove excluded plugins
             all_plugins = manager.list_plugins(tenant_id)
             plugin_ids = [
                 (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
@@ -136,7 +136,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                     }
 
                     if version_checker[strategy_setting](latest_version, current_version):
-                        # 执行升级
+                        # execute upgrade
                         new_unique_identifier = manifest.latest_package_identifier
 
                         marketplace.record_install_plugin_event(new_unique_identifier)
