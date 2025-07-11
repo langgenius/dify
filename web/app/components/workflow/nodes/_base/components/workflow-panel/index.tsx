@@ -120,6 +120,7 @@ const BasePanel: FC<BasePanelProps> = ({
       return
     if (workflowCanvasWidth - 400 <= nodePanelWidth + otherPanelWidth)
       debounceUpdate(workflowCanvasWidth - 400 - otherPanelWidth)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
 
   const { handleNodeSelect } = useNodesInteractions()
@@ -151,11 +152,11 @@ const BasePanel: FC<BasePanelProps> = ({
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    if(data._singleRunningStatus === NodeRunningStatus.Running) {
+    if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
       setIsPaused(false)
     }
-    else if(data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -216,9 +217,9 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
-  if(logParams.showSpecialResultPanel) {
+  if (logParams.showSpecialResultPanel) {
     return (
-    <div className={cn(
+      <div className={cn(
         'relative mr-1  h-full',
       )}>
         <div
@@ -269,10 +270,15 @@ const BasePanel: FC<BasePanelProps> = ({
   }
 
   return (
-    <div className={cn(
-      'relative mr-1  h-full',
-      showMessageLogModal && '!absolute -top-[5px] right-[416px] z-0 !mr-0 w-[384px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
-    )}>
+    <div
+      className={cn(
+        'relative mr-1 h-full',
+        showMessageLogModal && 'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+      )}
+      style={{
+        right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+      }}
+    >
       <div
         ref={triggerRef}
         className='absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center'>
@@ -280,7 +286,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${nodePanelWidth}px`,
         }}
@@ -308,7 +314,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        if(isSingleRunning) {
+                        if (isSingleRunning) {
                           handleNodeDataUpdate({
                             id,
                             data: {
@@ -324,7 +330,7 @@ const BasePanel: FC<BasePanelProps> = ({
                     >
                       {
                         isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
-                        : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                          : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                       }
                     </div>
                   </Tooltip>
