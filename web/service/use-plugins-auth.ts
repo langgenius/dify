@@ -127,6 +127,7 @@ export const useGetPluginOAuthClientSchema = (
       client_params?: Record<string, any>
       redirect_uri?: string
     }>(url),
+    staleTime: 0,
   })
 }
 

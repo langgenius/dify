@@ -75,20 +75,21 @@ const AddOAuthButton = ({
 
   const renderCustomLabel = useCallback((item: FormSchema) => {
     return (
-      <div>
+      <div className='w-full'>
         <div className='mb-4 flex rounded-xl bg-background-section-burn p-4'>
           <div className='mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg'>
             <RiInformation2Fill className='h-5 w-5 text-text-accent' />
           </div>
-          <div className='grow'>
-            <div className='system-sm-regular mb-2'>
+          <div className='w-0 grow'>
+            <div className='system-sm-regular mb-1.5'>
               {t('plugin.auth.clientInfo')}
             </div>
             {
               redirect_uri && (
-                <div className='system-sm-medium flex items-center'>
-                  {redirect_uri}
+                <div className='system-sm-medium flex w-full py-0.5'>
+                  <div className='w-0 grow break-words'>{redirect_uri}</div>
                   <ActionButton
+                    className='shrink-0'
                     onClick={() => {
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
@@ -167,14 +168,16 @@ const AddOAuthButton = ({
               buttonLeftClassName,
             )}>
               {buttonText}
+              {
+                is_oauth_custom_client_enabled && (
+                  <Badge
+                    className='ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface'
+                  >
+                    {t('plugin.auth.custom')}
+                  </Badge>
+                )
+              }
             </div>
-            {
-              is_oauth_custom_client_enabled && (
-                <Badge>
-                  {t('plugin.auth.custom')}
-                </Badge>
-              )
-            }
             <div className={cn(
               'h-4 w-[1px] bg-text-primary-on-surface opacity-[0.15]',
               dividerClassName,
