@@ -31,25 +31,28 @@ def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspac
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_owner_confirm_template_zh-CN.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace,NewOwner=member)
-                mail.send(to=to, subject=f"验证您转移工作空间所有权的请求", html=html_content)
+                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace, NewOwner=member)
+                mail.send(to=to, subject="验证您转移工作空间所有权的请求", html=html_content)
             else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace,NewOwner=member)
+                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace, NewOwner=member)
                 mail.send(to=to, subject="验证您转移工作空间所有权的请求", html=html_content)
         else:
             template = "transfer_workspace_owner_confirm_template_en-US.html"
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_owner_confirm_template_en-US.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace,NewOwner=member)
-                mail.send(to=to, subject=f"Verify Your Request to Transfer Workspace Ownership", html=html_content)
+                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace, NewOwner=member)
+                mail.send(to=to, subject="Verify Your Request to Transfer Workspace Ownership", html=html_content)
             else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace,NewOwner=member)
+                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace, NewOwner=member)
                 mail.send(to=to, subject="Verify Your Request to Transfer Workspace Ownership", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
-            click.style("Send owner transfer confirm mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
+            click.style(
+                "Send owner transfer confirm mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                fg="green",
+            )
         )
     except Exception:
         logging.exception("owner transfer confirm email mail to {} failed".format(to))

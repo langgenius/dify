@@ -55,8 +55,8 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_change_mail_task import send_change_mail_task
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
-from tasks.mail_reset_password_task import send_reset_password_mail_task
 from tasks.mail_owner_transfer_task import send_owner_transfer_confirm_task
+from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class TokenPair(BaseModel):
@@ -461,8 +461,8 @@ class AccountService:
         account: Optional[Account] = None,
         email: Optional[str] = None,
         language: Optional[str] = "en-US",
-        workspace: Optional[Tenant] = None,
-        member: Optional[Account] = None,
+        workspace_name: Optional[str] = "",
+        member_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -479,8 +479,8 @@ class AccountService:
             language=language,
             to=account_email,
             code=code,
-            workspace=workspace.name,
-            member=member.name,
+            workspace=workspace_name,
+            member=member_name,
         )
         cls.owner_transfer_rate_limiter.increment_rate_limit(account_email)
         return token
@@ -518,7 +518,7 @@ class AccountService:
             account=account, email=email, token_type="change_email", additional_data=additional_data
         )
         return code, token
-    
+
     @classmethod
     def generate_owner_transfer_token(
         cls,
@@ -695,7 +695,7 @@ class AccountService:
     def reset_change_email_error_rate_limit(email: str):
         key = f"change_email_error_rate_limit:{email}"
         redis_client.delete(key)
-    
+
     @staticmethod
     @redis_fallback(default_return=None)
     def add_owner_transfer_error_rate_limit(email: str) -> None:
@@ -705,7 +705,7 @@ class AccountService:
             count = 0
         count = int(count) + 1
         redis_client.setex(key, dify_config.OWNER_TRANSFER_LOCKOUT_DURATION, count)
-    
+
     @staticmethod
     @redis_fallback(default_return=False)
     def is_owner_transfer_error_rate_limit(email: str) -> bool:
@@ -717,18 +717,13 @@ class AccountService:
         if count > AccountService.OWNER_TRANSFER_MAX_ERROR_LIMITS:
             return True
         return False
-    
+
     @staticmethod
     @redis_fallback(default_return=None)
     def reset_owner_transfer_error_rate_limit(email: str):
         key = f"owner_transfer_error_rate_limit:{email}"
         redis_client.delete(key)
 
-
-    @staticmethod
-    @redis_fallback(default_return=None)
-    def reset_owner_transfer_error_rate_limit(email: str):
-        key = f"owner_transfer_error_rate_limit:{email}"
     @staticmethod
     @redis_fallback(default_return=False)
     def is_email_send_ip_limit(ip_address: str):

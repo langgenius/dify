@@ -36,10 +36,12 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     description = "Too many email change emails have been sent. Please try again in 1 minutes."
     code = 429
 
+
 class OwnerTransferRateLimitExceededError(BaseHTTPException):
     error_code = "owner_transfer_rate_limit_exceeded"
     description = "Too many owner tansfer emails have been sent. Please try again in 1 minutes."
     code = 429
+
 
 class EmailCodeError(BaseHTTPException):
     error_code = "email_code_error"
@@ -87,6 +89,7 @@ class EmailAlreadyInUseError(BaseHTTPException):
     error_code = "email_already_in_use"
     description = "A user with this email already exists."
     code = 400
+
 
 class OwnerTransferLimitError(BaseHTTPException):
     error_code = "owner_transfer_limit"

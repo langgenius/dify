@@ -1,4 +1,5 @@
 from urllib import parse
+
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
@@ -6,23 +7,23 @@ from flask_restful import Resource, abort, marshal_with, reqparse
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.error import WorkspaceMembersLimitExceeded
+from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, OwnerTransferLimitError
+from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
-    setup_required,
     is_allow_transfer_owner,
+    setup_required,
 )
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
+from libs.helper import extract_remote_ip
 from libs.login import login_required
 from models.account import Account, TenantAccountRole
-from services.account_service import RegisterService, TenantService,AccountService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
-from libs.helper import email,extract_remote_ip
-from controllers.console.error import EmailSendIpLimitError
-from controllers.console.auth.error import OwnerTransferLimitError,InvalidTokenError,InvalidEmailError,EmailCodeError
+
 
 class MemberListApi(Resource):
     """List all members of current tenant."""
@@ -166,11 +167,11 @@ class SendOwnerTransferEmailApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self,member_id):
+    def post(self, member_id):
         parser = reqparse.RequestParser()
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
-        
+
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
@@ -184,12 +185,19 @@ class SendOwnerTransferEmailApi(Resource):
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
+        else:
+            member_name = member.name
 
         token = AccountService.send_owner_transfer_email(
-            account=current_user, email=email, language=language, workspace=current_user.current_tenant, member=member
+            account=current_user,
+            email=email,
+            language=language,
+            workspace_name=current_user.current_tenant.name,
+            member_name=member_name,
         )
 
         return {"result": "success", "data": token}
+
 
 class OwnerTransferCheckEApi(Resource):
     @setup_required
@@ -223,12 +231,11 @@ class OwnerTransferCheckEApi(Resource):
         AccountService.revoke_owner_transfer_token(args["token"])
 
         # Refresh token data by generating a new token
-        _, new_token = AccountService.generate_owner_transfer_token(
-            user_email, code=args["code"], additional_data={}
-        )
+        _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args["code"], additional_data={})
 
         AccountService.reset_owner_transfer_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+
 
 class OwnerTransfer(Resource):
     @setup_required
@@ -249,7 +256,7 @@ class OwnerTransfer(Resource):
 
         if transfer_token_data.get("email") != current_user.email:
             raise InvalidEmailError()
-        
+
         AccountService.revoke_owner_transfer_token(args["token"])
 
         member = db.session.get(Account, str(member_id))
@@ -270,7 +277,9 @@ api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email
 api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
 api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
 api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
-#owner transfer
-api.add_resource(SendOwnerTransferEmailApi, "/workspaces/current/members/<uuid:member_id>/send-owner-transfer-confirm-email")
+# owner transfer
+api.add_resource(
+    SendOwnerTransferEmailApi, "/workspaces/current/members/<uuid:member_id>/send-owner-transfer-confirm-email"
+)
 api.add_resource(OwnerTransferCheckEApi, "/workspaces/current/members/owner-transfer-check")
 api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")

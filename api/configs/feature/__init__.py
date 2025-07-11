@@ -596,7 +596,7 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
-    OWNER_TRANSFER_LOCKOUT_DURATION : PositiveInt = Field(
+    OWNER_TRANSFER_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying owner transfer after exceeding the rate limit.",
         default=86400,
     )

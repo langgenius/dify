@@ -151,6 +151,7 @@ class SystemFeatureModel(BaseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
 
+
 class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str) -> FeatureModel:
