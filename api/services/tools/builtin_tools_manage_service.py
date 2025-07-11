@@ -26,6 +26,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_provider_encrypter
+from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
@@ -492,7 +493,7 @@ class BuiltinToolManageService:
                 .first()
             )
             if system_client:
-                oauth_params = encrypter.decrypt(system_client.oauth_params)
+                oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
 
             return oauth_params
 
