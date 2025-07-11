@@ -51,6 +51,7 @@ type AuthorizedProps = {
   onItemClick?: (id: string) => void
   extraAuthorizationItems?: Credential[]
   showItemSelectedIcon?: boolean
+  selectedCredentialId?: string
 }
 const Authorized = ({
   pluginPayload,
@@ -69,6 +70,7 @@ const Authorized = ({
   onItemClick,
   extraAuthorizationItems,
   showItemSelectedIcon,
+  selectedCredentialId,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -195,6 +197,7 @@ const Authorized = ({
                           disableDelete
                           disableSetDefault
                           showSelectedIcon={showItemSelectedIcon}
+                          selectedCredentialId={selectedCredentialId}
                         />
                       ))
                     }
@@ -223,6 +226,7 @@ const Authorized = ({
                           disableSetDefault={disableSetDefault}
                           onItemClick={onItemClick}
                           showSelectedIcon={showItemSelectedIcon}
+                          selectedCredentialId={selectedCredentialId}
                         />
                       ))
                     }
@@ -252,6 +256,7 @@ const Authorized = ({
                           onItemClick={onItemClick}
                           onRename={handleRename}
                           showSelectedIcon={showItemSelectedIcon}
+                          selectedCredentialId={selectedCredentialId}
                         />
                       ))
                     }

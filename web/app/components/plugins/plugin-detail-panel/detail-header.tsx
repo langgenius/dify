@@ -272,7 +272,7 @@ const DetailHeader = ({
           </ActionButton>
         </div>
       </div>
-      <Description className='mt-3' text={description[locale]} descriptionLineRows={2}></Description>
+      <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
         category === PluginType.tool && (
           <PluginAuth

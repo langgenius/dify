@@ -36,6 +36,7 @@ type ItemProps = {
   disableSetDefault?: boolean
   onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
+  selectedCredentialId?: string
 }
 const Item = ({
   credential,
@@ -50,6 +51,7 @@ const Item = ({
   disableSetDefault,
   onItemClick,
   showSelectedIcon,
+  selectedCredentialId,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
@@ -107,7 +109,7 @@ const Item = ({
               showSelectedIcon && (
                 <div className='h-4 w-4'>
                   {
-                    credential.is_default && (
+                    selectedCredentialId === credential.id && (
                       <RiCheckLine className='h-4 w-4 text-text-accent' />
                     )
                   }

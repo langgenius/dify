@@ -103,6 +103,7 @@ const AuthorizedInNode = ({
       onItemClick={handleAuthorizationItemClick}
       extraAuthorizationItems={extraAuthorizationItems}
       showItemSelectedIcon
+      selectedCredentialId={credentialId || '__workspace_default__'}
     />
   )
 }

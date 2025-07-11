@@ -311,13 +311,13 @@ const ToolSelector: FC<Props> = ({
                   <Divider className='my-1 w-full' />
                     <div className='px-4 py-2'>
                       <PluginAuthInAgent
-                      pluginPayload={{
-                        provider: currentProvider.name,
-                        category: AuthCategory.tool,
-                      }}
-                      credentialId={value?.credential_id}
-                      onAuthorizationItemClick={handleAuthorizationItemClick}
-                    />
+                        pluginPayload={{
+                          provider: currentProvider.name,
+                          category: AuthCategory.tool,
+                        }}
+                        credentialId={value?.credential_id}
+                        onAuthorizationItemClick={handleAuthorizationItemClick}
+                      />
                   </div>
                 </>
               )}

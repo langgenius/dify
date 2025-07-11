@@ -109,6 +109,7 @@ const PluginAuthInAgent = ({
             renderTrigger={renderTrigger}
             isOpen={isOpen}
             onOpenChange={setIsOpen}
+            selectedCredentialId={credentialId || '__workspace_default__'}
           />
         )
       }
