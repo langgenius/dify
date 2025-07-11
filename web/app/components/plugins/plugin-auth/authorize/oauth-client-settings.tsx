@@ -65,7 +65,7 @@ const OAuthClientSettings = ({
 
     await setPluginOAuthCustomClient({
       client_params: transformedValues,
-      enable_oauth_custom_client: true,
+      enable_oauth_custom_client: __oauth_client__ === 'custom',
     })
     notify({
       type: 'success',
