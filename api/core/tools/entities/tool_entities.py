@@ -446,6 +446,7 @@ class ToolSelector(BaseModel):
         options: Optional[list[PluginParameterOption]] = None
 
     provider_id: str = Field(..., description="The id of the provider")
+    credential_id: Optional[str] = Field(default=None, description="The id of the credential")
     tool_name: str = Field(..., description="The name of the tool")
     tool_description: str = Field(..., description="The description of the tool")
     tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
