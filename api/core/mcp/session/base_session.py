@@ -1,7 +1,7 @@
 import logging
 import queue
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from datetime import timedelta
 from types import TracebackType
@@ -171,6 +171,9 @@ class BaseSession(
         self._session_read_timeout_seconds = read_timeout_seconds
         self._in_flight = {}
         self._exit_stack = ExitStack()
+        # Initialize executor and future to None for proper cleanup checks
+        self._executor: ThreadPoolExecutor | None = None
+        self._receiver_future: Future | None = None
 
     def __enter__(self) -> Self:
         self._executor = ThreadPoolExecutor()
@@ -178,15 +181,26 @@ class BaseSession(
         return self
 
     def check_receiver_status(self) -> None:
-        if self._receiver_future.done():
+        if self._receiver_future and self._receiver_future.done():
             self._receiver_future.result()
 
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
-        self._exit_stack.close()
         self._read_stream.put(None)
         self._write_stream.put(None)
+
+        # Wait for the receiver loop to finish
+        if self._receiver_future:
+            try:
+                self._receiver_future.result(timeout=5.0)  # Wait up to 5 seconds
+            except Exception:
+                # If the receiver loop is still running after timeout, we'll force shutdown
+                pass
+
+        # Shutdown the executor
+        if self._executor:
+            self._executor.shutdown(wait=True)
 
     def send_request(
         self,
