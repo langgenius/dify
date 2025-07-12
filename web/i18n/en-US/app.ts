@@ -245,6 +245,9 @@ const translation = {
     notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
   },
   noAccessPermission: 'No permission to access web app',
+  maxActiveRequests: 'Max concurrent requests',
+  maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
+  maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
 }
 
 export default translation

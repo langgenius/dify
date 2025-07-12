@@ -88,6 +88,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     icon_background,
     description,
     use_icon_as_answer_icon,
+    max_active_requests,
   }) => {
     try {
       await updateAppInfo({
@@ -98,6 +99,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         icon_background,
         description,
         use_icon_as_answer_icon,
+        max_active_requests,
       })
       setShowEditModal(false)
       notify({
@@ -432,6 +434,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           appDescription={app.description}
           appMode={app.mode}
           appUseIconAsAnswerIcon={app.use_icon_as_answer_icon}
+          max_active_requests={app.max_active_requests ?? null}
           show={showEditModal}
           onConfirm={onEdit}
           onHide={() => setShowEditModal(false)}
