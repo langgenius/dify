@@ -240,7 +240,7 @@ def refresh_authorization(
     response = requests.post(token_url, data=params)
     if not response.ok:
         raise ValueError(f"Token refresh failed: HTTP {response.status_code}")
-    return OAuthTokens.parse_obj(response.json())
+    return OAuthTokens.model_validate(response.json())
 
 
 def register_client(
