@@ -25,6 +25,7 @@ import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../cons
 import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 import ConditionVarSelector from './condition-var-selector'
 import type {
@@ -85,6 +86,11 @@ const ConditionItem = ({
 
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
+
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -199,10 +205,11 @@ const ConditionItem = ({
       draft.varType = varItem.type
       draft.value = ''
       draft.comparison_operator = getOperators(varItem.type)[0]
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
     setOpen(false)
-  }, [condition, doUpdateCondition])
+  }, [condition, doUpdateCondition, setControlPromptEditorRerenderKey])
 
   return (
     <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
