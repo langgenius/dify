@@ -321,6 +321,7 @@ class ToolManager:
             tenant_id=tenant_id,
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
+            credential_id=agent_tool.credential_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -393,6 +394,7 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
+        credential_id: Optional[str] = None,
     ) -> Tool:
         """
         get tool runtime from plugin
@@ -404,6 +406,7 @@ class ToolManager:
             tenant_id=tenant_id,
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.PLUGIN,
+            credential_id=credential_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
