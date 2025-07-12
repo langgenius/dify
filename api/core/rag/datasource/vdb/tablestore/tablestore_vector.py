@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
+from tablestore import BatchGetRowRequest, TableInBatchGetRowItem
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -49,6 +50,29 @@ class TableStoreVector(BaseVector):
         self._table_name = f"{collection_name}"
         self._index_name = f"{collection_name}_idx"
         self._tags_field = f"{Field.METADATA_KEY.value}_tags"
+
+    def create_collection(self, embeddings: list[list[float]], **kwargs):
+        dimension = len(embeddings[0])
+        self._create_collection(dimension)
+
+    def get_by_ids(self, ids: list[str]) -> list[Document]:
+        docs = []
+        request = BatchGetRowRequest()
+        columns_to_get = [Field.METADATA_KEY.value, Field.CONTENT_KEY.value]
+        rows_to_get = [[("id", _id)] for _id in ids]
+        request.add(TableInBatchGetRowItem(self._table_name, rows_to_get, columns_to_get, None, 1))
+
+        result = self._tablestore_client.batch_get_row(request)
+        table_result = result.get_result_by_table(self._table_name)
+        for item in table_result:
+            if item.is_ok and item.row:
+                kv = {k: v for k, v, t in item.row.attribute_columns}
+                docs.append(
+                    Document(
+                        page_content=kv[Field.CONTENT_KEY.value], metadata=json.loads(kv[Field.METADATA_KEY.value])
+                    )
+                )
+        return docs
 
     def get_type(self) -> str:
         return VectorType.TABLESTORE
