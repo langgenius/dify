@@ -19,6 +19,7 @@ import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import { HIDE_CHAT_BOT_ICON } from '@/config'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
@@ -109,14 +110,18 @@ const Answer: FC<AnswerProps> = ({
 
   return (
     <div className='mb-2 flex last:mb-0'>
-      <div className='relative h-10 w-10 shrink-0'>
-        {answerIcon || <AnswerIcon />}
-        {responding && (
-          <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
-            <LoadingAnim type='avatar' />
+      {
+        !HIDE_CHAT_BOT_ICON && (
+          <div className='relative h-10 w-10 shrink-0'>
+            {answerIcon || <AnswerIcon />}
+            {responding && (
+              <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
+                <LoadingAnim type='avatar' />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        )
+      }
       <div className='chat-answer-container group ml-4 w-0 grow pb-4' ref={containerRef}>
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
