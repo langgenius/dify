@@ -1,15 +1,15 @@
-import { Fragment, useCallback, useEffect } from 'react'
-import type { ReactNode } from 'react'
-import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import cn from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import { Fragment, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react';
+import { noop } from 'lodash-es';
+import cn from '@/utils/classnames';
 
 type DialogProps = {
-  className?: string
-  children: ReactNode
-  show: boolean
-  onClose?: () => void
-}
+  className?: string;
+  children: ReactNode;
+  show: boolean;
+  onClose?: () => void;
+};
 
 const MenuDialog = ({
   className,
@@ -17,21 +17,21 @@ const MenuDialog = ({
   show,
   onClose,
 }: DialogProps) => {
-  const close = useCallback(() => onClose?.(), [onClose])
+  const close = useCallback(() => onClose?.(), [onClose]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        event.preventDefault()
-        close()
+        event.preventDefault();
+        close();
       }
-    }
+    };
 
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [close])
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [close]);
 
   return (
     <Transition appear show={show} as={Fragment}>
@@ -58,7 +58,7 @@ const MenuDialog = ({
         </div>
       </Dialog>
     </Transition >
-  )
-}
+  );
+};
 
-export default MenuDialog
+export default MenuDialog;

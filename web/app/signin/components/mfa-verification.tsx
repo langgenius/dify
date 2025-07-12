@@ -1,38 +1,38 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import { RiShieldKeyholeLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import Input from '@/app/components/base/input'
-import { login } from '@/service/common'
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/navigation';
+import { RiShieldKeyholeLine } from '@remixicon/react';
+import Button from '@/app/components/base/button';
+import Toast from '@/app/components/base/toast';
+import Input from '@/app/components/base/input';
+import { login } from '@/service/common';
 
 type MFAVerificationProps = {
-  email: string
-  password: string
-  inviteToken?: string
-  isInvite: boolean
-  locale: string
-}
+  email: string;
+  password: string;
+  inviteToken?: string;
+  isInvite: boolean;
+  locale: string;
+};
 
 export default function MFAVerification({ email, password, inviteToken, isInvite, locale }: MFAVerificationProps) {
-  const { t } = useTranslation()
-  const router = useRouter()
-  const [mfaCode, setMfaCode] = useState('')
-  const [useBackupCode, setUseBackupCode] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [mfaCode, setMfaCode] = useState('');
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleMFAVerification = async () => {
     if (!mfaCode || mfaCode.length !== (useBackupCode ? 8 : 6)) {
       Toast.notify({ 
         type: 'error', 
-        message: t(useBackupCode ? 'mfa.backupCode' : 'mfa.tokenLength') 
-      })
-      return
+        message: t(useBackupCode ? 'mfa.backupCode' : 'mfa.tokenLength'), 
+      });
+      return;
     }
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       const loginData: Record<string, any> = {
         email,
         password,
@@ -40,42 +40,42 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
         is_backup_code: useBackupCode,
         language: locale,
         remember_me: true,
-      }
+      };
       
       if (isInvite && inviteToken)
-        loginData.invite_token = inviteToken
+        loginData.invite_token = inviteToken;
 
-      console.log('Sending MFA login request:', loginData)
+      console.log('Sending MFA login request:', loginData);
       const res = await login({
         url: '/login',
         body: loginData,
-      })
-      console.log('MFA login response:', res)
+      });
+      console.log('MFA login response:', res);
 
       if (res.result === 'success') {
         if (isInvite) {
-          const params = new URLSearchParams()
+          const params = new URLSearchParams();
           if (inviteToken)
-            params.append('invite_token', inviteToken)
-          router.replace(`/signin/invite-settings?${params.toString()}`)
+            params.append('invite_token', inviteToken);
+          router.replace(`/signin/invite-settings?${params.toString()}`);
         }
         else {
-          localStorage.setItem('console_token', res.data.access_token)
-          localStorage.setItem('refresh_token', res.data.refresh_token)
-          router.replace('/apps')
+          localStorage.setItem('console_token', res.data.access_token);
+          localStorage.setItem('refresh_token', res.data.refresh_token);
+          router.replace('/apps');
         }
       }
       else {
         Toast.notify({
           type: 'error',
           message: res.data || t('mfa.invalidToken'),
-        })
+        });
       }
     }
     finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="w-full">
@@ -102,7 +102,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
           onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
           onKeyDown={(e) => {
             if (e.key === 'Enter')
-              handleMFAVerification()
+              handleMFAVerification();
           }}
           placeholder={useBackupCode ? '12345678' : '123456'}
           maxLength={useBackupCode ? 8 : 6}
@@ -124,8 +124,8 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
         <button
           type="button"
           onClick={() => {
-            setUseBackupCode(!useBackupCode)
-            setMfaCode('')
+            setUseBackupCode(!useBackupCode);
+            setMfaCode('');
           }}
           className="system-xs-medium text-components-button-secondary-accent-text hover:underline"
         >
@@ -133,5 +133,5 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
         </button>
       </div>
     </div>
-  )
+  );
 }

@@ -1,40 +1,40 @@
-'use client'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiShieldKeyholeLine, RiCheckboxCircleFill, RiLoader2Line } from '@remixicon/react'
-import Toast from '../../base/toast'
-import Button from '../../base/button'
-import Input from '../../base/input'
-import Modal from '../../base/modal'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+'use client';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { RiShieldKeyholeLine, RiCheckboxCircleFill, RiLoader2Line } from '@remixicon/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Toast from '../../base/toast';
+import Button from '../../base/button';
+import Input from '../../base/input';
+import Modal from '../../base/modal';
 
 // API service functions
 const mfaService = {
   getStatus: async () => {
-    const token = localStorage.getItem('console_token')
+    const token = localStorage.getItem('console_token');
     const response = await fetch('/console/api/account/mfa/status', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
-    })
-    if (!response.ok) throw new Error('Failed to fetch MFA status')
-    return response.json()
+    });
+    if (!response.ok) throw new Error('Failed to fetch MFA status');
+    return response.json();
   },
   
   initSetup: async () => {
-    const token = localStorage.getItem('console_token')
+    const token = localStorage.getItem('console_token');
     const response = await fetch('/console/api/account/mfa/setup', { 
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
       },
-    })
-    if (!response.ok) throw new Error('Failed to initialize MFA setup')
-    return response.json()
+    });
+    if (!response.ok) throw new Error('Failed to initialize MFA setup');
+    return response.json();
   },
   
   completeSetup: async (totpToken: string, password: string) => {
-    const token = localStorage.getItem('console_token')
+    const token = localStorage.getItem('console_token');
     const response = await fetch('/console/api/account/mfa/setup/complete', {
       method: 'POST',
       headers: { 
@@ -42,13 +42,13 @@ const mfaService = {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ totp_token: totpToken }),
-    })
-    if (!response.ok) throw new Error('Failed to complete MFA setup')
-    return response.json()
+    });
+    if (!response.ok) throw new Error('Failed to complete MFA setup');
+    return response.json();
   },
   
   disable: async (password: string) => {
-    const token = localStorage.getItem('console_token')
+    const token = localStorage.getItem('console_token');
     const response = await fetch('/console/api/account/mfa/disable', {
       method: 'POST',
       headers: { 
@@ -56,98 +56,98 @@ const mfaService = {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ password }),
-    })
-    if (!response.ok) throw new Error('Failed to disable MFA')
-    return response.json()
+    });
+    if (!response.ok) throw new Error('Failed to disable MFA');
+    return response.json();
   },
-}
+};
 
 export default function MFAPage() {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
   
   // State
-  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false)
-  const [isDisableModalOpen, setIsDisableModalOpen] = useState(false)
-  const [setupStep, setSetupStep] = useState<'qr' | 'verify' | 'backup'>('qr')
-  const [totpToken, setTotpToken] = useState('')
-  const [password, setPassword] = useState('')
-  const [qrData, setQrData] = useState<{ secret: string; qr_code: string } | null>(null)
-  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
+  const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<'qr' | 'verify' | 'backup'>('qr');
+  const [totpToken, setTotpToken] = useState('');
+  const [password, setPassword] = useState('');
+  const [qrData, setQrData] = useState<{ secret: string; qr_code: string } | null>(null);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
   
   // Query MFA status
   const { data: mfaStatus, isLoading } = useQuery({
     queryKey: ['mfa-status'],
     queryFn: mfaService.getStatus,
-  })
+  });
   
   
   // Mutations
   const initSetupMutation = useMutation({
     mutationFn: mfaService.initSetup,
     onSuccess: (data) => {
-      setQrData(data)
-      setIsSetupModalOpen(true)
-      setSetupStep('qr')
+      setQrData(data);
+      setIsSetupModalOpen(true);
+      setSetupStep('qr');
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('common.somethingWentWrong') })
+      Toast.notify({ type: 'error', message: t('common.somethingWentWrong') });
     },
-  })
+  });
   
   const completeSetupMutation = useMutation({
     mutationFn: ({ totpToken, password }: { totpToken: string; password: string }) => 
       mfaService.completeSetup(totpToken, password),
     onSuccess: (data) => {
-      setBackupCodes(data.backup_codes)
-      setSetupStep('backup')
-      queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
+      setBackupCodes(data.backup_codes);
+      setSetupStep('backup');
+      queryClient.invalidateQueries({ queryKey: ['mfa-status'] });
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('mfa.invalidToken') })
+      Toast.notify({ type: 'error', message: t('mfa.invalidToken') });
     },
-  })
+  });
   
   const disableMutation = useMutation({
     mutationFn: mfaService.disable,
     onSuccess: () => {
-      setIsDisableModalOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
-      Toast.notify({ type: 'success', message: t('mfa.disabledSuccess') })
+      setIsDisableModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['mfa-status'] });
+      Toast.notify({ type: 'success', message: t('mfa.disabledSuccess') });
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('mfa.invalidPassword') })
+      Toast.notify({ type: 'error', message: t('mfa.invalidPassword') });
     },
-  })
+  });
   
   const handleSetupStart = () => {
-    initSetupMutation.mutate()
-  }
+    initSetupMutation.mutate();
+  };
   
   const handleVerifyToken = () => {
     if (totpToken.length !== 6) {
-      Toast.notify({ type: 'error', message: t('mfa.tokenLength') })
-      return
+      Toast.notify({ type: 'error', message: t('mfa.tokenLength') });
+      return;
     }
-    completeSetupMutation.mutate({ totpToken, password: '' })
-  }
+    completeSetupMutation.mutate({ totpToken, password: '' });
+  };
   
   const handleDisable = () => {
-    disableMutation.mutate(password)
-  }
+    disableMutation.mutate(password);
+  };
   
   const handleCopyBackupCodes = () => {
-    const codesText = backupCodes.join('\n')
-    navigator.clipboard.writeText(codesText)
-    Toast.notify({ type: 'success', message: t('mfa.copied') })
-  }
+    const codesText = backupCodes.join('\n');
+    navigator.clipboard.writeText(codesText);
+    Toast.notify({ type: 'success', message: t('mfa.copied') });
+  };
   
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <RiLoader2Line className="animate-spin w-6 h-6 text-text-tertiary" />
       </div>
-    )
+    );
   }
   
   return (
@@ -274,8 +274,8 @@ export default function MFAPage() {
                 variant="primary"
                 className="flex-1"
                 onClick={() => {
-                  setIsSetupModalOpen(false)
-                  Toast.notify({ type: 'success', message: t('mfa.enabledSuccess') })
+                  setIsSetupModalOpen(false);
+                  Toast.notify({ type: 'success', message: t('mfa.enabledSuccess') });
                 }}
               >
                 {t('mfa.done')}
@@ -321,5 +321,5 @@ export default function MFAPage() {
         </div>
       </Modal>
     </div>
-  )
+  );
 }

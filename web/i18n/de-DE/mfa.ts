@@ -30,6 +30,6 @@ const translation = {
   copy: 'Kopieren',
   copied: 'Kopiert',
   done: 'Fertig',
-}
+};
 
-export default translation
+export default translation;
