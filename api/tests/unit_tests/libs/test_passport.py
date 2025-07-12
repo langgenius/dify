@@ -1,4 +1,3 @@
-import time
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -105,9 +104,10 @@ class TestPassportService:
             wrong_alg_token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS512")
 
         # Should fail because service expects HS256
-        # JWT library raises InvalidAlgorithmError which is not caught by PassportService
-        with pytest.raises(jwt.exceptions.InvalidAlgorithmError):
+        # InvalidAlgorithmError is now caught by PyJWTError handler
+        with pytest.raises(Unauthorized) as exc_info:
             passport_service.verify(wrong_alg_token)
+        assert str(exc_info.value) == "401 Unauthorized: Invalid token."
 
     # Exception handling tests
     def test_should_handle_invalid_tokens(self, passport_service):
@@ -194,3 +194,12 @@ class TestPassportService:
             decoded = passport_service.verify(token)
             assert decoded == payload
 
+    def test_should_catch_generic_pyjwt_errors(self, passport_service):
+        """Test that generic PyJWTError exceptions are caught and converted to Unauthorized"""
+        # Mock jwt.decode to raise a generic PyJWTError
+        with patch("libs.passport.jwt.decode") as mock_decode:
+            mock_decode.side_effect = jwt.exceptions.PyJWTError("Generic JWT error")
+
+            with pytest.raises(Unauthorized) as exc_info:
+                passport_service.verify("some-token")
+            assert str(exc_info.value) == "401 Unauthorized: Invalid token."
