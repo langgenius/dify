@@ -101,6 +101,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.APP_ID: app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID: self.application_generate_entity.workflow_execution_id,
+                SystemVariableKey.TOTAL_TOKENS: 0,
             }
 
             variable_pool = VariablePool(

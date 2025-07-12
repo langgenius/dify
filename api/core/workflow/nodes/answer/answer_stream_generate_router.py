@@ -151,6 +151,18 @@ class AnswerStreamGeneratorRouter:
                 continue
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
             source_node_data = node_id_config_mapping[source_node_id].get("data", {})
+
+            # Check if this answer node uses sys.total_tokens and add LLM dependencies
+            if source_node_type == NodeType.LLM.value:
+                answer_node_config = node_id_config_mapping.get(answer_node_id)
+                if answer_node_config:
+                    answer_data = answer_node_config.get("data", {})
+                    answer_text = answer_data.get("answer", "")
+                    # Check if the answer template contains sys.total_tokens
+                    if "{{#sys.total_tokens#}}" in answer_text:
+                        answer_dependencies[answer_node_id].append(source_node_id)
+                        continue
+
             if (
                 source_node_type
                 in {

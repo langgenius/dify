@@ -681,6 +681,8 @@ def _setup_variable_pool(
             SystemVariableKey.WORKFLOW_ID: workflow.id,
             # Randomly generated.
             SystemVariableKey.WORKFLOW_EXECUTION_ID: str(uuid.uuid4()),
+            # Initialize total tokens
+            SystemVariableKey.TOTAL_TOKENS: 0,
         }
 
         # Only add chatflow-specific variables for non-workflow types
