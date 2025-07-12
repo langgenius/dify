@@ -626,6 +626,8 @@ const translation = {
       },
       aggregationGroup: 'Aggregation Group',
       aggregationGroupTip: 'Enabling this feature allows the variable aggregator to aggregate multiple sets of variables.',
+      aggregateAll: 'Aggregate All',
+      aggregateAllTip: 'Enabling this feature allows the variable aggregator to aggregate all input variables into an array, otherwise it will aggregate first arrival variables into the array.',
       addGroup: 'Add Group',
       outputVars: {
         varDescribe: '{{groupName}} output',
