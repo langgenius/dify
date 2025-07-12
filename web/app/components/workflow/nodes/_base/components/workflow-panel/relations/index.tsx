@@ -96,11 +96,12 @@ const Relations = ({
               <Container
                 key={index}
                 nextNode={item}
+                relationType={relationType}
               />
             )
           })
         ) : (
-          <Container key={0} />
+          <Container key={0} relationType={relationType}/>
         )}
       </div>
     )
