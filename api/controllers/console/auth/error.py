@@ -65,3 +65,27 @@ class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
     code = 429
+
+
+class MFARequiredError(BaseHTTPException):
+    error_code = "mfa_required"
+    description = "Multi-factor authentication is required."
+    code = 401
+
+
+class MFATokenRequiredError(BaseHTTPException):
+    error_code = "mfa_token_invalid"
+    description = "The MFA token is invalid or expired."
+    code = 401
+
+
+class MFASetupRequiredError(BaseHTTPException):
+    error_code = "mfa_setup_required"
+    description = "MFA setup is required to complete this action."
+    code = 400
+
+
+class TokenValidationError(BaseHTTPException):
+    error_code = "token_validation_error"
+    description = "Token validation failed."
+    code = 400

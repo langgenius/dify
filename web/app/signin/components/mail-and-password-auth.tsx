@@ -10,6 +10,7 @@ import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
+import MFAVerification from './mfa-verification'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -28,6 +29,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
+  const [showMFAVerification, setShowMFAVerification] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   const handleEmailPasswordLogin = async () => {
@@ -77,6 +79,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace('/apps')
         }
       }
+      else if (res.code === 'mfa_required') {
+        setShowMFAVerification(true)
+      }
       else if (res.code === 'account_not_found') {
         if (allowRegistration) {
           const params = new URLSearchParams()
@@ -102,6 +107,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     finally {
       setIsLoading(false)
     }
+  }
+
+  if (showMFAVerification) {
+    return (
+      <MFAVerification
+        email={email}
+        password={password}
+        inviteToken={isInvite ? decodeURIComponent(searchParams.get('invite_token') || '') : undefined}
+        isInvite={isInvite}
+        locale={locale}
+      />
+    )
   }
 
   return <form onSubmit={noop}>

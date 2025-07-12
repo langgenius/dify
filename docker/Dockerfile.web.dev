@@ -1,0 +1,20 @@
+# Development Dockerfile for web testing
+FROM node:22-alpine
+
+# Install pnpm
+RUN npm install -g pnpm@10.11.1
+
+# Set working directory
+WORKDIR /app/web
+
+# Copy package files
+COPY ../web/package.json ../web/pnpm-lock.yaml ./
+
+# Install dependencies with legacy peer deps
+RUN pnpm install --frozen-lockfile || pnpm install
+
+# Copy source code
+COPY ../web .
+
+# Default command
+CMD ["pnpm", "test"]
