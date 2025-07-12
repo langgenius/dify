@@ -23,6 +23,11 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
+    ENABLE_AUDIT_LOG: bool = Field(
+        description="Enable comprehensive audit logging for API calls",
+        default=False,
+    )
+
     EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",
