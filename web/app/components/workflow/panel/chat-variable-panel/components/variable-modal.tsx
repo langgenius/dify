@@ -80,7 +80,7 @@ const ChatVariableModal = ({
   const [objectValue, setObjectValue] = React.useState<ObjectValueItem[]>([DEFAULT_OBJECT_VALUE])
   const [editorContent, setEditorContent] = React.useState<string>()
   const [editInJSON, setEditInJSON] = React.useState(false)
-  const [des, setDes] = React.useState<string>('')
+  const [description, setDescription] = React.useState<string>('')
 
   const editorMinHeight = useMemo(() => {
     if (type === ChatVarType.ArrayObject)
@@ -237,7 +237,7 @@ const ChatVariableModal = ({
       name,
       value_type: type,
       value: formatValue(value),
-      description: des,
+      description,
     })
     onClose()
   }
@@ -247,7 +247,7 @@ const ChatVariableModal = ({
       setName(chatVar.name)
       setType(chatVar.value_type)
       setValue(chatVar.value)
-      setDes(chatVar.description)
+      setDescription(chatVar.description)
       setObjectValue(getObjectValue())
       if (chatVar.value_type === ChatVarType.ArrayObject) {
         setEditorContent(JSON.stringify(chatVar.value))
@@ -385,9 +385,9 @@ const ChatVariableModal = ({
           <div className='flex'>
             <textarea
               className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
-              value={des}
+              value={description}
               placeholder={t('workflow.chatVariable.modal.descriptionPlaceholder') || ''}
-              onChange={e => setDes(e.target.value)}
+              onChange={e => setDescription(e.target.value)}
             />
           </div>
         </div>

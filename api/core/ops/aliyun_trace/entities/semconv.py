@@ -41,7 +41,7 @@ GEN_AI_PROMPT_TEMPLATE_VARIABLE = "gen_ai.prompt_template.variable"
 
 GEN_AI_PROMPT = "gen_ai.prompt"
 
-GEN_AI_COMPLETION = "gem_ai.completion"
+GEN_AI_COMPLETION = "gen_ai.completion"
 
 GEN_AI_RESPONSE_FINISH_REASON = "gen_ai.response.finish_reason"
 

@@ -462,6 +462,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          description: env.description,
         }
       }) as Var[]
       break
@@ -472,7 +473,7 @@ const formatItem = (
         return {
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
-          des: chatVar.description,
+          description: chatVar.description,
         }
       }) as Var[]
       break
@@ -975,6 +976,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
       break
     }
     case BlockEnum.Code: {
@@ -994,6 +996,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
+
+      const classes = payload.classes.map(c => c.name)
+      res.push(...matchNotSystemVars(classes))
       break
     }
     case BlockEnum.HttpRequest: {

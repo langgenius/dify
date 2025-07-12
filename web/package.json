@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "private": true,
   "engines": {
     "node": ">=v22.11.0"
@@ -144,6 +144,7 @@
     "sortablejs": "^1.15.0",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.5.4",
+    "tldts": "^7.0.9",
     "use-context-selector": "^2.0.0",
     "uuid": "^10.0.0",
     "zod": "^3.23.8",

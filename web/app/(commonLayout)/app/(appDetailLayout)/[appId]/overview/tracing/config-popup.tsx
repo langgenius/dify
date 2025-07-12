@@ -179,7 +179,7 @@ const ConfigPopup: FC<PopupProps> = ({
       onConfig={handleOnConfig(TracingProvider.aliyun)}
       isChosen={chosenProvider === TracingProvider.aliyun}
       onChoose={handleOnChoose(TracingProvider.aliyun)}
-      key="alyun-provider-panel"
+      key="aliyun-provider-panel"
     />
   )
   const configuredProviderPanel = () => {
