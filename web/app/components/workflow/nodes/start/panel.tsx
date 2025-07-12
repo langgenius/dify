@@ -155,8 +155,18 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                   </div>
                 }
               />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.total_tokens',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-text-tertiary'>
+                    Number
+                  </div>
+                }
+              />
             </div>
-
           </>
         </Field>
       </div>
