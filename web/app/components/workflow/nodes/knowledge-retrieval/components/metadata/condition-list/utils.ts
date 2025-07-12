@@ -30,6 +30,8 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
         ComparisonOperator.notContains,
         ComparisonOperator.startWith,
         ComparisonOperator.endWith,
+        ComparisonOperator.in,
+        ComparisonOperator.notIn,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
@@ -41,6 +43,17 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
         ComparisonOperator.lessThan,
         ComparisonOperator.largerThanOrEqual,
         ComparisonOperator.lessThanOrEqual,
+        ComparisonOperator.in,
+        ComparisonOperator.notIn,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    case MetadataFilteringVariableType.array:
+      return [
+        ComparisonOperator.in,
+        ComparisonOperator.notIn,
+        ComparisonOperator.contains,
+        ComparisonOperator.notContains,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]

@@ -1051,6 +1051,62 @@ class DatasetRetrieval:
                     filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
                 else:
                     filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
+            case "in":
+                if isinstance(value, list | tuple):
+                    if not value:
+                        return filters
+
+                    or_conditions = []
+                    for i, v in enumerate(value):
+                        if isinstance(v, str):
+                            or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == f'"{v}"')
+                        elif isinstance(v, int | float):
+                            or_conditions.append(
+                                sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == v
+                            )
+                            or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == str(v))
+                        else:
+                            v_str = str(v)
+                            or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == f'"{v_str}"')
+
+                    if or_conditions:
+                        filters.append(or_(*or_conditions))
+                else:
+                    # Single value case (backward compatibility)
+                    if isinstance(value, str):
+                        filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
+                    else:
+                        filters.append(
+                            sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value
+                        )
+            case "not in":
+                if isinstance(value, list | tuple):
+                    if not value:
+                        return filters
+
+                    and_conditions = []
+                    for i, v in enumerate(value):
+                        if isinstance(v, str):
+                            and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != f'"{v}"')
+                        elif isinstance(v, int | float):
+                            and_conditions.append(
+                                sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != v
+                            )
+                            and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != str(v))
+                        else:
+                            v_str = str(v)
+                            and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != f'"{v_str}"')
+
+                    if and_conditions:
+                        filters.append(and_(*and_conditions))
+                else:
+                    # Single value case (backward compatibility)
+                    if isinstance(value, str):
+                        filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
+                    else:
+                        filters.append(
+                            sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value
+                        )
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "not empty":

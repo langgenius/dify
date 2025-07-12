@@ -58,7 +58,7 @@ const CreateContent: FC<Props> = ({
     >
       <div className='space-y-3'>
         <Field label={t(`${i18nPrefix}.type`)}>
-          <div className='grid grid-cols-3 gap-2'>
+          <div className='grid grid-cols-4 gap-2'>
             <OptionCard
               title='String'
               selected={type === DataType.string}
@@ -73,6 +73,11 @@ const CreateContent: FC<Props> = ({
               title='Time'
               selected={type === DataType.time}
               onSelect={handleTypeChange(DataType.time)}
+            />
+            <OptionCard
+              title='Array'
+              selected={type === DataType.array}
+              onSelect={handleTypeChange(DataType.array)}
             />
           </div>
         </Field>

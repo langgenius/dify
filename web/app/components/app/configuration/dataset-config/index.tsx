@@ -272,6 +272,7 @@ const DatasetConfig: FC = () => {
           isCommonVariable
           availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
           availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+          availableCommonArrayVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.array || item.type.startsWith('array'))}
         />
       </div>
 
