@@ -4,6 +4,7 @@ from collections.abc import Generator
 import boto3  # type: ignore
 from botocore.client import Config  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
+import botocore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -25,6 +26,11 @@ class AwsS3Storage(BaseStorage):
             self.client = session.client(service_name="s3", region_name=region_name)
         else:
             logger.info("Using ak and sk for S3")
+            
+            if dify_config.S3_SIGNATURE_VERSION == 'unsigned':
+                s_version = botocore.UNSIGNED
+            else:
+                s_version = dify_config.S3_SIGNATURE_VERSION
 
             self.client = boto3.client(
                 "s3",
@@ -32,7 +38,10 @@ class AwsS3Storage(BaseStorage):
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
+                config=Config(
+                    s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
+                    signature_version=s_version
+                ),
             )
         # create bucket
         try:
