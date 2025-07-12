@@ -7,6 +7,7 @@ from datetime import datetime
 import pyotp
 import qrcode
 
+from libs.password import compare_password
 from models.account import Account, AccountMFASettings
 from models.engine import db
 
@@ -63,8 +64,7 @@ class MFAService:
         try:
             totp = pyotp.TOTP(secret)
             return totp.verify(token, valid_window=1)
-        except Exception as e:
-            print(f"[MFA DEBUG] verify_totp error: {type(e).__name__}: {str(e)}")
+        except Exception:
             return False
 
     @staticmethod
@@ -129,8 +129,6 @@ class MFAService:
     @staticmethod
     def disable_mfa(account: Account, password: str) -> bool:
         """Disable MFA for account after password verification."""
-        from libs.password import compare_password
-        
         # Verify password
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             return False
@@ -178,28 +176,19 @@ class MFAService:
     @staticmethod
     def authenticate_with_mfa(account: Account, token: str) -> bool:
         """Authenticate user with MFA token (TOTP or backup code)."""
-        print(f"[MFA DEBUG] authenticate_with_mfa called with token: {token}")
         mfa_settings = db.session.query(AccountMFASettings).filter_by(account_id=account.id).first()
         
         if not mfa_settings or not mfa_settings.enabled:
-            print("[MFA DEBUG] MFA not enabled, returning True")
             return True
         
-        print(f"[MFA DEBUG] MFA enabled, secret: {mfa_settings.secret[:10]}...")
-        
         # Try TOTP first
-        print("[MFA DEBUG] Trying TOTP verification")
         if MFAService.verify_totp(mfa_settings.secret, token):
-            print("[MFA DEBUG] TOTP verification successful")
             return True
         
         # Try backup code
-        print("[MFA DEBUG] Trying backup code verification")
         if MFAService.verify_backup_code(mfa_settings, token):
-            print("[MFA DEBUG] Backup code verification successful")
             return True
         
-        print("[MFA DEBUG] All verifications failed")
         return False
 
     @staticmethod

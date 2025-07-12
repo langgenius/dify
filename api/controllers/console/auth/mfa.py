@@ -6,6 +6,7 @@ from flask_restful import Resource, reqparse
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
 from models.account import Account
+from models.engine import db
 from services.mfa_service import MFAService
 
 
@@ -15,7 +16,7 @@ class MFASetupInitApi(Resource):
     def post(self):
         """Initialize MFA setup - generate secret and QR code."""
         account = cast(Account, flask_login.current_user)
-        
+
         try:
             mfa_status = MFAService.get_mfa_status(account)
             if mfa_status["enabled"]:
@@ -100,7 +101,6 @@ class MFAVerifyApi(Resource):
         parser.add_argument("mfa_token", type=str, required=True, help="MFA token is required")
         args = parser.parse_args()
         
-        from models.engine import db
         account = db.session.query(Account).filter_by(email=args["email"]).first()
         
         if not account:
