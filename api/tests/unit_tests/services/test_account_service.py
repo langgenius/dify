@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -5,8 +6,9 @@ import pytest
 
 from configs import dify_config
 from models.account import Account
-from services.account_service import AccountService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
+    AccountAlreadyInTenantError,
     AccountLoginError,
     AccountNotFoundError,
     AccountPasswordError,
@@ -805,3 +807,739 @@ class TestTenantService:
             mock_operator,  # Same as operator
             "add",
         )
+
+
+class TestRegisterService:
+    """
+    Comprehensive unit tests for RegisterService methods.
+
+    This test suite covers all registration-related operations including:
+    - System setup
+    - Account registration
+    - Member invitation
+    - Token management
+    - Invitation validation
+    - Error conditions and edge cases
+    """
+
+    @pytest.fixture
+    def mock_db_dependencies(self):
+        """Common mock setup for database dependencies."""
+        with patch("services.account_service.db") as mock_db:
+            mock_db.session.add = MagicMock()
+            mock_db.session.commit = MagicMock()
+            mock_db.session.begin_nested = MagicMock()
+            mock_db.session.rollback = MagicMock()
+            yield {
+                "db": mock_db,
+            }
+
+    @pytest.fixture
+    def mock_redis_dependencies(self):
+        """Mock setup for Redis-related functions."""
+        with patch("services.account_service.redis_client") as mock_redis:
+            yield mock_redis
+
+    @pytest.fixture
+    def mock_external_service_dependencies(self):
+        """Mock setup for external service dependencies."""
+        with (
+            patch("services.account_service.FeatureService") as mock_feature_service,
+            patch("services.account_service.BillingService") as mock_billing_service,
+            patch("services.account_service.PassportService") as mock_passport_service,
+        ):
+            yield {
+                "feature_service": mock_feature_service,
+                "billing_service": mock_billing_service,
+                "passport_service": mock_passport_service,
+            }
+
+    @pytest.fixture
+    def mock_task_dependencies(self):
+        """Mock setup for task dependencies."""
+        with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
+            yield mock_send_mail
+
+    def _assert_database_operations_called(self, mock_db):
+        """Helper method to verify database operations were called."""
+        mock_db.session.commit.assert_called()
+
+    def _assert_database_operations_not_called(self, mock_db):
+        """Helper method to verify database operations were not called."""
+        mock_db.session.commit.assert_not_called()
+
+    def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
+        """Helper method to verify that specific exception is raised."""
+        with pytest.raises(exception_type):
+            callable_func(*args, **kwargs)
+
+    # ==================== Setup Tests ====================
+
+    def test_setup_success(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test successful system setup."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.return_value = mock_account
+
+            # Mock TenantService.create_owner_tenant_if_not_exist
+            with patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant:
+                # Mock DifySetup
+                with patch("services.account_service.DifySetup") as mock_dify_setup:
+                    mock_dify_setup_instance = MagicMock()
+                    mock_dify_setup.return_value = mock_dify_setup_instance
+
+                    # Execute test
+                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1")
+
+                    # Verify results
+                    mock_create_account.assert_called_once_with(
+                        email="admin@example.com",
+                        name="Admin User",
+                        interface_language="en-US",
+                        password="password123",
+                        is_setup=True,
+                    )
+                    mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True)
+                    mock_dify_setup.assert_called_once()
+                    self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_setup_failure_rollback(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test setup failure with proper rollback."""
+        # Setup mocks to simulate failure
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account to raise exception
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.side_effect = Exception("Database error")
+
+            # Execute test and verify exception
+            self._assert_exception_raised(
+                ValueError,
+                RegisterService.setup,
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+            )
+
+            # Verify rollback operations were called
+            mock_db_dependencies["db"].session.query.assert_called()
+
+    # ==================== Registration Tests ====================
+
+    def test_register_success(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test successful account registration."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.return_value = mock_account
+
+            # Mock TenantService.create_tenant and create_tenant_member
+            with (
+                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.tenant_was_created") as mock_event,
+            ):
+                mock_tenant = MagicMock()
+                mock_tenant.id = "tenant-456"
+                mock_create_tenant.return_value = mock_tenant
+
+                # Execute test
+                result = RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                )
+
+                # Verify results
+                assert result == mock_account
+                assert result.status == "active"
+                assert result.initialized_at is not None
+                mock_create_account.assert_called_once_with(
+                    email="test@example.com",
+                    name="Test User",
+                    interface_language="en-US",
+                    password="password123",
+                    is_setup=False,
+                )
+                mock_create_tenant.assert_called_once_with("Test User's Workspace")
+                mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
+                mock_event.send.assert_called_once_with(mock_tenant)
+                self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_register_with_oauth(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test account registration with OAuth integration."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account and link_account_integrate
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.AccountService.link_account_integrate") as mock_link_account,
+        ):
+            mock_create_account.return_value = mock_account
+
+            # Mock TenantService methods
+            with (
+                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.tenant_was_created") as mock_event,
+            ):
+                mock_tenant = MagicMock()
+                mock_create_tenant.return_value = mock_tenant
+
+                # Execute test
+                result = RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password=None,
+                    open_id="oauth123",
+                    provider="google",
+                    language="en-US",
+                )
+
+                # Verify results
+                assert result == mock_account
+                mock_link_account.assert_called_once_with("google", "oauth123", mock_account)
+                self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_register_with_pending_status(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test account registration with pending status."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.return_value = mock_account
+
+            # Mock TenantService methods
+            with (
+                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.tenant_was_created") as mock_event,
+            ):
+                mock_tenant = MagicMock()
+                mock_create_tenant.return_value = mock_tenant
+
+                # Execute test with pending status
+                from models.account import AccountStatus
+
+                result = RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                    status=AccountStatus.PENDING,
+                )
+
+                # Verify results
+                assert result == mock_account
+                assert result.status == "pending"
+                self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    def test_register_workspace_not_allowed(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test registration when workspace creation is not allowed."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.return_value = mock_account
+
+            # Execute test and verify exception
+            from services.errors.workspace import WorkSpaceNotAllowedCreateError
+
+            with patch("services.account_service.TenantService.create_tenant") as mock_create_tenant:
+                mock_create_tenant.side_effect = WorkSpaceNotAllowedCreateError()
+
+                self._assert_exception_raised(
+                    AccountRegisterError,
+                    RegisterService.register,
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                )
+
+                # Verify rollback was called
+                mock_db_dependencies["db"].session.rollback.assert_called()
+
+    def test_register_general_exception(self, mock_db_dependencies, mock_external_service_dependencies):
+        """Test registration with general exception handling."""
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Mock AccountService.create_account to raise exception
+        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+            mock_create_account.side_effect = Exception("Unexpected error")
+
+            # Execute test and verify exception
+            self._assert_exception_raised(
+                AccountRegisterError,
+                RegisterService.register,
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+            )
+
+            # Verify rollback was called
+            mock_db_dependencies["db"].session.rollback.assert_called()
+
+    # ==================== Member Invitation Tests ====================
+
+    def test_invite_new_member_new_account(self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies):
+        """Test inviting a new member who doesn't have an account."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_tenant.name = "Test Workspace"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+
+        # Mock database queries - need to mock the Session query
+        mock_session = MagicMock()
+        mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
+
+        with patch("services.account_service.Session") as mock_session_class:
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.__exit__.return_value = None
+
+            # Mock RegisterService.register
+            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
+                account_id="new-user-456", email="newuser@example.com", name="newuser", status="pending"
+            )
+            with patch("services.account_service.RegisterService.register") as mock_register:
+                mock_register.return_value = mock_new_account
+
+                # Mock TenantService methods
+                with (
+                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
+                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+                ):
+                    mock_generate_token.return_value = "invite-token-123"
+
+                    # Execute test
+                    result = RegisterService.invite_new_member(
+                        tenant=mock_tenant,
+                        email="newuser@example.com",
+                        language="en-US",
+                        role="normal",
+                        inviter=mock_inviter,
+                    )
+
+                    # Verify results
+                    assert result == "invite-token-123"
+                    mock_register.assert_called_once_with(
+                        email="newuser@example.com",
+                        name="newuser",
+                        language="en-US",
+                        status="pending",
+                        is_setup=True,
+                    )
+                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
+                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
+                    mock_generate_token.assert_called_once_with(mock_tenant, mock_new_account)
+                    mock_task_dependencies.delay.assert_called_once()
+
+    def test_invite_new_member_existing_account(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """Test inviting a new member who already has an account."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_tenant.name = "Test Workspace"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="existing-user-456", email="existing@example.com", status="pending"
+        )
+
+        # Mock database queries - need to mock the Session query
+        mock_session = MagicMock()
+        mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
+
+        with patch("services.account_service.Session") as mock_session_class:
+            mock_session_class.return_value.__enter__.return_value = mock_session
+            mock_session_class.return_value.__exit__.return_value = None
+
+            # Mock the db.session.query for TenantAccountJoin
+            mock_db_query = MagicMock()
+            mock_db_query.filter_by.return_value.first.return_value = None  # No existing member
+            mock_db_dependencies["db"].session.query.return_value = mock_db_query
+
+            # Mock TenantService methods
+            with (
+                patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
+            ):
+                mock_generate_token.return_value = "invite-token-123"
+
+                # Execute test
+                result = RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="existing@example.com",
+                    language="en-US",
+                    role="normal",
+                    inviter=mock_inviter,
+                )
+
+                # Verify results
+                assert result == "invite-token-123"
+                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "normal")
+                mock_generate_token.assert_called_once_with(mock_tenant, mock_existing_account)
+                mock_task_dependencies.delay.assert_called_once()
+
+    def test_invite_new_member_already_in_tenant(self, mock_db_dependencies, mock_redis_dependencies):
+        """Test inviting a member who is already in the tenant."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="existing-user-456", email="existing@example.com", status="active"
+        )
+
+        # Mock database queries
+        query_results = {
+            ("Account", "email", "existing@example.com"): mock_existing_account,
+            (
+                "TenantAccountJoin",
+                "tenant_id",
+                "tenant-456",
+            ): TestAccountAssociatedDataFactory.create_tenant_join_mock(),
+        }
+        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+
+        # Mock TenantService methods
+        with patch("services.account_service.TenantService.check_member_permission") as mock_check_permission:
+            # Execute test and verify exception
+            self._assert_exception_raised(
+                AccountAlreadyInTenantError,
+                RegisterService.invite_new_member,
+                tenant=mock_tenant,
+                email="existing@example.com",
+                language="en-US",
+                role="normal",
+                inviter=mock_inviter,
+            )
+
+    def test_invite_new_member_no_inviter(self):
+        """Test inviting a member without providing an inviter."""
+        # Setup test data
+        mock_tenant = MagicMock()
+
+        # Execute test and verify exception
+        self._assert_exception_raised(
+            ValueError,
+            RegisterService.invite_new_member,
+            tenant=mock_tenant,
+            email="test@example.com",
+            language="en-US",
+            role="normal",
+            inviter=None,
+        )
+
+    # ==================== Token Management Tests ====================
+
+    def test_generate_invite_token_success(self, mock_redis_dependencies):
+        """Test successful invite token generation."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="user-123", email="test@example.com"
+        )
+
+        # Mock uuid generation
+        with patch("services.account_service.uuid.uuid4") as mock_uuid:
+            mock_uuid.return_value = "test-uuid-123"
+
+            # Execute test
+            result = RegisterService.generate_invite_token(mock_tenant, mock_account)
+
+            # Verify results
+            assert result == "test-uuid-123"
+            mock_redis_dependencies.setex.assert_called_once()
+
+            # Verify the stored data
+            call_args = mock_redis_dependencies.setex.call_args
+            assert call_args[0][0] == "member_invite:token:test-uuid-123"
+            stored_data = json.loads(call_args[0][2])
+            assert stored_data["account_id"] == "user-123"
+            assert stored_data["email"] == "test@example.com"
+            assert stored_data["workspace_id"] == "tenant-456"
+
+    def test_is_valid_invite_token_valid(self, mock_redis_dependencies):
+        """Test checking valid invite token."""
+        # Setup mock
+        mock_redis_dependencies.get.return_value = b'{"test": "data"}'
+
+        # Execute test
+        result = RegisterService.is_valid_invite_token("valid-token")
+
+        # Verify results
+        assert result is True
+        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:valid-token")
+
+    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies):
+        """Test checking invalid invite token."""
+        # Setup mock
+        mock_redis_dependencies.get.return_value = None
+
+        # Execute test
+        result = RegisterService.is_valid_invite_token("invalid-token")
+
+        # Verify results
+        assert result is False
+        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:invalid-token")
+
+    def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies):
+        """Test revoking token with workspace ID and email."""
+        # Execute test
+        RegisterService.revoke_token("workspace-123", "test@example.com", "token-123")
+
+        # Verify results
+        mock_redis_dependencies.delete.assert_called_once()
+        call_args = mock_redis_dependencies.delete.call_args
+        assert "workspace-123" in call_args[0][0]
+        # The email is hashed, so we check for the hash pattern instead
+        assert "member_invite_token:" in call_args[0][0]
+
+    def test_revoke_token_without_workspace_and_email(self, mock_redis_dependencies):
+        """Test revoking token without workspace ID and email."""
+        # Execute test
+        RegisterService.revoke_token("", "", "token-123")
+
+        # Verify results
+        mock_redis_dependencies.delete.assert_called_once_with("member_invite:token:token-123")
+
+    # ==================== Invitation Validation Tests ====================
+
+    def test_get_invitation_if_token_valid_success(self, mock_db_dependencies, mock_redis_dependencies):
+        """Test successful invitation validation."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_tenant.status = "normal"
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="user-123", email="test@example.com"
+        )
+
+        with patch("services.account_service.RegisterService._get_invitation_by_token") as mock_get_invitation_by_token:
+            # Mock the invitation data returned by _get_invitation_by_token
+            invitation_data = {
+                "account_id": "user-123",
+                "email": "test@example.com",
+                "workspace_id": "tenant-456",
+            }
+            mock_get_invitation_by_token.return_value = invitation_data
+
+            # Mock database queries - complex query mocking
+            mock_query1 = MagicMock()
+            mock_query1.filter.return_value.first.return_value = mock_tenant
+
+            mock_query2 = MagicMock()
+            mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+
+            mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+
+            # Execute test
+            result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+
+            # Verify results
+            assert result is not None
+            assert result["account"] == mock_account
+            assert result["tenant"] == mock_tenant
+            assert result["data"] == invitation_data
+
+    def test_get_invitation_if_token_valid_no_token_data(self, mock_redis_dependencies):
+        """Test invitation validation with no token data."""
+        # Setup mock
+        mock_redis_dependencies.get.return_value = None
+
+        # Execute test
+        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+
+        # Verify results
+        assert result is None
+
+    def test_get_invitation_if_token_valid_tenant_not_found(self, mock_db_dependencies, mock_redis_dependencies):
+        """Test invitation validation when tenant is not found."""
+        # Setup mock Redis data
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+        }
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        # Mock database queries - no tenant found
+        mock_query = MagicMock()
+        mock_query.filter.return_value.first.return_value = None
+        mock_db_dependencies["db"].session.query.return_value = mock_query
+
+        # Execute test
+        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+
+        # Verify results
+        assert result is None
+
+    def test_get_invitation_if_token_valid_account_not_found(self, mock_db_dependencies, mock_redis_dependencies):
+        """Test invitation validation when account is not found."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_tenant.status = "normal"
+
+        # Mock Redis data
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+        }
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        # Mock database queries
+        mock_query1 = MagicMock()
+        mock_query1.filter.return_value.first.return_value = mock_tenant
+
+        mock_query2 = MagicMock()
+        mock_query2.join.return_value.filter.return_value.first.return_value = None  # No account found
+
+        mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+
+        # Execute test
+        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+
+        # Verify results
+        assert result is None
+
+    def test_get_invitation_if_token_valid_account_id_mismatch(self, mock_db_dependencies, mock_redis_dependencies):
+        """Test invitation validation when account ID doesn't match."""
+        # Setup test data
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_tenant.status = "normal"
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="different-user-456", email="test@example.com"
+        )
+
+        # Mock Redis data with different account ID
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+        }
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        # Mock database queries
+        mock_query1 = MagicMock()
+        mock_query1.filter.return_value.first.return_value = mock_tenant
+
+        mock_query2 = MagicMock()
+        mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+
+        mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
+
+        # Execute test
+        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+
+        # Verify results
+        assert result is None
+
+    # ==================== Helper Method Tests ====================
+
+    def test_get_invitation_token_key(self):
+        """Test the _get_invitation_token_key helper method."""
+        # Execute test
+        result = RegisterService._get_invitation_token_key("test-token")
+
+        # Verify results
+        assert result == "member_invite:token:test-token"
+
+    def test_get_invitation_by_token_with_workspace_and_email(self, mock_redis_dependencies):
+        """Test _get_invitation_by_token with workspace ID and email."""
+        # Setup mock
+        mock_redis_dependencies.get.return_value = b"user-123"
+
+        # Execute test
+        result = RegisterService._get_invitation_by_token("token-123", "workspace-456", "test@example.com")
+
+        # Verify results
+        assert result is not None
+        assert result["account_id"] == "user-123"
+        assert result["email"] == "test@example.com"
+        assert result["workspace_id"] == "workspace-456"
+
+    def test_get_invitation_by_token_without_workspace_and_email(self, mock_redis_dependencies):
+        """Test _get_invitation_by_token without workspace ID and email."""
+        # Setup mock
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+        }
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        # Execute test
+        result = RegisterService._get_invitation_by_token("token-123")
+
+        # Verify results
+        assert result is not None
+        assert result == invitation_data
+
+    def test_get_invitation_by_token_no_data(self, mock_redis_dependencies):
+        """Test _get_invitation_by_token with no data."""
+        # Setup mock
+        mock_redis_dependencies.get.return_value = None
+
+        # Execute test
+        result = RegisterService._get_invitation_by_token("token-123")
+
+        # Verify results
+        assert result is None
