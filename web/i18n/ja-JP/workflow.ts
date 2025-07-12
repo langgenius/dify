@@ -958,6 +958,15 @@ const translation = {
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
   },
 }
 
