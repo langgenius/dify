@@ -3,6 +3,8 @@ import logging
 import uuid
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
@@ -417,12 +419,15 @@ class BaseAgentRunner(AppRunner):
             if isinstance(prompt_message, SystemPromptMessage):
                 result.append(prompt_message)
 
-        messages: list[Message] = (
-            db.session.query(Message)
-            .filter(
-                Message.conversation_id == self.message.conversation_id,
+        messages = (
+            (
+                db.session.execute(
+                    select(Message)
+                    .where(Message.conversation_id == self.message.conversation_id)
+                    .order_by(Message.created_at.desc())
+                )
             )
-            .order_by(Message.created_at.desc())
+            .scalars()
             .all()
         )
 
