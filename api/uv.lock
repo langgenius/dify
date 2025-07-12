@@ -352,6 +352,24 @@ wheels = [
 ]
 
 [[package]]
+name = "arize-phoenix-otel"
+version = "0.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "openinference-instrumentation" },
+    { name = "openinference-semantic-conventions" },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/27/b9/8c89191eb46915e9ba7bdb473e2fb1c510b7db3635ae5ede5e65b2176b9d/arize_phoenix_otel-0.9.2.tar.gz", hash = "sha256:a48c7d41f3ac60dc75b037f036bf3306d2af4af371cdb55e247e67957749bc31", size = 11599, upload-time = "2025-04-14T22:05:28.637Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/3d/f64136a758c649e883315939f30fe51ad0747024b0db05fd78450801a78d/arize_phoenix_otel-0.9.2-py3-none-any.whl", hash = "sha256:5286b33c58b596ef8edd9a4255ee00fd74f774b1e5dbd9393e77e87870a14d76", size = 12560, upload-time = "2025-04-14T22:05:27.162Z" },
+]
+
+[[package]]
 name = "asgiref"
 version = "3.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1199,8 +1217,10 @@ wheels = [
 
 [[package]]
 name = "dify-api"
+version = "1.6.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "arize-phoenix-otel" },
     { name = "authlib" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
@@ -1226,6 +1246,7 @@ dependencies = [
     { name = "googleapis-common-protos" },
     { name = "gunicorn" },
     { name = "httpx", extra = ["socks"] },
+    { name = "httpx-sse" },
     { name = "jieba" },
     { name = "json-repair" },
     { name = "langfuse" },
@@ -1272,6 +1293,7 @@ dependencies = [
     { name = "sendgrid" },
     { name = "sentry-sdk", extra = ["flask"] },
     { name = "sqlalchemy" },
+    { name = "sseclient-py" },
     { name = "starlette" },
     { name = "tiktoken" },
     { name = "transformers" },
@@ -1382,6 +1404,7 @@ vdb = [
 
 [package.metadata]
 requires-dist = [
+    { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
     { name = "authlib", specifier = "==1.3.1" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
@@ -1407,6 +1430,7 @@ requires-dist = [
     { name = "googleapis-common-protos", specifier = "==1.63.0" },
     { name = "gunicorn", specifier = "~=23.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "~=0.27.0" },
+    { name = "httpx-sse", specifier = ">=0.4.0" },
     { name = "jieba", specifier = "==0.42.1" },
     { name = "json-repair", specifier = ">=0.41.1" },
     { name = "langfuse", specifier = "~=2.51.3" },
@@ -1453,6 +1477,7 @@ requires-dist = [
     { name = "sendgrid", specifier = "~=6.12.3" },
     { name = "sentry-sdk", extras = ["flask"], specifier = "~=2.28.0" },
     { name = "sqlalchemy", specifier = "~=2.0.29" },
+    { name = "sseclient-py", specifier = ">=1.8.0" },
     { name = "starlette", specifier = "==0.41.0" },
     { name = "tiktoken", specifier = "~=0.9.0" },
     { name = "transformers", specifier = "~=4.51.0" },
@@ -1552,7 +1577,7 @@ vdb = [
     { name = "pymochow", specifier = "==1.3.1" },
     { name = "pyobvector", specifier = "~=0.1.6" },
     { name = "qdrant-client", specifier = "==1.9.0" },
-    { name = "tablestore", specifier = "==6.1.0" },
+    { name = "tablestore", specifier = "==6.2.0" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
@@ -1657,15 +1682,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cb/7d/01cddcbb6f5cc0ba72e00ddf9b1fa206c802d557fd0a20b18e130edf1336/emoji-2.14.1.tar.gz", hash = "sha256:f8c50043d79a2c1410ebfae833ae1868d5941a67a6cd4d18377e2eb0bd79346b", size = 597182, upload-time = "2025-01-16T06:31:24.983Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/db/a0335710caaa6d0aebdaa65ad4df789c15d89b7babd9a30277838a7d9aac/emoji-2.14.1-py3-none-any.whl", hash = "sha256:35a8a486c1460addb1499e3bf7929d3889b2e2841a57401903699fef595e942b", size = 590617, upload-time = "2025-01-16T06:31:23.526Z" },
-]
-
-[[package]]
-name = "enum34"
-version = "1.1.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/c4/2da1f4952ba476677a42f25cd32ab8aaf0e1c0d0e00b89822b835c7e654c/enum34-1.1.10.tar.gz", hash = "sha256:cce6a7477ed816bd2542d03d53db9f0db935dd013b70f336a95c73979289f248", size = 28187, upload-time = "2020-03-10T17:48:00.865Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/f6/ccb1c83687756aeabbf3ca0f213508fcfb03883ff200d201b3a4c60cedcc/enum34-1.1.10-py3-none-any.whl", hash = "sha256:c3858660960c984d6ab0ebad691265180da2b43f07e061c0f8dca9ef3cffd328", size = 11224, upload-time = "2020-03-10T17:48:03.174Z" },
 ]
 
 [[package]]
@@ -2523,6 +2539,15 @@ http2 = [
 ]
 socks = [
     { name = "socksio" },
+]
+
+[[package]]
+name = "httpx-sse"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/fa/66bd985dd0b7c109a3bcb89272ee0bfb7e2b4d06309ad7b38ff866734b2a/httpx_sse-0.4.1.tar.gz", hash = "sha256:8f44d34414bc7b21bf3602713005c5df4917884f76072479b21f68befa4ea26e", size = 12998, upload-time = "2025-06-24T13:21:05.71Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/25/0a/6269e3473b09aed2dab8aa1a600c70f31f00ae1349bee30658f7e358a159/httpx_sse-0.4.1-py3-none-any.whl", hash = "sha256:cba42174344c3a5b06f255ce65b350880f962d99ead85e776f23c6618a377a37", size = 8054, upload-time = "2025-06-24T13:21:04.772Z" },
 ]
 
 [[package]]
@@ -3414,6 +3439,29 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/3c/9d/5d8c20c0fc93df5e349e5694167de30afdc54c5755704cc64764a6cbb309/opendal-0.45.20-cp311-abi3-musllinux_1_1_armv7l.whl", hash = "sha256:891d2f9114efeef648973049ed15e56477e8feb9e48b540bd8d6105ea22a253c", size = 13320229, upload-time = "2025-05-26T07:01:41.965Z" },
     { url = "https://files.pythonhosted.org/packages/21/39/05262f748a2085522e0c85f03eab945589313dc9caedc002872c39162776/opendal-0.45.20-cp311-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:539de9b825f6783d6289d88c0c9ac5415daa4d892d761e3540c565bda51e8997", size = 14574280, upload-time = "2025-05-26T07:01:44.413Z" },
     { url = "https://files.pythonhosted.org/packages/74/83/cc7c6de29b0a7585cd445258d174ca204d37729c3874ad08e515b0bf331c/opendal-0.45.20-cp311-abi3-win_amd64.whl", hash = "sha256:145efd56aa33b493d5b652c3e4f5ae5097ab69d38c132d80f108e9f5c1e4d863", size = 14929888, upload-time = "2025-05-26T07:01:46.929Z" },
+]
+
+[[package]]
+name = "openinference-instrumentation"
+version = "0.1.34"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "openinference-semantic-conventions" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2e/18/d074b45b04ba69bd03260d2dc0a034e5d586d8854e957695f40569278136/openinference_instrumentation-0.1.34.tar.gz", hash = "sha256:fa0328e8b92fc3e22e150c46f108794946ce39fe13670aed15f23ba0105f72ab", size = 22373, upload-time = "2025-06-17T16:47:22.641Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/ad/1a0a5c0a755918269f71fbca225fd70759dd79dd5bffc4723e44f0d87240/openinference_instrumentation-0.1.34-py3-none-any.whl", hash = "sha256:0fff1cc6d9b86f3450fc1c88347c51c5467855992b75e7addb85bf09fd048d2d", size = 28137, upload-time = "2025-06-17T16:47:21.658Z" },
+]
+
+[[package]]
+name = "openinference-semantic-conventions"
+version = "0.1.21"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/0f/b794eb009846d4b10af50e205a323ca359f284563ef4d1778f35a80522ac/openinference_semantic_conventions-0.1.21.tar.gz", hash = "sha256:328405b9f79ff72a659c7712b8429c0d7ea68c6a4a1679e3eb44372aa228119b", size = 12534, upload-time = "2025-06-13T05:22:18.982Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/4d/092766f8e610f2c513e483c4adc892eea1634945022a73371fe01f621165/openinference_semantic_conventions-0.1.21-py3-none-any.whl", hash = "sha256:acde8282c20da1de900cdc0d6258a793ec3eb8031bfc496bd823dae17d32e326", size = 10167, upload-time = "2025-06-13T05:22:18.118Z" },
 ]
 
 [[package]]
@@ -5313,6 +5361,15 @@ wheels = [
 ]
 
 [[package]]
+name = "sseclient-py"
+version = "1.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/ed/3df5ab8bb0c12f86c28d0cadb11ed1de44a92ed35ce7ff4fd5518a809325/sseclient-py-1.8.0.tar.gz", hash = "sha256:c547c5c1a7633230a38dc599a21a2dc638f9b5c297286b48b46b935c71fac3e8", size = 7791, upload-time = "2023-09-01T19:39:20.45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/58/97655efdfeb5b4eeab85b1fc5d3fa1023661246c2ab2a26ea8e47402d4f2/sseclient_py-1.8.0-py2.py3-none-any.whl", hash = "sha256:4ecca6dc0b9f963f8384e9d7fd529bf93dd7d708144c4fb5da0e0a1a926fee83", size = 8828, upload-time = "2023-09-01T19:39:17.627Z" },
+]
+
+[[package]]
 name = "starlette"
 version = "0.41.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5382,12 +5439,11 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.1.0"
+version = "6.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "crc32c" },
-    { name = "enum34" },
     { name = "flatbuffers" },
     { name = "future" },
     { name = "numpy" },
@@ -5395,7 +5451,10 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/ed/5bdd906ec9d2dbae3909525dbb7602558c377e0cbcdddb6405d2d0d3f1af/tablestore-6.1.0.tar.gz", hash = "sha256:bfe6a3e0fe88a230729723c357f4a46b8869a06a4b936db20692ed587a721c1c", size = 135690, upload-time = "2024-12-20T07:38:37.428Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/58/48d65d181a69f7db19f7cdee01d252168fbfbad2d1bb25abed03e6df3b05/tablestore-6.2.0.tar.gz", hash = "sha256:0773e77c00542be1bfebbc3c7a85f72a881c63e4e7df7c5a9793a54144590e68", size = 85942, upload-time = "2025-04-15T12:11:20.655Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/da/30451712a769bcf417add8e81163d478a4d668b0e8d489a9d667260d55df/tablestore-6.2.0-py3-none-any.whl", hash = "sha256:6af496d841ab1ff3f78b46abbd87b95a08d89605c51664d2b30933b1d1c5583a", size = 106297, upload-time = "2025-04-15T12:11:17.476Z" },
+]
 
 [[package]]
 name = "tabulate"
