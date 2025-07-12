@@ -178,6 +178,11 @@ export default function AccountPage() {
           <div className='system-sm-regular flex-1 rounded-lg bg-components-input-bg-normal p-2 text-components-input-text-filled '>
             <span className='pl-1'>{userProfile.email}</span>
           </div>
+          {systemFeatures.enable_change_email && (
+            <div className='system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text' onClick={() => setShowUpdateEmail(true)}>
+              {t('common.operation.change')}
+            </div>
+          )}
           <div className='system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text' onClick={() => setShowUpdateEmail(true)}>
             {t('common.operation.change')}
           </div>
