@@ -26,6 +26,7 @@ export type SiteInfo = {
   custom_disclaimer?: string
   show_workflow_steps?: boolean
   use_icon_as_answer_icon?: boolean
+  always_new_chat?: boolean
 }
 
 export type AppMeta = {

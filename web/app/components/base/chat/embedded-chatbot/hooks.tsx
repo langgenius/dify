@@ -120,8 +120,12 @@ export const useEmbeddedChatbot = () => {
     defaultValue: {},
   })
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
-    [appId, conversationIdInfo, userId, conversationId])
+  const [userSelectedConversation, setUserSelectedConversation] = useState(false)
+  const currentConversationId = useMemo(() => {
+    if (appData?.site?.always_new_chat && !userSelectedConversation)
+      return ''
+    return conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || ''
+  }, [appId, conversationIdInfo, userId, conversationId, appData, userSelectedConversation])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']
@@ -161,7 +165,6 @@ export const useEmbeddedChatbot = () => {
   )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
-
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
@@ -354,6 +357,7 @@ export const useEmbeddedChatbot = () => {
   }, [setShowNewConversationItemInList, checkInputsRequired])
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: noop })
   const handleChangeConversation = useCallback((conversationId: string) => {
+    setUserSelectedConversation(!!conversationId)
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)

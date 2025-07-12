@@ -179,6 +179,10 @@ const translation = {
     description: 'Чи слід використовувати піктограму web app для заміни 🤖 у спільній програмі',
     descriptionInExplore: 'Чи використовувати піктограму веб-програми для заміни 🤖 в Огляді',
   },
+  alwaysNewChat: {
+    title: 'Завжди розпочинати новий чат',
+    description: 'Ігнорувати попередню розмову і відкривати новий чат, коли користувачі відвідують веб-додаток',
+  },
   importFromDSLUrl: 'З URL',
   importFromDSL: 'Імпорт з DSL',
   importFromDSLUrlPlaceholder: 'Вставте посилання на DSL тут',

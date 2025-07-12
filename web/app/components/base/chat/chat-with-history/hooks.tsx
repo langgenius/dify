@@ -142,7 +142,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
+  const [userSelectedConversation, setUserSelectedConversation] = useState(false)
+  const currentConversationId = useMemo(() => {
+    if (appData?.site?.always_new_chat && !userSelectedConversation)
+      return ''
+    return conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || ''
+  }, [appId, conversationIdInfo, userId, appData, userSelectedConversation])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']
@@ -373,6 +378,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [setShowNewConversationItemInList, checkInputsRequired])
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: noop })
   const handleChangeConversation = useCallback((conversationId: string) => {
+    setUserSelectedConversation(!!conversationId)
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
