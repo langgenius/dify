@@ -3,12 +3,9 @@ import io
 import json
 import secrets
 from datetime import datetime
-from typing import Optional
 
 import pyotp
 import qrcode
-from sqlalchemy import and_
-from sqlalchemy.orm import Session
 
 from models.account import Account, AccountMFASettings
 from models.engine import db

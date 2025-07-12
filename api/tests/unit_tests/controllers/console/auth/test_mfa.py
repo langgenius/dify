@@ -5,13 +5,7 @@ from unittest.mock import Mock, patch
 from flask import Flask
 from flask_restful import Api
 
-from controllers.console.auth.mfa import (
-    MFASetupInitApi,
-    MFASetupCompleteApi,
-    MFADisableApi,
-    MFAStatusApi,
-    MFAVerifyApi
-)
+from controllers.console.auth.mfa import MFADisableApi, MFASetupCompleteApi, MFASetupInitApi, MFAStatusApi, MFAVerifyApi
 from models.account import Account
 
 

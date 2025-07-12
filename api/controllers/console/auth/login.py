@@ -14,7 +14,6 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
-    MFARequiredError,
     MFATokenRequiredError,
 )
 from controllers.console.error import (

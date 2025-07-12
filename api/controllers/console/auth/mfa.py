@@ -1,12 +1,8 @@
 from typing import cast
 
 import flask_login
-from flask import request
 from flask_restful import Resource, reqparse
 
-from controllers.console.auth.error import (
-    TokenValidationError,
-)
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
 from models.account import Account

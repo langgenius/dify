@@ -1,13 +1,11 @@
 import json
 import unittest
 from unittest.mock import Mock, patch
-from datetime import datetime
 
 from flask import Flask
 from flask_restful import Api
 
 from controllers.console.auth.login import LoginApi
-from controllers.console.auth.error import MFARequiredError, MFATokenRequiredError
 from models.account import Account, AccountMFASettings
 
 
@@ -289,8 +287,8 @@ class TestMFAEndToEndFlow(unittest.TestCase):
     @patch('services.mfa_service.db.session')
     def test_complete_mfa_setup_flow(self, mock_session, mock_gen_codes, mock_verify, mock_gen_qr, mock_gen_secret):
         """Test complete MFA setup flow from init to completion."""
-        from services.mfa_service import MFAService
         from models.account import Account
+        from services.mfa_service import MFAService
         
         # Mock account
         account = Mock(spec=Account)
