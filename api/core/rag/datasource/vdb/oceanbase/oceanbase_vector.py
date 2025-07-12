@@ -1,10 +1,11 @@
 import json
 import logging
 import math
-from typing import Any
+from typing import Any, Optional
 
+from packaging import version
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient  # type: ignore
+from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -88,6 +89,7 @@ class OceanBaseVector(BaseVector):
             if len(vals) == 0:
                 raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
+                logger.info("ob_vector_memory_limit_percentage is 0, setting it to 30% for enabling vector indexing.")
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
                 except Exception as e:
@@ -112,21 +114,21 @@ class OceanBaseVector(BaseVector):
                 params=DEFAULT_OCEANBASE_HNSW_BUILD_PARAM,
             )
 
+            fts_idxs: Optional[list[FtsIndexParam]] = None
+            if self._hybrid_search_enabled:
+                fts_idxs = [
+                    FtsIndexParam(
+                        index_name="fulltext_index_for_col_text", field_names=["text"], parser_type=FtsParser.IK
+                    )
+                ]
+
             self._client.create_table_with_index_params(
                 table_name=self._collection_name,
                 columns=cols,
                 vidxs=vidx_params,
+                fts_idxs=fts_idxs,
             )
-            try:
-                if self._hybrid_search_enabled:
-                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name}
-                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
-            except Exception as e:
-                raise Exception(
-                    "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                    + "to support fulltext index and vector index in the same table",
-                    e,
-                )
+
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _check_hybrid_search_support(self) -> bool:
@@ -138,8 +140,6 @@ class OceanBaseVector(BaseVector):
             return False
 
         try:
-            from packaging import version
-
             # return OceanBase_CE 4.3.5.1 (r101000042025031818-bxxxx) (Built Mar 18 2025 18:13:36)
             result = self._client.perform_raw_text_sql("SELECT @@version_comment AS version")
             ob_full_version = result.fetchone()[0]
@@ -152,15 +152,20 @@ class OceanBaseVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
-        for id, doc, emb in zip(ids, documents, embeddings):
+
+        batch_size = 100
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i : i + batch_size]
+            batch_docs = documents[i : i + batch_size]
+            batch_embs = embeddings[i : i + batch_size]
+            batch_data = [
+                {"id": id, "vector": emb, "text": doc.page_content, "metadata": doc.metadata}
+                for id, doc, emb in zip(batch_ids, batch_docs, batch_embs)
+            ]
+
             self._client.insert(
                 table_name=self._collection_name,
-                data={
-                    "id": id,
-                    "vector": emb,
-                    "text": doc.page_content,
-                    "metadata": doc.metadata,
-                },
+                data=batch_data,
             )
 
     def text_exists(self, id: str) -> bool:
