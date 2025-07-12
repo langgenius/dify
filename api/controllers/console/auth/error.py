@@ -31,6 +31,12 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
 
+class EmailChangeRateLimitExceededError(BaseHTTPException):
+    error_code = "email_change_rate_limit_exceeded"
+    description = "Too many email change emails have been sent. Please try again in 1 minutes."
+    code = 429
+
+
 class EmailCodeError(BaseHTTPException):
     error_code = "email_code_error"
     description = "Email code is invalid or expired."
@@ -65,3 +71,15 @@ class EmailPasswordResetLimitError(BaseHTTPException):
     error_code = "email_password_reset_limit"
     description = "Too many failed password reset attempts. Please try again in 24 hours."
     code = 429
+
+
+class EmailChangeLimitError(BaseHTTPException):
+    error_code = "email_change_limit"
+    description = "Too many failed email change attempts. Please try again in 24 hours."
+    code = 429
+
+
+class EmailAlreadyInUseError(BaseHTTPException):
+    error_code = "email_already_in_use"
+    description = "A user with this email already exists."
+    code = 400
