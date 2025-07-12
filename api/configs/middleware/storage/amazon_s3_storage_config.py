@@ -43,3 +43,8 @@ class S3StorageConfig(BaseSettings):
         description="Use AWS managed IAM roles for authentication instead of access/secret keys",
         default=False,
     )
+    
+    S3_SIGNATURE_VERSION: str = Field(
+        description="S3 signature version: 'unsigned', 's3', 's3v4'",
+        default="s3",
+    )
