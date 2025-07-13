@@ -51,8 +51,8 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
   getVarType,
-  environmentVariables = [],
-  conversationVariables = [],
+  environmentVariables,
+  conversationVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -73,13 +73,17 @@ const WorkflowVariableBlockComponent = ({
   const isException = isExceptionVariable(varName, node?.type)
 
   let variableValid = true
-  if (isEnv)
-    variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-
-  else if (isChatVar)
-    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-
-  else variableValid = !!node
+  if (isEnv) {
+    if (environmentVariables)
+      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else if (isChatVar) {
+    if (conversationVariables)
+      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else {
+    variableValid = !!node
+  }
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
