@@ -67,9 +67,7 @@ class TestAccountService:
         assert account.status == AccountStatus.ACTIVE.value
 
         # Login with correct password
-        logged_in = AccountService.authenticate(
-            email, password
-        )
+        logged_in = AccountService.authenticate(email, password)
         assert logged_in.id == account.id
 
     def test_create_account_without_password(self, db_session_with_containers, mock_external_service_dependencies):
@@ -142,9 +140,7 @@ class TestAccountService:
         email = fake.email()
         password = fake.password(length=12)
         with pytest.raises(AccountNotFoundError):
-            AccountService.authenticate(
-                email, password
-            )
+            AccountService.authenticate(email, password)
 
     def test_authenticate_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -173,9 +169,7 @@ class TestAccountService:
         db.session.commit()
 
         with pytest.raises(AccountLoginError):
-            AccountService.authenticate(
-                email, password
-            )
+            AccountService.authenticate(email, password)
 
     def test_authenticate_wrong_password(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -199,9 +193,7 @@ class TestAccountService:
         )
 
         with pytest.raises(AccountPasswordError):
-            AccountService.authenticate(
-                email, wrong_password
-            )
+            AccountService.authenticate(email, wrong_password)
 
     def test_authenticate_with_invite_token(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -261,9 +253,7 @@ class TestAccountService:
         db.session.commit()
 
         # Authenticate should activate the account
-        authenticated_account = AccountService.authenticate(
-            email, password
-        )
+        authenticated_account = AccountService.authenticate(email, password)
         assert authenticated_account.status == AccountStatus.ACTIVE.value
         assert authenticated_account.initialized_at is not None
 
@@ -292,9 +282,7 @@ class TestAccountService:
         updated_account = AccountService.update_account_password(account, old_password, new_password)
 
         # Verify new password works
-        authenticated_account = AccountService.authenticate(
-            email, new_password
-        )
+        authenticated_account = AccountService.authenticate(email, new_password)
         assert authenticated_account.id == account.id
 
     def test_update_account_password_wrong_current_password(
@@ -735,9 +723,7 @@ class TestAccountService:
             password=password,
         )
         # Create associated Tenant
-        TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True
-        )
+        TenantService.create_owner_tenant_if_not_exist(account=account, name=tenant_name, is_setup=True)
 
         # Login to get initial tokens
         initial_token_pair = AccountService.login(account)
@@ -813,9 +799,7 @@ class TestAccountService:
             password=password,
         )
         # Create associated Tenant
-        TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True
-        )
+        TenantService.create_owner_tenant_if_not_exist(account=account, name=tenant_name, is_setup=True)
 
         # Load user
         loaded_user = AccountService.load_user(account.id)
@@ -917,9 +901,7 @@ class TestAccountService:
             password=password,
         )
         # Create associated Tenant
-        TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True
-        )
+        TenantService.create_owner_tenant_if_not_exist(account=account, name=tenant_name, is_setup=True)
 
         # Load logged in account
         loaded_account = AccountService.load_logged_in_account(account_id=account.id)
@@ -948,9 +930,7 @@ class TestAccountService:
         )
 
         # Get user through email
-        found_user = AccountService.get_user_through_email(
-            email
-        )
+        found_user = AccountService.get_user_through_email(email)
 
         assert found_user is not None
         assert found_user.id == account.id
@@ -961,9 +941,7 @@ class TestAccountService:
         """
         fake = Faker()
         non_existent_email = fake.email()
-        found_user = AccountService.get_user_through_email(
-            non_existent_email
-        )
+        found_user = AccountService.get_user_through_email(non_existent_email)
         assert found_user is None
 
     def test_get_user_through_email_banned_account(
@@ -995,9 +973,7 @@ class TestAccountService:
         db.session.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
-            AccountService.get_user_through_email(
-                email
-            )
+            AccountService.get_user_through_email(email)
 
     def test_get_user_through_email_in_freeze(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -1010,9 +986,7 @@ class TestAccountService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
 
         with pytest.raises(AccountRegisterError):
-            AccountService.get_user_through_email(
-                email_in_freeze
-            )
+            AccountService.get_user_through_email(email_in_freeze)
 
         # Reset config
         dify_config.BILLING_ENABLED = False
@@ -1109,7 +1083,7 @@ class TestAccountService:
         email = fake.email()
         name = fake.name()
         password = fake.password(length=12)
-        wrong_code = fake.numerify(text='######')
+        wrong_code = fake.numerify(text="######")
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1137,7 +1111,7 @@ class TestAccountService:
         """
         fake = Faker()
         invalid_token = fake.uuid4()
-        invalid_code = fake.numerify(text='######')
+        invalid_code = fake.numerify(text="######")
         is_valid = AccountService.verify_account_deletion_code(invalid_token, invalid_code)
         assert is_valid is False
 
@@ -2302,10 +2276,7 @@ class TestTenantService:
         dataset_operators = TenantService.get_dataset_operator_members(tenant)
 
         assert len(dataset_operators) == 1
-        assert (
-            dataset_operators[0].email
-            == operator_email
-        )
+        assert dataset_operators[0].email == operator_email
         assert dataset_operators[0].role == "dataset_operator"
 
     def test_get_custom_config_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -3237,6 +3208,7 @@ class TestRegisterService:
         }
         token_key = RegisterService._get_invitation_token_key(token)
         import json
+
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
@@ -3344,6 +3316,7 @@ class TestRegisterService:
         }
         token_key = RegisterService._get_invitation_token_key(token)
         import json
+
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
@@ -3414,8 +3387,10 @@ class TestRegisterService:
 
         # Store invitation data in Redis using standard token key
         from extensions.ext_redis import redis_client
+
         token_key = RegisterService._get_invitation_token_key(token)
         import json
+
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
