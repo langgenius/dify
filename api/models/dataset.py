@@ -965,7 +965,7 @@ class TidbAuthBinding(Base):
     cluster_id = db.Column(db.String(255), nullable=False)
     cluster_name = db.Column(db.String(255), nullable=False)
     active = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("CREATING"))
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'CREATING'::character varying"))
     account = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
