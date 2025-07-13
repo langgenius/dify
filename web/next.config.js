@@ -63,6 +63,26 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/console/api/:path*',
+        destination: 'http://api:5001/console/api/:path*',
+      },
+      {
+        source: '/api/:path*',
+        destination: 'http://api:5001/api/:path*',
+      },
+      {
+        source: '/v1/:path*',
+        destination: 'http://api:5001/v1/:path*',
+      },
+      {
+        source: '/files/:path*',
+        destination: 'http://api:5001/files/:path*',
+      },
+    ]
+  },
   output: 'standalone',
 }
 
