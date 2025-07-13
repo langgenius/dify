@@ -839,14 +839,6 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
             )
         )
 
-
-# tool oauth
-api.add_resource(ToolPluginOAuthApi, "/oauth/plugin/<path:provider>/tool/authorization-url")
-api.add_resource(ToolOAuthCallback, "/oauth/plugin/<path:provider>/tool/callback")
-
-api.add_resource(ToolOAuthCustomClient, "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
-
-
 class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
@@ -1009,6 +1001,11 @@ class ToolMCPCallbackApi(Resource):
 
 # tool provider
 api.add_resource(ToolProviderListApi, "/workspaces/current/tool-providers")
+
+# tool oauth
+api.add_resource(ToolPluginOAuthApi, "/oauth/plugin/<path:provider>/tool/authorization-url")
+api.add_resource(ToolOAuthCallback, "/oauth/plugin/<path:provider>/tool/callback")
+api.add_resource(ToolOAuthCustomClient, "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 
 # builtin tool provider
 api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/tools")

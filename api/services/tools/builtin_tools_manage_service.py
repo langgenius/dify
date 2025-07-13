@@ -7,7 +7,7 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from constants import HIDDEN_VALUE
+from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
 from core.plugin.entities.plugin import ToolProviderID
@@ -156,7 +156,7 @@ class BuiltinToolManageService:
 
                     original_credentials = encrypter.decrypt(db_provider.credentials)
                     new_credentials: dict = {
-                        key: value if value != HIDDEN_VALUE else original_credentials.get(key, HIDDEN_VALUE)
+                        key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
                         for key, value in credentials.items()
                     }
 
@@ -683,7 +683,12 @@ class BuiltinToolManageService:
                     config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                     cache=NoOpProviderCredentialCache(),
                 )
-                custom_client_params.encrypted_oauth_params = json.dumps(encrypter.encrypt(client_params))
+                original_params = encrypter.decrypt(custom_client_params.oauth_params)
+                new_params: dict = {
+                    key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
+                    for key, value in client_params.items()
+                }
+                custom_client_params.encrypted_oauth_params = json.dumps(encrypter.encrypt(new_params))
 
             if enable_oauth_custom_client is not None:
                 custom_client_params.enabled = enable_oauth_custom_client
