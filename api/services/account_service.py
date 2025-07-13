@@ -853,8 +853,8 @@ class TenantService:
     @staticmethod
     def dissolve_tenant(tenant: Tenant, operator: Account) -> None:
         """Dissolve tenant"""
-        if not TenantService.check_member_permission(tenant, operator, operator, "remove"):
-            raise NoPermissionError("No permission to dissolve tenant.")
+        TenantService.check_member_permission(tenant, operator, None, "remove")
+
         db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
         db.session.delete(tenant)
         db.session.commit()
