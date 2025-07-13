@@ -77,7 +77,7 @@ class DifyTestContainers:
         # PostgreSQL is used for storing user data, workflows, and application state
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
-            image="postgres:16-alpine",
+            image="postgres:latest",
         )
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
