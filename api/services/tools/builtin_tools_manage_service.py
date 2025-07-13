@@ -169,7 +169,7 @@ class BuiltinToolManageService:
                     cache.delete()
 
                 # update name if provided
-                if name:
+                if name and name != db_provider.name:
                     # check if the name is already used
                     if (
                         session.query(BuiltinToolProvider)
