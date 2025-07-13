@@ -51,7 +51,7 @@ class File(BaseModel):
     # It should be set to `ToolFile.id` when `transfer_method` is `tool_file`.
     related_id: Optional[str] = None
     filename: Optional[str] = None
-    extension: Optional[str] = Field(default=None, description="File extension, should contains dot")
+    extension: Optional[str] = Field(default=None, description="File extension, should contain dot")
     mime_type: Optional[str] = None
     size: int = -1
 

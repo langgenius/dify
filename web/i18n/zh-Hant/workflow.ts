@@ -129,6 +129,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '環境值',
       secretTip: '用於定義敏感信息或數據，DSL 設置配置為防止洩露。',
+      description: '描述',
+      descriptionPlaceholder: '描述此變數',
     },
     export: {
       title: '導出機密環境變數？',
@@ -362,6 +364,7 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}}重試',
       },
+      typeSwitch: {},
     },
     start: {
       required: '必填',
@@ -537,6 +540,10 @@ const translation = {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
       },
+      verifySSL: {
+        title: '驗證 SSL 證書',
+        warningTooltip: '不建議在生產環境中禁用SSL驗證。這僅應用於開發或測試，因為這樣會使連接容易受到中間人攻擊等安全威脅的威脅。',
+      },
     },
     code: {
       inputVars: '輸入變量',
@@ -670,6 +677,7 @@ const translation = {
       inputVars: '輸入變量',
       outputVars: {
         className: '分類名稱',
+        usage: '模型用量信息',
       },
       class: '分類',
       classNamePlaceholder: '輸入你的分類名稱',
@@ -683,6 +691,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '輸入變量',
+      outputVars: {
+        isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
+        errorReason: '錯誤原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取參數',
       importFromTool: '從工具導入',
       addExtractParameter: '添加提取參數',
@@ -702,8 +715,6 @@ const translation = {
       advancedSetting: '高級設置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根據模型對於 Function calling 或 Prompt 的指令響應能力選擇合適的推理模式',
-      isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
-      errorReason: '錯誤原因',
     },
     iteration: {
       deleteTitle: '刪除迭代節點？',

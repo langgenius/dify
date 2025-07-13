@@ -145,7 +145,11 @@ class QuestionClassifierNode(LLMNode):
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
-            outputs = {"class_name": category_name, "class_id": category_id}
+            outputs = {
+                "class_name": category_name,
+                "class_id": category_id,
+                "usage": jsonable_encoder(usage),
+            }
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
