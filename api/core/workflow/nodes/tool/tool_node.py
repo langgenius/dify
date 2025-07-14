@@ -1,12 +1,11 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -19,7 +18,6 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.event import AgentLogEvent
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
@@ -132,6 +130,9 @@ class ToolNode(BaseNode):
                 messages=message_stream,
                 tool_info=tool_info,
                 parameters_for_log=parameters_for_log,
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                node_id=self.node_id,
             )
         except (PluginDaemonClientSideError, ToolInvokeError) as e:
             yield RunCompletedEvent(
@@ -199,7 +200,9 @@ class ToolNode(BaseNode):
         messages: Generator[ToolInvokeMessage, None, None],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
-        agent_thoughts: Optional[list] = None,
+        user_id: str,
+        tenant_id: str,
+        node_id: str,
     ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -207,8 +210,8 @@ class ToolNode(BaseNode):
         # transform message and handle file storage
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
+            user_id=user_id,
+            tenant_id=tenant_id,
             conversation_id=None,
         )
 
@@ -216,9 +219,6 @@ class ToolNode(BaseNode):
         files: list[File] = []
         json: list[dict] = []
 
-        agent_logs: list[AgentLogEvent] = []
-        agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
-        llm_usage: LLMUsage | None = None
         variables: dict[str, Any] = {}
 
         for message in message_stream:
@@ -251,7 +251,7 @@ class ToolNode(BaseNode):
                 }
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
-                    tenant_id=self.tenant_id,
+                    tenant_id=tenant_id,
                 )
                 files.append(file)
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
@@ -274,45 +274,36 @@ class ToolNode(BaseNode):
                 files.append(
                     file_factory.build_from_mapping(
                         mapping=mapping,
-                        tenant_id=self.tenant_id,
+                        tenant_id=tenant_id,
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 text += message.message.text
-                yield RunStreamChunkEvent(
-                    chunk_content=message.message.text, from_variable_selector=[self.node_id, "text"]
-                )
+                yield RunStreamChunkEvent(chunk_content=message.message.text, from_variable_selector=[node_id, "text"])
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
-                if self.node_type == NodeType.AGENT:
-                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
-                    llm_usage = LLMUsage.from_metadata(msg_metadata)
-                    agent_execution_metadata = {
-                        WorkflowNodeExecutionMetadataKey(key): value
-                        for key, value in msg_metadata.items()
-                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
-                    }
+                # JSON message handling for tool node
                 if message.message.json_object is not None:
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
-                yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[self.node_id, "text"])
+                yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[node_id, "text"])
             elif message.type == ToolInvokeMessage.MessageType.VARIABLE:
                 assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
                 variable_name = message.message.variable_name
                 variable_value = message.message.variable_value
                 if message.message.stream:
                     if not isinstance(variable_value, str):
-                        raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                        raise ToolNodeError("When 'stream' is True, 'variable_value' must be a string.")
                     if variable_name not in variables:
                         variables[variable_name] = ""
                     variables[variable_name] += variable_value
 
                     yield RunStreamChunkEvent(
-                        chunk_content=variable_value, from_variable_selector=[self.node_id, variable_name]
+                        chunk_content=variable_value, from_variable_selector=[node_id, variable_name]
                     )
                 else:
                     variables[variable_name] = variable_value
@@ -327,7 +318,7 @@ class ToolNode(BaseNode):
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
                         manager = PluginInstaller()
-                        plugins = manager.list_plugins(self.tenant_id)
+                        plugins = manager.list_plugins(tenant_id)
                         try:
                             current_plugin = next(
                                 plugin
@@ -342,8 +333,8 @@ class ToolNode(BaseNode):
                             builtin_tool = next(
                                 provider
                                 for provider in BuiltinToolManageService.list_builtin_tools(
-                                    self.user_id,
-                                    self.tenant_id,
+                                    user_id,
+                                    tenant_id,
                                 )
                                 if provider.name == dict_metadata["provider"]
                             )
@@ -355,57 +346,10 @@ class ToolNode(BaseNode):
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata
-                agent_log = AgentLogEvent(
-                    id=message.message.id,
-                    node_execution_id=self.id,
-                    parent_id=message.message.parent_id,
-                    error=message.message.error,
-                    status=message.message.status.value,
-                    data=message.message.data,
-                    label=message.message.label,
-                    metadata=message.message.metadata,
-                    node_id=self.node_id,
-                )
-
-                # check if the agent log is already in the list
-                for log in agent_logs:
-                    if log.id == agent_log.id:
-                        # update the log
-                        log.data = agent_log.data
-                        log.status = agent_log.status
-                        log.error = agent_log.error
-                        log.label = agent_log.label
-                        log.metadata = agent_log.metadata
-                        break
-                else:
-                    agent_logs.append(agent_log)
-
-                yield agent_log
-            elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES:
-                assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
-                yield RunRetrieverResourceEvent(
-                    retriever_resources=message.message.retriever_resources,
-                    context=message.message.context,
-                )
 
         # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
         json_output: list[dict[str, Any]] = []
 
-        # Step 1: append each agent log as its own dict.
-        if agent_logs:
-            for log in agent_logs:
-                json_output.append(
-                    {
-                        "id": log.id,
-                        "parent_id": log.parent_id,
-                        "error": log.error,
-                        "status": log.status,
-                        "data": log.data,
-                        "label": log.label,
-                        "metadata": log.metadata,
-                        "node_id": log.node_id,
-                    }
-                )
         # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
         if json:
             json_output.extend(json)
@@ -417,12 +361,9 @@ class ToolNode(BaseNode):
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
                 metadata={
-                    **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
-                    WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
-                llm_usage=llm_usage,
             )
         )
 
