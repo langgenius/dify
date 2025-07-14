@@ -15,6 +15,9 @@ import {
   usePipelineStartRun,
 } from '../hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useConfigsMap } from '../hooks/use-configs-map'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const RagPipelineMain = ({
@@ -62,6 +65,27 @@ const RagPipelineMain = ({
     handleExportDSL,
   } = useDSL()
 
+  const configsMap = useConfigsMap()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    ...configsMap,
+  })
+  const {
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
+    } = useInspectVarsCrud()
+
   const hooksStore = useMemo(() => {
     return {
       availableNodesMetaData,
@@ -78,6 +102,22 @@ const RagPipelineMain = ({
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      fetchInspectVars,
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
+      configsMap,
     }
   }, [
     availableNodesMetaData,
@@ -94,6 +134,22 @@ const RagPipelineMain = ({
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    fetchInspectVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+    configsMap,
   ])
 
   return (

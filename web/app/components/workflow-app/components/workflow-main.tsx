@@ -73,8 +73,10 @@ const WorkflowMain = ({
     exportCheck,
     handleExportDSL,
   } = useDSL()
+
+  const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...useConfigsMap(),
+    ...configsMap,
   })
   const {
     hasNodeInspectVars,
@@ -92,7 +94,6 @@ const WorkflowMain = ({
     resetConversationVar,
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
-  const configsMap = useConfigsMap()
 
   const hooksStore = useMemo(() => {
     return {
