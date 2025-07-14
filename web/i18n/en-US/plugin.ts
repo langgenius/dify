@@ -114,6 +114,56 @@ const translation = {
     admins: 'Admins',
     noone: 'No one',
   },
+  autoUpdate: {
+    automaticUpdates: 'Automatic updates',
+    updateTime: 'Update time',
+    specifyPluginsToUpdate: 'Specify plugins to update',
+    strategy: {
+      disabled: {
+        name: 'Disabled',
+        description: 'Plugins will not auto-update',
+      },
+      fixOnly: {
+        name: 'Fix Only',
+        description: 'Auto-update for patch versions only (e.g., 1.0.1 → 1.0.2). Minor version changes won\'t trigger updates.',
+        selectedDescription: 'Auto-update for patch versions only',
+      },
+      latest: {
+        name: 'Latest',
+        description: 'Always update to latest version',
+        selectedDescription: 'Always update to latest version',
+      },
+    },
+    updateTimeTitle: 'Update time',
+    upgradeMode: {
+      all: 'Update all',
+      exclude: 'Exclude selected',
+      partial: 'Only selected',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Selected plugins will not auto-update',
+      partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
+    },
+    excludeUpdate: 'The following {{num}} plugins will not auto-update',
+    partialUPdate: 'Only the following {{num}} plugins will auto-update',
+    operation: {
+      clearAll: 'Clear all',
+      select: 'Select plugins',
+    },
+    nextUpdateTime: 'Next auto-update: {{time}}',
+    pluginDowngradeWarning: {
+      title: 'Plugin Downgrade',
+      description: 'Auto-update is currently enabled for this plugin. Downgrading the version may cause your changes to be overwritten during the next automatic update.',
+      downgrade: 'Downgrade anyway',
+      exclude: 'Exclude from auto-update',
+    },
+    noPluginPlaceholder: {
+      noFound: 'No plugins were found',
+      noInstalled: 'No plugins installed',
+    },
+    updateSettings: 'Update Settings',
+    changeTimezone: 'To change time zone, go to <setTimezone>Settings</setTimezone>',
+  },
   pluginInfoModal: {
     title: 'Plugin info',
     repository: 'Repository',
@@ -214,6 +264,29 @@ const translation = {
   requestAPlugin: 'Request a plugin',
   publishPlugins: 'Publish plugins',
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
+  auth: {
+    default: 'Default',
+    custom: 'Custom',
+    setDefault: 'Set as default',
+    useOAuth: 'Use OAuth',
+    useOAuthAuth: 'Use OAuth Authorization',
+    addOAuth: 'Add OAuth',
+    setupOAuth: 'Setup OAuth Client',
+    useApi: 'Use API Key',
+    addApi: 'Add API Key',
+    useApiAuth: 'API Key Authorization Configuration',
+    useApiAuthDesc: 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.',
+    oauthClientSettings: 'OAuth Client Settings',
+    saveOnly: 'Save only',
+    saveAndAuth: 'Save and Authorize',
+    authorization: 'Authorization',
+    authorizations: 'Authorizations',
+    authorizationName: 'Authorization Name',
+    workspaceDefault: 'Workspace Default',
+    authRemoved: 'Auth removed',
+    clientInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
+    oauthClient: 'OAuth Client',
+  },
 }
 
 export default translation

@@ -8,11 +8,11 @@ import Link from 'next/link'
 import Toast from '../../base/toast'
 import Item from './app-nav-item'
 import cn from '@/utils/classnames'
-import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus } from '@/service/explore'
 import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="current" xmlns="http://www.w3.org/2000/svg">
@@ -50,15 +50,13 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
   const isChatSelected = lastSegment === 'chat'
-  const { installedApps, setInstalledApps } = useContext(ExploreContext)
+  const { installedApps, setInstalledApps, setIsFetchingInstalledApps } = useContext(ExploreContext)
+  const { isFetching: isFetchingInstalledApps, data: ret, refetch: fetchInstalledAppList } = useGetInstalledApps()
+  const { mutateAsync: uninstallApp } = useUninstallApp()
+  const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-
-  const fetchInstalledAppList = async () => {
-    const { installed_apps }: any = await doFetchInstalledAppList()
-    setInstalledApps(installed_apps)
-  }
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
@@ -70,25 +68,31 @@ const SideBar: FC<IExploreSideBarProps> = ({
       type: 'success',
       message: t('common.api.remove'),
     })
-    fetchInstalledAppList()
   }
 
   const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
-    await updatePinStatus(id, isPinned)
+    await updatePinStatus({ appId: id, isPinned })
     Toast.notify({
       type: 'success',
       message: t('common.api.success'),
     })
-    fetchInstalledAppList()
   }
 
   useEffect(() => {
-    fetchInstalledAppList()
-  }, [])
+    const installed_apps = (ret as any)?.installed_apps
+    if (installed_apps && installed_apps.length > 0)
+      setInstalledApps(installed_apps)
+    else
+      setInstalledApps([])
+  }, [ret, setInstalledApps])
+
+  useEffect(() => {
+    setIsFetchingInstalledApps(isFetchingInstalledApps)
+  }, [isFetchingInstalledApps, setIsFetchingInstalledApps])
 
   useEffect(() => {
     fetchInstalledAppList()
-  }, [controlUpdateInstalledApps])
+  }, [controlUpdateInstalledApps, fetchInstalledAppList])
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (

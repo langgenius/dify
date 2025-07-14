@@ -470,8 +470,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               className="py-4"
               id="scrollableDiv"
               style={{
-                height: 1000, // Specify a value
-                overflow: 'auto',
                 display: 'flex',
                 flexDirection: 'column-reverse',
               }}>

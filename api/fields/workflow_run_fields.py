@@ -116,3 +116,9 @@ workflow_run_node_execution_fields = {
 workflow_run_node_execution_list_fields = {
     "data": fields.List(fields.Nested(workflow_run_node_execution_fields)),
 }
+
+workflow_node_ai_modify_fields = {
+    "message": fields.String,
+    "modified": fields.String,
+    "error": fields.String,
+}
