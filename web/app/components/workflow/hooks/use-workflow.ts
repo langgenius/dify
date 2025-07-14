@@ -550,32 +550,6 @@ export const useNodesReadOnly = () => {
   }
 }
 
-export const useToolIcon = (data: Node['data']) => {
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
-
-  const toolIcon = useMemo(() => {
-    if (!data)
-      return ''
-    if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
-      if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
-      else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
-      else if (data.provider_type === CollectionType.mcp)
-        targetTools = mcpTools
-      else
-        targetTools = workflowTools
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
-    }
-  }, [data, buildInTools, customTools, mcpTools, workflowTools])
-
-  return toolIcon
-}
-
 export const useIsNodeInIteration = (iterationId: string) => {
   const store = useStoreApi()
 
