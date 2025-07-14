@@ -183,9 +183,6 @@ export default function AccountPage() {
               {t('common.operation.change')}
             </div>
           )}
-          <div className='system-sm-medium cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 text-components-button-tertiary-text' onClick={() => setShowUpdateEmail(true)}>
-            {t('common.operation.change')}
-          </div>
         </div>
       </div>
       {
