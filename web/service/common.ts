@@ -390,7 +390,7 @@ export const sendVerifyCode = (body: { email: string; phase: string; token?: str
   post<CommonResponse & { data: string }>('/account/change-email', { body })
 
 export const verifyEmail = (body: { email: string; code: string; token: string }) =>
-  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/account/validity', { body })
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/account/change-email/validity', { body })
 
 export const resetEmail = (body: { new_email: string; token: string }) =>
   post<CommonResponse>('/account/change-email/reset', { body })
