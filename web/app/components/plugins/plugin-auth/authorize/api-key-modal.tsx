@@ -3,6 +3,7 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiExternalLinkLine } from '@remixicon/react'
@@ -39,6 +40,12 @@ const ApiKeyModal = ({
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const [doingAction, setDoingAction] = useState(false)
+  const doingActionRef = useRef(doingAction)
+  const handleSetDoingAction = useCallback((value: boolean) => {
+    doingActionRef.current = value
+    setDoingAction(value)
+  }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
   const formSchemas = useMemo(() => {
     return [
@@ -63,6 +70,8 @@ const ApiKeyModal = ({
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
+    if (doingActionRef.current)
+      return
     const {
       isCheckValidated,
       values,
@@ -73,34 +82,40 @@ const ApiKeyModal = ({
     if (!isCheckValidated)
       return
 
-    const {
-      __name__,
-      __credential_id__,
-      ...restValues
-    } = values
+    try {
+      const {
+        __name__,
+        __credential_id__,
+        ...restValues
+      } = values
 
-    if (editValues) {
-      await updatePluginCredential({
-        credentials: restValues,
-        credential_id: __credential_id__,
-        name: __name__ || '',
+      handleSetDoingAction(true)
+      if (editValues) {
+        await updatePluginCredential({
+          credentials: restValues,
+          credential_id: __credential_id__,
+          name: __name__ || '',
+        })
+      }
+      else {
+        await addPluginCredential({
+          credentials: restValues,
+          type: CredentialTypeEnum.API_KEY,
+          name: __name__ || '',
+        })
+      }
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
       })
-    }
-    else {
-      await addPluginCredential({
-        credentials: restValues,
-        type: CredentialTypeEnum.API_KEY,
-        name: __name__ || '',
-      })
-    }
-    notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
 
-    onClose?.()
-    invalidatePluginCredentialInfo()
-  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues])
+      onClose?.()
+      invalidatePluginCredentialInfo()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
 
   return (
     <Modal
@@ -138,7 +153,7 @@ const ApiKeyModal = ({
       onConfirm={handleConfirm}
       showExtraButton={!!editValues}
       onExtraButtonClick={onRemove}
-      disabled={disabled}
+      disabled={disabled || isLoading || doingAction}
     >
       {
         isLoading && (

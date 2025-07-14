@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useRef,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal/modal'
@@ -35,6 +36,12 @@ const OAuthClientSettings = ({
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const [doingAction, setDoingAction] = useState(false)
+  const doingActionRef = useRef(doingAction)
+  const handleSetDoingAction = useCallback((value: boolean) => {
+    doingActionRef.current = value
+    setDoingAction(value)
+  }, [])
   const defaultValues = schemas.reduce((acc, schema) => {
     if (schema.default)
       acc[schema.name] = schema.default
@@ -44,6 +51,8 @@ const OAuthClientSettings = ({
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
+    if (doingActionRef.current)
+      return
     const {
       isCheckValidated,
       values,
@@ -53,23 +62,30 @@ const OAuthClientSettings = ({
     }) || { isCheckValidated: false, values: {} }
     if (!isCheckValidated)
       return
-    const {
-      __oauth_client__,
-      ...restValues
-    } = values
 
-    await setPluginOAuthCustomClient({
-      client_params: restValues,
-      enable_oauth_custom_client: __oauth_client__ === 'custom',
-    })
-    notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
+    try {
+      const {
+        __oauth_client__,
+        ...restValues
+      } = values
 
-    onClose?.()
-    invalidatePluginCredentialInfo()
-  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t])
+      handleSetDoingAction(true)
+      await setPluginOAuthCustomClient({
+        client_params: restValues,
+        enable_oauth_custom_client: __oauth_client__ === 'custom',
+      })
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+
+      onClose?.()
+      invalidatePluginCredentialInfo()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()
@@ -88,6 +104,7 @@ const OAuthClientSettings = ({
       onClose={onClose}
       onCancel={handleConfirm}
       onConfirm={handleConfirmAndAuthorize}
+      disabled={disabled || doingAction}
     >
       <AuthForm
         ref={formRef}

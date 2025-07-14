@@ -7,7 +7,6 @@ export const useCheckValidated = (form: AnyFormApi) => {
 
   const checkValidated = useCallback(() => {
     const allError = form?.getAllErrors()
-    console.log('allError', allError)
 
     if (allError) {
       const fields = allError.fields
