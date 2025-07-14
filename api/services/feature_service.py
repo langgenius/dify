@@ -230,7 +230,6 @@ class FeatureService:
 
         if features.billing.subscription.plan != "sandbox":
             features.webapp_copyright_enabled = True
-            features.is_allow_transfer_workspace = True
         else:
             features.is_allow_transfer_workspace = False
 
