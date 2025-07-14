@@ -50,11 +50,11 @@ const DataSources = ({
       >
         <Tools
           className={toolContentClassName}
-          showWorkflowEmpty={false}
           tools={dataSources}
           onSelect={handleSelect as OnSelectBlock}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}
+          canNotSelectMultiple
         />
       </div>
     </div>
