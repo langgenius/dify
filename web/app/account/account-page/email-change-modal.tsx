@@ -189,7 +189,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   }
 
   const submitNewEmail = async () => {
-    await verifyEmailAddress(email, code, stepToken, () => updateEmail())
+    await verifyEmailAddress(mail, code, stepToken, () => updateEmail())
   }
 
   return (
