@@ -1,10 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
+import { v4 as uuid4 } from 'uuid'
+import { ReactSortable } from 'react-sortablejs'
+import { RiDraggable } from '@remixicon/react'
+import cn from '@/utils/classnames'
+
 type Props = {
   readonly: boolean
   list: InputVar[]
@@ -44,6 +49,16 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
+  const listWithIds = useMemo(() => list.map((item) => {
+    const id = uuid4()
+    return {
+      id,
+      variable: { ...item },
+    }
+  }), [list])
+
+  const varCount = list.length
+
   if (list.length === 0) {
     return (
       <div className='flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary'>
@@ -53,18 +68,39 @@ const VarList: FC<Props> = ({
   }
 
   return (
-    <div className='space-y-1'>
-      {list.map((item, index) => (
-        <VarItem
-          key={index}
-          readonly={readonly}
-          payload={item}
-          onChange={handleVarChange(index)}
-          onRemove={handleVarRemove(index)}
-          varKeys={list.map(item => item.variable)}
-        />
-      ))}
-    </div>
+    <ReactSortable
+      className='space-y-1'
+      list={listWithIds}
+      setList={(list) => { onChange(list.map(item => item.variable)) }}
+      handle='.handle'
+      ghostClass='opacity-50'
+      animation={150}
+    >
+      {list.map((item, index) => {
+        const canDrag = (() => {
+          if (readonly)
+            return false
+          return varCount > 1
+        })()
+        return (
+          <div key={index} className='group relative'>
+            <VarItem
+              className={cn(canDrag && 'handle')}
+              readonly={readonly}
+              payload={item}
+              onChange={handleVarChange(index)}
+              onRemove={handleVarRemove(index)}
+              varKeys={list.map(item => item.variable)}
+              canDrag={canDrag}
+            />
+            {canDrag && <RiDraggable className={cn(
+              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'group-hover:block',
+            )} />}
+          </div>
+        )
+      })}
+    </ReactSortable>
   )
 }
 export default React.memo(VarList)

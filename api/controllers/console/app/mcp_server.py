@@ -90,7 +90,12 @@ class AppMCPServerRefreshController(Resource):
     def get(self, server_id):
         if not current_user.is_editor:
             raise NotFound()
-        server = db.session.query(AppMCPServer).filter(AppMCPServer.id == server_id).first()
+        server = (
+            db.session.query(AppMCPServer)
+            .filter(AppMCPServer.id == server_id)
+            .filter(AppMCPServer.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not server:
             raise NotFound()
         server.server_code = AppMCPServer.generate_server_code(16)

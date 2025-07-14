@@ -684,9 +684,16 @@ class ToolManager:
         if provider is None:
             raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
+        auth_type = ApiProviderAuthType.NONE
+        provider_auth_type = provider.credentials.get("auth_type")
+        if provider_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+            auth_type = ApiProviderAuthType.API_KEY_HEADER
+        elif provider_auth_type == "api_key_query":
+            auth_type = ApiProviderAuthType.API_KEY_QUERY
+
         controller = ApiToolProviderController.from_db(
             provider,
-            ApiProviderAuthType.API_KEY if provider.credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
+            auth_type,
         )
         controller.load_bundled_tools(provider.tools)
 
@@ -745,9 +752,16 @@ class ToolManager:
             credentials = {}
 
         # package tool provider controller
+        auth_type = ApiProviderAuthType.NONE
+        credentials_auth_type = credentials.get("auth_type")
+        if credentials_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+            auth_type = ApiProviderAuthType.API_KEY_HEADER
+        elif credentials_auth_type == "api_key_query":
+            auth_type = ApiProviderAuthType.API_KEY_QUERY
+
         controller = ApiToolProviderController.from_db(
             provider_obj,
-            ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
+            auth_type,
         )
         # init tool configuration
         tool_configuration = ProviderConfigEncrypter(
