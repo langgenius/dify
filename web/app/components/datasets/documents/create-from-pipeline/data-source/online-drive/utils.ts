@@ -9,7 +9,7 @@ export const isFile = (path: string): boolean => {
 
 export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[], bucket: string): boolean => {
   if (bucket || prefix.length > 0) return false
-  return data.length > 1 || (data.length === 1 && data[0].files.length === 0)
+  return data.length > 1 || (data.length === 1 && !!data[0].bucket && data[0].files.length === 0)
 }
 
 export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[], bucket: string): { fileList: OnlineDriveFile[], isTruncated: boolean } => {
