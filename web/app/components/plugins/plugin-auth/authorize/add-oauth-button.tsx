@@ -51,7 +51,7 @@ const AddOAuthButton = ({
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
-  const { data } = useGetPluginOAuthClientSchemaHook(pluginPayload)
+  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
   const {
     schema = [],
     is_oauth_custom_client_enabled,
@@ -214,7 +214,7 @@ const AddOAuthButton = ({
           <OAuthClientSettings
             pluginPayload={pluginPayload}
             onClose={() => setIsOAuthSettingsOpen(false)}
-            disabled={disabled}
+            disabled={disabled || isLoading}
             schemas={memorizedSchemas}
             onAuth={handleOAuth}
             editValues={client_params}

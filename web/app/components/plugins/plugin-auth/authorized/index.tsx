@@ -98,21 +98,34 @@ const Authorized = ({
     setDeleteCredentialId(null)
     pendingOperationCredentialId.current = null
   }, [])
+  const [doingAction, setDoingAction] = useState(false)
+  const doingActionRef = useRef(doingAction)
+  const handleSetDoingAction = useCallback((doing: boolean) => {
+    doingActionRef.current = doing
+    setDoingAction(doing)
+  }, [])
   const handleConfirm = useCallback(async () => {
+    if (doingActionRef.current)
+      return
     if (!pendingOperationCredentialId.current) {
       setDeleteCredentialId(null)
       return
     }
-
-    await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
-    notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    invalidatePluginCredentialInfo()
-    setDeleteCredentialId(null)
-    pendingOperationCredentialId.current = null
-  }, [deletePluginCredential, invalidatePluginCredentialInfo, notify, t])
+    try {
+      handleSetDoingAction(true)
+      await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      invalidatePluginCredentialInfo()
+      setDeleteCredentialId(null)
+      pendingOperationCredentialId.current = null
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [deletePluginCredential, invalidatePluginCredentialInfo, notify, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
@@ -123,24 +136,41 @@ const Authorized = ({
   }, [])
   const { mutateAsync: setPluginDefaultCredential } = useSetPluginDefaultCredentialHook(pluginPayload)
   const handleSetDefault = useCallback(async (id: string) => {
-    await setPluginDefaultCredential(id)
-    notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    invalidatePluginCredentialInfo()
-  }, [setPluginDefaultCredential, invalidatePluginCredentialInfo, notify, t])
+    if (doingActionRef.current)
+      return
+    try {
+      handleSetDoingAction(true)
+      await setPluginDefaultCredential(id)
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      invalidatePluginCredentialInfo()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [setPluginDefaultCredential, invalidatePluginCredentialInfo, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
       credential_id: string
       name: string
     }) => {
-    await updatePluginCredential(payload)
-    notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-  }, [updatePluginCredential, notify, t])
+    if (doingActionRef.current)
+      return
+    try {
+      handleSetDoingAction(true)
+      await updatePluginCredential(payload)
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      invalidatePluginCredentialInfo()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [updatePluginCredential, notify, t, handleSetDoingAction, invalidatePluginCredentialInfo])
 
   return (
     <>
@@ -283,6 +313,7 @@ const Authorized = ({
           <Confirm
             isShow
             title={t('datasetDocuments.list.delete.title')}
+            isDisabled={doingAction}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}
           />
@@ -298,7 +329,7 @@ const Authorized = ({
               pendingOperationCredentialId.current = null
             }}
             onRemove={handleRemove}
-            disabled={disabled}
+            disabled={disabled || doingAction}
           />
         )
       }
