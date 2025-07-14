@@ -7,7 +7,14 @@ from flask_restful import Resource, abort, marshal_with, reqparse
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, OwnerTransferLimitError,NotOwnerError,CannotTransferOwnerToSelfError
+from controllers.console.auth.error import (
+    CannotTransferOwnerToSelfError,
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+    NotOwnerError,
+    OwnerTransferLimitError,
+)
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
