@@ -41,7 +41,7 @@ const Actions = ({
   }, [showSelect, selectedOptions, totalOptions])
 
   return (
-    <div className='flex items-center gap-x-2'>
+    <div className='flex items-center gap-x-2 overflow-hidden'>
       {showSelect && (
         <>
           <div className='flex shrink-0 items-center gap-x-2 py-[3px] pl-4 pr-2'>
@@ -55,7 +55,7 @@ const Actions = ({
             </span>
           </div>
           {tip && (
-            <div className='system-xs-regular shrink-0 text-text-tertiary'>
+            <div title={tip} className='system-xs-regular max-w-full truncate text-text-tertiary'>
               {tip}
             </div>
           )}
