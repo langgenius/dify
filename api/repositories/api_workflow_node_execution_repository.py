@@ -184,6 +184,10 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         This method deletes specific executions by their IDs,
         typically used after backing up the data.
 
+        This method does not perform tenant isolation checks. The caller is responsible for ensuring proper
+        data isolation between tenants. When execution IDs come from untrusted sources (e.g., API requests),
+        additional tenant validation should be implemented to prevent unauthorized access.
+
         Args:
             execution_ids: List of execution IDs to delete
 
