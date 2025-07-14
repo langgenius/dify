@@ -183,6 +183,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
+            dataSources={dataSources}
           />
         </div>
       </PortalToFollowElemContent>
