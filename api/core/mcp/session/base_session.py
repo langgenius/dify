@@ -194,7 +194,7 @@ class BaseSession(
         if self._receiver_future:
             try:
                 self._receiver_future.result(timeout=5.0)  # Wait up to 5 seconds
-            except Exception:
+            except concurrent.futures.TimeoutError:
                 # If the receiver loop is still running after timeout, we'll force shutdown
                 pass
 
