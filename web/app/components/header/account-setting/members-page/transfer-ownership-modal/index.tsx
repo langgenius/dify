@@ -1,11 +1,18 @@
 import React, { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { RiCloseLine } from '@remixicon/react'
 import { useAppContext } from '@/context/app-context'
+import { ToastContext } from '@/app/components/base/toast'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import MemberSelector from './member-selector'
+import {
+  ownershipTransfer,
+  sendOwnerEmail,
+  verifyOwnerEmail,
+} from '@/service/common'
 import { noop } from 'lodash-es'
 
 type Props = {
@@ -21,11 +28,14 @@ enum STEP {
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { currentWorkspace, userProfile } = useAppContext()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)
+  const [stepToken, setStepToken] = useState<string>('')
   const [newOwner, setNewOwner] = useState<string>('')
+  const [isTransfer, setIsTransfer] = useState<boolean>(false)
 
   const startCount = () => {
     setTime(60)
@@ -39,6 +49,82 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       })
     }, 1000)
   }
+
+  const sendEmail = async () => {
+    try {
+      const res = await sendOwnerEmail(
+        userProfile.id,
+        {},
+      )
+      startCount()
+      if (res.data)
+        setStepToken(res.data)
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error sending verification code: ${error ? (error as any).message : ''}`,
+      })
+    }
+  }
+
+  const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
+    try {
+      const res = await verifyOwnerEmail({
+        code,
+        token,
+      })
+      if (res.is_valid) {
+        setStepToken(res.token)
+        callback?.()
+      }
+      else {
+        notify({
+          type: 'error',
+          message: 'Verifying email failed',
+        })
+      }
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error verifying email: ${error ? (error as any).message : ''}`,
+      })
+    }
+  }
+
+  const sendCodeToOriginEmail = async () => {
+    await sendEmail()
+    setStep(STEP.verify)
+  }
+
+  const handleVerifyOriginEmail = async () => {
+    await verifyEmailAddress(code, stepToken, () => setStep(STEP.transfer))
+    setCode('')
+  }
+
+  const handleTransfer = async () => {
+    setIsTransfer(true)
+    try {
+      await ownershipTransfer(
+        newOwner,
+        {
+          token: stepToken,
+        },
+      )
+      globalThis.location.reload()
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error ownership transfer: ${error ? (error as any).message : ''}`,
+      })
+    }
+    finally {
+      setIsTransfer(false)
+    }
+  }
+
   return (
     <Modal
       isShow={show}
@@ -67,7 +153,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             <Button
               className='!w-full'
               variant='primary'
-              onClick={() => setStep(STEP.verify)}
+              onClick={sendCodeToOriginEmail}
             >
               {t('common.members.transferModal.sendVerifyCode')}
             </Button>
@@ -108,7 +194,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               disabled={code.length !== 6}
               className='!w-full'
               variant='primary'
-              onClick={() => setStep(STEP.transfer)}
+              onClick={handleVerifyOriginEmail}
             >
               {t('common.members.transferModal.continue')}
             </Button>
@@ -125,7 +211,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <span>{t('common.members.transferModal.resendCount', { count: time })}</span>
             )}
             {!time && (
-              <span onClick={startCount} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.members.transferModal.resend')}</span>
+              <span onClick={sendCodeToOriginEmail} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.members.transferModal.resend')}</span>
             )}
           </div>
         </>
@@ -147,10 +233,10 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           </div>
           <div className='mt-4 space-y-2'>
             <Button
-              disabled={!newOwner}
+              disabled={!newOwner || isTransfer}
               className='!w-full'
               variant='warning'
-              onClick={onClose}
+              onClick={handleTransfer}
             >
               {t('common.members.transferModal.transfer')}
             </Button>
