@@ -217,6 +217,7 @@ const AddOAuthButton = ({
             disabled={disabled}
             schemas={memorizedSchemas}
             onAuth={handleOAuth}
+            editValues={client_params}
           />
         )
       }

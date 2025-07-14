@@ -282,8 +282,7 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title='Are you sure?'
-            content='content'
+            title={t('datasetDocuments.list.delete.title')}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}
           />

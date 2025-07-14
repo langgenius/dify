@@ -2,7 +2,10 @@ import type {
   ForwardedRef,
   ReactNode,
 } from 'react'
-import type { AnyFormApi } from '@tanstack/react-form'
+import type {
+  AnyFormApi,
+  FieldValidators,
+} from '@tanstack/react-form'
 
 export type TypeWithI18N<T = string> = {
   en_US: T
@@ -52,6 +55,7 @@ export type FormSchema = {
   placeholder?: string | TypeWithI18N
   options?: FormOption[]
   labelClassName?: string
+  validators?: FieldValidators<any, any, any, any, any, any, any, any, any, any>
 }
 
 export type FormValues = Record<string, any>
