@@ -28,19 +28,6 @@ from models import db
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-DB_USERNAME = "postgres"
-DB_PASSWORD = "difyai123456"
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_DATABASE = "dify"
-
-STORAGE_TYPE = "opendal"
-OPENDAL_SCHEME = "fs"
-OPENDAL_FS_ROOT = "storage"
-
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-
 
 class DifyTestContainers:
     """
