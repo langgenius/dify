@@ -413,8 +413,9 @@ class ChangeEmailSendEmailApi(Resource):
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
-            if user_email == current_user.email:
+            if user_email != current_user.email:
                 raise InvalidEmailError()
+                
         else:
             with Session(db.engine) as session:
                 account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
