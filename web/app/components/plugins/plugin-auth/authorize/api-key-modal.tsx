@@ -72,13 +72,21 @@ const ApiKeyModal = ({
       ...values
     } = store?.state.values
     const isPristineSecretInputNames: string[] = []
-    formSchemas.forEach((schema) => {
+    for (let i = 0; i < formSchemas.length; i++) {
+      const schema = formSchemas[i]
+      if (schema.required && !values[schema.name]) {
+        notify({
+          type: 'error',
+          message: t('common.errorMsg.fieldRequired', { field: schema.name }),
+        })
+        return
+      }
       if (schema.type === FormTypeEnum.secretInput) {
         const fieldMeta = form?.getFieldMeta(schema.name)
         if (fieldMeta?.isPristine)
           isPristineSecretInputNames.push(schema.name)
       }
-    })
+    }
 
     const transformedValues = transformFormSchemasSecretInput(isPristineSecretInputNames, values)
 

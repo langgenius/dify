@@ -70,25 +70,33 @@ const BaseForm = ({
     return null
   }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
 
+  const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
+    const {
+      name,
+    } = formSchema
+
+    return (
+      <form.Field
+        key={name}
+        name={name}
+      >
+        {renderField}
+      </form.Field>
+    )
+  }, [renderField, form])
+
   if (!formSchemas?.length)
     return null
 
   return (
     <form
       className={cn(formClassName)}
+      onSubmit={(e) => {
+        e.preventDefault()
+        form?.handleSubmit()
+      }}
     >
-      {
-        formSchemas.map((formSchema) => {
-          return (
-            <form.Field
-              key={formSchema.name}
-              name={formSchema.name}
-            >
-              {renderField}
-            </form.Field>
-          )
-        })
-      }
+      {formSchemas.map(renderFieldWrapper)}
     </form>
   )
 }
