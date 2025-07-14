@@ -20,7 +20,7 @@ import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 
 export type Strategy = {
