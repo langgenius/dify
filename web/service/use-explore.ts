@@ -1,10 +1,41 @@
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
-import { useQuery } from '@tanstack/react-query'
-import { getAppAccessModeByAppId } from './explore'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { fetchAppMeta, fetchAppParams } from './share'
 
 const NAME_SPACE = 'explore'
+
+export const useGetInstalledApps = () => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'installedApps'],
+    queryFn: () => {
+      return fetchInstalledAppList()
+    },
+  })
+}
+
+export const useUninstallApp = () => {
+  const client = useQueryClient()
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'uninstallApp'],
+    mutationFn: (appId: string) => uninstallApp(appId),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
+    },
+  })
+}
+
+export const useUpdateAppPinStatus = () => {
+  const client = useQueryClient()
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'updateAppPinStatus'],
+    mutationFn: ({ appId, isPinned }: { appId: string; isPinned: boolean }) => updatePinStatus(appId, isPinned),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
+    },
+  })
+}
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
