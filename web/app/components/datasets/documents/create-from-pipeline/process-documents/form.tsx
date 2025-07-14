@@ -13,6 +13,7 @@ type OptionsProps = {
   onSubmit: (data: Record<string, any>) => void
   onPreview: () => void
   ref: React.RefObject<any>
+  isRunning: boolean
 }
 
 const Form = ({
@@ -22,6 +23,7 @@ const Form = ({
   onSubmit,
   onPreview,
   ref,
+  isRunning,
 }: OptionsProps) => {
   const form = useAppForm({
     defaultValues: initialData,
@@ -74,6 +76,7 @@ const Form = ({
             onReset={handleReset}
             resetDisabled={!isDirty}
             onPreview={onPreview}
+            previewDisabled={isRunning}
           />
         )}
       />

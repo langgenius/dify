@@ -416,6 +416,7 @@ const CreateFormPipeline = () => {
                 <ProcessDocuments
                   ref={formRef}
                   dataSourceNodeId={datasource!.nodeId}
+                  isRunning={isPending}
                   onProcess={onClickProcess}
                   onPreview={onClickPreview}
                   onSubmit={handleSubmit}

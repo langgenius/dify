@@ -6,12 +6,14 @@ import { RiSearchEyeLine } from '@remixicon/react'
 type HeaderProps = {
   onReset: () => void
   resetDisabled: boolean
+  previewDisabled: boolean
   onPreview?: () => void
 }
 
 const Header = ({
   onReset,
   resetDisabled,
+  previewDisabled,
   onPreview,
 }: HeaderProps) => {
   const { t } = useTranslation()
@@ -28,6 +30,7 @@ const Header = ({
         variant='secondary-accent'
         onClick={onPreview}
         className='gap-x-0.5'
+        disabled={previewDisabled}
       >
         <RiSearchEyeLine className='size-4' />
         <span className='px-0.5'>{t('datasetPipeline.addDocuments.stepTwo.previewChunks')}</span>

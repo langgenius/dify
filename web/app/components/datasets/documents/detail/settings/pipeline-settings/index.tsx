@@ -8,12 +8,13 @@ import Loading from '@/app/components/base/loading'
 import ProcessDocuments from './process-documents'
 import LeftHeader from './left-header'
 import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
-import type { PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
+import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { noop } from 'lodash-es'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from 'next/navigation'
 import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { isFile } from '../../../create-from-pipeline/data-source/online-drive/utils'
 
 type PipelineSettingsProps = {
   datasetId: string
@@ -76,6 +77,21 @@ const PipelineSettings = ({
     return onlineDocuments
   }, [lastRunData])
 
+  const onlineDriveFiles = useMemo(() => {
+    const onlineDriveFiles: OnlineDriveFile[] = []
+    if (lastRunData?.datasource_type === DatasourceType.onlineDrive) {
+      const { key } = lastRunData.datasource_info
+      const isFileType = isFile(key)
+      const filePathList = key.split('/')
+      onlineDriveFiles.push({
+        key,
+        displayName: `${isFileType ? filePathList.pop() : filePathList[filePathList.length - 2]}${isFileType ? '' : '/'}`,
+        type: isFileType ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
+      })
+    }
+    return onlineDriveFiles
+  }, [lastRunData])
+
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
   const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
@@ -117,10 +133,10 @@ const PipelineSettings = ({
       onSuccess: () => {
         invalidDocumentList()
         invalidDocumentDetail()
-        push(`/datasets/${datasetId}/documents/${documentId}`)
+        push(`/datasets/${datasetId}/documents`)
       },
     })
-  }, [datasetId, documentId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
+  }, [datasetId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -160,6 +176,7 @@ const PipelineSettings = ({
               onProcess={onClickProcess}
               onPreview={onClickPreview}
               onSubmit={handleSubmit}
+              isRunning={isPending}
             />
           </div>
         </div>
@@ -169,9 +186,10 @@ const PipelineSettings = ({
         <div className='flex h-full flex-col pl-2 pt-2'>
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
-            files={files}
+            localFiles={files}
             onlineDocuments={onlineDocuments}
             websitePages={websitePages}
+            onlineDriveFiles={onlineDriveFiles}
             isIdle={isIdle}
             isPending={isPending && isPreview.current}
             estimateData={estimateData}
@@ -179,6 +197,7 @@ const PipelineSettings = ({
             handlePreviewFileChange={noop}
             handlePreviewOnlineDocumentChange={noop}
             handlePreviewWebsitePageChange={noop}
+            handlePreviewOnlineDriveFileChange={noop}
           />
         </div>
       </div>

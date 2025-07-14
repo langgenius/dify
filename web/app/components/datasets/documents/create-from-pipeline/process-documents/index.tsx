@@ -8,6 +8,7 @@ import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline
 type ProcessDocumentsProps = {
   dataSourceNodeId: string
   ref: React.RefObject<any>
+  isRunning: boolean
   onProcess: () => void
   onPreview: () => void
   onSubmit: (data: Record<string, any>) => void
@@ -16,6 +17,7 @@ type ProcessDocumentsProps = {
 
 const ProcessDocuments = ({
   dataSourceNodeId,
+  isRunning,
   onProcess,
   onPreview,
   onSubmit,
@@ -36,8 +38,9 @@ const ProcessDocuments = ({
         schema={schema}
         onSubmit={onSubmit}
         onPreview={onPreview}
+        isRunning={isRunning}
       />
-      <Actions runDisabled={isFetchingParams} onBack={onBack} onProcess={onProcess} />
+      <Actions runDisabled={isFetchingParams || isRunning} onBack={onBack} onProcess={onProcess} />
     </div>
   )
 }
