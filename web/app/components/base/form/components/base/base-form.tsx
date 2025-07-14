@@ -6,7 +6,6 @@ import {
 import type {
   AnyFieldApi,
 } from '@tanstack/react-form'
-import { useTranslation } from 'react-i18next'
 import { useForm } from '@tanstack/react-form'
 import type {
   FormRef,
@@ -19,7 +18,10 @@ import type {
   BaseFieldProps,
 } from '.'
 import cn from '@/utils/classnames'
-import { useGetFormValues } from '@/app/components/base/form/hooks'
+import {
+  useGetFormValues,
+  useGetValidators,
+} from '@/app/components/base/form/hooks'
 
 export type BaseFormProps = {
   formSchemas?: FormSchema[]
@@ -40,11 +42,11 @@ const BaseForm = ({
   ref,
   disabled,
 }: BaseFormProps) => {
-  const { t } = useTranslation()
   const form = useForm({
     defaultValues,
   })
   const { getFormValues } = useGetFormValues(form)
+  const { getValidators } = useGetValidators()
 
   useImperativeHandle(ref, () => {
     return {
@@ -78,39 +80,21 @@ const BaseForm = ({
   }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
+    const validators = getValidators(formSchema)
     const {
       name,
-      validators,
-      required,
     } = formSchema
-    let mergedValidators = validators
-    if (required && !validators) {
-      mergedValidators = {
-        onMount: ({ value }: any) => {
-          if (!value)
-            return t('common.errorMsg.fieldRequired', { field: name })
-        },
-        onChange: ({ value }: any) => {
-          if (!value)
-            return t('common.errorMsg.fieldRequired', { field: name })
-        },
-        onBlur: ({ value }: any) => {
-          if (!value)
-            return t('common.errorMsg.fieldRequired', { field: name })
-        },
-      }
-    }
 
     return (
       <form.Field
         key={name}
         name={name}
-        validators={mergedValidators}
+        validators={validators}
       >
         {renderField}
       </form.Field>
     )
-  }, [renderField, form, t])
+  }, [renderField, form, getValidators])
 
   if (!formSchemas?.length)
     return null
