@@ -56,6 +56,11 @@ from tasks.mail_account_deletion_task import send_account_deletion_verification_
 from tasks.mail_change_mail_task import send_change_mail_task
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
+from tasks.mail_owner_transfer_task import (
+    send_new_owner_transfer_notify_email_task,
+    send_old_owner_transfer_notify_email_task,
+    send_owner_transfer_confirm_task,
+)
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
@@ -78,9 +83,12 @@ class AccountService:
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
+    owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
+
     LOGIN_MAX_ERROR_LIMITS = 5
     FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
+    OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -453,6 +461,74 @@ class AccountService:
         return token
 
     @classmethod
+    def send_owner_transfer_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+        workspace_name: Optional[str] = "",
+        member_name: Optional[str] = "",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        if cls.owner_transfer_rate_limiter.is_rate_limited(account_email):
+            from controllers.console.auth.error import OwnerTransferRateLimitExceededError
+
+            raise OwnerTransferRateLimitExceededError()
+
+        code, token = cls.generate_owner_transfer_token(account_email, account)
+
+        send_owner_transfer_confirm_task.delay(
+            language=language,
+            to=account_email,
+            code=code,
+            workspace=workspace_name,
+            member=member_name,
+        )
+        cls.owner_transfer_rate_limiter.increment_rate_limit(account_email)
+        return token
+
+    @classmethod
+    def send_old_owner_transfer_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+        workspace_name: Optional[str] = "",
+        new_owner_email: Optional[str] = "",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_old_owner_transfer_notify_email_task.delay(
+            language=language,
+            to=account_email,
+            workspace=workspace_name,
+            new_owner_email=new_owner_email,
+        )
+
+    @classmethod
+    def send_new_owner_transfer_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+        workspace_name: Optional[str] = "",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_new_owner_transfer_notify_email_task.delay(
+            language=language,
+            to=account_email,
+            workspace=workspace_name,
+        )
+
+    @classmethod
     def generate_reset_password_token(
         cls,
         email: str,
@@ -487,6 +563,22 @@ class AccountService:
         return code, token
 
     @classmethod
+    def generate_owner_transfer_token(
+        cls,
+        email: str,
+        account: Optional[Account] = None,
+        code: Optional[str] = None,
+        additional_data: dict[str, Any] = {},
+    ):
+        if not code:
+            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
+        additional_data["code"] = code
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="owner_transfer", additional_data=additional_data
+        )
+        return code, token
+
+    @classmethod
     def revoke_reset_password_token(cls, token: str):
         TokenManager.revoke_token(token, "reset_password")
 
@@ -495,12 +587,20 @@ class AccountService:
         TokenManager.revoke_token(token, "change_email")
 
     @classmethod
+    def revoke_owner_transfer_token(cls, token: str):
+        TokenManager.revoke_token(token, "owner_transfer")
+
+    @classmethod
     def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
     def get_change_email_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "change_email")
+
+    @classmethod
+    def get_owner_transfer_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, "owner_transfer")
 
     @classmethod
     def send_email_code_login_email(
@@ -637,6 +737,34 @@ class AccountService:
     @redis_fallback(default_return=None)
     def reset_change_email_error_rate_limit(email: str):
         key = f"change_email_error_rate_limit:{email}"
+        redis_client.delete(key)
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def add_owner_transfer_error_rate_limit(email: str) -> None:
+        key = f"owner_transfer_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.OWNER_TRANSFER_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    @redis_fallback(default_return=False)
+    def is_owner_transfer_error_rate_limit(email: str) -> bool:
+        key = f"owner_transfer_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+        count = int(count)
+        if count > AccountService.OWNER_TRANSFER_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def reset_owner_transfer_error_rate_limit(email: str):
+        key = f"owner_transfer_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
@@ -966,6 +1094,15 @@ class TenantService:
         tenant = db.get_or_404(Tenant, tenant_id)
 
         return cast(dict, tenant.custom_config_dict)
+
+    @staticmethod
+    def is_owner(account: Account, tenant: Tenant) -> bool:
+        return TenantService.get_user_role(account, tenant) == TenantAccountRole.OWNER
+
+    @staticmethod
+    def is_member(account: Account, tenant: Tenant) -> bool:
+        """Check if the account is a member of the tenant"""
+        return TenantService.get_user_role(account, tenant) is not None
 
 
 class RegisterService:
