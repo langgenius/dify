@@ -35,7 +35,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const router = useRouter()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
-  const [mail, setMail] = useState<string>('jin_zehong@qq.com')
+  const [mail, setMail] = useState<string>('')
   const [time, setTime] = useState<number>(0)
   const [stepToken, setStepToken] = useState<string>('')
   const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
@@ -294,7 +294,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               placeholder={t('common.account.changeEmail.emailPlaceholder')}
               value={mail}
               onChange={e => handleNewEmailValueChange(e.target.value)}
-              destructive
+              destructive={newEmailExited}
             />
             {newEmailExited && (
               <div className='body-xs-regular mt-1 py-0.5 text-text-destructive'>{t('common.account.changeEmail.existingEmail')}</div>
