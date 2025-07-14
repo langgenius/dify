@@ -55,6 +55,28 @@ services:
       - ssrf_proxy_network
       - default
 
+  # worker_beat service
+  # Celery beat for scheduling periodic tasks.
+  worker_beat:
+    image: langgenius/dify-api:1.5.0
+    restart: always
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+      # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
+      MODE: beat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # Frontend web application.
   web:
     image: langgenius/dify-web:1.6.0

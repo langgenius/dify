@@ -193,22 +193,12 @@ class SendOwnerTransferEmailApi(Resource):
             language = "en-US"
 
         email = current_user.email
-        member = db.session.get(Account, str(member_id))
-        if not member:
-            abort(404)
-        else:
-            member_name = member.name
-            member_account = member
-        # check the member is in the workspace
-        if not TenantService.is_member(member_account, current_user.current_tenant):
-            raise MemberNotInTenantError()
 
         token = AccountService.send_owner_transfer_email(
             account=current_user,
             email=email,
             language=language,
             workspace_name=current_user.current_tenant.name,
-            member_name=member_name,
         )
 
         return {"result": "success", "data": token}
