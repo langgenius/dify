@@ -53,12 +53,9 @@ class BuiltinToolManageService:
             "schema": provider.get_oauth_client_schema(),
             "is_oauth_custom_client_enabled": is_oauth_custom_client_enabled,
             "is_system_oauth_params_exists": is_system_oauth_params_exists,
+            "client_params": BuiltinToolManageService.get_custom_oauth_client_params(tenant_id, provider_name),
+            "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_name}/tool/callback",
         }
-        if is_oauth_custom_client_enabled:
-            result["client_params"] = BuiltinToolManageService.get_oauth_client(tenant_id, provider_name)
-            result["redirect_uri"] = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_name}/tool/callback"
-            )
         return result
 
     @staticmethod
@@ -728,9 +725,4 @@ class BuiltinToolManageService:
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return {
-                "oauth_params": encrypter.mask_tool_credentials(
-                    encrypter.decrypt(custom_oauth_client_params.oauth_params)
-                ),
-                "enabled": custom_oauth_client_params.enabled,
-            }
+            return encrypter.mask_tool_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))

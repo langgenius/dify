@@ -55,7 +55,7 @@ class ToolOAuthTenantClient(Base):
 
     @property
     def oauth_params(self) -> dict:
-        return cast(dict, json.loads(self.encrypted_oauth_params))
+        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class BuiltinToolProvider(Base):
