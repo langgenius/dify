@@ -62,18 +62,6 @@ workflow:
     edges:
     - data:
         isInIteration: false
-        sourceType: variable-aggregator
-        targetType: end
-      id: 1741311394752-source-1741157560922-target
-      selected: false
-      source: '1741311394752'
-      sourceHandle: source
-      target: '1741157560922'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: question-classifier
         targetType: tool
       id: 1741158559444-1-1741328045214-target
@@ -201,30 +189,6 @@ workflow:
       source: '1741158559444'
       sourceHandle: '1741318983134'
       target: '1741329632798'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: variable-aggregator
-      id: 1742366303110-1-1741311394752-target
-      selected: false
-      source: '1742366303110'
-      sourceHandle: '1'
-      target: '1741311394752'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: variable-aggregator
-      id: 1742366303110-2-1741311394752-target
-      selected: false
-      source: '1742366303110'
-      sourceHandle: '2'
-      target: '1741311394752'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -886,6 +850,17 @@ workflow:
         isInIteration: false
         sourceType: if-else
         targetType: tool
+      id: 1750058827536-75243699-b060-4295-b510-27cbc73b6be7-1741328045214-target
+      source: '1750058827536'
+      sourceHandle: 75243699-b060-4295-b510-27cbc73b6be7
+      target: '1741328045214'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
       id: 1750058827536-681cae12-3dcd-439a-9ad7-d164e8062cf3-1742979394268-target
       source: '1750058827536'
       sourceHandle: 681cae12-3dcd-439a-9ad7-d164e8062cf3
@@ -1082,17 +1057,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: variable-aggregator
-        targetType: question-classifier
-      id: 1750745724225-source-1742366303110-target
-      source: '1750745724225'
-      sourceHandle: source
-      target: '1742366303110'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: tool
         targetType: llm
       id: 17424344697090-source-1750745788772-target
@@ -1137,56 +1101,23 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: if-else
-        targetType: if-else
-      id: 1750058827536-75243699-b060-4295-b510-27cbc73b6be7-1751618293412-target
-      source: '1750058827536'
-      sourceHandle: 75243699-b060-4295-b510-27cbc73b6be7
-      target: '1751618293412'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: tool
-      id: 1751618293412-false-1741328045214-target
-      source: '1751618293412'
-      sourceHandle: 'false'
-      target: '1741328045214'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: tool
-      id: 1751618293412-true-17516184500710-target
-      source: '1751618293412'
-      sourceHandle: 'true'
-      target: '17516184500710'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
+        sourceType: variable-aggregator
         targetType: llm
-      id: 17516184500710-source-1751618472852-target
-      source: '17516184500710'
+      id: 1750745724225-source-1752138870713-target
+      source: '1750745724225'
       sourceHandle: source
-      target: '1751618472852'
+      target: '1752138870713'
       targetHandle: target
       type: custom
       zIndex: 0
     - data:
         isInIteration: false
         sourceType: llm
-        targetType: variable-aggregator
-      id: 1751618472852-source-1750745724225-target
-      source: '1751618472852'
+        targetType: end
+      id: 1752138870713-source-1741157560922-target
+      source: '1752138870713'
       sourceHandle: source
-      target: '1750745724225'
+      target: '1741157560922'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -1240,7 +1171,7 @@ workflow:
           required: false
           type: file
           variable: input
-      height: 194
+      height: 192
       id: '1741157526222'
       position:
         x: 30
@@ -1252,18 +1183,18 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         outputs:
         - value_selector:
-          - '1741311394752'
-          - output
+          - '1752138870713'
+          - text
           variable: text
         selected: false
         title: 结束
         type: end
-      height: 90
+      height: 88
       id: '1741157560922'
       position:
         x: 4258
@@ -1275,7 +1206,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         classes:
         - id: '1'
@@ -1373,7 +1304,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1741157526222'
@@ -1384,7 +1315,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 876
+      height: 874
       id: '1741158559444'
       position:
         x: 1540
@@ -1396,7 +1327,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         output_type: string
@@ -1434,7 +1365,7 @@ workflow:
           - text
         - - '1748272742118'
           - text
-      height: 416
+      height: 414
       id: '1741162531836'
       position:
         x: 2446
@@ -1446,31 +1377,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        desc: ''
-        output_type: string
-        selected: false
-        title: 变量聚合器 2
-        type: variable-aggregator
-        variables:
-        - - '1742366303110'
-          - class_name
-        - - '1744339618961'
-          - abnormal
-      height: 152
-      id: '1741311394752'
-      position:
-        x: 3958.478468077761
-        y: 2040
-      positionAbsolute:
-        x: 3958.478468077761
-        y: 2040
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -1603,19 +1510,19 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328045214'
       position:
-        x: 2133.618409250169
-        y: 3081.4582959588693
+        x: 1842
+        y: 3108
       positionAbsolute:
-        x: 2133.618409250169
-        y: 3081.4582959588693
+        x: 1842
+        y: 3108
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -1748,7 +1655,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328076453'
       position:
         x: 1842
@@ -1760,7 +1667,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -1902,7 +1809,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328197695'
       position:
         x: 2311.6789223996607
@@ -1914,7 +1821,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2019,7 +1926,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328213545'
       position:
         x: 1842
@@ -2031,7 +1938,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2136,7 +2043,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328346220'
       position:
         x: 1842
@@ -2148,7 +2055,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2253,7 +2160,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328423453'
       position:
         x: 1842
@@ -2265,7 +2172,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2370,7 +2277,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328466394'
       position:
         x: 1842
@@ -2382,7 +2289,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2487,7 +2394,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328742817'
       position:
         x: 1842
@@ -2499,7 +2406,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2604,7 +2511,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328773213'
       position:
         x: 1842
@@ -2616,7 +2523,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2721,7 +2628,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741328799030'
       position:
         x: 1842
@@ -2733,7 +2640,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -2866,7 +2773,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741329632798'
       position:
         x: 2446
@@ -2878,7 +2785,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         context:
           enabled: false
@@ -2888,7 +2795,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: c981a70d-9ebb-4f03-949a-8d78826f9bda
@@ -2900,29 +2807,11 @@ workflow:
 
             请分析系统/应用在过去15分钟内的指标变化趋势，并结合当前的告警事件进行分析。
 
-            ##Data
-
-            MetricsData
-
-            {{#1741162531836.output#}}
-
-            metricsdata的历史数据
-
-            {{#1742434016239.output#}}
-
-            警报事件描述
-
-            {{#1741157526222.alert#}}
-
             ##步骤
 
-            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否为偶尔异常的波动还是持续升高的趋势。
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
 
-            2. 同时注意指标升高是否越接近后面的点位，越后面权重越高，认为有效的概率越大。
-
-            3.如果是网络指标rtt告警，需要缺认指标值时持续升高，还是偶尔升高的抖动
-
-            4. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
 
             如果MetricsData持续上升，则认为告警有效。
 
@@ -2938,14 +2827,28 @@ workflow:
 
             描述MetricsData趋势，并得出告警是否有效的结论。
 
-            注意：告警有效性分析的结论只能是有效或无效'
+            注意：告警有效性分析的结论只能是有效或无效
+
+            ##Data
+
+            MetricsData
+
+            {{#1741162531836.output#}}
+
+            metricsdata的历史数据
+
+            {{#1742434016239.output#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}'
         selected: false
         title: 大模型分析指标数据
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1742366141890'
       position:
         x: 3050
@@ -2957,54 +2860,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        classes:
-        - id: '1'
-          name: 'true'
-        - id: '2'
-          name: 'false'
-        desc: ''
-        instruction: '# 目的
-
-          根据输入的结论进行分类
-
-          如果结论中认为告警有效，分类到false
-
-          如果结论中认为告警无效，分类到true
-
-          # 注意
-
-          请仔细检查文本，并寻找关于告警有效性的结论，不要错误分类'
-        instructions: ''
-        model:
-          completion_params:
-            temperature: 0.7
-          mode: chat
-          name: deepseek-chat
-          provider: langgenius/openai_api_compatible/openai_api_compatible
-        query_variable_selector:
-        - '1742366141890'
-        - text
-        selected: false
-        title: 结果分类
-        topics: []
-        type: question-classifier
-        vision:
-          enabled: false
-      height: 168
-      id: '1742366303110'
-      position:
-        x: 3654
-        y: 2040
-      positionAbsolute:
-        x: 3654
-        y: 2040
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 242
     - data:
         code: "SECOND = 1000000  # microseconds\nMINUTE = 60 * SECOND\nHOUR = 60 *\
           \ MINUTE\n\ndef main(arg1: int, arg2: int) -> dict:\n    \n    return {\n\
@@ -3035,19 +2891,19 @@ workflow:
           - '1741157526222'
           - endTime
           variable: arg2
-      height: 80
+      height: 79
       id: '1742433446760'
       position:
-        x: 620.0306820836154
-        y: 630.0153410418077
+        x: 634
+        y: 637
       positionAbsolute:
-        x: 620.0306820836154
-        y: 630.0153410418077
+        x: 634
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3180,19 +3036,19 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424339242280'
       position:
-        x: 2444
+        x: 2144
         y: 3108
       positionAbsolute:
-        x: 2444
+        x: 2144
         y: 3108
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         output_type: string
@@ -3230,7 +3086,7 @@ workflow:
           - text
         - - '17482728139340'
           - text
-      height: 416
+      height: 414
       id: '1742434016239'
       position:
         x: 2748
@@ -3242,7 +3098,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3375,7 +3231,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424342365860'
       position:
         x: 2144
@@ -3387,7 +3243,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3520,7 +3376,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424344697090'
       position:
         x: 2748
@@ -3532,7 +3388,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3674,7 +3530,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424345080000'
       position:
         x: 2692.2153979484565
@@ -3686,7 +3542,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3791,7 +3647,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424345315500'
       position:
         x: 2144
@@ -3803,7 +3659,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -3908,7 +3764,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424345826170'
       position:
         x: 2144
@@ -3920,7 +3776,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4025,7 +3881,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424346884650'
       position:
         x: 2144
@@ -4037,7 +3893,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4142,7 +3998,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424347242840'
       position:
         x: 2144
@@ -4154,7 +4010,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4259,7 +4115,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424348206030'
       position:
         x: 2144
@@ -4271,7 +4127,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4376,7 +4232,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424348526540'
       position:
         x: 2144
@@ -4388,7 +4244,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4493,7 +4349,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17424348570980'
       position:
         x: 2144
@@ -4505,7 +4361,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
@@ -4553,7 +4409,7 @@ workflow:
           - '1741157526222'
           - params
           variable: arg
-      height: 54
+      height: 52
       id: '1742806924635'
       position:
         x: 332
@@ -4565,7 +4421,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4724,7 +4580,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742979394268'
       position:
         x: 1842
@@ -4736,7 +4592,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -4895,7 +4751,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742979595004'
       position:
         x: 1842
@@ -4907,7 +4763,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5066,7 +4922,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17429797453350'
       position:
         x: 1842
@@ -5078,7 +4934,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5237,7 +5093,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17429797664440'
       position:
         x: 2144
@@ -5249,7 +5105,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5379,7 +5235,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742979828391'
       position:
         x: 1842
@@ -5391,7 +5247,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5521,7 +5377,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17429798797920'
       position:
         x: 2144
@@ -5533,7 +5389,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5692,7 +5548,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17429835599060'
       position:
         x: 2144
@@ -5704,7 +5560,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -5863,7 +5719,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17429835940550'
       position:
         x: 2144
@@ -5875,7 +5731,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -6036,7 +5892,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1744093337863'
       position:
         x: 1842
@@ -6048,7 +5904,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -6059,7 +5915,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 90
+      height: 88
       id: '1744093385250'
       position:
         x: 2748
@@ -6071,7 +5927,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         context:
           enabled: false
@@ -6081,7 +5937,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: a1de005a-fbe2-44a6-9b2c-bb021ae6b3a4
@@ -6110,7 +5966,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1744093428286'
       position:
         x: 2144
@@ -6122,7 +5978,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         selected: false
@@ -6130,7 +5986,7 @@ workflow:
         title: 模板转换
         type: template-transform
         variables: []
-      height: 54
+      height: 52
       id: '1744093531084'
       position:
         x: 2446
@@ -6142,7 +5998,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         code: "import requests\nimport json\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
           \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
@@ -6361,19 +6217,19 @@ workflow:
           - '1741157526222'
           - endTime
           variable: end
-      height: 54
+      height: 52
       id: '1744339618961'
       position:
-        x: 3446.917656182187
+        x: 3146.917656182187
         y: 2982.1617777841084
       positionAbsolute:
-        x: 3446.917656182187
+        x: 3146.917656182187
         y: 2982.1617777841084
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -6388,19 +6244,19 @@ workflow:
         selected: false
         title: 结束 3
         type: end
-      height: 116
+      height: 114
       id: '1744343454355'
       position:
-        x: 4001.829492661339
+        x: 3701.829492661339
         y: 3182.7384192889735
       positionAbsolute:
-        x: 4001.829492661339
+        x: 3701.829492661339
         y: 3182.7384192889735
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         code: "from datetime import datetime\nimport requests\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
           \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
@@ -6545,19 +6401,19 @@ workflow:
           - '1741157526222'
           - endTime
           variable: end
-      height: 54
+      height: 52
       id: '1744599772545'
       position:
-        x: 2746
+        x: 2446
         y: 3108
       positionAbsolute:
-        x: 2746
+        x: 2446
         y: 3108
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         cases:
         - case_id: 'true'
@@ -6575,19 +6431,19 @@ workflow:
         selected: false
         title: 条件分支
         type: if-else
-      height: 126
+      height: 124
       id: '1744599891369'
       position:
-        x: 3026.602595388348
+        x: 2726.602595388348
         y: 3072
       positionAbsolute:
-        x: 3026.602595388348
+        x: 2726.602595388348
         y: 3072
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -6602,19 +6458,19 @@ workflow:
         selected: false
         title: 结束 4
         type: end
-      height: 116
+      height: 114
       id: '1744599930141'
       position:
-        x: 3333.089109302272
+        x: 3033.089109302272
         y: 3197.8670859508925
       positionAbsolute:
-        x: 3333.089109302272
+        x: 3033.089109302272
         y: 3197.8670859508925
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         output_type: string
@@ -6626,19 +6482,19 @@ workflow:
           - conclusion
         - - '1744339618961'
           - conclusion
-      height: 130
+      height: 129
       id: '1744627472534'
       position:
-        x: 3712.4162012564284
+        x: 3412.4162012564284
         y: 3112.6849392061613
       positionAbsolute:
-        x: 3712.4162012564284
+        x: 3412.4162012564284
         y: 3112.6849392061613
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -6802,7 +6658,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1748272742118'
       position:
         x: 1842
@@ -6814,7 +6670,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         is_team_authorization: true
@@ -6978,7 +6834,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 54
+      height: 52
       id: '17482728139340'
       position:
         x: 2144
@@ -6990,7 +6846,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         selected: false
@@ -6998,7 +6854,7 @@ workflow:
         title: 未知
         type: template-transform
         variables: []
-      height: 54
+      height: 52
       id: '1748340985944'
       position:
         x: 1842
@@ -7010,7 +6866,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -7021,7 +6877,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 90
+      height: 88
       id: '1748341014888'
       position:
         x: 2144
@@ -7033,7 +6889,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         code: "import re\n\ndef main(alert_name: str) -> str:\n    alert_name = alert_name.lower()\n\
           \n    rules = [\n        (r\"cpu.*throttled|容器cpu.*throttled\", \"容器高cpu_cfs_throttled\"\
@@ -7048,12 +6904,11 @@ workflow:
           , \"cpu高负载\"),\n        (r\"disk.*io.*util|disk.*util|磁盘.*io.*用\", \"异常磁盘io利用率\"\
           ),\n        (r\"cpu.*wait|cpu.*io.*wait\", \"cpu高io wait\"),\n        (r\"\
           file.*desc|fd.*use|文件.*描述符\", \"文件描述符使用量\"),\n        (r\"cont.*kill|容器.*终止\"\
-          , \"容器被kill\"),\n        (r\"过去.*分钟.*错误日志数.*超过|\\d+.*条.*错误日志|log.*err|日志.*错误|.*错误.*日志\"\
-          , \"日志错误数相关\"),\n        (r\"down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\"\
-          , \"下游依赖耗时超过平均值\")\n    ]\n\n    result = \"其他\"\n    for pattern, category\
-          \ in rules:\n        if re.search(pattern, alert_name):\n            result\
-          \ = category\n            break\n\n    return {\n        \"result\": result\n\
-          \    }\n\n"
+          , \"容器被kill\"),\n        (r\"log.*err|日志.*错误\", \"日志错误数相关\"),\n        (r\"\
+          down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\", \"下游依赖耗时超过平均值\")\n   \
+          \ ]\n\n    result = \"其他\"\n    for pattern, category in rules:\n      \
+          \  if re.search(pattern, alert_name):\n            result = category\n \
+          \           break\n\n    return {\n        \"result\": result\n    }\n\n"
         code_language: python3
         desc: ''
         outputs:
@@ -7068,19 +6923,19 @@ workflow:
           - '1741157526222'
           - alert
           variable: alert_name
-      height: 54
+      height: 52
       id: '1750057744917'
       position:
-        x: 934.6030682083615
+        x: 936
         y: 637
       positionAbsolute:
-        x: 934.6030682083615
+        x: 936
         y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         cases:
         - case_id: 'true'
@@ -7098,7 +6953,7 @@ workflow:
         selected: false
         title: 条件分支 2
         type: if-else
-      height: 126
+      height: 124
       id: '1750057811167'
       position:
         x: 1238
@@ -7110,7 +6965,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         cases:
         - case_id: 'true'
@@ -7304,23 +7159,23 @@ workflow:
         selected: false
         title: 条件分支 3
         type: if-else
-      height: 894
+      height: 892
       id: '1750058827536'
       position:
-        x: 1362.589662461914
-        y: 1548.206136416723
+        x: 1540
+        y: 1551
       positionAbsolute:
-        x: 1362.589662461914
-        y: 1548.206136416723
+        x: 1540
+        y: 1551
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         desc: ''
         output_type: string
-        selected: true
+        selected: false
         title: 大模型结论
         type: variable-aggregator
         variables:
@@ -7330,9 +7185,7 @@ workflow:
           - text
         - - '1751515586426'
           - text
-        - - '1751618472852'
-          - text
-      height: 174
+      height: 151
       id: '1750745724225'
       position:
         x: 3352
@@ -7340,11 +7193,11 @@ workflow:
       positionAbsolute:
         x: 3352
         y: 2040
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         context:
           enabled: false
@@ -7354,7 +7207,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 1f3e1690-58bf-4bc0-be08-4fab41ac13cf
@@ -7403,7 +7256,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1750745788772'
       position:
         x: 3050
@@ -7415,7 +7268,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     - data:
         context:
           enabled: false
@@ -7425,7 +7278,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 6b23adfe-47ca-40af-aeb1-ce2f1533826a
@@ -7474,7 +7327,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1751515586426'
       position:
         x: 2994.2153979484565
@@ -7486,182 +7339,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        cases:
-        - case_id: 'true'
-          conditions:
-          - comparison_operator: contains
-            id: e9cd649c-4165-4f38-8196-35db38d06c81
-            value: 平均请求延时超过
-            varType: string
-            variable_selector:
-            - '1741157526222'
-            - alert
-          id: 'true'
-          logical_operator: and
-        desc: ''
-        selected: false
-        title: 条件分支 4
-        type: if-else
-      height: 126
-      id: '1751618293412'
-      position:
-        x: 1751.1994335434993
-        y: 3126.1601132913006
-      positionAbsolute:
-        x: 1751.1994335434993
-        y: 3126.1601132913006
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified service name
-            ja_JP: Specified service name
-            pt_BR: Specified service name
-            zh_Hans: 指定的服务名
-          label:
-            en_US: service_name
-            ja_JP: service_name
-            pt_BR: service_name
-            zh_Hans: service_name
-          llm_description: 指定的服务名
-          max: null
-          min: null
-          name: service_name
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified endpoint name
-            ja_JP: Specified endpoint name
-            pt_BR: Specified endpoint name
-            zh_Hans: 指定的服务端点名
-          label:
-            en_US: content_key
-            ja_JP: content_key
-            pt_BR: content_key
-            zh_Hans: content_key
-          llm_description: 指定的服务端点名
-          max: null
-          min: null
-          name: content_key
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time
-            ja_JP: Data query start time
-            pt_BR: Data query start time
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time
-            ja_JP: Data query end time
-            pt_BR: Data query end time
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query start time
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          content_key: ''
-          endTime: ''
-          service_name: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内) (1)
-        tool_configurations: {}
-        tool_label: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
-        tool_name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
-        tool_parameters:
-          content_key:
-            type: mixed
-            value: '{{#1742806924635.endpoint#}}'
-          endTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - endTime
-          service_name:
-            type: mixed
-            value: '{{#1742806924635.service#}}'
-          startTime:
-            type: variable
-            value:
-            - '1741157526222'
-            - startTime
-        type: tool
-      height: 54
-      id: '17516184500710'
-      position:
-        x: 2123.7432588394763
-        y: 3182.7384192889735
-      positionAbsolute:
-        x: 2123.7432588394763
-        y: 3182.7384192889735
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 242
     - data:
         context:
           enabled: false
@@ -7671,65 +7349,53 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
+          name: /models/qwen2.5-32B
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
-        - id: 3b4e8314-ba43-40a5-aaab-bb1af4f4af70
+        - id: 8fd2de89-ee56-4bed-a1e7-caf728a0c5fe
           role: system
-          text: 你是一个可观测性领域智能助手
-        - id: c21bf2be-ebce-48e9-9c29-a2adbf288f27
+          text: 你是一个分类助手，根据用户输出，返回正确类型
+        - id: dd528f37-560a-459b-8cd8-a984d835641e
           role: user
-          text: '##目的
+          text: '# 结论数据
 
-            请分析系统/应用过去15分钟内的请求成功率指标变化趋势，并结合当前的告警事件进行分析。
+            {{#1750745724225.output#}}
 
-            ##步骤
+            # 目的
 
-            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+            根据输入的结论进行分类
 
-            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+            # 输出格式
 
-            请求成功率在最近15分钟内如果一直下降，则认为有效
+            一个字符，为true,或者false，不要出现其他内容
 
-            时间点越靠后的数据，如果成功率没有恢复，认为有效
+            如果结论中认为告警有效，分类到false
 
-            如果最后恢复，认为无效
+            如果结论中认为告警无效，分类到true
 
-            ##输出
+            # 注意
 
-            描述MetricsData趋势，并得出告警是否有效的结论。
-
-            注意：告警有效性分析的结论只能是有效或无效
-
-            ##Data
-
-            MetricsData
-
-            {{#17516184500710.text#}}
-
-            警报事件描述
-
-            {{#1741157526222.alert#}}'
-        selected: false
-        title: 响应时间判断
+            请仔细检查文本，并寻找关于告警有效性的结论，不要错误分类'
+        selected: true
+        title: 结论分类
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 90
-      id: '1751618472852'
+      height: 88
+      id: '1752138870713'
       position:
-        x: 2564.3303395300104
-        y: 3243.626635982344
+        x: 3654
+        y: 2040
       positionAbsolute:
-        x: 2564.3303395300104
-        y: 3243.626635982344
-      selected: false
+        x: 3654
+        y: 2040
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 242
     viewport:
-      x: -1065.9079752839043
-      y: -1384.4337287275648
-      zoom: 0.6076709420860494
+      x: -1275.8309444557494
+      y: -1256.3633262416104
+      zoom: 0.6799153186740935
