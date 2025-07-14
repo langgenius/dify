@@ -123,6 +123,7 @@ class RagPipelineDslService:
         yaml_url: Optional[str] = None,
         pipeline_id: Optional[str] = None,
         dataset: Optional[Dataset] = None,
+        dataset_name: Optional[str] = None,
     ) -> RagPipelineImportInfo:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -265,7 +266,7 @@ class RagPipelineDslService:
                 dependencies=check_dependencies_pending_data,
             )
             # create dataset
-            name = pipeline.name
+            name = dataset_name or pipeline.name
             description = pipeline.description
             icon_type = data.get("rag_pipeline", {}).get("icon_type")
             icon = data.get("rag_pipeline", {}).get("icon")
@@ -883,6 +884,7 @@ class RagPipelineDslService:
                 import_mode=ImportMode.YAML_CONTENT.value,
                 yaml_content=rag_pipeline_dataset_create_entity.yaml_content,
                 dataset=None,
+                dataset_name=rag_pipeline_dataset_create_entity.name,
             )
         return {
             "id": rag_pipeline_import_info.id,

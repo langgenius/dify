@@ -53,6 +53,7 @@ class RagPipelineImportApi(Resource):
                 yaml_content=args.get("yaml_content"),
                 yaml_url=args.get("yaml_url"),
                 pipeline_id=args.get("pipeline_id"),
+                dataset_name=args.get("name"),
             )
             session.commit()
 
