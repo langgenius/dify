@@ -471,38 +471,6 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         )
 
 
-class RagPipelinePublishedNodeRunApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_rag_pipeline
-    def post(self, pipeline: Pipeline, node_id: str):
-        """
-        Run rag pipeline datasource
-        """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-
-        inputs = args.get("inputs")
-        if inputs == None:
-            raise ValueError("missing inputs")
-
-        rag_pipeline_service = RagPipelineService()
-        workflow_node_execution = rag_pipeline_service.run_published_workflow_node(
-            pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
-        )
-
-        return workflow_node_execution
-
-
 class RagPipelineDraftNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -1025,11 +993,6 @@ api.add_resource(
 api.add_resource(
     RagPipelineDraftRunIterationNodeApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
-)
-
-api.add_resource(
-    RagPipelinePublishedNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
 )
 
 api.add_resource(
