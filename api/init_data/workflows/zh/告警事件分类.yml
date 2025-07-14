@@ -9,7 +9,7 @@ dependencies:
 - current_identifier: null
   type: package
   value:
-    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+    plugin_unique_identifier: langgenius/openai_api_compatible:0.0.7@f20c7275bbcf055ec5d170dd5128e341986e2dcba5266d08fd080d4bdf2288f6
 kind: app
 version: 0.1.5
 workflow:
@@ -30,13 +30,6 @@ workflow:
       - local_file
       - remote_url
       enabled: false
-      fileUploadConfig:
-        audio_file_size_limit: 50
-        batch_count_limit: 5
-        file_size_limit: 15
-        image_file_size_limit: 10
-        video_file_size_limit: 100
-        workflow_file_upload_limit: 10
       image:
         enabled: false
         number_limits: 3
@@ -208,17 +201,17 @@ workflow:
       positionAbsolute:
         x: 30
         y: 264.5
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         code: "import re\n\nLATENCY = \"request_latency\"\nAVAILABILITY = \"service_availability\"\
           \nINFRASTRUCTURE = \"infrastructure\"\nUNKNOWN = \"unknown\"\n\nclass AlertClassifier:\n\
           \    def __init__(self):\n        \n        self.rules = {\n           \
           \ AVAILABILITY: [\n                r'\\b(downtime|unavailable|offline|crash|failure|服务不可用|无法访问|中断|停止|error\
-          \ rate|error count|killed)\\b',\n                r'\\b.*(service|应用|系统|request|log|container|请求|日志).*(不可用|失败|错误率|宕机|终止|错误).*\\\
+          \ rate|error count|killed)\\b',\n                r'\\b.*(service|应用|系统|request|log|container|请求|日志|错误).*(不可用|失败|错误率|宕机|终止|错误|日志).*\\\
           b',\n                r'\\b(5xx|503|502|404)\\b',\n            ],\n     \
           \       INFRASTRUCTURE: [\n                r'\\b(network.*rtt|rtt.*latency)\\\
           b',  # match network rtt\n                r'\\b.*(cpu|memory|disk|network|bandwidth|storage|资源|rtt|cpu_cfs_throttled|硬件负载|容量|磁盘|吞吐量|文件描述符|throughput|read\
@@ -268,7 +261,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -280,10 +273,14 @@ workflow:
           - '1745304707998'
           - result
           variable: workflowId
+        - value_selector:
+          - '1745304707998'
+          - apikey
+          variable: workflowApiKey
         selected: false
         title: end
         type: end
-      height: 114
+      height: 140
       id: '1745224862564'
       position:
         x: 1848
@@ -295,7 +292,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         cases:
         - case_id: 'true'
@@ -325,7 +322,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         desc: ''
         output_type: string
@@ -349,21 +346,26 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    res = \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\
-          \n    match arg1:\n        case \"request_latency\":\n            res =\
-          \ \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\n        case \"service_availability\"\
-          :\n            res = \"40dea201-7aa4-4e27-865b-6ebeab91a0c3\"\n        case\
-          \ \"infrastructure\":\n            res = \"f514d742-6043-498e-98f1-ab03cbcb0250\"\
-          \n    return {\n        \"result\": res,\n    }\n"
+          \n    apikey = \"app-JDtZH1DfQtQb1SjzC3as680C\"\n    match arg1:\n     \
+          \   case \"request_latency\":\n            res = \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\
+          \n        case \"service_availability\":\n            res = \"40dea201-7aa4-4e27-865b-6ebeab91a0c3\"\
+          \n            apikey = \"app-LmlwNJaxmSWRCd2DCk6MhkDd\"\n        case \"\
+          infrastructure\":\n            res = \"f514d742-6043-498e-98f1-ab03cbcb0250\"\
+          \n            apikey = \"app-aIEZTMcRkOicrNK1ZegT80wQ\"\n    return {\n\
+          \        \"result\": res,\n        \"apikey\": apikey,\n    }\n"
         code_language: python3
         desc: ''
         outputs:
+          apikey:
+            children: null
+            type: string
           result:
             children: null
             type: string
-        selected: false
+        selected: true
         title: get worflow_id
         type: code
         variables:
@@ -374,16 +376,16 @@ workflow:
       height: 52
       id: '1745304707998'
       position:
-        x: 1545
+        x: 1557.7717573272403
         y: 264.5
       positionAbsolute:
-        x: 1545
+        x: 1557.7717573272403
         y: 264.5
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         classes:
         - id: '1'
@@ -401,8 +403,8 @@ workflow:
           completion_params:
             temperature: 0.1
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1745224781828'
         - alertName
@@ -415,16 +417,16 @@ workflow:
       height: 238
       id: '1747310030413'
       position:
-        x: 939
-        y: 413.5
+        x: 669.4535410854317
+        y: 578.1887220886825
       positionAbsolute:
-        x: 939
-        y: 413.5
+        x: 669.4535410854317
+        y: 578.1887220886825
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         desc: ''
         outputs:
@@ -438,16 +440,16 @@ workflow:
       height: 88
       id: '1748308923990'
       position:
-        x: 1545
-        y: 415.5
+        x: 1538.397216052539
+        y: 645.3250337970137
       positionAbsolute:
-        x: 1545
-        y: 415.5
+        x: 1538.397216052539
+        y: 645.3250337970137
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     - data:
         desc: ''
         selected: false
@@ -462,17 +464,17 @@ workflow:
       height: 52
       id: '1748308934593'
       position:
-        x: 1242
-        y: 472
+        x: 1139.825941382076
+        y: 702.3372804248803
       positionAbsolute:
-        x: 1242
-        y: 472
+        x: 1139.825941382076
+        y: 702.3372804248803
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 242
     viewport:
-      x: -252.36708811682195
-      y: 12.679066648163143
-      zoom: 0.6171138784972152
+      x: -925.5766014054602
+      y: -62.88294380286851
+      zoom: 0.9424356123466737

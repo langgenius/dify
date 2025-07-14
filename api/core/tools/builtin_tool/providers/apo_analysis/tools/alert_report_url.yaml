@@ -1,0 +1,76 @@
+identity:
+  name: get alert report url
+  author: APO
+  label:
+    en_US: Get alert report url
+    zh_Hans: 获取告警分析报告链接
+description:
+  human:
+    en_US: Get alert report url
+    zh_Hans: 获取告警分析报告链接
+  llm: Get alert report url
+display:
+  type: report_url
+  title: report_url
+  unit: report_url
+parameters:
+  - name: alertEventId
+    type: string
+    required: true
+    label:
+      en_US: alertEventId
+      zh_Hans: 告警事件ID
+      pt_BR: alertEventId
+    human_description:
+      en_US: alertEventId
+      zh_Hans: 报告类型
+      pt_BR: alertEventId
+    llm_description: alertEventId
+    form: llm
+  - name: reportText
+    type: string
+    required: true
+    label:
+      en_US: reportText
+      zh_Hans: 报告简要文本
+      pt_BR: reportText
+    human_description:
+      en_US: reportText
+      zh_Hans: 报告简要文本
+      pt_BR: reportText
+    llm_description: reportText
+    form: llm
+  - name: frontPrefix
+    type: string
+    label:
+      en_US: frontPrefix
+      zh_Hans: 报告访问地址
+      pt_BR: frontPrefix
+    human_description:
+      en_US: frontPrefix
+      zh_Hans: 报告访问地址
+      pt_BR: frontPrefix
+    llm_description: frontPrefix
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: Start timestamp in microseconds
+      zh_Hans: 查询开始时间（微秒）
+    llm_description: Microsecond timestamp for start time
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: End timestamp in microseconds
+      zh_Hans: 查询结束时间（微秒）
+    llm_description: Microsecond timestamp for end time
+    form: llm

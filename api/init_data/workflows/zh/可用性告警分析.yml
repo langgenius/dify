@@ -9,7 +9,7 @@ dependencies:
 - current_identifier: null
   type: package
   value:
-    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+    plugin_unique_identifier: langgenius/openai_api_compatible:0.0.7@f20c7275bbcf055ec5d170dd5128e341986e2dcba5266d08fd080d4bdf2288f6
 kind: app
 version: 0.1.5
 workflow:
@@ -129,42 +129,6 @@ workflow:
       source: '17448784268890'
       sourceHandle: source
       target: '17448784142480'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: llm
-        targetType: variable-aggregator
-      id: 17448784398000-source-1744878466157-target
-      selected: false
-      source: '17448784398000'
-      sourceHandle: source
-      target: '1744878466157'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: llm
-        targetType: variable-aggregator
-      id: 1744878372490-source-1744878466157-target
-      selected: false
-      source: '1744878372490'
-      sourceHandle: source
-      target: '1744878466157'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: variable-aggregator
-        targetType: end
-      id: 1744878466157-source-1744878476249-target
-      selected: false
-      source: '1744878466157'
-      sourceHandle: source
-      target: '1744878476249'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -318,6 +282,281 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750839702220-source-1750839691646-target
+      source: '1750839702220'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750840042580-source-1750839691646-target
+      source: '1750840042580'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: 1750840340832-source-1750840042580-target
+      source: '1750840340832'
+      sourceHandle: source
+      target: '1750840042580'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750843294839-source-1750839691646-target
+      source: '1750843294839'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750843922551-source-1750839691646-target
+      source: '1750843922551'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750843945254-source-1750839691646-target
+      source: '1750843945254'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17448784398000-source-1750844540721-target
+      source: '17448784398000'
+      sourceHandle: source
+      target: '1750844540721'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: variable-aggregator
+      id: 1750844540721-source-1744878466157-target
+      source: '1750844540721'
+      sourceHandle: source
+      target: '1744878466157'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1744878372490-source-1750844540721-target
+      source: '1744878372490'
+      sourceHandle: source
+      target: '1750844540721'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: 1750846397041-source-1750843922551-target
+      source: '1750846397041'
+      sourceHandle: source
+      target: '1750843922551'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: 1750846407202-source-1750843945254-target
+      source: '1750846407202'
+      sourceHandle: source
+      target: '1750843945254'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: tool
+      id: 1750941439700-source-1750839691646-target
+      source: '1750941439700'
+      sourceHandle: source
+      target: '1750839691646'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: llm
+      id: 1750987639392-source-1750840340832-target
+      source: '1750987639392'
+      sourceHandle: source
+      target: '1750840340832'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1751004239868-source-1744878476249-target
+      source: '1751004239868'
+      sourceHandle: source
+      target: '1744878476249'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: 1751251291730-source-1750843294839-target
+      source: '1751251291730'
+      sourceHandle: source
+      target: '1750843294839'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1751602453263-source-1751004239868-target
+      source: '1751602453263'
+      sourceHandle: source
+      target: '1751004239868'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1750839691646-source-1751602453263-target
+      source: '1750839691646'
+      sourceHandle: source
+      target: '1751602453263'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: if-else
+      id: 1744878466157-source-1751602618703-target
+      source: '1744878466157'
+      sourceHandle: source
+      target: '1751602618703'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: code
+      id: 1751602618703-false-1750839702220-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1750839702220'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: llm
+      id: 1751602618703-false-1750987639392-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1750987639392'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: llm
+      id: 1751602618703-false-1750846397041-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1750846397041'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: code
+      id: 1751602618703-false-1750941439700-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1750941439700'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: llm
+      id: 1751602618703-false-1750846407202-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1750846407202'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: llm
+      id: 1751602618703-false-1751251291730-target
+      source: '1751602618703'
+      sourceHandle: 'false'
+      target: '1751251291730'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: end
+      id: 1751602618703-true-1751602687916-target
+      source: '1751602618703'
+      sourceHandle: 'true'
+      target: '1751602687916'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -349,14 +588,20 @@ workflow:
           required: false
           type: paragraph
           variable: nodeName
-      height: 168
+        - label: edition
+          max_length: 48
+          options: []
+          required: false
+          type: paragraph
+          variable: edition
+      height: 194
       id: '1741227526517'
       position:
         x: 30
-        y: 276
+        y: 302
       positionAbsolute:
         x: 30
-        y: 276
+        y: 302
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -373,10 +618,10 @@ workflow:
       id: '1741592094819'
       position:
         x: 942
-        y: 276
+        y: 302
       positionAbsolute:
         x: 942
-        y: 276
+        y: 302
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -396,10 +641,10 @@ workflow:
       id: '1741592144815'
       position:
         x: 1246
-        y: 276
+        y: 302
       positionAbsolute:
         x: 1246
-        y: 276
+        y: 302
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -447,10 +692,10 @@ workflow:
       id: '1742453019576'
       position:
         x: 638
-        y: 276
+        y: 302
       positionAbsolute:
         x: 638
-        y: 276
+        y: 302
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -477,10 +722,14 @@ workflow:
           ]),\n        \"pid\": get_value(data, [\"pid\"]),\n        \"containerId\"\
           : get_value(data, [\"containerId\"]),\n        \"nodeName\": node if node\
           \ else get_value(data, [\"node\", \"src_node\", \"node_name\", \"nodeName\"\
-          ]),\n        \"sourceFrom\": source_from\n    }"
+          ]),\n        \"sourceFrom\": source_from,\n        \"alertEventId\": get_value(data,\
+          \ [\"alertEventId\"]),\n    }"
         code_language: python3
         desc: ''
         outputs:
+          alertEventId:
+            children: null
+            type: string
           alertName:
             children: null
             type: string
@@ -523,11 +772,11 @@ workflow:
       height: 54
       id: '1742807803325'
       position:
-        x: 335.35157092107124
-        y: 276
+        x: 334
+        y: 302
       positionAbsolute:
-        x: 335.35157092107124
-        y: 276
+        x: 334
+        y: 302
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -554,8 +803,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1742807803325'
         - alertName
@@ -565,14 +814,14 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 240
+      height: 246
       id: '17430590082510'
       position:
         x: 942
-        y: 370
+        y: 396
       positionAbsolute:
         x: 942
-        y: 370
+        y: 396
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -693,10 +942,10 @@ workflow:
       id: '1744878296971'
       position:
         x: 2158
-        y: 762
+        y: 812
       positionAbsolute:
         x: 2158
-        y: 762
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1049,11 +1298,11 @@ workflow:
       height: 54
       id: '1744878298576'
       position:
-        x: 1252.3492475354071
-        y: 422.7880989424209
+        x: 1246
+        y: 510
       positionAbsolute:
-        x: 1252.3492475354071
-        y: 422.7880989424209
+        x: 1246
+        y: 510
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1113,10 +1362,10 @@ workflow:
       id: '1744878352649'
       position:
         x: 1854
-        y: 762
+        y: 812
       positionAbsolute:
         x: 1854
-        y: 762
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1131,8 +1380,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 615ece65-9193-4bad-a375-d51b67dbaafc
           role: system
@@ -1186,14 +1435,14 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 96
       id: '1744878372490'
       position:
         x: 2766
-        y: 762
+        y: 812
       positionAbsolute:
         x: 2766
-        y: 762
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1226,10 +1475,10 @@ workflow:
       id: '1744878389686'
       position:
         x: 1550
-        y: 463
+        y: 492
       positionAbsolute:
         x: 1550
-        y: 463
+        y: 492
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1349,10 +1598,10 @@ workflow:
       id: '17448784142480'
       position:
         x: 2158
-        y: 463
+        y: 492
       positionAbsolute:
         x: 2158
-        y: 463
+        y: 492
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1403,10 +1652,10 @@ workflow:
       id: '17448784268890'
       position:
         x: 1854
-        y: 463
+        y: 492
       positionAbsolute:
         x: 1854
-        y: 463
+        y: 492
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1421,8 +1670,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 615ece65-9193-4bad-a375-d51b67dbaafc
           role: system
@@ -1484,15 +1733,15 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 96
       id: '17448784398000'
       position:
         x: 2766
-        y: 463
+        y: 492
       positionAbsolute:
         x: 2766
-        y: 463
-      selected: true
+        y: 492
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1508,14 +1757,14 @@ workflow:
           - text
         - - '17448784398000'
           - text
-      height: 131
+      height: 130
       id: '1744878466157'
       position:
-        x: 3070
-        y: 463
+        x: 3374
+        y: 492
       positionAbsolute:
-        x: 3070
-        y: 463
+        x: 3374
+        y: 492
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1528,17 +1777,25 @@ workflow:
           - '1744878466157'
           - output
           variable: text
+        - value_selector:
+          - '1751602453263'
+          - text
+          variable: output
+        - value_selector:
+          - '1751004239868'
+          - text
+          variable: alertDirection
         selected: false
         title: 结束
         type: end
-      height: 90
+      height: 142
       id: '1744878476249'
       position:
-        x: 3374
-        y: 463
+        x: 5806
+        y: 836
       positionAbsolute:
-        x: 3374
-        y: 463
+        x: 5806
+        y: 836
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1558,16 +1815,16 @@ workflow:
           \ = []\n    all_logs = []\n    \n    for log in logs or []:\n        content\
           \ = log.get(\"body\", \"\")\n        timestamp = log.get(\"timestamp\")\n\
           \        tags = log.get('tags', {})\n        \n        simplified_log =\
-          \ {\n            \"content\": content,\n            \"timestamp\": timestamp,\n\
+          \ {\n            \"body\": content,\n            \"timestamp\": timestamp,\n\
           \            \"tags\": tags\n        }\n        \n        all_logs.append(simplified_log)\n\
           \        if is_error_log(content):\n            error_logs.append(simplified_log)\n\
           \    \n    result_logs = error_logs if error_logs else all_logs[:100]\n\
-          \    \n    MAX_LENGTH = 80000\n    result_logs_str = json.dumps(result_logs,\
-          \ separators=(\",\", \":\"))\n    \n    while len(result_logs_str) > MAX_LENGTH\
-          \ and len(result_logs) > 0:\n        remove_count = max(1, len(result_logs)\
-          \ // 10)\n        result_logs = result_logs[:-remove_count]\n        result_logs_str\
-          \ = json.dumps(result_logs, separators=(\",\", \":\"))\n    \n    return\
-          \ {\"logs\": result_logs_str}"
+          \    \n    MAX_LENGTH = 50000\n    result_logs_str = json.dumps({\"logs\"\
+          : result_logs}, separators=(\",\", \":\"))\n    \n    while len(result_logs_str)\
+          \ > MAX_LENGTH and len(result_logs) > 0:\n        remove_count = max(1,\
+          \ len(result_logs) // 10)\n        result_logs = result_logs[:-remove_count]\n\
+          \        result_logs_str = json.dumps({\"logs\": result_logs}, separators=(\"\
+          ,\", \":\"))\n    \n    return {\"logs\": result_logs_str}"
         code_language: python3
         desc: ''
         outputs:
@@ -1586,10 +1843,10 @@ workflow:
       id: '1744901266309'
       position:
         x: 2462
-        y: 762
+        y: 812
       positionAbsolute:
         x: 2462
-        y: 762
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1597,28 +1854,28 @@ workflow:
       width: 244
     - data:
         code: "import re\nfrom typing import List\nimport json\n\nERROR_PATTERNS:\
-          \ List[str] = [\n    r\"\\bERROR\\b\",\n    r\"\\bERR\\b\",\n    r\"\\bEXCEPTION\\\
-          b\",\n    r\"\\bPANIC\\b\",\n    r\"\\bFAIL(?:ED)?\\b\",\n    r\"\\bWRONG\\\
-          b\",\n    r\"\\bFATAL\\b\",\n    r\"\\b500\\b\",\n    r\"\\b5\\d{2}\\b\"\
-          ,\n]\n\nERROR_REGEXES = [re.compile(pat, re.IGNORECASE) for pat in ERROR_PATTERNS]\n\
-          \ndef is_error_log(line: str) -> bool:\n    if not isinstance(line, (str,\
-          \ bytes)):\n        return False\n    for regex in ERROR_REGEXES:\n    \
-          \    if regex.search(line):\n            return True\n    return False\n\
-          \ndef main(data_json: str) -> dict:\n    logs = json.loads(data_json).get(\"\
-          data\", {}).get(\"logContents\", {}).get(\"contents\", [])\n    \n    error_logs\
-          \ = []\n    all_logs = []\n    \n    for log in logs or []:\n        content\
-          \ = log.get(\"body\", \"\")\n        timestamp = log.get(\"timestamp\")\n\
-          \        tags = log.get('tags', {})\n        \n        simplified_log =\
-          \ {\n            \"content\": content,\n            \"timestamp\": timestamp,\n\
-          \            \"tags\": tags\n        }\n        \n        all_logs.append(simplified_log)\n\
-          \        if is_error_log(content):\n            error_logs.append(simplified_log)\n\
-          \    \n    result_logs = error_logs if error_logs else all_logs[:100]\n\
-          \    \n    MAX_LENGTH = 80000\n    result_logs_str = json.dumps(result_logs,\
-          \ separators=(\",\", \":\"))\n    \n    while len(result_logs_str) > MAX_LENGTH\
-          \ and len(result_logs) > 0:\n        remove_count = max(1, len(result_logs)\
-          \ // 10)\n        result_logs = result_logs[:-remove_count]\n        result_logs_str\
-          \ = json.dumps(result_logs, separators=(\",\", \":\"))\n    \n    return\
-          \ {\"logs\": result_logs_str}"
+          \ List[str] = [\n    r\"ERROR\",\n    r\"ERR\",\n    r\"EXCEPTION\",\n \
+          \   r\"PANIC\",\n    r\"FAIL(?:ED)?\",\n    r\"WRONG\",\n    r\"FATAL\"\
+          ,\n    r\"500\",\n    r\"5\\d{2}\",\n]\n\nERROR_REGEXES = [re.compile(pat,\
+          \ re.IGNORECASE) for pat in ERROR_PATTERNS]\n\ndef is_error_log(line: str)\
+          \ -> bool:\n    if not isinstance(line, (str, bytes)):\n        return False\n\
+          \    for regex in ERROR_REGEXES:\n        if regex.search(line):\n     \
+          \       return True\n    return False\n\ndef main(data_json: str) -> dict:\n\
+          \    logs = json.loads(data_json).get(\"data\", {}).get(\"logContents\"\
+          , {}).get(\"contents\", [])\n    \n    error_logs = []\n    all_logs = []\n\
+          \    \n    for log in logs or []:\n        content = log.get(\"body\", \"\
+          \")\n        timestamp = log.get(\"timestamp\")\n        tags = log.get('tags',\
+          \ {})\n        \n        simplified_log = {\n            \"body\": content,\n\
+          \            \"timestamp\": timestamp,\n            \"tags\": tags\n   \
+          \     }\n        \n        all_logs.append(simplified_log)\n        if is_error_log(content):\n\
+          \            error_logs.append(simplified_log)\n    \n    result_logs =\
+          \ error_logs if error_logs else all_logs[:100]\n    \n    MAX_LENGTH = 50000\n\
+          \    result_logs_str = json.dumps({\"logs\": result_logs}, separators=(\"\
+          ,\", \":\"))\n    \n    while len(result_logs_str) > MAX_LENGTH and len(result_logs)\
+          \ > 0:\n        remove_count = max(1, len(result_logs) // 10)\n        result_logs\
+          \ = result_logs[:-remove_count]\n        result_logs_str = json.dumps({\"\
+          logs\": result_logs}, separators=(\",\", \":\"))\n    \n    return {\"logs\"\
+          : result_logs_str}"
         code_language: python3
         desc: ''
         outputs:
@@ -1637,10 +1894,10 @@ workflow:
       id: '17449013347930'
       position:
         x: 2462
-        y: 463
+        y: 492
       positionAbsolute:
         x: 2462
-        y: 463
+        y: 492
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1660,10 +1917,10 @@ workflow:
       id: '1745313574375'
       position:
         x: 1550
-        y: 557
+        y: 586
       positionAbsolute:
         x: 1550
-        y: 557
+        y: 586
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1683,11 +1940,11 @@ workflow:
       height: 54
       id: '1745313576757'
       position:
-        x: 1258.6984950708145
-        y: 557
+        x: 1246
+        y: 622
       positionAbsolute:
-        x: 1258.6984950708145
-        y: 557
+        x: 1246
+        y: 622
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1702,8 +1959,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: qwen3:30b
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 8eba855d-6560-4b17-95ce-79dcdef46512
           role: system
@@ -1717,7 +1974,7 @@ workflow:
             {{#1741227526517.params#}}
 
             请给出一些建议'
-        selected: false
+        selected: true
         title: LLM 3
         type: llm
         variables: []
@@ -1727,11 +1984,11 @@ workflow:
       id: '1745391138767'
       position:
         x: 1246
-        y: 687
+        y: 731
       positionAbsolute:
         x: 1246
-        y: 687
-      selected: false
+        y: 731
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1750,16 +2007,1044 @@ workflow:
       id: '1745391142578'
       position:
         x: 1550
-        y: 687
+        y: 716
       positionAbsolute:
         x: 1550
-        y: 687
+        y: 716
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: reportType
+            ja_JP: reportType
+            pt_BR: reportType
+            zh_Hans: 报告类型
+          label:
+            en_US: reportType
+            ja_JP: reportType
+            pt_BR: reportType
+            zh_Hans: 报告类型
+          llm_description: alert report type
+          max: null
+          min: null
+          name: reportType
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: reportType
+            ja_JP: reportType
+            pt_BR: tags
+            zh_Hans: 报告标签（用于检索）
+          label:
+            en_US: tags
+            ja_JP: tags
+            pt_BR: tags
+            zh_Hans: 报告标签（用于检索）
+          llm_description: alert report tags
+          max: null
+          min: null
+          name: tags
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: overview
+            ja_JP: overview
+            pt_BR: overview
+            zh_Hans: 告警事件总览
+          label:
+            en_US: overview
+            ja_JP: overview
+            pt_BR: overview
+            zh_Hans: 告警事件总览
+          llm_description: overview
+          max: null
+          min: null
+          name: overview
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: topology
+            ja_JP: topology
+            pt_BR: topology
+            zh_Hans: 报告类型
+          label:
+            en_US: topology
+            ja_JP: topology
+            pt_BR: topology
+            zh_Hans: 拓扑数据
+          llm_description: topology data
+          max: null
+          min: null
+          name: topology
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: rootCauseAnalysis
+            ja_JP: rootCauseAnalysis
+            pt_BR: rootCauseAnalysis
+            zh_Hans: 根因分析结论
+          label:
+            en_US: rootCauseAnalysis
+            ja_JP: rootCauseAnalysis
+            pt_BR: rootCauseAnalysis
+            zh_Hans: 根因分析结论
+          llm_description: rootCauseAnalysis
+          max: null
+          min: null
+          name: rootCauseAnalysis
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: suggest
+            ja_JP: suggest
+            pt_BR: suggest
+            zh_Hans: 可行动方向建议
+          label:
+            en_US: suggest
+            ja_JP: suggest
+            pt_BR: suggest
+            zh_Hans: 可行动方向建议
+          llm_description: suggest
+          max: null
+          min: null
+          name: suggest
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: evidence
+            ja_JP: evidence
+            pt_BR: evidence
+            zh_Hans: 根因分析结论
+          label:
+            en_US: evidence
+            ja_JP: evidence
+            pt_BR: evidence
+            zh_Hans: 验证数据
+          llm_description: evidence
+          max: null
+          min: null
+          name: evidence
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        params:
+          evidence: ''
+          overview: ''
+          reportType: ''
+          rootCauseAnalysis: ''
+          suggest: ''
+          tags: ''
+          topology: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 生成告警分析报告
+        tool_configurations: {}
+        tool_label: 生成告警分析报告
+        tool_name: Generate alert analysis report
+        tool_parameters:
+          evidence:
+            type: mixed
+            value: '{{#1750843294839.result#}}'
+          overview:
+            type: mixed
+            value: '{{#1750840042580.result#}}'
+          reportType:
+            type: mixed
+            value: error
+          rootCauseAnalysis:
+            type: mixed
+            value: '{{#1750843945254.result#}}'
+          suggest:
+            type: mixed
+            value: '{{#1750843922551.result#}}'
+          tags:
+            type: mixed
+            value: '{{#1750839702220.result#}}'
+          topology:
+            type: mixed
+            value: '{{#1750941439700.result#}}'
+        type: tool
+      height: 54
+      id: '1750839691646'
+      position:
+        x: 4894
+        y: 836
+      positionAbsolute:
+        x: 4894
+        y: 836
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\n\ndef main(alertEventId: str) -> dict:\n    data = {\n        \"\
+          alertEventId\": alertEventId\n    }\n    return {\n        \"result\": json.dumps(data),\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 报告标签
+        type: code
+        variables:
+        - value_selector:
+          - '1742807803325'
+          - alertEventId
+          variable: alertEventId
+      height: 54
+      id: '1750839702220'
+      position:
+        x: 4590
+        y: 492
+      positionAbsolute:
+        x: 4590
+        y: 492
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\n\ndef main(timestamp: int, reason: str, pod: str, node: str, pid:\
+          \ str, containerId: str, service: str, detail: str) -> dict:\n    data =\
+          \ {\n        \"timestamp\": timestamp,\n        \"detail\": detail,\n  \
+          \      \"reason\": reason,\n        \"tags\": {\n            \"service\"\
+          : service,\n            \"pod\": pod,\n            \"nodeName\": node,\n\
+          \            \"pid\": pid,\n            \"containerId\": containerId\n \
+          \       }\n    }\n    return {\n        \"result\": json.dumps(data),\n\
+          \    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 报告总览
+        type: code
+        variables:
+        - value_selector:
+          - '1741227526517'
+          - endTime
+          variable: timestamp
+        - value_selector:
+          - '1750840340832'
+          - text
+          variable: reason
+        - value_selector:
+          - '1742807803325'
+          - pod
+          variable: pod
+        - value_selector:
+          - '1741227526517'
+          - nodeName
+          variable: node
+        - value_selector:
+          - '1742807803325'
+          - pid
+          variable: pid
+        - value_selector:
+          - '1742807803325'
+          - containerId
+          variable: containerId
+        - value_selector:
+          - '1742807803325'
+          - service
+          variable: service
+        - value_selector:
+          - '1750987639392'
+          - text
+          variable: detail
+      height: 54
+      id: '1750840042580'
+      position:
+        x: 4590
+        y: 700
+      positionAbsolute:
+        x: 4590
+        y: 700
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: d21add02-97db-4fa3-a6e8-d4387617ce2a
+          role: system
+          text: 你是一个可观测性领域的智能助手，帮助用户解决问题
+        - id: 4ca361b5-08c7-461e-b239-648db7bd6815
+          role: user
+          text: "#目的\n根据应用的结论生成根因方向的结论\n#结论数据\n{{#1744878466157.output#}}\n# 时间\n\
+            {{#1741227526517.endTime#}}\n#格式模版参考\n告警报事件结论 \n**事件概述**：\n\n\U0001F6A8\
+            \ 日志错误率升高：15%的请求超过70毫秒，持续5分钟\n\U0001F4CA 异常日志：共128个，90%异常\n**问题分析**\n\n\
+            \U0001F552 日志显示xxx\n \U0001F310 显示xxx可能存在xxxx\n**解决措施**：\n\n\U0001F6E0\
+            ️ 执行xxx\n\U0001F527 检查xxx\n**日志数据**：\n\n⏱️ xx异常\n#输出格式\n格式参考模版，注意换行和空格，确保文本美观输出，简单易懂(使用MarkDown格式的文本)，且不要有其他输出"
+        selected: false
+        title: 格式化结论
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1750840340832'
+      position:
+        x: 4286
+        y: 700
+      positionAbsolute:
+        x: 4286
+        y: 700
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\n\ndef main(logs: str, log_text: str) -> dict:\n    logs_raw = json.loads(logs)\n\
+          \    logs_data = {\n        \"type\": \"log\",\n        \"name\": \"应用日志\"\
+          ,\n        \"description\": log_text,\n        \"data\": logs_raw.get(\"\
+          logs\", [])\n    }\n\n    return {\n        \"result\": json.dumps({\n \
+          \           \"evidence\": [logs_data]\n        }),\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 汇总验证数据
+        type: code
+        variables:
+        - value_selector:
+          - '1750844540721'
+          - output
+          variable: logs
+        - value_selector:
+          - '1751251291730'
+          - text
+          variable: log_text
+      height: 54
+      id: '1750843294839'
+      position:
+        x: 4590
+        y: 836
+      positionAbsolute:
+        x: 4590
+        y: 836
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import re\ndef main(raw_data: str) -> dict:\n    pattern = r'```json\\\
+          n(.*?)\\n```'\n    match = re.search(pattern, raw_data, re.DOTALL)\n\n \
+          \   json_str = match.group(1)\n    rootcause = json.loads(json_str)\n  \
+          \  return {\n        \"result\": json.dumps(rootcause),\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 可行动方向建议
+        type: code
+        variables:
+        - value_selector:
+          - '1750846397041'
+          - text
+          variable: raw_data
+      height: 54
+      id: '1750843922551'
+      position:
+        x: 4590
+        y: 972
+      positionAbsolute:
+        x: 4590
+        y: 972
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import re\ndef main(raw_data: str) -> dict:\n    pattern = r'```json\\\
+          n(.*?)\\n```'\n    match = re.search(pattern, raw_data, re.DOTALL)\n\n \
+          \   json_str = match.group(1)\n    rootcause = json.loads(json_str)\n  \
+          \  return {\n        \"result\": json.dumps(rootcause),\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 根因方向
+        type: code
+        variables:
+        - value_selector:
+          - '1750846407202'
+          - text
+          variable: raw_data
+      height: 54
+      id: '1750843945254'
+      position:
+        x: 4590
+        y: 1108
+      positionAbsolute:
+        x: 4590
+        y: 1108
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        output_type: string
+        selected: false
+        title: 聚合查询日志
+        type: variable-aggregator
+        variables:
+        - - '1744901266309'
+          - logs
+        - - '17449013347930'
+          - logs
+      height: 130
+      id: '1750844540721'
+      position:
+        x: 3070
+        y: 492
+      positionAbsolute:
+        x: 3070
+        y: 492
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 7694ae43-c744-4e62-9a51-fb4b8d8fe597
+          role: system
+          text: 你是一个可观测性领域的智能助手
+        - id: eaa0bed8-46a2-4c25-aca9-83d0f1105263
+          role: user
+          text: "#目的\n生成建议用户的行动建议\n如执行命令，或者找xxx排除问题\n#结论数据\n{{#1744878466157.output#}}\n\
+            \n\n#格式模版\n```json\n{\"suggest\": [\n        {\n            \"action\"\
+            : \"Add index to payment transaction table.\",\n            \"level\"\
+            : \"high\"\n        },\n        {\n            \"action\": \"Scale up\
+            \ database node CPU resources.\",\n            \"level\": \"medium\"\n\
+            \        }\n    ] }\n```\n#输出格式\njson格式数据，格式参数模版，不要有其他输出"
+        selected: false
+        title: 可行动方向建议
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1750846397041'
+      position:
+        x: 4286
+        y: 972
+      positionAbsolute:
+        x: 4286
+        y: 972
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 0e0b95f4-141c-413e-8a29-1b17b745495f
+          role: system
+          text: 你是一个可观测性领域的智能助手
+        - id: 954478ee-4fa8-4750-9abf-14abf2e75271
+          role: user
+          text: "#目的\n根据应用的日志结论生成日志根因方向的结论\n#结论数据\n{{#1744878466157.output#}}\n# 注意\n\
+            type为故障方向\n1第三方依赖（thirdparty），配置问题(config)，代码异常(code)，下游服务错误(downstream)，系统资源异常(system)\n\
+            每个方向直给一个结论即可，不要出现重复\n主要根因方向必须和major结论保持一致，不要不统一\n2且必须给一个有问题的方向(level为major)\n\
+            3 列表必须按照等级排序level从高到低维（major,minor,normal）\n4 cause内容只能为第三方依赖错误，配置问题，代码异常，下游服务调用错误，系统资源\n\
+            #格式模版\n```json\n{\n        \"cause\": \"主要原根因方向\",\n        \"other\"\
+            : [\n            {\n                \"reason\": \"\",\n              \
+            \  \"type\": \"thirdparty\",\n                \"level\": \"major/minor/normal\"\
+            \n            },\n            {\n                \"reason\": \"\",\n \
+            \               \"type\": \"code\",\n                \"level\": \"minor\"\
+            \n            },\n            {\n                \"reason\": \"\",\n \
+            \               \"type\": \"config\",\n                \"level\": \"normal\"\
+            \n            },\n            {\n                \"reason\": \"\",\n \
+            \               \"type\": \"downstream\",\n                \"level\":\
+            \ \"normal\"\n            },\n            {\n                \"reason\"\
+            : \"\",\n                \"type\": \"system\",\n                \"level\"\
+            : \"normal\"\n            }\n        ]\n    }\n```\n#输出格式\ntype只能为第三方依赖（thirdparty），配置问题(config)，代码异常(code)，下游服务错误(downstream)，系统资源异常(system)这几种，不要有其他内容\n\
+            json格式数据，格式参数模版，不要有其他输出"
+        selected: false
+        title: 根因方向结论
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1750846407202'
+      position:
+        x: 4286
+        y: 1108
+      positionAbsolute:
+        x: 4286
+        y: 1108
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import requests\nimport json\ndef get_topology(service, cluster, start_time,\
+          \ end_time) -> str:\n        params = {\n          'service': service,\n\
+          \          'cluster': cluster,\n          'startTime': start_time,\n   \
+          \       'endTime': end_time,\n          }\n        resp = requests.get(\"\
+          http://apo-backend-svc:8080\"+ '/api/dataplane/topology', params=params)\n\
+          \        res = {}\n\n\n        query_params = {\n                    'startTime':\
+          \ start_time,\n                    'endTime': end_time,\n              \
+          \      'service': service\n        }\n        response = requests.get(\"\
+          http://apo-backend-svc:8080\"+ '/api/dataplane/redcharts', params=query_params)\n\
+          \        metrics = {}\n        if response.status_code == 200 and response.json()['msg']\
+          \ == '':\n            metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
+          \            metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
+          \            metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
+          \        res['current'] = {\n            \"service\": service,\n       \
+          \     \"description\": \"\",\n            \"metrics\": metrics,\n      \
+          \  }\n\n        if resp.status_code == 200 and resp.json()['msg'] == \"\"\
+          :\n            list = resp.json()\n            result = []\n           \
+          \ for item in list['results'] or []:\n                if item[\"name\"]\
+          \ == service:\n                    result = item\n\n            parents\
+          \ = []\n            for p_svc in result['parents']:\n                query_params\
+          \ = {\n                    'startTime': start_time,\n                  \
+          \  'endTime': end_time,\n                    'service': p_svc\n        \
+          \        }\n                response = requests.get(\"http://apo-backend-svc:8080\"\
+          + '/api/dataplane/redcharts', params=query_params)\n                if response.status_code\
+          \ != 200:\n                    continue\n                metrics = {}\n\
+          \                metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
+          \                metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
+          \                metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
+          \                parents.append({\n                    'service': p_svc,\n\
+          \                    'description': \"\",\n                    'metrics':\
+          \ metrics,\n                })\n            \n            children = []\n\
+          \            for c_svc in result['children']:\n                query_params\
+          \ = {\n                    'startTime': start_time,\n                  \
+          \  'endTime': end_time,\n                    'service': c_svc\n        \
+          \        }\n                response = requests.get(\"http://apo-backend-svc:8080\"\
+          + '/api/dataplane/redcharts', params=query_params)\n                if response.status_code\
+          \ != 200 or response.json()['msg'] != '':\n                    continue\n\
+          \                metrics = {}\n                metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
+          \                metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
+          \                metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
+          \                children.append({\n                    'service': c_svc,\n\
+          \                    'description': \"\",\n                    'metrics':\
+          \ metrics,\n                })\n            \n            res['children']\
+          \ = children\n            res['parents'] = parents\n            return json.dumps(res)\n\
+          \n\ndef main(service: str, startTime: int, endTime: int) -> dict:\n    rc\
+          \ = get_topology(service, \"\", startTime, endTime)\n    if rc == None:\n\
+          \        rc = \"{}\"\n    return {\n        \"result\": rc,\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 获取拓扑
+        type: code
+        variables:
+        - value_selector:
+          - '1742807803325'
+          - service
+          variable: service
+        - value_selector:
+          - '1741227526517'
+          - startTime
+          variable: startTime
+        - value_selector:
+          - '1741227526517'
+          - endTime
+          variable: endTime
+      height: 54
+      id: '1750941439700'
+      position:
+        x: 4590
+        y: 1202
+      positionAbsolute:
+        x: 4590
+        y: 1202
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 45ec55b5-ae91-45b8-989c-83f81cee1712
+          role: system
+          text: 你是一个可观测性领域的智能助手，帮助用户解决问题
+        - id: 2832e05f-6966-49d9-9697-77bde92736a9
+          role: user
+          text: "#目的\n根据应用的结论生成当前情况的描述\n使用结论内的数据，回答简洁易懂\n#结论数据\n{{#1744878466157.output#}}\n\
+            # 时间\n{{#1741227526517.endTime#}}\n#格式模版参考\n告警报事件结论 \n**事件概述**：\n当前告警事件为XXXX\
+            \ (简洁，不要有其他内容)\n**问题分析**\n初步分析是XXX方向（通过日志内容总结），不要有其他内容，给出方向即可\n**解决措施**：\n\
+            - 执行XXXX命令（必须和故障方向有关）\n\n#输出格式\n格式参考模版，注意换行和空格，确保文本美观输出，简单易懂(使用MarkDown格式的文本)，且不要有其他输出"
+        selected: false
+        title: 总结
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1750987639392'
+      position:
+        x: 3982
+        y: 700
+      positionAbsolute:
+        x: 3982
+        y: 700
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: d33542e3-ac5c-48f1-970b-fa7ab0ffd0ef
+          role: system
+          text: ''
+        - id: a070588b-7b1e-453e-8994-1e1bb6b4593c
+          role: user
+          text: '#目的
+
+            从故障结论中提取故障方向
+
+            # 注意
+
+            根据结论的内容划分故障方向
+
+            1 如果网络链路rtt正常，网络方向给出下游依赖问题
+
+            2 日志告警给出日志错误
+
+            3 基础设施告警，给出资源问题
+
+            #结论数据
+
+            {{#1744878466157.output#}}
+
+            #输出内容
+
+            故障方向，只输出四个字就好 （如网络方向，下游依赖问题，cpu方向， 日志错误等）'
+        selected: false
+        title: LLM 8
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1751004239868'
+      position:
+        x: 5502
+        y: 836
+      positionAbsolute:
+        x: 5502
+        y: 836
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - role: system
+          text: 你是一个可观测性领域智能助手，帮助用户解决问题
+        - role: user
+          text: '# 目的
+
+            输出当前日志数据的情况，输出字数100左右，尽量简洁名了
+
+            # 日志数据
+
+            {{#1750844540721.output#}}
+
+            #输出
+
+            从日志中可以看出xxxx'
+        selected: false
+        title: 日志总结
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 96
+      id: '1751251291730'
+      position:
+        x: 4286
+        y: 836
+      positionAbsolute:
+        x: 4286
+        y: 836
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: alertEventId
+            ja_JP: alertEventId
+            pt_BR: alertEventId
+            zh_Hans: 报告类型
+          label:
+            en_US: alertEventId
+            ja_JP: alertEventId
+            pt_BR: alertEventId
+            zh_Hans: 告警事件ID
+          llm_description: alertEventId
+          max: null
+          min: null
+          name: alertEventId
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: reportText
+            ja_JP: reportText
+            pt_BR: reportText
+            zh_Hans: 报告简要文本
+          label:
+            en_US: reportText
+            ja_JP: reportText
+            pt_BR: reportText
+            zh_Hans: 报告简要文本
+          llm_description: reportText
+          max: null
+          min: null
+          name: reportText
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: frontPrefix
+            ja_JP: frontPrefix
+            pt_BR: frontPrefix
+            zh_Hans: 报告访问地址
+          label:
+            en_US: frontPrefix
+            ja_JP: frontPrefix
+            pt_BR: frontPrefix
+            zh_Hans: 报告访问地址
+          llm_description: frontPrefix
+          max: null
+          min: null
+          name: frontPrefix
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Start timestamp in microseconds
+            ja_JP: Start timestamp in microseconds
+            pt_BR: Start timestamp in microseconds
+            zh_Hans: 查询开始时间（微秒）
+          label:
+            en_US: Start Time
+            ja_JP: Start Time
+            pt_BR: Start Time
+            zh_Hans: 开始时间
+          llm_description: Microsecond timestamp for start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: End timestamp in microseconds
+            ja_JP: End timestamp in microseconds
+            pt_BR: End timestamp in microseconds
+            zh_Hans: 查询结束时间（微秒）
+          label:
+            en_US: End Time
+            ja_JP: End Time
+            pt_BR: End Time
+            zh_Hans: 结束时间
+          llm_description: Microsecond timestamp for end time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          alertEventId: ''
+          endTime: ''
+          frontPrefix: ''
+          reportText: ''
+          startTime: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 获取告警分析报告链接
+        tool_configurations: {}
+        tool_label: 获取告警分析报告链接
+        tool_name: get alert report url
+        tool_parameters:
+          alertEventId:
+            type: mixed
+            value: '{{#1742807803325.alertEventId#}}'
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          reportText:
+            type: mixed
+            value: 当前应用日志错误数升高\n详细报告内容\n
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 54
+      id: '1751602453263'
+      position:
+        x: 5198
+        y: 836
+      positionAbsolute:
+        x: 5198
+        y: 836
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: cbd77e4f-1f53-4d83-b9fe-413de4db0078
+            value: ce
+            varType: string
+            variable_selector:
+            - '1741227526517'
+            - edition
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支 2
+        type: if-else
+      height: 126
+      id: '1751602618703'
+      position:
+        x: 3678
+        y: 492
+      positionAbsolute:
+        x: 3678
+        y: 492
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1744878466157'
+          - output
+          variable: text
+        selected: false
+        title: 结束 5
+        type: end
+      height: 90
+      id: '1751602687916'
+      position:
+        x: 3982
+        y: 570
+      positionAbsolute:
+        x: 3982
+        y: 570
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: -349.98141784261156
-      y: 52.56501584401272
-      zoom: 0.48872262970053
+      x: 47.03146648242307
+      y: 94.5672153955509
+      zoom: 0.3941309919597938

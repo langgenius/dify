@@ -9,6 +9,21 @@ from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
+def get_report(params:  dict, reason: str) -> list:
+    url = dify_config.APO_BACKEND_URL + '/api/alerts/anomaly-span/list'
+    resp = requests.post(url, json=params)
+    res_list = []
+
+    if resp.status_code == 200:
+        for item in resp.json()["list"] or []:
+            resurl = f"{dify_config.APO_BACKEND_URL}/#/cause/report/{item['traceId']}/{item['spanId']}?mutatedType={reason}"
+            res_list.append(resurl)
+            if len(res_list) == 3:
+                break
+    
+    return res_list
+
+
 class QueryRootCauseReportTool(BuiltinTool):
     def _invoke(
         self,
@@ -33,17 +48,19 @@ class QueryRootCauseReportTool(BuiltinTool):
         "service": service,
         "startTime": start_time,
         }
-        url = dify_config.APO_BACKEND_URL + '/api/alerts/anomaly-span/list'
-
-        resp = requests.post(url, json=params)
-
         res_list = []
-        if resp.status_code == 200:
-            for item in resp.json()["list"] or []:
-                resurl = f"{dify_config.APO_BACKEND_URL}/#/cause/report/{item['traceId']}/{item['spanId']}?mutatedType={reason}"
-                res_list.append(resurl)
-                if len(res_list) == 3:
-                    break
+        res_list = get_report(params, reason)
+        
+        if len(res_list) == 0:
+            params = {
+              "currentPage": 1,
+              "endTime": end_time,
+              "pageSize": 10,
+              "reason": reason,
+              "service": service,
+              "startTime": start_time,
+            }
+            res_list = get_report(params, reason)
 
         list = json.dumps({
             'type': 'report',

@@ -1,0 +1,71 @@
+identity:
+  name: dataplane_service_redcharts
+  author: APO
+  label:
+    en_US: Query service's RED charts
+    zh_Hans: 查询服务RED指标
+description:
+  human:
+    en_US: Query service's RED charts
+    zh_Hans: 查询服务RED指标
+  llm: Query service's RED charts
+display:
+  type: metric
+  title: Service RED charts
+  unit: number
+parameters:
+  - name: service
+    type: string
+    required: false
+    label:
+      en_US: service
+      zh_Hans: service
+    human_description:
+      en_US: Service name
+      zh_Hans: 服务名
+    llm_description: Service name
+    form: llm
+  - name: cluster
+    type: string
+    required: false
+    label:
+      en_US: cluster
+      zh_Hans: cluster
+    human_description:
+      en_US: cluster
+      zh_Hans: 集群
+    llm_description: cluster
+    form: llm
+  - name: endpoint
+    type: string
+    required: false
+    label:
+      en_US: endpoint
+      zh_Hans: endpoint
+    human_description:
+      en_US: endpoint
+      zh_Hans: endpoint
+    llm_description: endpoint
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+    llm_description: Data query end time(Microsecond)
+    form: llm

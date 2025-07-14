@@ -1,0 +1,105 @@
+identity:
+  name: Generate alert analysis report
+  author: APO
+  label:
+    en_US: Generate alert analysis report
+    zh_Hans: 生成告警分析报告
+    pt_BR: Generate alert analysis report
+description:
+  human:
+    en_US: Generate alert analysis report
+    zh_Hans: 生成告警分析报告
+    pt_BR: Query the entry service topology
+  llm: Generate alert analysis report
+display:
+  type: report
+  title: report
+  unit: report
+parameters:
+  - name: reportType
+    type: string
+    required: true
+    label:
+      en_US: reportType
+      zh_Hans: 报告类型
+      pt_BR: reportType
+    human_description:
+      en_US: reportType
+      zh_Hans: 报告类型
+      pt_BR: reportType
+    llm_description: alert report type
+    form: llm
+  - name: tags
+    type: string
+    required: true
+    label:
+      en_US: tags
+      zh_Hans: 报告标签（用于检索）
+      pt_BR: tags
+    human_description:
+      en_US: reportType
+      zh_Hans: 报告标签（用于检索）
+      pt_BR: tags
+    llm_description: alert report tags
+    form: llm
+  - name: overview
+    type: string
+    required: true
+    label:
+      en_US: overview
+      zh_Hans: 告警事件总览
+      pt_BR: overview 
+    human_description:
+      en_US: overview
+      zh_Hans: 告警事件总览
+      pt_BR: overview
+    llm_description: overview
+    form: llm
+  - name: topology
+    type: string
+    label:
+      en_US: topology
+      zh_Hans: 拓扑数据
+      pt_BR: topology
+    human_description:
+      en_US: topology
+      zh_Hans: 报告类型
+      pt_BR: topology
+    llm_description: topology data
+    form: llm
+  - name: rootCauseAnalysis
+    type: string
+    label:
+      en_US: rootCauseAnalysis
+      zh_Hans: 根因分析结论
+      pt_BR: rootCauseAnalysis
+    human_description:
+      en_US: rootCauseAnalysis
+      zh_Hans: 根因分析结论
+      pt_BR: rootCauseAnalysis
+    llm_description: rootCauseAnalysis
+    form: llm
+  - name: suggest
+    type: string
+    label:
+      en_US: suggest
+      zh_Hans: 可行动方向建议
+      pt_BR: suggest
+    human_description:
+      en_US: suggest
+      zh_Hans: 可行动方向建议
+      pt_BR: suggest
+    llm_description: suggest
+    form: llm
+  - name: evidence
+    type: string
+    label:
+      en_US: evidence
+      zh_Hans: 验证数据
+      pt_BR: evidence
+    human_description:
+      en_US: evidence
+      zh_Hans: 根因分析结论
+      pt_BR: evidence
+    llm_description: evidence
+    form: llm

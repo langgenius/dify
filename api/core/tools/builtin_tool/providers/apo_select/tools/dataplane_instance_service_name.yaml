@@ -1,0 +1,97 @@
+identity:
+  name: dataplane_instance_service
+  author: APO
+  label:
+    en_US: Query instance's service name
+    zh_Hans: 查询实例所属服务
+description:
+  human:
+    en_US: Query instance's service name
+    zh_Hans: 查询实例所属服务
+  llm: Query instance's service name
+display:
+  type: metric
+  title: Instance service
+  unit: number
+parameters:
+  - name: containerId
+    type: string
+    required: false
+    label:
+      en_US: containerId
+      zh_Hans: 容器id
+    human_description:
+      en_US: Container id
+      zh_Hans: 容器id
+    llm_description: Container id
+    form: llm
+  - name: nodeName
+    type: string
+    required: false
+    label:
+      en_US: Node name
+      zh_Hans: 主机名
+    human_description:
+      en_US: Node name
+      zh_Hans: 主机名
+    llm_description: Node name
+    form: llm
+  - name: pid
+    type: string
+    required: false
+    label:
+      en_US: pid
+      zh_Hans: pid
+    human_description:
+      en_US: pid
+      zh_Hans: pid
+    llm_description: pid
+    form: llm
+  - name: pod
+    type: string
+    required: false
+    label:
+      en_US: pod
+      zh_Hans: pod
+    human_description:
+      en_US: pod
+      zh_Hans: pod
+    llm_description: pod
+    form: llm
+  - name: cluster
+    type: string
+    required: false
+    label:
+      en_US: cluster
+      zh_Hans: 集群
+    human_description:
+      en_US: cluster
+      zh_Hans: 集群
+    llm_description: cluster
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time(Microsecond)
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm

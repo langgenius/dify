@@ -161,13 +161,16 @@ def _adjust_workflows(language, account):
                 "api_token": "app-s8e5CusGAqNcjyTUbPCoJcu4"
             },
             "告警简单根因分析": {
-                "app_id": "a2d4d3aa-3401-4393-859e-df051bdd5cd1"
+                "app_id": "a2d4d3aa-3401-4393-859e-df051bdd5cd1",
+                "api_token": "app-JDtZH1DfQtQb1SjzC3as680C"
             },
             "可用性告警分析": {
-                "app_id": "40dea201-7aa4-4e27-865b-6ebeab91a0c3"
+                "app_id": "40dea201-7aa4-4e27-865b-6ebeab91a0c3",
+                "api_token": "app-LmlwNJaxmSWRCd2DCk6MhkDd"
             },
             "资源告警分析": {
-                "app_id": "f514d742-6043-498e-98f1-ab03cbcb0250"
+                "app_id": "f514d742-6043-498e-98f1-ab03cbcb0250",
+                "api_token": "app-aIEZTMcRkOicrNK1ZegT80wQ"
             }
         },
         "en-US": {

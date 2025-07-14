@@ -206,18 +206,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: llm
-        targetType: question-classifier
-      id: 1742366141890-source-1742366303110-target
-      selected: false
-      source: '1742366141890'
-      sourceHandle: source
-      target: '1742366303110'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: question-classifier
         targetType: variable-aggregator
       id: 1742366303110-1-1741311394752-target
@@ -315,36 +303,12 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: variable-aggregator
-      id: 17424344697090-source-1741162531836-target
-      selected: false
-      source: '17424344697090'
-      sourceHandle: source
-      target: '1741162531836'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1741328197695-source-17424345080000-target
       selected: false
       source: '1741328197695'
       sourceHandle: source
       target: '17424345080000'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
-      id: 17424345080000-source-1741162531836-target
-      selected: false
-      source: '17424345080000'
-      sourceHandle: source
-      target: '1741162531836'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -922,17 +886,6 @@ workflow:
         isInIteration: false
         sourceType: if-else
         targetType: tool
-      id: 1750058827536-75243699-b060-4295-b510-27cbc73b6be7-1741328045214-target
-      source: '1750058827536'
-      sourceHandle: 75243699-b060-4295-b510-27cbc73b6be7
-      target: '1741328045214'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: tool
       id: 1750058827536-681cae12-3dcd-439a-9ad7-d164e8062cf3-1742979394268-target
       source: '1750058827536'
       sourceHandle: 681cae12-3dcd-439a-9ad7-d164e8062cf3
@@ -1116,6 +1069,127 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1742366141890-source-1750745724225-target
+      source: '1742366141890'
+      sourceHandle: source
+      target: '1750745724225'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: question-classifier
+      id: 1750745724225-source-1742366303110-target
+      source: '1750745724225'
+      sourceHandle: source
+      target: '1742366303110'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 17424344697090-source-1750745788772-target
+      source: '17424344697090'
+      sourceHandle: source
+      target: '1750745788772'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1750745788772-source-1750745724225-target
+      source: '1750745788772'
+      sourceHandle: source
+      target: '1750745724225'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 17424345080000-source-1751515586426-target
+      source: '17424345080000'
+      sourceHandle: source
+      target: '1751515586426'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1751515586426-source-1750745724225-target
+      source: '1751515586426'
+      sourceHandle: source
+      target: '1750745724225'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: if-else
+      id: 1750058827536-75243699-b060-4295-b510-27cbc73b6be7-1751618293412-target
+      source: '1750058827536'
+      sourceHandle: 75243699-b060-4295-b510-27cbc73b6be7
+      target: '1751618293412'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1751618293412-false-1741328045214-target
+      source: '1751618293412'
+      sourceHandle: 'false'
+      target: '1741328045214'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1751618293412-true-17516184500710-target
+      source: '1751618293412'
+      sourceHandle: 'true'
+      target: '17516184500710'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 17516184500710-source-1751618472852-target
+      source: '17516184500710'
+      sourceHandle: source
+      target: '1751618472852'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 1751618472852-source-1750745724225-target
+      source: '1751618472852'
+      sourceHandle: source
+      target: '1750745724225'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -1170,10 +1244,10 @@ workflow:
       id: '1741157526222'
       position:
         x: 30
-        y: 638
+        y: 637
       positionAbsolute:
         x: 30
-        y: 638
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1192,11 +1266,11 @@ workflow:
       height: 90
       id: '1741157560922'
       position:
-        x: 3994.1962174991804
-        y: 2169.6501182127636
+        x: 4258
+        y: 2040
       positionAbsolute:
-        x: 3994.1962174991804
-        y: 2169.6501182127636
+        x: 4258
+        y: 2040
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1299,7 +1373,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: qwen2.5-32b-instruct
+          name: deepseek-chat
           provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1741157526222'
@@ -1313,11 +1387,11 @@ workflow:
       height: 876
       id: '1741158559444'
       position:
-        x: 1509.7903437904542
-        y: 576.5028787383415
+        x: 1540
+        y: 637
       positionAbsolute:
-        x: 1509.7903437904542
-        y: 576.5028787383415
+        x: 1540
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1363,11 +1437,11 @@ workflow:
       height: 416
       id: '1741162531836'
       position:
-        x: 2462
-        y: 2147
+        x: 2446
+        y: 1859
       positionAbsolute:
-        x: 2462
-        y: 2147
+        x: 2446
+        y: 1859
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1382,15 +1456,17 @@ workflow:
         variables:
         - - '1742366303110'
           - class_name
-      height: 108
+        - - '1744339618961'
+          - abnormal
+      height: 152
       id: '1741311394752'
       position:
-        x: 3702.3924349983627
-        y: 2157.4539007135836
+        x: 3958.478468077761
+        y: 2040
       positionAbsolute:
-        x: 3702.3924349983627
-        y: 2157.4539007135836
-      selected: true
+        x: 3958.478468077761
+        y: 2040
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1530,11 +1606,11 @@ workflow:
       height: 54
       id: '1741328045214'
       position:
-        x: 1854
-        y: 3065
+        x: 2133.618409250169
+        y: 3081.4582959588693
       positionAbsolute:
-        x: 1854
-        y: 3065
+        x: 2133.618409250169
+        y: 3081.4582959588693
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1675,11 +1751,11 @@ workflow:
       height: 54
       id: '1741328076453'
       position:
-        x: 1854
-        y: 638
+        x: 1842
+        y: 637
       positionAbsolute:
-        x: 1854
-        y: 638
+        x: 1842
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1829,11 +1905,11 @@ workflow:
       height: 54
       id: '1741328197695'
       position:
-        x: 1854
-        y: 1677
+        x: 2311.6789223996607
+        y: 2514.7380521199802
       positionAbsolute:
-        x: 1854
-        y: 1677
+        x: 2311.6789223996607
+        y: 2514.7380521199802
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1946,11 +2022,11 @@ workflow:
       height: 54
       id: '1741328213545'
       position:
-        x: 1854
-        y: 1771
+        x: 1842
+        y: 1672
       positionAbsolute:
-        x: 1854
-        y: 1771
+        x: 1842
+        y: 1672
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2063,11 +2139,11 @@ workflow:
       height: 54
       id: '1741328346220'
       position:
-        x: 1854
-        y: 1865
+        x: 1842
+        y: 1764
       positionAbsolute:
-        x: 1854
-        y: 1865
+        x: 1842
+        y: 1764
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2180,11 +2256,11 @@ workflow:
       height: 54
       id: '1741328423453'
       position:
-        x: 1854
-        y: 1959
+        x: 1842
+        y: 1856
       positionAbsolute:
-        x: 1854
-        y: 1959
+        x: 1842
+        y: 1856
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2297,11 +2373,11 @@ workflow:
       height: 54
       id: '1741328466394'
       position:
-        x: 1854
-        y: 2053
+        x: 1842
+        y: 1948
       positionAbsolute:
-        x: 1854
-        y: 2053
+        x: 1842
+        y: 1948
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2414,11 +2490,11 @@ workflow:
       height: 54
       id: '1741328742817'
       position:
-        x: 1854
-        y: 2147
+        x: 1842
+        y: 2040
       positionAbsolute:
-        x: 1854
-        y: 2147
+        x: 1842
+        y: 2040
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2531,11 +2607,11 @@ workflow:
       height: 54
       id: '1741328773213'
       position:
-        x: 1854
-        y: 2241
+        x: 1842
+        y: 2132
       positionAbsolute:
-        x: 1854
-        y: 2241
+        x: 1842
+        y: 2132
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2648,11 +2724,11 @@ workflow:
       height: 54
       id: '1741328799030'
       position:
-        x: 1854
-        y: 2335
+        x: 1842
+        y: 2224
       positionAbsolute:
-        x: 1854
-        y: 2335
+        x: 1842
+        y: 2224
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2793,11 +2869,11 @@ workflow:
       height: 54
       id: '1741329632798'
       position:
-        x: 1854
-        y: 1583
+        x: 2446
+        y: 2740
       positionAbsolute:
-        x: 1854
-        y: 1583
+        x: 2446
+        y: 2740
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2812,7 +2888,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: qwen2.5-32b-instruct
+          name: deepseek-chat
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: c981a70d-9ebb-4f03-949a-8d78826f9bda
@@ -2848,7 +2924,7 @@ workflow:
 
             4. 告警有效性确认：结合告警事件，判断当前告警是否有效。
 
-            如果MetricsData持续上升或处于高位，则认为告警有效。
+            如果MetricsData持续上升，则认为告警有效。
 
             如果处于波动状态，即偶尔上升，但随后下降，则认为告警无效。
 
@@ -2872,11 +2948,11 @@ workflow:
       height: 90
       id: '1742366141890'
       position:
-        x: 3070
-        y: 2147
+        x: 3050
+        y: 2040
       positionAbsolute:
-        x: 3070
-        y: 2147
+        x: 3050
+        y: 2040
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2905,7 +2981,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: qwen2.5-32b-instruct
+          name: deepseek-chat
           provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1742366141890'
@@ -2919,11 +2995,11 @@ workflow:
       height: 168
       id: '1742366303110'
       position:
-        x: 3374
-        y: 2147
+        x: 3654
+        y: 2040
       positionAbsolute:
-        x: 3374
-        y: 2147
+        x: 3654
+        y: 2040
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2962,11 +3038,11 @@ workflow:
       height: 80
       id: '1742433446760'
       position:
-        x: 601.5244669127737
-        y: 638
+        x: 620.0306820836154
+        y: 630.0153410418077
       positionAbsolute:
-        x: 601.5244669127737
-        y: 638
+        x: 620.0306820836154
+        y: 630.0153410418077
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3107,11 +3183,11 @@ workflow:
       height: 54
       id: '17424339242280'
       position:
-        x: 2158
-        y: 3065
+        x: 2444
+        y: 3108
       positionAbsolute:
-        x: 2158
-        y: 3065
+        x: 2444
+        y: 3108
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3157,11 +3233,11 @@ workflow:
       height: 416
       id: '1742434016239'
       position:
-        x: 2766
-        y: 2147
+        x: 2748
+        y: 1859
       positionAbsolute:
-        x: 2766
-        y: 2147
+        x: 2748
+        y: 1859
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3302,11 +3378,11 @@ workflow:
       height: 54
       id: '17424342365860'
       position:
-        x: 2158
-        y: 638
+        x: 2144
+        y: 637
       positionAbsolute:
-        x: 2158
-        y: 638
+        x: 2144
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3447,11 +3523,11 @@ workflow:
       height: 54
       id: '17424344697090'
       position:
-        x: 2158
-        y: 1583
+        x: 2748
+        y: 2740
       positionAbsolute:
-        x: 2158
-        y: 1583
+        x: 2748
+        y: 2740
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3601,11 +3677,11 @@ workflow:
       height: 54
       id: '17424345080000'
       position:
-        x: 2158
-        y: 1677
+        x: 2692.2153979484565
+        y: 2505.498466761298
       positionAbsolute:
-        x: 2158
-        y: 1677
+        x: 2692.2153979484565
+        y: 2505.498466761298
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3718,11 +3794,11 @@ workflow:
       height: 54
       id: '17424345315500'
       position:
-        x: 2158
-        y: 1771
+        x: 2144
+        y: 1672
       positionAbsolute:
-        x: 2158
-        y: 1771
+        x: 2144
+        y: 1672
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3835,11 +3911,11 @@ workflow:
       height: 54
       id: '17424345826170'
       position:
-        x: 2158
-        y: 1865
+        x: 2144
+        y: 1764
       positionAbsolute:
-        x: 2158
-        y: 1865
+        x: 2144
+        y: 1764
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3952,11 +4028,11 @@ workflow:
       height: 54
       id: '17424346884650'
       position:
-        x: 2158
-        y: 1959
+        x: 2144
+        y: 1856
       positionAbsolute:
-        x: 2158
-        y: 1959
+        x: 2144
+        y: 1856
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4069,11 +4145,11 @@ workflow:
       height: 54
       id: '17424347242840'
       position:
-        x: 2158
-        y: 2053
+        x: 2144
+        y: 1948
       positionAbsolute:
-        x: 2158
-        y: 2053
+        x: 2144
+        y: 1948
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4186,11 +4262,11 @@ workflow:
       height: 54
       id: '17424348206030'
       position:
-        x: 2158
-        y: 2147
+        x: 2144
+        y: 2040
       positionAbsolute:
-        x: 2158
-        y: 2147
+        x: 2144
+        y: 2040
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4303,11 +4379,11 @@ workflow:
       height: 54
       id: '17424348526540'
       position:
-        x: 2158
-        y: 2241
+        x: 2144
+        y: 2132
       positionAbsolute:
-        x: 2158
-        y: 2241
+        x: 2144
+        y: 2132
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4420,11 +4496,11 @@ workflow:
       height: 54
       id: '17424348570980'
       position:
-        x: 2158
-        y: 2335
+        x: 2144
+        y: 2224
       positionAbsolute:
-        x: 2158
-        y: 2335
+        x: 2144
+        y: 2224
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4480,11 +4556,11 @@ workflow:
       height: 54
       id: '1742806924635'
       position:
-        x: 277.98400275890265
-        y: 638
+        x: 332
+        y: 637
       positionAbsolute:
-        x: 277.98400275890265
-        y: 638
+        x: 332
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4651,11 +4727,11 @@ workflow:
       height: 54
       id: '1742979394268'
       position:
-        x: 1854
-        y: 2617
+        x: 1842
+        y: 2500
       positionAbsolute:
-        x: 1854
-        y: 2617
+        x: 1842
+        y: 2500
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4822,11 +4898,11 @@ workflow:
       height: 54
       id: '1742979595004'
       position:
-        x: 1854
-        y: 2711
+        x: 1842
+        y: 2592
       positionAbsolute:
-        x: 1854
-        y: 2711
+        x: 1842
+        y: 2592
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4993,11 +5069,11 @@ workflow:
       height: 54
       id: '17429797453350'
       position:
-        x: 1854
-        y: 2429
+        x: 1842
+        y: 2316
       positionAbsolute:
-        x: 1854
-        y: 2429
+        x: 1842
+        y: 2316
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5164,11 +5240,11 @@ workflow:
       height: 54
       id: '17429797664440'
       position:
-        x: 2158
-        y: 2429
+        x: 2144
+        y: 2316
       positionAbsolute:
-        x: 2158
-        y: 2429
+        x: 2144
+        y: 2316
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5306,11 +5382,11 @@ workflow:
       height: 54
       id: '1742979828391'
       position:
-        x: 1854
-        y: 2523
+        x: 1842
+        y: 2408
       positionAbsolute:
-        x: 1854
-        y: 2523
+        x: 1842
+        y: 2408
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5448,11 +5524,11 @@ workflow:
       height: 54
       id: '17429798797920'
       position:
-        x: 2158
-        y: 2523
+        x: 2144
+        y: 2408
       positionAbsolute:
-        x: 2158
-        y: 2523
+        x: 2144
+        y: 2408
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5619,11 +5695,11 @@ workflow:
       height: 54
       id: '17429835599060'
       position:
-        x: 2158
-        y: 2617
+        x: 2144
+        y: 2500
       positionAbsolute:
-        x: 2158
-        y: 2617
+        x: 2144
+        y: 2500
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5790,11 +5866,11 @@ workflow:
       height: 54
       id: '17429835940550'
       position:
-        x: 2158
-        y: 2711
+        x: 2144
+        y: 2592
       positionAbsolute:
-        x: 2158
-        y: 2711
+        x: 2144
+        y: 2592
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5963,11 +6039,11 @@ workflow:
       height: 54
       id: '1744093337863'
       position:
-        x: 1854
-        y: 2917
+        x: 1842
+        y: 2962
       positionAbsolute:
-        x: 1854
-        y: 2917
+        x: 1842
+        y: 2962
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5986,11 +6062,11 @@ workflow:
       height: 90
       id: '1744093385250'
       position:
-        x: 2766
-        y: 3080.5
+        x: 2748
+        y: 2944
       positionAbsolute:
-        x: 2766
-        y: 3080.5
+        x: 2748
+        y: 2944
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6005,7 +6081,7 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: qwen2.5-32b-instruct
+          name: deepseek-chat
           provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: a1de005a-fbe2-44a6-9b2c-bb021ae6b3a4
@@ -6037,11 +6113,11 @@ workflow:
       height: 90
       id: '1744093428286'
       position:
-        x: 2158
-        y: 2899
+        x: 2144
+        y: 2944
       positionAbsolute:
-        x: 2158
-        y: 2899
+        x: 2144
+        y: 2944
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6057,11 +6133,11 @@ workflow:
       height: 54
       id: '1744093531084'
       position:
-        x: 2462
-        y: 3098.5
+        x: 2446
+        y: 2962
       positionAbsolute:
-        x: 2462
-        y: 3098.5
+        x: 2446
+        y: 2962
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6288,11 +6364,11 @@ workflow:
       height: 54
       id: '1744339618961'
       position:
-        x: 3070
-        y: 3083
+        x: 3446.917656182187
+        y: 2982.1617777841084
       positionAbsolute:
-        x: 3070
-        y: 3083
+        x: 3446.917656182187
+        y: 2982.1617777841084
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6315,11 +6391,11 @@ workflow:
       height: 116
       id: '1744343454355'
       position:
-        x: 3678
-        y: 3083.5
+        x: 4001.829492661339
+        y: 3182.7384192889735
       positionAbsolute:
-        x: 3678
-        y: 3083.5
+        x: 4001.829492661339
+        y: 3182.7384192889735
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6389,41 +6465,57 @@ workflow:
           \ \"No historical data available.\", 0\n    \n    # 统计范围和峰值\n    min_val\
           \ = min(values)\n    max_val = max(values)\n    avg_val = sum(values) /\
           \ len(values)\n    high_values = sorted([v for v in values if v > avg_val\
-          \ * 2], reverse=True)\n    \n    description = [\n        \"历史数据显示该指标通常维持在很低的水平：\"\
+          \ * 1.2], reverse=True)\n    \n    description = [\n        \"历史数据显示该指标通常维持在很低的水平：\"\
           ,\n        f\"大多数值在{avg_val:.6f} - {avg_val * 1.2:.6f}之间\",\n        f\"\
           偶尔有较高值({', '.join(f'{v:.3f}' for v in high_values[:2])})但持续时间很短\"\n    ]\n\
           \    \n    return description, avg_val\n\ndef analyze_latency(past_24h,\
           \ recent_15m):\n    \"\"\"综合分析并生成报告\"\"\"\n    # 分析15分钟趋势\n    trend_desc\
-          \ = analyze_trend(recent_15m)\n    \n    # 分析历史数据\n    history_desc, history_max\
-          \ = analyze_history(past_24h)\n    \n    # 获取15分钟内的最大值和最后几个点\n    recent_values\
+          \ = analyze_trend(recent_15m)\n    \n    # 分析历史数据\n    history_desc, history_avg\
+          \ = analyze_history(past_24h)\n    \n    # 获取15分钟内的数据点并排序\n    recent_values\
           \ = []\n    for ts in recent_15m['result']['timeseries']:\n        for timestamp,\
           \ value in ts['chart']['chartData'].items():\n            recent_values.append((int(timestamp),\
-          \ float(value)))\n    \n    recent_values.sort()\n    recent_max = max(v\
-          \ for _, v in recent_values) if recent_values else 0\n    last_few = [v\
-          \ for _, v in recent_values[-3:]] if len(recent_values) >= 3 else [v for\
-          \ _, v in recent_values]\n    \n    # 判断告警有效性\n    vaild = \"true\"\n  \
-          \  alert_desc = []\n    if recent_max > history_max * 2:  # 峰值远超历史\n   \
-          \     alert_desc.append(\n            f\"当前15分钟内出现的{recent_max:.3f}峰值远高于历史平均({history_max:.3f})\"\
+          \ float(value)))\n    \n    recent_values.sort()\n    if not recent_values:\n\
+          \        return {\n            \"abnormal\": \"true\",\n            \"conclusion\"\
+          : \"\\n\".join([\n                \"MetricsData趋势分析\",\n               \
+          \ \"当前15分钟数据趋势：\",\n                \"  无数据可用\",\n                \"历史数据对比：\"\
+          ,\n                *[f\"  {line}\" for line in history_desc],\n        \
+          \        \"告警有效性判断：\",\n                \"  无最近数据，告警无效\",\n            \
+          \    \"结论：告警无效\"\n            ]) + \"\\n\"\n        }\n    \n    # 计算加权平均值（越靠近当前时间点权重越高）\n\
+          \    weights = [1 + i * 0.1 for i in range(len(recent_values))]  # 线性递增权重\n\
+          \    weighted_sum = sum(v * w for (_, v), w in zip(recent_values, weights))\n\
+          \    weight_total = sum(weights)\n    weighted_avg = weighted_sum / weight_total\
+          \ if weight_total > 0 else 0\n    \n    # 判断趋势：波动还是升高\n    trend_type =\
+          \ \"波动\"\n    if weighted_avg > history_avg * 1.2:\n        trend_type =\
+          \ \"升高\"\n    \n    # 获取最后几个点和最大值\n    recent_max = max(v for _, v in recent_values)\n\
+          \    last_value = recent_values[-1][1] if recent_values else 0\n    \n \
+          \   # 判断告警有效性\n    valid = \"true\"\n    alert_desc = []\n    \n    # 如果最后一个点显著升高（>\
+          \ 历史平均值的1.2倍），告警有效\n    if last_value > history_avg * 1.2:\n        alert_desc.append(\n\
+          \            f\"最后一个数据点({timestamp_to_readable(recent_values[-1][0])}: {last_value:.3f})\"\
+          \n            f\"显著高于历史平均值({history_avg:.3f})\"\n        )\n        alert_desc.append(\"\
+          指标在最近时间点出现升高，表明潜在异常\")\n        alert_conclusion = \"告警有效\"\n        valid\
+          \ = \"false\"\n    elif recent_max > history_avg * 1.2:\n        alert_desc.append(\n\
+          \            f\"当前15分钟内最大值({recent_max:.3f})高于历史平均值({history_avg:.3f})\"\
           \n        )\n        peak_duration = sum(1 for _, v in recent_values if\
-          \ v > history_max * 2) * 0.5  # 假设每点3分钟\n        alert_desc.append(f\"虽然指标在短时间内(约{peak_duration}分钟)出现了远高于历史水平的峰值，但：\"\
-          )\n        alert_desc.append(f\"峰值持续时间很短(约{peak_duration}分钟)\")\n      \
-          \  \n        if all(v < 0.01 for v in last_few):\n            alert_desc.append(\"\
-          随后指标迅速回落到正常水平(0附近)\")\n            alert_desc.append(\"当前时刻指标已恢复正常\")\n\
-          \            alert_conclusion = \"告警无效\"\n        else:\n            alert_desc.append(\"\
-          指标未完全恢复正常\")\n            alert_conclusion = \"告警有效\"\n            vaild\
-          \ = \"false\"\n    else:\n        alert_desc.append(\"当前15分钟内无显著异常峰值\")\n\
-          \        alert_conclusion = \"告警无效\"\n    \n    # 组合报告\n    report = [\n\
-          \        \"MetricsData趋势分析\",\n        \"当前15分钟数据趋势：\"\n    ] + [f\"  {line}\"\
-          \ for line in trend_desc] + [\n        \"历史数据对比：\"\n    ] + [f\"  {line}\"\
-          \ for line in history_desc] + [\n        \"告警有效性判断：\"\n    ] + [f\"  {line}\"\
-          \ for line in alert_desc] + [\n        f\"结论：{alert_conclusion}\"\n    ]\n\
-          \    \n    return {\n        \"abnormal\": str(vaild),\n        \"conclusion\"\
-          : \"\\n\".join(report)+\"\\n\",\n    }\n\ndef main(service: str, endpoint:\
-          \ str, start: int, end: int) -> dict:\n    current = get_service_latency(start,\
+          \ v > history_avg * 1.2) * 0.5  # 假设每点0.5分钟\n        alert_desc.append(f\"\
+          峰值持续时间约{peak_duration}分钟\")\n        if trend_type == \"升高\":\n        \
+          \    alert_desc.append(\"指标呈现升高趋势，表明潜在异常\")\n            alert_conclusion\
+          \ = \"告警有效\"\n            valid = \"false\"\n        else:\n           \
+          \ alert_desc.append(\"指标呈现波动趋势，未持续升高\")\n            alert_desc.append(\"\
+          指标已回落，告警无效\")\n            alert_conclusion = \"告警无效\"\n    else:\n    \
+          \    alert_desc.append(\"当前15分钟内无显著异常峰值\")\n        alert_desc.append(f\"\
+          指标呈现{trend_type}趋势，告警无效\")\n        alert_conclusion = \"告警无效\"\n    \n\
+          \    # 组合报告\n    report = [\n        \"MetricsData趋势分析\",\n        \"当前15分钟数据趋势：\"\
+          ,\n        *[f\"  {line}\" for line in trend_desc],\n        f\"  趋势类型：{trend_type}\
+          \ (加权平均值: {weighted_avg:.6f})\",\n        \"\\n历史数据对比：\",\n        *[f\"\
+          \  {line}\" for line in history_desc],\n        \"\\n告警有效性判断：\",\n     \
+          \   *[f\"  {line}\" for line in alert_desc],\n        f\"结论：{alert_conclusion}\"\
+          \n    ]\n    \n    return {\n        \"abnormal\": str(valid),\n       \
+          \ \"conclusion\": \"\\n\".join(report) + \"\\n\"\n    }\n\ndef main(service:\
+          \ str, endpoint: str, start: int, end: int) -> dict:\n    current = get_service_latency(start,\
           \ end, service, endpoint)\n\n    hour = 3600 * 1000000\n    day = 24 * hour\n\
           \    history = get_service_latency(\n        start - day,\n        start,\n\
           \        service,\n        endpoint,\n    )\n    res = analyze_latency(history,\
-          \ current)\n    return res\n"
+          \ current)\n    return res"
         code_language: python3
         desc: ''
         outputs:
@@ -6456,11 +6548,11 @@ workflow:
       height: 54
       id: '1744599772545'
       position:
-        x: 2462
-        y: 3246.5
+        x: 2746
+        y: 3108
       positionAbsolute:
-        x: 2462
-        y: 3246.5
+        x: 2746
+        y: 3108
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6470,7 +6562,7 @@ workflow:
         cases:
         - case_id: 'true'
           conditions:
-          - comparison_operator: contains
+          - comparison_operator: empty
             id: 386bdf86-7414-490d-9106-cd665b9bf6da
             value: 'false'
             varType: string
@@ -6486,11 +6578,11 @@ workflow:
       height: 126
       id: '1744599891369'
       position:
-        x: 2766
-        y: 3210.5
+        x: 3026.602595388348
+        y: 3072
       positionAbsolute:
-        x: 2766
-        y: 3210.5
+        x: 3026.602595388348
+        y: 3072
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6513,11 +6605,11 @@ workflow:
       height: 116
       id: '1744599930141'
       position:
-        x: 3070
-        y: 3177
+        x: 3333.089109302272
+        y: 3197.8670859508925
       positionAbsolute:
-        x: 3070
-        y: 3177
+        x: 3333.089109302272
+        y: 3197.8670859508925
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6537,11 +6629,11 @@ workflow:
       height: 130
       id: '1744627472534'
       position:
-        x: 3374
-        y: 3083.5
+        x: 3712.4162012564284
+        y: 3112.6849392061613
       positionAbsolute:
-        x: 3374
-        y: 3083.5
+        x: 3712.4162012564284
+        y: 3112.6849392061613
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6713,11 +6805,11 @@ workflow:
       height: 54
       id: '1748272742118'
       position:
-        x: 1854
-        y: 2805
+        x: 1842
+        y: 2684
       positionAbsolute:
-        x: 1854
-        y: 2805
+        x: 1842
+        y: 2684
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6889,11 +6981,11 @@ workflow:
       height: 54
       id: '17482728139340'
       position:
-        x: 2158
-        y: 2805
+        x: 2144
+        y: 2684
       positionAbsolute:
-        x: 2158
-        y: 2805
+        x: 2144
+        y: 2684
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6909,11 +7001,11 @@ workflow:
       height: 54
       id: '1748340985944'
       position:
-        x: 1854
-        y: 3177
+        x: 1842
+        y: 2834
       positionAbsolute:
-        x: 1854
-        y: 3177
+        x: 1842
+        y: 2834
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6932,11 +7024,11 @@ workflow:
       height: 90
       id: '1748341014888'
       position:
-        x: 2158
-        y: 3159
+        x: 2144
+        y: 2816
       positionAbsolute:
-        x: 2158
-        y: 3159
+        x: 2144
+        y: 2816
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6979,11 +7071,11 @@ workflow:
       height: 54
       id: '1750057744917'
       position:
-        x: 909.4325597435477
-        y: 638
+        x: 934.6030682083615
+        y: 637
       positionAbsolute:
-        x: 909.4325597435477
-        y: 638
+        x: 934.6030682083615
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7009,11 +7101,11 @@ workflow:
       height: 126
       id: '1750057811167'
       position:
-        x: 1138.6683410534715
-        y: 712.5240973642392
+        x: 1238
+        y: 637
       positionAbsolute:
-        x: 1138.6683410534715
-        y: 712.5240973642392
+        x: 1238
+        y: 637
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7215,17 +7307,429 @@ workflow:
       height: 894
       id: '1750058827536'
       position:
-        x: 1443.5626747394372
-        y: 1561.0958216840374
+        x: 1362.589662461914
+        y: 1548.206136416723
       positionAbsolute:
-        x: 1443.5626747394372
-        y: 1561.0958216840374
+        x: 1362.589662461914
+        y: 1548.206136416723
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        output_type: string
+        selected: true
+        title: 大模型结论
+        type: variable-aggregator
+        variables:
+        - - '1742366141890'
+          - text
+        - - '1750745788772'
+          - text
+        - - '1751515586426'
+          - text
+        - - '1751618472852'
+          - text
+      height: 174
+      id: '1750745724225'
+      position:
+        x: 3352
+        y: 2040
+      positionAbsolute:
+        x: 3352
+        y: 2040
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 1f3e1690-58bf-4bc0-be08-4fab41ac13cf
+          role: system
+          text: 你是一个智能助手,帮助用户解决可观测性领域的问题
+        - id: 3e428a13-6852-444a-b572-816041c6a9f4
+          role: user
+          text: '##目的
+
+            请分析系统/应用过去15分钟内的请求成功率指标变化趋势，并结合当前的告警事件进行分析。
+
+            ##步骤
+
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+
+            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+
+            请求成功率在最近15分钟内如果一直下降，则认为有效
+
+            时间点越靠后的数据，如果成功率没有恢复，认为有效
+
+            如果最后恢复，认为无效
+
+            ##输出
+
+            描述MetricsData趋势，并得出告警是否有效的结论。
+
+            注意：告警有效性分析的结论只能是有效或无效
+
+            ##Data
+
+            MetricsData
+
+            {{#1741329632798.text#}}
+
+            metricsdata的历史数据
+
+            {{#17424344697090.text#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}'
+        selected: false
+        title: 请求成功率判断
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1750745788772'
+      position:
+        x: 3050
+        y: 2740
+      positionAbsolute:
+        x: 3050
+        y: 2740
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 6b23adfe-47ca-40af-aeb1-ce2f1533826a
+          role: system
+          text: 你是一个智能助手,帮助用户解决可观测性领域的问题
+        - id: 1daa3763-312d-4ba2-91bb-5353e6387a0d
+          role: user
+          text: '##目的
+
+            请分析系统/应用过去15分钟内的请求成功率指标变化趋势，并结合当前的告警事件进行分析。
+
+            ##步骤
+
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+
+            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+
+            请求成功率在最近15分钟内如果一直下降，则认为有效
+
+            时间点越靠后的数据，如果成功率没有恢复，认为有效
+
+            如果最后恢复，认为无效
+
+            ##输出
+
+            如果指标持续超过0.05s甚至到达0.2s，认为该告警有效
+
+            如果抖动，少数点位发生波动，没有持续升高，认为无效
+
+            描述MetricsData趋势，并得出告警是否有效的结论。
+
+            注意：告警有效性分析的结论只能是有效或无效
+
+            ##Data
+
+            MetricsData
+
+            {{#1741328197695.text#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}'
+        selected: false
+        title: RTT指标
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1751515586426'
+      position:
+        x: 2994.2153979484565
+        y: 2505.498466761298
+      positionAbsolute:
+        x: 2994.2153979484565
+        y: 2505.498466761298
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: e9cd649c-4165-4f38-8196-35db38d06c81
+            value: 平均请求延时超过
+            varType: string
+            variable_selector:
+            - '1741157526222'
+            - alert
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支 4
+        type: if-else
+      height: 126
+      id: '1751618293412'
+      position:
+        x: 1751.1994335434993
+        y: 3126.1601132913006
+      positionAbsolute:
+        x: 1751.1994335434993
+        y: 3126.1601132913006
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified service name
+            ja_JP: Specified service name
+            pt_BR: Specified service name
+            zh_Hans: 指定的服务名
+          label:
+            en_US: service_name
+            ja_JP: service_name
+            pt_BR: service_name
+            zh_Hans: service_name
+          llm_description: 指定的服务名
+          max: null
+          min: null
+          name: service_name
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified endpoint name
+            ja_JP: Specified endpoint name
+            pt_BR: Specified endpoint name
+            zh_Hans: 指定的服务端点名
+          label:
+            en_US: content_key
+            ja_JP: content_key
+            pt_BR: content_key
+            zh_Hans: content_key
+          llm_description: 指定的服务端点名
+          max: null
+          min: null
+          name: content_key
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          content_key: ''
+          endTime: ''
+          service_name: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内) (1)
+        tool_configurations: {}
+        tool_label: 服务平均响应时间(毫秒,按服务名和内容键统计,指定时间段内)
+        tool_name: Originx 北极星指标 (服务层级) - RED指标 - 平均响应时间
+        tool_parameters:
+          content_key:
+            type: mixed
+            value: '{{#1742806924635.endpoint#}}'
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          service_name:
+            type: mixed
+            value: '{{#1742806924635.service#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - startTime
+        type: tool
+      height: 54
+      id: '17516184500710'
+      position:
+        x: 2123.7432588394763
+        y: 3182.7384192889735
+      positionAbsolute:
+        x: 2123.7432588394763
+        y: 3182.7384192889735
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+        prompt_template:
+        - id: 3b4e8314-ba43-40a5-aaab-bb1af4f4af70
+          role: system
+          text: 你是一个可观测性领域智能助手
+        - id: c21bf2be-ebce-48e9-9c29-a2adbf288f27
+          role: user
+          text: '##目的
+
+            请分析系统/应用过去15分钟内的请求成功率指标变化趋势，并结合当前的告警事件进行分析。
+
+            ##步骤
+
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+
+            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+
+            请求成功率在最近15分钟内如果一直下降，则认为有效
+
+            时间点越靠后的数据，如果成功率没有恢复，认为有效
+
+            如果最后恢复，认为无效
+
+            ##输出
+
+            描述MetricsData趋势，并得出告警是否有效的结论。
+
+            注意：告警有效性分析的结论只能是有效或无效
+
+            ##Data
+
+            MetricsData
+
+            {{#17516184500710.text#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}'
+        selected: false
+        title: 响应时间判断
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1751618472852'
+      position:
+        x: 2564.3303395300104
+        y: 3243.626635982344
+      positionAbsolute:
+        x: 2564.3303395300104
+        y: 3243.626635982344
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: 193.17670455675216
-      y: -72.13910128745454
-      zoom: 0.5739484393805205
+      x: -1065.9079752839043
+      y: -1384.4337287275648
+      zoom: 0.6076709420860494
