@@ -7,7 +7,6 @@ from flask_restful import (
     Resource,
     reqparse,
 )
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -25,8 +24,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
-from extensions.ext_database import db
-from libs.helper import alphanumeric, uuid_value
+from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import login_required
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -133,7 +131,7 @@ class ToolBuiltinProviderAddApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=False, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=False, location="json")
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
@@ -166,20 +164,18 @@ class ToolBuiltinProviderUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
 
         args = parser.parse_args()
 
-        with Session(db.engine) as session:
-            result = BuiltinToolManageService.update_builtin_tool_provider(
-                user_id=user_id,
-                tenant_id=tenant_id,
-                provider=provider,
-                credential_id=args["credential_id"],
-                credentials=args.get("credentials", None),
-                name=args.get("name", ""),
-            )
-            session.commit()
+        result = BuiltinToolManageService.update_builtin_tool_provider(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            provider=provider,
+            credential_id=args["credential_id"],
+            credentials=args.get("credentials", None),
+            name=args.get("name", ""),
+        )
         return result
 
 
@@ -761,7 +757,7 @@ class ToolOAuthCallback(Resource):
             credentials=dict(credentials),
             api_type=CredentialType.OAUTH2,
         )
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth/plugin/{provider}/tool/success")
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
 class ToolBuiltinProviderSetDefaultApi(Resource):
