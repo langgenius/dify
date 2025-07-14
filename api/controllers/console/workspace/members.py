@@ -12,9 +12,9 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
+    MemberNotInTenantError,
     NotOwnerError,
     OwnerTransferLimitError,
-    MemberNotInTenantError
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (

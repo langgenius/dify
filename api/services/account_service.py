@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import secrets
-from tkinter import N
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
