@@ -106,3 +106,8 @@ class CannotTransferOwnerToSelfError(BaseHTTPException):
     error_code = "cannot_transfer_owner_to_self"
     description = "You cannot transfer ownership to yourself."
     code = 400
+
+class MemberNotInTenantError(BaseHTTPException):
+    error_code = "member_not_in_tenant"
+    description = "The member is not in the workspace."
+    code = 400

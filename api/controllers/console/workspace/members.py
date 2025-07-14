@@ -14,6 +14,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     NotOwnerError,
     OwnerTransferLimitError,
+    MemberNotInTenantError
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
@@ -178,6 +179,9 @@ class SendOwnerTransferEmailApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
 
         # check if the current user is the owner of the workspace
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -185,11 +189,8 @@ class SendOwnerTransferEmailApi(Resource):
 
         if current_user.id == str(member_id):
             raise CannotTransferOwnerToSelfError()
+        
 
-        ip_address = extract_remote_ip(request)
-        if AccountService.is_email_send_ip_limit(ip_address):
-            raise EmailSendIpLimitError()
-            
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
         else:
@@ -201,7 +202,10 @@ class SendOwnerTransferEmailApi(Resource):
             abort(404)
         else:
             member_name = member.name
-
+        # check the member is in the workspace
+        if not TenantService.is_member(member, current_user.current_tenant):
+            raise MemberNotInTenantError()
+        
         token = AccountService.send_owner_transfer_email(
             account=current_user,
             email=email,
@@ -285,6 +289,9 @@ class OwnerTransfer(Resource):
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
+            
+        if not TenantService.is_member(member, current_user.current_tenant):
+            raise MemberNotInTenantError()
 
         try:
             assert member is not None, "Member not found"

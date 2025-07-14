@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import secrets
+from tkinter import N
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
@@ -1087,6 +1088,10 @@ class TenantService:
     def is_owner(account: Account, tenant: Tenant) -> bool:
         return TenantService.get_user_role(account, tenant) == TenantAccountRole.OWNER
 
+    @staticmethod
+    def is_member(account: Account, tenant: Tenant) -> bool:
+        """Check if the account is a member of the tenant"""
+        return TenantService.get_user_role(account, tenant) is not None
 
 class RegisterService:
     @classmethod
