@@ -20,7 +20,7 @@ export type IInstalledAppProps = {
 const InstalledApp: FC<IInstalledAppProps> = ({
   id,
 }) => {
-  const { installedApps } = useContext(ExploreContext)
+  const { installedApps, isFetchingInstalledApps } = useContext(ExploreContext)
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const installedApp = installedApps.find(item => item.id === id)
   const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)
@@ -90,21 +90,25 @@ const InstalledApp: FC<IInstalledAppProps> = ({
       <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
     </div>
   }
-  if (isFetchingAppParams || isFetchingAppMeta || isFetchingWebAppAccessMode || !installedApp) {
+  if (isFetchingAppParams || isFetchingAppMeta || isFetchingWebAppAccessMode || isFetchingInstalledApps) {
     return <div className='flex h-full items-center justify-center'>
       <Loading />
     </div>
   }
-
+  if (!installedApp) {
+    return <div className='flex h-full items-center justify-center'>
+      <AppUnavailable code={404} isUnknownReason />
+    </div>
+  }
   return (
     <div className='h-full bg-background-default py-2 pl-0 pr-2 sm:p-2'>
-      {installedApp.app.mode !== 'completion' && installedApp.app.mode !== 'workflow' && (
+      {installedApp?.app.mode !== 'completion' && installedApp?.app.mode !== 'workflow' && (
         <ChatWithHistory installedAppInfo={installedApp} className='overflow-hidden rounded-2xl shadow-md' />
       )}
-      {installedApp.app.mode === 'completion' && (
+      {installedApp?.app.mode === 'completion' && (
         <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />
       )}
-      {installedApp.app.mode === 'workflow' && (
+      {installedApp?.app.mode === 'workflow' && (
         <TextGenerationApp isWorkflow isInstalledApp installedAppInfo={installedApp} />
       )}
     </div>
