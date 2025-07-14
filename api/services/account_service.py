@@ -673,6 +673,10 @@ class AccountService:
 
         return False
 
+    @staticmethod
+    def check_email_unique(email: str) -> bool:
+        return db.session.query(Account).filter_by(email=email).first() is None
+
 
 class TenantService:
     @staticmethod
