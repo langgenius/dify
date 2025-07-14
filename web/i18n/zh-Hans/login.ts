@@ -106,6 +106,7 @@ const translation = {
   licenseInactive: '许可证未激活',
   licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
   webapp: {
+    login: '登录',
     noLoginMethod: 'Web 应用未配置身份认证方式',
     noLoginMethodTip: '请联系系统管理员添加身份认证方式',
     disabled: 'Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。',

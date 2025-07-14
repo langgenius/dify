@@ -376,3 +376,15 @@ export const submitDeleteAccountFeedback = (body: { feedback: string; email: str
 
 export const getDocDownloadUrl = (doc_name: string) =>
   get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
+
+export const sendVerifyCode = (body: { email: string; phase: string; token?: string }) =>
+  post<CommonResponse & { data: string }>('/account/change-email', { body })
+
+export const verifyEmail = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/account/change-email/validity', { body })
+
+export const resetEmail = (body: { new_email: string; token: string }) =>
+  post<CommonResponse>('/account/change-email/reset', { body })
+
+export const checkEmailExisted = (body: { email: string }) =>
+  post<CommonResponse>('/account/change-email/check-email-unique', { body })

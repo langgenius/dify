@@ -130,6 +130,7 @@ export type AgentTool = {
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
+  credential_id?: string
 }
 
 export type ToolItem = {

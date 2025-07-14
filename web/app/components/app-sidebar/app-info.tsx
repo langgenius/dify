@@ -308,13 +308,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             operations={operations}
           />
         </div>
-        <div className='flex flex-1'>
-          <CardView
-            appId={appDetail.id}
-            isInPanel={true}
-            className='flex grow flex-col gap-2 overflow-auto px-2 py-1'
-          />
-        </div>
+        <CardView
+          appId={appDetail.id}
+          isInPanel={true}
+          className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
+        />
         <Divider />
         <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch border-t-[0.5px] border-divider-subtle p-2'>
           <Button
