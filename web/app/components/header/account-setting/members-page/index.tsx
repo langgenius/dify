@@ -136,12 +136,12 @@ const MembersPage = () => {
                   </div>
                   <div className='system-sm-regular flex w-[104px] shrink-0 items-center py-2 text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
                   <div className='flex w-[96px] shrink-0 items-center'>
-                    {isCurrentWorkspaceOwner && account.role === 'owner' && !systemFeatures.is_allow_transfer_workspace && (
+                    {isCurrentWorkspaceOwner && account.role === 'owner' && systemFeatures.is_allow_transfer_workspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
                     )}
-                    {/* {isCurrentWorkspaceOwner && account.role === 'owner' && !systemFeatures.is_allow_transfer_workspace && (
+                    {isCurrentWorkspaceOwner && account.role === 'owner' && !systemFeatures.is_allow_transfer_workspace && (
                       <div className='system-sm-regular px-3 text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
-                    )} */}
+                    )}
                     {isCurrentWorkspaceOwner && account.role !== 'owner' && (
                       <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
                     )}
