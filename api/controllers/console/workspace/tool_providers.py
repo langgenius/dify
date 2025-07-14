@@ -807,6 +807,16 @@ class ToolOAuthCustomClient(Resource):
                 tenant_id=current_user.current_tenant_id, provider=provider
             )
         )
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, provider):
+        return jsonable_encoder(
+            BuiltinToolManageService.delete_custom_oauth_client_params(
+                tenant_id=current_user.current_tenant_id, provider=provider
+            )
+        )
 
 
 class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):

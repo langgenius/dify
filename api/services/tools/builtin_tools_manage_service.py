@@ -30,6 +30,7 @@ from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -39,16 +40,36 @@ class BuiltinToolManageService:
     __MAX_BUILTIN_TOOL_PROVIDER_COUNT__ = 100
 
     @staticmethod
+    def delete_custom_oauth_client_params(tenant_id: str, provider: str):
+        """
+        delete custom oauth client params
+        """
+        tool_provider = ToolProviderID(provider)
+        with Session(db.engine) as session:
+            session.query(ToolOAuthTenantClient).filter_by(
+                tenant_id=tenant_id,
+                provider=tool_provider.provider_name,
+                plugin_id=tool_provider.plugin_id,
+            ).delete()
+            session.commit()
+        return {"result": "success"}
+
+    @staticmethod
     def get_builtin_tool_provider_oauth_client_schema(tenant_id: str, provider_name: str):
         """
         get builtin tool provider oauth client schema
         """
         provider = ToolManager.get_builtin_provider(provider_name, tenant_id)
+        verified = not isinstance(provider, PluginToolProviderController) or PluginService.is_plugin_verified(
+            tenant_id, provider.plugin_unique_identifier
+        )
 
         is_oauth_custom_client_enabled = BuiltinToolManageService.is_oauth_custom_client_enabled(
             tenant_id, provider_name
         )
-        is_system_oauth_params_exists = BuiltinToolManageService.is_oauth_system_client_exists(provider_name)
+        is_system_oauth_params_exists = verified and BuiltinToolManageService.is_oauth_system_client_exists(
+            provider_name
+        )
         result = {
             "schema": provider.get_oauth_client_schema(),
             "is_oauth_custom_client_enabled": is_oauth_custom_client_enabled,
@@ -491,6 +512,13 @@ class BuiltinToolManageService:
             oauth_params: dict[str, Any] | None = None
             if user_client:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
+                return oauth_params
+
+            # only verified provider can use custom oauth client
+            is_verified = not isinstance(provider, PluginToolProviderController) or PluginService.is_plugin_verified(
+                tenant_id, provider.plugin_unique_identifier
+            )
+            if not is_verified:
                 return oauth_params
 
             system_client: ToolOAuthSystemClient | None = (
