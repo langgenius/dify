@@ -7,7 +7,7 @@ from flask_restful import Resource, abort, marshal_with, reqparse
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, OwnerTransferLimitError
+from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, OwnerTransferLimitError,NotOwnerError,CannotTransferOwnerToSelfError
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
@@ -172,10 +172,17 @@ class SendOwnerTransferEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
+
+        if current_user.id == str(member_id):
+            raise CannotTransferOwnerToSelfError()
+
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-
+            
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
         else:
@@ -199,7 +206,7 @@ class SendOwnerTransferEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
-class OwnerTransferCheckEApi(Resource):
+class OwnerTransferCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -209,10 +216,13 @@ class OwnerTransferCheckEApi(Resource):
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
+        # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
 
         user_email = current_user.email
 
-        is_owner_transfer_error_rate_limit = AccountService.is_owner_transfer_error_rate_limit(args["email"])
+        is_owner_transfer_error_rate_limit = AccountService.is_owner_transfer_error_rate_limit(user_email)
         if is_owner_transfer_error_rate_limit:
             raise OwnerTransferLimitError()
 
@@ -224,7 +234,7 @@ class OwnerTransferCheckEApi(Resource):
             raise InvalidEmailError()
 
         if args["code"] != token_data.get("code"):
-            AccountService.add_owner_transfer_error_rate_limit(args["email"])
+            AccountService.add_owner_transfer_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
@@ -233,7 +243,7 @@ class OwnerTransferCheckEApi(Resource):
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args["code"], additional_data={})
 
-        AccountService.reset_owner_transfer_error_rate_limit(args["email"])
+        AccountService.reset_owner_transfer_error_rate_limit(user_email)
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
@@ -246,15 +256,21 @@ class OwnerTransfer(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
+    
+         # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
+
+        if current_user.id == str(member_id):
+            raise CannotTransferOwnerToSelfError()
 
         transfer_token_data = AccountService.get_owner_transfer_data(args["token"])
         if not transfer_token_data:
-            raise InvalidTokenError()
-
-        if transfer_token_data.get("phase", "") != "owner_transfer":
+            print(transfer_token_data, "transfer_token_data")
             raise InvalidTokenError()
 
         if transfer_token_data.get("email") != current_user.email:
+            print(transfer_token_data.get("email"), current_user.email)
             raise InvalidEmailError()
 
         AccountService.revoke_owner_transfer_token(args["token"])
@@ -295,5 +311,5 @@ api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-oper
 api.add_resource(
     SendOwnerTransferEmailApi, "/workspaces/current/members/<uuid:member_id>/send-owner-transfer-confirm-email"
 )
-api.add_resource(OwnerTransferCheckEApi, "/workspaces/current/members/owner-transfer-check")
+api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")
 api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")

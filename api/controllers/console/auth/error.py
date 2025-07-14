@@ -95,3 +95,14 @@ class OwnerTransferLimitError(BaseHTTPException):
     error_code = "owner_transfer_limit"
     description = "Too many failed owner transfer attempts. Please try again in 24 hours."
     code = 429
+
+
+class NotOwnerError(BaseHTTPException):
+    error_code = "not_owner"
+    description = "You are not the owner of the workspace."
+    code = 400
+
+class CannotTransferOwnerToSelfError(BaseHTTPException):
+    error_code = "cannot_transfer_owner_to_self"
+    description = "You cannot transfer ownership to yourself."
+    code = 400

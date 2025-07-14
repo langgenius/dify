@@ -15,7 +15,6 @@ def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspac
     Async Send owner transfer confirm mail
     :param language: Language in which the email should be sent (e.g., 'en', 'zh')
     :param to: Recipient email address
-    :param code: Change email code
     :param workspace: Workspace name
     :param member: Member name
     """
@@ -59,12 +58,11 @@ def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspac
 
 
 @shared_task(queue="mail")
-def send_old_owner_transfer_notify_email_task(language: str, to: str, code: str, workspace: str, new_owner_email: str):
+def send_old_owner_transfer_notify_email_task(language: str, to: str, workspace: str, new_owner_email: str):
     """
     Async Send owner transfer confirm mail
     :param language: Language in which the email should be sent (e.g., 'en', 'zh')
     :param to: Recipient email address
-    :param code: Change email code
     :param workspace: Workspace name
     :param new_owner_email: New owner email
     """
@@ -116,7 +114,7 @@ def send_old_owner_transfer_notify_email_task(language: str, to: str, code: str,
 
 
 @shared_task(queue="mail")
-def send_new_owner_transfer_notify_email_task(language: str, to: str, code: str, workspace: str):
+def send_new_owner_transfer_notify_email_task(language: str, to: str, workspace: str):
     """
     Async Send owner transfer confirm mail
     :param language: Language in which the email should be sent (e.g., 'en', 'zh')

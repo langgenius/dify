@@ -1083,6 +1083,10 @@ class TenantService:
 
         return cast(dict, tenant.custom_config_dict)
 
+    @staticmethod
+    def is_owner(account: Account, tenant: Tenant) -> bool:
+        return TenantService.get_user_role(account, tenant) == TenantAccountRole.OWNER
+
 
 class RegisterService:
     @classmethod
