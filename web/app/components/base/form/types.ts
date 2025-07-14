@@ -41,6 +41,8 @@ export type FormOption = {
   icon?: string
 }
 
+export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any>
+
 export type FormSchema = {
   type: FormTypeEnum
   name: string
@@ -55,7 +57,7 @@ export type FormSchema = {
   placeholder?: string | TypeWithI18N
   options?: FormOption[]
   labelClassName?: string
-  validators?: FieldValidators<any, any, any, any, any, any, any, any, any, any>
+  validators?: AnyValidators
 }
 
 export type FormValues = Record<string, any>
