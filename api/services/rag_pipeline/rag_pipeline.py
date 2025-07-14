@@ -51,7 +51,6 @@ from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.workflow_entry import WorkflowEntry
-from core.workflow.workflow_loader import VariableLoader
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
@@ -462,7 +461,7 @@ class RagPipelineService:
                     break
             if not datasource_node_data:
                 raise ValueError("Datasource node data not found")
-            
+
             variables_map = {}
 
             datasource_parameters = datasource_node_data.get("datasource_parameters", {})
