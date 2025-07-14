@@ -175,7 +175,7 @@ class SendOwnerTransferEmailApi(Resource):
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
-    def post(self, member_id):
+    def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
@@ -187,31 +187,18 @@ class SendOwnerTransferEmailApi(Resource):
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
-        if current_user.id == str(member_id):
-            raise CannotTransferOwnerToSelfError()
-
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
 
         email = current_user.email
-        member = db.session.get(Account, str(member_id))
-        if not member:
-            abort(404)
-        else:
-            member_name = member.name
-            member_account = member
-        # check the member is in the workspace
-        if not TenantService.is_member(member_account, current_user.current_tenant):
-            raise MemberNotInTenantError()
 
         token = AccountService.send_owner_transfer_email(
             account=current_user,
             email=email,
             language=language,
             workspace_name=current_user.current_tenant.name,
-            member_name=member_name,
         )
 
         return {"result": "success", "data": token}
@@ -324,7 +311,7 @@ api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_
 api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
 # owner transfer
 api.add_resource(
-    SendOwnerTransferEmailApi, "/workspaces/current/members/<uuid:member_id>/send-owner-transfer-confirm-email"
+    SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email"
 )
 api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")
 api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")

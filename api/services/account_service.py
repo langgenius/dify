@@ -467,7 +467,6 @@ class AccountService:
         email: Optional[str] = None,
         language: Optional[str] = "en-US",
         workspace_name: Optional[str] = "",
-        member_name: Optional[str] = "",
     ):
         account_email = account.email if account else email
         if account_email is None:
@@ -485,7 +484,6 @@ class AccountService:
             to=account_email,
             code=code,
             workspace=workspace_name,
-            member=member_name,
         )
         cls.owner_transfer_rate_limiter.increment_rate_limit(account_email)
         return token
