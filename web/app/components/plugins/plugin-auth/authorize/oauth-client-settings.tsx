@@ -15,8 +15,6 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
-import { transformFormSchemasSecretInput } from '../utils'
 import { useToastContext } from '@/app/components/base/toast'
 
 type OAuthClientSettingsProps = {
@@ -46,33 +44,22 @@ const OAuthClientSettings = ({
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    const form = formRef.current?.getForm()
-    const store = form?.store
+    const {
+      isCheckValidated,
+      values,
+    } = formRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated)
+      return
     const {
       __oauth_client__,
-      ...values
-    } = store?.state.values
-    const isPristineSecretInputNames: string[] = []
-    for (let i = 0; i < schemas.length; i++) {
-      const schema = schemas[i]
-      if (schema.required && !values[schema.name]) {
-        notify({
-          type: 'error',
-          message: t('common.errorMsg.fieldRequired', { field: schema.name }),
-        })
-        return
-      }
-      if (schema.type === FormTypeEnum.secretInput) {
-        const fieldMeta = form?.getFieldMeta(schema.name)
-        if (fieldMeta?.isPristine)
-          isPristineSecretInputNames.push(schema.name)
-      }
-    }
-
-    const transformedValues = transformFormSchemasSecretInput(isPristineSecretInputNames, values)
+      ...restValues
+    } = values
 
     await setPluginOAuthCustomClient({
-      client_params: transformedValues,
+      client_params: restValues,
       enable_oauth_custom_client: __oauth_client__ === 'custom',
     })
     notify({
@@ -82,7 +69,7 @@ const OAuthClientSettings = ({
 
     onClose?.()
     invalidatePluginCredentialInfo()
-  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t, schemas])
+  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()

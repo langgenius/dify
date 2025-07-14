@@ -9,7 +9,6 @@ import { RiExternalLinkLine } from '@remixicon/react'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Modal from '@/app/components/base/modal/modal'
 import { CredentialTypeEnum } from '../types'
-import { transformFormSchemasSecretInput } from '../utils'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
@@ -64,42 +63,32 @@ const ApiKeyModal = ({
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    const form = formRef.current?.getForm()
-    const store = form?.store
+    const {
+      isCheckValidated,
+      values,
+    } = formRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated)
+      return
+
     const {
       __name__,
       __credential_id__,
-      ...values
-    } = store?.state.values
-    const isPristineSecretInputNames: string[] = []
-    for (let i = 0; i < formSchemas.length; i++) {
-      const schema = formSchemas[i]
-      if (schema.required && !values[schema.name]) {
-        notify({
-          type: 'error',
-          message: t('common.errorMsg.fieldRequired', { field: schema.name }),
-        })
-        return
-      }
-      if (schema.type === FormTypeEnum.secretInput) {
-        const fieldMeta = form?.getFieldMeta(schema.name)
-        if (fieldMeta?.isPristine)
-          isPristineSecretInputNames.push(schema.name)
-      }
-    }
-
-    const transformedValues = transformFormSchemasSecretInput(isPristineSecretInputNames, values)
+      ...restValues
+    } = values
 
     if (editValues) {
       await updatePluginCredential({
-        credentials: transformedValues,
+        credentials: restValues,
         credential_id: __credential_id__,
         name: __name__ || '',
       })
     }
     else {
       await addPluginCredential({
-        credentials: transformedValues,
+        credentials: restValues,
         type: CredentialTypeEnum.API_KEY,
         name: __name__ || '',
       })
@@ -111,7 +100,7 @@ const ApiKeyModal = ({
 
     onClose?.()
     invalidatePluginCredentialInfo()
-  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues, formSchemas])
+  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues])
 
   return (
     <Modal

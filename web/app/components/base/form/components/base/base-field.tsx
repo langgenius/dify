@@ -99,7 +99,7 @@ const BaseField = ({
               id={field.name}
               name={field.name}
               className={cn(inputClassName)}
-              value={value}
+              value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
@@ -114,7 +114,7 @@ const BaseField = ({
               name={field.name}
               type='password'
               className={cn(inputClassName)}
-              value={value}
+              value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
@@ -129,7 +129,7 @@ const BaseField = ({
               name={field.name}
               type='number'
               className={cn(inputClassName)}
-              value={value}
+              value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={disabled}
