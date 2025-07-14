@@ -58,6 +58,7 @@ class ToolNodeData(BaseNodeData, ToolEntity):
             return typ
 
     tool_parameters: dict[str, ToolInput]
+    tool_node_version: str | None = None
 
     @field_validator("tool_parameters", mode="before")
     @classmethod

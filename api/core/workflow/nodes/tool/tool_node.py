@@ -67,7 +67,15 @@ class ToolNode(BaseNode[ToolNodeData]):
         try:
             from core.tools.tool_manager import ToolManager
 
-            variable_pool = self.graph_runtime_state.variable_pool if self.node_data.version != "1" else None
+            # This is an issue that caused problems before.
+            # Logically, we shouldn't use the node_data.version field for judgment
+            # But for backward compatibility with historical data
+            # this version field judgment is still preserved here.
+            variable_pool = (
+                self.graph_runtime_state.variable_pool
+                if self.node_data.version != "1" or self.node_data.tool_node_version != "1"
+                else None
+            )
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from, variable_pool
             )

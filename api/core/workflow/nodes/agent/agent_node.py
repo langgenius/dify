@@ -249,7 +249,15 @@ class AgentNode(ToolNode):
                         )
 
                         extra = tool.get("extra", {})
-                        runtime_variable_pool = variable_pool if self.node_data.version != "1" else None
+                        node_data = cast(AgentNodeData, self.node_data)
+
+                        # This is an issue that caused problems before.
+                        # Logically, we shouldn't use the node_data.version field for judgment
+                        # But for backward compatibility with historical data
+                        # this version field judgment is still preserved here.
+                        runtime_variable_pool = (
+                            variable_pool if node_data.version != "1" or node_data.tool_node_version != "1" else None
+                        )
                         tool_runtime = ToolManager.get_agent_tool_runtime(
                             self.tenant_id, self.app_id, entity, self.invoke_from, runtime_variable_pool
                         )

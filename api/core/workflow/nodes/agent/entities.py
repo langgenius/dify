@@ -13,6 +13,7 @@ class AgentNodeData(BaseNodeData):
     agent_strategy_name: str
     agent_strategy_label: str  # redundancy
     memory: MemoryConfig | None = None
+    tool_node_version: str | None = None
 
     class AgentInput(BaseModel):
         value: Union[list[str], list[ToolSelector], Any]
