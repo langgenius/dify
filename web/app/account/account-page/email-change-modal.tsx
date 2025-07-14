@@ -1,9 +1,19 @@
 import React, { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useRouter } from 'next/navigation'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import {
+  checkEmailExisted,
+  logout,
+  resetEmail,
+  sendVerifyCode,
+  verifyEmail,
+} from '@/service/common'
 import { noop } from 'lodash-es'
 
 type Props = {
@@ -21,10 +31,14 @@ enum STEP {
 
 const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+  const router = useRouter()
   const [step, setStep] = useState<STEP>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('jin_zehong@qq.com')
   const [time, setTime] = useState<number>(0)
+  const [stepToken, setStepToken] = useState<string>('')
+  const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
 
   const startCount = () => {
     setTime(60)
@@ -38,6 +52,146 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       })
     }, 1000)
   }
+
+  const sendEmail = async (email: string, isOrigin: boolean, token?: string) => {
+    try {
+      const res = await sendVerifyCode({
+        email,
+        phase: isOrigin ? 'old_email' : 'new_email',
+        token,
+      })
+      startCount()
+      if (res.data)
+        setStepToken(res.data)
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error sending verification code: ${error ? (error as any).message : ''}`,
+      })
+    }
+  }
+
+  const verifyEmailAddress = async (email: string, code: string, token: string, callback?: () => void) => {
+    try {
+      const res = await verifyEmail({
+        email,
+        code,
+        token,
+      })
+      if (res.is_valid) {
+        setStepToken(res.token)
+        callback?.()
+      }
+      else {
+        notify({
+          type: 'error',
+          message: 'Verifying email failed',
+        })
+      }
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error verifying email: ${error ? (error as any).message : ''}`,
+      })
+    }
+  }
+
+  const sendCodeToOriginEmail = async () => {
+    await sendEmail(
+      email,
+      true,
+    )
+    setStep(STEP.verifyOrigin)
+  }
+
+  const handleVerifyOriginEmail = async () => {
+    await verifyEmailAddress(email, code, stepToken, () => setStep(STEP.newEmail))
+    setCode('')
+  }
+
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email)
+  }
+
+  const checkNewEmailExisted = async (email: string) => {
+    try {
+      await checkEmailExisted({
+        email,
+      })
+      setNewEmailExited(false)
+    }
+    catch (error) {
+      setNewEmailExited(false)
+      if ((error as any)?.code === 'email_already_in_use') {
+        setNewEmailExited(true)
+      }
+      else {
+        notify({
+          type: 'error',
+          message: `Error checking email existence: ${error ? (error as any).message : ''}`,
+        })
+      }
+    }
+  }
+
+  const handleNewEmailValueChange = (mailAddress: string) => {
+    setMail(mailAddress)
+    if (isValidEmail(mailAddress))
+      checkNewEmailExisted(mailAddress)
+  }
+
+  const sendCodeToNewEmail = async () => {
+    if (!isValidEmail(mail)) {
+      notify({
+        type: 'error',
+        message: 'Invalid email format',
+      })
+      return
+    }
+    await sendEmail(
+      mail,
+      false,
+      stepToken,
+    )
+    setStep(STEP.verifyNew)
+  }
+
+  const handleLogout = async () => {
+    await logout({
+      url: '/logout',
+      params: {},
+    })
+
+    localStorage.removeItem('setup_status')
+    localStorage.removeItem('console_token')
+    localStorage.removeItem('refresh_token')
+
+    router.push('/signin')
+  }
+
+  const updateEmail = async () => {
+    try {
+      await resetEmail({
+        new_email: mail,
+        token: stepToken,
+      })
+      handleLogout()
+    }
+    catch (error) {
+      notify({
+        type: 'error',
+        message: `Error changing email: ${error ? (error as any).message : ''}`,
+      })
+    }
+  }
+
+  const submitNewEmail = async () => {
+    await verifyEmailAddress(email, code, stepToken, () => updateEmail())
+  }
+
   return (
     <Modal
       isShow={show}
@@ -65,7 +219,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             <Button
               className='!w-full'
               variant='primary'
-              onClick={() => setStep(STEP.verifyOrigin)}
+              onClick={sendCodeToOriginEmail}
             >
               {t('common.account.changeEmail.sendVerifyCode')}
             </Button>
@@ -105,7 +259,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               disabled={code.length !== 6}
               className='!w-full'
               variant='primary'
-              onClick={() => setStep(STEP.newEmail)}
+              onClick={handleVerifyOriginEmail}
             >
               {t('common.account.changeEmail.continue')}
             </Button>
@@ -122,7 +276,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               <span>{t('common.account.changeEmail.resendCount', { count: time })}</span>
             )}
             {!time && (
-              <span onClick={startCount} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.account.changeEmail.resend')}</span>
+              <span onClick={sendCodeToOriginEmail} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.account.changeEmail.resend')}</span>
             )}
           </div>
         </>
@@ -139,17 +293,19 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               className='!w-full'
               placeholder={t('common.account.changeEmail.emailPlaceholder')}
               value={mail}
-              onChange={e => setMail(e.target.value)}
+              onChange={e => handleNewEmailValueChange(e.target.value)}
               destructive
             />
-            <div className='body-xs-regular mt-1 py-0.5 text-text-destructive'>{t('common.account.changeEmail.existingEmail')}</div>
+            {newEmailExited && (
+              <div className='body-xs-regular mt-1 py-0.5 text-text-destructive'>{t('common.account.changeEmail.existingEmail')}</div>
+            )}
           </div>
           <div className='mt-3 space-y-2'>
             <Button
               disabled={!mail}
               className='!w-full'
               variant='primary'
-              onClick={() => setStep(STEP.verifyNew)}
+              onClick={sendCodeToNewEmail}
             >
               {t('common.account.changeEmail.sendVerifyCode')}
             </Button>
@@ -189,7 +345,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               disabled={code.length !== 6}
               className='!w-full'
               variant='primary'
-              onClick={onClose}
+              onClick={submitNewEmail}
             >
               {t('common.account.changeEmail.changeTo', { email: mail })}
             </Button>
@@ -206,7 +362,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               <span>{t('common.account.changeEmail.resendCount', { count: time })}</span>
             )}
             {!time && (
-              <span onClick={startCount} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.account.changeEmail.resend')}</span>
+              <span onClick={sendCodeToNewEmail} className='system-xs-medium cursor-pointer text-text-accent-secondary'>{t('common.account.changeEmail.resend')}</span>
             )}
           </div>
         </>
