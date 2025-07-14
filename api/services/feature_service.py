@@ -123,7 +123,6 @@ class FeatureModel(BaseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
-
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -149,6 +148,7 @@ class SystemFeatureModel(BaseModel):
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
+    enable_change_email: bool = True
 
 
 class FeatureService:
@@ -186,6 +186,7 @@ class FeatureService:
         if dify_config.ENTERPRISE_ENABLED:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
+            system_features.enable_change_email = False
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
