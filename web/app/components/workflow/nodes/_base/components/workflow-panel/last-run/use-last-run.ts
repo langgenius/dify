@@ -57,6 +57,8 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.DataSource]: undefined,
+  [BlockEnum.KnowledgeBase]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
@@ -89,6 +91,8 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Assigner]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.DataSource]: undefined,
+  [BlockEnum.KnowledgeBase]: undefined,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
@@ -119,6 +123,8 @@ const useLastRun = <T>({
 
   const {
     id,
+    flowId,
+    flowType,
     data,
   } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
@@ -129,7 +135,6 @@ const useLastRun = <T>({
   })
 
   const {
-    appId,
     hideSingleRun,
     handleRun: doCallRunApi,
     getInputVars,
@@ -199,7 +204,7 @@ const useLastRun = <T>({
     setInitShowLastRunTab(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initShowLastRunTab])
-  const invalidLastRun = useInvalidLastRun(appId!, id)
+  const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     const { isValid } = checkValid()

@@ -59,6 +59,8 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { FlowType } from '@/types/common'
 
 type BasePanelProps = {
   children: ReactNode
@@ -184,6 +186,7 @@ const BasePanel: FC<BasePanelProps> = ({
     nodesMap,
   } = useNodesMetaData()
 
+  const configsMap = useHooksStore(s => s.configsMap)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -205,6 +208,8 @@ const BasePanel: FC<BasePanelProps> = ({
     getFilteredExistVarForms,
   } = useLastRun<typeof data>({
     id,
+    flowId: configsMap?.flowId || '',
+    flowType: configsMap?.flowType || FlowType.appFlow,
     data,
     defaultRunInputData: nodesMap?.[data.type]?.defaultRunInputData || {},
     isPaused,

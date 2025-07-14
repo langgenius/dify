@@ -34,7 +34,7 @@ import {
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { useParams } from 'next/navigation'
+import { useHooksStore } from '../../hooks-store'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -58,8 +58,8 @@ export const useChat = (
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
-  const { appId } = useParams()
-  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)

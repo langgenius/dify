@@ -3,11 +3,11 @@ import { useStore } from '@/app/components/workflow/store'
 import { FlowType } from '@/types/common'
 
 export const useConfigsMap = () => {
-  const appId = useStore(s => s.appId)
+  const pipelineId = useStore(s => s.pipelineId)
   return useMemo(() => {
     return {
-      flowId: appId!,
-      flowType: FlowType.appFlow,
+      flowId: pipelineId!,
+      flowType: FlowType.ragPipeline,
     }
-  }, [appId])
+  }, [pipelineId])
 }

@@ -90,6 +90,7 @@ from .datasets.rag_pipeline import (
     datasource_content_preview,
     rag_pipeline,
     rag_pipeline_datasets,
+    rag_pipeline_draft_variable,
     rag_pipeline_import,
     rag_pipeline_workflow,
 )

@@ -6,22 +6,21 @@ import type { Node } from '@/app/components/workflow/types'
 import { fetchAllInspectVars } from '@/service/workflow'
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import type { FlowType } from '@/types/common'
 
 type Params = {
+  flowType: FlowType
   flowId: string
-  conversationVarsUrl: string
-  systemVarsUrl: string
 }
 
 export const useSetWorkflowVarsWithValue = ({
+  flowType,
   flowId,
-  conversationVarsUrl,
-  systemVarsUrl,
 }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl)
-  const invalidateSysVarValues = useInvalidateSysVarValues(systemVarsUrl)
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(flowType, flowId)
+  const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
 
   const setInspectVarsToStore = useCallback((inspectVars: VarInInspect[]) => {
@@ -68,10 +67,10 @@ export const useSetWorkflowVarsWithValue = ({
   const fetchInspectVars = useCallback(async () => {
     invalidateConversationVarValues()
     invalidateSysVarValues()
-    const data = await fetchAllInspectVars(flowId)
+    const data = await fetchAllInspectVars(flowType, flowId)
     setInspectVarsToStore(data)
     handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
-  }, [invalidateConversationVarValues, invalidateSysVarValues, flowId, setInspectVarsToStore, handleCancelAllNodeSuccessStatus])
+  }, [invalidateConversationVarValues, invalidateSysVarValues, flowType, flowId, setInspectVarsToStore, handleCancelAllNodeSuccessStatus])
   return {
     fetchInspectVars,
   }

@@ -17,6 +17,7 @@ import RestoreConfirmModal from './restore-confirm-modal'
 import DeleteConfirmModal from './delete-confirm-modal'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Toast from '@/app/components/base/toast'
+import { useHooksStore } from '../../hooks-store'
 
 const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
@@ -46,9 +47,8 @@ export const VersionHistoryPanel = ({
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
-  const appId = useStore(s => s.appId)
-  const pipelineId = useStore(s => s.pipelineId)
-  const invalidAllLastRun = useInvalidAllLastRun(appId || pipelineId || '')
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
   } = workflowStore.getState()

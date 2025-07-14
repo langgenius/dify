@@ -11,7 +11,6 @@ import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVar
 
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
@@ -52,6 +51,7 @@ import {
 } from 'reactflow'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+import type { FlowType } from '@/types/common'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -72,6 +72,8 @@ const checkValidFns: Record<BlockEnum, Function> = {
 
 export type Params<T> = {
   id: string
+  flowId: string
+  flowType: FlowType
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
   moreDataForCheckValid?: any
@@ -106,6 +108,8 @@ const varTypeToInputVarType = (type: VarType, {
 
 const useOneStepRun = <T>({
   id,
+  flowId,
+  flowType,
   data,
   defaultRunInputData,
   moreDataForCheckValid,
@@ -153,7 +157,6 @@ const useOneStepRun = <T>({
 
   const checkValid = checkValidFns[data.type]
 
-  const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)
   const handleSetRunInputData = useCallback((data: Record<string, any>) => {
@@ -168,7 +171,7 @@ const useOneStepRun = <T>({
   const {
     setShowSingleRunPanel,
   } = workflowStore.getState()
-  const invalidLastRun = useInvalidLastRun(appId!, id)
+  const invalidLastRun = useInvalidLastRun(flowType, flowId!, id)
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
   const {
     appendNodeInspectVars,
@@ -195,7 +198,7 @@ const useOneStepRun = <T>({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(appId!, id)
+    const vars = await fetchNodeInspectVars(flowType, flowId!, id)
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(id, vars, nodes)
@@ -205,7 +208,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [isRunAfterSingleRun, runningStatus, appId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [isRunAfterSingleRun, runningStatus, flowId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -305,14 +308,14 @@ const useOneStepRun = <T>({
         else {
           postData.inputs = submitData
         }
-        res = await singleNodeRun(appId!, id, postData) as any
+        res = await singleNodeRun(flowType, flowId!, id, postData) as any
       }
       else if (isIteration) {
         setIterationRunResult([])
         let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getIterationSingleNodeRunUrl(isChatMode, appId!, id),
+          getIterationSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
@@ -415,7 +418,7 @@ const useOneStepRun = <T>({
         let _loopResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getLoopSingleNodeRunUrl(isChatMode, appId!, id),
+          getLoopSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
@@ -633,7 +636,6 @@ const useOneStepRun = <T>({
   }
 
   return {
-    appId,
     isShowSingleRun,
     hideSingleRun,
     showSingleRun,
