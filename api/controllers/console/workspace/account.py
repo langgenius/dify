@@ -489,6 +489,9 @@ class ChangeEmailResetApi(Resource):
 
         AccountService.revoke_change_email_token(args["token"])
 
+        if not AccountService.check_email_unique(args["new_email"]):
+            raise EmailAlreadyInUseError()
+
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
             raise AccountNotFound()
@@ -504,11 +507,8 @@ class CheckEmailUnique(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
         args = parser.parse_args()
-        with Session(db.engine) as session:
-            # check if email is already in use
-            account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
-            if account is not None:
-                raise EmailAlreadyInUseError()
+        if not AccountService.check_email_unique(args["email"]):
+            raise EmailAlreadyInUseError()
         return {"result": "success"}
 
 
