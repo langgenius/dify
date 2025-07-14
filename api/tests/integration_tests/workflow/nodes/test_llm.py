@@ -1,5 +1,4 @@
 import json
-import os
 import time
 import uuid
 from collections.abc import Generator
@@ -113,17 +112,15 @@ def test_execute_llm(flask_req_ctx):
         },
     )
 
-    credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
-
     # Create a proper LLM result with real entities
     mock_usage = LLMUsage(
         prompt_tokens=30,
         prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal("1000"),
+        prompt_price_unit=Decimal(1000),
         prompt_price=Decimal("0.00003"),
         completion_tokens=20,
         completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal("1000"),
+        completion_price_unit=Decimal(1000),
         completion_price=Decimal("0.00004"),
         total_tokens=50,
         total_price=Decimal("0.00007"),
@@ -222,11 +219,11 @@ def test_execute_llm_with_jinja2(flask_req_ctx, setup_code_executor_mock):
     mock_usage = LLMUsage(
         prompt_tokens=30,
         prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal("1000"),
+        prompt_price_unit=Decimal(1000),
         prompt_price=Decimal("0.00003"),
         completion_tokens=20,
         completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal("1000"),
+        completion_price_unit=Decimal(1000),
         completion_price=Decimal("0.00004"),
         total_tokens=50,
         total_price=Decimal("0.00007"),

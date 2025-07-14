@@ -18,7 +18,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -67,13 +67,17 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
+  const appId = useStore(s => s.appId)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const {
     exportCheck,
     handleExportDSL,
   } = useDSL()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    flowId: appId,
+    ...useConfigsMap(),
+  })
   const {
     hasNodeInspectVars,
     hasSetInspectVar,

@@ -1,3 +1,5 @@
+import type { PluginMeta } from '../../plugins/types'
+
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export enum TabsEnum {
@@ -11,6 +13,7 @@ export enum ToolTypeEnum {
   BuiltIn = 'built-in',
   Custom = 'custom',
   Workflow = 'workflow',
+  MCP = 'mcp',
 }
 
 export enum BlockClassificationEnum {
@@ -33,6 +36,7 @@ export type ToolDefaultValue = {
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
+  meta?: PluginMeta
 }
 
 export type DataSourceDefaultValue = {
@@ -45,6 +49,7 @@ export type DataSourceDefaultValue = {
 
 export type ToolValue = {
   provider_name: string
+  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description?: string

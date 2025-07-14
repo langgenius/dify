@@ -96,6 +96,7 @@ const translation = {
       unsupportedTitle: '不支持的 Action',
       unsupportedContent: '已安装的插件版本不提供这个 action。',
       unsupportedContent2: '点击切换版本',
+      unsupportedMCPTool: '当前选定的 Agent 策略插件版本不支持 MCP 工具。',
     },
     configureApp: '应用设置',
     configureModel: '模型设置',

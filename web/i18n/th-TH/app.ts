@@ -177,6 +177,7 @@ const translation = {
       title: 'ทอ',
       description: 'Weave เป็นแพลตฟอร์มโอเพนซอร์สสำหรับการประเมินผล ทดสอบ และตรวจสอบแอปพลิเคชัน LLM',
     },
+    aliyun: {},
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',

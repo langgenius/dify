@@ -23,7 +23,7 @@ import {
   InputVarType,
 } from '@/app/components/workflow/types'
 import { useToastContext } from '@/app/components/base/toast'
-import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -89,6 +89,7 @@ const FeaturesTrigger = () => {
     }
   }, [appID, setAppDetail])
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
@@ -99,6 +100,7 @@ const FeaturesTrigger = () => {
 
       if (res) {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
+        updatePublishedWorkflow(appID!)
         updateAppDetail()
         workflowStore.getState().setPublishedAt(res.created_at)
         resetWorkflowVersionHistory()
@@ -107,7 +109,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [handleCheckBeforePublish, notify, appID, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
+  }, [handleCheckBeforePublish, publishWorkflow, notify, appID, t, updatePublishedWorkflow, appID, updateAppDetail, workflowStore, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

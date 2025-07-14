@@ -364,6 +364,7 @@ const translation = {
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'ต้องระบุ',

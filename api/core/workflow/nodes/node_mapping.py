@@ -75,6 +75,7 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.TOOL: {
         LATEST_VERSION: ToolNode,
+        "2": ToolNode,
         "1": ToolNode,
     },
     NodeType.VARIABLE_AGGREGATOR: {
@@ -124,6 +125,7 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.AGENT: {
         LATEST_VERSION: AgentNode,
+        "2": AgentNode,
         "1": AgentNode,
     },
     NodeType.DATASOURCE: {

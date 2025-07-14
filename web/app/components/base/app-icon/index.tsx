@@ -19,6 +19,7 @@ export type AppIconProps = {
   imageUrl?: string | null
   className?: string
   innerIcon?: React.ReactNode
+  coverElement?: React.ReactNode
   showEditIcon?: boolean
   onClick?: () => void
 }
@@ -93,6 +94,7 @@ const AppIcon: FC<AppIconProps> = ({
   imageUrl,
   className,
   innerIcon,
+  coverElement,
   onClick,
   showEditIcon = false,
 }) => {
@@ -120,6 +122,7 @@ const AppIcon: FC<AppIconProps> = ({
           </div>
         )
       }
+      {coverElement}
     </span>
   )
 }

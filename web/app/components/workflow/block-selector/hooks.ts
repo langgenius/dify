@@ -16,11 +16,11 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
         noBlocks
           ? []
           : [
-              {
-                key: TabsEnum.Blocks,
-                name: t('workflow.tabs.blocks'),
-              },
-            ]
+            {
+              key: TabsEnum.Blocks,
+              name: t('workflow.tabs.blocks'),
+            },
+          ]
       ),
       ...(
         noSources
@@ -40,10 +40,10 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
   }, [t, noBlocks, noSources])
   const initialTab = useMemo(() => {
     if (noBlocks)
-      return TabsEnum.Sources
+      return noSources ? TabsEnum.Tools : TabsEnum.Sources
 
     return TabsEnum.Blocks
-  }, [noBlocks])
+  }, [noBlocks, noSources])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   return {
@@ -53,10 +53,9 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
   }
 }
 
-export const useToolTabs = () => {
+export const useToolTabs = (isHideMCPTools?: boolean) => {
   const { t } = useTranslation()
-
-  return [
+  const tabs = [
     {
       key: ToolTypeEnum.All,
       name: t('workflow.tabs.allTool'),
@@ -74,4 +73,12 @@ export const useToolTabs = () => {
       name: t('workflow.tabs.workflowTool'),
     },
   ]
+  if (!isHideMCPTools) {
+    tabs.push({
+      key: ToolTypeEnum.MCP,
+      name: 'MCP',
+    })
+  }
+
+  return tabs
 }

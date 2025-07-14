@@ -388,6 +388,7 @@ const translation = {
         ms: '미에스',
         retries: '{{숫자}} 재시도',
       },
+      typeSwitch: {},
     },
     start: {
       required: '필수',

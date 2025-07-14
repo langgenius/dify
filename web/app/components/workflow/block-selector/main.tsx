@@ -28,11 +28,10 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
-import ToolSearchInputTag from './tool-search-input-tag'
+import SearchBox from '@/app/components/plugins/marketplace/search-box'
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -50,6 +49,7 @@ export type NodeSelectorProps = {
   disabled?: boolean
   blocks?: NodeDefault[]
   dataSources?: ToolWithProvider[]
+  noBlocks?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -67,6 +67,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   disabled,
   blocks = [],
   dataSources = [],
+  noBlocks = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -98,6 +99,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     setActiveTab,
     tabs,
   } = useTabs(!blocks.length, !dataSources.length)
+
+  const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
+    setActiveTab(newActiveTab)
+  }, [setActiveTab])
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Blocks)
@@ -141,64 +146,43 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-      <div className={cn(
-          'overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]',
-          popupClassName,
-        )}>
-          <div className='border-b border-divider-subtle bg-background-section-burn'>
-            <div className='flex h-9 items-center px-1 pt-1'>
-              {
-                tabs.map(tab => (
-                  <div
-                    key={tab.key}
-                    className={cn(
-                      'system-sm-medium mr-0.5 cursor-pointer rounded-t-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover',
-                      activeTab === tab.key && 'bg-components-panel-bg text-text-accent shadow-sm',
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setActiveTab(tab.key)
-                    }}
-                  >
-                    {tab.name}
-                  </div>
-                ))
-              }
-            </div>
-            <div className='relative z-[1] bg-components-panel-bg p-2'>
-              <div className='flex items-center rounded-lg' onClick={e => e.stopPropagation()}>
-                <Input
-                  wrapperClassName='flex items-center'
-                  showLeftIcon
-                  showClearIcon
-                  autoFocus
-                  value={searchText}
-                  placeholder={searchPlaceholder}
-                  onChange={e => setSearchText(e.target.value)}
-                  onClear={() => setSearchText('')}
-                />
-                {
-                  activeTab === TabsEnum.Tools && (
-                    <>
-                      <div className='mr-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
-                      <ToolSearchInputTag
-                        tags={tags}
-                        onTagsChange={setTags}
-                      />
-                    </>
-                  )
-                }
-              </div>
-            </div>
-          </div>
+        <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
+            tabs={tabs}
             activeTab={activeTab}
+            blocks={blocks}
+            onActiveTabChange={handleActiveTabChange}
+            filterElem={
+              <div className='relative m-2' onClick={e => e.stopPropagation()}>
+                {activeTab === TabsEnum.Blocks && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
+                {activeTab === TabsEnum.Tools && (
+                  <SearchBox
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    size='small'
+                    placeholder={t('plugin.searchTools')!}
+                    inputClassName='grow'
+                  />
+                )}
+              </div>
+            }
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
-            blocks={blocks}
-            dataSources={dataSources}
+            noBlocks={noBlocks}
           />
         </div>
       </PortalToFollowElemContent>
