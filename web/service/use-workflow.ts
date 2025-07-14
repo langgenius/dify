@@ -126,21 +126,19 @@ export const useInvalidAllLastRun = (flowType?: FlowType, flowId?: string) => {
   return useInvalid([NAME_SPACE, flowType, 'last-run', flowId])
 }
 
-const useConversationVarValuesKey = [NAME_SPACE, 'conversation-variable']
-
-export const useConversationVarValues = (url?: string) => {
+export const useConversationVarValues = (flowType?: FlowType, flowId?: string) => {
   return useQuery({
-    enabled: !!url,
-    queryKey: [...useConversationVarValuesKey, url],
+    enabled: !!flowId,
+    queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(url || '')) as { items: VarInInspect[] }
+      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
       return items
     },
   })
 }
 
-export const useInvalidateConversationVarValues = (url: string) => {
-  return useInvalid([...useConversationVarValuesKey, url])
+export const useInvalidateConversationVarValues = (flowType: FlowType, flowId: string) => {
+  return useInvalid([NAME_SPACE, flowType, 'conversation var values', flowId])
 }
 
 export const useResetConversationVar = (flowType: FlowType, flowId: string) => {
@@ -162,19 +160,19 @@ export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
 }
 
 export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
-export const useSysVarValues = (url?: string) => {
+export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
   return useQuery({
-    enabled: !!url,
-    queryKey: [...useSysVarValuesKey, url],
+    enabled: !!flowId,
+    queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(url || '')) as { items: VarInInspect[] }
+      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
       return items
     },
   })
 }
 
-export const useInvalidateSysVarValues = (url: string) => {
-  return useInvalid([...useSysVarValuesKey, url])
+export const useInvalidateSysVarValues = (flowType: FlowType, flowId: string) => {
+  return useInvalid([NAME_SPACE, flowType, 'sys var values', flowId])
 }
 
 export const useDeleteAllInspectorVars = (flowType: FlowType, flowId: string) => {

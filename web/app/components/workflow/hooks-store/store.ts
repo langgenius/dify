@@ -64,8 +64,6 @@ export type CommonHooksFnMap = {
   configsMap?: {
     flowId: string
     flowType: FlowType
-    conversationVarsUrl: string
-    systemVarsUrl: string
   }
 }
 

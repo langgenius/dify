@@ -8,8 +8,8 @@ import {
 const useInspectVarsCrud = () => {
   const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
   const configsMap = useHooksStore(s => s.configsMap)
-  const { data: conversationVars } = useConversationVarValues(configsMap?.conversationVarsUrl)
-  const { data: systemVars } = useSysVarValues(configsMap?.systemVarsUrl)
+  const { data: conversationVars } = useConversationVarValues(configsMap?.flowType, configsMap?.flowId)
+  const { data: systemVars } = useSysVarValues(configsMap?.flowType, configsMap?.flowId)
   const hasNodeInspectVars = useHooksStore(s => s.hasNodeInspectVars)
   const hasSetInspectVar = useHooksStore(s => s.hasSetInspectVar)
   const fetchInspectVarValue = useHooksStore(s => s.fetchInspectVarValue)

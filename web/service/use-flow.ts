@@ -4,6 +4,8 @@ import {
   useDeleteInspectVar as useDeleteInspectVarInner,
   useDeleteNodeInspectorVars as useDeleteNodeInspectorVarsInner,
   useEditInspectorVar as useEditInspectorVarInner,
+  useInvalidateConversationVarValues as useInvalidateConversationVarValuesInner,
+  useInvalidateSysVarValues as useInvalidateSysVarValuesInner,
   useResetConversationVar as useResetConversationVarInner,
   useResetToLastRunValue as useResetToLastRunValueInner,
 } from './use-workflow'
@@ -17,6 +19,8 @@ const useFLow = ({
   flowType,
 }: Params) => {
   return {
+    useInvalidateConversationVarValues: curry(useInvalidateConversationVarValuesInner)(flowType),
+    useInvalidateSysVarValues: curry(useInvalidateSysVarValuesInner)(flowType),
     useResetConversationVar: curry(useResetConversationVarInner)(flowType),
     useResetToLastRunValue: curry(useResetToLastRunValueInner)(flowType),
     useDeleteAllInspectorVars: curry(useDeleteAllInspectorVarsInner)(flowType),

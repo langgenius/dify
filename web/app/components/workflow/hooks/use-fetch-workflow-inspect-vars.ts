@@ -11,20 +11,16 @@ import type { FlowType } from '@/types/common'
 type Params = {
   flowType: FlowType
   flowId: string
-  conversationVarsUrl: string
-  systemVarsUrl: string
 }
 
 export const useSetWorkflowVarsWithValue = ({
   flowType,
   flowId,
-  conversationVarsUrl,
-  systemVarsUrl,
 }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl)
-  const invalidateSysVarValues = useInvalidateSysVarValues(systemVarsUrl)
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(flowType, flowId)
+  const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
 
   const setInspectVarsToStore = useCallback((inspectVars: VarInInspect[]) => {

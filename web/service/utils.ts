@@ -5,6 +5,6 @@ export const flowPrefixMap = {
   [FlowType.ragFlow]: 'rag/pipelines',
 }
 
-export const getFlowPrefix = (type: FlowType) => {
-  return flowPrefixMap[type] || flowPrefixMap[FlowType.appFlow]
+export const getFlowPrefix = (type?: FlowType) => {
+  return flowPrefixMap[type!] || flowPrefixMap[FlowType.appFlow]
 }
