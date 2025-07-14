@@ -92,24 +92,12 @@ class DifyAPISQLAlchemyWorkflowRunRepository:
                 )
 
             # First page - get most recent records
-            workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
+            workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit + 1)).all()
 
             # Check if there are more records for pagination
-            has_more = False
-            if len(workflow_runs) == limit:
-                current_page_last_run = workflow_runs[-1]
-                remaining_count = session.scalar(
-                    select(WorkflowRun.id)
-                    .where(
-                        WorkflowRun.tenant_id == tenant_id,
-                        WorkflowRun.app_id == app_id,
-                        WorkflowRun.triggered_from == triggered_from,
-                        WorkflowRun.created_at < current_page_last_run.created_at,
-                        WorkflowRun.id != current_page_last_run.id,
-                    )
-                    .limit(1)
-                )
-                has_more = remaining_count is not None
+            has_more = len(workflow_runs) > limit
+            if has_more:
+                workflow_runs = workflow_runs[:-1]
 
             return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
