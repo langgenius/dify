@@ -18,7 +18,7 @@ const PluginAuth = ({
     canApiKey,
     credentials,
     disabled,
-  } = usePluginAuth(pluginPayload, true)
+  } = usePluginAuth(pluginPayload, !!pluginPayload.provider)
 
   return (
     <>
