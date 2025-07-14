@@ -11,6 +11,7 @@ x-shared-env: &shared-api-worker-env
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
+  INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-/app/logs/server.log}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
