@@ -189,7 +189,6 @@ class SendOwnerTransferEmailApi(Resource):
 
         if current_user.id == str(member_id):
             raise CannotTransferOwnerToSelfError()
-        
 
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
@@ -202,10 +201,11 @@ class SendOwnerTransferEmailApi(Resource):
             abort(404)
         else:
             member_name = member.name
+            member_account = member
         # check the member is in the workspace
-        if not TenantService.is_member(member, current_user.current_tenant):
+        if not TenantService.is_member(member_account, current_user.current_tenant):
             raise MemberNotInTenantError()
-        
+
         token = AccountService.send_owner_transfer_email(
             account=current_user,
             email=email,
@@ -267,8 +267,8 @@ class OwnerTransfer(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-    
-         # check if the current user is the owner of the workspace
+
+        # check if the current user is the owner of the workspace
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -289,8 +289,9 @@ class OwnerTransfer(Resource):
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
-            
-        if not TenantService.is_member(member, current_user.current_tenant):
+        else:
+            member_account = member
+        if not TenantService.is_member(member_account, current_user.current_tenant):
             raise MemberNotInTenantError()
 
         try:

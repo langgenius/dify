@@ -78,28 +78,20 @@ def send_old_owner_transfer_notify_email_task(language: str, to: str, workspace:
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_old_owner_notify_template_zh-CN.html"
-                html_content = render_template(
-                    template, to=to, code=code, WorkspaceName=workspace, NewOwnerEmail=new_owner_email
-                )
+                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
                 mail.send(to=to, subject="工作区所有权已转移", html=html_content)
             else:
-                html_content = render_template(
-                    template, to=to, code=code, WorkspaceName=workspace, NewOwnerEmail=new_owner_email
-                )
+                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
                 mail.send(to=to, subject="工作区所有权已转移", html=html_content)
         else:
             template = "transfer_workspace_old_owner_notify_template_en-US.html"
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_old_owner_notify_template_en-US.html"
-                html_content = render_template(
-                    template, to=to, code=code, WorkspaceName=workspace, NewOwnerEmail=new_owner_email
-                )
+                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
                 mail.send(to=to, subject="Workspace ownership has been transferred", html=html_content)
             else:
-                html_content = render_template(
-                    template, to=to, code=code, WorkspaceName=workspace, NewOwnerEmail=new_owner_email
-                )
+                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
                 mail.send(to=to, subject="Workspace ownership has been transferred", html=html_content)
 
         end_at = time.perf_counter()
@@ -134,20 +126,20 @@ def send_new_owner_transfer_notify_email_task(language: str, to: str, workspace:
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_new_owner_notify_template_zh-CN.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
+                html_content = render_template(template, to=to, WorkspaceName=workspace)
                 mail.send(to=to, subject=f"您现在是 {workspace} 的所有者", html=html_content)
             else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
+                html_content = render_template(template, to=to, WorkspaceName=workspace)
                 mail.send(to=to, subject=f"您现在是 {workspace} 的所有者", html=html_content)
         else:
             template = "transfer_workspace_new_owner_notify_template_en-US.html"
             system_features = FeatureService.get_system_features()
             if system_features.branding.enabled:
                 template = "without-brand/transfer_workspace_new_owner_notify_template_en-US.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
+                html_content = render_template(template, to=to, WorkspaceName=workspace)
                 mail.send(to=to, subject=f"You are now the owner of {workspace}", html=html_content)
             else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
+                html_content = render_template(template, to=to, WorkspaceName=workspace)
                 mail.send(to=to, subject=f"You are now the owner of {workspace}", html=html_content)
 
         end_at = time.perf_counter()

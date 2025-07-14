@@ -1092,6 +1092,7 @@ class TenantService:
         """Check if the account is a member of the tenant"""
         return TenantService.get_user_role(account, tenant) is not None
 
+
 class RegisterService:
     @classmethod
     def _get_invitation_token_key(cls, token: str) -> str:
