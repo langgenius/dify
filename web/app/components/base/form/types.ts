@@ -60,7 +60,15 @@ export type FormSchema = {
 
 export type FormValues = Record<string, any>
 
+export type GetValuesOptions = {
+  needTransformWhenSecretFieldIsPristine?: boolean
+  needCheckValidatedValues?: boolean
+}
 export type FormRefObject = {
     getForm: () => AnyFormApi
+    getFormValues: (obj: GetValuesOptions) => {
+      values: Record<string, any>
+      isCheckValidated: boolean
+    }
 }
 export type FormRef = ForwardedRef<FormRefObject>
