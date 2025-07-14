@@ -16,9 +16,13 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
-class AnswerNode(BaseNode[AnswerNodeData]):
-    _node_data_cls = AnswerNodeData
+class AnswerNode(BaseNode):
     _node_type = NodeType.ANSWER
+
+    node_data: AnswerNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = AnswerNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

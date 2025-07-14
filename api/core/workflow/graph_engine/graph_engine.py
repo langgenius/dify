@@ -265,7 +265,7 @@ class GraphEngine:
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
             # init workflow run state
-            node_instance = node_cls(  # type: ignore
+            node_instance = node_cls(
                 id=route_node_state.id,
                 config=node_config,
                 graph_init_params=self.init_params,
@@ -274,7 +274,7 @@ class GraphEngine:
                 previous_node_id=previous_node_id,
                 thread_pool_id=self.thread_pool_id,
             )
-            node_instance = cast(BaseNode[BaseNodeData], node_instance)
+            node_instance.from_dict(node_config.get("data", {}))
             try:
                 # run node
                 generator = self._run_node(

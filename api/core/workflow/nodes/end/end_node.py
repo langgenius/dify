@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -5,9 +8,13 @@ from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.enums import NodeType
 
 
-class EndNode(BaseNode[EndNodeData]):
-    _node_data_cls = EndNodeData
+class EndNode(BaseNode):
     _node_type = NodeType.END
+
+    node_data: EndNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = EndNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

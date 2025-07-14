@@ -1,28 +1,21 @@
 import logging
 from abc import abstractmethod
-from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar, Union, cast
+from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, RETRY_ON_ERROR_NODE_TYPE, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 
-from .entities import BaseNodeData
-
 if TYPE_CHECKING:
+    from core.workflow.graph_engine import Graph, GraphEngine, GraphInitParams, GraphRuntimeState
     from core.workflow.graph_engine.entities.event import InNodeEvent
-    from core.workflow.graph_engine.entities.graph import Graph
-    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
-GenericNodeData = TypeVar("GenericNodeData", bound=BaseNodeData)
 
-
-class BaseNode(Generic[GenericNodeData]):
-    _node_data_cls: type[GenericNodeData]
+class BaseNode:
     _node_type: ClassVar[NodeType]
 
     def __init__(
@@ -57,7 +50,8 @@ class BaseNode(Generic[GenericNodeData]):
         self.node_id = node_id
 
         node_data = self._node_data_cls.model_validate(config.get("data", {}))
-        self.node_data = node_data
+    @abstractmethod
+    def from_dict(self, data: Mapping[str, Any]) -> None: ...
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:

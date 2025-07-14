@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -5,13 +8,17 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.iteration.entities import IterationStartNodeData
 
 
-class IterationStartNode(BaseNode[IterationStartNodeData]):
+class IterationStartNode(BaseNode):
     """
     Iteration Start Node.
     """
 
-    _node_data_cls = IterationStartNodeData
     _node_type = NodeType.ITERATION_START
+
+    node_data: IterationStartNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = IterationStartNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

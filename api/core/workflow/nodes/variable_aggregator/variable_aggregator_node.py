@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import Any
 
 from core.variables.segments import Segment
 from core.workflow.entities.node_entities import NodeRunResult
@@ -8,9 +9,13 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.variable_aggregator.entities import VariableAssignerNodeData
 
 
-class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
-    _node_data_cls = VariableAssignerNodeData
+class VariableAggregatorNode(BaseNode):
     _node_type = NodeType.VARIABLE_AGGREGATOR
+
+    node_data: VariableAssignerNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = VariableAssignerNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

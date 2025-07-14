@@ -43,13 +43,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LoopNode(BaseNode[LoopNodeData]):
+class LoopNode(BaseNode):
     """
     Loop Node.
     """
 
-    _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
+
+    node_data: LoopNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = LoopNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

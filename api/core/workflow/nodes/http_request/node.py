@@ -32,9 +32,13 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
 logger = logging.getLogger(__name__)
 
 
-class HttpRequestNode(BaseNode[HttpRequestNodeData]):
-    _node_data_cls = HttpRequestNodeData
+class HttpRequestNode(BaseNode):
     _node_type = NodeType.HTTP_REQUEST
+
+    node_data: HttpRequestNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = HttpRequestNodeData(**data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:

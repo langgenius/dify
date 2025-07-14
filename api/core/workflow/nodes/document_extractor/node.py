@@ -36,14 +36,18 @@ from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError,
 logger = logging.getLogger(__name__)
 
 
-class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
+class DocumentExtractorNode(BaseNode):
     """
     Extracts text content from various file types.
     Supports plain text, PDF, and DOC/DOCX files.
     """
 
-    _node_data_cls = DocumentExtractorNodeData
     _node_type = NodeType.DOCUMENT_EXTRACTOR
+
+    node_data: DocumentExtractorNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = DocumentExtractorNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

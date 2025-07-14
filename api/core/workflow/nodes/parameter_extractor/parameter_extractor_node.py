@@ -91,9 +91,12 @@ class ParameterExtractorNode(BaseNode):
     Parameter Extractor Node.
     """
 
-    # FIXME: figure out why here is different from super class
-    _node_data_cls = ParameterExtractorNodeData  # type: ignore
     _node_type = NodeType.PARAMETER_EXTRACTOR
+
+    node_data: ParameterExtractorNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = ParameterExtractorNodeData(**data)
 
     _model_instance: Optional[ModelInstance] = None
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None

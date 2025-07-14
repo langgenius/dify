@@ -90,16 +90,15 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine.entities.graph import Graph
-    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 
-class LLMNode(BaseNode[LLMNodeData]):
-    _node_data_cls = LLMNodeData
+class LLMNode(BaseNode):
     _node_type = NodeType.LLM
+
+    node_data: LLMNodeData
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
@@ -137,6 +136,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                 tenant_id=graph_init_params.tenant_id,
             )
         self._llm_file_saver = llm_file_saver
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = LLMNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

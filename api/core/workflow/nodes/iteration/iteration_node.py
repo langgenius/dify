@@ -56,13 +56,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class IterationNode(BaseNode[IterationNodeData]):
+class IterationNode(BaseNode):
     """
     Iteration Node.
     """
 
-    _node_data_cls = IterationNodeData
     _node_type = NodeType.ITERATION
+
+    node_data: IterationNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = IterationNodeData(**data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

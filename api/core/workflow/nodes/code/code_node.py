@@ -21,9 +21,13 @@ from .exc import (
 )
 
 
-class CodeNode(BaseNode[CodeNodeData]):
-    _node_data_cls = CodeNodeData
+class CodeNode(BaseNode):
     _node_type = NodeType.CODE
+
+    node_data: CodeNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = CodeNodeData(**data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

@@ -54,9 +54,13 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     mapping[key] = selector
 
 
-class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
-    _node_data_cls = VariableAssignerNodeData
+class VariableAssignerNode(BaseNode):
     _node_type = NodeType.VARIABLE_ASSIGNER
+
+    node_data: VariableAssignerNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = VariableAssignerNodeData(**data)
 
     def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
         return conversation_variable_updater_factory()

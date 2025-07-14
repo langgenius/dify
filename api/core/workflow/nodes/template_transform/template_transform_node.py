@@ -12,9 +12,13 @@ from core.workflow.nodes.template_transform.entities import TemplateTransformNod
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))
 
 
-class TemplateTransformNode(BaseNode[TemplateTransformNodeData]):
-    _node_data_cls = TemplateTransformNodeData
+class TemplateTransformNode(BaseNode):
     _node_type = NodeType.TEMPLATE_TRANSFORM
+
+    node_data: TemplateTransformNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = TemplateTransformNodeData(**data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

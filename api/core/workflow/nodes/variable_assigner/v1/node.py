@@ -22,10 +22,14 @@ if TYPE_CHECKING:
 _CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
 
 
-class VariableAssignerNode(BaseNode[VariableAssignerData]):
-    _node_data_cls = VariableAssignerData
+class VariableAssignerNode(BaseNode):
     _node_type = NodeType.VARIABLE_ASSIGNER
     _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
+
+    node_data: VariableAssignerData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = VariableAssignerData(**data)
 
     def __init__(
         self,

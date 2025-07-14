@@ -13,9 +13,13 @@ from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.condition.processor import ConditionProcessor
 
 
-class IfElseNode(BaseNode[IfElseNodeData]):
-    _node_data_cls = IfElseNodeData
+class IfElseNode(BaseNode):
     _node_type = NodeType.IF_ELSE
+
+    node_data: IfElseNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = IfElseNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

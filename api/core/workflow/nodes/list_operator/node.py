@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal, Union
 
 from core.file import File
@@ -13,9 +13,13 @@ from .entities import ListOperatorNodeData
 from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
 
 
-class ListOperatorNode(BaseNode[ListOperatorNodeData]):
-    _node_data_cls = ListOperatorNodeData
+class ListOperatorNode(BaseNode):
     _node_type = NodeType.LIST_OPERATOR
+
+    node_data: ListOperatorNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = ListOperatorNodeData(**data)
 
     @classmethod
     def version(cls) -> str:

@@ -37,13 +37,17 @@ from .exc import (
 )
 
 
-class ToolNode(BaseNode[ToolNodeData]):
+class ToolNode(BaseNode):
     """
     Tool Node
     """
 
-    _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
+
+    node_data: ToolNodeData
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = ToolNodeData(**data)
 
     @classmethod
     def version(cls) -> str:
@@ -124,7 +128,11 @@ class ToolNode(BaseNode[ToolNodeData]):
 
         try:
             # convert tool messages
-            yield from self._transform_message(message_stream, tool_info, parameters_for_log)
+            yield from self._transform_message(
+                messages=message_stream,
+                tool_info=tool_info,
+                parameters_for_log=parameters_for_log,
+            )
         except (PluginDaemonClientSideError, ToolInvokeError) as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
