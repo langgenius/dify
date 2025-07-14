@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -10,7 +10,6 @@ import {
 } from '@remixicon/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useHover } from 'ahooks'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
 import FamilyMod from '../assets/family-mod.svg'
@@ -60,7 +59,6 @@ import Badge from '@/app/components/base/badge'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
@@ -611,9 +609,6 @@ const StepTwo = ({
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
 
-  const economyDomRef = useRef<HTMLDivElement>(null)
-  const isHoveringEconomy = useHover(economyDomRef)
-
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
   return (
@@ -873,7 +868,8 @@ const StepTwo = ({
         <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
         <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard className='flex-1 self-stretch'
+            <OptionCard
+              className='flex-1 self-stretch'
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
@@ -919,26 +915,8 @@ const StepTwo = ({
                   </Button>
                 </div>
               </CustomDialog>
-              <PortalToFollowElem
-                open={
-                  isHoveringEconomy && docForm !== ChunkingMode.text
-                }
-                placement={'top'}
-              >
-                <PortalToFollowElemTrigger asChild>
-                  <OptionCard className='flex-1 self-stretch'
-                    title={t('datasetCreation.stepTwo.economical')}
-                    description={t('datasetCreation.stepTwo.economicalTip')}
-                    icon={<Image src={indexMethodIcon.economical} alt='' />}
-                    isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={hasSetIndexType || docForm !== ChunkingMode.text}
-                    ref={economyDomRef}
-                    onSwitched={() => {
-                      setIndexType(IndexingType.ECONOMICAL)
-                    }}
-                  />
-                </PortalToFollowElemTrigger>
-                <PortalToFollowElemContent>
+              <Tooltip
+                popupContent={
                   <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
                     {
                       docForm === ChunkingMode.qa
@@ -946,8 +924,24 @@ const StepTwo = ({
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
                   </div>
-                </PortalToFollowElemContent>
-              </PortalToFollowElem>
+                }
+                noDecoration
+                position='top'
+                asChild={false}
+                triggerClassName='flex-1 self-stretch'
+              >
+                <OptionCard
+                  className='h-full'
+                  title={t('datasetCreation.stepTwo.economical')}
+                  description={t('datasetCreation.stepTwo.economicalTip')}
+                  icon={<Image src={indexMethodIcon.economical} alt='' />}
+                  isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+                  disabled={hasSetIndexType || docForm !== ChunkingMode.text}
+                  onSwitched={() => {
+                    setIndexType(IndexingType.ECONOMICAL)
+                  }}
+                />
+              </Tooltip>
             </>)}
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
