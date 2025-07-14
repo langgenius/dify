@@ -308,14 +308,14 @@ const useOneStepRun = <T>({
         else {
           postData.inputs = submitData
         }
-        res = await singleNodeRun(flowId!, id, postData) as any
+        res = await singleNodeRun(flowType, flowId!, id, postData) as any
       }
       else if (isIteration) {
         setIterationRunResult([])
         let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getIterationSingleNodeRunUrl(isChatMode, flowId!, id),
+          getIterationSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
@@ -418,7 +418,7 @@ const useOneStepRun = <T>({
         let _loopResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
-          getLoopSingleNodeRunUrl(isChatMode, flowId!, id),
+          getLoopSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
