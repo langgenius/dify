@@ -49,7 +49,7 @@ type Props = {
   value?: ToolValue
   selectedTools?: ToolValue[]
   onSelect: (tool: ToolValue) => void
-  onSelectMultiple: (tool: ToolValue[]) => void
+  onSelectMultiple?: (tool: ToolValue[]) => void
   isEdit?: boolean
   onDelete?: () => void
   supportEnableSwitch?: boolean
@@ -137,7 +137,7 @@ const ToolSelector: FC<Props> = ({
   }
   const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
     const toolValues = tool.map(item => getToolValue(item))
-    onSelectMultiple(toolValues)
+    onSelectMultiple?.(toolValues)
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

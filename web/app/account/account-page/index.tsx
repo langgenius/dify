@@ -21,6 +21,7 @@ import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { validPassword } from '@/config'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -28,8 +29,6 @@ const titleClassName = `
 const descriptionClassName = `
   mt-1 body-xs-regular text-text-tertiary
 `
-
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function AccountPage() {
   const { t } = useTranslation()
