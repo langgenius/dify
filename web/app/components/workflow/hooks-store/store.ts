@@ -17,6 +17,7 @@ import type {
   Node,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import type { FlowType } from '@/types/common'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -61,6 +62,8 @@ export type CommonHooksFnMap = {
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
   configsMap?: {
+    flowId: string
+    flowType: FlowType
     conversationVarsUrl: string
     systemVarsUrl: string
   }

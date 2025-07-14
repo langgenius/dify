@@ -4,14 +4,8 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import {
-  useDeleteAllInspectorVars,
-  useDeleteInspectVar,
-  useDeleteNodeInspectorVars,
-  useEditInspectorVar,
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
-  useResetConversationVar,
-  useResetToLastRunValue,
 } from '@/service/use-workflow'
 import { useCallback } from 'react'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -19,18 +13,30 @@ import produce from 'immer'
 import type { Node } from '@/app/components/workflow/types'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import type { FlowType } from '@/types/common'
+import useFLow from '@/service/use-flow'
 
 type Params = {
   flowId: string
+  flowType: FlowType
   conversationVarsUrl: string
   systemVarsUrl: string
 }
 export const useInspectVarsCrudCommon = ({
   flowId,
+  flowType,
   conversationVarsUrl,
   systemVarsUrl,
 }: Params) => {
   const workflowStore = useWorkflowStore()
+  const {
+    useResetConversationVar,
+    useResetToLastRunValue,
+    useDeleteAllInspectorVars,
+    useDeleteNodeInspectorVars,
+    useDeleteInspectVar,
+    useEditInspectorVar,
+  } = useFLow({ flowType })
   const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl!)
   const { mutateAsync: doResetConversationVar } = useResetConversationVar(flowId)
   const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(flowId)
@@ -89,7 +95,6 @@ export const useInspectVarsCrudCommon = ({
 
   const fetchInspectVarValue = useCallback(async (selector: ValueSelector) => {
     const {
-      appId,
       setNodeInspectVars,
     } = workflowStore.getState()
     const nodeId = selector[0]
@@ -103,9 +108,9 @@ export const useInspectVarsCrudCommon = ({
       invalidateConversationVarValues()
       return
     }
-    const vars = await fetchNodeInspectVars(appId, nodeId)
+    const vars = await fetchNodeInspectVars(flowType, flowId, nodeId)
     setNodeInspectVars(nodeId, vars)
-  }, [workflowStore, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [workflowStore, flowType, flowId, invalidateSysVarValues, invalidateConversationVarValues])
 
   // after last run would call this
   const appendNodeInspectVars = useCallback((nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
