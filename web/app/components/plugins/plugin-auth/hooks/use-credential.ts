@@ -1,11 +1,13 @@
 import {
   useAddPluginCredential,
   useDeletePluginCredential,
+  useDeletePluginOAuthCustomClient,
   useGetPluginCredentialInfo,
   useGetPluginCredentialSchema,
   useGetPluginOAuthClientSchema,
   useGetPluginOAuthUrl,
   useInvalidPluginCredentialInfo,
+  useInvalidPluginOAuthClientSchema,
   useSetPluginDefaultCredential,
   useSetPluginOAuthCustomClient,
   useUpdatePluginCredential,
@@ -67,8 +69,20 @@ export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) 
   return useGetPluginOAuthClientSchema(apiMap.getOauthClientSchema)
 }
 
+export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
+  const apiMap = useGetApi(pluginPayload)
+
+  return useInvalidPluginOAuthClientSchema(apiMap.getOauthClientSchema)
+}
+
 export const useSetPluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {
   const apiMap = useGetApi(pluginPayload)
 
   return useSetPluginOAuthCustomClient(apiMap.setCustomOauthClient)
+}
+
+export const useDeletePluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {
+  const apiMap = useGetApi(pluginPayload)
+
+  return useDeletePluginOAuthCustomClient(apiMap.deleteCustomOAuthClient)
 }

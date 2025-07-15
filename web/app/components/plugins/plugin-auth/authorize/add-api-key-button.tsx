@@ -24,7 +24,7 @@ const AddApiKeyButton = ({
   return (
     <>
       <Button
-        className='grow'
+        className='w-0 grow'
         variant={buttonVariant}
         onClick={() => setIsApiKeyModalOpen(true)}
         disabled={disabled}

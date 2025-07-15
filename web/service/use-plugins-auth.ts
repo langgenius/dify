@@ -2,7 +2,7 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { get, post } from './base'
+import { del, get, post } from './base'
 import { useInvalid } from './use-base'
 import type {
   Credential,
@@ -131,6 +131,12 @@ export const useGetPluginOAuthClientSchema = (
   })
 }
 
+export const useInvalidPluginOAuthClientSchema = (
+  url: string,
+) => {
+  return useInvalid([NAME_SPACE, 'oauth-client-schema', url])
+}
+
 export const useSetPluginOAuthCustomClient = (
   url: string,
 ) => {
@@ -140,6 +146,16 @@ export const useSetPluginOAuthCustomClient = (
         enable_oauth_custom_client: boolean
       }) => {
       return post<{ result: string }>(url, { body: params })
+    },
+  })
+}
+
+export const useDeletePluginOAuthCustomClient = (
+  url: string,
+) => {
+  return useMutation({
+    mutationFn: () => {
+      return del<{ result: string }>(url)
     },
   })
 }

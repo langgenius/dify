@@ -103,6 +103,11 @@ const AddOAuthButton = ({
         </div>
         <div className='system-sm-medium flex h-6 items-center text-text-secondary'>
           {renderI18nObject(item.label as Record<string, string>)}
+          {
+            item.required && (
+              <span className='ml-1 text-text-destructive-secondary'>*</span>
+            )
+          }
         </div>
       </div>
     )
@@ -157,7 +162,7 @@ const AddOAuthButton = ({
           <Button
             variant={buttonVariant}
             className={cn(
-              'grow px-0 py-0 hover:bg-components-button-primary-bg',
+              'w-0 grow px-0 py-0 hover:bg-components-button-primary-bg',
               className,
             )}
             disabled={disabled}
@@ -171,7 +176,10 @@ const AddOAuthButton = ({
               {
                 is_oauth_custom_client_enabled && (
                   <Badge
-                    className='ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface'
+                    className={cn(
+                      'ml-1',
+                      buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
+                    )}
                   >
                     {t('plugin.auth.custom')}
                   </Badge>
@@ -203,6 +211,7 @@ const AddOAuthButton = ({
             variant={buttonVariant}
             onClick={() => setIsOAuthSettingsOpen(true)}
             disabled={disabled}
+            className='w-0 grow'
           >
             <RiEqualizer2Line className='mr-0.5 h-4 w-4' />
             {t('plugin.auth.setupOAuth')}
@@ -217,7 +226,11 @@ const AddOAuthButton = ({
             disabled={disabled || isLoading}
             schemas={memorizedSchemas}
             onAuth={handleOAuth}
-            editValues={client_params}
+            editValues={{
+              ...client_params,
+              __oauth_client__: is_oauth_custom_client_enabled ? 'custom' : 'default',
+            }}
+            hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
           />
         )
       }
