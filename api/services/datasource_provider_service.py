@@ -154,6 +154,7 @@ class DatasourceProviderService:
                     "plugin_unique_identifier": datasource.plugin_unique_identifier,
                     "icon": datasource.declaration.identity.icon,
                     "name": datasource.declaration.identity.name,
+                    "label": datasource.declaration.identity.label.model_dump(),
                     "description": datasource.declaration.identity.description.model_dump(),
                     "author": datasource.declaration.identity.author,
                     "credentials_list": credentials,
