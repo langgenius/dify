@@ -18,8 +18,7 @@ import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/comm
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDocLink } from '@/context/i18n'
-
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+import { validPassword } from '@/config'
 
 const accountFormSchema = z.object({
   email: z

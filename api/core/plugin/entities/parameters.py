@@ -43,6 +43,19 @@ class PluginParameterType(enum.StrEnum):
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
 
+    # MCP object and array type parameters
+    ARRAY = CommonParameterType.ARRAY.value
+    OBJECT = CommonParameterType.OBJECT.value
+
+
+class MCPServerParameterType(enum.StrEnum):
+    """
+    MCP server got complex parameter types
+    """
+
+    ARRAY = "array"
+    OBJECT = "object"
+
 
 class PluginParameterAutoGenerate(BaseModel):
     class Type(enum.StrEnum):
@@ -137,6 +150,34 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
             case PluginParameterType.TOOLS_SELECTOR:
                 if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
+                return value
+            case PluginParameterType.ARRAY:
+                if not isinstance(value, list):
+                    # Try to parse JSON string for arrays
+                    if isinstance(value, str):
+                        try:
+                            import json
+
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, list):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return [value]
+                return value
+            case PluginParameterType.OBJECT:
+                if not isinstance(value, dict):
+                    # Try to parse JSON string for objects
+                    if isinstance(value, str):
+                        try:
+                            import json
+
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, dict):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return {}
                 return value
             case _:
                 return str(value)

@@ -129,6 +129,8 @@ const translation = {
       value: 'valeur',
       valuePlaceholder: 'Valeur de l\'env',
       secretTip: 'Utilisé pour définir des informations ou des données sensibles, avec des paramètres DSL configurés pour la prévention des fuites.',
+      description: 'Description',
+      descriptionPlaceholder: 'Décrivez la variable',
     },
     export: {
       title: 'Exporter des variables d\'environnement secrètes?',
@@ -362,6 +364,7 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Tentatives',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'requis',
@@ -536,6 +539,10 @@ const translation = {
       curl: {
         placeholder: 'Collez la chaîne cURL ici',
         title: 'Importer à partir de cURL',
+      },
+      verifySSL: {
+        title: 'Vérifier le certificat SSL',
+        warningTooltip: 'Désactiver la vérification SSL n\'est pas recommandé pour les environnements de production. Cela ne devrait être utilisé que dans le développement ou les tests, car cela rend la connexion vulnérable aux menaces de sécurité telles que les attaques de type \'man-in-the-middle\'.',
       },
     },
     code: {

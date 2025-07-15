@@ -11,6 +11,8 @@ import { uniqueId } from 'lodash-es'
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Props = {
+  className?: string
+  headerClassName?: string
   nodeId: string
   payload: Topic
   onChange: (payload: Topic) => void
@@ -21,6 +23,8 @@ type Props = {
 }
 
 const ClassItem: FC<Props> = ({
+  className,
+  headerClassName,
   nodeId,
   payload,
   onChange,
@@ -49,6 +53,8 @@ const ClassItem: FC<Props> = ({
 
   return (
     <Editor
+      className={className}
+      headerClassName={headerClassName}
       title={`${t(`${i18nPrefix}.class`)} ${index}`}
       placeholder={t(`${i18nPrefix}.topicPlaceholder`)!}
       value={payload.name}
