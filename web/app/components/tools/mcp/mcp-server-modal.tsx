@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiMagicLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
@@ -12,6 +12,7 @@ import type {
 } from '@/app/components/tools/types'
 import {
   useCreateMCPServer,
+  useGenerateMCPDescription,
   useInvalidateMCPServerDetail,
   useUpdateMCPServer,
 } from '@/service/use-tools'
@@ -35,6 +36,7 @@ const MCPServerModal = ({
   const { t } = useTranslation()
   const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
   const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
+  const { mutateAsync: generateDescription, isPending: generating } = useGenerateMCPDescription()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
 
   const [description, setDescription] = React.useState(data?.description || '')
@@ -54,6 +56,17 @@ const MCPServerModal = ({
       return param
     })
     return res
+  }
+
+  const handleGenerateDescription = async () => {
+    try {
+      const result: any = await generateDescription({ appID })
+      if (result?.description)
+        setDescription(result.description)
+    }
+ catch (error) {
+      console.error('Failed to generate description:', error)
+    }
   }
 
   const submit = async () => {
@@ -92,9 +105,23 @@ const MCPServerModal = ({
       </div>
       <div className='space-y-5 px-6 py-3'>
         <div className='space-y-0.5'>
-          <div className='flex h-6 items-center gap-1'>
+          <div className='flex h-6 items-center justify-between'>
+            <div className='flex items-center gap-1'>
             <div className='system-sm-medium text-text-secondary'>{t('tools.mcp.server.modal.description')}</div>
             <div className='system-xs-regular text-text-destructive-secondary'>*</div>
+            </div>
+            <Button
+              size='small'
+              variant='ghost'
+              onClick={handleGenerateDescription}
+              disabled={generating}
+              className='!h-6 !px-2 !py-1'
+            >
+              <RiMagicLine className='h-3 w-3' />
+              <span className='system-xs-medium text-text-tertiary'>
+                {generating ? t('tools.mcp.server.modal.generating') : t('tools.mcp.server.modal.generate')}
+              </span>
+            </Button>
           </div>
           <Textarea
             className='h-[96px] resize-none'

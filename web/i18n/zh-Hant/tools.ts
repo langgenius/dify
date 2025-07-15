@@ -220,6 +220,8 @@ const translation = {
         editTitle: '編輯描述',
         description: '描述',
         descriptionPlaceholder: '說明此工具的用途及如何被 LLM 使用',
+        generate: '自動生成',
+        generating: '生成中...',
         parameters: '參數',
         parametersTip: '為每個參數添加描述，以幫助 LLM 理解其目的和約束。',
         parametersPlaceholder: '參數的目的和約束',

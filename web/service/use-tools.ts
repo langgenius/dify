@@ -306,3 +306,15 @@ export const useRemoveProviderCredentials = ({
     onSuccess,
   })
 }
+
+export const useGenerateMCPDescription = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'generate-mcp-description'],
+    mutationFn: (payload: {
+      appID: string
+    }) => {
+      const { appID } = payload
+      return post(`apps/${appID}/server/generate-description`)
+    },
+  })
+}

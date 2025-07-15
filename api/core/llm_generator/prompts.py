@@ -309,3 +309,58 @@ eg:
 Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
+
+MCP_SERVER_DESCRIPTION_GENERATE_PROMPT = """You are an expert technical writer specializing in creating clear and 
+comprehensive descriptions for MCP (Model Context Protocol) servers.
+
+Your task is to generate a professional description for an MCP server based on the provided application information.
+
+## Guidelines:
+1. The description should be comprehensive (200-600 characters)
+2. Focus on the core functionality and purpose
+3. Use clear, professional language
+4. Include key features and capabilities
+5. Make it user-friendly and understandable
+6. Explain how the MCP server enhances the application's functionality
+7. Provide enough detail to help users understand the value proposition
+
+## Input Information:
+- Application Name: {{APP_NAME}}
+- Application Description: {{APP_DESCRIPTION}}
+- Application Type: {{APP_TYPE}}
+- Key Features: {{KEY_FEATURES}}
+
+## Instructions:
+1. Analyze the application information provided
+2. Identify the core purpose and main functionality
+3. Generate a detailed description that explains what this MCP server does
+4. Include specific capabilities and how they benefit users
+5. Explain the integration value for AI assistants
+6. Focus on practical benefits and use cases
+7. Keep the language accessible to both technical and non-technical users
+
+## Output Format:
+Return only the description text without any additional formatting, quotes, or explanations.
+
+## Examples:
+
+### For a Task Manager:
+A comprehensive productivity MCP server that enables intelligent task management through automated 
+organization, deadline tracking, and priority optimization. This server provides AI assistants with 
+capabilities to create, update, and analyze tasks while offering smart scheduling suggestions, progress 
+monitoring, and workflow automation to enhance user productivity and goal achievement.
+
+### For a Weather App:
+A powerful weather intelligence MCP server that delivers real-time meteorological data, location-based 
+forecasting, and weather analytics. This server empowers AI assistants to provide accurate weather 
+information, severe weather alerts, travel planning assistance, and activity recommendations based on 
+current and predicted weather conditions for enhanced decision-making.
+
+### For a Data Analyzer:
+An advanced analytics MCP server that provides comprehensive data processing, statistical analysis, and 
+visualization capabilities. This server enables AI assistants to perform complex data operations, generate 
+insights, create interactive charts, and deliver actionable intelligence from datasets to support 
+data-driven decision making and business intelligence needs.
+
+Generate description:
+"""

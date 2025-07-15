@@ -11,6 +11,7 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
+    MCP_SERVER_DESCRIPTION_GENERATE_PROMPT,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
@@ -394,3 +395,100 @@ class LLMGenerator:
         except Exception as e:
             logging.exception(f"Failed to invoke LLM model, model: {model_config.get('name')}")
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}
+
+    @classmethod
+    def generate_mcp_description(
+        cls,
+        tenant_id: str,
+        app_name: str,
+        app_description: str = "",
+        app_type: str = "",
+        key_features: str = "",
+        app_id: Optional[str] = None,
+    ) -> str:
+        """
+        Generate MCP server description based on application information.
+
+        Args:
+            tenant_id: The tenant ID
+            app_name: The application name
+            app_description: The application description
+            app_type: The application type
+            key_features: Key features of the application
+            app_id: Optional application ID for tracing
+
+        Returns:
+            Generated description string
+        """
+        try:
+            # Prepare the prompt with application information
+            prompt_template = PromptTemplateParser(template=MCP_SERVER_DESCRIPTION_GENERATE_PROMPT)
+            prompt = prompt_template.format(
+                {
+                    "APP_NAME": app_name,
+                    "APP_DESCRIPTION": app_description or "Not provided",
+                    "APP_TYPE": app_type or "Not specified",
+                    "KEY_FEATURES": key_features or "Not specified",
+                }
+            )
+
+            model_manager = ModelManager()
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
+
+            prompts = [UserPromptMessage(content=prompt)]
+
+            with measure_time() as timer:
+                response = cast(
+                    LLMResult,
+                    model_instance.invoke_llm(
+                        prompt_messages=list(prompts),
+                        model_parameters={"max_tokens": 150, "temperature": 0.7},
+                        stream=False,
+                    ),
+                )
+
+            generated_description = cast(str, response.message.content).strip()
+
+            # Clean up the description (remove quotes if present)
+            if generated_description.startswith('"') and generated_description.endswith('"'):
+                generated_description = generated_description[1:-1]
+
+            # Limit length to 200 characters
+            if len(generated_description) > 200:
+                generated_description = generated_description[:197] + "..."
+
+            # Add tracing if app_id is provided
+            if app_id:
+                trace_manager = TraceQueueManager(app_id=app_id)
+                trace_manager.add_trace_task(
+                    TraceTask(
+                        TraceTaskName.GENERATE_NAME_TRACE,  # Reusing existing trace type
+                        generate_conversation_name=f"MCP Description: {generated_description}",
+                        inputs=prompt,
+                        timer=timer,
+                        tenant_id=tenant_id,
+                    )
+                )
+
+            return generated_description
+
+        except Exception as e:
+            logging.exception(f"Failed to generate MCP description for app: {app_name}")
+            # Return a more detailed fallback description
+            fallback_desc = (
+                f"A comprehensive {app_type or 'AI'} application called '{app_name}' "
+                f"designed to provide intelligent assistance and advanced automation "
+                f"capabilities. This MCP server enables seamless integration with AI "
+                f"assistants, offering {key_features or 'powerful AI features'} to "
+                f"enhance productivity and streamline workflows for users across "
+                f"various tasks and scenarios."
+            )
+
+            # Limit fallback length to 600 characters
+            if len(fallback_desc) > 600:
+                fallback_desc = fallback_desc[:597] + "..."
+
+            return fallback_desc

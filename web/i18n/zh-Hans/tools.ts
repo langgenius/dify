@@ -224,6 +224,8 @@ const translation = {
         editTitle: '编辑 MCP 服务描述',
         description: '描述',
         descriptionPlaceholder: '解释此工具的功能以及 LLM 应如何使用它',
+        generate: '自动生成',
+        generating: '生成中...',
         parameters: '参数',
         parametersTip: '为每个参数添加描述，以帮助 LLM 理解其目的和约束条件。',
         parametersPlaceholder: '参数的用途和约束条件',
