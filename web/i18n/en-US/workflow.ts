@@ -113,6 +113,7 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
+    tagBound: 'number of apps to which this tag is bound',
   },
   env: {
     envPanelTitle: 'Environment Variables',
