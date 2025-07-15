@@ -131,6 +131,15 @@ export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: stri
   return del<CommonResponse>(url)
 }
 
+export const sendOwnerEmail = (body: { language?: string }) =>
+  post<CommonResponse & { data: string }>('/workspaces/current/members/send-owner-transfer-confirm-email', { body })
+
+export const verifyOwnerEmail = (body: { code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/workspaces/current/members/owner-transfer-check', { body })
+
+export const ownershipTransfer = (memberID: string, body: { token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(`/workspaces/current/members/${memberID}/owner-transfer`, { body })
+
 export const fetchFilePreview: Fetcher<{ content: string }, { fileID: string }> = ({ fileID }) => {
   return get<{ content: string }>(`/files/${fileID}/preview`)
 }
