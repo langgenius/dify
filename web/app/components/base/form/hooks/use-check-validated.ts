@@ -19,7 +19,7 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
           acc[condition.variable] = values[condition.variable]
           return acc
         }, {} as Record<string, any>)
-        const show = currentSchema?.show_on?.every((condition) => {
+        const show = show_on?.every((condition) => {
           const conditionValue = showOnValues[condition.variable]
           return conditionValue === condition.value
         })
