@@ -299,7 +299,7 @@ const translation = {
     transferOwnership: '转移所有权',
     transferModal: {
       title: '转移工作空间所有权',
-      warning: '您即将转让“{{workspace}”的所有权。此操作立即生效，且无法撤消。',
+      warning: '您即将转让“{{workspace}}”的所有权。此操作立即生效，且无法撤消。',
       warningTip: '您将成为管理员成员，新所有者将拥有完全控制权。',
       sendTip: '如果您继续，我们将向 <email>{{email}}</email> 发送验证码以进行重新验证。',
       verifyEmail: '验证你的邮箱',
