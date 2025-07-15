@@ -947,7 +947,8 @@ class RagPipelineWorkflowLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("last run not found")
         return node_exec
-    
+
+
 class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
@@ -955,8 +956,8 @@ class RagPipelineTransformApi(Resource):
     def post(self, dataset_id):
         dataset_id = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        rag_pipeline_transform_service.transform_dataset(dataset_id)
-        return {"message": "success"}
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id)
+        return result
 
 
 api.add_resource(

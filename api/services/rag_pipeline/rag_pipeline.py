@@ -54,7 +54,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Dataset, Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
+from models.dataset import Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (

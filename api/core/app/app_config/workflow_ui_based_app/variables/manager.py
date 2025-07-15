@@ -1,4 +1,5 @@
 import re
+
 from core.app.app_config.entities import RagPipelineVariableEntity, VariableEntity
 from models.workflow import Workflow
 
@@ -56,7 +57,7 @@ class WorkflowVariablesConfigManager:
                         last_part = full_path.split(".")[-1]
                         variables_map.pop(last_part)
         all_second_step_variables = list(variables_map.values())
- 
+
         for item in all_second_step_variables:
             if item.get("belong_to_node_id") == start_node_id or item.get("belong_to_node_id") == "shared":
                 variables.append(RagPipelineVariableEntity.model_validate(item))

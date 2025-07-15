@@ -171,43 +171,45 @@ class DatasourceProviderService:
                                 }
                                 for option in credential.options or []
                             ],
-                        } for credential in datasource.declaration.credentials_schema
+                        }
+                        for credential in datasource.declaration.credentials_schema
                     ],
-                    "oauth_schema": 
-                        {
-                            "client_schema": [
-                                {
-                                    "type": client_schema.type.value,
-                                    "name": client_schema.name,
-                                    "required": client_schema.required,
-                                    "default": client_schema.default,
-                                    "options": [
-                                        {
-                                            "value": option.value,
-                                            "label": option.label.model_dump(),
-                                        }
-                                        for option in client_schema.options or []
-                                    ],
-                                }
-                                for client_schema in datasource.declaration.oauth_schema.client_schema or []
-                            ],
-                            "credentials_schema": [
-                                {
-                                    "type": credential.type.value,
-                                    "name": credential.name,
-                                    "required": credential.required,
-                                    "default": credential.default,
-                                    "options": [
-                                        {
-                                            "value": option.value,
-                                            "label": option.label.model_dump(),
-                                        }
-                                        for option in credential.options or []
-                                    ],
-                                }
-                                for credential in datasource.declaration.oauth_schema.credentials_schema or []
-                            ],
-                    } if datasource.declaration.oauth_schema else None,
+                    "oauth_schema": {
+                        "client_schema": [
+                            {
+                                "type": client_schema.type.value,
+                                "name": client_schema.name,
+                                "required": client_schema.required,
+                                "default": client_schema.default,
+                                "options": [
+                                    {
+                                        "value": option.value,
+                                        "label": option.label.model_dump(),
+                                    }
+                                    for option in client_schema.options or []
+                                ],
+                            }
+                            for client_schema in datasource.declaration.oauth_schema.client_schema or []
+                        ],
+                        "credentials_schema": [
+                            {
+                                "type": credential.type.value,
+                                "name": credential.name,
+                                "required": credential.required,
+                                "default": credential.default,
+                                "options": [
+                                    {
+                                        "value": option.value,
+                                        "label": option.label.model_dump(),
+                                    }
+                                    for option in credential.options or []
+                                ],
+                            }
+                            for credential in datasource.declaration.oauth_schema.credentials_schema or []
+                        ],
+                    }
+                    if datasource.declaration.oauth_schema
+                    else None,
                 }
             )
         return datasource_credentials
