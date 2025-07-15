@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IS_CE_EDITION } from '@/config'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -59,8 +60,7 @@ const AddOAuthButton = ({
     client_params,
     redirect_uri,
   } = data || {}
-
-  const isConfigured = is_system_oauth_params_exists || !!client_params
+  const isConfigured = is_system_oauth_params_exists || Object.keys(client_params || {}).length > 0
   const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
@@ -155,6 +155,23 @@ const AddOAuthButton = ({
     return result
   }, [schema, renderCustomLabel, t, is_system_oauth_params_exists, is_oauth_custom_client_enabled, client_params])
 
+  const __auth_client__ = useMemo(() => {
+    if (!isConfigured) {
+      if (IS_CE_EDITION)
+        return 'custom'
+
+      return 'default'
+    }
+ else {
+      if (is_oauth_custom_client_enabled)
+        return 'custom'
+
+      return 'default'
+    }
+  }, [isConfigured, is_oauth_custom_client_enabled])
+
+  console.log('__auth_client__', __auth_client__)
+
   return (
     <>
       {
@@ -228,7 +245,7 @@ const AddOAuthButton = ({
             onAuth={handleOAuth}
             editValues={{
               ...client_params,
-              __oauth_client__: is_oauth_custom_client_enabled ? 'custom' : 'default',
+              __oauth_client__: __auth_client__,
             }}
             hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
           />
