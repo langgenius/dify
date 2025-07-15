@@ -387,3 +387,10 @@ api.add_resource(EducationApi, "/account/education")
 api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
+
+# MFA endpoints
+from controllers.console.auth.mfa import MFASetupInitApi, MFASetupCompleteApi, MFADisableApi, MFAStatusApi
+api.add_resource(MFAStatusApi, "/account/mfa/status")
+api.add_resource(MFASetupInitApi, "/account/mfa/setup")
+api.add_resource(MFASetupCompleteApi, "/account/mfa/setup/complete")
+api.add_resource(MFADisableApi, "/account/mfa/disable")
