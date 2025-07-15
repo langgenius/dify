@@ -9,6 +9,7 @@ from flask_restful import Resource, reqparse
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required
@@ -91,8 +92,9 @@ class DailyConversationStatistic(Resource):
 FROM
     messages
 WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+    app_id = :app_id
+    AND invoke_from <> :invoke_from"""
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
