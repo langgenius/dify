@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -12,6 +12,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.nodes.base.node import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
@@ -20,6 +21,7 @@ from core.workflow.nodes.llm import (
     LLMNodeCompletionModelPromptTemplate,
     llm_utils,
 )
+from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
@@ -35,10 +37,52 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
 
+if TYPE_CHECKING:
+    from core.file.models import File
+    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 
-class QuestionClassifierNode(LLMNode):
-    _node_data_cls = QuestionClassifierNodeData  # type: ignore
+
+class QuestionClassifierNode(BaseNode):
     _node_type = NodeType.QUESTION_CLASSIFIER
+
+    node_data: QuestionClassifierNodeData
+
+    _file_outputs: list["File"]
+    _llm_file_saver: LLMFileSaver
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph: "Graph",
+        graph_runtime_state: "GraphRuntimeState",
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+        *,
+        llm_file_saver: LLMFileSaver | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            previous_node_id=previous_node_id,
+            thread_pool_id=thread_pool_id,
+        )
+        # LLM file outputs, used for MultiModal outputs.
+        self._file_outputs: list[File] = []
+
+        if llm_file_saver is None:
+            llm_file_saver = FileSaverImpl(
+                user_id=graph_init_params.user_id,
+                tenant_id=graph_init_params.tenant_id,
+            )
+        self._llm_file_saver = llm_file_saver
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = QuestionClassifierNodeData(**data)
 
     @classmethod
     def version(cls):
@@ -53,7 +97,10 @@ class QuestionClassifierNode(LLMNode):
         query = variable.value if variable else None
         variables = {"query": query}
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(node_data.model)
+        model_instance, model_config = LLMNode._fetch_model_config(
+            node_data_model=node_data.model,
+            tenant_id=self.tenant_id,
+        )
         # fetch memory
         memory = llm_utils.fetch_memory(
             variable_pool=variable_pool,
@@ -91,7 +138,7 @@ class QuestionClassifierNode(LLMNode):
         # If both self._get_prompt_template and self._fetch_prompt_messages append a user prompt,
         # two consecutive user prompts will be generated, causing model's error.
         # To avoid this, set sys_query to an empty string so that only one user prompt is appended at the end.
-        prompt_messages, stop = self._fetch_prompt_messages(
+        prompt_messages, stop = LLMNode.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query="",
             memory=memory,
@@ -101,6 +148,7 @@ class QuestionClassifierNode(LLMNode):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=[],
+            tenant_id=self.tenant_id,
         )
 
         result_text = ""
@@ -109,11 +157,16 @@ class QuestionClassifierNode(LLMNode):
 
         try:
             # handle invoke result
-            generator = self._invoke_llm(
+            generator = LLMNode.invoke_llm(
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
+                user_id=self.user_id,
+                structured_output_enabled=False,
+                file_saver=self._llm_file_saver,
+                file_outputs=self._file_outputs,
+                node_id=self.node_id,
             )
 
             for event in generator:

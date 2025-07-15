@@ -191,7 +191,10 @@ class LLMNode(BaseNode):
                 node_inputs["#context#"] = context
 
             # fetch model config
-            model_instance, model_config = self._fetch_model_config(self.node_data.model)
+            model_instance, model_config = LLMNode._fetch_model_config(
+                node_data_model=self.node_data.model,
+                tenant_id=self.tenant_id,
+            )
 
             # fetch memory
             memory = llm_utils.fetch_memory(
@@ -209,7 +212,7 @@ class LLMNode(BaseNode):
                 ):
                     query = query_variable.text
 
-            prompt_messages, stop = self._fetch_prompt_messages(
+            prompt_messages, stop = LLMNode.fetch_prompt_messages(
                 sys_query=query,
                 sys_files=files,
                 context=context,
@@ -221,14 +224,20 @@ class LLMNode(BaseNode):
                 vision_detail=self.node_data.vision.configs.detail,
                 variable_pool=variable_pool,
                 jinja2_variables=self.node_data.prompt_config.jinja2_variables,
+                tenant_id=self.tenant_id,
             )
 
             # handle invoke result
-            generator = self._invoke_llm(
+            generator = LLMNode.invoke_llm(
                 node_data_model=self.node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
+                user_id=self.user_id,
+                structured_output_enabled=self.node_data.structured_output_enabled,
+                file_saver=self._llm_file_saver,
+                file_outputs=self._file_outputs,
+                node_id=self.node_id,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -298,12 +307,18 @@ class LLMNode(BaseNode):
                 )
             )
 
-    def _invoke_llm(
-        self,
+    @staticmethod
+    def invoke_llm(
+        *,
         node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
         stop: Optional[Sequence[str]] = None,
+        user_id: str,
+        structured_output_enabled: bool,
+        file_saver: LLMFileSaver,
+        file_outputs: list["File"],
+        node_id: str,
     ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -311,8 +326,8 @@ class LLMNode(BaseNode):
         if not model_schema:
             raise ValueError(f"Model schema not found for {node_data_model.name}")
 
-        if self.node_data.structured_output_enabled:
-            output_schema = self._fetch_structured_output_schema()
+        if structured_output_enabled:
+            output_schema = LLMNode.fetch_structured_output_schema()
             invoke_result = invoke_llm_with_structured_output(
                 provider=model_instance.provider,
                 model_schema=model_schema,
@@ -322,7 +337,7 @@ class LLMNode(BaseNode):
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 stream=True,
-                user=self.user_id,
+                user=user_id,
             )
         else:
             invoke_result = model_instance.invoke_llm(
@@ -330,17 +345,31 @@ class LLMNode(BaseNode):
                 model_parameters=node_data_model.completion_params,
                 stop=list(stop or []),
                 stream=True,
-                user=self.user_id,
+                user=user_id,
             )
 
-        return self._handle_invoke_result(invoke_result=invoke_result)
+        return LLMNode.handle_invoke_result(
+            invoke_result=invoke_result,
+            file_saver=file_saver,
+            file_outputs=file_outputs,
+            node_id=node_id,
+        )
 
-    def _handle_invoke_result(
-        self, invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None]
+    @staticmethod
+    def handle_invoke_result(
+        *,
+        invoke_result: LLMResult | Generator[LLMResultChunk | LLMStructuredOutput, None, None],
+        file_saver: LLMFileSaver,
+        file_outputs: list["File"],
+        node_id: str,
     ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
         # For blocking mode
         if isinstance(invoke_result, LLMResult):
-            event = self._handle_blocking_result(invoke_result=invoke_result)
+            event = LLMNode.handle_blocking_result(
+                invoke_result=invoke_result,
+                saver=file_saver,
+                file_outputs=file_outputs,
+            )
             yield event
             return
 
@@ -358,11 +387,13 @@ class LLMNode(BaseNode):
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
-                    for text_part in self._save_multimodal_output_and_convert_result_to_markdown(contents):
+                    for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
+                        contents=contents,
+                        file_saver=file_saver,
+                        file_outputs=file_outputs,
+                    ):
                         full_text_buffer.write(text_part)
-                        yield RunStreamChunkEvent(
-                            chunk_content=text_part, from_variable_selector=[self.node_id, "text"]
-                        )
+                        yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[node_id, "text"])
 
                     # Update the whole metadata
                     if not model and result.model:
@@ -380,7 +411,8 @@ class LLMNode(BaseNode):
 
         yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
 
-    def _image_file_to_markdown(self, file: "File", /):
+    @staticmethod
+    def _image_file_to_markdown(file: "File", /):
         text_chunk = f"![]({file.generate_url()})"
         return text_chunk
 
@@ -541,11 +573,14 @@ class LLMNode(BaseNode):
 
         return None
 
+    @staticmethod
     def _fetch_model_config(
-        self, node_data_model: ModelConfig
+        *,
+        node_data_model: ModelConfig,
+        tenant_id: str,
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         model, model_config_with_cred = llm_utils.fetch_model_config(
-            tenant_id=self.tenant_id, node_data_model=node_data_model
+            tenant_id=tenant_id, node_data_model=node_data_model
         )
         completion_params = model_config_with_cred.parameters
 
@@ -558,8 +593,8 @@ class LLMNode(BaseNode):
         node_data_model.completion_params = completion_params
         return model, model_config_with_cred
 
-    def _fetch_prompt_messages(
-        self,
+    @staticmethod
+    def fetch_prompt_messages(
         *,
         sys_query: str | None = None,
         sys_files: Sequence["File"],
@@ -572,13 +607,14 @@ class LLMNode(BaseNode):
         vision_detail: ImagePromptMessageContent.DETAIL,
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
+        tenant_id: str,
     ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
         prompt_messages: list[PromptMessage] = []
 
         if isinstance(prompt_template, list):
             # For chat model
             prompt_messages.extend(
-                self._handle_list_messages(
+                LLMNode.handle_list_messages(
                     messages=prompt_template,
                     context=context,
                     jinja2_variables=jinja2_variables,
@@ -604,7 +640,7 @@ class LLMNode(BaseNode):
                     edition_type="basic",
                 )
                 prompt_messages.extend(
-                    self._handle_list_messages(
+                    LLMNode.handle_list_messages(
                         messages=[message],
                         context="",
                         jinja2_variables=[],
@@ -733,7 +769,7 @@ class LLMNode(BaseNode):
             )
 
         model = ModelManager().get_model_instance(
-            tenant_id=self.tenant_id,
+            tenant_id=tenant_id,
             model_type=ModelType.LLM,
             provider=model_config.provider,
             model=model_config.model,
@@ -837,8 +873,8 @@ class LLMNode(BaseNode):
             },
         }
 
-    def _handle_list_messages(
-        self,
+    @staticmethod
+    def handle_list_messages(
         *,
         messages: Sequence[LLMNodeChatModelMessage],
         context: Optional[str],
@@ -899,9 +935,19 @@ class LLMNode(BaseNode):
 
         return prompt_messages
 
-    def _handle_blocking_result(self, *, invoke_result: LLMResult) -> ModelInvokeCompletedEvent:
+    @staticmethod
+    def handle_blocking_result(
+        *,
+        invoke_result: LLMResult,
+        saver: LLMFileSaver,
+        file_outputs: list["File"],
+    ) -> ModelInvokeCompletedEvent:
         buffer = io.StringIO()
-        for text_part in self._save_multimodal_output_and_convert_result_to_markdown(invoke_result.message.content):
+        for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
+            contents=invoke_result.message.content,
+            file_saver=saver,
+            file_outputs=file_outputs,
+        ):
             buffer.write(text_part)
 
         return ModelInvokeCompletedEvent(
@@ -910,7 +956,12 @@ class LLMNode(BaseNode):
             finish_reason=None,
         )
 
-    def _save_multimodal_image_output(self, content: ImagePromptMessageContent) -> "File":
+    @staticmethod
+    def save_multimodal_image_output(
+        *,
+        content: ImagePromptMessageContent,
+        file_saver: LLMFileSaver,
+    ) -> "File":
         """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
 
         There are two kinds of multimodal outputs:
@@ -920,19 +971,14 @@ class LLMNode(BaseNode):
 
         Currently, only image files are supported.
         """
-        # Inject the saver somehow...
-        _saver = self._llm_file_saver
-
-        # If this
         if content.url != "":
-            saved_file = _saver.save_remote_url(content.url, FileType.IMAGE)
+            saved_file = file_saver.save_remote_url(content.url, FileType.IMAGE)
         else:
-            saved_file = _saver.save_binary_string(
+            saved_file = file_saver.save_binary_string(
                 data=base64.b64decode(content.base64_data),
                 mime_type=content.mime_type,
                 file_type=FileType.IMAGE,
             )
-        self._file_outputs.append(saved_file)
         return saved_file
 
     def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
@@ -950,16 +996,20 @@ class LLMNode(BaseNode):
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
         return model_schema
 
-    def _fetch_structured_output_schema(self) -> dict[str, Any]:
+    @staticmethod
+    def fetch_structured_output_schema(
+        *,
+        structured_output: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Fetch the structured output schema from the node data.
 
         Returns:
             dict[str, Any]: The structured output schema
         """
-        if not self.node_data.structured_output:
+        if not structured_output:
             raise LLMNodeError("Please provide a valid structured output schema")
-        structured_output_schema = json.dumps(self.node_data.structured_output.get("schema", {}), ensure_ascii=False)
+        structured_output_schema = json.dumps(structured_output.get("schema", {}), ensure_ascii=False)
         if not structured_output_schema:
             raise LLMNodeError("Please provide a valid structured output schema")
 
@@ -971,9 +1021,12 @@ class LLMNode(BaseNode):
         except json.JSONDecodeError:
             raise LLMNodeError("structured_output_schema is not valid JSON format")
 
+    @staticmethod
     def _save_multimodal_output_and_convert_result_to_markdown(
-        self,
+        *,
         contents: str | list[PromptMessageContentUnionTypes] | None,
+        file_saver: LLMFileSaver,
+        file_outputs: list["File"],
     ) -> Generator[str, None, None]:
         """Convert intermediate prompt messages into strings and yield them to the caller.
 
@@ -996,9 +1049,12 @@ class LLMNode(BaseNode):
                 if isinstance(item, TextPromptMessageContent):
                     yield item.data
                 elif isinstance(item, ImagePromptMessageContent):
-                    file = self._save_multimodal_image_output(item)
-                    self._file_outputs.append(file)
-                    yield self._image_file_to_markdown(file)
+                    file = LLMNode.save_multimodal_image_output(
+                        content=item,
+                        file_saver=file_saver,
+                    )
+                    file_outputs.append(file)
+                    yield LLMNode._image_file_to_markdown(file)
                 else:
                     logger.warning("unknown item type encountered, type=%s", type(item))
                     yield str(item)

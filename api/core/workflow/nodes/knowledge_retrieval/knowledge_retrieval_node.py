@@ -4,7 +4,7 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from sqlalchemy import Float, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
@@ -15,20 +15,30 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.model_runtime.entities.message_entities import (
+    PromptMessageRole,
+)
+from core.model_runtime.entities.model_entities import (
+    ModelFeature,
+    ModelType,
+)
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.variables import StringSegment
+from core.variables import (
+    StringSegment,
+)
 from core.variables.segments import ArrayObjectSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.event.event import ModelInvokeCompletedEvent
+from core.workflow.nodes.event import (
+    ModelInvokeCompletedEvent,
+)
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_ASSISTANT_PROMPT_1,
     METADATA_FILTER_ASSISTANT_PROMPT_2,
@@ -38,7 +48,8 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
+from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, ModelConfig
+from core.workflow.nodes.llm.file_saver import FileSaverImpl, LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -46,7 +57,7 @@ from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from services.feature_service import FeatureService
 
-from .entities import KnowledgeRetrievalNodeData, ModelConfig
+from .entities import KnowledgeRetrievalNodeData
 from .exc import (
     InvalidModelTypeError,
     KnowledgeRetrievalNodeError,
@@ -55,6 +66,10 @@ from .exc import (
     ModelNotSupportedError,
     ModelQuotaExceededError,
 )
+
+if TYPE_CHECKING:
+    from core.file.models import File
+    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +82,50 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(LLMNode):
-    _node_data_cls = KnowledgeRetrievalNodeData  # type: ignore
+class KnowledgeRetrievalNode(BaseNode):
     _node_type = NodeType.KNOWLEDGE_RETRIEVAL
+
+    node_data: KnowledgeRetrievalNodeData
+
+    # Instance attributes specific to LLMNode.
+    # Output variable for file
+    _file_outputs: list["File"]
+
+    _llm_file_saver: LLMFileSaver
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph: "Graph",
+        graph_runtime_state: "GraphRuntimeState",
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+        *,
+        llm_file_saver: LLMFileSaver | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            previous_node_id=previous_node_id,
+            thread_pool_id=thread_pool_id,
+        )
+        # LLM file outputs, used for MultiModal outputs.
+        self._file_outputs: list[File] = []
+
+        if llm_file_saver is None:
+            llm_file_saver = FileSaverImpl(
+                user_id=graph_init_params.user_id,
+                tenant_id=graph_init_params.tenant_id,
+            )
+        self._llm_file_saver = llm_file_saver
+
+    def from_dict(self, data: Mapping[str, Any]) -> None:
+        self.node_data = KnowledgeRetrievalNodeData(**data)
 
     @classmethod
     def version(cls):
@@ -448,7 +504,7 @@ class KnowledgeRetrievalNode(LLMNode):
             metadata_fields=all_metadata_fields,
             query=query or "",
         )
-        prompt_messages, stop = self._fetch_prompt_messages(
+        prompt_messages, stop = LLMNode.fetch_prompt_messages(
             prompt_template=prompt_template,
             sys_query=query,
             memory=None,
@@ -458,16 +514,22 @@ class KnowledgeRetrievalNode(LLMNode):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=self.graph_runtime_state.variable_pool,
             jinja2_variables=[],
+            tenant_id=self.tenant_id,
         )
 
         result_text = ""
         try:
             # handle invoke result
-            generator = self._invoke_llm(
-                node_data_model=node_data.metadata_model_config,  # type: ignore
+            generator = LLMNode.invoke_llm(
+                node_data_model=node_data.metadata_model_config,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
+                user_id=self.user_id,
+                structured_output_enabled=self.node_data.structured_output_enabled,
+                file_saver=self._llm_file_saver,
+                file_outputs=self._file_outputs,
+                node_id=self.node_id,
             )
 
             for event in generator:

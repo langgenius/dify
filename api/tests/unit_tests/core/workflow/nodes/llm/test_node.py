@@ -540,7 +540,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
             size=9,
         )
         mock_file_saver.save_binary_string.return_value = mock_file
-        file = llm_node._save_multimodal_image_output(content=content)
+        file = llm_node.save_multimodal_image_output(
+            content=content,
+            file_saver=mock_file_saver,
+        )
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         mock_file_saver.save_binary_string.assert_called_once_with(
@@ -566,7 +569,10 @@ class TestLLMNodeSaveMultiModalImageOutput:
             size=9,
         )
         mock_file_saver.save_remote_url.return_value = mock_file
-        file = llm_node._save_multimodal_image_output(content=content)
+        file = llm_node.save_multimodal_image_output(
+            content=content,
+            file_saver=mock_file_saver,
+        )
         assert llm_node._file_outputs == [mock_file]
         assert file == mock_file
         mock_file_saver.save_remote_url.assert_called_once_with(content.url, FileType.IMAGE)
