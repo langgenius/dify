@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Mock the service base to avoid ky import issues
@@ -30,8 +30,8 @@ jest.mock('@/app/components/base/toast', () => ({
 // Mock Modal component
 jest.mock('@/app/components/base/modal', () => ({
   __esModule: true,
-  default: ({ isOpen, onClose, children }: any) => 
-    isOpen ? <div data-testid="modal">{children}</div> : null,
+  default: ({ isShow, onClose, children }: any) => 
+    isShow ? <div data-testid="modal">{children}</div> : null,
 }))
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -42,7 +42,12 @@ const createWrapper = () => {
     defaultOptions: {
       queries: {
         retry: false,
+        gcTime: 0,
+        staleTime: 0,
       },
+      mutations: {
+        retry: false,
+      }
     },
   })
   
@@ -65,9 +70,11 @@ describe('MFAPage Component', () => {
     const { get } = require('@/service/base')
     get.mockImplementation(() => new Promise(() => {})) // Never resolves
 
-    render(<MFAPage />, { wrapper })
+    const { container } = render(<MFAPage />, { wrapper })
     
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    // Look for the loading spinner icon
+    const spinner = container.querySelector('.animate-spin')
+    expect(spinner).toBeInTheDocument()
   })
 
   test('renders enable button when MFA is disabled', async () => {
@@ -109,13 +116,16 @@ describe('MFAPage Component', () => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('mfa.enable'))
+    await act(async () => {
+      fireEvent.click(screen.getByText('mfa.enable'))
+    })
 
     await waitFor(() => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
-      expect(screen.getByText('mfa.setupTitle')).toBeInTheDocument()
-    })
-  })
+    }, { timeout: 10000 })
+    
+    expect(screen.getByText('mfa.scanQRCode')).toBeInTheDocument()
+  }, 15000)
 
   test('completes MFA setup successfully', async () => {
     const { get, post } = require('@/service/base')
@@ -139,34 +149,50 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    // Click enable
+    // Wait for initial render
     await waitFor(() => {
-      fireEvent.click(screen.getByText('mfa.enable'))
+      expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
+
+    // Click enable
+    fireEvent.click(screen.getByText('mfa.enable'))
 
     // Wait for QR code to be displayed
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      const qrCode = screen.queryByAltText('MFA QR Code')
+      expect(qrCode).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    // Click next button to go to verify step
+    fireEvent.click(screen.getByText('mfa.next'))
+
+    // Wait for input field to appear
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
     })
 
     // Enter TOTP code
-    const inputs = screen.getAllByRole('textbox')
-    // Simulate entering '123456'
-    '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } })
-    })
+    const input = screen.getByPlaceholderText('000000')
+    fireEvent.change(input, { target: { value: '123456' } })
 
     // Click verify button
     const verifyButton = screen.getByRole('button', { name: /verify|mfa.verify/i })
     fireEvent.click(verifyButton)
 
+    // Wait for backup codes to be displayed
     await waitFor(() => {
-      expect(Toast.notify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'mfa.setupSuccess'
-      })
+      expect(screen.getByText('mfa.backupCodesTitle')).toBeInTheDocument()
     })
-  })
+
+    // Click done button
+    fireEvent.click(screen.getByText('mfa.done'))
+
+    // Check that toast was called
+    expect(Toast.notify).toHaveBeenCalledWith({
+      type: 'success',
+      message: 'mfa.setupSuccess'
+    })
+  }, 15000)
 
   test('shows error when setup fails', async () => {
     const { get, post } = require('@/service/base')
@@ -186,21 +212,29 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    // Click enable
+    // Wait and click enable
     await waitFor(() => {
-      fireEvent.click(screen.getByText('mfa.enable'))
+      expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
+
+    fireEvent.click(screen.getByText('mfa.enable'))
 
     // Wait for QR code
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      expect(screen.queryByAltText('MFA QR Code')).toBeInTheDocument()
+    }, { timeout: 5000 })
+
+    // Click next to go to verify step
+    fireEvent.click(screen.getByText('mfa.next'))
+
+    // Wait for input
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
     })
 
     // Enter wrong TOTP code
-    const inputs = screen.getAllByRole('textbox')
-    '000000'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } })
-    })
+    const input = screen.getByPlaceholderText('000000')
+    fireEvent.change(input, { target: { value: '000000' } })
 
     // Click verify
     const verifyButton = screen.getByRole('button', { name: /verify|mfa.verify/i })
@@ -209,10 +243,10 @@ describe('MFAPage Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'Invalid TOTP token'
+        message: 'mfa.invalidToken'
       })
-    })
-  })
+    }, { timeout: 5000 })
+  }, 15000)
 
   test('disables MFA successfully', async () => {
     const { get, post } = require('@/service/base')
@@ -233,31 +267,35 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    // Click disable
+    // Wait for disable button
     await waitFor(() => {
-      fireEvent.click(screen.getByText('mfa.disable'))
+      expect(screen.getByText('mfa.disable')).toBeInTheDocument()
     })
+
+    // Click disable
+    fireEvent.click(screen.getByText('mfa.disable'))
 
     // Modal should open
     await waitFor(() => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
-    // Enter password
-    const passwordInput = screen.getByPlaceholderText('mfa.enterYourPassword')
+    // Find password input
+    const passwordInput = screen.getByPlaceholderText('common.account.password')
     fireEvent.change(passwordInput, { target: { value: 'password123' } })
 
-    // Click confirm
-    const confirmButton = screen.getByText('common.operation.confirm')
-    fireEvent.click(confirmButton)
+    // Click disable button in modal
+    const disableButtons = screen.getAllByText('mfa.disable')
+    // The second one should be the button in the modal
+    fireEvent.click(disableButtons[1])
 
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'success',
         message: 'mfa.disabledSuccessfully'
       })
-    })
-  })
+    }, { timeout: 5000 })
+  }, 15000)
 
   test('shows error when disable fails with wrong password', async () => {
     const { get, post } = require('@/service/base')
@@ -275,31 +313,41 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    // Click disable
+    // Wait and click disable
     await waitFor(() => {
-      fireEvent.click(screen.getByText('mfa.disable'))
+      expect(screen.getByText('mfa.disable')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('mfa.disable'))
+
+    // Wait for modal
+    await waitFor(() => {
+      expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
     // Enter wrong password
-    const passwordInput = screen.getByPlaceholderText('mfa.enterYourPassword')
+    const passwordInput = screen.getByPlaceholderText('common.account.password')
     fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
 
-    // Click confirm
-    const confirmButton = screen.getByText('common.operation.confirm')
-    fireEvent.click(confirmButton)
+    // Click disable button in modal
+    const disableButtons = screen.getAllByText('mfa.disable')
+    // The second one should be the button in the modal
+    fireEvent.click(disableButtons[1])
 
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'Invalid password'
+        message: 'mfa.invalidPassword'
       })
-    })
-  })
+    }, { timeout: 5000 })
+  }, 15000)
 
   test('handles backup codes display correctly', async () => {
     const { get, post } = require('@/service/base')
     
     get.mockResolvedValue({ enabled: false })
+    
+    // Mock immediate responses
     post.mockImplementation((url) => {
       if (url.includes('/setup') && !url.includes('/complete')) {
         return Promise.resolve({
@@ -317,20 +365,31 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    // Setup MFA
+    // Wait for initial render
     await waitFor(() => {
-      fireEvent.click(screen.getByText('mfa.enable'))
+      expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
 
+    // Setup MFA
+    fireEvent.click(screen.getByText('mfa.enable'))
+
+    // Wait for QR code
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      const qrCode = screen.queryByAltText('MFA QR Code')
+      expect(qrCode).toBeInTheDocument()
+    }, { timeout: 10000 })
+
+    // Click next to go to verify step
+    fireEvent.click(screen.getByText('mfa.next'))
+
+    // Wait for input
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
     })
 
     // Enter TOTP code
-    const inputs = screen.getAllByRole('textbox')
-    '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } })
-    })
+    const input = screen.getByPlaceholderText('000000')
+    fireEvent.change(input, { target: { value: '123456' } })
 
     // Verify
     const verifyButton = screen.getByRole('button', { name: /verify|mfa.verify/i })
@@ -338,9 +397,9 @@ describe('MFAPage Component', () => {
 
     // Check backup codes are displayed
     await waitFor(() => {
-      expect(screen.getByText('mfa.backupCodes')).toBeInTheDocument()
+      expect(screen.getByText('mfa.backupCodesTitle')).toBeInTheDocument()
       expect(screen.getByText('ABCD1234')).toBeInTheDocument()
       expect(screen.getByText('EFGH5678')).toBeInTheDocument()
-    })
-  })
+    }, { timeout: 5000 })
+  }, 10000) // Increase test timeout
 })

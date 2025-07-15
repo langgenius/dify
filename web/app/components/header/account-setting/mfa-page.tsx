@@ -94,7 +94,7 @@ export default function MFAPage() {
     onSuccess: () => {
       setIsDisableModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['mfa-status'] })
-      Toast.notify({ type: 'success', message: t('mfa.disabledSuccess') })
+      Toast.notify({ type: 'success', message: t('mfa.disabledSuccessfully') })
     },
     onError: () => {
       Toast.notify({ type: 'error', message: t('mfa.invalidPassword') })
@@ -256,7 +256,7 @@ export default function MFAPage() {
                 className="flex-1"
                 onClick={() => {
                   setIsSetupModalOpen(false)
-                  Toast.notify({ type: 'success', message: t('mfa.enabledSuccess') })
+                  Toast.notify({ type: 'success', message: t('mfa.setupSuccess') })
                 }}
               >
                 {t('mfa.done')}
@@ -280,6 +280,7 @@ export default function MFAPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder={t('common.account.password')}
+            aria-label={t('mfa.enterYourPassword')}
           />
           <div className="flex space-x-3">
             <Button

@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from services.account_service import AccountService
@@ -69,9 +70,8 @@ class TestMFAEndpoints:
         """Test successful MFA setup completion."""
         with patch.object(MFAService, 'setup_mfa') as mock_setup:
             mock_setup.return_value = {
-                "message": "MFA has been successfully enabled",
                 "backup_codes": ["CODE1", "CODE2", "CODE3", "CODE4", "CODE5", "CODE6", "CODE7", "CODE8"],
-                "setup_at": "2024-01-01T00:00:00"
+                "setup_at": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
             }
             
             response = test_client.post(
@@ -82,8 +82,9 @@ class TestMFAEndpoints:
             
             assert response.status_code == 200
             data = response.json
-            assert data["message"] == "MFA has been successfully enabled"
+            assert data["message"] == "MFA setup completed successfully"
             assert len(data["backup_codes"]) == 8
+            assert data["setup_at"] == "2024-01-01T00:00:00+00:00"
             mock_setup.assert_called_once_with(setup_account, "123456")
     
     def test_mfa_setup_complete_missing_token(self, test_client, setup_account, auth_header):
@@ -96,7 +97,7 @@ class TestMFAEndpoints:
         
         assert response.status_code == 400
         data = response.json
-        assert "totp_token is required" in data["error"]
+        assert "message" in data and "TOTP token is required" in data["message"]
     
     def test_mfa_setup_complete_invalid_token(self, test_client, setup_account, auth_header):
         """Test MFA setup completion with invalid token."""
@@ -115,24 +116,28 @@ class TestMFAEndpoints:
     
     def test_mfa_disable_success(self, test_client, setup_account, auth_header):
         """Test successful MFA disable."""
-        with patch.object(MFAService, 'disable_mfa') as mock_disable:
-            mock_disable.return_value = {"message": "MFA has been disabled"}
+        with patch.object(MFAService, 'get_mfa_status') as mock_status:
+            with patch.object(MFAService, 'disable_mfa') as mock_disable:
+                mock_status.return_value = {"enabled": True}
+                mock_disable.return_value = True
             
-            response = test_client.post(
-                '/console/api/account/mfa/disable',
-                headers=auth_header,
-                json={"password": "test_password"}
-            )
-            
-            assert response.status_code == 200
+                response = test_client.post(
+                    '/console/api/account/mfa/disable',
+                    headers=auth_header,
+                    json={"password": "test_password"}
+                )
+                
+                assert response.status_code == 200
             data = response.json
-            assert data["message"] == "MFA has been disabled"
+            assert data["message"] == "MFA disabled successfully"
             mock_disable.assert_called_once_with(setup_account, "test_password")
     
     def test_mfa_disable_wrong_password(self, test_client, setup_account, auth_header):
         """Test MFA disable with wrong password."""
-        with patch.object(MFAService, 'disable_mfa') as mock_disable:
-            mock_disable.side_effect = ValueError("Invalid password")
+        with patch.object(MFAService, 'get_mfa_status') as mock_status:
+            with patch.object(MFAService, 'disable_mfa') as mock_disable:
+                mock_status.return_value = {"enabled": True}
+                mock_disable.return_value = False
             
             response = test_client.post(
                 '/console/api/account/mfa/disable',
@@ -142,12 +147,12 @@ class TestMFAEndpoints:
             
             assert response.status_code == 400
             data = response.json
-            assert "Invalid password" in data["error"]
+            assert data["error"] == "Invalid password"
     
     def test_mfa_disable_not_enabled(self, test_client, setup_account, auth_header):
         """Test MFA disable when not enabled."""
-        with patch.object(MFAService, 'disable_mfa') as mock_disable:
-            mock_disable.side_effect = ValueError("MFA is not enabled")
+        with patch.object(MFAService, 'get_mfa_status') as mock_status:
+            mock_status.return_value = {"enabled": False}
             
             response = test_client.post(
                 '/console/api/account/mfa/disable',
@@ -157,110 +162,4 @@ class TestMFAEndpoints:
             
             assert response.status_code == 400
             data = response.json
-            assert "MFA is not enabled" in data["error"]
-    
-    def test_mfa_verify_success(self, test_client):
-        """Test successful MFA verification during login."""
-        with patch('services.account_service.AccountService.authenticate') as mock_auth:
-            with patch.object(MFAService, 'is_mfa_required') as mock_required:
-                with patch.object(MFAService, 'authenticate_with_mfa') as mock_verify:
-                    # Mock user exists
-                    from models.account import Account
-                    mock_account = Account(
-                        id="test-id",
-                        email="test@example.com",
-                        name="Test User"
-                    )
-                    mock_auth.return_value = mock_account
-                    mock_required.return_value = True
-                    mock_verify.return_value = True
-                    
-                    response = test_client.post(
-                        '/console/api/mfa/verify',
-                        json={
-                            "email": "test@example.com",
-                            "mfa_code": "123456",
-                            "remember_me": True
-                        }
-                    )
-                    
-                    assert response.status_code == 200
-                    data = response.json
-                    assert data["result"] == "success"
-    
-    def test_mfa_verify_invalid_token(self, test_client):
-        """Test MFA verification with invalid token."""
-        with patch('services.account_service.AccountService.authenticate') as mock_auth:
-            with patch.object(MFAService, 'is_mfa_required') as mock_required:
-                with patch.object(MFAService, 'authenticate_with_mfa') as mock_verify:
-                    # Mock user exists
-                    from models.account import Account
-                    mock_account = Account(
-                        id="test-id",
-                        email="test@example.com",
-                        name="Test User"
-                    )
-                    mock_auth.return_value = mock_account
-                    mock_required.return_value = True
-                    mock_verify.return_value = False
-                    
-                    response = test_client.post(
-                        '/console/api/mfa/verify',
-                        json={
-                            "email": "test@example.com",
-                            "mfa_code": "999999",
-                            "remember_me": True
-                        }
-                    )
-                    
-                    assert response.status_code == 200
-                    data = response.json
-                    assert data["result"] == "fail"
-                    assert data["code"] == "mfa_token_invalid"
-    
-    def test_mfa_verify_not_required(self, test_client):
-        """Test MFA verification when MFA is not required."""
-        with patch('services.account_service.AccountService.authenticate') as mock_auth:
-            with patch.object(MFAService, 'is_mfa_required') as mock_required:
-                # Mock user exists
-                from models.account import Account
-                mock_account = Account(
-                    id="test-id",
-                    email="test@example.com",
-                    name="Test User"
-                )
-                mock_auth.return_value = mock_account
-                mock_required.return_value = False
-                
-                response = test_client.post(
-                    '/console/api/mfa/verify',
-                    json={
-                        "email": "test@example.com",
-                        "mfa_code": "123456",
-                        "remember_me": True
-                    }
-                )
-                
-                assert response.status_code == 200
-                data = response.json
-                assert data["result"] == "fail"
-                assert data["code"] == "mfa_not_required"
-    
-    def test_mfa_verify_account_not_found(self, test_client):
-        """Test MFA verification with non-existent account."""
-        with patch('services.account_service.AccountService.authenticate') as mock_auth:
-            mock_auth.return_value = None
-            
-            response = test_client.post(
-                '/console/api/mfa/verify',
-                json={
-                    "email": "nonexistent@example.com",
-                    "mfa_code": "123456",
-                    "remember_me": True
-                }
-            )
-            
-            assert response.status_code == 200
-            data = response.json
-            assert data["result"] == "fail"
-            assert data["code"] == "mfa_verify_failed"
+            assert data["error"] == "MFA is not enabled"

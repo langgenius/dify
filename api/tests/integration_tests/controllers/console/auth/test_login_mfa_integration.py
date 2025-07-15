@@ -1,4 +1,5 @@
 import json
+import sys
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
@@ -12,23 +13,57 @@ from models.account import Account, AccountMFASettings
 
 class TestLoginMFAIntegration:
 
-    def test_login_without_mfa_success(self, test_client, setup_account):
+    @patch('controllers.console.auth.login.FeatureService.get_system_features')
+    @patch('controllers.console.auth.login.dify_config')
+    @patch('controllers.console.auth.login.BillingService.is_email_in_freeze')
+    @patch('controllers.console.auth.login.AccountService.is_login_error_rate_limit')
+    @patch('controllers.console.auth.login.AccountService.authenticate')
+    @patch('controllers.console.auth.login.MFAService.is_mfa_required')
+    @patch('controllers.console.auth.login.TenantService.get_join_tenants')
+    @patch('controllers.console.auth.login.AccountService.login')
+    @patch('controllers.console.auth.login.AccountService.reset_login_error_rate_limit')
+    @patch('controllers.console.auth.login.extract_remote_ip')
+    def test_login_without_mfa_success(self, mock_extract_ip, mock_reset_limit, 
+                                     mock_login_service, mock_get_tenants, mock_is_mfa_required,
+                                     mock_authenticate, mock_rate_limit, mock_freeze_check, 
+                                     mock_dify_config, mock_system_features, 
+                                     test_client, setup_account):
         """Test successful login without MFA enabled."""
-        with patch('services.account_service.AccountService.authenticate') as mock_auth:
-            mock_auth.return_value = setup_account
+        # Setup mocks
+        mock_dify_config.BILLING_ENABLED = False
+        mock_freeze_check.return_value = False
+        mock_rate_limit.return_value = False
+        mock_authenticate.return_value = setup_account
+        mock_is_mfa_required.return_value = False
+        mock_get_tenants.return_value = [Mock()]  # At least one tenant
+        mock_extract_ip.return_value = "127.0.0.1"
+        
+        token_pair_mock = Mock()
+        token_pair_mock.model_dump.return_value = {
+            "access_token": "test_access_token",
+            "refresh_token": "test_refresh_token"
+        }
+        mock_login_service.return_value = token_pair_mock
+        
+        with patch('controllers.console.auth.login.setup_required') as mock_setup, \
+             patch('controllers.console.auth.login.email_password_login_enabled') as mock_email_enabled:
+            mock_setup.return_value = lambda f: f
+            mock_email_enabled.return_value = lambda f: f
+                
+            response = test_client.post('/console/api/login', json={
+                "email": setup_account.email,
+                "password": "TestPassword123"
+            })
             
-            with patch('services.mfa_service.MFAService.is_mfa_required') as mock_mfa:
-                mock_mfa.return_value = False
+            # Debug output
+            if response.status_code != 200:
+                print(f"Status: {response.status_code}", file=sys.stderr)
+                print(f"Data: {response.data}", file=sys.stderr)
                 
-                response = test_client.post('/console/api/login', json={
-                    "email": setup_account.email,
-                    "password": "test_password"
-                })
-                
-                assert response.status_code == 200
-                data = response.json
-                assert data["result"] == "success"
-                assert "access_token" in data["data"]
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["result"] == "success"
+            assert "access_token" in data["data"]
 
     @patch('controllers.console.auth.login.FeatureService.get_system_features')
     @patch('controllers.console.auth.login.dify_config')
@@ -54,7 +89,7 @@ class TestLoginMFAIntegration:
             
             response = test_client.post('/console/api/login', json={
                 "email": "test@example.com",
-                "password": "test_password"
+                "password": "TestPassword123"
             })
             
             assert response.status_code == 200
@@ -88,7 +123,7 @@ class TestLoginMFAIntegration:
             
             response = test_client.post('/console/api/login', json={
                 "email": "test@example.com",
-                "password": "test_password",
+                "password": "TestPassword123",
                 "mfa_code": "invalid_token"
             })
             
@@ -139,7 +174,7 @@ class TestLoginMFAIntegration:
             
             response = test_client.post('/console/api/login', json={
                 "email": "test@example.com",
-                "password": "test_password",
+                "password": "TestPassword123",
                 "mfa_code": "123456"
             })
             
@@ -192,7 +227,7 @@ class TestLoginMFAIntegration:
             
             response = test_client.post('/console/api/login', json={
                 "email": "test@example.com",
-                "password": "test_password",
+                "password": "TestPassword123",
                 "mfa_code": "BACKUP123"  # Backup code format
             })
             
@@ -231,7 +266,7 @@ class TestLoginMFAIntegration:
             
             response = test_client.post('/console/api/login', json={
                 "email": "test@example.com",
-                "password": "wrong_password",
+                "password": "WrongPassword123",
                 "mfa_code": "123456"
             })
             
