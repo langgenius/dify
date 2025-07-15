@@ -7,11 +7,10 @@ import type {
 } from '../types'
 import { getTransformedValuesWhenSecretInputPristine } from '../utils'
 
-export const useGetFormValues = (form: AnyFormApi) => {
-  const { checkValidated } = useCheckValidated(form)
+export const useGetFormValues = (form: AnyFormApi, formSchemas: FormSchema[]) => {
+  const { checkValidated } = useCheckValidated(form, formSchemas)
 
   const getFormValues = useCallback((
-    formSchemas: FormSchema[],
     {
       needCheckValidatedValues,
       needTransformWhenSecretFieldIsPristine,
@@ -37,7 +36,7 @@ export const useGetFormValues = (form: AnyFormApi) => {
         isCheckValidated: false,
       }
     }
-  }, [form, checkValidated])
+  }, [form, checkValidated, formSchemas])
 
   return {
     getFormValues,

@@ -63,17 +63,17 @@ const OAuthClientSettings = ({
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
       return
-    const {
-      isCheckValidated,
-      values,
-    } = formRef.current?.getFormValues({
-      needCheckValidatedValues: true,
-      needTransformWhenSecretFieldIsPristine: true,
-    }) || { isCheckValidated: false, values: {} }
-    if (!isCheckValidated)
-      return
 
     try {
+      const {
+        isCheckValidated,
+        values,
+      } = formRef.current?.getFormValues({
+        needCheckValidatedValues: true,
+        needTransformWhenSecretFieldIsPristine: true,
+      }) || { isCheckValidated: false, values: {} }
+      if (!isCheckValidated)
+        throw new Error('error')
       const {
         __oauth_client__,
         ...restValues
@@ -115,13 +115,14 @@ const OAuthClientSettings = ({
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
+      onClose?.()
       invalidPluginCredentialInfo()
       invalidPluginOAuthClientSchema()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  }, [invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction, onClose])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })
