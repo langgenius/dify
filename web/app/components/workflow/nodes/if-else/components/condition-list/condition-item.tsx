@@ -197,7 +197,7 @@ const ConditionItem = ({
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
   const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
-    const actualVarType = getVarType({
+    const resolvedVarType = getVarType({
       valueSelector,
       availableNodes,
       isChatMode,
@@ -205,9 +205,9 @@ const ConditionItem = ({
 
     const newCondition = produce(condition, (draft) => {
       draft.variable_selector = valueSelector
-      draft.varType = actualVarType
+      draft.varType = resolvedVarType
       draft.value = ''
-      draft.comparison_operator = getOperators(actualVarType)[0]
+      draft.comparison_operator = getOperators(resolvedVarType)[0]
     })
     doUpdateCondition(newCondition)
     setOpen(false)
