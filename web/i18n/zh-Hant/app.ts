@@ -92,6 +92,7 @@ const translation = {
     advancedUserDescription: '具有記憶體功能的多輪複雜對話任務的工作流程編排。',
     chooseAppType: '選擇 App Type',
     completionShortDescription: '用於文本生成任務的 AI 助手',
+    dropDSLToCreateApp: '將 DSL 檔案拖放到此處以創建應用程式',
   },
   editApp: '編輯資訊',
   editAppTitle: '編輯應用資訊',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: '配置提供商以啟用追蹤',
       moreProvider: '更多提供商',
     },
+    arize: {
+      title: 'Arize',
+      description: '企業級LLM可觀測性、線上與離線評估、監控和實驗平台，基於OpenTelemetry構建，專為LLM和代理驅動的應用程式設計。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '開源且基於OpenTelemetry的可觀測性、評估、提示工程和實驗平台，適用於您的LLM工作流程和代理。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: '一個全方位的開發者平台，用於 LLM 驅動的應用程式生命週期的每個步驟。',
@@ -162,6 +171,7 @@ const translation = {
       title: '編織',
       description: 'Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。',
     },
+    aliyun: {},
   },
   answerIcon: {
     descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',

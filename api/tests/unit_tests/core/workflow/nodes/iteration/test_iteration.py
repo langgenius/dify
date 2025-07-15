@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.variables.segments import ArrayAnySegment, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -209,7 +210,7 @@ def test_run():
             count += 1
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
+                assert item.run_result.outputs == {"output": ArrayStringSegment(value=["dify 123", "dify 123"])}
 
         assert count == 20
 
@@ -437,7 +438,7 @@ def test_run_parallel():
             count += 1
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
+                assert item.run_result.outputs == {"output": ArrayStringSegment(value=["dify 123", "dify 123"])}
 
         assert count == 32
 
@@ -690,7 +691,7 @@ def test_iteration_run_in_parallel_mode():
             parallel_arr.append(item)
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
+                assert item.run_result.outputs == {"output": ArrayStringSegment(value=["dify 123", "dify 123"])}
         assert count == 32
 
         for item in sequential_result:
@@ -698,7 +699,7 @@ def test_iteration_run_in_parallel_mode():
             count += 1
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
+                assert item.run_result.outputs == {"output": ArrayStringSegment(value=["dify 123", "dify 123"])}
         assert count == 64
 
 
@@ -887,7 +888,7 @@ def test_iteration_run_error_handle():
         count += 1
         if isinstance(item, RunCompletedEvent):
             assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.run_result.outputs == {"output": [None, None]}
+            assert item.run_result.outputs == {"output": ArrayAnySegment(value=[None, None])}
 
     assert count == 14
     # execute remove abnormal output
@@ -898,5 +899,5 @@ def test_iteration_run_error_handle():
         count += 1
         if isinstance(item, RunCompletedEvent):
             assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.run_result.outputs == {"output": []}
+            assert item.run_result.outputs == {"output": ArrayAnySegment(value=[])}
     assert count == 14

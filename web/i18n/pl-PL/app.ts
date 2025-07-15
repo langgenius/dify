@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Inteligentny agent zdolny do iteracyjnego wnioskowania i autonomicznego wykorzystania narzędzi do osiągania celów zadań.',
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
+    dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',
@@ -142,6 +143,14 @@ const translation = {
       notConfigured: 'Skonfiguruj dostawcę, aby włączyć śledzenie',
       moreProvider: 'Więcej dostawców',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Obserwowalność LLM klasy korporacyjnej, ocena online i offline, monitorowanie i eksperymentowanie — oparta na OpenTelemetry. Zaprojektowana specjalnie dla aplikacji opartych na LLM i agentach.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Otwarta i oparta na OpenTelemetry platforma do obserwowalności, oceny, inżynierii promptów i eksperymentowania dla Twoich przepływów pracy i agentów LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Kompleksowa platforma deweloperska dla każdego etapu cyklu życia aplikacji opartej na LLM.',
@@ -170,6 +179,7 @@ const translation = {
       title: 'Tkaj',
       description: 'Weave to platforma open-source do oceny, testowania i monitorowania aplikacji LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',

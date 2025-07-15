@@ -28,6 +28,8 @@ const translation = {
       delete: '삭제',
       enableWarning: '아카이브된 파일은 활성화할 수 없습니다.',
       sync: '동기화',
+      resume: '이력서',
+      pause: '일시 중지',
     },
     index: {
       enable: '활성화',
@@ -388,6 +390,8 @@ const translation = {
     addChunk: '청크 추가 (Add Chunk)',
     characters_other: '문자',
     regeneratingMessage: '시간이 걸릴 수 있으니 잠시만 기다려 주십시오...',
+    keywordDuplicate: '키워드가 이미 존재합니다.',
+    keywordEmpty: '키워드는 비워둘 수 없습니다.',
   },
 }
 

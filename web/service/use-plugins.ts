@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import type {
+  FormOption,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchModelProviderModelList } from '@/service/common'
@@ -477,7 +478,7 @@ export const usePluginTaskList = (category?: PluginType) => {
           refreshPluginList(category ? { category } as any : undefined, !category)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRefetching])
 
   const handleRefetch = useCallback(() => {
@@ -569,5 +570,19 @@ export const usePluginInfo = (providerName?: string) => {
       }
     },
     enabled: !!providerName,
+  })
+}
+
+export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string, provider_type: 'tool') => {
+  return useMutation({
+    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
+      params: {
+        plugin_id,
+        provider,
+        action,
+        parameter,
+        provider_type,
+      },
+    }),
   })
 }

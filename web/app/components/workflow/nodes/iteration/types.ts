@@ -11,6 +11,7 @@ export type IterationNodeType = CommonNodeType & {
   start_node_id: string // start node id in the iteration
   iteration_id?: string
   iterator_selector: ValueSelector
+  iterator_input_type: VarType
   output_selector: ValueSelector
   output_type: VarType // output type.
   is_parallel: boolean // open the parallel mode or not

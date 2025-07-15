@@ -18,7 +18,11 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 class AnswerNode(BaseNode[AnswerNodeData]):
     _node_data_cls = AnswerNodeData
-    _node_type: NodeType = NodeType.ANSWER
+    _node_type = NodeType.ANSWER
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """
@@ -55,7 +59,7 @@ class AnswerNode(BaseNode[AnswerNodeData]):
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"answer": answer, "files": files, "outputs": outputs},
+            outputs={"answer": answer, "files": ArrayFileSegment(value=files), "outputs": outputs},
         )
 
     @classmethod

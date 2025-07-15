@@ -32,7 +32,7 @@ class RequestInvokeTool(BaseModel):
     Request to invoke a tool
     """
 
-    tool_type: Literal["builtin", "workflow", "api"]
+    tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
     tool_parameters: dict
@@ -80,6 +80,16 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
                 v[i] = PromptMessage(**v[i])
 
         return v
+
+
+class RequestInvokeLLMWithStructuredOutput(RequestInvokeLLM):
+    """
+    Request to invoke LLM with structured output
+    """
+
+    structured_output_schema: dict[str, Any] = Field(
+        default_factory=dict, description="The schema of the structured output in JSON schema format"
+    )
 
 
 class RequestInvokeTextEmbedding(BaseRequestInvokeModel):

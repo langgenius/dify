@@ -1,5 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useContext } from 'use-context-selector'
@@ -15,13 +16,15 @@ import I18n from '@/context/i18n'
 import { activateMember, invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
@@ -86,8 +89,7 @@ export default function InviteSettingsPage() {
     <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold'>{t('login.setYourAccount')}</h2>
     </div>
-    <form action=''>
-
+    <form onSubmit={noop}>
       <div className='mb-5'>
         <label htmlFor="name" className="system-md-semibold my-2">
           {t('login.name')}
@@ -99,6 +101,13 @@ export default function InviteSettingsPage() {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder={t('login.namePlaceholder') || ''}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                e.stopPropagation()
+                handleActivate()
+              }
+            }}
           />
         </div>
       </div>
@@ -147,7 +156,7 @@ export default function InviteSettingsPage() {
       <Link
         className='system-xs-medium text-text-accent-secondary'
         target='_blank' rel='noopener noreferrer'
-        href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
+        href={docLink('/policies/open-source')}
       >{t('login.license.link')}</Link>
     </div>
   </div>

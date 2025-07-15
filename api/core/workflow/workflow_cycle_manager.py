@@ -27,6 +27,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
+from libs.datetime_utils import naive_utc_now
 
 
 @dataclass
@@ -92,7 +93,7 @@ class WorkflowCycleManager:
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
-        outputs = WorkflowEntry.handle_special_values(outputs)
+        # outputs = WorkflowEntry.handle_special_values(outputs)
 
         workflow_execution.status = WorkflowExecutionStatus.SUCCEEDED
         workflow_execution.outputs = outputs or {}
@@ -125,7 +126,7 @@ class WorkflowCycleManager:
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowExecution:
         execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
-        outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
+        # outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         execution.outputs = outputs or {}
@@ -160,12 +161,13 @@ class WorkflowCycleManager:
         exceptions_count: int = 0,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
+        now = naive_utc_now()
 
         workflow_execution.status = WorkflowExecutionStatus(status.value)
         workflow_execution.error_message = error_message
         workflow_execution.total_tokens = total_tokens
         workflow_execution.total_steps = total_steps
-        workflow_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_execution.finished_at = now
         workflow_execution.exceptions_count = exceptions_count
 
         # Use the instance repository to find running executions for a workflow run
@@ -174,7 +176,6 @@ class WorkflowCycleManager:
         )
 
         # Update the domain models
-        now = datetime.now(UTC).replace(tzinfo=None)
         for node_execution in running_node_executions:
             if node_execution.node_execution_id:
                 # Update the domain model
@@ -242,9 +243,9 @@ class WorkflowCycleManager:
             raise ValueError(f"Domain node execution not found: {event.node_execution_id}")
 
         # Process data
-        inputs = WorkflowEntry.handle_special_values(event.inputs)
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
+        inputs = event.inputs
+        process_data = event.process_data
+        outputs = event.outputs
 
         # Convert metadata keys to strings
         execution_metadata_dict = {}
@@ -289,7 +290,7 @@ class WorkflowCycleManager:
         # Process data
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
+        outputs = event.outputs
 
         # Convert metadata keys to strings
         execution_metadata_dict = {}
@@ -326,7 +327,7 @@ class WorkflowCycleManager:
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - created_at).total_seconds()
         inputs = WorkflowEntry.handle_special_values(event.inputs)
-        outputs = WorkflowEntry.handle_special_values(event.outputs)
+        outputs = event.outputs
 
         # Convert metadata keys to strings
         origin_metadata = {

@@ -93,6 +93,7 @@ const translation = {
     learnMore: 'Tìm hiểu thêm',
     completionShortDescription: 'Trợ lý AI cho các tác vụ tạo văn bản',
     completionUserDescription: 'Nhanh chóng xây dựng trợ lý AI cho các tác vụ tạo văn bản với cấu hình đơn giản.',
+    dropDSLToCreateApp: 'Kéo tệp DSL vào đây để tạo ứng dụng',
   },
   editApp: 'Chỉnh sửa thông tin',
   editAppTitle: 'Chỉnh sửa thông tin ứng dụng',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: 'Cấu hình nhà cung cấp để bật theo dõi',
       moreProvider: 'Thêm nhà cung cấp',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Khả năng quan sát LLM cấp doanh nghiệp, đánh giá trực tuyến và ngoại tuyến, giám sát và thử nghiệm—được hỗ trợ bởi OpenTelemetry. Được thiết kế đặc biệt cho các ứng dụng dựa trên LLM và tác nhân.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Nền tảng mã nguồn mở và dựa trên OpenTelemetry cho khả năng quan sát, đánh giá, kỹ thuật prompt và thử nghiệm cho quy trình làm việc và tác nhân LLM của bạn.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Nền tảng phát triển tất cả trong một cho mọi bước của vòng đời ứng dụng được hỗ trợ bởi LLM.',
@@ -163,6 +172,7 @@ const translation = {
       title: 'Dệt',
       description: 'Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

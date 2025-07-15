@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_seriali
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
+    MCPServerParameterType,
     PluginParameter,
     PluginParameterOption,
     PluginParameterType,
@@ -49,6 +50,7 @@ class ToolProviderType(enum.StrEnum):
     API = "api"
     APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"
+    MCP = "mcp"
 
     @classmethod
     def value_of(cls, value: str) -> "ToolProviderType":
@@ -94,7 +96,8 @@ class ApiProviderAuthType(Enum):
     """
 
     NONE = "none"
-    API_KEY = "api_key"
+    API_KEY_HEADER = "api_key_header"
+    API_KEY_QUERY = "api_key_query"
 
     @classmethod
     def value_of(cls, value: str) -> "ApiProviderAuthType":
@@ -240,6 +243,11 @@ class ToolParameter(PluginParameter):
         FILES = PluginParameterType.FILES.value
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
+        DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT.value
+
+        # MCP object and array type parameters
+        ARRAY = MCPServerParameterType.ARRAY.value
+        OBJECT = MCPServerParameterType.OBJECT.value
 
         # deprecated, should not use.
         SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
@@ -259,6 +267,8 @@ class ToolParameter(PluginParameter):
     human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
+    # MCP object and array type parameters use this field to store the schema
+    input_schema: Optional[dict] = None
 
     @classmethod
     def get_simple_instance(
@@ -308,6 +318,7 @@ class ToolProviderIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
+    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     tags: Optional[list[ToolLabelEnum]] = Field(
         default=[],

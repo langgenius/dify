@@ -58,6 +58,8 @@ const translation = {
     more: 'Več',
     downloadSuccess: 'Prenos končan.',
     format: 'Format',
+    selectAll: 'Izberi vse',
+    deSelectAll: 'Odberi vse',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -464,7 +466,6 @@ const translation = {
     apiBasedExtension: {
       title: 'Razširitve API omogočajo centralizirano upravljanje API, kar poenostavi konfiguracijo za enostavno uporabo v aplikacijah Dify.',
       link: 'Naučite se, kako razviti svojo API razširitev.',
-      linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
       add: 'Dodaj API razširitev',
       selector: {
         title: 'API razširitev',
@@ -693,7 +694,6 @@ const translation = {
     type: 'Vrsta',
     link: 'Preberite, kako razvijete lastno razširitev API-ja.',
     title: 'Razširitve API zagotavljajo centralizirano upravljanje API, kar poenostavlja konfiguracijo za enostavno uporabo v aplikacijah Dify.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodajanje razširitve API-ja',
   },
   about: {

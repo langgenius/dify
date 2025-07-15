@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
@@ -18,10 +19,12 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.models import File
 from extensions.ext_database import db
-from factories import variable_factory
+from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -30,12 +33,31 @@ from libs.login import current_user, login_required
 from models import App
 from models.account import Account
 from models.model import AppMode
+from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+# TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
+# at the controller level rather than in the workflow logic. This would improve separation
+# of concerns and make the code more maintainable.
+def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:
+    files = files or []
+
+    file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+    file_objs: Sequence[File] = []
+    if file_extra_config is None:
+        return file_objs
+    file_objs = file_factory.build_from_mappings(
+        mappings=files,
+        tenant_id=workflow.tenant_id,
+        config=file_extra_config,
+    )
+    return file_objs
 
 
 class DraftWorkflowApi(Resource):
@@ -402,15 +424,30 @@ class DraftWorkflowNodeRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("query", type=str, required=False, location="json", default="")
+        parser.add_argument("files", type=list, location="json", default=[])
         args = parser.parse_args()
 
-        inputs = args.get("inputs")
-        if inputs == None:
+        user_inputs = args.get("inputs")
+        if user_inputs is None:
             raise ValueError("missing inputs")
 
+        workflow_srv = WorkflowService()
+        # fetch draft workflow by app_model
+        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+        files = _parse_file(draft_workflow, args.get("files"))
         workflow_service = WorkflowService()
+
         workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model, node_id=node_id, user_inputs=inputs, account=current_user
+            app_model=app_model,
+            draft_workflow=draft_workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            account=current_user,
+            query=args.get("query", ""),
+            files=files,
         )
 
         return workflow_node_execution
@@ -731,6 +768,27 @@ class WorkflowByIdApi(Resource):
         return None, 204
 
 
+class DraftWorkflowNodeLastRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_node_execution_fields)
+    def get(self, app_model: App, node_id: str):
+        srv = WorkflowService()
+        workflow = srv.get_draft_workflow(app_model)
+        if not workflow:
+            raise NotFound("Workflow not found")
+        node_exec = srv.get_node_last_run(
+            app_model=app_model,
+            workflow=workflow,
+            node_id=node_id,
+        )
+        if node_exec is None:
+            raise NotFound("last run not found")
+        return node_exec
+
+
 api.add_resource(
     DraftWorkflowApi,
     "/apps/<uuid:app_id>/workflows/draft",
@@ -794,4 +852,8 @@ api.add_resource(
 api.add_resource(
     WorkflowByIdApi,
     "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
+)
+api.add_resource(
+    DraftWorkflowNodeLastRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
 )

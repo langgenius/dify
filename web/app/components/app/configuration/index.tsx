@@ -80,6 +80,8 @@ import {
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import Toast from '@/app/components/base/toast'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -453,11 +455,26 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
-    setCompletionParams({})
+
+    try {
+      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+        provider,
+        modelId,
+        completionParams,
+      )
+      if (Object.keys(removedDetails).length)
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
+      setCompletionParams(filtered)
+    }
+    catch (e) {
+      Toast.notify({ type: 'error', message: t('common.error') })
+      setCompletionParams({})
+    }
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -904,6 +921,7 @@ const Configuration: FC = () => {
       setVisionConfig: handleSetVisionConfig,
       isAllowVideoUpload,
       isShowDocumentConfig,
+      isShowAudioConfig,
       rerankSettingModalOpen,
       setRerankSettingModalOpen,
     }}

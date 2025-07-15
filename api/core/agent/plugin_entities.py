@@ -85,7 +85,7 @@ class AgentStrategyEntity(BaseModel):
     description: I18nObject = Field(..., description="The description of the agent strategy")
     output_schema: Optional[dict] = None
     features: Optional[list[AgentFeature]] = None
-
+    meta_version: Optional[str] = None
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

@@ -222,6 +222,10 @@ const translation = {
       title: 'Document',
       description: 'Enable Document will allows the model to take in documents and answer questions about them.',
     },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Enable Audio will allow the model to process audio files for transcription and analysis.',
+    },
   },
   codegen: {
     title: 'Code Generator',
@@ -442,6 +446,7 @@ const translation = {
     writeOpener: 'Edit opener',
     placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
     openingQuestion: 'Opening Questions',
+    openingQuestionPlaceholder: 'You can use variables, try typing {{variable}}.',
     noDataPlaceHolder:
       'Starting the conversation with the user can help AI establish a closer connection with them in conversational applications.',
     varTip: 'You can use variables, try type {{variable}}',
