@@ -37,6 +37,12 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     code = 429
 
 
+class OwnerTransferRateLimitExceededError(BaseHTTPException):
+    error_code = "owner_transfer_rate_limit_exceeded"
+    description = "Too many owner tansfer emails have been sent. Please try again in 1 minutes."
+    code = 429
+
+
 class EmailCodeError(BaseHTTPException):
     error_code = "email_code_error"
     description = "Email code is invalid or expired."
@@ -82,4 +88,28 @@ class EmailChangeLimitError(BaseHTTPException):
 class EmailAlreadyInUseError(BaseHTTPException):
     error_code = "email_already_in_use"
     description = "A user with this email already exists."
+    code = 400
+
+
+class OwnerTransferLimitError(BaseHTTPException):
+    error_code = "owner_transfer_limit"
+    description = "Too many failed owner transfer attempts. Please try again in 24 hours."
+    code = 429
+
+
+class NotOwnerError(BaseHTTPException):
+    error_code = "not_owner"
+    description = "You are not the owner of the workspace."
+    code = 400
+
+
+class CannotTransferOwnerToSelfError(BaseHTTPException):
+    error_code = "cannot_transfer_owner_to_self"
+    description = "You cannot transfer ownership to yourself."
+    code = 400
+
+
+class MemberNotInTenantError(BaseHTTPException):
+    error_code = "member_not_in_tenant"
+    description = "The member is not in the workspace."
     code = 400
