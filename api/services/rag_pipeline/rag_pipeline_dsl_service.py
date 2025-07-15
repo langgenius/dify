@@ -233,6 +233,7 @@ class RagPipelineDslService:
                     )
                 dataset = pipeline.dataset
                 if dataset:
+                    self._session.merge(dataset)
                     dataset_name = dataset.name
 
             # If major version mismatch, store import info in Redis
@@ -291,7 +292,7 @@ class RagPipelineDslService:
                     if not dataset:
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
-                            name=name,
+                            name=name + datetime.now(UTC).strftime("%Y%m%d%H%M%S%f"),
                             description=description,
                             icon_info={
                                 "type": icon_type,

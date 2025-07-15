@@ -46,6 +46,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
+from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 
 logger = logging.getLogger(__name__)
 
@@ -946,6 +947,16 @@ class RagPipelineWorkflowLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("last run not found")
         return node_exec
+    
+class RagPipelineTransformApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id):
+        dataset_id = str(dataset_id)
+        rag_pipeline_transform_service = RagPipelineTransformService()
+        rag_pipeline_transform_service.transform_dataset(dataset_id)
+        return {"message": "success"}
 
 
 api.add_resource(
@@ -1055,4 +1066,8 @@ api.add_resource(
 api.add_resource(
     RagPipelineWorkflowLastRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run",
+)
+api.add_resource(
+    RagPipelineTransformApi,
+    "/rag/pipelines/transform/datasets/<uuid:dataset_id>",
 )

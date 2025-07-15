@@ -54,7 +54,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
+from models.dataset import Dataset, Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -72,7 +72,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
-from services.workflow_draft_variable_service import DraftVarLoader, DraftVariableSaver
+from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
 
 logger = logging.getLogger(__name__)
 

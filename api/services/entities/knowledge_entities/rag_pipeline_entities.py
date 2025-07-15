@@ -87,8 +87,8 @@ class RetrievalSetting(BaseModel):
     top_k: int
     score_threshold: Optional[float] = 0.5
     score_threshold_enabled: bool = False
-    reranking_mode: str = "reranking_model"
-    reranking_enable: bool = True
+    reranking_mode: Optional[str] = "reranking_model"
+    reranking_enable: Optional[bool] = True
     reranking_model: Optional[RerankingModelConfig] = None
     weights: Optional[WeightedScoreConfig] = None
 
