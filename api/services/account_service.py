@@ -703,7 +703,6 @@ class AccountService:
         redis_client.delete(key)
 
     @staticmethod
-    @redis_fallback(default_return=None)
     def add_change_email_error_rate_limit(email: str) -> None:
         key = f"change_email_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -713,7 +712,6 @@ class AccountService:
         redis_client.setex(key, dify_config.CHANGE_EMAIL_LOCKOUT_DURATION, count)
 
     @staticmethod
-    @redis_fallback(default_return=False)
     def is_change_email_error_rate_limit(email: str) -> bool:
         key = f"change_email_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -725,13 +723,11 @@ class AccountService:
         return False
 
     @staticmethod
-    @redis_fallback(default_return=None)
     def reset_change_email_error_rate_limit(email: str):
         key = f"change_email_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
-    @redis_fallback(default_return=None)
     def add_owner_transfer_error_rate_limit(email: str) -> None:
         key = f"owner_transfer_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -741,7 +737,6 @@ class AccountService:
         redis_client.setex(key, dify_config.OWNER_TRANSFER_LOCKOUT_DURATION, count)
 
     @staticmethod
-    @redis_fallback(default_return=False)
     def is_owner_transfer_error_rate_limit(email: str) -> bool:
         key = f"owner_transfer_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -753,13 +748,11 @@ class AccountService:
         return False
 
     @staticmethod
-    @redis_fallback(default_return=None)
     def reset_owner_transfer_error_rate_limit(email: str):
         key = f"owner_transfer_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
-    @redis_fallback(default_return=False)
     def is_email_send_ip_limit(ip_address: str):
         minute_key = f"email_send_ip_limit_minute:{ip_address}"
         freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
