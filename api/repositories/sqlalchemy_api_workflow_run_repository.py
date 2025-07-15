@@ -29,11 +29,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
 logger = logging.getLogger(__name__)
 
 
-class DifyAPISQLAlchemyWorkflowRunRepository:
+class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     """
     SQLAlchemy implementation of APIWorkflowRunRepository.
 
