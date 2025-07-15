@@ -3,7 +3,7 @@
 # Do not modify this file directly. Instead, update the .env.example
 # or docker-compose-template.yaml and regenerate this file.
 # ==================================================================
-
+name: my-dify-stack
 x-shared-env: &shared-api-worker-env
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
