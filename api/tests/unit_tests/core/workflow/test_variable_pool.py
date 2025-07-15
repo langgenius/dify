@@ -1,3 +1,6 @@
+import uuid
+from collections import defaultdict
+
 import pytest
 
 from core.file import File, FileTransferMethod, FileType
@@ -412,3 +415,24 @@ class TestVariablePoolSerialization:
                 assert val1.value == val2.value
                 # Value types should be the same (more important than exact class type)
                 assert val1.value_type == val2.value_type
+
+    def test_variable_pool_deserialization_default_dict(self):
+        variable_pool = VariablePool(
+            user_inputs={"a": 1, "b": "2"},
+            system_variables=SystemVariable(workflow_id=str(uuid.uuid4())),
+            environment_variables=[
+                StringVariable(name="str_var", value="a"),
+            ],
+            conversation_variables=[IntegerVariable(name="int_var", value=1)],
+        )
+        assert isinstance(variable_pool.variable_dictionary, defaultdict)
+        json = variable_pool.model_dump_json()
+        loaded = VariablePool.model_validate_json(json)
+        assert isinstance(loaded.variable_dictionary, defaultdict)
+
+        loaded.add(["non_exist_node", "a"], 1)
+
+        pool_dict = variable_pool.model_dump()
+        loaded = VariablePool.model_validate(pool_dict)
+        assert isinstance(loaded.variable_dictionary, defaultdict)
+        loaded.add(["non_exist_node", "a"], 1)
