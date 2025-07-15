@@ -201,6 +201,7 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Terraform atorlugu pilersitsineq
 

@@ -6,6 +6,7 @@ import click
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
 from models import (
@@ -13,6 +14,7 @@ from models import (
     AppAnnotationHitHistory,
     AppAnnotationSetting,
     AppDatasetJoin,
+    AppMCPServer,
     AppModelConfig,
     Conversation,
     EndUser,
@@ -30,7 +32,8 @@ from models import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -41,6 +44,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
+        _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
@@ -87,6 +91,18 @@ def _delete_app_site(tenant_id: str, app_id: str):
         db.session.query(Site).filter(Site.id == site_id).delete(synchronize_session=False)
 
     _delete_records("""select id from sites where app_id=:app_id limit 1000""", {"app_id": app_id}, del_site, "site")
+
+
+def _delete_app_mcp_servers(tenant_id: str, app_id: str):
+    def del_mcp_server(mcp_server_id: str):
+        db.session.query(AppMCPServer).filter(AppMCPServer.id == mcp_server_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from app_mcp_servers where app_id=:app_id limit 1000""",
+        {"app_id": app_id},
+        del_mcp_server,
+        "app mcp server",
+    )
 
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):
@@ -175,29 +191,31 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_runs(tenant_id: str, app_id: str):
-    def del_workflow_run(workflow_run_id: str):
-        db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).delete(synchronize_session=False)
+    """Delete all workflow runs for an app using the service repository."""
+    session_maker = sessionmaker(bind=db.engine)
+    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    _delete_records(
-        """select id from workflow_runs where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
-        {"tenant_id": tenant_id, "app_id": app_id},
-        del_workflow_run,
-        "workflow run",
+    deleted_count = workflow_run_repo.delete_runs_by_app(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        batch_size=1000,
     )
+
+    logging.info(f"Deleted {deleted_count} workflow runs for app {app_id}")
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
-    def del_workflow_node_execution(workflow_node_execution_id: str):
-        db.session.query(WorkflowNodeExecutionModel).filter(
-            WorkflowNodeExecutionModel.id == workflow_node_execution_id
-        ).delete(synchronize_session=False)
+    """Delete all workflow node executions for an app using the service repository."""
+    session_maker = sessionmaker(bind=db.engine)
+    node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
-    _delete_records(
-        """select id from workflow_node_executions where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
-        {"tenant_id": tenant_id, "app_id": app_id},
-        del_workflow_node_execution,
-        "workflow node execution",
+    deleted_count = node_execution_repo.delete_executions_by_app(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        batch_size=1000,
     )
+
+    logging.info(f"Deleted {deleted_count} workflow node executions for app {app_id}")
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):

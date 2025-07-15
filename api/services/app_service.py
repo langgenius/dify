@@ -47,8 +47,6 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args["mode"] == "channel":
-            filters.append(App.mode == AppMode.CHANNEL.value)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)

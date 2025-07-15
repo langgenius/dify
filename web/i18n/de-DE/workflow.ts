@@ -129,6 +129,8 @@ const translation = {
       value: 'Wert',
       valuePlaceholder: 'Umgebungswert',
       secretTip: 'Wird verwendet, um sensible Informationen oder Daten zu definieren, wobei DSL-Einstellungen zur Verhinderung von Lecks konfiguriert sind.',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Beschreiben Sie die Variable',
     },
     export: {
       title: 'Geheime Umgebungsvariablen exportieren?',
@@ -362,6 +364,7 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'erforderlich',
@@ -536,6 +539,10 @@ const translation = {
       curl: {
         title: 'Importieren von cURL',
         placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
+      },
+      verifySSL: {
+        title: 'SSL-Zertifikat überprüfen',
+        warningTooltip: 'Das Deaktivieren der SSL-Überprüfung wird für Produktionsumgebungen nicht empfohlen. Dies sollte nur in der Entwicklung oder im Test verwendet werden, da es die Verbindung anfällig für Sicherheitsbedrohungen wie Man-in-the-Middle-Angriffe macht.',
       },
     },
     code: {

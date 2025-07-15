@@ -129,6 +129,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '環境值',
       secretTip: '用於定義敏感信息或數據，DSL 設置配置為防止洩露。',
+      description: '描述',
+      descriptionPlaceholder: '描述此變數',
     },
     export: {
       title: '導出機密環境變數？',
@@ -362,6 +364,7 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}}重試',
       },
+      typeSwitch: {},
     },
     start: {
       required: '必填',
@@ -536,6 +539,10 @@ const translation = {
       curl: {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
+      },
+      verifySSL: {
+        title: '驗證 SSL 證書',
+        warningTooltip: '不建議在生產環境中禁用SSL驗證。這僅應用於開發或測試，因為這樣會使連接容易受到中間人攻擊等安全威脅的威脅。',
       },
     },
     code: {

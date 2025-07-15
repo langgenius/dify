@@ -129,6 +129,8 @@ const translation = {
       value: 'Valoare',
       valuePlaceholder: 'valoare mediu',
       secretTip: 'Utilizat pentru a defini informații sau date sensibile, cu setări DSL configurate pentru prevenirea scurgerilor.',
+      description: 'Descriere',
+      descriptionPlaceholder: 'Descrieți variabila',
     },
     export: {
       title: 'Exportă variabile de mediu secrete?',
@@ -362,6 +364,7 @@ const translation = {
         retries: '{{num}} Încercări',
         retryTimes: 'Reîncercați {{times}} ori în caz de eșec',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'necesar',
@@ -536,6 +539,10 @@ const translation = {
       curl: {
         placeholder: 'Lipiți șirul cURL aici',
         title: 'Importați din cURL',
+      },
+      verifySSL: {
+        title: 'Verifică certificatul SSL',
+        warningTooltip: 'Dezactivarea verificării SSL nu este recomandată pentru medii de producție. Acest lucru ar trebui să fie folosit doar în dezvoltare sau testare, deoarece face conexiunea vulnerabilă la amenințări de securitate, cum ar fi atacurile man-in-the-middle.',
       },
     },
     code: {

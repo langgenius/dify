@@ -129,6 +129,8 @@ const translation = {
       value: 'Değer',
       valuePlaceholder: 'env değeri',
       secretTip: 'Hassas bilgileri veya verileri tanımlamak için kullanılır, bilgi sızıntısını önlemek için DSL ayarları yapılandırılmıştır.',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Değişkeni açıklayın',
     },
     export: {
       title: 'Gizli çevre değişkenleri dışa aktarılsın mı?',
@@ -362,6 +364,7 @@ const translation = {
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'gerekli',
@@ -537,6 +540,10 @@ const translation = {
       curl: {
         placeholder: 'cURL dizesini buraya yapıştırın',
         title: 'cURL\'den içe aktar',
+      },
+      verifySSL: {
+        title: 'SSL Sertifikasını Doğrula',
+        warningTooltip: 'SSL doğrulamasını devre dışı bırakmak, üretim ortamları için önerilmez. Bu yalnızca geliştirme veya test aşamalarında kullanılmalıdır, çünkü bağlantıyı adam ortada saldırıları gibi güvenlik tehditlerine karşı savunmasız hale getirir.',
       },
     },
     code: {
