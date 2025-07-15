@@ -49,7 +49,7 @@ const BaseForm = ({
     defaultValues,
   })
   const form: any = formFromProps || formFromHook
-  const { getFormValues } = useGetFormValues(form)
+  const { getFormValues } = useGetFormValues(form, formSchemas)
   const { getValidators } = useGetValidators()
 
   useImperativeHandle(ref, () => {
@@ -58,10 +58,10 @@ const BaseForm = ({
         return form
       },
       getFormValues: (option) => {
-        return getFormValues(formSchemas, option)
+        return getFormValues(option)
       },
     }
-  }, [form, formSchemas, getFormValues])
+  }, [form, getFormValues])
 
   const renderField = useCallback((field: AnyFieldApi) => {
     const formSchema = formSchemas?.find(schema => schema.name === field.name)
