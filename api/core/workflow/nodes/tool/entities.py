@@ -1,6 +1,6 @@
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
@@ -35,6 +35,7 @@ class ToolNodeData(BaseNodeData, ToolEntity):
         # TODO: check this type
         value: Union[Any, list[str]]
         type: Literal["mixed", "variable", "constant"]
+        description: str | None = Field(default=None, description="Optional description for this input parameter.")
 
         @field_validator("type", mode="before")
         @classmethod

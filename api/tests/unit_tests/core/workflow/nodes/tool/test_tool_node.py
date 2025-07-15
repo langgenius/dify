@@ -109,3 +109,16 @@ def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
     assert "oops" in result.error
     assert "Failed to transform tool message:" in result.error
     assert result.error_type == "ToolInvokeError"
+
+
+def test_tool_input_description():
+    from core.workflow.nodes.tool.entities import ToolNodeData
+    # Description provided
+    input_with_desc = ToolNodeData.ToolInput(value="foo", type="mixed", description="A test description.")
+    assert input_with_desc.description == "A test description."
+    # Description omitted
+    input_without_desc = ToolNodeData.ToolInput(value="bar", type="mixed")
+    assert input_without_desc.description is None
+    # Serialization
+    data = input_with_desc.model_dump()
+    assert data["description"] == "A test description."
