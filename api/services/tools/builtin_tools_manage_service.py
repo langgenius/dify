@@ -11,7 +11,6 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
 from core.plugin.entities.plugin import ToolProviderID
-from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -21,7 +20,7 @@ from core.tools.entities.api_entities import (
     ToolProviderCredentialInfoApiEntity,
 )
 from core.tools.entities.tool_entities import CredentialType
-from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
@@ -200,15 +199,9 @@ class BuiltinToolManageService:
                     db_provider.name = name
 
                 session.commit()
-            except (
-                PluginDaemonClientSideError,
-                ToolProviderNotFoundError,
-                ToolNotFoundError,
-                ToolProviderCredentialValidationError,
-            ) as e:
+            except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
-
         return {"result": "success"}
 
     @staticmethod
@@ -279,12 +272,7 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.commit()
-        except (
-            PluginDaemonClientSideError,
-            ToolProviderNotFoundError,
-            ToolNotFoundError,
-            ToolProviderCredentialValidationError,
-        ) as e:
+        except Exception as e:
             session.rollback()
             raise ValueError(str(e))
         return {"result": "success"}
