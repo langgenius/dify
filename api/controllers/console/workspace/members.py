@@ -310,8 +310,6 @@ api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:membe
 api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
 api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
 # owner transfer
-api.add_resource(
-    SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email"
-)
+api.add_resource(SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email")
 api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")
 api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")
