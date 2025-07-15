@@ -231,6 +231,9 @@ class RagPipelineDslService:
                         status=ImportStatus.FAILED,
                         error="Pipeline not found",
                     )
+                dataset = pipeline.dataset
+                if dataset:
+                    dataset_name = dataset.name
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
@@ -285,7 +288,7 @@ class RagPipelineDslService:
                         and dataset.chunk_structure != knowledge_configuration.chunk_structure
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
-                    else:
+                    if not dataset:
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
                             name=name,

@@ -443,21 +443,23 @@ class RagPipelineService:
         repository.save(workflow_node_execution)
 
         # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution = repository.to_db_model(workflow_node_execution)
+        workflow_node_execution_db_model = repository.to_db_model(workflow_node_execution)
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
                 session=session,
                 app_id=pipeline.id,
-                node_id=workflow_node_execution.node_id,
-                node_type=NodeType(workflow_node_execution.node_type),
+                node_id=workflow_node_execution_db_model.node_id,
+                node_type=NodeType(workflow_node_execution_db_model.node_type),
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=workflow_node_execution.id,
             )
-            draft_var_saver.save(process_data=workflow_node_execution.process_data,
-                                 outputs=workflow_node_execution.outputs)
+            draft_var_saver.save(
+                process_data=workflow_node_execution.process_data,
+                outputs=workflow_node_execution.outputs,
+            )
             session.commit()
-        return workflow_node_execution
+        return workflow_node_execution_db_model
 
     def run_datasource_workflow_node(
         self,
