@@ -1,12 +1,9 @@
 from typing import cast
 
 import flask_login
-from flask import request
 from flask_restful import Resource, reqparse
 
-from controllers.console.auth.error import (
-    TokenValidationError,
-)
+from controllers.console.auth.error import TokenValidationError
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
 from models.account import Account
@@ -36,8 +33,10 @@ class MFASetupInitApi(Resource):
                 "secret": setup_data["secret"],
                 "qr_code": setup_data["qr_code"]
             }
-        except Exception as e:
-            return {"error": str(e)}, 500
+        except ValueError as e:
+            return {"error": str(e)}, 400
+        except Exception:
+            return {"error": "An unexpected error occurred"}, 500
 
 
 class MFASetupCompleteApi(Resource):
@@ -60,8 +59,8 @@ class MFASetupCompleteApi(Resource):
             }
         except ValueError as e:
             return {"error": str(e)}, 400
-        except Exception as e:
-            return {"error": str(e)}, 500
+        except Exception:
+            return {"error": "An unexpected error occurred"}, 500
 
 
 class MFADisableApi(Resource):
@@ -84,8 +83,10 @@ class MFADisableApi(Resource):
                 return {"message": "MFA disabled successfully"}
             else:
                 return {"error": "Invalid password"}, 400
-        except Exception as e:
-            return {"error": str(e)}, 500
+        except ValueError as e:
+            return {"error": str(e)}, 400
+        except Exception:
+            return {"error": "An unexpected error occurred"}, 500
 
 
 class MFAStatusApi(Resource):
@@ -98,8 +99,10 @@ class MFAStatusApi(Resource):
         try:
             status = MFAService.get_mfa_status(account)
             return status
-        except Exception as e:
-            return {"error": str(e)}, 500
+        except ValueError as e:
+            return {"error": str(e)}, 400
+        except Exception:
+            return {"error": "An unexpected error occurred"}, 500
 
 
 class MFAVerifyApi(Resource):
@@ -124,5 +127,7 @@ class MFAVerifyApi(Resource):
                 return {"message": "MFA verification successful"}
             else:
                 return {"error": "Invalid MFA token"}, 400
-        except Exception as e:
-            return {"error": str(e)}, 500
+        except ValueError as e:
+            return {"error": str(e)}, 400
+        except Exception:
+            return {"error": "An unexpected error occurred"}, 500

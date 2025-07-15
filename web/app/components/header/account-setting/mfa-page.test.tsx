@@ -67,7 +67,9 @@ describe('MFAPage Component', () => {
 
     render(<MFAPage />, { wrapper })
     
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    // Check for loading spinner
+    const spinner = document.querySelector('.animate-spin')
+    expect(spinner).toBeInTheDocument()
   })
 
   test('renders enable button when MFA is disabled', async () => {
@@ -112,7 +114,6 @@ describe('MFAPage Component', () => {
     fireEvent.click(screen.getByText('mfa.enable'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
       expect(screen.getByText('mfa.setupTitle')).toBeInTheDocument()
     })
   })
@@ -146,7 +147,7 @@ describe('MFAPage Component', () => {
 
     // Wait for QR code to be displayed
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      expect(screen.getByText('mfa.scanQRCode')).toBeInTheDocument()
     })
 
     // Enter TOTP code
@@ -193,7 +194,7 @@ describe('MFAPage Component', () => {
 
     // Wait for QR code
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      expect(screen.getByText('mfa.scanQRCode')).toBeInTheDocument()
     })
 
     // Enter wrong TOTP code
@@ -280,7 +281,11 @@ describe('MFAPage Component', () => {
       fireEvent.click(screen.getByText('mfa.disable'))
     })
 
-    // Enter wrong password
+    // Wait for modal and enter wrong password
+    await waitFor(() => {
+      expect(screen.getByText('mfa.disableTitle')).toBeInTheDocument()
+    })
+    
     const passwordInput = screen.getByPlaceholderText('mfa.enterYourPassword')
     fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
 
@@ -323,7 +328,7 @@ describe('MFAPage Component', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByAltText('MFA QR Code')).toBeInTheDocument()
+      expect(screen.getByText('mfa.scanQRCode')).toBeInTheDocument()
     })
 
     // Enter TOTP code

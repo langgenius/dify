@@ -1,7 +1,7 @@
 import json
 import unittest
-from unittest.mock import Mock, patch
 from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 import pytest
 

@@ -1,0 +1,49 @@
+services:
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    image: dify-api:local-mfa
+    env_file:
+      - .env
+    ports:
+      - "5001:5001"
+  
+  worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    image: dify-api:local-mfa
+    env_file:
+      - .env
+  
+  web:
+    image: node:22-alpine
+    working_dir: /app/web
+    volumes:
+      - ../web:/app/web
+    command: sh -c "npm install -g pnpm && pnpm install && pnpm dev"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
+  
+  db:
+    environment:
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  redis:
+    volumes:
+      - redis_data:/data
+
+  weaviate:
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+volumes:
+  postgres_data:
+  redis_data:
+  weaviate_data:

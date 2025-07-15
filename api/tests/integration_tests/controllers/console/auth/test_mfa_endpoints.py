@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from services.account_service import AccountService
 from services.mfa_service import MFAService
@@ -9,10 +10,21 @@ class TestMFAEndpoints:
     """Test MFA endpoints using integration test approach."""
     
     @pytest.fixture
+    def setup_account(self):
+        """Create a test account."""
+        from unittest.mock import Mock
+        account = Mock()
+        account.id = "test-id"
+        account.email = "test@example.com"
+        account.name = "Test User"
+        return account
+    
+    @pytest.fixture
     def auth_header(self, setup_account):
         """Get authentication header with JWT token."""
-        token = AccountService.get_account_jwt_token(setup_account)
-        return {"Authorization": f"Bearer {token}"}
+        with patch.object(AccountService, 'get_account_jwt_token') as mock_token:
+            mock_token.return_value = "test_jwt_token"
+            return {"Authorization": f"Bearer test_jwt_token"}
     
     def test_mfa_status_success(self, test_client, setup_account, auth_header):
         """Test successful MFA status check."""

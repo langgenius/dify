@@ -1,7 +1,6 @@
 import json
 from unittest import mock
 
-from models.account import Account
 from services.mfa_service import MFAService
 
 
