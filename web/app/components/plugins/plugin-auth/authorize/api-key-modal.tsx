@@ -63,7 +63,7 @@ const ApiKeyModal = ({
       acc[schema.name] = schema.default
     return acc
   }, {} as Record<string, any>)
-  const secretInput = formSchemas.find(schema => schema.type === FormTypeEnum.secretInput)
+  const helpField = formSchemas.find(schema => schema.url && schema.help)
   const renderI18nObject = useRenderI18nObject()
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
@@ -125,13 +125,13 @@ const ApiKeyModal = ({
       onClose={onClose}
       onCancel={onClose}
       footerSlot={
-        secretInput && (
+        helpField && (
           <a
             className='system-xs-regular flex h-8 grow items-center text-text-accent'
-            href={secretInput?.url}
+            href={helpField?.url}
             target='_blank'
           >
-            {renderI18nObject(secretInput?.help as any)}
+            {renderI18nObject(helpField?.help as any)}
             <RiExternalLinkLine className='ml-1 h-3 w-3' />
           </a>
         )
