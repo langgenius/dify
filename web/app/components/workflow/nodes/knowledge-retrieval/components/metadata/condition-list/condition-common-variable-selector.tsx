@@ -9,7 +9,7 @@ import type { VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {
-  variables?: { name: string; type: string }[]
+  variables?: { name: string; type: string; value: string }[]
   value?: string | number
   varType?: VarType
   onChange: (v: string) => void
@@ -24,7 +24,7 @@ const ConditionCommonVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const selected = variables.find(v => v.name === value)
+  const selected = variables.find(v => v.value === value)
   const handleChange = useCallback((v: string) => {
     onChange(v)
     setOpen(false)
@@ -49,7 +49,7 @@ const ConditionCommonVariableSelector = ({
             selected && (
               <div className='system-xs-medium inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-[5px] pr-1.5 text-text-secondary shadow-xs'>
                 <Variable02 className='mr-1 h-3.5 w-3.5 text-text-accent' />
-                {selected.name}
+                {selected.value}
               </div>
             )
           }
@@ -73,12 +73,12 @@ const ConditionCommonVariableSelector = ({
           {
             variables.map(v => (
               <div
-                key={v.name}
+                key={v.value}
                 className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary hover:bg-state-base-hover'
-                onClick={() => handleChange(v.name)}
+                onClick={() => handleChange(v.value)}
               >
                 <Variable02 className='mr-1 h-4 w-4 text-text-accent' />
-                {v.name}
+                {v.value}
               </div>
             ))
           }
