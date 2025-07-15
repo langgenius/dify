@@ -10,7 +10,6 @@ from core.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, ExternalKnowledgeBindings
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
-from tests.unit_tests.conftest import redis_mock
 
 
 class DatasetUpdateTestDataFactory:

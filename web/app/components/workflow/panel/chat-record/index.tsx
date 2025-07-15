@@ -115,6 +115,7 @@ const ChatRecord = () => {
             <Chat
               config={{
                 supportCitationHitInfo: true,
+                questionEditEnable: false,
               } as any}
               chatList={threadChatItems}
               chatContainerClassName='px-3'

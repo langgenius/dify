@@ -9,6 +9,7 @@ from core.file.models import File
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from core.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
+from models.model import EndUser
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 
 
@@ -43,7 +44,7 @@ def test_environment_variables():
     )
 
     # Mock current_user as an EndUser
-    mock_user = mock.Mock()
+    mock_user = mock.Mock(spec=EndUser)
     mock_user.tenant_id = "tenant_id"
 
     with (
@@ -90,7 +91,7 @@ def test_update_environment_variables():
     )
 
     # Mock current_user as an EndUser
-    mock_user = mock.Mock()
+    mock_user = mock.Mock(spec=EndUser)
     mock_user.tenant_id = "tenant_id"
 
     with (
@@ -136,7 +137,7 @@ def test_to_dict():
     # Create some EnvironmentVariable instances
 
     # Mock current_user as an EndUser
-    mock_user = mock.Mock()
+    mock_user = mock.Mock(spec=EndUser)
     mock_user.tenant_id = "tenant_id"
 
     with (

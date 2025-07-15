@@ -10,6 +10,8 @@ export type ToolSliceShape = {
   setCustomTools: (tools: ToolWithProvider[]) => void
   workflowTools: ToolWithProvider[]
   setWorkflowTools: (tools: ToolWithProvider[]) => void
+  mcpTools: ToolWithProvider[]
+  setMcpTools: (tools: ToolWithProvider[]) => void
   toolPublished: boolean
   setToolPublished: (toolPublished: boolean) => void
 }
@@ -21,6 +23,8 @@ export const createToolSlice: StateCreator<ToolSliceShape> = set => ({
   setCustomTools: customTools => set(() => ({ customTools })),
   workflowTools: [],
   setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
+  mcpTools: [],
+  setMcpTools: mcpTools => set(() => ({ mcpTools })),
   toolPublished: false,
   setToolPublished: toolPublished => set(() => ({ toolPublished })),
 })

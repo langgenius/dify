@@ -188,6 +188,7 @@ docker compose up -d
 - [رسم بياني Helm من قبل @magicsong](https://github.com/magicsong/ai-charts)
 - [ملف YAML من قبل @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [ملف YAML من قبل @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 جديد! ملفات YAML (تدعم Dify v1.6.0) بواسطة @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### استخدام Terraform للتوزيع
 

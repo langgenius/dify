@@ -6,13 +6,16 @@ import {
   useIsChatMode,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export type StrategyStatus = {
   plugin: {
@@ -85,11 +88,12 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   })
   const formData = useMemo(() => {
     const paramNameList = (currentStrategy?.parameters || []).map(item => item.name)
-    return Object.fromEntries(
+    const res = Object.fromEntries(
       Object.entries(inputs.agent_parameters || {}).filter(([name]) => paramNameList.includes(name)).map(([key, value]) => {
         return [key, value.value]
       }),
     )
+    return res
   }, [inputs.agent_parameters, currentStrategy?.parameters])
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
@@ -104,6 +108,42 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       agent_parameters: res,
     })
   }
+
+  const formattingToolData = (data: any) => {
+    const settingValues = generateAgentToolValue(data.settings, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form !== 'llm') as any))
+    const paramValues = generateAgentToolValue(data.parameters, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form === 'llm') as any), true)
+    const res = produce(data, (draft: any) => {
+      draft.settings = settingValues
+      draft.parameters = paramValues
+    })
+    return res
+  }
+
+  const formattingLegacyData = () => {
+    if (inputs.version)
+      return inputs
+    const newData = produce(inputs, (draft) => {
+      const schemas = currentStrategy?.parameters || []
+      Object.keys(draft.agent_parameters || {}).forEach((key) => {
+        const targetSchema = schemas.find(schema => schema.name === key)
+        if (targetSchema?.type === FormTypeEnum.toolSelector)
+          draft.agent_parameters![key].value = formattingToolData(draft.agent_parameters![key].value)
+        if (targetSchema?.type === FormTypeEnum.multiToolSelector)
+          draft.agent_parameters![key].value = draft.agent_parameters![key].value.map((tool: any) => formattingToolData(tool))
+      })
+      draft.version = '2'
+    })
+    return newData
+  }
+
+  // formatting legacy data
+  useEffect(() => {
+    if (!currentStrategy)
+      return
+    const newData = formattingLegacyData()
+    setInputs(newData)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStrategy])
 
   // vars
 
@@ -172,6 +212,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     outputSchema,
     handleMemoryChange,
     isChatMode,
+    canChooseMCPTool: isSupportMCP(inputs.meta?.version),
   }
 }
 

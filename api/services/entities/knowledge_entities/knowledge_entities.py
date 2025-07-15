@@ -95,7 +95,7 @@ class WeightKeywordSetting(BaseModel):
 
 
 class WeightModel(BaseModel):
-    weight_type: Optional[str] = None
+    weight_type: Optional[Literal["semantic_first", "keyword_first", "customized"]] = None
     vector_setting: Optional[WeightVectorSetting] = None
     keyword_setting: Optional[WeightKeywordSetting] = None
 

@@ -50,7 +50,6 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
-    CHANNEL = "channel"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -934,7 +933,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    workflow_run_id = db.Column(StringUUID)
+    workflow_run_id: Mapped[str] = db.Column(StringUUID)
 
     @property
     def inputs(self):
@@ -1454,6 +1453,39 @@ class EndUser(Base, UserMixin):
     session_id: Mapped[str] = mapped_column()
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class AppMCPServer(Base):
+    __tablename__ = "app_mcp_servers"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
+        db.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
+        db.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
+    )
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    server_code = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    parameters = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @staticmethod
+    def generate_server_code(n):
+        while True:
+            result = generate_string(n)
+            while db.session.query(AppMCPServer).filter(AppMCPServer.server_code == result).count() > 0:
+                result = generate_string(n)
+
+            return result
+
+    @property
+    def parameters_dict(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.parameters))
 
 
 class Site(Base):

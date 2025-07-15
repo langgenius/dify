@@ -12,6 +12,7 @@ from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 from configs import dify_config
 from dify_app import DifyApp
+from libs.helper import extract_tenant_id
 from models import Account, EndUser
 
 
@@ -24,11 +25,8 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
         if user:
             try:
                 current_span = get_current_span()
-                if isinstance(user, Account) and user.current_tenant_id:
-                    tenant_id = user.current_tenant_id
-                elif isinstance(user, EndUser):
-                    tenant_id = user.tenant_id
-                else:
+                tenant_id = extract_tenant_id(user)
+                if not tenant_id:
                     return
                 if current_span:
                     current_span.set_attribute("service.tenant.id", tenant_id)

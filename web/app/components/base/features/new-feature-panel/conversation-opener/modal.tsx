@@ -130,6 +130,7 @@ const OpeningSettingModal = ({
                 <input
                   type="input"
                   value={question || ''}
+                  placeholder={t('appDebug.openingStatement.openingQuestionPlaceholder') as string}
                   onChange={(e) => {
                     const value = e.target.value
                     setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {

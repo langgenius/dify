@@ -18,6 +18,7 @@ export type AppIconProps = {
   imageUrl?: string | null
   className?: string
   innerIcon?: React.ReactNode
+  coverElement?: React.ReactNode
   onClick?: () => void
 }
 const appIconVariants = cva(
@@ -51,6 +52,7 @@ const AppIcon: FC<AppIconProps> = ({
   imageUrl,
   className,
   innerIcon,
+  coverElement,
   onClick,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
@@ -65,6 +67,7 @@ const AppIcon: FC<AppIconProps> = ({
       ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
       : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
     }
+    {coverElement}
   </span>
 }
 

@@ -16,7 +16,6 @@ export class CustomTextNode extends TextNode {
 
   createDOM(config: EditorConfig) {
     const dom = super.createDOM(config)
-    dom.classList.add('align-middle')
     return dom
   }
 

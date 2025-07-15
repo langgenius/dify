@@ -40,6 +40,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     handleVisionResolutionChange,
     handleVisionResolutionEnabledChange,
     filterVar,
+    handleSortTopic,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -99,6 +100,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             onChange={handleTopicsChange}
             readonly={readOnly}
             filterVar={filterVar}
+            handleSortTopic={handleSortTopic}
           />
         </Field>
         <Split />

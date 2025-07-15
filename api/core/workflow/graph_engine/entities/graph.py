@@ -334,7 +334,7 @@ class Graph(BaseModel):
 
                     parallel = GraphParallel(
                         start_from_node_id=start_node_id,
-                        parent_parallel_id=parent_parallel.id if parent_parallel else None,
+                        parent_parallel_id=parent_parallel_id,
                         parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None,
                     )
                     parallel_mapping[parallel.id] = parallel

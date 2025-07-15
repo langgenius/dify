@@ -1,5 +1,5 @@
 import { del, get, patch, post, put } from './base'
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -21,6 +21,16 @@ export const useAppWorkflow = (appID: string) => {
     queryKey: [NAME_SPACE, 'publish', appID],
     queryFn: () => get<FetchWorkflowDraftResponse>(`/apps/${appID}/workflows/publish`),
   })
+}
+
+export const useInvalidateAppWorkflow = () => {
+  const queryClient = useQueryClient()
+  return (appID: string) => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: [NAME_SPACE, 'publish', appID],
+      })
+  }
 }
 
 export const useWorkflowConfig = (appId: string, onSuccess: (v: WorkflowConfigResponse) => void) => {

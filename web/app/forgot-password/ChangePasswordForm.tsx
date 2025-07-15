@@ -11,8 +11,7 @@ import Button from '@/app/components/base/button'
 import { changePasswordWithToken, verifyForgotPasswordToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+import { validPassword } from '@/config'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()

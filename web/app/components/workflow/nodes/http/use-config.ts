@@ -141,6 +141,13 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleSSLVerifyChange = useCallback((checked: boolean) => {
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.ssl_verify = checked
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     isDataReady,
@@ -164,6 +171,8 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     toggleIsParamKeyValueEdit,
     // body
     setBody,
+    // ssl verify
+    handleSSLVerifyChange,
     // authorization
     isShowAuthorization,
     showAuthorization,

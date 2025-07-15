@@ -9,8 +9,7 @@ import Button from '@/app/components/base/button'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
-
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+import { validPassword } from '@/config'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()

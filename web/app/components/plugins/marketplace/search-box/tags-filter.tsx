@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import {
-  RiArrowDownSLine,
-  RiCloseCircleFill,
-  RiFilter3Line,
+  RiPriceTag3Line,
 } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -57,47 +55,15 @@ const TagsFilter = ({
         onClick={() => setOpen(v => !v)}
       >
         <div className={cn(
-          'flex cursor-pointer items-center rounded-lg text-text-tertiary hover:bg-state-base-hover',
-          size === 'large' && 'h-8 px-2 py-1',
-          size === 'small' && 'h-7 py-0.5 pl-1 pr-1.5 ',
-          selectedTagsLength && 'text-text-secondary',
-          open && 'bg-state-base-hover',
+          'ml-0.5 mr-1.5 flex  items-center text-text-tertiary ',
+          size === 'large' && 'h-8 py-1',
+          size === 'small' && 'h-7 py-0.5 ',
+          // selectedTagsLength && 'text-text-secondary',
+          // open && 'bg-state-base-hover',
         )}>
-          <div className='p-0.5'>
-            <RiFilter3Line className='h-4 w-4' />
+          <div className='cursor-pointer rounded-md p-0.5 hover:bg-state-base-hover'>
+            <RiPriceTag3Line className='h-4 w-4 text-text-tertiary' />
           </div>
-          <div className={cn(
-            'system-sm-medium flex items-center p-1',
-            size === 'large' && 'p-1',
-            size === 'small' && 'px-0.5 py-1',
-          )}>
-            {
-              !selectedTagsLength && t('pluginTags.allTags')
-            }
-            {
-              !!selectedTagsLength && tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')
-            }
-            {
-              selectedTagsLength > 2 && (
-                <div className='system-xs-medium ml-1 text-text-tertiary'>
-                  +{selectedTagsLength - 2}
-                </div>
-              )
-            }
-          </div>
-          {
-            !!selectedTagsLength && (
-              <RiCloseCircleFill
-                className='h-4 w-4 cursor-pointer text-text-quaternary'
-                onClick={() => onTagsChange([])}
-              />
-            )
-          }
-          {
-            !selectedTagsLength && (
-              <RiArrowDownSLine className='h-4 w-4' />
-            )
-          }
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>

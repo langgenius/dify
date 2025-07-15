@@ -28,6 +28,7 @@ import type { IfElseNodeType } from '../nodes/if-else/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
+import type { ToolNodeType } from '../nodes/tool/types'
 import {
   getIterationStartNode,
   getLoopStartNode,
@@ -276,11 +277,30 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
     if (node.data.type === BlockEnum.ParameterExtractor)
       (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {
         retry_enabled: true,
         max_retries: DEFAULT_RETRY_MAX,
         retry_interval: DEFAULT_RETRY_INTERVAL,
+      }
+    }
+
+    if (node.data.type === BlockEnum.Tool && !(node as Node<ToolNodeType>).data.version) {
+      (node as Node<ToolNodeType>).data.version = '2'
+
+      const toolConfigurations = (node as Node<ToolNodeType>).data.tool_configurations
+      if (toolConfigurations && Object.keys(toolConfigurations).length > 0) {
+        const newValues = { ...toolConfigurations }
+        Object.keys(toolConfigurations).forEach((key) => {
+          if (typeof toolConfigurations[key] !== 'object' || toolConfigurations[key] === null) {
+            newValues[key] = {
+              type: 'constant',
+              value: toolConfigurations[key],
+            }
+          }
+        });
+        (node as Node<ToolNodeType>).data.tool_configurations = newValues
       }
     }
 

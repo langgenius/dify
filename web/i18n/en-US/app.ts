@@ -175,8 +175,8 @@ const translation = {
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
     },
     aliyun: {
-      title: 'LLM observability',
-      description: 'The SaaS observability platform provided by Alibaba Cloud enables out of box monitoring, tracing, and evaluation of Dify applications.',
+      title: 'Cloud Monitor',
+      description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
     inUse: 'In use',
     configProvider: {

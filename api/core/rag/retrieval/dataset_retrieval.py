@@ -9,6 +9,7 @@ from typing import Any, Optional, Union, cast
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -598,7 +599,8 @@ class DatasetRetrieval:
         metadata_condition: Optional[MetadataCondition] = None,
     ):
         with flask_app.app_context():
-            dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+            with Session(db.engine) as session:
+                dataset = session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
             if not dataset:
                 return []

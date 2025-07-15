@@ -10,7 +10,8 @@ from services.workflow_service import WorkflowService
 class TestWorkflowService:
     @pytest.fixture
     def workflow_service(self):
-        return WorkflowService()
+        mock_session_maker = MagicMock()
+        return WorkflowService(mock_session_maker)
 
     @pytest.fixture
     def mock_app(self):

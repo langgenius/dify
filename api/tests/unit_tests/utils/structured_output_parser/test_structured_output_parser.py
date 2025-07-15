@@ -27,11 +27,11 @@ def create_mock_usage(prompt_tokens: int = 10, completion_tokens: int = 5) -> LL
     return LLMUsage(
         prompt_tokens=prompt_tokens,
         prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal("1"),
+        prompt_price_unit=Decimal(1),
         prompt_price=Decimal(str(prompt_tokens)) * Decimal("0.001"),
         completion_tokens=completion_tokens,
         completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal("1"),
+        completion_price_unit=Decimal(1),
         completion_price=Decimal(str(completion_tokens)) * Decimal("0.002"),
         total_tokens=prompt_tokens + completion_tokens,
         total_price=Decimal(str(prompt_tokens)) * Decimal("0.001") + Decimal(str(completion_tokens)) * Decimal("0.002"),

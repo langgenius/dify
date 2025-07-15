@@ -8,7 +8,7 @@ const Placeholder = ({
   className,
 }: {
   compact?: boolean
-  value?: string
+  value?: string | JSX.Element
   className?: string
 }) => {
   const { t } = useTranslation()

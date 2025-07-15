@@ -40,6 +40,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
+  fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
 import { CollectionType } from '@/app/components/tools/types'
@@ -445,6 +446,13 @@ export const useFetchToolsData = () => {
         workflowTools: workflowTools || [],
       })
     }
+    if(type === 'mcp') {
+      const mcpTools = await fetchAllMCPTools()
+
+      workflowStore.setState({
+        mcpTools: mcpTools || [],
+      })
+    }
   }, [workflowStore])
 
   return {
@@ -491,6 +499,8 @@ export const useToolIcon = (data: Node['data']) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+
   const toolIcon = useMemo(() => {
     if(!data)
       return ''
@@ -500,11 +510,13 @@ export const useToolIcon = (data: Node['data']) => {
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
+      else if (data.provider_type === CollectionType.mcp)
+        targetTools = mcpTools
       else
         targetTools = workflowTools
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
-  }, [data, buildInTools, customTools, workflowTools])
+  }, [data, buildInTools, customTools, mcpTools, workflowTools])
 
   return toolIcon
 }

@@ -196,6 +196,7 @@ Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có 
 - [Helm Chart bởi @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Tệp YAML bởi @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Tệp YAML bởi @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 MỚI! Tệp YAML (Hỗ trợ Dify v1.6.0) bởi @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Sử dụng Terraform để Triển khai
 

@@ -179,6 +179,7 @@ const translation = {
       title: 'Tkaj',
       description: 'Weave to platforma open-source do oceny, testowania i monitorowania aplikacji LLM.',
     },
+    aliyun: {},
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',

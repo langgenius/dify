@@ -23,7 +23,7 @@ export type Props = {
   value?: string | object
   placeholder?: React.JSX.Element | string
   onChange?: (value: string) => void
-  title?: React.JSX.Element
+  title?: string | React.JSX.Element
   language: CodeLanguage
   headerRight?: React.JSX.Element
   readOnly?: boolean

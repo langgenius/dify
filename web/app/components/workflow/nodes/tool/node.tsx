@@ -21,14 +21,14 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
             <div title={key} className='max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary'>
               {key}
             </div>
-            {typeof tool_configurations[key] === 'string' && (
+            {typeof tool_configurations[key].value === 'string' && (
               <div title={tool_configurations[key]} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
-                {paramSchemas?.find(i => i.name === key)?.type === FormTypeEnum.secretInput ? '********' : tool_configurations[key]}
+                {paramSchemas?.find(i => i.name === key)?.type === FormTypeEnum.secretInput ? '********' : tool_configurations[key].value}
               </div>
             )}
-            {typeof tool_configurations[key] === 'number' && (
+            {typeof tool_configurations[key].value === 'number' && (
               <div title={tool_configurations[key].toString()} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
-                {tool_configurations[key]}
+                {tool_configurations[key].value}
               </div>
             )}
             {typeof tool_configurations[key] !== 'string' && tool_configurations[key]?.type === FormTypeEnum.modelSelector && (
@@ -36,11 +36,6 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
                 {tool_configurations[key].model}
               </div>
             )}
-            {/* {typeof tool_configurations[key] !== 'string' && tool_configurations[key]?.type === FormTypeEnum.appSelector && (
-              <div title={tool_configurations[key].app_id} className='grow w-0 shrink-0 truncate text-right text-xs font-normal text-gray-700'>
-                {tool_configurations[key].app_id}
-              </div>
-            )} */}
           </div>
 
         ))}

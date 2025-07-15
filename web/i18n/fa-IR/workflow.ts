@@ -129,6 +129,8 @@ const translation = {
       value: 'مقدار',
       valuePlaceholder: 'مقدار متغیر',
       secretTip: 'برای تعریف اطلاعات حساس یا داده‌ها، با تنظیمات DSL برای جلوگیری از نشت پیکربندی شده است.',
+      description: 'توضیحات',
+      descriptionPlaceholder: 'متغیر را توصیف کنید',
     },
     export: {
       title: 'آیا متغیرهای محیطی مخفی را صادر کنید؟',
@@ -362,6 +364,7 @@ const translation = {
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'الزامی',
@@ -536,6 +539,10 @@ const translation = {
       curl: {
         title: 'وارد کردن از cURL',
         placeholder: 'رشته cURL را اینجا بچسبانید',
+      },
+      verifySSL: {
+        title: 'گواهی SSL را تأیید کنید',
+        warningTooltip: 'غیرفعال کردن تأیید SSL برای محیط‌های تولید توصیه نمی‌شود. این فقط باید در توسعه یا آزمایش استفاده شود، زیرا این کار اتصال را در معرض تهدیدات امنیتی مانند حملات میانی قرار می‌دهد.',
       },
     },
     code: {
