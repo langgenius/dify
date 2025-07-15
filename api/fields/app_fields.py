@@ -175,6 +175,7 @@ app_detail_fields_with_site = {
     "site": fields.Nested(site_fields),
     "api_base_url": fields.String,
     "use_icon_as_answer_icon": fields.Boolean,
+    "max_active_requests": fields.Integer,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
