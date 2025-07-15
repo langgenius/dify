@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 16pt;
+            color: #101828;
+            background-color: #e9ebf0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 600px;
+            height: 360px;
+            margin: 40px auto;
+            padding: 36px 48px;
+            background-color: #fcfcfd;
+            border-radius: 16px;
+            border: 1px solid #ffffff;
+            box-shadow: 0 2px 4px -2px rgba(9, 9, 11, 0.08);
+        }
+
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header img {
+            max-width: 100px;
+            height: auto;
+        }
+
+        .title {
+            font-weight: 600;
+            font-size: 24px;
+            line-height: 28.8px;
+        }
+
+        .description {
+            font-size: 13px;
+            line-height: 16px;
+            color: #676f83;
+            margin-top: 12px;
+        }
+
+        .code-content {
+            padding: 16px 32px;
+            text-align: center;
+            border-radius: 16px;
+            background-color: #f2f4f7;
+            margin: 16px auto;
+        }
+
+        .code {
+            line-height: 36px;
+            font-weight: 700;
+            font-size: 30px;
+        }
+
+        .tips {
+            line-height: 16px;
+            color: #676f83;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <p class="title">验证您的工作空间所有权转移请求</p>
+        <p class="description">我们收到了将您的工作空间“{{WorkspaceName}}”的所有权转移的请求。
+
+            为了确认此操作，请使用以下验证码。
+            此验证码仅在5分钟内有效：</p>
+        <div class="code-content">
+            <span class="code">{{code}}</span>
+        </div>
+        <p class="tips">请注意：所有权转移一旦确认将立即生效且无法撤销。
+
+            您将成为管理员成员，新的所有者将拥有工作空间的完全控制权。如果您没有发起此请求，请忽略此邮件或立即联系客服。
+        </p>
+    </div>
+</body>
+
+</html>
