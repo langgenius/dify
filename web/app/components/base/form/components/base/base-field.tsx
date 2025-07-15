@@ -87,7 +87,7 @@ const BaseField = ({
       <div className={cn(labelClassName, formLabelClassName)}>
         {memorizedLabel}
         {
-          required && (
+          required && !isValidElement(label) && (
             <span className='ml-1 text-text-destructive-secondary'>*</span>
           )
         }

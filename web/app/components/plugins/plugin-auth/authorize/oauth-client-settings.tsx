@@ -4,10 +4,16 @@ import {
   useRef,
   useState,
 } from 'react'
+import {
+  useForm,
+  useStore,
+} from '@tanstack/react-form'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal/modal'
 import {
+  useDeletePluginOAuthCustomClientHook,
   useInvalidPluginCredentialInfoHook,
+  useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 import type { PluginPayload } from '../types'
@@ -17,6 +23,7 @@ import type {
   FormSchema,
 } from '@/app/components/base/form/types'
 import { useToastContext } from '@/app/components/base/toast'
+import Button from '@/app/components/base/button'
 
 type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -25,6 +32,7 @@ type OAuthClientSettingsProps = {
   disabled?: boolean
   schemas: FormSchema[]
   onAuth?: () => Promise<void>
+  hasOriginalClientParams?: boolean
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -33,6 +41,7 @@ const OAuthClientSettings = ({
   disabled,
   schemas,
   onAuth,
+  hasOriginalClientParams,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -48,7 +57,8 @@ const OAuthClientSettings = ({
     return acc
   }, {} as Record<string, any>)
   const { mutateAsync: setPluginOAuthCustomClient } = useSetPluginOAuthCustomClientHook(pluginPayload)
-  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
+  const invalidPluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
+  const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
@@ -80,18 +90,42 @@ const OAuthClientSettings = ({
       })
 
       onClose?.()
-      invalidatePluginCredentialInfo()
+      invalidPluginCredentialInfo()
+      invalidPluginOAuthClientSchema()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [onClose, invalidatePluginCredentialInfo, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  }, [onClose, invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()
     if (onAuth)
       await onAuth()
   }, [handleConfirm, onAuth])
+  const { mutateAsync: deletePluginOAuthCustomClient } = useDeletePluginOAuthCustomClientHook(pluginPayload)
+  const handleRemove = useCallback(async () => {
+    if (doingActionRef.current)
+      return
+
+    try {
+      handleSetDoingAction(true)
+      await deletePluginOAuthCustomClient()
+      notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      invalidPluginCredentialInfo()
+      invalidPluginOAuthClientSchema()
+    }
+    finally {
+      handleSetDoingAction(false)
+    }
+  }, [invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  const form = useForm({
+    defaultValues: editValues || defaultValues,
+  })
+  const __oauth_client__ = useStore(form.store, s => s.values.__oauth_client__)
   return (
     <Modal
       title={t('plugin.auth.oauthClientSettings')}
@@ -105,8 +139,23 @@ const OAuthClientSettings = ({
       onCancel={handleConfirm}
       onConfirm={handleConfirmAndAuthorize}
       disabled={disabled || doingAction}
+      footerSlot={
+        __oauth_client__ === 'custom' && hasOriginalClientParams && (
+          <div className='grow'>
+            <Button
+              variant='secondary'
+              className='text-components-button-destructive-secondary-text'
+              disabled={disabled || doingAction || !editValues}
+              onClick={handleRemove}
+            >
+              {t('common.operation.remove')}
+            </Button>
+          </div>
+        )
+      }
     >
       <AuthForm
+        formFromProps={form}
         ref={formRef}
         formSchemas={schemas}
         defaultValues={editValues || defaultValues}

@@ -20,6 +20,7 @@ export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayl
       getOauthClientSchema: `/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`,
       setCustomOauthClient: `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,
       getCustomOAuthClientValues: `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,
+      deleteCustomOAuthClient: `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,
     }
   }
 
@@ -35,5 +36,6 @@ export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayl
     getOauthClientSchema: '',
     setCustomOauthClient: '',
     getCustomOAuthClientValues: '',
+    deleteCustomOAuthClient: '',
   }
 }

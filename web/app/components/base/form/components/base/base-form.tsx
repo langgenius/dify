@@ -5,6 +5,7 @@ import {
 } from 'react'
 import type {
   AnyFieldApi,
+  AnyFormApi,
 } from '@tanstack/react-form'
 import { useForm } from '@tanstack/react-form'
 import type {
@@ -29,6 +30,7 @@ export type BaseFormProps = {
   formClassName?: string
   ref?: FormRef
   disabled?: boolean
+  formFromProps?: AnyFormApi
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -41,10 +43,12 @@ const BaseForm = ({
   inputClassName,
   ref,
   disabled,
+  formFromProps,
 }: BaseFormProps) => {
-  const form = useForm({
+  const formFromHook = useForm({
     defaultValues,
   })
+  const form: any = formFromProps || formFromHook
   const { getFormValues } = useGetFormValues(form)
   const { getValidators } = useGetValidators()
 
@@ -102,10 +106,6 @@ const BaseForm = ({
   return (
     <form
       className={cn(formClassName)}
-      onSubmit={(e) => {
-        e.preventDefault()
-        form?.handleSubmit()
-      }}
     >
       {formSchemas.map(renderFieldWrapper)}
     </form>

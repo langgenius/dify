@@ -2,9 +2,9 @@ import threading
 from collections.abc import Sequence
 from typing import Optional
 
+from sqlalchemy.orm import sessionmaker
+
 import contexts
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import (
@@ -15,10 +15,18 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
-from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 class WorkflowRunService:
+    def __init__(self):
+        """Initialize WorkflowRunService with repository dependencies."""
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
     def get_paginate_advanced_chat_workflow_runs(self, app_model: App, args: dict) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
@@ -62,44 +70,15 @@ class WorkflowRunService:
         :param args: request args
         """
         limit = int(args.get("limit", 20))
+        last_id = args.get("last_id")
 
-        base_query = db.session.query(WorkflowRun).filter(
-            WorkflowRun.tenant_id == app_model.tenant_id,
-            WorkflowRun.app_id == app_model.id,
-            WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value,
+        return self._workflow_run_repo.get_paginated_workflow_runs(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            limit=limit,
+            last_id=last_id,
         )
-
-        if args.get("last_id"):
-            last_workflow_run = base_query.filter(
-                WorkflowRun.id == args.get("last_id"),
-            ).first()
-
-            if not last_workflow_run:
-                raise ValueError("Last workflow run not exists")
-
-            workflow_runs = (
-                base_query.filter(
-                    WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
-                )
-                .order_by(WorkflowRun.created_at.desc())
-                .limit(limit)
-                .all()
-            )
-        else:
-            workflow_runs = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
-
-        has_more = False
-        if len(workflow_runs) == limit:
-            current_page_first_workflow_run = workflow_runs[-1]
-            rest_count = base_query.filter(
-                WorkflowRun.created_at < current_page_first_workflow_run.created_at,
-                WorkflowRun.id != current_page_first_workflow_run.id,
-            ).count()
-
-            if rest_count > 0:
-                has_more = True
-
-        return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
     def get_workflow_run(self, app_model: App, run_id: str) -> Optional[WorkflowRun]:
         """
@@ -108,17 +87,11 @@ class WorkflowRunService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        workflow_run = (
-            db.session.query(WorkflowRun)
-            .filter(
-                WorkflowRun.tenant_id == app_model.tenant_id,
-                WorkflowRun.app_id == app_model.id,
-                WorkflowRun.id == run_id,
-            )
-            .first()
+        return self._workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_id=run_id,
         )
-
-        return workflow_run
 
     def get_workflow_run_node_executions(
         self,
@@ -137,17 +110,13 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine,
-            user=user,
+        # Get tenant_id from user
+        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("User tenant_id cannot be None")
+
+        return self._node_execution_service_repo.get_executions_by_workflow_run(
+            tenant_id=tenant_id,
             app_id=app_model.id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            workflow_run_id=run_id,
         )
-
-        # Use the repository to get the database models directly
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        workflow_node_executions = repository.get_db_models_by_workflow_run(
-            workflow_run_id=run_id, order_config=order_config
-        )
-
-        return workflow_node_executions
