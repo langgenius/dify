@@ -2,7 +2,7 @@ import uuid
 
 
 def is_valid_uuid(uuid_str: str | None) -> bool:
-    if uuid_str is None:
+    if uuid_str is None or len(uuid_str) == 0:
         return False
     try:
 
