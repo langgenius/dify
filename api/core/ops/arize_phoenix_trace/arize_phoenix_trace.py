@@ -142,9 +142,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        if trace_info.message_data is None:
-            return
-
         workflow_metadata = {
             "workflow_id": trace_info.workflow_run_id or "",
             "message_id": trace_info.message_id or "",
