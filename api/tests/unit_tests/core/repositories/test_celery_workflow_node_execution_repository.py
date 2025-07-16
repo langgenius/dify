@@ -1,0 +1,308 @@
+"""
+Unit tests for CeleryWorkflowNodeExecutionRepository.
+
+These tests verify the Celery-based asynchronous storage functionality
+for workflow node execution data.
+"""
+
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
+from uuid import uuid4
+
+import pytest
+from celery.result import AsyncResult
+
+from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionStatus,
+)
+from core.workflow.nodes.enums import NodeType
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from models import Account, EndUser
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+
+@pytest.fixture
+def mock_session_factory():
+    """Mock SQLAlchemy session factory."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    # Create a real sessionmaker with in-memory SQLite for testing
+    engine = create_engine("sqlite:///:memory:")
+    return sessionmaker(bind=engine)
+
+
+@pytest.fixture
+def mock_account():
+    """Mock Account user."""
+    account = Mock(spec=Account)
+    account.id = str(uuid4())
+    account.current_tenant_id = str(uuid4())
+    return account
+
+
+@pytest.fixture
+def mock_end_user():
+    """Mock EndUser."""
+    user = Mock(spec=EndUser)
+    user.id = str(uuid4())
+    user.tenant_id = str(uuid4())
+    return user
+
+
+@pytest.fixture
+def sample_workflow_node_execution():
+    """Sample WorkflowNodeExecution for testing."""
+    return WorkflowNodeExecution(
+        id=str(uuid4()),
+        node_execution_id=str(uuid4()),
+        workflow_id=str(uuid4()),
+        workflow_execution_id=str(uuid4()),
+        index=1,
+        node_id="test_node",
+        node_type=NodeType.START,
+        title="Test Node",
+        inputs={"input1": "value1"},
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+
+
+class TestCeleryWorkflowNodeExecutionRepository:
+    """Test cases for CeleryWorkflowNodeExecutionRepository."""
+
+    def test_init_with_sessionmaker(self, mock_session_factory, mock_account):
+        """Test repository initialization with sessionmaker."""
+        app_id = "test-app-id"
+        triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id=app_id,
+            triggered_from=triggered_from,
+        )
+
+        assert repo._tenant_id == mock_account.current_tenant_id
+        assert repo._app_id == app_id
+        assert repo._triggered_from == triggered_from
+        assert repo._creator_user_id == mock_account.id
+        assert repo._async_timeout == 30  # default timeout
+
+    def test_init_with_custom_timeout(self, mock_session_factory, mock_account):
+        """Test repository initialization with custom timeout."""
+        custom_timeout = 60
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            async_timeout=custom_timeout,
+        )
+
+        assert repo._async_timeout == custom_timeout
+
+    def test_init_with_end_user(self, mock_session_factory, mock_end_user):
+        """Test repository initialization with EndUser."""
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_end_user,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        assert repo._tenant_id == mock_end_user.tenant_id
+
+    def test_init_without_tenant_id_raises_error(self, mock_session_factory):
+        """Test that initialization fails without tenant_id."""
+        user = Mock()
+        user.current_tenant_id = None
+        user.tenant_id = None
+
+        with pytest.raises(ValueError, match="User must have a tenant_id"):
+            CeleryWorkflowNodeExecutionRepository(
+                session_factory=mock_session_factory,
+                user=user,
+                app_id="test-app",
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            )
+
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_save_queues_celery_task(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        """Test that save operation queues a Celery task."""
+        mock_result = Mock(spec=AsyncResult)
+        mock_task.delay.return_value = mock_result
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        repo.save(sample_workflow_node_execution)
+
+        # Verify Celery task was queued with correct parameters
+        mock_task.delay.assert_called_once()
+        call_args = mock_task.delay.call_args[1]
+
+        assert call_args["execution_data"] == sample_workflow_node_execution.model_dump()
+        assert call_args["tenant_id"] == mock_account.current_tenant_id
+        assert call_args["app_id"] == "test-app"
+        assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        assert call_args["creator_user_id"] == mock_account.id
+
+        # Verify task result is stored for tracking
+        assert sample_workflow_node_execution.id in repo._pending_saves
+        assert repo._pending_saves[sample_workflow_node_execution.id] == mock_result
+
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_save_handles_celery_failure(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        """Test that save operation handles Celery task failures."""
+        mock_task.delay.side_effect = Exception("Celery is down")
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        with pytest.raises(Exception, match="Celery is down"):
+            repo.save(sample_workflow_node_execution)
+
+
+    @patch(
+        "core.repositories.celery_workflow_node_execution_repository.get_workflow_node_executions_by_workflow_run_task"
+    )
+    def test_get_by_workflow_run(self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution):
+        """Test that get_by_workflow_run retrieves all executions for a workflow run."""
+        executions_data = [sample_workflow_node_execution.model_dump()]
+        mock_result = Mock(spec=AsyncResult)
+        mock_result.get.return_value = executions_data
+        mock_task.delay.return_value = mock_result
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        workflow_run_id = sample_workflow_node_execution.workflow_execution_id
+        order_config = OrderConfig(order_by=["index"], order_direction="asc")
+
+        result = repo.get_by_workflow_run(workflow_run_id, order_config)
+
+        # Verify Celery task was queued with correct parameters
+        mock_task.delay.assert_called_once_with(
+            workflow_run_id=workflow_run_id,
+            tenant_id=mock_account.current_tenant_id,
+            app_id="test-app",
+            order_config={"order_by": order_config.order_by, "order_direction": order_config.order_direction},
+        )
+
+        # Verify results were properly deserialized
+        assert len(result) == 1
+        assert result[0].id == sample_workflow_node_execution.id
+
+    @patch(
+        "core.repositories.celery_workflow_node_execution_repository.get_workflow_node_executions_by_workflow_run_task"
+    )
+    def test_get_by_workflow_run_without_order_config(self, mock_task, mock_session_factory, mock_account):
+        """Test get_by_workflow_run without order configuration."""
+        mock_result = Mock(spec=AsyncResult)
+        mock_result.get.return_value = []
+        mock_task.delay.return_value = mock_result
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        result = repo.get_by_workflow_run("workflow-run-id")
+
+        # Verify order_config was passed as None
+        call_args = mock_task.delay.call_args[1]
+        assert call_args["order_config"] is None
+
+        assert len(result) == 0
+
+
+    def test_wait_for_pending_saves(self, mock_session_factory, mock_account):
+        """Test waiting for all pending save operations."""
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        # Add some mock pending saves
+        mock_result1 = Mock(spec=AsyncResult)
+        mock_result1.ready.return_value = False
+        mock_result2 = Mock(spec=AsyncResult)
+        mock_result2.ready.return_value = True
+
+        repo._pending_saves["exec1"] = mock_result1
+        repo._pending_saves["exec2"] = mock_result2
+
+        repo.wait_for_pending_saves(timeout=10)
+
+        # Verify that non-ready task was waited for
+        mock_result1.get.assert_called_once_with(timeout=10)
+
+        # Verify pending saves were cleared
+        assert len(repo._pending_saves) == 0
+
+    def test_get_pending_save_count(self, mock_session_factory, mock_account):
+        """Test getting the count of pending save operations."""
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        # Add some mock pending saves
+        mock_result1 = Mock(spec=AsyncResult)
+        mock_result1.ready.return_value = False
+        mock_result2 = Mock(spec=AsyncResult)
+        mock_result2.ready.return_value = True
+
+        repo._pending_saves["exec1"] = mock_result1
+        repo._pending_saves["exec2"] = mock_result2
+
+        count = repo.get_pending_save_count()
+
+        # Should clean up completed tasks and return count of remaining
+        assert count == 1
+        assert "exec1" in repo._pending_saves
+        assert "exec2" not in repo._pending_saves
+
+    def test_clear_pending_saves(self, mock_session_factory, mock_account):
+        """Test clearing all pending save operations."""
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        # Add some mock pending saves
+        repo._pending_saves["exec1"] = Mock(spec=AsyncResult)
+        repo._pending_saves["exec2"] = Mock(spec=AsyncResult)
+
+        repo.clear_pending_saves()
+
+        assert len(repo._pending_saves) == 0
+

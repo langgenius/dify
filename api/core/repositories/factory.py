@@ -158,16 +158,30 @@ class DifyCoreRepositoryFactory:
         try:
             repository_class = cls._import_class(class_path)
             cls._validate_repository_interface(repository_class, WorkflowExecutionRepository)
-            cls._validate_constructor_signature(
-                repository_class, ["session_factory", "user", "app_id", "triggered_from"]
-            )
 
-            return repository_class(  # type: ignore[no-any-return]
-                session_factory=session_factory,
-                user=user,
-                app_id=app_id,
-                triggered_from=triggered_from,
-            )
+            # Check if this is a Celery repository that needs async_timeout
+            is_celery_repo = "celery" in class_path.lower()
+            if is_celery_repo:
+                cls._validate_constructor_signature(
+                    repository_class, ["session_factory", "user", "app_id", "triggered_from", "async_timeout"]
+                )
+                return repository_class(  # type: ignore[no-any-return]
+                    session_factory=session_factory,
+                    user=user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                    async_timeout=dify_config.CELERY_REPOSITORY_ASYNC_TIMEOUT,
+                )
+            else:
+                cls._validate_constructor_signature(
+                    repository_class, ["session_factory", "user", "app_id", "triggered_from"]
+                )
+                return repository_class(  # type: ignore[no-any-return]
+                    session_factory=session_factory,
+                    user=user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                )
         except RepositoryImportError:
             # Re-raise our custom errors as-is
             raise
@@ -204,16 +218,30 @@ class DifyCoreRepositoryFactory:
         try:
             repository_class = cls._import_class(class_path)
             cls._validate_repository_interface(repository_class, WorkflowNodeExecutionRepository)
-            cls._validate_constructor_signature(
-                repository_class, ["session_factory", "user", "app_id", "triggered_from"]
-            )
 
-            return repository_class(  # type: ignore[no-any-return]
-                session_factory=session_factory,
-                user=user,
-                app_id=app_id,
-                triggered_from=triggered_from,
-            )
+            # Check if this is a Celery repository that needs async_timeout
+            is_celery_repo = "celery" in class_path.lower()
+            if is_celery_repo:
+                cls._validate_constructor_signature(
+                    repository_class, ["session_factory", "user", "app_id", "triggered_from", "async_timeout"]
+                )
+                return repository_class(  # type: ignore[no-any-return]
+                    session_factory=session_factory,
+                    user=user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                    async_timeout=dify_config.CELERY_REPOSITORY_ASYNC_TIMEOUT,
+                )
+            else:
+                cls._validate_constructor_signature(
+                    repository_class, ["session_factory", "user", "app_id", "triggered_from"]
+                )
+                return repository_class(  # type: ignore[no-any-return]
+                    session_factory=session_factory,
+                    user=user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                )
         except RepositoryImportError:
             # Re-raise our custom errors as-is
             raise
