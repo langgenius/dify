@@ -15,13 +15,13 @@ const Conversion = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
-  const invalidDatasetDetail = useInvalid([datasetDetailQueryKeyPrefix, datasetId])
+  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
   const handleConvert = useCallback(() => {
     convert(datasetId as string, {
       onSuccess: (res) => {
         if (res.status === 'success') {
           Toast.notify({
-            type: 'error',
+            type: 'success',
             message: t('datasetPipeline.conversion.successMessage'),
           })
           setShowConfirmModal(false)
