@@ -193,12 +193,14 @@ def init_app(app: DifyApp):
                 insecure=True,
             )
         else:
+            headers = {"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"} if dify_config.OTLP_API_KEY else None
+
             trace_endpoint = dify_config.OTLP_TRACE_ENDPOINT
             if not trace_endpoint:
                 trace_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/traces"
             exporter = HTTPSpanExporter(
                 endpoint=trace_endpoint,
-                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+                headers=headers,
             )
 
             metric_endpoint = dify_config.OTLP_METRIC_ENDPOINT
@@ -206,7 +208,7 @@ def init_app(app: DifyApp):
                 metric_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/traces"
             metric_exporter = HTTPMetricExporter(
                 endpoint=metric_endpoint,
-                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+                headers=headers,
             )
     else:
         exporter = ConsoleSpanExporter()
