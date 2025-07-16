@@ -108,16 +108,16 @@ class RagPipelineTransformService:
         elif doc_form == "hierarchical_model":
             match datasource_type:
                 case "upload_file":
-                    # get graph from transform.file-parent-child.yml
-                    with open(f"{Path(__file__).parent}/transform/file-parent-child.yml") as f:
+                    # get graph from transform.file-parentchild.yml
+                    with open(f"{Path(__file__).parent}/transform/file-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case "notion_import":
-                    # get graph from transform.notion-parent-child.yml
-                    with open(f"{Path(__file__).parent}/transform/notion-parent-child.yml") as f:
+                    # get graph from transform.notion-parentchild.yml
+                    with open(f"{Path(__file__).parent}/transform/notion-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case "website_crawl":
-                    # get graph from transform.website-crawl-parent-child.yml
-                    with open(f"{Path(__file__).parent}/transform/website-crawl-parent-child.yml") as f:
+                    # get graph from transform.website-crawl-parentchild.yml
+                    with open(f"{Path(__file__).parent}/transform/website-crawl-parentchild.yml") as f:
                         pipeline_yaml = yaml.safe_load(f)
                 case _:
                     raise ValueError("Unsupported datasource type")
@@ -142,10 +142,11 @@ class RagPipelineTransformService:
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
-        retrieval_setting = RetrievalSetting(**retrieval_model)
-        if indexing_technique == "economy":
-            retrieval_setting.search_method = "keyword_search"
-        knowledge_configuration.retrieval_model = retrieval_setting
+        if retrieval_model:
+            retrieval_setting = RetrievalSetting(**retrieval_model)
+            if indexing_technique == "economy":
+                retrieval_setting.search_method = "keyword_search"
+            knowledge_configuration.retrieval_model = retrieval_setting
 
         return knowledge_configuration.model_dump()
 
