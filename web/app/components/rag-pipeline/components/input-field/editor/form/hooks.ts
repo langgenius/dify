@@ -92,10 +92,11 @@ export const useConfigurations = (props: {
   }, [setFieldValue])
 
   const handleVariableNameBlur = useCallback((value: string) => {
-    if (!value)
+    const label = getFieldValue('label')
+    if (!value || label)
       return
     setFieldValue('label', value)
-  }, [setFieldValue])
+  }, [getFieldValue, setFieldValue])
 
   const handleDisplayNameBlur = useCallback((value: string) => {
     if (!value)
