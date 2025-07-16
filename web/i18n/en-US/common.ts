@@ -302,7 +302,7 @@ const translation = {
       warning: 'You\'re about to transfer ownership of “{{workspace}}”. This takes effect immediately and can\'t be undone.',
       warningTip: 'You\'ll become an admin member, and the new owner will have full control.',
       sendTip: 'If you continue, we\'ll send a verification code to <email>{{email}}</email> for re-authentication.',
-      verifyEmail: 'Verify your email',
+      verifyEmail: 'Verify your current email',
       verifyContent: 'Your current email is <email>{{email}}</email>.',
       verifyContent2: 'We\'ll send a temporary verification code to this email for re-authentication.',
       codeLabel: 'Verification code',

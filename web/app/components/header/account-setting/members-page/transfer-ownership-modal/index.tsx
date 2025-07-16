@@ -52,9 +52,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
 
   const sendEmail = async () => {
     try {
-      const res = await sendOwnerEmail({
-        language: userProfile.interface_language,
-      })
+      const res = await sendOwnerEmail({})
       startCount()
       if (res.data)
         setStepToken(res.data)
