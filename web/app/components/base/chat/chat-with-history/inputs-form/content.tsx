@@ -6,7 +6,6 @@ import Textarea from '@/app/components/base/textarea'
 import { PortalSelect } from '@/app/components/base/select'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
-import Select from '@/app/components/base/select'
 
 type Props = {
   showTip?: boolean
