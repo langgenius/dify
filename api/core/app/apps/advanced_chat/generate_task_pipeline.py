@@ -186,17 +186,11 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
 
-                # Retrieve outputs from task state metadata, which is populated earlier
-                final_outputs = {}
-                if self._task_state.metadata and hasattr(self._task_state.metadata, "outputs"):
-                    final_outputs = self._task_state.metadata.outputs
-
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
                         id=self._message_id,
                         mode=self._conversation_mode,
-                        outputs=final_outputs,
                         conversation_id=self._conversation_id,
                         message_id=self._message_id,
                         answer=self._task_state.answer,
