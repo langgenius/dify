@@ -201,14 +201,18 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
                 # Determine the correct span kind based on node type
                 span_kind = OpenInferenceSpanKindValues.CHAIN.value
+                inputs = node_execution.inputs or "{}"
                 if node_execution.node_type == "llm":
                     span_kind = OpenInferenceSpanKindValues.LLM.value
                     provider = process_data.get("model_provider")
                     model = process_data.get("model_name")
+                    prompts = process_data.get("prompts")
                     if provider:
                         node_metadata["ls_provider"] = provider
                     if model:
                         node_metadata["ls_model_name"] = model
+                    if prompts:
+                        inputs = prompts
 
                     outputs = json.loads(node_execution.outputs).get("usage", {})
                     usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
@@ -226,7 +230,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
-                        SpanAttributes.INPUT_VALUE: node_execution.inputs or "{}",
+                        SpanAttributes.INPUT_VALUE: json.dumps(inputs, ensure_ascii=False),
                         SpanAttributes.OUTPUT_VALUE: node_execution.outputs or "{}",
                         SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind,
                         SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
