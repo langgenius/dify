@@ -49,6 +49,12 @@ import {
   ErrorMessageBlockNode,
   ErrorMessageBlockReplacementBlock,
 } from './plugins/error-message-block'
+import {
+  LastRunBlock,
+  LastRunBlockNode,
+  LastRunReplacementBlock,
+} from './plugins/last-run-block'
+
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -62,6 +68,7 @@ import type {
   ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -95,6 +102,7 @@ export type PromptEditorProps = {
   workflowVariableBlock?: WorkflowVariableBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
+  lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
 }
 
@@ -124,6 +132,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
   errorMessageBlock = {
     show: true,
   },
+  lastRunBlock = {
+    show: true,
+  },
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -143,6 +154,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       VariableValueBlockNode,
       CurrentBlockNode,
       ErrorMessageBlockNode,
+      LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -204,6 +216,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           workflowVariableBlock={workflowVariableBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
@@ -216,6 +229,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           workflowVariableBlock={workflowVariableBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
         />
         {
@@ -271,6 +285,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <ErrorMessageBlock {...errorMessageBlock} />
               <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
+            </>
+          )
+        }
+        {
+          lastRunBlock?.show && (
+            <>
+              <LastRunBlock {...lastRunBlock} />
+              <LastRunReplacementBlock {...lastRunBlock} />
             </>
           )
         }

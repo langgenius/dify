@@ -5,6 +5,7 @@ export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'
 export const QUERY_PLACEHOLDER_TEXT = '{{#query#}}'
 export const CURRENT_PLACEHOLDER_TEXT = '{{#current#}}'
 export const ERROR_MESSAGE_PLACEHOLDER_TEXT = '{{#error_message#}}'
+export const LAST_RUN_PLACEHOLDER_TEXT = '{{#last_run#}}'
 
 export const PRE_PROMPT_PLACEHOLDER_TEXT = '{{#pre_prompt#}}'
 export const UPDATE_DATASETS_EVENT_EMITTER = 'prompt-editor-context-block-update-datasets'

@@ -21,6 +21,7 @@ import type {
   ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -37,6 +38,7 @@ import { KEY_ESCAPE_COMMAND } from 'lexical'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
+import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -48,6 +50,7 @@ type ComponentPickerProps = {
   workflowVariableBlock?: WorkflowVariableBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
+  lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
@@ -60,6 +63,7 @@ const ComponentPicker = ({
   workflowVariableBlock,
   currentBlock,
   errorMessageBlock,
+  lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -98,6 +102,7 @@ const ComponentPicker = ({
     workflowVariableBlock,
     currentBlock,
     errorMessageBlock,
+    lastRunBlock,
   )
 
   const onSelectOption = useCallback(
@@ -125,10 +130,13 @@ const ComponentPicker = ({
     })
     const isFlat = variables.length === 1
     if(isFlat) {
-      if(variables[0] === 'current')
+      const varName = variables[0]
+      if(varName === 'current')
         editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
-      else if (variables[0] === 'error_message')
+      else if (varName === 'error_message')
         editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
+      else if (varName === 'last_run')
+        editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
     }
     else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
@@ -226,7 +234,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString])
 
   return (
     <LexicalTypeaheadMenuPlugin

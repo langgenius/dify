@@ -8,6 +8,7 @@ import type {
   ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -272,6 +273,7 @@ export const useOptions = (
   workflowVariableBlockType?: WorkflowVariableBlockType,
   currentBlockType?: CurrentBlockType,
   errorMessageBlockType?: ErrorMessageBlockType,
+  lastRunBlockType?: LastRunBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
@@ -295,6 +297,19 @@ export const useOptions = (
         ],
       })
     }
+    if(lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
+      res.unshift({
+        nodeId: 'last_run',
+        title: 'last_run',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'last_run',
+            type: VarType.object,
+          },
+        ],
+      })
+    }
     if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
       const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
       res.unshift({
@@ -310,7 +325,7 @@ export const useOptions = (
       })
     }
     return res
-  }, [workflowVariableBlockType?.show, workflowVariableBlockType?.variables, errorMessageBlockType?.show, currentBlockType?.show, currentBlockType?.generatorType])
+  }, [workflowVariableBlockType?.show, workflowVariableBlockType?.variables, errorMessageBlockType?.show, lastRunBlockType?.show, currentBlockType?.show, currentBlockType?.generatorType])
 
   return useMemo(() => {
     return {

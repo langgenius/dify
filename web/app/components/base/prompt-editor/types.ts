@@ -89,3 +89,9 @@ export type ErrorMessageBlockType = {
   onInsert?: () => void
   onDelete?: () => void
 }
+
+export type LastRunBlockType = {
+  show?: boolean
+  onInsert?: () => void
+  onDelete?: () => void
+}

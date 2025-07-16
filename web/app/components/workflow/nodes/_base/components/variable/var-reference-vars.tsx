@@ -85,6 +85,8 @@ const Item: FC<ItemProps> = ({
         return <Icon className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
       case 'error_message':
         return <Variable02 className='h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600' />
+      default:
+        return <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
