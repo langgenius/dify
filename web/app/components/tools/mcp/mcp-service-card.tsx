@@ -223,6 +223,7 @@ function MCPServiceCard({
           data={serverPublished ? detail : undefined}
           latestParams={latestParams}
           onHide={handleServerModalHide}
+          appInfo={appInfo}
         />
       )}
       {/* button copy link/ button regenerate */}
