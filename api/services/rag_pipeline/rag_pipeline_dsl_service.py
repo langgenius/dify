@@ -22,7 +22,9 @@ from sqlalchemy.orm import Session
 from core.helper import ssrf_proxy
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
@@ -725,6 +727,10 @@ class RagPipelineDslService:
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
+                    case NodeType.DATASOURCE.value:
+                        datasource_entity = DatasourceNodeData(**node["data"])
+                        if datasource_entity.provider_type != "local_file":
+                            dependencies.append(datasource_entity.plugin_id)
                     case NodeType.LLM.value:
                         llm_entity = LLMNodeData(**node["data"])
                         dependencies.append(
@@ -744,6 +750,24 @@ class RagPipelineDslService:
                                 parameter_extractor_entity.model.provider
                             ),
                         )
+                    case NodeType.KNOWLEDGE_INDEX.value:
+                        knowledge_index_entity = KnowledgeConfiguration(**node["data"])
+                        if knowledge_index_entity.indexing_technique == "high_quality":
+                            if knowledge_index_entity.embedding_model_provider:
+                                dependencies.append(
+                                    DependenciesAnalysisService.analyze_model_provider_dependency(
+                                        knowledge_index_entity.embedding_model_provider
+                                    ),
+                                )
+                        if knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model":
+                            if knowledge_index_entity.retrieval_model.reranking_enable:
+                                if knowledge_index_entity.retrieval_model.reranking_model and knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model":
+                                    if knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name:
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
+                                            ),
+                                        )
                     case NodeType.KNOWLEDGE_RETRIEVAL.value:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":

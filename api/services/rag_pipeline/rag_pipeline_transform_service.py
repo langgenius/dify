@@ -7,6 +7,10 @@ import yaml
 from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.plugin import PluginInstaller
+from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Pipeline
@@ -33,6 +37,8 @@ class RagPipelineTransformService:
             return
         retrieval_model = dataset.retrieval_model
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
+        # deal dependencies
+        self._deal_dependencies(pipeline_yaml, dataset.tenant_id)
         # Extract app data
         workflow_data = pipeline_yaml.get("workflow")
         graph = workflow_data.get("graph", {})
@@ -221,3 +227,51 @@ class RagPipelineTransformService:
         pipeline.workflow_id = published_workflow.id
         db.session.add(pipeline)
         return pipeline
+
+    def _deal_dependencies(self, pipeline_yaml: dict, tenant_id: str):
+        installer_manager = PluginInstaller()
+        installed_plugins = installer_manager.list_plugins(tenant_id)
+        
+        datasource_manager = PluginDatasourceManager()
+
+        tool_manager = ToolManager()
+
+        installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+        dependencies = pipeline_yaml.get("dependencies", [])
+        need_install_plugin_unique_identifiers = []
+        for dependency in dependencies:
+            if dependency.get("type") == "marketplace":
+                plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
+                plugin_id = plugin_unique_identifier.split(":")[0]
+                if plugin_id not in installed_plugins_ids:
+                    if plugin_id == "langgenius/notion_datasource":
+                        datasource = datasource_manager.fetch_datasource_provider(tenant_id, f"{plugin_id}/notion")
+                        need_install_plugin_unique_identifiers.append(datasource.plugin_unique_identifier)
+                    elif plugin_id == "langgenius/firecrawl_datasource":
+                        datasource = datasource_manager.fetch_datasource_provider(tenant_id, f"{plugin_id}/firecrawl")
+                        need_install_plugin_unique_identifiers.append(datasource.plugin_unique_identifier)
+                    elif plugin_id == "langgenius/jina_datasource":
+                        datasource = datasource_manager.fetch_datasource_provider(tenant_id, f"{plugin_id}/jina")
+                        need_install_plugin_unique_identifiers.append(datasource.plugin_unique_identifier)
+                    elif plugin_id == "langgenius/dify_extractor":
+                        tool = tool_manager.get_plugin_provider(f"{plugin_id}/dify_extractor", tenant_id)
+                        need_install_plugin_unique_identifiers.append(tool.plugin_unique_identifier)
+                    elif plugin_id == "langgenius/general_chunk":
+                        tool = tool_manager.get_plugin_provider(f"{plugin_id}/general_chunk", tenant_id)
+                        need_install_plugin_unique_identifiers.append(tool.plugin_unique_identifier)
+                    elif plugin_id == "langgenius/parent_child_chunk":
+                        tool = tool_manager.get_plugin_provider(f"{plugin_id}/parent_child_chunk", tenant_id)
+                        need_install_plugin_unique_identifiers.append(tool.plugin_unique_identifier)
+                dependency["value"]["current_identifier"] = plugin_unique_identifier
+        if need_install_plugin_unique_identifiers:
+            installer_manager.install_from_identifiers(
+                    tenant_id,
+                    need_install_plugin_unique_identifiers,
+                    PluginInstallationSource.Marketplace,
+                    metas=[
+                        {
+                            "plugin_unique_identifier": identifier,
+                        }
+                        for identifier in need_install_plugin_unique_identifiers
+                    ],
+                )

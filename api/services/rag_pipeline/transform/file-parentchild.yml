@@ -1,12 +1,12 @@
 dependencies:
 - current_identifier: null
-  type: package
+  type: marketplace
   value:
-    plugin_unique_identifier: langgenius/parent_child_chunk:0.0.1@f8f9ba1f3bcda159ebc0168baa755c2181b923da8157ebb439b8046019f5b510
+    plugin_unique_identifier: langgenius/parentchild_chunker:0.0.1@b1a28a27e33fec442ce494da2a7814edd7eb9d646c81f38bccfcf1133d486e40
 - current_identifier: null
-  type: package
+  type: marketplace
   value:
-    plugin_unique_identifier: langgenius/dify_extractor:0.0.4@0cb3f06230a377c4c037fa7b5e21f4f4e362e5f24a59ed7bf4950ff75e6f1e61
+    plugin_unique_identifier: langgenius/dify_extractor:0.0.1@50103421d4e002f059b662d21ad2d7a1cf34869abdbe320299d7e382516ebb1c
 kind: rag_pipeline
 rag_pipeline:
   description: ''

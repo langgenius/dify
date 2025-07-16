@@ -1,8 +1,12 @@
 dependencies:
 - current_identifier: null
-  type: package
+  type: marketplace
   value:
-    plugin_unique_identifier: langgenius/general_chunk:0.0.2@0856fa64f7b0dc937c982f12d45b3a1ad91ba8aacc0d28a1b436e6c94a77e298
+    plugin_unique_identifier: langgenius/general_chunker:0.0.1@e3da408b7277866404c3f884d599261f9d0b9003ea4ef7eb3b64489bdf39d18b
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/notion_datasource:0.0.1@2dd49c2c3ffff976be8d22efb1ac0f63522a8d0f24ef8c44729d0a50a94ec039
 kind: rag_pipeline
 rag_pipeline:
   description: ''

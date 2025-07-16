@@ -1,8 +1,16 @@
 dependencies:
 - current_identifier: null
-  type: package
+  type: marketplace
   value:
-    plugin_unique_identifier: langgenius/parent_child_chunk:0.0.1@f8f9ba1f3bcda159ebc0168baa755c2181b923da8157ebb439b8046019f5b510
+    plugin_unique_identifier: langgenius/parentchild_chunker:0.0.1@b1a28a27e33fec442ce494da2a7814edd7eb9d646c81f38bccfcf1133d486e40
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/firecrawl_datasource:0.0.1@f7aed0a26df0e5f4b9555371b5c9fa6db3c7dcf6a46dd1583245697bd90a539a
+- current_identifier: null
+  type: marketplace
+  value:
+    plugin_unique_identifier: langgenius/jina_datasource:0.0.1@cf23afb2c3eeccc5a187763a1947f583f0bb10aa56461e512ac4141bf930d608
 kind: rag_pipeline
 rag_pipeline:
   description: ''
