@@ -387,4 +387,4 @@ export const resetEmail = (body: { new_email: string; token: string }) =>
   post<CommonResponse>('/account/change-email/reset', { body })
 
 export const checkEmailExisted = (body: { email: string }) =>
-  post<CommonResponse>('/account/change-email/check-email-unique', { body })
+  post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
