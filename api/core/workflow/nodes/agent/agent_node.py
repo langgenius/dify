@@ -4,6 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from packaging.version import Version
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,10 +14,16 @@ from core.agent.strategy.plugin import PluginAgentStrategy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.provider_manager import ProviderManager
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ToolIdentity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderType,
+)
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
@@ -84,6 +91,7 @@ class AgentNode(ToolNode):
             for_log=True,
             strategy=strategy,
         )
+        credentials = self._generate_credentials(parameters=parameters)
 
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
@@ -94,6 +102,7 @@ class AgentNode(ToolNode):
                 user_id=self.user_id,
                 app_id=self.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
+                credentials=credentials,
             )
         except Exception as e:
             yield RunCompletedEvent(
@@ -246,6 +255,7 @@ class AgentNode(ToolNode):
                             tool_name=tool.get("tool_name", ""),
                             tool_parameters=parameters,
                             plugin_unique_identifier=tool.get("plugin_unique_identifier", None),
+                            credential_id=tool.get("credential_id", None),
                         )
 
                         extra = tool.get("extra", {})
@@ -276,6 +286,7 @@ class AgentNode(ToolNode):
                             {
                                 **tool_runtime.entity.model_dump(mode="json"),
                                 "runtime_parameters": runtime_parameters,
+                                "credential_id": tool.get("credential_id", None),
                                 "provider_type": provider_type.value,
                             }
                         )
@@ -304,6 +315,27 @@ class AgentNode(ToolNode):
             result[parameter_name] = value
 
         return result
+
+    def _generate_credentials(
+        self,
+        parameters: dict[str, Any],
+    ) -> InvokeCredentials:
+        """
+        Generate credentials based on the given agent parameters.
+        """
+
+        credentials = InvokeCredentials()
+
+        # generate credentials for tools selector
+        credentials.tool_credentials = {}
+        for tool in parameters.get("tools", []):
+            if tool.get("credential_id"):
+                try:
+                    identity = ToolIdentity.model_validate(tool.get("identity", {}))
+                    credentials.tool_credentials[identity.provider] = tool.get("credential_id", None)
+                except ValidationError:
+                    continue
+        return credentials
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

@@ -44,6 +44,7 @@ class PluginTool(Tool):
             tool_provider=self.entity.identity.provider,
             tool_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
+            credential_type=self.runtime.credential_type,
             tool_parameters=tool_parameters,
             conversation_id=conversation_id,
             app_id=app_id,
