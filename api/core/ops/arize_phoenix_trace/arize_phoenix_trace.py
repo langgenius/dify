@@ -143,7 +143,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         workflow_metadata = {
-            "workflow_id": trace_info.workflow_run_id or "",
+            "workflow_run_id": trace_info.workflow_run_id or "",
             "message_id": trace_info.message_id or "",
             "workflow_app_log_id": trace_info.workflow_app_log_id or "",
             "status": trace_info.workflow_run_status or "",
@@ -153,7 +153,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = uuid_to_trace_id(trace_info.workflow_run_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
