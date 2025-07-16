@@ -17,6 +17,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import type {
   ContextBlockType,
+  CurrentBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -32,6 +33,8 @@ import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -41,6 +44,7 @@ type ComponentPickerProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  currentBlock?: CurrentBlockType
   isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
@@ -51,6 +55,7 @@ const ComponentPicker = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  currentBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -87,6 +92,7 @@ const ComponentPicker = ({
     variableBlock,
     externalToolBlock,
     workflowVariableBlock,
+    currentBlock,
   )
 
   const onSelectOption = useCallback(
@@ -112,12 +118,18 @@ const ComponentPicker = ({
       if (needRemove)
         needRemove.remove()
     })
-
-    if (variables[1] === 'sys.query' || variables[1] === 'sys.files')
+    const isFlat = variables.length === 1
+    if(isFlat) {
+      if(variables[0] === 'current')
+        editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+    }
+    else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
-    else
+    }
+    else {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
-  }, [editor, checkForTriggerMatch, triggerString])
+    }
+  }, [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString])
 
   const handleClose = useCallback(() => {
     const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
@@ -166,6 +178,7 @@ const ComponentPicker = ({
                         onClose={handleClose}
                         onBlur={handleClose}
                         autoFocus={false}
+                        isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
                       />
                     </div>
                   )

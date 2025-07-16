@@ -23,6 +23,7 @@ import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { noop } from 'lodash-es'
+import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -46,6 +47,8 @@ type ItemProps = {
   isSupportFileVar?: boolean
   isException?: boolean
   isLoopVar?: boolean
+  isFlat?: boolean
+  isInCodeGeneratorInstructionEditor?: boolean
   zIndex?: number
 }
 
@@ -61,6 +64,8 @@ const Item: FC<ItemProps> = ({
   isSupportFileVar,
   isException,
   isLoopVar,
+  isFlat,
+  isInCodeGeneratorInstructionEditor,
   zIndex,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
@@ -69,6 +74,17 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+  const flatVarIcon = useMemo(() => {
+    if(!isFlat)
+      return null
+    const variable = itemData.variable
+    let Icon
+    switch (variable) {
+      case 'current':
+        Icon = isInCodeGeneratorInstructionEditor ? CodeAssistant : MagicEdit
+        return <Icon className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
+    }
+  }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
@@ -125,7 +141,10 @@ const Item: FC<ItemProps> = ({
     if (!isSupportFileVar && isFile)
       return
 
-    if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
+    if(isFlat) {
+      onChange([itemData.variable], itemData)
+    }
+    else if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -150,10 +169,11 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isFlat && !isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
+            {isFlat && flatVarIcon}
             {!isEnv && !isChatVar && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
@@ -263,6 +283,7 @@ type Props = {
   onClose?: () => void
   onBlur?: () => void
   zIndex?: number
+  isInCodeGeneratorInstructionEditor?: boolean
   autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
@@ -276,6 +297,7 @@ const VarReferenceVars: FC<Props> = ({
   onClose,
   onBlur,
   zIndex,
+  isInCodeGeneratorInstructionEditor,
   autoFocus = true,
 }) => {
   const { t } = useTranslation()
@@ -345,10 +367,12 @@ const VarReferenceVars: FC<Props> = ({
           {
             filteredVars.map((item, i) => (
               <div key={i}>
-                <div
-                  className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'
-                  title={item.title}
-                >{item.title}</div>
+                {!item.isFlat && (
+                  <div
+                    className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'
+                    title={item.title}
+                  >{item.title}</div>
+                )}
                 {item.vars.map((v, j) => (
                   <Item
                     key={j}
@@ -361,6 +385,8 @@ const VarReferenceVars: FC<Props> = ({
                     isSupportFileVar={isSupportFileVar}
                     isException={v.isException}
                     isLoopVar={item.isLoop}
+                    isFlat={item.isFlat}
+                    isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                     zIndex={zIndex}
                   />
                 ))}

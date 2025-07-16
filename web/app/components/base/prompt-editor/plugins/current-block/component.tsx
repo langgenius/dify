@@ -1,6 +1,10 @@
-import type { FC } from 'react'
-import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
+import { type FC, useEffect } from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useSelectOrDelete } from '../../hooks'
+import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
+import cn from '@/utils/classnames'
+import { CodeAssistant, MagicEdit } from '../../../icons/src/vender/line/general'
 
 type CurrentBlockComponentProps = {
   nodeKey: string
@@ -8,14 +12,30 @@ type CurrentBlockComponentProps = {
 }
 
 const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
+  nodeKey,
   generatorType,
 }) => {
+  const [editor] = useLexicalComposerContext()
+  const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CURRENT_BLOCK_COMMAND)
+
+  const Icon = generatorType === GeneratorType.prompt ? MagicEdit : CodeAssistant
+  useEffect(() => {
+      if (!editor.hasNodes([CurrentBlockNode]))
+        throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
+    }, [editor])
+
   return (
-    <div className={`
-      group inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#F4F3FF] pl-1 pr-0.5 text-[#6938EF] hover:bg-[#EBE9FE]
-      ${'bg-[#F4F3FF]'}
-    `}>
-      <File05 className='mr-1 h-[14px] w-[14px]' />
+    <div
+      className={cn(
+        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] text-util-colors-violet-violet-600 hover:border-state-accent-solid hover:bg-state-accent-hover',
+        isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
+      )}
+      onClick={(e) => {
+        e.stopPropagation()
+      }}
+      ref={ref}
+    >
+      <Icon className='mr-0.5 h-[14px] w-[14px]' />
       <div className='mr-1 text-xs font-medium'>{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
     </div>
   )

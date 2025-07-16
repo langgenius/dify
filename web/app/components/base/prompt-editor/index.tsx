@@ -39,6 +39,11 @@ import {
   WorkflowVariableBlockNode,
   WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
+import {
+  CurrentBlock,
+  CurrentBlockNode,
+  CurrentBlockReplacementBlock,
+} from './plugins/current-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -48,6 +53,7 @@ import UpdateBlock from './plugins/update-block'
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
+  CurrentBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -60,6 +66,7 @@ import {
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
+import { GeneratorType } from '../../app/configuration/config/automatic/types'
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -80,6 +87,7 @@ export type PromptEditorProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  currentBlock?: CurrentBlockType
   isSupportFileVar?: boolean
 }
 
@@ -102,6 +110,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  currentBlock = {
+    show: true,
+    generatorType: GeneratorType.prompt,
+  },
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -119,6 +131,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       QueryBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
+      CurrentBlockNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -178,6 +191,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
@@ -188,6 +202,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          currentBlock={currentBlock}
           isSupportFileVar={isSupportFileVar}
         />
         {
@@ -228,6 +243,19 @@ const PromptEditor: FC<PromptEditorProps> = ({
               <WorkflowVariableBlock {...workflowVariableBlock} />
               <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
             </>
+          )
+        }
+        {
+          currentBlock?.show && (
+            <>
+              <CurrentBlock {...currentBlock} />
+              <CurrentBlockReplacementBlock {...currentBlock} />
+            </>
+          )
+        }
+        {
+          isSupportFileVar && (
+            <VariableValueBlock />
           )
         }
         <OnChangePlugin onChange={handleEditorChange} />

@@ -12,7 +12,7 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   static clone(node: CurrentBlockNode): CurrentBlockNode {
-    return new CurrentBlockNode(node.__generatorType)
+    return new CurrentBlockNode(node.__generatorType, node.getKey())
   }
 
   isInline(): boolean {

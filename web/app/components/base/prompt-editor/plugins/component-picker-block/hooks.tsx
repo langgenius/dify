@@ -4,6 +4,7 @@ import { $insertNodes } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
   ContextBlockType,
+  CurrentBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -27,6 +28,7 @@ import { BracketsX } from '@/app/components/base/icons/src/vender/line/developme
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import AppIcon from '@/app/components/base/app-icon'
+import { VarType } from '@/app/components/workflow/types'
 
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,
@@ -267,17 +269,33 @@ export const useOptions = (
   variableBlock?: VariableBlockType,
   externalToolBlockType?: ExternalToolBlockType,
   workflowVariableBlockType?: WorkflowVariableBlockType,
+  currentBlockType?: CurrentBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
   const variableOptions = useVariableOptions(variableBlock, queryString)
   const externalToolOptions = useExternalToolOptions(externalToolBlockType, queryString)
+
   const workflowVariableOptions = useMemo(() => {
     if (!workflowVariableBlockType?.show)
       return []
-
-    return workflowVariableBlockType.variables || []
-  }, [workflowVariableBlockType])
+    const res = workflowVariableBlockType.variables || []
+    if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
+      const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
+      res.unshift({
+        nodeId: 'current',
+        title,
+        isFlat: true,
+        vars: [
+          {
+            variable: 'current',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
+    return res
+  }, [workflowVariableBlockType, currentBlockType])
 
   return useMemo(() => {
     return {
