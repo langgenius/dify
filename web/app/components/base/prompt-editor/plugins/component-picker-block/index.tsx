@@ -18,6 +18,7 @@ import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuP
 import type {
   ContextBlockType,
   CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -35,6 +36,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { KEY_ESCAPE_COMMAND } from 'lexical'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -45,6 +47,7 @@ type ComponentPickerProps = {
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
   currentBlock?: CurrentBlockType
+  errorMessageBlock?: ErrorMessageBlockType
   isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
@@ -56,6 +59,7 @@ const ComponentPicker = ({
   externalToolBlock,
   workflowVariableBlock,
   currentBlock,
+  errorMessageBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -93,6 +97,7 @@ const ComponentPicker = ({
     externalToolBlock,
     workflowVariableBlock,
     currentBlock,
+    errorMessageBlock,
   )
 
   const onSelectOption = useCallback(
@@ -122,6 +127,8 @@ const ComponentPicker = ({
     if(isFlat) {
       if(variables[0] === 'current')
         editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+      else if (variables[0] === 'error_message')
+        editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
     }
     else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])

@@ -44,6 +44,11 @@ import {
   CurrentBlockNode,
   CurrentBlockReplacementBlock,
 } from './plugins/current-block'
+import {
+  ErrorMessageBlock,
+  ErrorMessageBlockNode,
+  ErrorMessageBlockReplacementBlock,
+} from './plugins/error-message-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -54,6 +59,7 @@ import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
   CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -88,6 +94,7 @@ export type PromptEditorProps = {
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
   currentBlock?: CurrentBlockType
+  errorMessageBlock?: ErrorMessageBlockType
   isSupportFileVar?: boolean
 }
 
@@ -114,6 +121,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
     show: true,
     generatorType: GeneratorType.code,
   },
+  errorMessageBlock = {
+    show: true,
+  },
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -132,6 +142,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
       CurrentBlockNode,
+      ErrorMessageBlockNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -192,6 +203,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
           currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
@@ -203,6 +215,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
           currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
           isSupportFileVar={isSupportFileVar}
         />
         {
@@ -250,6 +263,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <CurrentBlock {...currentBlock} />
               <CurrentBlockReplacementBlock {...currentBlock} />
+            </>
+          )
+        }
+        {
+          errorMessageBlock?.show && (
+            <>
+              <ErrorMessageBlock {...errorMessageBlock} />
+              <ErrorMessageBlockReplacementBlock {...errorMessageBlock} />
             </>
           )
         }

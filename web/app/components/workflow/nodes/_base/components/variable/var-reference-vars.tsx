@@ -83,6 +83,8 @@ const Item: FC<ItemProps> = ({
       case 'current':
         Icon = isInCodeGeneratorInstructionEditor ? CodeAssistant : MagicEdit
         return <Icon className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
+      case 'error_message':
+        return <Variable02 className='h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600' />
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 

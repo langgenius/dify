@@ -5,6 +5,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import type {
   ContextBlockType,
   CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
@@ -270,6 +271,7 @@ export const useOptions = (
   externalToolBlockType?: ExternalToolBlockType,
   workflowVariableBlockType?: WorkflowVariableBlockType,
   currentBlockType?: CurrentBlockType,
+  errorMessageBlockType?: ErrorMessageBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
@@ -280,6 +282,19 @@ export const useOptions = (
     if (!workflowVariableBlockType?.show)
       return []
     const res = workflowVariableBlockType.variables || []
+    if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
+      res.unshift({
+        nodeId: 'error_message',
+        title: 'error_message',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'error_message',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
     if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
       const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
       res.unshift({
@@ -295,7 +310,7 @@ export const useOptions = (
       })
     }
     return res
-  }, [workflowVariableBlockType, currentBlockType])
+  }, [workflowVariableBlockType?.show, workflowVariableBlockType?.variables, errorMessageBlockType?.show, currentBlockType?.show, currentBlockType?.generatorType])
 
   return useMemo(() => {
     return {
