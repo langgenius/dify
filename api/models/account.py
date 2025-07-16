@@ -319,4 +319,6 @@ class AccountMFASettings(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     # Relationship
-    account = db.relationship("Account", backref=db.backref("mfa_settings", uselist=False, cascade="all, delete-orphan"))
+    account = db.relationship(
+        "Account", backref=db.backref("mfa_settings", uselist=False, cascade="all, delete-orphan")
+    )

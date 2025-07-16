@@ -30,11 +30,8 @@ class MFAService:
     def generate_qr_code(account: Account, secret: str) -> str:
         """Generate QR code for TOTP setup."""
         totp = pyotp.TOTP(secret)
-        provisioning_uri = totp.provisioning_uri(
-            name=account.email,
-            issuer_name="Dify"
-        )
-        
+        provisioning_uri = totp.provisioning_uri(name=account.email, issuer_name="Dify")
+
         # Generate QR code
         qr = qrcode.QRCode(
             version=1,
@@ -44,15 +41,15 @@ class MFAService:
         )
         qr.add_data(provisioning_uri)
         qr.make(fit=True)
-        
+
         # Create image
         img = qr.make_image(fill_color="black", back_color="white")
-        
+
         # Convert to base64
         buffer = io.BytesIO()
         img.save(buffer)
         img_str = base64.b64encode(buffer.getvalue()).decode()
-        
+
         return f"data:image/png;base64,{img_str}"
 
     @staticmethod
@@ -82,7 +79,7 @@ class MFAService:
         """Verify and consume backup code."""
         if not mfa_settings.backup_codes:
             return False
-        
+
         try:
             backup_codes = json.loads(mfa_settings.backup_codes)
             if code.upper() in backup_codes:
@@ -93,58 +90,55 @@ class MFAService:
                 return True
         except json.JSONDecodeError:
             pass
-        
+
         return False
 
     @staticmethod
     def setup_mfa(account: Account, totp_token: str) -> dict:
         """Setup MFA for account with TOTP verification."""
         mfa_settings = MFAService.get_or_create_mfa_settings(account)
-        
+
         if mfa_settings.enabled:
             raise ValueError("MFA is already enabled for this account")
-        
+
         if not mfa_settings.secret:
             raise ValueError("MFA secret not generated")
-        
+
         # Verify TOTP token
         if not MFAService.verify_totp(mfa_settings.secret, totp_token):
             raise ValueError("Invalid TOTP token")
-        
+
         # Generate backup codes
         backup_codes = MFAService.generate_backup_codes()
-        
+
         # Enable MFA
         mfa_settings.enabled = True
         mfa_settings.backup_codes = json.dumps(backup_codes)
         mfa_settings.setup_at = datetime.now(UTC)
-        
+
         db.session.commit()
-        
-        return {
-            "backup_codes": backup_codes,
-            "setup_at": mfa_settings.setup_at
-        }
+
+        return {"backup_codes": backup_codes, "setup_at": mfa_settings.setup_at}
 
     @staticmethod
     def disable_mfa(account: Account, password: str) -> bool:
         """Disable MFA for account after password verification."""
         from libs.password import compare_password
-        
+
         # Verify password
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             return False
-        
+
         mfa_settings = db.session.query(AccountMFASettings).filter_by(account_id=account.id).first()
         if not mfa_settings:
             return True  # Already disabled
-        
+
         # Disable MFA
         mfa_settings.enabled = False
         mfa_settings.secret = None
         mfa_settings.backup_codes = None
         mfa_settings.setup_at = None
-        
+
         db.session.commit()
         return True
 
@@ -152,22 +146,19 @@ class MFAService:
     def generate_mfa_setup_data(account: Account) -> dict:
         """Generate MFA setup data including secret and QR code."""
         mfa_settings = MFAService.get_or_create_mfa_settings(account)
-        
+
         if mfa_settings.enabled:
             raise ValueError("MFA is already enabled for this account")
-        
+
         # Generate new secret
         secret = MFAService.generate_secret()
         mfa_settings.secret = secret
         db.session.commit()
-        
+
         # Generate QR code
         qr_code = MFAService.generate_qr_code(account, secret)
-        
-        return {
-            "secret": secret,
-            "qr_code": qr_code
-        }
+
+        return {"secret": secret, "qr_code": qr_code}
 
     @staticmethod
     def is_mfa_required(account: Account) -> bool:
@@ -180,25 +171,25 @@ class MFAService:
         """Authenticate user with MFA token (TOTP or backup code)."""
         print(f"[MFA DEBUG] authenticate_with_mfa called with token: {token}")
         mfa_settings = db.session.query(AccountMFASettings).filter_by(account_id=account.id).first()
-        
+
         if not mfa_settings or not mfa_settings.enabled:
             print("[MFA DEBUG] MFA not enabled, returning True")
             return True
-        
+
         print(f"[MFA DEBUG] MFA enabled, secret: {mfa_settings.secret[:10]}...")
-        
+
         # Try TOTP first
         print("[MFA DEBUG] Trying TOTP verification")
         if MFAService.verify_totp(mfa_settings.secret, token):
             print("[MFA DEBUG] TOTP verification successful")
             return True
-        
+
         # Try backup code
         print("[MFA DEBUG] Trying backup code verification")
         if MFAService.verify_backup_code(mfa_settings, token):
             print("[MFA DEBUG] Backup code verification successful")
             return True
-        
+
         print("[MFA DEBUG] All verifications failed")
         return False
 
@@ -206,16 +197,12 @@ class MFAService:
     def get_mfa_status(account: Account) -> dict:
         """Get MFA status for account."""
         mfa_settings = db.session.query(AccountMFASettings).filter_by(account_id=account.id).first()
-        
+
         if not mfa_settings:
-            return {
-                "enabled": False,
-                "setup_at": None,
-                "has_backup_codes": False
-            }
-        
+            return {"enabled": False, "setup_at": None, "has_backup_codes": False}
+
         return {
             "enabled": mfa_settings.enabled,
             "setup_at": mfa_settings.setup_at.isoformat() if mfa_settings.setup_at else None,
-            "has_backup_codes": mfa_settings.backup_codes is not None
+            "has_backup_codes": mfa_settings.backup_codes is not None,
         }

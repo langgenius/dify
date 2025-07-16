@@ -89,15 +89,15 @@ class LoginApi(Resource):
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
                 raise AccountNotFound()
-        
+
         # Check MFA requirement
         if MFAService.is_mfa_required(account):
             if not args["mfa_code"]:
                 return {"result": "fail", "code": "mfa_required"}
-            
+
             if not MFAService.authenticate_with_mfa(account, args["mfa_code"]):
                 return {"result": "fail", "code": "mfa_token_invalid", "data": "The MFA token is invalid or expired."}
-        
+
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:

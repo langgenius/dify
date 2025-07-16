@@ -57,20 +57,21 @@ def setup_account(request) -> Generator[Account, None, None]:
             if account:
                 yield account
                 return
-        
+
         rand_suffix = random.randint(int(1e6), int(1e7))  # noqa
         name = f"test-user-{rand_suffix}"
         email = f"{name}@example.com"
-        
+
         # Clean up any existing setup first
         from models.account import AccountMFASettings
+
         db.session.query(AccountMFASettings).delete()
         db.session.query(DifySetup).delete()
         db.session.query(TenantAccountJoin).delete()
         db.session.query(Account).delete()
         db.session.query(Tenant).delete()
         db.session.commit()
-        
+
         RegisterService.setup(
             email=email,
             name=name,
@@ -87,6 +88,7 @@ def setup_account(request) -> Generator[Account, None, None]:
     with _CACHED_APP.test_request_context():
         # Clean up MFA settings first to avoid foreign key violations
         from models.account import AccountMFASettings
+
         db.session.query(AccountMFASettings).delete()
         db.session.query(DifySetup).delete()
         db.session.query(TenantAccountJoin).delete()
