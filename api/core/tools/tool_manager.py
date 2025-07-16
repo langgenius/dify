@@ -18,6 +18,7 @@ from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
+from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.workflow.entities.variable_pool import VariablePool
 from services.tools.mcp_tools_mange_service import MCPToolManageService
@@ -186,22 +187,33 @@ class ToolManager:
                         )
                     ),
                 )
-
+            builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
                 # get credentials
-                if credential_id:
-                    builtin_provider = (
-                        db.session.query(BuiltinToolProvider)
-                        .filter(
-                            BuiltinToolProvider.tenant_id == tenant_id,
-                            BuiltinToolProvider.id == credential_id,
+                if is_valid_uuid(credential_id):
+                    try:
+                        builtin_provider = (
+                            db.session.query(BuiltinToolProvider)
+                            .filter(
+                                BuiltinToolProvider.tenant_id == tenant_id,
+                                BuiltinToolProvider.id == credential_id,
+                            )
+                            .first()
                         )
-                        .first()
-                    )
-                    if builtin_provider is None:
-                        raise ToolProviderNotFoundError(f"builtin provider {credential_id} not found")
-                else:
+                        if builtin_provider is None:
+                            raise ToolProviderNotFoundError(f"builtin provider {credential_id} not found")
+                    except Exception as e:
+                        # if credential_id is not a builtin provider, use the default provider
+                        logger.error(
+                            f"FALLBACK TO DEFAULT BUILTIN PROVIDER: Error getting builtin provider {credential_id}:{e}",
+                            exc_info=True,
+                        )
+                        builtin_provider = None
+
+                # fallback to the default provider
+                if builtin_provider is None:
+                    # use the default provider
                     builtin_provider = (
                         db.session.query(BuiltinToolProvider)
                         .filter(
@@ -212,7 +224,6 @@ class ToolManager:
                         .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                         .first()
                     )
-
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
             else:
