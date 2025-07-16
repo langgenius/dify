@@ -241,7 +241,7 @@ const translation = {
       authTip: '一旦您的电子邮件地址更改，链接到您旧电子邮件地址的 Google 或 GitHub 帐户将无法再登录该帐户。',
       content1: '如果您继续，我们将向 <email>{{email}}</email> 发送验证码以进行重新验证。',
       content2: '你的当前邮箱是 <email>{{email}}</email> 。验证码已发送至该邮箱。',
-      content3: '输入新的电子邮件，我们将向您发送验证码。',
+      content3: '输入新的邮箱，我们将向您发送验证码。',
       content4: '我们已将验证码发送至 <email>{{email}}</email> 。',
       codeLabel: '验证码',
       codePlaceholder: '输入 6 位数字验证码',
