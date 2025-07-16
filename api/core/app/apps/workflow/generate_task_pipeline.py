@@ -54,10 +54,10 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
-from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from extensions.ext_database import db
 from models.account import Account
@@ -107,13 +107,13 @@ class WorkflowAppGenerateTaskPipeline:
 
         self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
-            workflow_system_variables={
-                SystemVariableKey.FILES: application_generate_entity.files,
-                SystemVariableKey.USER_ID: user_session_id,
-                SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: workflow.id,
-                SystemVariableKey.WORKFLOW_EXECUTION_ID: application_generate_entity.workflow_execution_id,
-            },
+            workflow_system_variables=SystemVariable(
+                files=application_generate_entity.files,
+                user_id=user_session_id,
+                app_id=application_generate_entity.app_config.app_id,
+                workflow_id=workflow.id,
+                workflow_execution_id=application_generate_entity.workflow_execution_id,
+            ),
             workflow_info=CycleManagerWorkflowInfo(
                 workflow_id=workflow.id,
                 workflow_type=WorkflowType(workflow.type),

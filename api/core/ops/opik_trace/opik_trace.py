@@ -241,7 +241,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "trace_id": opik_trace_id,
                 "id": prepare_opik_uuid(created_at, node_execution_id),
                 "parent_span_id": prepare_opik_uuid(trace_info.start_time, parent_span_id),
-                "name": node_type,
+                "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
                 "end_time": finished_at,

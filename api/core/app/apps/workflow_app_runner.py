@@ -62,6 +62,7 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -166,7 +167,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )
@@ -263,7 +264,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )

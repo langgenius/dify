@@ -246,6 +246,9 @@ const translation = {
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web 应用',
+  maxActiveRequests: '最大活跃请求数',
+  maxActiveRequestsPlaceholder: '0 表示不限制',
+  maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',
 }
 
 export default translation
