@@ -192,6 +192,7 @@ app_detail_fields_with_site = {
     "api_base_url": fields.String,
     "use_icon_as_answer_icon": fields.Boolean,
     "always_new_chat": fields.Boolean,
+    "max_active_requests": fields.Integer,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,

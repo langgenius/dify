@@ -25,6 +25,7 @@ import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../cons
 import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 import ConditionVarSelector from './condition-var-selector'
 import type {
@@ -37,6 +38,8 @@ import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -82,9 +85,14 @@ const ConditionItem = ({
   filterVar,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
-
+  const isChatMode = useIsChatMode()
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
+
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -120,6 +128,7 @@ const ConditionItem = ({
   }, [condition, doUpdateCondition])
 
   const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains, ComparisonOperator.allOf].includes(condition.comparison_operator!)
+
   const fileAttr = useMemo(() => {
     if (file)
       return file
@@ -194,15 +203,22 @@ const ConditionItem = ({
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
   const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    const resolvedVarType = getVarType({
+      valueSelector,
+      availableNodes,
+      isChatMode,
+    })
+
     const newCondition = produce(condition, (draft) => {
       draft.variable_selector = valueSelector
-      draft.varType = varItem.type
+      draft.varType = resolvedVarType
       draft.value = ''
-      draft.comparison_operator = getOperators(varItem.type)[0]
+      draft.comparison_operator = getOperators(resolvedVarType)[0]
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
     setOpen(false)
-  }, [condition, doUpdateCondition])
+  }, [condition, doUpdateCondition, availableNodes, isChatMode, setControlPromptEditorRerenderKey])
 
   return (
     <div className={cn('mb-1 flex last-of-type:mb-0', className)}>

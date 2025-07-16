@@ -29,7 +29,7 @@ class EnterpriseService:
             raise ValueError("No data found.")
         try:
             # parse the UTC timestamp from the response
-            return datetime.fromisoformat(data.replace("Z", "+00:00"))
+            return datetime.fromisoformat(data)
         except ValueError as e:
             raise ValueError(f"Invalid date format: {data}") from e
 
@@ -40,7 +40,7 @@ class EnterpriseService:
             raise ValueError("No data found.")
         try:
             # parse the UTC timestamp from the response
-            return datetime.fromisoformat(data.replace("Z", "+00:00"))
+            return datetime.fromisoformat(data)
         except ValueError as e:
             raise ValueError(f"Invalid date format: {data}") from e
 

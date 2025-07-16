@@ -276,3 +276,5 @@ export const ENABLE_WEBSITE_FIRECRAWL = getBooleanConfig(process.env.NEXT_PUBLIC
 export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, false)
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
+
+export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/

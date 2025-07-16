@@ -36,6 +36,7 @@ from core.workflow.nodes.llm.entities import (
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.provider import ProviderType
 from models.workflow import WorkflowType
@@ -104,7 +105,7 @@ def graph() -> Graph:
 @pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     return GraphRuntimeState(
@@ -181,7 +182,7 @@ def test_fetch_files_with_file_segment():
         related_id="1",
         storage_key="",
     )
-    variable_pool = VariablePool()
+    variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], file)
 
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
@@ -209,7 +210,7 @@ def test_fetch_files_with_array_file_segment():
             storage_key="",
         ),
     ]
-    variable_pool = VariablePool()
+    variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayFileSegment(value=files))
 
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
@@ -217,7 +218,7 @@ def test_fetch_files_with_array_file_segment():
 
 
 def test_fetch_files_with_none_segment():
-    variable_pool = VariablePool()
+    variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], NoneSegment())
 
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
@@ -225,7 +226,7 @@ def test_fetch_files_with_none_segment():
 
 
 def test_fetch_files_with_array_any_segment():
-    variable_pool = VariablePool()
+    variable_pool = VariablePool.empty()
     variable_pool.add(["sys", "files"], ArrayAnySegment(value=[]))
 
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
@@ -233,7 +234,7 @@ def test_fetch_files_with_array_any_segment():
 
 
 def test_fetch_files_with_non_existent_variable():
-    variable_pool = VariablePool()
+    variable_pool = VariablePool.empty()
     result = llm_utils.fetch_files(variable_pool=variable_pool, selector=["sys", "files"])
     assert result == []
 

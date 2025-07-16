@@ -3,22 +3,22 @@ import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
+from core.variables.variables import VariableUnion
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType
@@ -28,6 +28,7 @@ from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -41,6 +42,7 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
 )
+from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -57,21 +59,32 @@ class WorkflowService:
     Workflow Service
     """
 
+    def __init__(self, session_maker: sessionmaker | None = None):
+        """Initialize WorkflowService with repository dependencies."""
+        if session_maker is None:
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
+
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
-        # TODO(QuantumGhost): This query is not fully covered by index.
-        criteria = (
-            WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
-            WorkflowNodeExecutionModel.app_id == app_model.id,
-            WorkflowNodeExecutionModel.workflow_id == workflow.id,
-            WorkflowNodeExecutionModel.node_id == node_id,
+        """
+        Get the most recent execution for a specific node.
+
+        Args:
+            app_model: The application model
+            workflow: The workflow model
+            node_id: The node identifier
+
+        Returns:
+            The most recent WorkflowNodeExecutionModel for the node, or None if not found
+        """
+        return self._node_execution_service_repo.get_node_last_execution(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=workflow.id,
+            node_id=node_id,
         )
-        node_exec = (
-            db.session.query(WorkflowNodeExecutionModel)
-            .filter(*criteria)
-            .order_by(WorkflowNodeExecutionModel.created_at.desc())
-            .first()
-        )
-        return node_exec
 
     def is_workflow_exist(self, app_model: App) -> bool:
         return (
@@ -357,7 +370,7 @@ class WorkflowService:
 
         else:
             variable_pool = VariablePool(
-                system_variables={},
+                system_variables=SystemVariable.empty(),
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -396,7 +409,7 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             user=account,
             app_id=app_model.id,
@@ -404,8 +417,9 @@ class WorkflowService:
         )
         repository.save(node_execution)
 
-        # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution = repository.to_db_model(node_execution)
+        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
+        if workflow_node_execution is None:
+            raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
@@ -418,6 +432,7 @@ class WorkflowService:
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
             session.commit()
+
         return workflow_node_execution
 
     def run_free_workflow_node(
@@ -429,7 +444,7 @@ class WorkflowService:
         # run draft workflow node
         start_at = time.perf_counter()
 
-        workflow_node_execution = self._handle_node_run_result(
+        node_execution = self._handle_node_run_result(
             invoke_node_fn=lambda: WorkflowEntry.run_free_node(
                 node_id=node_id,
                 node_data=node_data,
@@ -441,7 +456,7 @@ class WorkflowService:
             node_id=node_id,
         )
 
-        return workflow_node_execution
+        return node_execution
 
     def _handle_node_run_result(
         self,
@@ -671,36 +686,30 @@ def _setup_variable_pool(
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
-        # Create a variable pool.
-        system_inputs: dict[SystemVariableKey, Any] = {
-            # From inputs:
-            SystemVariableKey.FILES: files,
-            SystemVariableKey.USER_ID: user_id,
-            # From workflow model
-            SystemVariableKey.APP_ID: workflow.app_id,
-            SystemVariableKey.WORKFLOW_ID: workflow.id,
-            # Randomly generated.
-            SystemVariableKey.WORKFLOW_EXECUTION_ID: str(uuid.uuid4()),
-        }
+        system_variable = SystemVariable(
+            user_id=user_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            files=files or [],
+            workflow_execution_id=str(uuid.uuid4()),
+        )
 
         # Only add chatflow-specific variables for non-workflow types
         if workflow.type != WorkflowType.WORKFLOW.value:
-            system_inputs.update(
-                {
-                    SystemVariableKey.QUERY: query,
-                    SystemVariableKey.CONVERSATION_ID: conversation_id,
-                    SystemVariableKey.DIALOGUE_COUNT: 0,
-                }
-            )
+            system_variable.query = query
+            system_variable.conversation_id = conversation_id
+            system_variable.dialogue_count = 0
     else:
-        system_inputs = {}
+        system_variable = SystemVariable.empty()
 
     # init variable pool
     variable_pool = VariablePool(
-        system_variables=system_inputs,
+        system_variables=system_variable,
         user_inputs=user_inputs,
         environment_variables=workflow.environment_variables,
-        conversation_variables=conversation_variables,
+        # Based on the definition of `VariableUnion`,
+        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+        conversation_variables=cast(list[VariableUnion], conversation_variables),  #
     )
 
     return variable_pool

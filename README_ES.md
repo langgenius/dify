@@ -203,6 +203,7 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 - [Gráfico Helm por @magicsong](https://github.com/magicsong/ai-charts)
 - [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Ficheros YAML por @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 ¡NUEVO! Archivos YAML (compatible con Dify v1.6.0) por @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Uso de Terraform para el despliegue
 
