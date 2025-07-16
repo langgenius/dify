@@ -248,6 +248,7 @@ def test_execute_answer_with_complex_outputs():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
     assert result.outputs["answer"] == "Analysis complete"
 
     # Check complex outputs
@@ -326,6 +327,7 @@ def test_execute_answer_with_empty_outputs():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
     assert result.outputs["answer"] == "Simple answer"
 
     # Check that outputs field is empty when no outputs are configured
@@ -404,6 +406,7 @@ def test_execute_answer_outputs_variable_not_found():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
     assert result.outputs["answer"] == "Test answer"
 
     # Check that outputs field handles missing variables gracefully
