@@ -214,6 +214,7 @@ class DatasetRetrieval:
                 retriever_from=invoke_from.to_source(),
                 score=item.metadata.get("score"),
                 content=item.page_content,
+                doc_metadata=item.metadata,
             )
             retrieval_resource_list.append(source)
         # deal with dify documents
