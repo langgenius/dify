@@ -21,7 +21,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
@@ -160,10 +160,10 @@ class OpikDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
@@ -222,10 +222,10 @@ class OpikDataTrace(BaseTraceInstance):
                 )
 
                 try:
-                    if outputs.get("usage"):
-                        total_tokens = outputs["usage"].get("total_tokens", 0)
-                        prompt_tokens = outputs["usage"].get("prompt_tokens", 0)
-                        completion_tokens = outputs["usage"].get("completion_tokens", 0)
+                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    total_tokens = usage_data.get("total_tokens", 0)
+                    prompt_tokens = usage_data.get("prompt_tokens", 0)
+                    completion_tokens = usage_data.get("completion_tokens", 0)
                 except Exception:
                     logger.error("Failed to extract usage", exc_info=True)
 
@@ -241,7 +241,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "trace_id": opik_trace_id,
                 "id": prepare_opik_uuid(created_at, node_execution_id),
                 "parent_span_id": prepare_opik_uuid(trace_info.start_time, parent_span_id),
-                "name": node_type,
+                "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
                 "end_time": finished_at,

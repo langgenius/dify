@@ -1,19 +1,15 @@
 import json
 import logging
+import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.variables import (
-    ArrayNumberSegment,
-    ArrayObjectSegment,
-    ArrayStringSegment,
     IntegerSegment,
-    ObjectSegment,
     Segment,
     SegmentType,
-    StringSegment,
 )
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -38,6 +34,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
+from factories.variable_factory import TypeMismatchError, build_segment_with_type
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool
@@ -53,6 +50,10 @@ class LoopNode(BaseNode[LoopNodeData]):
 
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """Run the node."""
@@ -97,7 +98,10 @@ class LoopNode(BaseNode[LoopNodeData]):
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
+        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
         from core.workflow.graph_engine.graph_engine import GraphEngine
+
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         graph_engine = GraphEngine(
             tenant_id=self.tenant_id,
@@ -110,7 +114,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             call_depth=self.workflow_call_depth,
             graph=loop_graph,
             graph_config=self.graph_config,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             thread_pool_id=self.thread_pool_id,
@@ -482,6 +486,13 @@ class LoopNode(BaseNode[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
+        for loop_variable in node_data.loop_variables or []:
+            if loop_variable.value_type == "variable":
+                assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
+                # add loop variable to variable mapping
+                selector = loop_variable.value
+                variable_mapping[f"{node_id}.{loop_variable.label}"] = selector
+
         # remove variable out from loop
         variable_mapping = {
             key: value for key, value in variable_mapping.items() if value[0] not in loop_graph.node_ids
@@ -490,23 +501,21 @@ class LoopNode(BaseNode[LoopNodeData]):
         return variable_mapping
 
     @staticmethod
-    def _get_segment_for_constant(var_type: str, value: Any) -> Segment:
+    def _get_segment_for_constant(var_type: SegmentType, value: Any) -> Segment:
         """Get the appropriate segment type for a constant value."""
-        segment_mapping: dict[str, tuple[type[Segment], SegmentType]] = {
-            "string": (StringSegment, SegmentType.STRING),
-            "number": (IntegerSegment, SegmentType.NUMBER),
-            "object": (ObjectSegment, SegmentType.OBJECT),
-            "array[string]": (ArrayStringSegment, SegmentType.ARRAY_STRING),
-            "array[number]": (ArrayNumberSegment, SegmentType.ARRAY_NUMBER),
-            "array[object]": (ArrayObjectSegment, SegmentType.ARRAY_OBJECT),
-        }
         if var_type in ["array[string]", "array[number]", "array[object]"]:
-            if value:
+            if value and isinstance(value, str):
                 value = json.loads(value)
             else:
                 value = []
-        segment_info = segment_mapping.get(var_type)
-        if not segment_info:
-            raise ValueError(f"Invalid variable type: {var_type}")
-        segment_class, value_type = segment_info
-        return segment_class(value=value, value_type=value_type)
+        try:
+            return build_segment_with_type(var_type, value)
+        except TypeMismatchError as type_exc:
+            # Attempt to parse the value as a JSON-encoded string, if applicable.
+            if not isinstance(value, str):
+                raise
+            try:
+                value = json.loads(value)
+            except ValueError:
+                raise type_exc
+            return build_segment_with_type(var_type, value)

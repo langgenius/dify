@@ -62,6 +62,8 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App
@@ -69,8 +71,12 @@ from models.workflow import Workflow
 
 
 class WorkflowBasedAppRunner(AppRunner):
-    def __init__(self, queue_manager: AppQueueManager):
+    def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
         self.queue_manager = queue_manager
+        self._variable_loader = variable_loader
+
+    def _get_app_id(self) -> str:
+        raise NotImplementedError("not implemented")
 
     def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
         """
@@ -161,7 +167,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )
@@ -172,6 +178,13 @@ class WorkflowBasedAppRunner(AppRunner):
             )
         except NotImplementedError:
             variable_mapping = {}
+
+        load_into_variable_pool(
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
@@ -251,7 +264,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=workflow.environment_variables,
         )
@@ -262,6 +275,12 @@ class WorkflowBasedAppRunner(AppRunner):
             )
         except NotImplementedError:
             variable_mapping = {}
+        load_into_variable_pool(
+            self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
@@ -376,6 +395,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_loop_id=event.in_loop_id,
                 )
             )
+
         elif isinstance(event, NodeRunFailedEvent):
             self._publish_event(
                 QueueNodeFailedEvent(
@@ -438,6 +458,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_loop_id=event.in_loop_id,
                 )
             )
+
         elif isinstance(event, NodeInIterationFailedEvent):
             self._publish_event(
                 QueueNodeInIterationFailedEvent(

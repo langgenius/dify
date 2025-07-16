@@ -22,7 +22,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import DifyCoreRepositoryFactory
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
@@ -40,9 +40,14 @@ class WeaveDataTrace(BaseTraceInstance):
         self.weave_api_key = weave_config.api_key
         self.project_name = weave_config.project
         self.entity = weave_config.entity
+        self.host = weave_config.host
 
-        # Login with API key first
-        login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+        # Login with API key first, including host if provided
+        if self.host:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+        else:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
         if not login_status:
             logger.error("Failed to login to Weights & Biases with the provided API key")
             raise ValueError("Weave login failed")
@@ -139,10 +144,10 @@ class WeaveDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=service_account,
-            app_id=trace_info.metadata.get("app_id"),
+            app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
@@ -386,7 +391,11 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+            if self.host:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+            else:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
             if not login_status:
                 raise ValueError("Weave login failed")
             else:

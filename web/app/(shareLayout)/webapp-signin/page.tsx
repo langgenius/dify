@@ -23,10 +23,12 @@ const WebSSOForm: FC = () => {
   const redirectUrl = searchParams.get('redirect_url')
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
+  const code = searchParams.get('code')
 
   const getSigninUrl = useCallback(() => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
+    params.delete('code')
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
@@ -44,7 +46,10 @@ const WebSSOForm: FC = () => {
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
     if (!appCode)
       return null
 
@@ -61,20 +66,20 @@ const WebSSOForm: FC = () => {
         localStorage.setItem('webapp_access_token', tokenFromUrl)
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: tokenFromUrl })
         await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
         return
       }
       if (appCode && redirectUrl && localStorage.getItem('webapp_access_token')) {
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: localStorage.getItem('webapp_access_token') })
         await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
       }
     })()
   }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl, message])
 
   useEffect(() => {
     if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
-      router.replace(redirectUrl)
+      router.replace(decodeURIComponent(redirectUrl))
   }, [webAppAccessMode, router, redirectUrl])
 
   if (tokenFromUrl) {
@@ -85,8 +90,8 @@ const WebSSOForm: FC = () => {
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-      <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} unknownReason={message} />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
+      <AppUnavailable className='h-auto w-auto' code={code || t('share.common.appUnavailable')} unknownReason={message} />
+      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
     </div>
   }
   if (!redirectUrl) {

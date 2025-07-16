@@ -72,7 +72,6 @@ const translation = {
       run: '実行',
       firecrawlTitle: '🔥Firecrawl を使っでウエブコンテンツを抽出',
       firecrawlDoc: 'Firecrawl ドキュメント',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'サイト全体を Markdown に変換する',
       jinaReaderDoc: 'Jina Reader の詳細',
       jinaReaderDocLink: 'https://jina.ai/reader',
@@ -98,7 +97,6 @@ const translation = {
       watercrawlDoc: 'ウォータークローリングの文書',
       watercrawlTitle: 'Watercrawl を使用してウェブコンテンツを抽出する',
       waterCrawlNotConfigured: 'Watercrawl は設定されていません',
-      watercrawlDocLink: 'https://docs.dify.ai/ja/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     },
   },
   stepTwo: {

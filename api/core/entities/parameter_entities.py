@@ -16,7 +16,15 @@ class CommonParameterType(StrEnum):
     TOOLS_SELECTOR = "array[tools]"
     ANY = "any"
 
+    # Dynamic select parameter
+    # Once you are not sure about the available options until authorization is done
+    # eg: Select a Slack channel from a Slack workspace
+    DYNAMIC_SELECT = "dynamic-select"
+
     # TOOL_SELECTOR = "tool-selector"
+    # MCP object and array type parameters
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class AppSelectorScope(StrEnum):

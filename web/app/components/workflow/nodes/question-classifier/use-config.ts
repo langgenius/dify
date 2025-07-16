@@ -9,14 +9,15 @@ import {
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { QuestionClassifierNodeType } from './types'
+import type { QuestionClassifierNodeType, Topic } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { useUpdateNodeInternals } from 'reactflow'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
+  const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
@@ -87,7 +88,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
@@ -109,7 +110,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
         query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
       })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleClassesChange = useCallback((newClasses: any) => {
@@ -163,62 +164,20 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<QuestionClassifierNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      'query': '',
-      '#files#': [],
-    },
-  })
-
-  const query = runInputData.query
-  const setQuery = useCallback((newQuery: string) => {
-    setRunInputData({
-      ...runInputData,
-      query: newQuery,
-    })
-  }, [runInputData, setRunInputData])
-
-  const varInputs = getInputVars([inputs.instruction])
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {
-      query,
-    }
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
+
+  const handleSortTopic = useCallback((newTopics: (Topic & { id: string })[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.classes = newTopics.filter(Boolean).map(item => ({
+        id: item.id,
+        name: item.name,
+      }))
+    })
+    setInputs(newInputs)
+    updateNodeInternals(id)
+  }, [id, inputs, setInputs, updateNodeInternals])
 
   return {
     readOnly,
@@ -235,23 +194,11 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     availableNodesWithParent,
     availableVisionVars,
     handleInstructionChange,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
     handleMemoryChange,
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    query,
-    setQuery,
-    runResult,
-    visionFiles,
-    setVisionFiles,
+    handleSortTopic,
   }
 }
 

@@ -137,6 +137,7 @@ const translation = {
     uploadingPackage: 'Загрузка {{packageName}}...',
     pluginLoadError: 'Ошибка загрузки плагина',
     readyToInstallPackage: 'О программе установки следующего плагина',
+    installWarning: 'Этот плагин не разрешено устанавливать.',
   },
   installFromGitHub: {
     gitHubRepo: 'Репозиторий GitHub',
@@ -199,7 +200,6 @@ const translation = {
   searchTools: 'Инструменты поиска...',
   allCategories: 'Все категории',
   endpointsEnabled: '{{num}} наборы включенных конечных точек',
-  submitPlugin: 'Отправить плагин',
   installAction: 'Устанавливать',
   from: 'От',
   installFrom: 'УСТАНОВИТЬ С',
@@ -212,6 +212,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'Текущая версия Dify не совместима с этим плагином, пожалуйста, обновите до минимально необходимой версии: {{minimalDifyVersion}}',
   requestAPlugin: 'Запросите плагин',
+  publishPlugins: 'Публикация плагинов',
 }
 
 export default translation

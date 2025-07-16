@@ -237,6 +237,13 @@ class FileAccessConfig(BaseSettings):
         default="",
     )
 
+    INTERNAL_FILES_URL: str = Field(
+        description="Internal base URL for file access within Docker network,"
+        " used for plugin daemon and internal service communication."
+        " Falls back to FILES_URL if not specified.",
+        default="",
+    )
+
     FILES_ACCESS_TIMEOUT: int = Field(
         description="Expiration time in seconds for file access URLs",
         default=300,
@@ -530,6 +537,33 @@ class WorkflowNodeExecutionConfig(BaseSettings):
     )
 
 
+class RepositoryConfig(BaseSettings):
+    """
+    Configuration for repository implementations
+    """
+
+    CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
+    )
+
+    CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
+        "Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_RUN_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -609,7 +643,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Email service provider type ('smtp' or 'resend'), default to None.",
+        description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,
     )
 
@@ -661,6 +695,11 @@ class MailConfig(BaseSettings):
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
+    )
+
+    SENDGRID_API_KEY: Optional[str] = Field(
+        description="API key for SendGrid service",
+        default=None,
     )
 
 
@@ -891,6 +930,7 @@ class FeatureConfig(
     MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
+    RepositoryConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,

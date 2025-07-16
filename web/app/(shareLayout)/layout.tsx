@@ -12,17 +12,26 @@ const Layout: FC<{
 }> = ({ children }) => {
   const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const setWebAppAccessMode = useGlobalPublicStore(s => s.setWebAppAccessMode)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('redirect_url')
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     (async () => {
+      if (!isGlobalPending && !systemFeatures.webapp_auth.enabled) {
+        setIsLoading(false)
+        return
+      }
+
       let appCode: string | null = null
-      if (redirectUrl)
-        appCode = redirectUrl?.split('/').pop() || null
-      else
+      if (redirectUrl) {
+        const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+        appCode = url.pathname.split('/').pop() || null
+      }
+      else {
         appCode = pathname.split('/').pop() || null
+      }
 
       if (!appCode)
         return
@@ -31,7 +40,7 @@ const Layout: FC<{
       setWebAppAccessMode(ret?.accessMode || AccessMode.PUBLIC)
       setIsLoading(false)
     })()
-  }, [pathname, redirectUrl, setWebAppAccessMode])
+  }, [pathname, redirectUrl, setWebAppAccessMode, isGlobalPending, systemFeatures.webapp_auth.enabled])
   if (isLoading || isGlobalPending) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />

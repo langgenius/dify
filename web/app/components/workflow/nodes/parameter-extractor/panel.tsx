@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Editor from '../_base/components/prompt/editor'
-import ResultPanel from '../../run/result-panel'
 import ConfigVision from '../_base/components/config-vision'
-import { findVariableWhenOnLLMVision } from '../utils'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -17,12 +15,10 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import { VarType } from '@/app/components/workflow/types'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -53,62 +49,12 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleReasoningModeChange,
     availableVars,
     availableNodesWithParent,
-    availableVisionVars,
-    inputVarValues,
-    varInputs,
     isVisionModel,
     handleVisionResolutionChange,
     handleVisionResolutionEnabledChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
   } = useConfig(id, data)
 
   const model = inputs.model
-
-  const singleRunForms = (() => {
-    const forms: FormProps[] = []
-
-    forms.push(
-      {
-        label: t('workflow.nodes.llm.singleRun.variable')!,
-        inputs: [{
-          label: t(`${i18nPrefix}.inputVar`)!,
-          variable: 'query',
-          type: InputVarType.paragraph,
-          required: true,
-        }, ...varInputs],
-        values: inputVarValues,
-        onChange: setInputVarValues,
-      },
-    )
-
-    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
-      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVisionVars)
-
-      forms.push(
-        {
-          label: t('workflow.nodes.llm.vision')!,
-          inputs: [{
-            label: currentVariable?.variable as any,
-            variable: '#files#',
-            type: currentVariable?.formType as any,
-            required: false,
-          }],
-          values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
-        },
-      )
-    }
-
-    return forms
-  })()
 
   return (
     <div className='pt-2'>
@@ -244,28 +190,22 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
               <VarItem
                 name='__is_success'
                 type={VarType.number}
-                description={t(`${i18nPrefix}.isSuccess`)}
+                description={t(`${i18nPrefix}.outputVars.isSuccess`)}
               />
               <VarItem
                 name='__reason'
                 type={VarType.string}
-                description={t(`${i18nPrefix}.errorReason`)}
+                description={t(`${i18nPrefix}.outputVars.errorReason`)}
+              />
+              <VarItem
+                name='__usage'
+                type='object'
+                description={t(`${i18nPrefix}.outputVars.usage`)}
               />
             </>
           </OutputVars>
         </div>
       </>)}
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }

@@ -47,8 +47,6 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args["mode"] == "channel":
-            filters.append(App.mode == AppMode.CHANNEL.value)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
@@ -395,3 +393,15 @@ class AppService:
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
+
+    @staticmethod
+    def get_app_id_by_code(app_code: str) -> str:
+        """
+        Get app id by app code
+        :param app_code: app code
+        :return: app id
+        """
+        site = db.session.query(Site).filter(Site.code == app_code).first()
+        if not site:
+            raise ValueError(f"App with code {app_code} not found")
+        return str(site.app_id)

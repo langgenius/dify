@@ -8,11 +8,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities import AssistantPromptMessage
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
@@ -64,12 +64,9 @@ def init_parameter_extractor_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
+        ),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -353,7 +350,7 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock):
+def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
     """
     Test chat parameter extractor with memory.
     """
@@ -384,7 +381,8 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock):
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )
-    node._fetch_memory = get_mocked_fetch_memory("customized memory")
+    # Test the mock before running the actual test
+    monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()
 
     result = node._run()

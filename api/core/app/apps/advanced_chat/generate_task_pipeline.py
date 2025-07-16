@@ -61,11 +61,12 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
+from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -94,6 +95,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         dialogue_count: int,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        draft_var_saver_factory: DraftVariableSaverFactory,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -114,16 +116,16 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
-            workflow_system_variables={
-                SystemVariableKey.QUERY: message.query,
-                SystemVariableKey.FILES: application_generate_entity.files,
-                SystemVariableKey.CONVERSATION_ID: conversation.id,
-                SystemVariableKey.USER_ID: user_session_id,
-                SystemVariableKey.DIALOGUE_COUNT: dialogue_count,
-                SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: workflow.id,
-                SystemVariableKey.WORKFLOW_EXECUTION_ID: application_generate_entity.workflow_run_id,
-            },
+            workflow_system_variables=SystemVariable(
+                query=message.query,
+                files=application_generate_entity.files,
+                conversation_id=conversation.id,
+                user_id=user_session_id,
+                dialogue_count=dialogue_count,
+                app_id=application_generate_entity.app_config.app_id,
+                workflow_id=workflow.id,
+                workflow_execution_id=application_generate_entity.workflow_run_id,
+            ),
             workflow_info=CycleManagerWorkflowInfo(
                 workflow_id=workflow.id,
                 workflow_type=WorkflowType(workflow.type),
@@ -153,6 +155,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         self._conversation_name_generate_thread: Thread | None = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
+        self._draft_var_saver_factory = draft_var_saver_factory
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -371,6 +374,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         workflow_node_execution=workflow_node_execution,
                     )
                     session.commit()
+                self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -390,6 +394,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
+                if isinstance(event, QueueNodeExceptionEvent):
+                    self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -759,3 +765,15 @@ class AdvancedChatAppGenerateTaskPipeline:
         if not message:
             raise ValueError(f"Message not found: {self._message_id}")
         return message
+
+    def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
+        with Session(db.engine) as session, session.begin():
+            saver = self._draft_var_saver_factory(
+                session=session,
+                app_id=self._application_generate_entity.app_config.app_id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                node_execution_id=node_execution_id,
+                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+            )
+            saver.save(event.process_data, event.outputs)

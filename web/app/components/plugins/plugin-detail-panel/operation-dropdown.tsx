@@ -12,6 +12,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   source: PluginSource
@@ -39,6 +40,8 @@ const OperationDropdown: FC<Props> = ({
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <PortalToFollowElem
@@ -77,13 +80,13 @@ const OperationDropdown: FC<Props> = ({
               className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
             >{t('plugin.detailPanel.operation.checkUpdate')}</div>
           )}
-          {(source === PluginSource.marketplace || source === PluginSource.github) && (
+          {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
             <a href={detailUrl} target='_blank' className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>
               <span className='grow'>{t('plugin.detailPanel.operation.viewDetail')}</span>
               <RiArrowRightUpLine className='h-3.5 w-3.5 shrink-0 text-text-tertiary' />
             </a>
           )}
-          {(source === PluginSource.marketplace || source === PluginSource.github) && (
+          {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
             <div className='my-1 h-px bg-divider-subtle'></div>
           )}
           <div

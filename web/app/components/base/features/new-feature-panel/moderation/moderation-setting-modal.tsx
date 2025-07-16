@@ -25,6 +25,7 @@ import { useModalContext } from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import { useDocLink } from '@/context/i18n'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -46,6 +47,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
   const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
@@ -316,7 +318,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             <div className='flex h-9 items-center justify-between'>
               <div className='text-sm font-medium text-text-primary'>{t('common.apiBasedExtension.selector.title')}</div>
               <a
-                href={t('common.apiBasedExtension.linkUrl') || '/'}
+                href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs text-text-tertiary hover:text-primary-600'
               >

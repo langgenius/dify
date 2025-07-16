@@ -108,12 +108,13 @@ function unicodeToChar(text: string) {
   })
 }
 
-function requiredWebSSOLogin(message?: string) {
-  removeAccessToken()
+function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
-  params.append('redirect_url', globalThis.location.pathname)
+  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
   if (message)
     params.append('message', message)
+  if (code)
+    params.append('code', String(code))
   globalThis.location.href = `/webapp-signin?${params.toString()}`
 }
 
@@ -403,10 +404,12 @@ export const ssePost = async (
             res.json().then((data: any) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
-                  requiredWebSSOLogin(data.message)
+                  requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required')
+                if (data.code === 'web_sso_auth_required') {
+                  removeAccessToken()
                   requiredWebSSOLogin()
+                }
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
@@ -484,10 +487,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const { code, message } = errRespData
       // webapp sso
       if (code === 'web_app_access_denied') {
-        requiredWebSSOLogin(message)
+        requiredWebSSOLogin(message, 403)
         return Promise.reject(err)
       }
       if (code === 'web_sso_auth_required') {
+        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }

@@ -58,6 +58,8 @@ const translation = {
     format: 'Format',
     more: 'Daha fazla',
     downloadFailed: 'İndirme başarısız oldu. Lütfen daha sonra tekrar deneyin.',
+    selectAll: 'Hepsini Seç',
+    deSelectAll: 'Hepsini Seçme',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -471,7 +473,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API uzantıları merkezi API yönetimi sağlar, Dify\'nin uygulamaları arasında kolay kullanım için yapılandırmayı basitleştirir.',
     link: 'Kendi API Uzantınızı nasıl geliştireceğinizi öğrenin.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API Uzantısı Ekle',
     selector: {
       title: 'API Uzantısı',

@@ -48,6 +48,7 @@ from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    TextPromptMessageContent,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.entities.trace_entity import TraceTaskName
@@ -309,6 +310,23 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
                     continue
+                if isinstance(chunk.delta.message.content, list):
+                    delta_text = ""
+                    for content in chunk.delta.message.content:
+                        logger.debug(
+                            "The content type %s in LLM chunk delta message content.: %r", type(content), content
+                        )
+                        if isinstance(content, TextPromptMessageContent):
+                            delta_text += content.data
+                        elif isinstance(content, str):
+                            delta_text += content  # failback to str
+                        else:
+                            logger.warning(
+                                "Unsupported content type %s in LLM chunk delta message content.: %r",
+                                type(content),
+                                content,
+                            )
+                            continue
 
                 if not self._task_state.llm_result.prompt_messages:
                     self._task_state.llm_result.prompt_messages = chunk.prompt_messages
@@ -377,6 +395,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.provider_response_latency = time.perf_counter() - self._start_at
         message.total_price = usage.total_price
         message.currency = usage.currency
+        self._task_state.llm_result.usage.latency = message.provider_response_latency
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:

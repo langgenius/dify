@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import random
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -17,7 +16,7 @@ from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import redis_client, redis_fallback
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
@@ -261,7 +260,7 @@ class AccountService:
 
     @staticmethod
     def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
-        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, token_type="account_deletion", additional_data={"code": code}
         )
@@ -429,7 +428,7 @@ class AccountService:
         additional_data: dict[str, Any] = {},
     ):
         if not code:
-            code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+            code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
             account=account, email=email, token_type="reset_password", additional_data=additional_data
@@ -456,7 +455,7 @@ class AccountService:
 
             raise EmailCodeLoginRateLimitExceededError()
 
-        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
@@ -496,6 +495,7 @@ class AccountService:
         return account
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def add_login_error_rate_limit(email: str) -> None:
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -505,6 +505,7 @@ class AccountService:
         redis_client.setex(key, dify_config.LOGIN_LOCKOUT_DURATION, count)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_login_error_rate_limit(email: str) -> bool:
         key = f"login_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -517,11 +518,13 @@ class AccountService:
         return False
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def reset_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def add_forgot_password_error_rate_limit(email: str) -> None:
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -531,6 +534,7 @@ class AccountService:
         redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_forgot_password_error_rate_limit(email: str) -> bool:
         key = f"forgot_password_error_rate_limit:{email}"
         count = redis_client.get(key)
@@ -543,11 +547,13 @@ class AccountService:
         return False
 
     @staticmethod
+    @redis_fallback(default_return=None)
     def reset_forgot_password_error_rate_limit(email: str):
         key = f"forgot_password_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
+    @redis_fallback(default_return=False)
     def is_email_send_ip_limit(ip_address: str):
         minute_key = f"email_send_ip_limit_minute:{ip_address}"
         freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
@@ -890,7 +896,7 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
-            dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
+            dify_setup = DifySetup(version=dify_config.project.version)
             db.session.add(dify_setup)
             db.session.commit()
         except Exception as e:

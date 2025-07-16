@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Pobieranie nie powiodło się. Proszę spróbować ponownie później.',
     more: 'Więcej',
     downloadSuccess: 'Pobieranie zakończone.',
+    deSelectAll: 'Odznacz wszystkie',
+    selectAll: 'Zaznacz wszystkie',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -481,7 +483,6 @@ const translation = {
     title:
       'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Dify.',
     link: 'Dowiedz się, jak opracować własne rozszerzenie interfejsu API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodaj rozszerzenie interfejsu API',
     selector: {
       title: 'Rozszerzenie interfejsu API',

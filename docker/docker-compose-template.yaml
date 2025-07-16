@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.4.1
+    image: langgenius/dify-api:1.6.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -31,7 +31,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.4.1
+    image: langgenius/dify-api:1.6.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -57,7 +57,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.4.1
+    image: langgenius/dify-web:1.6.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -67,6 +67,7 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
+      ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
@@ -84,7 +85,7 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      PGUSER: ${PGUSER:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
@@ -142,7 +143,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.1.1-local
+    image: langgenius/dify-plugin-daemon:0.1.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -168,6 +169,7 @@ services:
       PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
       PLUGIN_STORAGE_OSS_BUCKET: ${PLUGIN_STORAGE_OSS_BUCKET:-}
       S3_USE_AWS_MANAGED_IAM: ${PLUGIN_S3_USE_AWS_MANAGED_IAM:-false}
+      S3_USE_AWS: ${PLUGIN_S3_USE_AWS:-false}
       S3_ENDPOINT: ${PLUGIN_S3_ENDPOINT:-}
       S3_USE_PATH_STYLE: ${PLUGIN_S3_USE_PATH_STYLE:-false}
       AWS_ACCESS_KEY: ${PLUGIN_AWS_ACCESS_KEY:-}
@@ -264,7 +266,7 @@ services:
       NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
       NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
       NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
-      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-15M}
+      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
       NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
@@ -434,7 +436,7 @@ services:
 
   # OceanBase vector database
   oceanbase:
-    image: oceanbase/oceanbase-ce:4.3.5.1-101000042025031818
+    image: oceanbase/oceanbase-ce:4.3.5-lts
     container_name: oceanbase
     profiles:
       - oceanbase
@@ -449,9 +451,15 @@ services:
       OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: 127.0.0.1
-      MODE: MINI
+      MODE: mini
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test: [ 'CMD-SHELL', 'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"' ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
 
   # Oracle vector database
   oracle:
@@ -609,6 +617,18 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
+
+  # Matrixone vector store.
+  matrixone:
+    hostname: matrixone
+    image: matrixorigin/matrixone:2.1.1
+    profiles:
+      - matrixone
+    restart: always
+    volumes:
+      - ./volumes/matrixone/data:/mo-data
+    ports:
+      - ${MATRIXONE_PORT:-6001}:${MATRIXONE_PORT:-6001}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites

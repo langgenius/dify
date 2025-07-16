@@ -55,6 +55,7 @@ type FormProps<
   nodeId?: string
   nodeOutputVars?: NodeOutPutVar[],
   availableNodes?: Node[],
+  canChooseMCPTool?: boolean
 }
 
 function Form<
@@ -80,6 +81,7 @@ function Form<
   nodeId,
   nodeOutputVars,
   availableNodes,
+  canChooseMCPTool,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -378,6 +380,7 @@ function Form<
             value={value[variable] || []}
             onChange={item => handleFormChange(variable, item as any)}
             supportCollapse
+            canChooseMCPTool={canChooseMCPTool}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}

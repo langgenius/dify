@@ -48,7 +48,7 @@ const DatasetNav = () => {
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
-      curNav={currentDataset as Omit<NavItem, 'link'>}
+      curNav={currentDataset as any}
       navs={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
@@ -59,6 +59,7 @@ const DatasetNav = () => {
       createText={t('common.menus.newDataset')}
       onCreate={() => router.push(`${basePath}/datasets/create`)}
       onLoadmore={handleLoadmore}
+      isApp={false}
     />
   )
 }
