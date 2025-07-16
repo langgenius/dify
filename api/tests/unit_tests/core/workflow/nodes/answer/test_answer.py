@@ -102,16 +102,8 @@ def test_execute_answer_with_outputs():
                     "type": "answer",
                     "answer": "Weather: {{#start.weather#}}, Score: {{#start.score#}}",
                     "outputs": [
-                        {
-                            "variable": "confidence",
-                            "type": "number", 
-                            "value_selector": ["start", "score"]
-                        },
-                        {
-                            "variable": "status",
-                            "type": "string",
-                            "value_selector": ["start", "weather"]
-                        }
+                        {"variable": "confidence", "type": "number", "value_selector": ["start", "score"]},
+                        {"variable": "status", "type": "string", "value_selector": ["start", "weather"]},
                     ],
                 },
                 "id": "answer",
@@ -155,16 +147,8 @@ def test_execute_answer_with_outputs():
                 "type": "answer",
                 "answer": "Weather: {{#start.weather#}}, Score: {{#start.score#}}",
                 "outputs": [
-                    {
-                        "variable": "confidence",
-                        "type": "number", 
-                        "value_selector": ["start", "score"]
-                    },
-                    {
-                        "variable": "status",
-                        "type": "string",
-                        "value_selector": ["start", "weather"]
-                    }
+                    {"variable": "confidence", "type": "number", "value_selector": ["start", "score"]},
+                    {"variable": "status", "type": "string", "value_selector": ["start", "weather"]},
                 ],
             },
         },
@@ -179,7 +163,7 @@ def test_execute_answer_with_outputs():
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
     assert result.outputs["answer"] == "Weather: sunny, Score: 85"
-    
+
     # Check outputs field
     assert "outputs" in result.outputs
     outputs = result.outputs["outputs"]
@@ -205,16 +189,8 @@ def test_execute_answer_with_complex_outputs():
                     "type": "answer",
                     "answer": "Analysis complete",
                     "outputs": [
-                        {
-                            "variable": "scores",
-                            "type": "array[number]",
-                            "value_selector": ["start", "score_list"]
-                        },
-                        {
-                            "variable": "metadata",
-                            "type": "object",
-                            "value_selector": ["start", "meta_info"]
-                        }
+                        {"variable": "scores", "type": "array[number]", "value_selector": ["start", "score_list"]},
+                        {"variable": "metadata", "type": "object", "value_selector": ["start", "meta_info"]},
                     ],
                 },
                 "id": "answer",
@@ -258,16 +234,8 @@ def test_execute_answer_with_complex_outputs():
                 "type": "answer",
                 "answer": "Analysis complete",
                 "outputs": [
-                    {
-                        "variable": "scores",
-                        "type": "array[number]",
-                        "value_selector": ["start", "score_list"]
-                    },
-                    {
-                        "variable": "metadata",
-                        "type": "object",
-                        "value_selector": ["start", "meta_info"]
-                    }
+                    {"variable": "scores", "type": "array[number]", "value_selector": ["start", "score_list"]},
+                    {"variable": "metadata", "type": "object", "value_selector": ["start", "meta_info"]},
                 ],
             },
         },
@@ -281,7 +249,7 @@ def test_execute_answer_with_complex_outputs():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Analysis complete"
-    
+
     # Check complex outputs
     assert "outputs" in result.outputs
     outputs = result.outputs["outputs"]
@@ -359,7 +327,7 @@ def test_execute_answer_with_empty_outputs():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Simple answer"
-    
+
     # Check that outputs field is empty when no outputs are configured
     assert "outputs" in result.outputs
     assert result.outputs["outputs"] == {}
@@ -383,11 +351,7 @@ def test_execute_answer_outputs_variable_not_found():
                     "type": "answer",
                     "answer": "Test answer",
                     "outputs": [
-                        {
-                            "variable": "missing_var",
-                            "type": "string",
-                            "value_selector": ["start", "non_existent"]
-                        }
+                        {"variable": "missing_var", "type": "string", "value_selector": ["start", "non_existent"]}
                     ],
                 },
                 "id": "answer",
@@ -428,13 +392,7 @@ def test_execute_answer_outputs_variable_not_found():
                 "title": "Missing variable",
                 "type": "answer",
                 "answer": "Test answer",
-                "outputs": [
-                    {
-                        "variable": "missing_var",
-                        "type": "string",
-                        "value_selector": ["start", "non_existent"]
-                    }
-                ],
+                "outputs": [{"variable": "missing_var", "type": "string", "value_selector": ["start", "non_existent"]}],
             },
         },
     )
@@ -447,7 +405,7 @@ def test_execute_answer_outputs_variable_not_found():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Test answer"
-    
+
     # Check that outputs field handles missing variables gracefully
     assert "outputs" in result.outputs
     outputs = result.outputs["outputs"]
