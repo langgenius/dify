@@ -2,7 +2,7 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
-    plugin_unique_identifier: langgenius/qa_chunk:0.0.1@ef14ad7edce1d293ef52f14429a9acb39fa146a7b91d63a31cda905539908453
+    plugin_unique_identifier: langgenius/general_chunker:0.0.1@e3da408b7277866404c3f884d599261f9d0b9003ea4ef7eb3b64489bdf39d18b
 - current_identifier: null
   type: marketplace
   value:
