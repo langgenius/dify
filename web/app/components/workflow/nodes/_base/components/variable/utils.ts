@@ -225,6 +225,10 @@ const formatItem = (
         variable: 'sys.workflow_run_id',
         type: VarType.string,
       })
+      res.vars.push({
+        variable: 'sys.total_tokens',
+        type: VarType.number,
+      })
 
       break
     }
