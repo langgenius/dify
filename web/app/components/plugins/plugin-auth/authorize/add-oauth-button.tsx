@@ -5,7 +5,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
 import {
   RiClipboardLine,
   RiEqualizer2Line,
@@ -61,7 +60,7 @@ const AddOAuthButton = ({
     client_params,
     redirect_uri,
   } = data || {}
-  const isConfigured = is_system_oauth_params_exists || Object.keys(client_params || {}).length > 0
+  const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
 
@@ -156,19 +155,17 @@ const AddOAuthButton = ({
   }, [schema, renderCustomLabel, t, is_system_oauth_params_exists, is_oauth_custom_client_enabled, client_params])
 
   const __auth_client__ = useMemo(() => {
-    if (!isConfigured) {
-      if (IS_CE_EDITION)
+    if (isConfigured) {
+      if (is_oauth_custom_client_enabled)
         return 'custom'
-
       return 'default'
     }
     else {
-      if (is_oauth_custom_client_enabled)
-        return 'custom'
-
-      return 'default'
+      if (is_system_oauth_params_exists)
+        return 'default'
+      return 'custom'
     }
-  }, [isConfigured, is_oauth_custom_client_enabled])
+  }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
 
   return (
     <>
