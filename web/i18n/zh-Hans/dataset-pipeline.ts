@@ -136,6 +136,8 @@ const translation = {
       title: '确认',
       content: '此操作是永久性的。您将无法恢复到之前的方式。请确认转换。',
     },
+    errorMessage: '转换数据集为 pipeline 失败',
+    successMessage: '成功将数据集转换为 pipeline',
   },
 }
 

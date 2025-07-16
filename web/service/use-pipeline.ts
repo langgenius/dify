@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post } from './base'
 import { DatasourceType } from '@/models/pipeline'
 import type {
+  ConversionResponse,
   DeleteTemplateResponse,
   ExportTemplateDSLResponse,
   ImportPipelineDSLConfirmResponse,
@@ -348,6 +349,15 @@ export const usePreviewOnlineDocument = () => {
           },
         },
       )
+    },
+  })
+}
+
+export const useConvertDatasetToPipeline = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'convert-dataset-to-pipeline'],
+    mutationFn: (datasetId: string) => {
+      return post<ConversionResponse>(`/rag/pipelines/transform/${datasetId}`)
     },
   })
 }

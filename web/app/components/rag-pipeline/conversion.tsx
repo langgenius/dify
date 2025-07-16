@@ -3,15 +3,45 @@ import { useTranslation } from 'react-i18next'
 import Button from '../base/button'
 import PipelineScreenShot from './screenshot'
 import Confirm from '../base/confirm'
+import { useConvertDatasetToPipeline } from '@/service/use-pipeline'
+import { useParams } from 'next/navigation'
+import { useInvalid } from '@/service/use-base'
+import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
+import Toast from '../base/toast'
 
 const Conversion = () => {
   const { t } = useTranslation()
+  const { datasetId } = useParams()
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
+  const invalidDatasetDetail = useInvalid([datasetDetailQueryKeyPrefix, datasetId])
   const handleConvert = useCallback(() => {
-    setShowConfirmModal(false)
-    // todo: Add conversion logic here
-  }, [])
+    convert(datasetId as string, {
+      onSuccess: (res) => {
+        if (res.status === 'success') {
+          Toast.notify({
+            type: 'error',
+            message: t('datasetPipeline.conversion.successMessage'),
+          })
+          setShowConfirmModal(false)
+          invalidDatasetDetail()
+        }
+        else if (res.status === 'failed') {
+          Toast.notify({
+            type: 'error',
+            message: t('datasetPipeline.conversion.errorMessage'),
+          })
+        }
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.conversion.errorMessage'),
+        })
+      },
+    })
+  }, [convert, datasetId, invalidDatasetDetail, t])
 
   const handleShowConfirmModal = useCallback(() => {
     setShowConfirmModal(true)
@@ -62,6 +92,8 @@ const Conversion = () => {
           isShow={showConfirmModal}
           onConfirm={handleConvert}
           onCancel={handleCancelConversion}
+          isLoading={isPending}
+          isDisabled={isPending}
         />
       )}
     </div>

@@ -136,6 +136,8 @@ const translation = {
       title: 'Confirmation',
       content: 'This action is permanent. You won\'t be able to revert to the previous method.Please confirm to convert.',
     },
+    errorMessage: 'Failed to convert the dataset to a pipeline',
+    successMessage: 'Successfully converted the dataset to a pipeline',
   },
 }
 

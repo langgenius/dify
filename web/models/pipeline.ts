@@ -268,6 +268,12 @@ export type OnlineDocumentPreviewResponse = {
   content: string
 }
 
+export type ConversionResponse = {
+  pipeline_id: string
+  dataset_id: string
+  status: 'success' | 'failed'
+}
+
 export enum OnlineDriveFileType {
   file = 'file',
   folder = 'folder',
