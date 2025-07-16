@@ -12,12 +12,14 @@ export type AddApiKeyButtonProps = {
   buttonVariant?: ButtonProps['variant']
   buttonText?: string
   disabled?: boolean
+  onUpdate?: () => void
 }
 const AddApiKeyButton = ({
   pluginPayload,
   buttonVariant = 'secondary-accent',
   buttonText = 'use api key',
   disabled,
+  onUpdate,
 }: AddApiKeyButtonProps) => {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
 
@@ -36,6 +38,7 @@ const AddApiKeyButton = ({
           <ApiKeyModal
             pluginPayload={pluginPayload}
             onClose={() => setIsApiKeyModalOpen(false)}
+            onUpdate={onUpdate}
           />
         )
       }

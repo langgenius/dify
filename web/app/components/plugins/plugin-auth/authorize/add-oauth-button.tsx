@@ -21,7 +21,6 @@ import Badge from '@/app/components/base/badge'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
-  useInvalidPluginCredentialInfoHook,
 } from '../hooks/use-credential'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
@@ -37,6 +36,7 @@ export type AddOAuthButtonProps = {
   buttonRightClassName?: string
   dividerClassName?: string
   disabled?: boolean
+  onUpdate?: () => void
 }
 const AddOAuthButton = ({
   pluginPayload,
@@ -47,6 +47,7 @@ const AddOAuthButton = ({
   buttonRightClassName,
   dividerClassName,
   disabled,
+  onUpdate,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
@@ -61,17 +62,16 @@ const AddOAuthButton = ({
     redirect_uri,
   } = data || {}
   const isConfigured = is_system_oauth_params_exists || Object.keys(client_params || {}).length > 0
-  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
 
     if (authorization_url) {
       openOAuthPopup(
         authorization_url,
-        invalidatePluginCredentialInfo,
+        () => onUpdate?.(),
       )
     }
-  }, [getPluginOAuthUrl, invalidatePluginCredentialInfo])
+  }, [getPluginOAuthUrl, onUpdate])
 
   const renderCustomLabel = useCallback((item: FormSchema) => {
     return (
@@ -177,14 +177,14 @@ const AddOAuthButton = ({
           <Button
             variant={buttonVariant}
             className={cn(
-              'w-full py-0 pl-0.5 pr-0 hover:bg-components-button-primary-bg',
+              'w-full px-0 py-0 hover:bg-components-button-primary-bg',
               className,
             )}
             disabled={disabled}
             onClick={handleOAuth}
           >
             <div className={cn(
-              'flex h-full w-0 grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
+              'flex h-full w-0 grow items-center justify-center rounded-l-lg pl-0.5 hover:bg-components-button-primary-bg-hover',
               buttonLeftClassName,
             )}>
               <div
@@ -251,6 +251,7 @@ const AddOAuthButton = ({
               __oauth_client__: __auth_client__,
             }}
             hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
+            onUpdate={onUpdate}
           />
         )
       }

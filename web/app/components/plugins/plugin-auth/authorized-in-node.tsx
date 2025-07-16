@@ -34,6 +34,7 @@ const AuthorizedInNode = ({
     canOAuth,
     credentials,
     disabled,
+    invalidPluginCredentialInfo,
   } = usePluginAuth(pluginPayload, isOpen || !!credentialId)
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
@@ -104,6 +105,7 @@ const AuthorizedInNode = ({
       extraAuthorizationItems={extraAuthorizationItems}
       showItemSelectedIcon
       selectedCredentialId={credentialId || '__workspace_default__'}
+      onUpdate={invalidPluginCredentialInfo}
     />
   )
 }

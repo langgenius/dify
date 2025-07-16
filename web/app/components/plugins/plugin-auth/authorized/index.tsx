@@ -29,7 +29,6 @@ import { useToastContext } from '@/app/components/base/toast'
 import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
-  useInvalidPluginCredentialInfoHook,
   useSetPluginDefaultCredentialHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
@@ -52,6 +51,7 @@ type AuthorizedProps = {
   extraAuthorizationItems?: Credential[]
   showItemSelectedIcon?: boolean
   selectedCredentialId?: string
+  onUpdate?: () => void
 }
 const Authorized = ({
   pluginPayload,
@@ -71,6 +71,7 @@ const Authorized = ({
   extraAuthorizationItems,
   showItemSelectedIcon,
   selectedCredentialId,
+  onUpdate,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -87,7 +88,6 @@ const Authorized = ({
   const pendingOperationCredentialId = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
   const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)
-  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const openConfirm = useCallback((credentialId?: string) => {
     if (credentialId)
       pendingOperationCredentialId.current = credentialId
@@ -118,14 +118,14 @@ const Authorized = ({
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
-      invalidatePluginCredentialInfo()
+      onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [deletePluginCredential, invalidatePluginCredentialInfo, notify, t, handleSetDoingAction])
+  }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
   const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
@@ -145,12 +145,12 @@ const Authorized = ({
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
-      invalidatePluginCredentialInfo()
+      onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [setPluginDefaultCredential, invalidatePluginCredentialInfo, notify, t, handleSetDoingAction])
+  }, [setPluginDefaultCredential, onUpdate, notify, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
       credential_id: string
@@ -165,12 +165,12 @@ const Authorized = ({
         type: 'success',
         message: t('common.api.actionSuccess'),
       })
-      invalidatePluginCredentialInfo()
+      onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [updatePluginCredential, notify, t, handleSetDoingAction, invalidatePluginCredentialInfo])
+  }, [updatePluginCredential, notify, t, handleSetDoingAction, onUpdate])
 
   return (
     <>

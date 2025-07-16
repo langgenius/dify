@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal/modal'
 import {
   useDeletePluginOAuthCustomClientHook,
-  useInvalidPluginCredentialInfoHook,
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
@@ -35,6 +34,7 @@ type OAuthClientSettingsProps = {
   schemas: FormSchema[]
   onAuth?: () => Promise<void>
   hasOriginalClientParams?: boolean
+  onUpdate?: () => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -44,6 +44,7 @@ const OAuthClientSettings = ({
   schemas,
   onAuth,
   hasOriginalClientParams,
+  onUpdate,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -59,7 +60,6 @@ const OAuthClientSettings = ({
     return acc
   }, {} as Record<string, any>)
   const { mutateAsync: setPluginOAuthCustomClient } = useSetPluginOAuthCustomClientHook(pluginPayload)
-  const invalidPluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
@@ -92,13 +92,13 @@ const OAuthClientSettings = ({
       })
 
       onClose?.()
-      invalidPluginCredentialInfo()
+      onUpdate?.()
       invalidPluginOAuthClientSchema()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [onClose, invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
+  }, [onClose, onUpdate, invalidPluginOAuthClientSchema, setPluginOAuthCustomClient, notify, t, handleSetDoingAction])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
     await handleConfirm()
@@ -118,13 +118,13 @@ const OAuthClientSettings = ({
         message: t('common.api.actionSuccess'),
       })
       onClose?.()
-      invalidPluginCredentialInfo()
+      onUpdate?.()
       invalidPluginOAuthClientSchema()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [invalidPluginCredentialInfo, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction, onClose])
+  }, [onUpdate, invalidPluginOAuthClientSchema, deletePluginOAuthCustomClient, notify, t, handleSetDoingAction, onClose])
   const form = useForm({
     defaultValues: editValues || defaultValues,
   })

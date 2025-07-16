@@ -16,6 +16,7 @@ type AuthorizeProps = {
   canOAuth?: boolean
   canApiKey?: boolean
   disabled?: boolean
+  onUpdate?: () => void
 }
 const Authorize = ({
   pluginPayload,
@@ -24,6 +25,7 @@ const Authorize = ({
   canOAuth,
   canApiKey,
   disabled,
+  onUpdate,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
@@ -69,6 +71,7 @@ const Authorize = ({
               <AddOAuthButton
                 {...oAuthButtonProps}
                 disabled={disabled}
+                onUpdate={onUpdate}
               />
             </div>
           )
@@ -88,6 +91,7 @@ const Authorize = ({
               <AddApiKeyButton
                 {...apiKeyButtonProps}
                 disabled={disabled}
+                onUpdate={onUpdate}
               />
             </div>
           )

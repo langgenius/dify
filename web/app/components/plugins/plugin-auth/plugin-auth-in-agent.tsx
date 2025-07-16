@@ -34,6 +34,7 @@ const PluginAuthInAgent = ({
     canApiKey,
     credentials,
     disabled,
+    invalidPluginCredentialInfo,
   } = usePluginAuth(pluginPayload, true)
 
   const extraAuthorizationItems: Credential[] = [
@@ -91,6 +92,7 @@ const PluginAuthInAgent = ({
             canOAuth={canOAuth}
             canApiKey={canApiKey}
             disabled={disabled}
+            onUpdate={invalidPluginCredentialInfo}
           />
         )
       }
@@ -110,6 +112,7 @@ const PluginAuthInAgent = ({
             isOpen={isOpen}
             onOpenChange={setIsOpen}
             selectedCredentialId={credentialId || '__workspace_default__'}
+            onUpdate={invalidPluginCredentialInfo}
           />
         )
       }

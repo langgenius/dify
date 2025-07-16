@@ -19,7 +19,6 @@ import type { PluginPayload } from '../types'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
-  useInvalidPluginCredentialInfoHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -30,6 +29,7 @@ export type ApiKeyModalProps = {
   editValues?: Record<string, any>
   onRemove?: () => void
   disabled?: boolean
+  onUpdate?: () => void
 }
 const ApiKeyModal = ({
   pluginPayload,
@@ -37,6 +37,7 @@ const ApiKeyModal = ({
   editValues,
   onRemove,
   disabled,
+  onUpdate,
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -67,7 +68,6 @@ const ApiKeyModal = ({
   const renderI18nObject = useRenderI18nObject()
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
-  const invalidatePluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
@@ -110,12 +110,12 @@ const ApiKeyModal = ({
       })
 
       onClose?.()
-      invalidatePluginCredentialInfo()
+      onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, invalidatePluginCredentialInfo, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
 
   return (
     <Modal
