@@ -30,8 +30,8 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
 
-    reranking_provider_name: str
-    reranking_model_name: str
+    reranking_provider_name: Optional[str] = ""
+    reranking_model_name: Optional[str] = ""
 
 
 class VectorSetting(BaseModel):
@@ -57,8 +57,8 @@ class WeightedScoreConfig(BaseModel):
     Weighted score Config.
     """
 
-    vector_setting: VectorSetting
-    keyword_setting: KeywordSetting
+    vector_setting: Optional[VectorSetting]
+    keyword_setting: Optional[KeywordSetting]
 
 
 class EmbeddingSetting(BaseModel):

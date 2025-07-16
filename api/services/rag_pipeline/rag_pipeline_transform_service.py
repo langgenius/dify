@@ -136,8 +136,8 @@ class RagPipelineTransformService:
     def _deal_knowledge_index(
         self, dataset: Dataset, doc_form: str, indexing_technique: str, retrieval_model: dict, node: dict
     ):
-        knowledge_configuration = node.get("data", {})
-        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
+        knowledge_configuration_dict = node.get("data", {})
+        knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration_dict)
 
         if indexing_technique == "high_quality":
             knowledge_configuration.embedding_model = dataset.embedding_model
@@ -150,7 +150,9 @@ class RagPipelineTransformService:
         else:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
 
-        return knowledge_configuration.model_dump()
+        knowledge_configuration_dict.update(knowledge_configuration.model_dump())
+        node["data"] = knowledge_configuration_dict
+        return node
 
     def _create_pipeline(
         self,
