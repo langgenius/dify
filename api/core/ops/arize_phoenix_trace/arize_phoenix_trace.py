@@ -233,6 +233,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
                     start_time=datetime_to_nanos(created_at),
+                    context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
                 )
 
                 try:
