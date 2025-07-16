@@ -65,3 +65,11 @@ class AnswerStreamGenerateRoute(BaseModel):
     answer_generate_route: dict[str, list[GenerateRouteChunk]] = Field(
         ..., description="answer generate route (answer node id -> generate route chunks)"
     )
+    answer_stream_variable_selectors_mapping: dict[str, list[GenerateRouteChunk]] = Field(
+        default_factory=dict,
+        description="answer node id -> generate route chunks for streaming variable selectors",
+    )
+    answer_end_dependencies: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="answer node id -> dependent answer node ids at message end",
+    )

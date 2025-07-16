@@ -23,7 +23,7 @@ class AnswerStreamGeneratorRouter:
         """
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
-        answer_stream_variable_selectors_mapping: dict[str, list[list[str]]] = {}
+        answer_stream_variable_selectors_mapping: dict[str, list[GenerateRouteChunk]] = {}
         for answer_node_id, node_config in node_id_config_mapping.items():
             if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
