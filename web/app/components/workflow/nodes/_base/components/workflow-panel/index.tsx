@@ -235,13 +235,13 @@ const BasePanel: FC<BasePanelProps> = ({
     return data.type === BlockEnum.Tool && currCollection?.allow_delete
   }, [currCollection, data.type])
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
-    handleNodeDataUpdate({
+    handleNodeDataUpdateWithSyncDraft({
       id,
       data: {
-        credential_id: credential_id === '__workspace_default__' ? undefined : credential_id,
+        credential_id,
       },
     })
-  }, [handleNodeDataUpdate, id])
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   if(logParams.showSpecialResultPanel) {
     return (

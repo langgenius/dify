@@ -303,6 +303,7 @@ const Authorized = ({
                 canOAuth={canOAuth}
                 canApiKey={canApiKey}
                 disabled={disabled}
+                onUpdate={onUpdate}
               />
             </div>
           </div>
@@ -330,6 +331,7 @@ const Authorized = ({
             }}
             onRemove={handleRemove}
             disabled={disabled || doingAction}
+            onUpdate={onUpdate}
           />
         )
       }

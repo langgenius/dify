@@ -68,7 +68,7 @@ const Item = ({
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
         renaming && 'bg-state-base-hover',
       )}
-      onClick={() => onItemClick?.(credential.id)}
+      onClick={() => onItemClick?.(credential.id === '__workspace_default__' ? '' : credential.id)}
     >
       {
         renaming && (
