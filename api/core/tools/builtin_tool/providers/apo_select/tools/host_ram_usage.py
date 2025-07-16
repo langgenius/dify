@@ -19,8 +19,8 @@ class HostRamUsageTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node = tool_parameters.get("node", '.*')
-        job = tool_parameters.get("job", '.*')
+        node = APOUtils.get_and_fill_param(tool_parameters, 'node')
+        job = APOUtils.get_and_fill_param(tool_parameters, 'job')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

@@ -21,12 +21,12 @@ class OriginxServiceMonitorTool(BuiltinTool):
         node_name = tool_parameters.get("node_name")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-        pid = tool_parameters.get("pid")
+        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
         params = {
           'metricName': 'Thread Polaris Metrics - 北极星指标（进程） - 节点上被监控的服务列表',
           'params': {
             "node_name": node_name,
-            **({'pid': pid} if pid else {})
+            'pid': pid
           },
           'startTime': start_time,
           'endTime': end_time,

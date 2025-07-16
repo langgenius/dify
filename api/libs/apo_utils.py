@@ -74,3 +74,20 @@ class APOUtils:
             step = f"{step_hours}h"
 
         return step
+    
+    @staticmethod
+    def get_and_fill_param(params: dict, key: str) -> str:
+        """
+        Gets a key's value from params. If the value is 'truthy', it's returned.
+        Otherwise (if None, empty string, etc.), '.*' is returned.
+        
+        Args:
+            params (dict): The dictionary to retrieve the value from.
+            key (str): The key whose value is to be retrieved.
+
+        Returns:
+            str: The 'truthy' value associated with the key, or '.*' if the value
+                 is 'falsy' or the key does not exist.
+        """
+        val = params.get(key)
+        return val if val else '.*'

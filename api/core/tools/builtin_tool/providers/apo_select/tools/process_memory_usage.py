@@ -19,12 +19,10 @@ class ProcessMemoryUsageTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        group_name = tool_parameters.get('groupName', '.*') or '.*'
-
+        group_name = APOUtils.get_and_fill_param(tool_parameters, 'groupName')
+        instance_name = APOUtils.get_and_fill_param(tool_parameters, 'nodeName')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-        instance_name = tool_parameters.get('nodeName', '.*') or ".*"
-
 
         query = f"""
         namedprocess_namegroup_memory_bytes{{groupname=~"{group_name}", instance_name=~"{instance_name}"}} / 

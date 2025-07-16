@@ -18,7 +18,7 @@ class PolarProcessAllRespTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get("pod")
+        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

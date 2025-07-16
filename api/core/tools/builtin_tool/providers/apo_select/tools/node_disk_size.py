@@ -19,13 +19,13 @@ class NodeDiskRootSizeTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node = tool_parameters.get('node', '.*')
+        node = APOUtils.get_and_fill_param(tool_parameters, 'node')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         step = APOUtils.get_step(start_time=start_time, end_time=end_time)
         interval = APOUtils.vec_from_duration(step * 1000)
         query = f"""
-        node_filesystem_size_bytes{{instance_name="{node}", mountpoint="/"}}[{interval}]
+        node_filesystem_size_bytes{{instance_name=~"{node}", mountpoint="/"}}[{interval}]
         """
         resp = requests.get(
             dify_config.APO_VM_URL + "/prometheus/api/v1/query_range",

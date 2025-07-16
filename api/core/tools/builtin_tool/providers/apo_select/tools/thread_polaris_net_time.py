@@ -19,18 +19,18 @@ class ThreadPolarisNetTimeTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get('pod', '.*')
-        node_name = tool_parameters.get('nodeName', '.*')
-        pid = tool_parameters.get('pid', '.*')
+        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
+        node_name = APOUtils.get_and_fill_param(tool_parameters, 'nodeName')
+        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         container_id = tool_parameters.get('containerId', '.*')
 
         metric_params = {
-            'node_name': node_name if node_name != '' else '.*',
-            'pid': pid if pid != '' else '.*',
-            'container_id': container_id if container_id != '' else '.*',
-            'pod': pod if pod != '' else '.*',
+            'node_name': node_name,
+            'pid': pid,
+            'container_id': container_id,
+            'pod': pod,
         }
 
         params = {

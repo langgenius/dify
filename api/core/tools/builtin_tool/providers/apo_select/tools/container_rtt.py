@@ -18,11 +18,11 @@ class ContainerRTTTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get("pod") or ".*"
-        namespace = tool_parameters.get("namespace") or ".*"
-        node = tool_parameters.get("node") or ".*"
-        pid = tool_parameters.get("pid") or ".*"
-        container_id = tool_parameters.get("containerId") or ".*"
+        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
+        namespace = APOUtils.get_and_fill_param(tool_parameters, 'namespace')
+        node = APOUtils.get_and_fill_param(tool_parameters, 'node')
+        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
+        container_id = APOUtils.get_and_fill_param(tool_parameters, 'containerId')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

@@ -19,10 +19,10 @@ class ThreadPolarisRunqueueTimeTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get('pod', '')
-        node_name = tool_parameters.get('nodeName', '')
-        pid = tool_parameters.get('pid', '')
-        container_id = tool_parameters.get('containerId', '')
+        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
+        node_name = APOUtils.get_and_fill_param(tool_parameters, 'nodeName')
+        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
+        container_id = APOUtils.get_and_fill_param(tool_parameters, 'containerId')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
 

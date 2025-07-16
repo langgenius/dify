@@ -19,10 +19,10 @@ class PolarisTimeByPidTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pid = tool_parameters.get('pid', '.*')
+        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-        resource_type = tool_parameters.get('type', '.*')
+        resource_type = APOUtils.get_and_fill_param(tool_parameters, 'type')
         step = APOUtils.get_step(start_time=start_time, end_time=end_time)
         interval = APOUtils.vec_from_duration(step * 1000)
         if len(pid) == 0:
