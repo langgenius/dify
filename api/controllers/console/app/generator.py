@@ -114,6 +114,54 @@ class RuleStructuredOutputGenerateApi(Resource):
         return structured_output
 
 
+class InstructionGenerateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("flow_id", type=str, required=False, default="", location="json")
+        parser.add_argument("node_id", type=str, required=False, default="", location="json")
+        parser.add_argument("current", type=str, required=False, default="", location="json")
+        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        try:
+            if args["flow_id"] == "" or args["current"] == "": # Fallback for legacy endpoint
+                return LLMGenerator.generate_rule_config(
+                    current_user.current_tenant_id,
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    no_variable=True
+                )
+            if args["node_id"] == "": # For legacy app without a workflow
+                return LLMGenerator.instruction_modify_legacy(
+                    tenant_id=current_user.current_tenant_id,
+                    flow_id=args["flow_id"],
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                )
+            return LLMGenerator.instruction_modify_workflow(
+                tenant_id=current_user.current_tenant_id,
+                flow_id=args["flow_id"],
+                node_id=args["node_id"],
+                current=args["current"],
+                instruction=args["instruction"],
+                model_config=args["model_config"],
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+
 api.add_resource(RuleGenerateApi, "/rule-generate")
 api.add_resource(RuleCodeGenerateApi, "/rule-code-generate")
 api.add_resource(RuleStructuredOutputGenerateApi, "/rule-structured-output-generate")
+api.add_resource(InstructionGenerateApi, "/instruction-generate")
