@@ -87,7 +87,7 @@ def test_execute_answer():
 
 
 def test_execute_answer_with_outputs():
-    from core.workflow.enums import SystemVariableKey  
+    from core.workflow.enums import SystemVariableKey
 
     """Test Answer node with custom output variables"""
     graph_config = {
@@ -176,7 +176,7 @@ def test_execute_answer_with_outputs():
 
 
 def test_execute_answer_with_empty_outputs():
-    from core.workflow.enums import SystemVariableKey  
+    from core.workflow.enums import SystemVariableKey
 
     """Test Answer node with empty outputs configuration"""
     graph_config = {
