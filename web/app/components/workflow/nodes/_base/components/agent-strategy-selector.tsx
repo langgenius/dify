@@ -49,7 +49,6 @@ const NotFoundWarn = (props: {
         </p>
       </div>
     }
-    needsDelay
   >
     <div>
       <RiErrorWarningFill className='size-4 text-text-destructive' />

@@ -173,7 +173,6 @@ const Editor: FC<Props> = ({
                         <a className='text-text-accent' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
                       </div>
                     }
-                    needsDelay
                   >
                     <div className={cn(editionType === EditionType.jinja2 && 'border-components-button-ghost-bg-hover bg-components-button-ghost-bg-hover', 'flex h-[22px] items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-components-button-ghost-bg-hover')}>
                       <Jinja className='h-3 w-6 text-text-quaternary' />
