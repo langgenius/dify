@@ -147,6 +147,8 @@ class RagPipelineTransformService:
             if indexing_technique == "economy":
                 retrieval_setting.search_method = "keyword_search"
             knowledge_configuration.retrieval_model = retrieval_setting
+        else:
+            dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
 
         return knowledge_configuration.model_dump()
 
