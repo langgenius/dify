@@ -87,6 +87,7 @@ def test_execute_answer():
 
 
 def test_execute_answer_with_outputs():
+    from core.workflow.enums import SystemVariableKey  # 确保函数作用域内可用
     """Test Answer node with custom output variables"""
     graph_config = {
         "edges": [
@@ -174,6 +175,7 @@ def test_execute_answer_with_outputs():
 
 
 def test_execute_answer_with_empty_outputs():
+    from core.workflow.enums import SystemVariableKey  # 确保函数作用域内可用
     """Test Answer node with empty outputs configuration"""
     graph_config = {
         "edges": [
