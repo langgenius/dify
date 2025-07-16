@@ -357,7 +357,7 @@ export const useConvertDatasetToPipeline = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'convert-dataset-to-pipeline'],
     mutationFn: (datasetId: string) => {
-      return post<ConversionResponse>(`/rag/pipelines/transform/${datasetId}`)
+      return post<ConversionResponse>(`/rag/pipelines/transform/datasets/${datasetId}`)
     },
   })
 }
