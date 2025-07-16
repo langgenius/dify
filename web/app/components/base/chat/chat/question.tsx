@@ -130,7 +130,7 @@ const Question: FC<QuestionProps> = ({
               />
             )
           }
-          { !isEditing
+          {!isEditing
             ? <Markdown content={content} />
             : <div className="
                 flex flex-col gap-2 rounded-xl
@@ -151,8 +151,8 @@ const Question: FC<QuestionProps> = ({
                 <Button variant='ghost' onClick={handleCancelEditing}>{t('common.operation.cancel')}</Button>
                 <Button variant='primary' onClick={handleResend}>{t('common.chat.resend')}</Button>
               </div>
-            </div> }
-          { !isEditing && <ContentSwitch
+            </div>}
+          {!isEditing && <ContentSwitch
             count={item.siblingCount}
             currentIndex={item.siblingIndex}
             prevDisabled={!item.prevSibling}
