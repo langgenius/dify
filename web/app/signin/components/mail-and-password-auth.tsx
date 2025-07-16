@@ -70,7 +70,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       console.log('Login response:', res)
-      if (res.code === 'mfa_required') {
+      if (res.result === 'fail' && res.code === 'mfa_required') {
         console.log('MFA required, showing MFA verification screen')
         setShowMFAVerification(true)
       }

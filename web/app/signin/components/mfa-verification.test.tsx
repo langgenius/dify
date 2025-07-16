@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useRouter } from 'next/navigation'
 
@@ -69,7 +69,7 @@ describe('MFAVerification Component', () => {
     render(<MFAVerification {...defaultProps} />)
 
     const input = screen.getByPlaceholderText('123456')
-    
+
     // Test numeric input
     fireEvent.change(input, { target: { value: '123456' } })
     expect(input).toHaveValue('123456')
@@ -87,7 +87,7 @@ describe('MFAVerification Component', () => {
     fireEvent.click(switchButton)
 
     const input = screen.getByPlaceholderText('A1B2C3D4')
-    
+
     // Test alphanumeric input with automatic uppercase
     fireEvent.change(input, { target: { value: 'abcd1234' } })
     expect(input).toHaveValue('ABCD1234')
@@ -135,13 +135,13 @@ describe('MFAVerification Component', () => {
     // For backup code mode
     const switchButton = screen.getByText('mfa.useBackupCode')
     fireEvent.click(switchButton)
-    
+
     const backupInput = screen.getByPlaceholderText('A1B2C3D4')
-    
+
     // Button should be disabled with incomplete backup code
     fireEvent.change(backupInput, { target: { value: 'ABCD' } })
     expect(verifyButton.closest('button')).toBeDisabled()
-    
+
     // Button should be enabled with complete backup code
     fireEvent.change(backupInput, { target: { value: 'ABCD1234' } })
     expect(verifyButton.closest('button')).not.toBeDisabled()
@@ -153,8 +153,8 @@ describe('MFAVerification Component', () => {
       result: 'success',
       data: {
         access_token: 'test_token',
-        refresh_token: 'refresh_token'
-      }
+        refresh_token: 'refresh_token',
+      },
     })
 
     render(<MFAVerification {...defaultProps} />)
@@ -175,7 +175,7 @@ describe('MFAVerification Component', () => {
           is_backup_code: false,
           language: 'en-US',
           remember_me: true,
-        }
+        },
       })
     })
 
@@ -192,8 +192,8 @@ describe('MFAVerification Component', () => {
       result: 'success',
       data: {
         access_token: 'test_token',
-        refresh_token: 'refresh_token'
-      }
+        refresh_token: 'refresh_token',
+      },
     })
 
     render(<MFAVerification {...defaultProps} />)
@@ -217,7 +217,7 @@ describe('MFAVerification Component', () => {
           is_backup_code: true,
           language: 'en-US',
           remember_me: true,
-        }
+        },
       })
     })
   })
@@ -225,10 +225,10 @@ describe('MFAVerification Component', () => {
   test('handles invalid MFA token error', async () => {
     const { login } = require('@/service/common')
     const Toast = require('@/app/components/base/toast').default
-    
+
     login.mockResolvedValue({
       result: 'fail',
-      code: 'mfa_token_invalid'
+      code: 'mfa_token_invalid',
     })
 
     render(<MFAVerification {...defaultProps} />)
@@ -242,7 +242,7 @@ describe('MFAVerification Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'mfa.invalidToken'
+        message: 'mfa.invalidToken',
       })
     })
   })
@@ -250,7 +250,7 @@ describe('MFAVerification Component', () => {
   test('handles network error', async () => {
     const { login } = require('@/service/common')
     const Toast = require('@/app/components/base/toast').default
-    
+
     login.mockRejectedValue(new Error('Network error'))
 
     render(<MFAVerification {...defaultProps} />)
@@ -264,7 +264,7 @@ describe('MFAVerification Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'Network error'
+        message: 'Network error',
       })
     })
   })
@@ -275,14 +275,14 @@ describe('MFAVerification Component', () => {
       result: 'success',
       data: {
         access_token: 'test_token',
-        refresh_token: 'refresh_token'
-      }
+        refresh_token: 'refresh_token',
+      },
     })
 
     const inviteProps = {
       ...defaultProps,
       isInvite: true,
-      inviteToken: 'invite_token_123'
+      inviteToken: 'invite_token_123',
     }
 
     render(<MFAVerification {...inviteProps} />)
@@ -303,8 +303,8 @@ describe('MFAVerification Component', () => {
           is_backup_code: false,
           language: 'en-US',
           remember_me: true,
-          invite_token: 'invite_token_123'
-        }
+          invite_token: 'invite_token_123',
+        },
       })
     })
 
@@ -319,15 +319,15 @@ describe('MFAVerification Component', () => {
       result: 'success',
       data: {
         access_token: 'test_token',
-        refresh_token: 'refresh_token'
-      }
+        refresh_token: 'refresh_token',
+      },
     })
 
     render(<MFAVerification {...defaultProps} />)
 
     const input = screen.getByPlaceholderText('123456')
     fireEvent.change(input, { target: { value: '123456' } })
-    
+
     // Press Enter
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' })
 
@@ -336,7 +336,9 @@ describe('MFAVerification Component', () => {
 
   test('disables verify button when loading', async () => {
     const { login } = require('@/service/common')
-    login.mockImplementation(() => new Promise(() => {})) // Never resolves
+    login.mockImplementation(() => new Promise(() => {
+      // Never resolves - intentionally empty for testing loading state
+    })) // Never resolves
 
     render(<MFAVerification {...defaultProps} />)
 

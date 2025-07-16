@@ -15,9 +15,9 @@ import {
   RiMoneyDollarCircleLine,
   RiPuzzle2Fill,
   RiPuzzle2Line,
-  RiTranslate2,
-  RiShieldKeyholeLine,
   RiShieldKeyholeFill,
+  RiShieldKeyholeLine,
+  RiTranslate2,
 } from '@remixicon/react'
 import Button from '../../base/button'
 import MembersPage from './members-page'
@@ -59,7 +59,7 @@ export default function AccountSetting({
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  
+
   // Set appropriate default tab based on user role
   const defaultTab = isCurrentWorkspaceDatasetOperator ? 'mfa' : activeTab
   const [activeMenu, setActiveMenu] = useState(defaultTab)
@@ -137,11 +137,10 @@ export default function AccountSetting({
       ],
     },
   ]
-  
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
-  
-  
+
   useEffect(() => {
     const targetElement = scrollRef.current
     const scrollHandle = (e: Event) => {

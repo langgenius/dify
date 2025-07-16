@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
 // Mock the service base to avoid ky import issues
@@ -30,7 +30,7 @@ jest.mock('@/app/components/base/toast', () => ({
 // Mock Modal component
 jest.mock('@/app/components/base/modal', () => ({
   __esModule: true,
-  default: ({ isShow, onClose, children }: any) => 
+  default: ({ isShow, onClose, children }: any) =>
     isShow ? <div data-testid="modal">{children}</div> : null,
 }))
 
@@ -47,10 +47,10 @@ const createWrapper = () => {
       },
       mutations: {
         retry: false,
-      }
+      },
     },
   })
-  
+
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -60,7 +60,7 @@ const createWrapper = () => {
 
 describe('MFAPage Component', () => {
   let wrapper: ReturnType<typeof createWrapper>
-  
+
   beforeEach(() => {
     jest.clearAllMocks()
     wrapper = createWrapper()
@@ -68,10 +68,12 @@ describe('MFAPage Component', () => {
 
   test('renders loading state initially', () => {
     const { get } = require('@/service/base')
-    get.mockImplementation(() => new Promise(() => {})) // Never resolves
+    get.mockImplementation(() => new Promise(() => {
+      // Never resolves - intentionally empty for testing loading state
+    })) // Never resolves
 
     const { container } = render(<MFAPage />, { wrapper })
-    
+
     // Look for the loading spinner icon
     const spinner = container.querySelector('.animate-spin')
     expect(spinner).toBeInTheDocument()
@@ -82,7 +84,7 @@ describe('MFAPage Component', () => {
     get.mockResolvedValue({ enabled: false })
 
     render(<MFAPage />, { wrapper })
-    
+
     await waitFor(() => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
@@ -90,13 +92,13 @@ describe('MFAPage Component', () => {
 
   test('renders disable button when MFA is enabled', async () => {
     const { get } = require('@/service/base')
-    get.mockResolvedValue({ 
+    get.mockResolvedValue({
       enabled: true,
-      setup_at: '2025-01-01T12:00:00'
+      setup_at: '2025-01-01T12:00:00',
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     await waitFor(() => {
       expect(screen.getByText('mfa.disable')).toBeInTheDocument()
     })
@@ -107,11 +109,11 @@ describe('MFAPage Component', () => {
     get.mockResolvedValue({ enabled: false })
     post.mockResolvedValue({
       secret: 'TEST_SECRET',
-      qr_code: 'data:image/png;base64,test'
+      qr_code: 'data:image/png;base64,test',
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     await waitFor(() => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()
     })
@@ -123,32 +125,33 @@ describe('MFAPage Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     }, { timeout: 10000 })
-    
+
     expect(screen.getByText('mfa.scanQRCode')).toBeInTheDocument()
   }, 15000)
 
   test('completes MFA setup successfully', async () => {
     const { get, post } = require('@/service/base')
     const Toast = require('@/app/components/base/toast').default
-    
+
     get.mockResolvedValue({ enabled: false })
     post.mockImplementation((url) => {
       if (url.includes('/setup') && !url.includes('/complete')) {
         return Promise.resolve({
           secret: 'TEST_SECRET',
-          qr_code: 'data:image/png;base64,test'
+          qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+ else if (url.includes('/setup/complete')) {
         return Promise.resolve({
           message: 'MFA setup successfully',
           backup_codes: ['CODE1', 'CODE2', 'CODE3', 'CODE4', 'CODE5', 'CODE6', 'CODE7', 'CODE8'],
-          setup_at: '2025-01-01T12:00:00'
+          setup_at: '2025-01-01T12:00:00',
         })
       }
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     // Wait for initial render
     await waitFor(() => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()
@@ -190,28 +193,29 @@ describe('MFAPage Component', () => {
     // Check that toast was called
     expect(Toast.notify).toHaveBeenCalledWith({
       type: 'success',
-      message: 'mfa.setupSuccess'
+      message: 'mfa.setupSuccess',
     })
   }, 15000)
 
   test('shows error when setup fails', async () => {
     const { get, post } = require('@/service/base')
     const Toast = require('@/app/components/base/toast').default
-    
+
     get.mockResolvedValue({ enabled: false })
     post.mockImplementation((url) => {
       if (url.includes('/setup') && !url.includes('/complete')) {
         return Promise.resolve({
           secret: 'TEST_SECRET',
-          qr_code: 'data:image/png;base64,test'
+          qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+ else if (url.includes('/setup/complete')) {
         return Promise.reject(new Error('Invalid TOTP token'))
       }
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     // Wait and click enable
     await waitFor(() => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()
@@ -243,7 +247,7 @@ describe('MFAPage Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'mfa.invalidToken'
+        message: 'mfa.invalidToken',
       })
     }, { timeout: 5000 })
   }, 15000)
@@ -251,22 +255,22 @@ describe('MFAPage Component', () => {
   test('disables MFA successfully', async () => {
     const { get, post } = require('@/service/base')
     const Toast = require('@/app/components/base/toast').default
-    
-    get.mockResolvedValue({ 
+
+    get.mockResolvedValue({
       enabled: true,
-      setup_at: '2025-01-01T12:00:00'
+      setup_at: '2025-01-01T12:00:00',
     })
     post.mockImplementation((url) => {
       if (url.includes('/disable')) {
-        return Promise.resolve({ 
+        return Promise.resolve({
           success: true,
-          message: 'MFA disabled successfully' 
+          message: 'MFA disabled successfully',
         })
       }
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     // Wait for disable button
     await waitFor(() => {
       expect(screen.getByText('mfa.disable')).toBeInTheDocument()
@@ -292,7 +296,7 @@ describe('MFAPage Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'success',
-        message: 'mfa.disabledSuccessfully'
+        message: 'mfa.disabledSuccessfully',
       })
     }, { timeout: 5000 })
   }, 15000)
@@ -300,19 +304,18 @@ describe('MFAPage Component', () => {
   test('shows error when disable fails with wrong password', async () => {
     const { get, post } = require('@/service/base')
     const Toast = require('@/app/components/base/toast').default
-    
-    get.mockResolvedValue({ 
+
+    get.mockResolvedValue({
       enabled: true,
-      setup_at: '2025-01-01T12:00:00'
+      setup_at: '2025-01-01T12:00:00',
     })
     post.mockImplementation((url) => {
-      if (url.includes('/disable')) {
+      if (url.includes('/disable'))
         return Promise.reject(new Error('Invalid password'))
-      }
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     // Wait and click disable
     await waitFor(() => {
       expect(screen.getByText('mfa.disable')).toBeInTheDocument()
@@ -337,34 +340,35 @@ describe('MFAPage Component', () => {
     await waitFor(() => {
       expect(Toast.notify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'mfa.invalidPassword'
+        message: 'mfa.invalidPassword',
       })
     }, { timeout: 5000 })
   }, 15000)
 
   test('handles backup codes display correctly', async () => {
     const { get, post } = require('@/service/base')
-    
+
     get.mockResolvedValue({ enabled: false })
-    
+
     // Mock immediate responses
     post.mockImplementation((url) => {
       if (url.includes('/setup') && !url.includes('/complete')) {
         return Promise.resolve({
           secret: 'TEST_SECRET',
-          qr_code: 'data:image/png;base64,test'
+          qr_code: 'data:image/png;base64,test',
         })
-      } else if (url.includes('/setup/complete')) {
+      }
+ else if (url.includes('/setup/complete')) {
         return Promise.resolve({
           message: 'MFA setup successfully',
           backup_codes: ['ABCD1234', 'EFGH5678', 'IJKL9012', 'MNOP3456', 'QRST7890', 'UVWX1234', 'YZAB5678', 'CDEF9012'],
-          setup_at: '2025-01-01T12:00:00'
+          setup_at: '2025-01-01T12:00:00',
         })
       }
     })
 
     render(<MFAPage />, { wrapper })
-    
+
     // Wait for initial render
     await waitFor(() => {
       expect(screen.getByText('mfa.enable')).toBeInTheDocument()

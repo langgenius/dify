@@ -25,11 +25,11 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
   const handleMFAVerification = async () => {
     const expectedLength = useBackupCode ? 8 : 6
     if (!mfaCode || mfaCode.length !== expectedLength) {
-      Toast.notify({ 
-        type: 'error', 
-        message: useBackupCode 
-          ? 'Backup code must be 8 characters' 
-          : t('mfa.tokenLength')
+      Toast.notify({
+        type: 'error',
+        message: useBackupCode
+          ? 'Backup code must be 8 characters'
+          : t('mfa.tokenLength'),
       })
       return
     }
@@ -44,7 +44,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
         language: locale,
         remember_me: true,
       }
-      
+
       if (isInvite && inviteToken)
         loginData.invite_token = inviteToken
 
@@ -93,15 +93,14 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
     }
     catch (error: any) {
       console.error('MFA authentication error:', error)
-      
+
       // Handle different types of errors
       let errorMessage = t('mfa.invalidToken')
-      if (error?.response?.status === 401) {
+      if (error?.response?.status === 401)
         errorMessage = t('mfa.invalidToken')
-      } else if (error?.message) {
+       else if (error?.message)
         errorMessage = error.message
-      }
-      
+
       Toast.notify({
         type: 'error',
         message: errorMessage,
@@ -119,7 +118,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
           <RiShieldKeyholeLine className="h-8 w-8 text-text-secondary" />
         </div>
       </div>
-      
+
       <h3 className="title-xl-semi-bold mb-2 text-center text-text-primary">
         {t('mfa.mfaRequired')}
       </h3>
@@ -134,12 +133,13 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
         <Input
           id="mfa-code"
           value={mfaCode}
-          onChange={e => {
+          onChange={(e) => {
             const value = e.target.value
             if (useBackupCode) {
               // For backup codes, allow alphanumeric characters
               setMfaCode(value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())
-            } else {
+            }
+ else {
               // For TOTP codes, allow only digits
               setMfaCode(value.replace(/\D/g, ''))
             }
@@ -150,7 +150,7 @@ export default function MFAVerification({ email, password, inviteToken, isInvite
           }}
           placeholder={useBackupCode ? 'A1B2C3D4' : '123456'}
           maxLength={useBackupCode ? 8 : 6}
-          className="text-center text-2xl font-mono"
+          className="text-center font-mono text-2xl"
           autoFocus
         />
       </div>
