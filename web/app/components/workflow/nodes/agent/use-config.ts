@@ -13,8 +13,8 @@ import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
-import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export type StrategyStatus = {
@@ -95,11 +95,20 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     )
     return res
   }, [inputs.agent_parameters, currentStrategy?.parameters])
+
+  const getParamVarType = useCallback((paramName: string) => {
+    const isVariable = currentStrategy?.parameters.some(
+      param => param.name === paramName && param.type === FormTypeEnum.any,
+    )
+    if (isVariable) return VarType.variable
+    return VarType.constant
+  }, [currentStrategy?.parameters])
+
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
-        type: VarType.constant,
+        type: getParamVarType(key),
         value: val,
       }
     })
