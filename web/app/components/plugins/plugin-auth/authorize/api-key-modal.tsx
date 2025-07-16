@@ -127,11 +127,13 @@ const ApiKeyModal = ({
       footerSlot={
         helpField && (
           <a
-            className='system-xs-regular flex h-8 grow items-center text-text-accent'
+            className='system-xs-regular mr-2 flex items-center py-2 text-text-accent'
             href={helpField?.url}
             target='_blank'
           >
-            {renderI18nObject(helpField?.help as any)}
+            <span className='break-all'>
+              {renderI18nObject(helpField?.help as any)}
+            </span>
             <RiExternalLinkLine className='ml-1 h-3 w-3' />
           </a>
         )

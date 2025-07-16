@@ -170,11 +170,13 @@ const OAuthClientSettings = ({
         {
           helpField && __oauth_client__ === 'custom' && (
           <a
-            className='system-xs-regular mt-4 flex h-4 items-center text-text-accent'
+            className='system-xs-regular mt-4 flex items-center text-text-accent'
             href={helpField?.url}
             target='_blank'
           >
-            {renderI18nObject(helpField?.help as any)}
+            <span className='break-all'>
+              {renderI18nObject(helpField?.help as any)}
+            </span>
             <RiExternalLinkLine className='ml-1 h-3 w-3' />
           </a>
         )}

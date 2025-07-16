@@ -82,36 +82,40 @@ const Modal = ({
               <div className='px-6 py-3'>{children}</div>
             )
           }
-          <div className='flex items-center justify-end p-6 pt-5'>
-            {footerSlot}
-            {
-              showExtraButton && (
-                <>
-                  <Button
-                    variant={extraButtonVariant}
-                    onClick={onExtraButtonClick}
-                    disabled={disabled}
-                  >
-                    {extraButtonText || t('common.operation.remove')}
-                  </Button>
-                  <div className='mx-3 h-4 w-[1px] bg-divider-regular'></div>
-                </>
-              )
-            }
-            <Button
-              onClick={onCancel}
-              disabled={disabled}
-            >
-              {cancelButtonText || t('common.operation.cancel')}
-            </Button>
-            <Button
-              className='ml-2'
-              variant='primary'
-              onClick={onConfirm}
-              disabled={disabled}
-            >
-              {confirmButtonText || t('common.operation.save')}
-            </Button>
+          <div className='flex justify-between p-6 pt-5'>
+            <div>
+              {footerSlot}
+            </div>
+            <div className='flex items-center'>
+              {
+                showExtraButton && (
+                  <>
+                    <Button
+                      variant={extraButtonVariant}
+                      onClick={onExtraButtonClick}
+                      disabled={disabled}
+                    >
+                      {extraButtonText || t('common.operation.remove')}
+                    </Button>
+                    <div className='mx-3 h-4 w-[1px] bg-divider-regular'></div>
+                  </>
+                )
+              }
+              <Button
+                onClick={onCancel}
+                disabled={disabled}
+              >
+                {cancelButtonText || t('common.operation.cancel')}
+              </Button>
+              <Button
+                className='ml-2'
+                variant='primary'
+                onClick={onConfirm}
+                disabled={disabled}
+              >
+                {confirmButtonText || t('common.operation.save')}
+              </Button>
+            </div>
           </div>
           {bottomSlot}
         </div>
