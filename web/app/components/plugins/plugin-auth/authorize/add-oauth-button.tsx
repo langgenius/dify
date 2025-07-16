@@ -162,15 +162,13 @@ const AddOAuthButton = ({
 
       return 'default'
     }
- else {
+    else {
       if (is_oauth_custom_client_enabled)
         return 'custom'
 
       return 'default'
     }
   }, [isConfigured, is_oauth_custom_client_enabled])
-
-  console.log('__auth_client__', __auth_client__)
 
   return (
     <>
@@ -179,22 +177,27 @@ const AddOAuthButton = ({
           <Button
             variant={buttonVariant}
             className={cn(
-              'w-0 grow px-0 py-0 hover:bg-components-button-primary-bg',
+              'w-full py-0 pl-0.5 pr-0 hover:bg-components-button-primary-bg',
               className,
             )}
             disabled={disabled}
             onClick={handleOAuth}
           >
             <div className={cn(
-              'flex h-full grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
+              'flex h-full w-0 grow items-center justify-center rounded-l-lg hover:bg-components-button-primary-bg-hover',
               buttonLeftClassName,
             )}>
-              {buttonText}
+              <div
+                className='truncate'
+                title={buttonText}
+              >
+                {buttonText}
+              </div>
               {
                 is_oauth_custom_client_enabled && (
                   <Badge
                     className={cn(
-                      'ml-1',
+                      'ml-1 mr-0.5',
                       buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                     )}
                   >
@@ -204,7 +207,7 @@ const AddOAuthButton = ({
               }
             </div>
             <div className={cn(
-              'h-4 w-[1px] bg-text-primary-on-surface opacity-[0.15]',
+              'h-4 w-[1px] shrink-0 bg-text-primary-on-surface opacity-[0.15]',
               dividerClassName,
             )}></div>
             <div
@@ -228,7 +231,7 @@ const AddOAuthButton = ({
             variant={buttonVariant}
             onClick={() => setIsOAuthSettingsOpen(true)}
             disabled={disabled}
-            className='w-0 grow'
+            className='w-full'
           >
             <RiEqualizer2Line className='mr-0.5 h-4 w-4' />
             {t('plugin.auth.setupOAuth')}

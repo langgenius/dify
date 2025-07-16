@@ -65,10 +65,12 @@ const Authorize = ({
       <div className='flex items-center space-x-1.5'>
         {
           canOAuth && (
-            <AddOAuthButton
-              {...oAuthButtonProps}
-              disabled={disabled}
-            />
+            <div className='min-w-0 flex-[1]'>
+              <AddOAuthButton
+                {...oAuthButtonProps}
+                disabled={disabled}
+              />
+            </div>
           )
         }
         {
@@ -82,10 +84,12 @@ const Authorize = ({
         }
         {
           canApiKey && (
-            <AddApiKeyButton
-              {...apiKeyButtonProps}
-              disabled={disabled}
-            />
+            <div className='min-w-0 flex-[1]'>
+              <AddApiKeyButton
+                {...apiKeyButtonProps}
+                disabled={disabled}
+              />
+            </div>
           )
         }
       </div>

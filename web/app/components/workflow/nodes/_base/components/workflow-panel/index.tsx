@@ -232,7 +232,7 @@ const BasePanel: FC<BasePanelProps> = ({
     return buildInTools.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
   const showPluginAuth = useMemo(() => {
-    return data.type === BlockEnum.Tool && currCollection?.allow_delete && !currCollection.is_team_authorization
+    return data.type === BlockEnum.Tool && currCollection?.allow_delete
   }, [currCollection, data.type])
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdate({
@@ -378,15 +378,24 @@ const BasePanel: FC<BasePanelProps> = ({
           {
             showPluginAuth && (
               <PluginAuth
+                className='px-4 pb-2'
                 pluginPayload={{
                   provider: currCollection?.name || '',
                   category: AuthCategory.tool,
                 }}
               >
-                <div className='pl-4'>
+                <div className='flex items-center justify-between pl-4 pr-3'>
                   <Tab
                     value={tabType}
                     onChange={setTabType}
+                  />
+                  <AuthorizedInNode
+                    pluginPayload={{
+                      provider: currCollection?.name || '',
+                      category: AuthCategory.tool,
+                    }}
+                    onAuthorizationItemClick={handleAuthorizationItemClick}
+                    credentialId={data.credential_id}
                   />
                 </div>
               </PluginAuth>
@@ -399,18 +408,6 @@ const BasePanel: FC<BasePanelProps> = ({
                   value={tabType}
                   onChange={setTabType}
                 />
-                {
-                  currCollection?.allow_delete && (
-                    <AuthorizedInNode
-                      pluginPayload={{
-                        provider: currCollection?.name || '',
-                        category: AuthCategory.tool,
-                      }}
-                      onAuthorizationItemClick={handleAuthorizationItemClick}
-                      credentialId={data.credential_id}
-                    />
-                  )
-                }
               </div>
             )
           }
