@@ -112,7 +112,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   workflowVariableBlock,
   currentBlock = {
     show: true,
-    generatorType: GeneratorType.prompt,
+    generatorType: GeneratorType.code,
   },
   isSupportFileVar,
 }) => {

@@ -86,6 +86,14 @@ const Item: FC<ItemProps> = ({
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
+  const varName = useMemo(() => {
+    if(!isFlat)
+      return itemData.variable
+    if (itemData.variable === 'current')
+      return isInCodeGeneratorInstructionEditor ? 'current_code' : 'current_prompt'
+    return itemData.variable
+  }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
+
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
     const properties: Record<string, Field> = {};
@@ -175,7 +183,7 @@ const Item: FC<ItemProps> = ({
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
             {isFlat && flatVarIcon}
             {!isEnv && !isChatVar && (
-              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
+              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{varName}</div>
             )}
             {isEnv && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('env.', '')}</div>
