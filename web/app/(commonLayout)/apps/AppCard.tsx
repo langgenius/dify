@@ -7,10 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
-import Confirm from '@/app/components/base/confirm'
 import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext, { useAppContext } from '@/context/app-context'
@@ -22,21 +20,37 @@ import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import EditAppModal from '@/app/components/explore/create-app-modal'
-import SwitchAppModal from '@/app/components/app/switch-app-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
-import AccessControl from '@/app/components/app/app-access-control'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
 import { useGetUserCanAccessApp } from '@/service/access-control'
+import dynamic from 'next/dynamic'
+
+const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
+  ssr: false,
+})
+const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
+  ssr: false,
+})
+const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
+  ssr: false,
+})
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
+const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
+  ssr: false,
+})
+const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
+  ssr: false,
+})
 
 export type AppCardProps = {
   app: App
