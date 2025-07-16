@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { PortalSelect } from '@/app/components/base/select'
+import Select from '@/app/components/base/select'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
 
