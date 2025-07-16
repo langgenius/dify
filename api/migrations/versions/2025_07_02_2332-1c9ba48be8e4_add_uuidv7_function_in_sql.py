@@ -1,7 +1,7 @@
 """add uuidv7 function in SQL
 
 Revision ID: 1c9ba48be8e4
-Revises: 0ab65e1cc7fa
+Revises: 58eb7bdb93fe
 Create Date: 2025-07-02 23:32:38.484499
 
 """
@@ -29,7 +29,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '1c9ba48be8e4'
-down_revision = '0ab65e1cc7fa'
+down_revision = '58eb7bdb93fe'
 branch_labels: None = None
 depends_on: None = None
 
