@@ -72,6 +72,8 @@ def init_app(app: DifyApp) -> Celery:
         "schedule.clean_messages",
         "schedule.mail_clean_document_notify_task",
         "schedule.queue_monitor_task",
+        "tasks.workflow_execution_tasks",
+        "tasks.workflow_node_execution_tasks",
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
     beat_schedule = {

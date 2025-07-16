@@ -552,12 +552,16 @@ class RepositoryConfig(BaseSettings):
     """
 
     CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        description="Repository implementation for WorkflowExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
     CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        description="Repository implementation for WorkflowNodeExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_node_execution_repository.CeleryWorkflowNodeExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 
@@ -570,6 +574,12 @@ class RepositoryConfig(BaseSettings):
     API_WORKFLOW_RUN_REPOSITORY: str = Field(
         description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
         default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    )
+
+    # Celery repository configuration
+    CELERY_REPOSITORY_ASYNC_TIMEOUT: int = Field(
+        description="Timeout in seconds for Celery repository async operations",
+        default=30,
     )
 
 
