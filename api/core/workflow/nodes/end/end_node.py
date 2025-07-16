@@ -1,13 +1,17 @@
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class EndNode(BaseNode[EndNodeData]):
     _node_data_cls = EndNodeData
     _node_type = NodeType.END
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """

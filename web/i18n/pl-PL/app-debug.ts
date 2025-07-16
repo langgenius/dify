@@ -309,6 +309,7 @@ const translation = {
     'labelName': 'Nazwa etykiety',
     'inputPlaceholder': 'Proszę wpisać',
     'required': 'Wymagane',
+    'hide': 'Ukryj',
     'errorMsg': {
       varNameRequired: 'Wymagana nazwa zmiennej',
       labelNameRequired: 'Wymagana nazwa etykiety',
@@ -359,6 +360,7 @@ const translation = {
     placeholder:
       'Tutaj napisz swoją wiadomość wprowadzającą, możesz użyć zmiennych, spróbuj wpisać {{variable}}.',
     openingQuestion: 'Pytania otwierające',
+    openingQuestionPlaceholder: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}.',
     noDataPlaceHolder:
       'Rozpoczynanie rozmowy z użytkownikiem może pomóc AI nawiązać bliższe połączenie z nim w aplikacjach konwersacyjnych.',
     varTip: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}',

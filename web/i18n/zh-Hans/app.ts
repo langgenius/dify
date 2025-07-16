@@ -23,7 +23,7 @@ const translation = {
   importFromDSLFile: '文件',
   importFromDSLUrl: 'URL',
   importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
-  deleteAppConfirmTitle: '确认删除应用?',
+  deleteAppConfirmTitle: '确认删除应用？',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
   appDeleted: '应用已删除',
@@ -87,6 +87,7 @@ const translation = {
     appCreateDSLErrorPart3: '当前应用 DSL 版本：',
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
+    dropDSLToCreateApp: '拖放 DSL 文件到此处创建应用',
     Confirm: '确认',
   },
   newAppFromTemplate: {
@@ -149,6 +150,14 @@ const translation = {
       notConfigured: '配置提供商以启用追踪',
       moreProvider: '更多提供商',
     },
+    arize: {
+      title: 'Arize',
+      description: '企业级LLM可观测性、在线和离线评估、监控和实验平台，基于OpenTelemetry构建，专为LLM和代理驱动的应用程序设计。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '开源且基于OpenTelemetry的可观测性、评估、提示工程和实验平台，适用于您的LLM工作流程和代理。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
@@ -169,12 +178,16 @@ const translation = {
       publicKey: '公钥',
       secretKey: '密钥',
       viewDocsLink: '查看 {{key}} 的文档',
-      removeConfirmTitle: '删除 {{key}} 配置?',
+      removeConfirmTitle: '删除 {{key}} 配置？',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
     weave: {
       title: '编织',
-      description: 'Weave是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
+      description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
+    },
+    aliyun: {
+      title: '云监控',
+      description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
     },
   },
   appSelector: {
@@ -198,30 +211,27 @@ const translation = {
   },
   accessControl: 'Web 应用访问控制',
   accessItemsDescription: {
-    anyone: '任何人可以访问 web 应用',
-    specific: '特定组或成员可以访问 web 应用',
-    organization: '组织内任何人可以访问 web 应用',
+    anyone: '任何人都可以访问该 web 应用（无需登录）',
+    specific: '仅指定的平台内成员可访问该 Web 应用',
+    organization: '平台内所有成员均可访问该 Web 应用',
+    external: '仅经认证的外部用户可访问该 Web 应用',
   },
   accessControlDialog: {
     title: 'Web 应用访问权限',
     description: '设置 web 应用访问权限。',
     accessLabel: '谁可以访问',
-    accessItemsDescription: {
-      anyone: '任何人可以访问 web 应用',
-      specific: '特定组或成员可以访问 web 应用',
-      organization: '组织内任何人可以访问 web 应用',
-    },
     accessItems: {
       anyone: '任何人',
-      specific: '特定组或成员',
-      organization: '组织内任何人',
+      specific: '平台内指定成员',
+      organization: '平台内所有成员',
+      external: '经认证的外部用户',
     },
     groups_one: '{{count}} 个组',
     groups_other: '{{count}} 个组',
     members_one: '{{count}} 个成员',
     members_other: '{{count}} 个成员',
     noGroupsOrMembers: '未选择分组或成员',
-    webAppSSONotEnabledTip: '请联系企业管理员配置 web 应用的身份认证方式。',
+    webAppSSONotEnabledTip: '请联系企业管理员配置 Web 应用外部认证方式。',
     operateGroupAndMember: {
       searchPlaceholder: '搜索组或成员',
       allMembers: '所有成员',

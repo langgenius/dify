@@ -51,7 +51,7 @@ const translation = {
       paramsTip1: 'Steruje parametrami wnioskowania LLM.',
       unsupportedContent: 'Zainstalowana wersja wtyczki nie zapewnia tej akcji.',
       params: 'KONFIGURACJA ROZUMOWANIA',
-      auto: 'Automatyczne',
+      auto: 'Auto',
       empty: 'Kliknij przycisk "+", aby dodać narzędzia. Możesz dodać wiele narzędzi.',
       descriptionLabel: 'Opis narzędzia',
       title: 'Dodaj narzędzie',
@@ -60,8 +60,9 @@ const translation = {
       uninstalledContent: 'Ta wtyczka jest instalowana z repozytorium lokalnego/GitHub. Proszę użyć po instalacji.',
       unsupportedTitle: 'Nieobsługiwana akcja',
       uninstalledTitle: 'Narzędzie nie jest zainstalowane',
-      paramsTip2: 'Gdy opcja "Automatycznie" jest wyłączona, używana jest wartość domyślna.',
+      paramsTip2: 'Gdy opcja "Auto" jest wyłączona, używana jest wartość domyślna.',
       toolLabel: 'Narzędzie',
+      toolSetting: 'Ustawienia narzędzi',
     },
     strategyNum: '{{liczba}} {{strategia}} ZAWARTE',
     endpointsEmpty: 'Kliknij przycisk "+", aby dodać punkt końcowy',
@@ -136,6 +137,7 @@ const translation = {
     readyToInstallPackage: 'Informacje o instalacji następującej wtyczki',
     uploadingPackage: 'Przesyłanie {{packageName}}...',
     installedSuccessfully: 'Instalacja powiodła się',
+    installWarning: 'Ten plugin nie może być zainstalowany.',
   },
   installFromGitHub: {
     installPlugin: 'Zainstaluj wtyczkę z GitHub',
@@ -205,11 +207,12 @@ const translation = {
   fromMarketplace: 'Z Marketplace',
   searchPlugins: 'Wtyczki wyszukiwania',
   searchTools: 'Narzędzia wyszukiwania...',
-  submitPlugin: 'Prześlij wtyczkę',
   metadata: {
     title: 'Wtyczki',
   },
   difyVersionNotCompatible: 'Obecna wersja Dify nie jest kompatybilna z tym wtyczką, proszę zaktualizować do minimalnej wymaganej wersji: {{minimalDifyVersion}}',
+  requestAPlugin: 'Poproś o wtyczkę',
+  publishPlugins: 'Publikowanie wtyczek',
 }
 
 export default translation

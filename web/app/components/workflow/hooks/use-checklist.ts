@@ -9,6 +9,7 @@ import type {
   CommonNodeType,
   Edge,
   Node,
+  ValueSelector,
 } from '../types'
 import { BlockEnum } from '../types'
 import { useStore } from '../store'
@@ -19,7 +20,6 @@ import {
 } from '../utils'
 import {
   CUSTOM_NODE,
-  MAX_TREE_DEPTH,
 } from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
@@ -34,6 +34,9 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import { MAX_TREE_DEPTH } from '@/config'
+import useNodesAvailableVarList from './use-nodes-available-var-list'
+import { getNodeUsedVars, isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -48,6 +51,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   const chatVarList = useStore(s => s.conversationVariables)
   const environmentVariables = useStore(s => s.environmentVariables)
+  const map = useNodesAvailableVarList(nodes)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -77,6 +81,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       const node = nodes[i]
       let toolIcon
       let moreDataForCheckValid
+      let usedVars: ValueSelector[] = []
 
       if (node.data.type === BlockEnum.Tool) {
         const { provider_type } = node.data
@@ -91,8 +96,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         if (provider_type === CollectionType.workflow)
           toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
       }
-
-      if (node.data.type === BlockEnum.Agent) {
+      else if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -104,10 +108,34 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           isReadyForCheckValid,
         }
       }
+      else {
+        usedVars = getNodeUsedVars(node).filter(v => v.length > 0)
+      }
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+        let { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+
+        if (!errorMessage) {
+          const availableVars = map[node.id].availableVars
+
+          for (const variable of usedVars) {
+            const isEnv = isENV(variable)
+            const isConvVar = isConversationVar(variable)
+            const isSysVar = isSystemVar(variable)
+            if (!isEnv && !isConvVar && !isSysVar) {
+              const usedNode = availableVars.find(v => v.nodeId === variable?.[0])
+              if (usedNode) {
+                const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
+                if (!usedVar)
+                  errorMessage = t('workflow.errorMsg.invalidVariable')
+              }
+              else {
+                errorMessage = t('workflow.errorMsg.invalidVariable')
+              }
+            }
+          }
+        }
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({

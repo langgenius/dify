@@ -21,6 +21,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import (
@@ -68,6 +69,7 @@ class WorkflowEntry:
             raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
 
         # init workflow run state
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
         self.graph_engine = GraphEngine(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -79,7 +81,7 @@ class WorkflowEntry:
             call_depth=call_depth,
             graph=graph,
             graph_config=graph_config,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             thread_pool_id=thread_pool_id,
@@ -119,7 +121,9 @@ class WorkflowEntry:
         workflow: Workflow,
         node_id: str,
         user_id: str,
-        user_inputs: dict,
+        user_inputs: Mapping[str, Any],
+        variable_pool: VariablePool,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
@@ -129,28 +133,13 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        # fetch node info from workflow graph
-        workflow_graph = workflow.graph_dict
-        if not workflow_graph:
-            raise ValueError("workflow graph not found")
-
-        nodes = workflow_graph.get("nodes")
-        if not nodes:
-            raise ValueError("nodes not found in workflow graph")
-
-        # fetch node config from node id
-        try:
-            node_config = next(filter(lambda node: node["id"] == node_id, nodes))
-        except StopIteration:
-            raise ValueError("node id not found in workflow graph")
+        node_config = workflow.get_node_config_by_id(node_id)
+        node_config_data = node_config.get("data", {})
 
         # Get node class
-        node_type = NodeType(node_config.get("data", {}).get("type"))
-        node_version = node_config.get("data", {}).get("version", "1")
+        node_type = NodeType(node_config_data.get("type"))
+        node_version = node_config_data.get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
-
-        # init variable pool
-        variable_pool = VariablePool(environment_variables=workflow.environment_variables)
 
         # init graph
         graph = Graph.init(graph_config=workflow.graph_dict)
@@ -182,16 +171,33 @@ class WorkflowEntry:
         except NotImplementedError:
             variable_mapping = {}
 
+        # Loading missing variable from draft var here, and set it into
+        # variable_pool.
+        load_into_variable_pool(
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
+
         cls.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
+
         try:
             # run node
             generator = node_instance.run()
         except Exception as e:
+            logger.exception(
+                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                workflow.id,
+                node_instance.id,
+                node_instance.node_type,
+                node_instance.version(),
+            )
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
         return node_instance, generator
 
@@ -294,10 +300,20 @@ class WorkflowEntry:
 
             return node_instance, generator
         except Exception as e:
+            logger.exception(
+                "error while running node_instance, node_id=%s, type=%s, version=%s",
+                node_instance.id,
+                node_instance.node_type,
+                node_instance.version(),
+            )
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+        # NOTE(QuantumGhost): Avoid using this function in new code.
+        # Keep values structured as long as possible and only convert to dict
+        # immediately before serialization (e.g., JSON serialization) to maintain
+        # data integrity and type information.
         result = WorkflowEntry._handle_special_values(value)
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
@@ -324,10 +340,17 @@ class WorkflowEntry:
         cls,
         *,
         variable_mapping: Mapping[str, Sequence[str]],
-        user_inputs: dict,
+        user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
     ) -> None:
+        # NOTE(QuantumGhost): This logic should remain synchronized with
+        # the implementation of `load_into_variable_pool`, specifically the logic about
+        # variable existence checking.
+
+        # WARNING(QuantumGhost): The semantics of this method are not clearly defined,
+        # and multiple parts of the codebase depend on its current behavior.
+        # Modify with caution.
         for node_variable, variable_selector in variable_mapping.items():
             # fetch node id and variable key from node_variable
             node_variable_list = node_variable.split(".")

@@ -56,7 +56,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
-        由开发者定义规则，需保证用户标识在应用内唯一。
+        由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
@@ -306,7 +306,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         要上传的文件。
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。服务 API 不会共享 WebApp 创建的对话。
       </Property>
     </Properties>
 
@@ -373,7 +373,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### Request Body
   - `user` (string) Required
-    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
   ### Response
   - `result` (string) 固定返回 success
   </Col>
@@ -425,7 +425,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
          点赞 like, 点踩 dislike,  撤销点赞 null
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='content' type='string' key='content'>
           消息反馈的具体信息。
@@ -991,7 +991,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `limit` (int) 每页项目数
     - `has_more` (bool) 是否有更多项目
     - `data` (array[object]) 变量列表
-      - `id` (string) 变量ID
+      - `id` (string) 变量 ID
       - `name` (string) 变量名称
       - `value_type` (string) 变量类型（字符串、数字、布尔等）
       - `value` (string) 变量值
@@ -1162,6 +1162,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1178,7 +1180,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -1305,15 +1309,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-  用于获取工具icon
+  用于获取工具 icon
   ### Response
   - `tool_icons`(object[string]) 工具图标
     - `工具名称` (string)
       - `icon` (object|string)
         - (object) 图标
-          - `background` (string) hex格式的背景色
+          - `background` (string) hex 格式的背景色
           - `content`(string) emoji
-        - (string) 图标URL
+        - (string) 图标 URL
   </Col>
   <Col>
   <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1353,10 +1357,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   用于获取应用的 WebApp 设置
   ### Response
   - `title` (string) WebApp 名称
-  - `chat_color_theme` (string) 聊天颜色主题, hex 格式
+  - `chat_color_theme` (string) 聊天颜色主题，hex 格式
   - `chat_color_theme_inverted` (bool) 聊天颜色主题是否反转
-  - `icon_type` (string) 图标类型, `emoji`-表情, `image`-图片
-  - `icon` (string) 图标, 如果是 `emoji` 类型, 则是 emoji 表情符号, 如果是 `image` 类型, 则是图片 URL
+  - `icon_type` (string) 图标类型，`emoji`-表情，`image`-图片
+  - `icon` (string) 图标，如果是 `emoji` 类型，则是 emoji 表情符号，如果是 `image` 类型，则是图片 URL
   - `icon_background` (string) hex 格式的背景色
   - `icon_url` (string) 图标 URL
   - `description` (string) 描述

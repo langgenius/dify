@@ -1,11 +1,13 @@
+import time
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
@@ -18,6 +20,7 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.code.code_node import CodeNode
@@ -25,7 +28,7 @@ from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 @pytest.fixture
@@ -171,6 +174,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -182,7 +186,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -201,9 +205,9 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
                 process_data={},
                 outputs={},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
             )
         )
@@ -298,6 +302,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         user_inputs={},
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -309,7 +314,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -478,6 +483,7 @@ def test_run_branch(mock_close, mock_remove):
         user_inputs={"uid": "takato"},
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -489,7 +495,7 @@ def test_run_branch(mock_close, mock_remove):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -812,6 +818,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={"query": "hi"}
     )
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     graph_engine = GraphEngine(
         tenant_id="111",
         app_id="222",
@@ -823,7 +830,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
         graph=graph,
-        variable_pool=variable_pool,
+        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
     )
@@ -836,9 +843,9 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                 process_data={},
                 outputs={"class_name": "financial", "class_id": "1"},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
                 edge_source_handle="1",
             )
@@ -852,9 +859,9 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                 process_data={},
                 outputs={"result": "dify 123"},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
             )
         )

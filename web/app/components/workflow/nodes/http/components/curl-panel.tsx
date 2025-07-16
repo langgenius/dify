@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BodyType, type HttpNodeType, Method } from '../types'
+import { BodyPayloadValueType, BodyType, type HttpNodeType, Method } from '../types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
@@ -51,11 +51,16 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: str
       case '-d':
       case '--data':
       case '--data-raw':
-      case '--data-binary':
+      case '--data-binary': {
         if (i + 1 >= args.length)
           return { node: null, error: 'Missing data value after -d, --data, --data-raw, or --data-binary.' }
-        node.body = { type: BodyType.rawText, data: args[++i].replace(/^['"]|['"]$/g, '') }
+        const bodyPayload = [{
+          type: BodyPayloadValueType.text,
+          value: args[++i].replace(/^['"]|['"]$/g, ''),
+        }]
+        node.body = { type: BodyType.rawText, data: bodyPayload }
         break
+      }
       case '-F':
       case '--form': {
         if (i + 1 >= args.length)

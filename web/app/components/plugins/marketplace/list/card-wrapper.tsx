@@ -1,7 +1,7 @@
 'use client'
 import { useTheme } from 'next-themes'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import { getPluginLinkInMarketplace } from '../utils'
+import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import type { Plugin } from '@/app/components/plugins/types'
@@ -56,7 +56,7 @@ const CardWrapper = ({
             >
               {t('plugin.detailPanel.operation.install')}
             </Button>
-            <a href={`${getPluginLinkInMarketplace(plugin)}?language=${localeFromLocale}${theme ? `&theme=${theme}` : ''}`} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
+            <a href={getPluginLinkInMarketplace(plugin, { language: localeFromLocale, theme })} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
               <Button
                 className='w-full gap-0.5'
               >
@@ -83,7 +83,7 @@ const CardWrapper = ({
   return (
     <a
       className='group relative inline-block cursor-pointer rounded-xl'
-      href={getPluginLinkInMarketplace(plugin)}
+      href={getPluginDetailLinkInMarketplace(plugin)}
     >
       <Card
         key={plugin.name}

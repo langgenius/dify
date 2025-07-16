@@ -64,6 +64,8 @@ const translation = {
     skip: '跳过',
     format: '格式化',
     more: '更多',
+    selectAll: '全选',
+    deSelectAll: '取消全选',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -126,7 +128,7 @@ const translation = {
         '影响常见与罕见词汇使用。\n值较大时，倾向于生成不常见的词汇和表达方式。\n值越小，更倾向于使用常见和普遍接受的词汇或短语。',
       max_tokens: '单次回复限制 max_tokens',
       max_tokensTip:
-        '用于限制回复的最大长度，以 token 为单位。\n较大的值可能会限制给提示词、聊天记录和知识库留出的空间。\n建议将其设置在三分之二以下。\ngpt-4-1106-preview、gpt-4-vision-preview 最大长度 (输入128k，输出4k)',
+        '用于限制回复的最大长度，以 token 为单位。\n较大的值可能会限制给提示词、聊天记录和知识库留出的空间。\n建议将其设置在三分之二以下。\ngpt-4-1106-preview、gpt-4-vision-preview 最大长度 (输入 128k，输出 4k)',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、知识库内容没有 token 空间进行处理，建议设置到 2/3 以下。',
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}} 的 80%。',
       stop_sequences: '停止序列 stop_sequences',
@@ -153,7 +155,7 @@ const translation = {
     exploreMarketplace: '探索 Marketplace',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
     datasets: '知识库',
-    datasetsTips: '即将到来: 上传自己的长文本数据，或通过 Webhook 集成自己的数据源',
+    datasetsTips: '即将到来：上传自己的长文本数据，或通过 Webhook 集成自己的数据源',
     newApp: '创建应用',
     newDataset: '创建知识库',
     tools: '工具',
@@ -270,7 +272,7 @@ const translation = {
     deleteMember: '删除成员',
     you: '（你）',
     builderTip: '可以构建和编辑自己的应用程序',
-    setBuilder: 'Set as builder （设置为构建器）',
+    setBuilder: 'Set as builder（设置为构建器）',
     builder: '构建器',
   },
   integrations: {
@@ -348,7 +350,7 @@ const translation = {
     },
     embeddingModel: {
       key: 'Embedding 模型',
-      tip: '设置知识库文档嵌入处理的默认模型，检索和导入知识库均使用该Embedding模型进行向量化处理，切换后将导致已导入的知识库与问题之间的向量维度不一致，从而导致检索失败。为避免检索失败，请勿随意切换该模型。',
+      tip: '设置知识库文档嵌入处理的默认模型，检索和导入知识库均使用该 Embedding 模型进行向量化处理，切换后将导致已导入的知识库与问题之间的向量维度不一致，从而导致检索失败。为避免检索失败，请勿随意切换该模型。',
       required: '请选择 Embedding 模型',
     },
     speechToTextModel: {
@@ -384,7 +386,7 @@ const translation = {
       buyQuota: '购买额度',
       priorityUse: '优先使用',
       removeKey: '删除 API 密钥',
-      tip: '已付费额度将优先考虑。 试用额度将在付费额度用完后使用。',
+      tip: '已付费额度将优先考虑。试用额度将在付费额度用完后使用。',
     },
     item: {
       deleteDesc: '{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。',
@@ -415,7 +417,7 @@ const translation = {
     getFreeTokens: '获得免费 Tokens',
     priorityUsing: '优先使用',
     deprecated: '已弃用',
-    confirmDelete: '确认删除?',
+    confirmDelete: '确认删除？',
     quotaTip: '剩余免费额度',
     loadPresets: '加载预设',
     parameters: '参数',
@@ -484,7 +486,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API 扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
     link: '了解如何开发您自己的 API 扩展。',
-    linkUrl: 'https://docs.dify.ai/zh-hans/guides/extension/api-based-extension',
     add: '新增 API 扩展',
     selector: {
       title: 'API 扩展',
@@ -569,7 +570,7 @@ const translation = {
       vectorHash: '向量哈希：',
       hitScore: '召回得分：',
     },
-    inputPlaceholder: '和机器人聊天',
+    inputPlaceholder: '和 {{botName}} 聊天',
     thinking: '深度思考中...',
     thought: '已深度思考',
     resend: '重新发送',
@@ -667,7 +668,7 @@ const translation = {
   imageInput: {
     dropImageHere: '将图片拖放到此处，或',
     browse: '浏览',
-    supportedFormats: '支持PNG、JPG、JPEG、WEBP和GIF格式',
+    supportedFormats: '支持 PNG、JPG、JPEG、WEBP 和 GIF 格式',
   },
   you: '你',
 }

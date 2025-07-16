@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Download non riuscito. Per favore riprova più tardi.',
     more: 'Di più',
     format: 'Formato',
+    selectAll: 'Seleziona tutto',
+    deSelectAll: 'Deseleziona tutto',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -154,6 +156,8 @@ const translation = {
     newDataset: 'Crea Conoscenza',
     tools: 'Strumenti',
     exploreMarketplace: 'Esplora il Marketplace',
+    appDetail: 'Dettagli dell\'app',
+    account: 'Account',
   },
   userProfile: {
     settings: 'Impostazioni',
@@ -493,7 +497,6 @@ const translation = {
     title:
       'Le estensioni API forniscono una gestione centralizzata delle API, semplificando la configurazione per un facile utilizzo nelle applicazioni di Dify.',
     link: 'Scopri come sviluppare la tua estensione API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Aggiungi Estensione API',
     selector: {
       title: 'Estensione API',
@@ -581,7 +584,7 @@ const translation = {
       vectorHash: 'Hash del vettore:',
       hitScore: 'Punteggio di recupero:',
     },
-    inputPlaceholder: 'Parla con il bot',
+    inputPlaceholder: 'Parla con il {{botName}}',
     thinking: 'Pensante...',
     thought: 'Pensiero',
     resend: 'Reinvia',
@@ -675,6 +678,7 @@ const translation = {
   license: {
     expiring_plural: 'Scadenza tra {{count}} giorni',
     expiring: 'Scadenza in un giorno',
+    unlimited: 'Illimitato',
   },
   pagination: {
     perPage: 'Articoli per pagina',
@@ -698,6 +702,7 @@ const translation = {
     browse: 'sfogliare',
     dropImageHere: 'Trascina la tua immagine qui, oppure',
   },
+  you: 'Tu',
 }
 
 export default translation

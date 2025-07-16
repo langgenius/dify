@@ -7,7 +7,7 @@ const translation = {
   createDatasetIntro: '匯入您自己的文字資料或透過 Webhook 實時寫入資料以增強 LLM 的上下文。',
   deleteDatasetConfirmTitle: '要刪除知識庫嗎？',
   deleteDatasetConfirmContent:
-    '刪除知識庫是不可逆的。使用者將無法再訪問您的知識庫,所有的提示配置和日誌將被永久刪除。',
+    '刪除知識庫是不可逆的。使用者將無法再訪問您的知識庫，所有的提示配置和日誌將被永久刪除。',
   datasetUsedByApp: '這些知識正被一些應用程序使用。應用程序將無法再使用這些知識，所有提示配置和日誌將被永久刪除。',
   datasetDeleted: '知識庫已刪除',
   datasetDeleteFailed: '刪除知識庫失敗',
@@ -68,9 +68,9 @@ const translation = {
     semantic: '語義',
     keyword: '關鍵詞',
   },
-  nTo1RetrievalLegacy: 'N對1檢索將從9月起正式棄用。建議使用最新的多路徑檢索以獲得更好的結果。',
+  nTo1RetrievalLegacy: 'N 對 1 檢索將從 9 月起正式棄用。建議使用最新的多路徑檢索以獲得更好的結果。',
   nTo1RetrievalLegacyLink: '了解更多',
-  nTo1RetrievalLegacyLinkText: 'N對1檢索將於9月正式棄用。',
+  nTo1RetrievalLegacyLinkText: 'N 對 1 檢索將於 9 月正式棄用。',
   defaultRetrievalTip: '默認情況下，使用多路徑檢索。從多個知識庫中檢索知識，然後重新排名。',
   editExternalAPIConfirmWarningContent: {
     end: 'external knowledge，並且此修改將應用於所有這些 Knowledge。是否確實要保存此更改？',
@@ -98,7 +98,7 @@ const translation = {
     content: {
       link: '瞭解如何創建外部 API',
       front: '要連接到外部知識庫，您需要先創建外部 API。請仔細閱讀並參考',
-      end: '.然後找到對應的知識ID並在左側的表單中填寫。如果資訊全部正確，點擊連接按鈕后，會自動跳轉到知識庫中的檢索測試。',
+      end: '.然後找到對應的知識 ID 並在左側的表單中填寫。如果資訊全部正確，點擊連接按鈕后，會自動跳轉到知識庫中的檢索測試。',
     },
     title: '如何連接到外部知識庫',
     learnMore: '瞭解更多資訊',
@@ -138,7 +138,7 @@ const translation = {
   allExternalTip: '僅使用外部知識時，用戶可以選擇是否啟用 Rerank 模型。如果未啟用，則檢索到的數據塊將根據分數進行排序。當不同知識庫的檢索策略不一致時，就會不準確。',
   externalKnowledgeIdPlaceholder: '請輸入 Knowledge ID',
   editExternalAPIFormTitle: '編輯外部知識 API',
-  externalKnowledgeId: '外部知識ID',
+  externalKnowledgeId: '外部知識 ID',
   externalAPIPanelDescription: '外部知識 API 用於連接到 Dify 外部的知識庫，並從該知識庫中檢索知識。',
   externalAPI: '外部 API',
   editExternalAPITooltipTitle: '關聯知識',
@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: '元數據名稱不能為空',
       invalid: '元數據名稱只能包含小寫字母、數字和底線，並且必須以小寫字母開頭',
+      tooLong: '元數據名稱不能超過 {{max}} 個字符',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: '自動為所有選定文檔創建上述所有編輯和新元數據，否則編輯元數據將僅適用於具有該元數據的文檔。',

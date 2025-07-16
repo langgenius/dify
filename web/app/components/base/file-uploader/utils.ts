@@ -42,19 +42,38 @@ export const fileUpload: FileUpload = ({
     })
 }
 
+const additionalExtensionMap = new Map<string, string[]>([
+  ['text/x-markdown', ['md']],
+])
+
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
   let extension = ''
-  if (fileMimetype)
-    extension = mime.getExtension(fileMimetype) || ''
+  let extensions = new Set<string>()
+  if (fileMimetype) {
+    const extensionsFromMimeType = mime.getAllExtensions(fileMimetype) || new Set<string>()
+    const additionalExtensions = additionalExtensionMap.get(fileMimetype) || []
+    extensions = new Set<string>([
+      ...extensionsFromMimeType,
+      ...additionalExtensions,
+    ])
+  }
 
-  if (fileName && !extension) {
+  let extensionInFileName = ''
+  if (fileName) {
     const fileNamePair = fileName.split('.')
     const fileNamePairLength = fileNamePair.length
 
-    if (fileNamePairLength > 1)
-      extension = fileNamePair[fileNamePairLength - 1]
+    if (fileNamePairLength > 1) {
+      extensionInFileName = fileNamePair[fileNamePairLength - 1].toLowerCase()
+      if (extensions.has(extensionInFileName))
+        extension = extensionInFileName
+    }
+  }
+  if (!extension) {
+    if (extensions.size > 0)
+      extension = extensions.values().next().value.toLowerCase()
     else
-      extension = ''
+      extension = extensionInFileName
   }
 
   if (isRemote)
@@ -135,7 +154,7 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       transferMethod: fileItem.transfer_method,
       supportFileType: fileItem.type,
       uploadedId: fileItem.upload_file_id || fileItem.related_id,
-      url: fileItem.url,
+      url: fileItem.url || fileItem.remote_url,
     }
   })
 }

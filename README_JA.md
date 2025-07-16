@@ -155,7 +155,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 [こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回のGPT-4呼び出しが無料で含まれています。
 
 - **Dify Community Editionのセルフホスティング</br>**
-この[スタートガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
+この[スタートガイド](#クイックスタート)を使用して、ローカル環境でDifyを簡単に実行できます。
 詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
 
 - **企業/組織向けのDify</br>**
@@ -202,6 +202,7 @@ docker compose up -d
 - [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 新着！YAML ファイル（Dify v1.6.0 対応）by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Terraformを使用したデプロイ
 
@@ -220,6 +221,13 @@ docker compose up -d
 ##### AWS
 - [@KevinZhaoによるAWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
+#### Alibaba Cloud
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
+
+
 ## 貢献
 
 コードに貢献したい方は、[Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)を参照してください。
@@ -236,7 +244,7 @@ docker compose up -d
 
 ## コミュニティ & お問い合わせ
 
-* [Github Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
+* [GitHub Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
 * [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](CONTRIBUTING_JA.md)を参照してください
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [X(Twitter)](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。

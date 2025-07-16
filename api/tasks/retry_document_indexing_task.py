@@ -30,11 +30,11 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
         logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
         db.session.close()
         return
-
+    tenant_id = dataset.tenant_id
     for document_id in document_ids:
         retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
         # check document limit
-        features = FeatureService.get_features(dataset.tenant_id)
+        features = FeatureService.get_features(tenant_id)
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
@@ -95,7 +95,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             db.session.commit()
             logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
-            pass
+            logging.exception("retry_document_indexing_task failed, document_id: {}".format(document_id))
         finally:
             db.session.close()
     end_at = time.perf_counter()

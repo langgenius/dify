@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
@@ -13,12 +14,15 @@ from core.workflow.nodes.answer.entities import (
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class AnswerNode(BaseNode[AnswerNodeData]):
     _node_data_cls = AnswerNodeData
-    _node_type: NodeType = NodeType.ANSWER
+    _node_type = NodeType.ANSWER
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """
@@ -45,7 +49,10 @@ class AnswerNode(BaseNode[AnswerNodeData]):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"answer": answer, "files": files})
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            outputs={"answer": answer, "files": ArrayFileSegment(value=files)},
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

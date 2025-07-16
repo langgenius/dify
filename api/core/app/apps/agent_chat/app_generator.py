@@ -23,9 +23,9 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         files = args.get("files") or []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
@@ -179,12 +184,14 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             message_id=message.id,
         )
 
-        # new thread
+        # new thread with request context and contextvars
+        context = contextvars.copy_context()
+
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),  # type: ignore
-                "context": contextvars.copy_context(),
+                "context": context,
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
@@ -224,16 +231,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
-        for var, val in context.items():
-            var.set(val)
 
-        with flask_app.app_context():
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = AgentChatAppRunner()

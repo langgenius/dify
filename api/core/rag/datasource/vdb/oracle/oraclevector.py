@@ -261,7 +261,7 @@ class OracleVector(BaseVector):
                 words = pseg.cut(query)
                 current_entity = ""
                 for word, pos in words:
-                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名, ns: 地名, nt: 机构名
+                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名，ns: 地名，nt: 机构名
                         current_entity += word
                     else:
                         if current_entity:
@@ -303,7 +303,6 @@ class OracleVector(BaseVector):
             return docs
         else:
             return [Document(page_content="", metadata={})]
-        return []
 
     def delete(self) -> None:
         with self._get_connection() as conn:

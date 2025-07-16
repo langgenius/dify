@@ -47,14 +47,14 @@ const translation = {
     toolSelector: {
       uninstalledLink: 'Gerenciar em plug-ins',
       unsupportedContent2: 'Clique para mudar de versão.',
-      auto: 'Automático',
+      auto: 'Auto',
       title: 'Adicionar ferramenta',
       params: 'CONFIGURAÇÃO DE RACIOCÍNIO',
       toolLabel: 'Ferramenta',
       paramsTip1: 'Controla os parâmetros de inferência do LLM.',
       descriptionLabel: 'Descrição da ferramenta',
       uninstalledContent: 'Este plug-in é instalado a partir do repositório local/GitHub. Por favor, use após a instalação.',
-      paramsTip2: 'Quando \'Automático\' está desativado, o valor padrão é usado.',
+      paramsTip2: 'Quando \'Auto\' está desativado, o valor padrão é usado.',
       placeholder: 'Selecione uma ferramenta...',
       empty: 'Clique no botão \'+\' para adicionar ferramentas. Você pode adicionar várias ferramentas.',
       settings: 'CONFIGURAÇÕES DO USUÁRIO',
@@ -62,6 +62,7 @@ const translation = {
       descriptionPlaceholder: 'Breve descrição da finalidade da ferramenta, por exemplo, obter a temperatura para um local específico.',
       uninstalledTitle: 'Ferramenta não instalada',
       unsupportedTitle: 'Ação sem suporte',
+      toolSetting: 'Configurações da Ferramenta',
     },
     serviceOk: 'Serviço OK',
     endpointsTip: 'Este plug-in fornece funcionalidades específicas por meio de endpoints e você pode configurar vários conjuntos de endpoints para o workspace atual.',
@@ -136,6 +137,7 @@ const translation = {
     installing: 'Instalar...',
     uploadingPackage: 'Carregando {{packageName}} ...',
     dropPluginToInstall: 'Solte o pacote de plug-in aqui para instalar',
+    installWarning: 'Este plugin não é permitido ser instalado.',
   },
   installFromGitHub: {
     selectVersionPlaceholder: 'Selecione uma versão',
@@ -171,7 +173,7 @@ const translation = {
       recentlyUpdated: 'Atualizado recentemente',
       newlyReleased: 'Recém-lançado',
     },
-    sortBy: 'Cidade negra',
+    sortBy: 'Ordenar por',
     viewMore: 'Ver mais',
     and: 'e',
     pluginsResult: '{{num}} resultados',
@@ -193,7 +195,6 @@ const translation = {
   },
   installAction: 'Instalar',
   endpointsEnabled: '{{num}} conjuntos de endpoints habilitados',
-  submitPlugin: 'Enviar plugin',
   searchPlugins: 'Pesquisar plugins',
   searchInMarketplace: 'Pesquisar no Marketplace',
   installPlugin: 'Instale o plugin',
@@ -210,6 +211,8 @@ const translation = {
     title: 'Plugins',
   },
   difyVersionNotCompatible: 'A versão atual do Dify não é compatível com este plugin, por favor atualize para a versão mínima exigida: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitar um plugin',
+  publishPlugins: 'Publicar plugins',
 }
 
 export default translation

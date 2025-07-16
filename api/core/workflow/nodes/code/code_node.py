@@ -8,10 +8,10 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .exc import (
     CodeNodeError,
@@ -39,6 +39,10 @@ class CodeNode(BaseNode[CodeNodeData]):
         code_provider: type[CodeNodeProvider] = next(p for p in providers if p.is_accept_language(code_language))
 
         return code_provider.get_default_config()
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         # Get code language
@@ -126,6 +130,9 @@ class CodeNode(BaseNode[CodeNodeData]):
         prefix: str = "",
         depth: int = 1,
     ):
+        # TODO(QuantumGhost): Replace native Python lists with `Array*Segment` classes.
+        # Note that `_transform_result` may produce lists containing `None` values,
+        # which don't conform to the type requirements of `Array*Segment` classes.
         if depth > dify_config.CODE_MAX_DEPTH:
             raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
@@ -167,8 +174,11 @@ class CodeNode(BaseNode[CodeNodeData]):
                                     value=value,
                                     variable=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
                                 )
-                        elif isinstance(first_element, dict) and all(
-                            value is None or isinstance(value, dict) for value in output_value
+                        elif (
+                            isinstance(first_element, dict)
+                            and all(value is None or isinstance(value, dict) for value in output_value)
+                            or isinstance(first_element, list)
+                            and all(value is None or isinstance(value, list) for value in output_value)
                         ):
                             for i, value in enumerate(output_value):
                                 if value is not None:

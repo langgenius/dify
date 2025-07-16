@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import sign_tool_file
-from services.plugin.plugin_service import PluginService
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -31,7 +31,6 @@ from .base import Base
 from .engine import db
 from .enums import CreatorUserRole
 from .types import StringUUID
-from .workflow import WorkflowRunStatus
 
 if TYPE_CHECKING:
     from .workflow import Workflow
@@ -51,7 +50,6 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
-    CHANNEL = "channel"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -169,6 +167,7 @@ class App(Base):
     @property
     def deleted_tools(self) -> list:
         from core.tools.tool_manager import ToolManager
+        from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
         app_model_config = self.app_model_config
@@ -293,6 +292,15 @@ class App(Base):
         )
 
         return tags or []
+
+    @property
+    def author_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            if account:
+                return account.name
+
+        return None
 
 
 class AppModelConfig(Base):
@@ -602,6 +610,14 @@ class InstalledApp(Base):
         return tenant
 
 
+class ConversationSource(StrEnum):
+    """This enumeration is designed for use with `Conversation.from_source`."""
+
+    # NOTE(QuantumGhost): The enumeration members may not cover all possible cases.
+    API = "api"
+    CONSOLE = "console"
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
@@ -623,7 +639,14 @@ class Conversation(Base):
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     status = db.Column(db.String(255), nullable=False)
+
+    # The `invoke_from` records how the conversation is created.
+    #
+    # Its value corresponds to the members of `InvokeFrom`.
+    # (api/core/app/entities/app_invoke_entities.py)
     invoke_from = db.Column(db.String(255), nullable=True)
+
+    # ref: ConversationSource.
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
@@ -652,7 +675,7 @@ class Conversation(Base):
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -662,7 +685,7 @@ class Conversation(Base):
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
 
@@ -694,7 +717,6 @@ class Conversation(Base):
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
-                    assert app_model_config is not None, "app model config not found"
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -785,22 +807,22 @@ class Conversation(Base):
     def status_count(self):
         messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
         status_counts = {
-            WorkflowRunStatus.RUNNING: 0,
-            WorkflowRunStatus.SUCCEEDED: 0,
-            WorkflowRunStatus.FAILED: 0,
-            WorkflowRunStatus.STOPPED: 0,
-            WorkflowRunStatus.PARTIAL_SUCCEEDED: 0,
+            WorkflowExecutionStatus.RUNNING: 0,
+            WorkflowExecutionStatus.SUCCEEDED: 0,
+            WorkflowExecutionStatus.FAILED: 0,
+            WorkflowExecutionStatus.STOPPED: 0,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
         }
 
         for message in messages:
             if message.workflow_run:
-                status_counts[WorkflowRunStatus(message.workflow_run.status)] += 1
+                status_counts[WorkflowExecutionStatus(message.workflow_run.status)] += 1
 
         return (
             {
-                "success": status_counts[WorkflowRunStatus.SUCCEEDED],
-                "failed": status_counts[WorkflowRunStatus.FAILED],
-                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCEEDED],
+                "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
+                "failed": status_counts[WorkflowExecutionStatus.FAILED],
+                "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
             }
             if messages
             else None
@@ -808,7 +830,12 @@ class Conversation(Base):
 
     @property
     def first_message(self):
-        return db.session.query(Message).filter(Message.conversation_id == self.id).first()
+        return (
+            db.session.query(Message)
+            .filter(Message.conversation_id == self.id)
+            .order_by(Message.created_at.asc())
+            .first()
+        )
 
     @property
     def app(self):
@@ -885,11 +912,11 @@ class Message(Base):
     _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
-    message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    message_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     answer: Mapped[str] = db.Column(db.Text, nullable=False)
-    answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    answer_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     parent_message_id = db.Column(StringUUID, nullable=True)
@@ -906,7 +933,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    workflow_run_id = db.Column(StringUUID)
+    workflow_run_id: Mapped[str] = db.Column(StringUUID)
 
     @property
     def inputs(self):
@@ -918,7 +945,7 @@ class Message(Base):
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -928,7 +955,7 @@ class Message(Base):
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs
@@ -1426,6 +1453,39 @@ class EndUser(Base, UserMixin):
     session_id: Mapped[str] = mapped_column()
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class AppMCPServer(Base):
+    __tablename__ = "app_mcp_servers"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
+        db.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
+        db.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
+    )
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    server_code = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    parameters = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @staticmethod
+    def generate_server_code(n):
+        while True:
+            result = generate_string(n)
+            while db.session.query(AppMCPServer).filter(AppMCPServer.server_code == result).count() > 0:
+                result = generate_string(n)
+
+            return result
+
+    @property
+    def parameters_dict(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.parameters))
 
 
 class Site(Base):

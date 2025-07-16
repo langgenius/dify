@@ -77,6 +77,7 @@ const translation = {
     modelNum: '{{num}} MODELS INCLUDED',
     toolSelector: {
       title: 'Add tool',
+      toolSetting: 'Tool Settings',
       toolLabel: 'Tool',
       descriptionLabel: 'Tool description',
       descriptionPlaceholder: 'Brief description of the tool\'s purpose, e.g., get the temperature for a specific location.',
@@ -84,8 +85,8 @@ const translation = {
       settings: 'USER SETTINGS',
       params: 'REASONING CONFIG',
       paramsTip1: 'Controls LLM inference parameters.',
-      paramsTip2: 'When \'Automatic\' is off, the default value is used.',
-      auto: 'Automatic',
+      paramsTip2: 'When \'Auto\' is off, the default value is used.',
+      auto: 'Auto',
       empty: 'Click the \'+\' button to add tools. You can add multiple tools.',
       uninstalledTitle: 'Tool not installed',
       uninstalledContent: 'This plugin is installed from the local/GitHub repository. Please use after installation.',
@@ -93,6 +94,7 @@ const translation = {
       unsupportedTitle: 'Unsupported Action',
       unsupportedContent: 'The installed plugin version does not provide this action.',
       unsupportedContent2: 'Click to switch version.',
+      unsupportedMCPTool: 'Currently selected agent strategy plugin version does not support MCP tools.',
     },
     configureApp: 'Configure App',
     configureModel: 'Configure model',
@@ -153,6 +155,7 @@ const translation = {
     next: 'Next',
     pluginLoadError: 'Plugin load error',
     pluginLoadErrorDesc: 'This plugin will not be installed',
+    installWarning: 'This plugin is not allowed to be installed.',
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',
@@ -208,7 +211,8 @@ const translation = {
     installedError: '{{errorLength}} plugins failed to install',
     clearAll: 'Clear all',
   },
-  submitPlugin: 'Submit plugin',
+  requestAPlugin: 'Request a plugin',
+  publishPlugins: 'Publish plugins',
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
 }
 

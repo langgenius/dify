@@ -24,6 +24,7 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       type: BodyType.none,
       data: [],
     },
+    ssl_verify: true,
     timeout: {
       max_connect_timeout: 0,
       max_read_timeout: 0,

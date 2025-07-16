@@ -28,6 +28,8 @@ const translation = {
       delete: 'Șterge',
       enableWarning: 'Fișierul arhivat nu poate fi activat',
       sync: 'Sincronizează',
+      pause: 'Pauză',
+      resume: 'Reia',
     },
     index: {
       enable: 'Activează',
@@ -389,6 +391,8 @@ const translation = {
     regeneratingTitle: 'Regenerarea bucăților secundare',
     addChildChunk: 'Adăugați o bucată copil',
     searchResults_other: 'REZULTATELE',
+    keywordDuplicate: 'Cuvântul cheie există deja',
+    keywordEmpty: 'Cuvântul cheie nu poate fi gol',
   },
 }
 

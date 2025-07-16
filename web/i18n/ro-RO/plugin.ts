@@ -46,7 +46,7 @@ const translation = {
     },
     toolSelector: {
       unsupportedContent: 'Versiunea de plugin instalată nu oferă această acțiune.',
-      auto: 'Automat',
+      auto: 'Auto',
       empty: 'Faceți clic pe butonul "+" pentru a adăuga instrumente. Puteți adăuga mai multe instrumente.',
       uninstalledContent: 'Acest plugin este instalat din depozitul local/GitHub. Vă rugăm să utilizați după instalare.',
       descriptionLabel: 'Descrierea instrumentului',
@@ -54,7 +54,7 @@ const translation = {
       uninstalledLink: 'Gestionați în pluginuri',
       paramsTip1: 'Controlează parametrii de inferență LLM.',
       params: 'CONFIGURAREA RAȚIONAMENTULUI',
-      paramsTip2: 'Când "Automat" este dezactivat, se folosește valoarea implicită.',
+      paramsTip2: 'Când "Auto" este dezactivat, se folosește valoarea implicită.',
       settings: 'SETĂRI UTILIZATOR',
       unsupportedTitle: 'Acțiune neacceptată',
       placeholder: 'Selectați un instrument...',
@@ -62,6 +62,7 @@ const translation = {
       descriptionPlaceholder: 'Scurtă descriere a scopului instrumentului, de exemplu, obțineți temperatura pentru o anumită locație.',
       toolLabel: 'Unealtă',
       uninstalledTitle: 'Instrumentul nu este instalat',
+      toolSetting: 'Setările instrumentului',
     },
     endpointDeleteContent: 'Doriți să eliminați {{name}}?',
     strategyNum: '{{num}} {{strategie}} INCLUS',
@@ -136,6 +137,7 @@ const translation = {
     pluginLoadErrorDesc: 'Acest plugin nu va fi instalat',
     installedSuccessfullyDesc: 'Pluginul a fost instalat cu succes.',
     readyToInstall: 'Despre instalarea următorului plugin',
+    installWarning: 'Acest plugin nu este permis să fie instalat.',
   },
   installFromGitHub: {
     installFailed: 'Instalarea a eșuat',
@@ -172,7 +174,7 @@ const translation = {
       firstReleased: 'Prima lansare',
     },
     noPluginFound: 'Nu s-a găsit niciun plugin',
-    sortBy: 'Orașul negru',
+    sortBy: 'Sortează după',
     discover: 'Descoperi',
     empower: 'Îmbunătățește-ți dezvoltarea AI',
     pluginsResult: '{{num}} rezultate',
@@ -191,7 +193,6 @@ const translation = {
     installingWithSuccess: 'Instalarea pluginurilor {{installingLength}}, {{successLength}} succes.',
     installing: 'Instalarea pluginurilor {{installingLength}}, 0 terminat.',
   },
-  submitPlugin: 'Trimite plugin',
   fromMarketplace: 'Din Marketplace',
   from: 'Din',
   findMoreInMarketplace: 'Află mai multe în Marketplace',
@@ -210,6 +211,8 @@ const translation = {
     title: 'Pluginuri',
   },
   difyVersionNotCompatible: 'Versiunea curentă Dify nu este compatibilă cu acest plugin, vă rugăm să faceți upgrade la versiunea minimă necesară: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitați un plugin',
+  publishPlugins: 'Publicați pluginuri',
 }
 
 export default translation

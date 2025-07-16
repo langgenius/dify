@@ -5,10 +5,13 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightSLine,
   RiBookOpenLine,
+  RiBuildingLine,
   RiEqualizer2Line,
   RiExternalLinkLine,
+  RiGlobalLine,
   RiLockLine,
   RiPaintBrushLine,
+  RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
 import SettingsModal from './settings'
@@ -18,7 +21,7 @@ import style from './style.module.css'
 import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { asyncRunSafe, randomString } from '@/utils'
+import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
@@ -178,13 +181,14 @@ function AppCard({
               icon={appInfo.icon}
               icon_background={appInfo.icon_background}
               name={basicName}
+              hideType
               type={
                 isApp
                   ? t('appOverview.overview.appInfo.explanation')
                   : t('appOverview.overview.apiInfo.explanation')
               }
             />
-            <div className='flex items-center gap-1'>
+            <div className='flex shrink-0 items-center gap-1'>
               <Indicator color={runningStatus ? 'green' : 'yellow'} />
               <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {runningStatus
@@ -210,7 +214,7 @@ function AppCard({
                 content={isApp ? appUrl : apiUrl}
                 className={'!size-6'}
               />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 rounded-md hover:bg-state-base-hover' selectorId={randomString(8)} />}
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
               {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
@@ -248,11 +252,30 @@ function AppCard({
             <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
               onClick={handleClickAccessControl}>
               <div className='flex grow items-center gap-x-1.5 pr-1'>
-                <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
-                {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
-                {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
-              </div>
+                {appDetail?.access_mode === AccessMode.ORGANIZATION
+                  && <>
+                    <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>
+                  </>
+                }
+                {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
+                  && <>
+                    <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>
+                  </>
+                }
+                {appDetail?.access_mode === AccessMode.PUBLIC
+                  && <>
+                    <RiGlobalLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
+                  </>
+                }
+                {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
+                  && <>
+                    <RiVerifiedBadgeLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.external')}</p>
+                  </>
+                }</div>
               {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
               <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
                 <RiArrowRightSLine className='h-4 w-4 text-text-quaternary' />

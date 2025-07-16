@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -11,7 +11,7 @@ import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
+import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
@@ -109,6 +109,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
     })
   }, [checkVariableName, tempPayload.label])
 
+  const handleVarNameChange = useCallback((e: ChangeEvent<any>) => {
+    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    const value = e.target.value
+    const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+      })
+      return
+    }
+    handlePayloadChange('variable')(e.target.value)
+  }, [handlePayloadChange, t])
+
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
@@ -200,7 +214,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           <Field title={t('appDebug.variableConfig.varName')}>
             <Input
               value={variable}
-              onChange={e => handlePayloadChange('variable')(e.target.value)}
+              onChange={handleVarNameChange}
               onBlur={handleVarKeyBlur}
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
@@ -234,8 +248,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
 
           <div className='!mt-5 flex h-6 items-center space-x-2'>
-            <Checkbox checked={tempPayload.required} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
+            <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
             <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.required')}</span>
+          </div>
+
+          <div className='!mt-5 flex h-6 items-center space-x-2'>
+            <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
+            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.hide')}</span>
           </div>
         </div>
       </div>

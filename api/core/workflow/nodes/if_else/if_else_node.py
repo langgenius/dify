@@ -1,20 +1,25 @@
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
 
 from typing_extensions import deprecated
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.condition.processor import ConditionProcessor
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class IfElseNode(BaseNode[IfElseNodeData]):
     _node_data_cls = IfElseNodeData
     _node_type = NodeType.IF_ELSE
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """
@@ -86,6 +91,22 @@ class IfElseNode(BaseNode[IfElseNodeData]):
         )
 
         return data
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: IfElseNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        var_mapping: dict[str, list[str]] = {}
+        for case in node_data.cases or []:
+            for condition in case.conditions:
+                key = "{}.#{}#".format(node_id, ".".join(condition.variable_selector))
+                var_mapping[key] = condition.variable_selector
+
+        return var_mapping
 
 
 @deprecated("This function is deprecated. You should use the new cases structure.")

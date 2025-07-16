@@ -35,7 +35,7 @@ import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
 import { getDocsUrl } from '@/app/components/plugins/utils'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { marketplaceApiPrefix } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import I18n from '@/context/i18n'
 import { noop } from 'lodash-es'
@@ -106,7 +106,7 @@ const PluginPage = ({
         setManifest({
           ...plugin,
           version: version.version,
-          icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
+          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
         showInstallFromMarketplace()
         return
@@ -187,6 +187,17 @@ const PluginPage = ({
               isExploringMarketplace && (
                 <>
                   <Link
+                    href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                    target='_blank'
+                  >
+                    <Button
+                      variant='ghost'
+                      className='text-text-tertiary'
+                    >
+                      {t('plugin.requestAPlugin')}
+                    </Button>
+                  </Link>
+                  <Link
                     href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
                     target='_blank'
                   >
@@ -195,10 +206,10 @@ const PluginPage = ({
                       variant='secondary-accent'
                     >
                       <RiBookOpenLine className='mr-1 h-4 w-4' />
-                      {t('plugin.submitPlugin')}
+                      {t('plugin.publishPlugins')}
                     </Button>
                   </Link>
-                  <div className='mx-2 h-3.5 w-[1px] bg-divider-regular'></div>
+                  <div className='mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
                 </>
               )
             }

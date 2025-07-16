@@ -90,6 +90,7 @@ export type TextTypeFormItem = {
   variable: string
   required: boolean
   max_length: number
+  hide: boolean
 }
 
 export type SelectTypeFormItem = {
@@ -98,6 +99,7 @@ export type SelectTypeFormItem = {
   variable: string
   required: boolean
   options: string[]
+  hide: boolean
 }
 
 export type ParagraphTypeFormItem = {
@@ -105,6 +107,7 @@ export type ParagraphTypeFormItem = {
   label: string
   variable: string
   required: boolean
+  hide: boolean
 }
 /**
  * User Input Form Item
@@ -316,6 +319,8 @@ export type App = {
   name: string
   /** Description */
   description: string
+  /** Author Name */
+  author_name: string;
 
   /**
    * Icon Type
@@ -348,6 +353,8 @@ export type App = {
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Timestamp of update */
+  updated_at: number
   /** Web Application Configuration */
   site: SiteConfig
   /** api site url */

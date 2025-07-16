@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Échec du téléchargement. Veuillez réessayer plus tard.',
     more: 'Plus',
     downloadSuccess: 'Téléchargement terminé.',
+    deSelectAll: 'Désélectionner tout',
+    selectAll: 'Sélectionner tout',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -145,6 +147,8 @@ const translation = {
     newDataset: 'Créer des Connaissances',
     tools: 'Outils',
     exploreMarketplace: 'Explorer Marketplace',
+    appDetail: 'Détails de l\'application',
+    account: 'Compte',
   },
   userProfile: {
     settings: 'Paramètres',
@@ -465,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'Les extensions API fournissent une gestion centralisée des API, simplifiant la configuration pour une utilisation facile à travers les applications de Dify.',
     link: 'Apprenez comment développer votre propre Extension API.',
-    linkUrl: 'https://docs.dify.ai/fonctionnalites/extension/extension_basee_sur_api',
     add: 'Ajouter l\'extension API',
     selector: {
       title: 'Extension de l\'API',
@@ -550,7 +553,7 @@ const translation = {
       vectorHash: 'Hachage vectoriel:',
       hitScore: 'Score de Récupération:',
     },
-    inputPlaceholder: 'Parler au bot',
+    inputPlaceholder: 'Parler au {{botName}}',
     thinking: 'Pensée...',
     thought: 'Pensée',
     resend: 'Renvoyer',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring: 'Expirant dans un jour',
     expiring_plural: 'Expirant dans {{count}} jours',
+    unlimited: 'Illimité',
   },
   pagination: {
     perPage: 'Articles par page',
@@ -667,6 +671,7 @@ const translation = {
     dropImageHere: 'Déposez votre image ici, ou',
     supportedFormats: 'Prend en charge PNG, JPG, JPEG, WEBP et GIF',
   },
+  you: 'Vous',
 }
 
 export default translation

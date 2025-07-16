@@ -1,12 +1,12 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, RETRY_ON_ERROR_NODE_TYPE, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import BaseNodeData
 
@@ -23,7 +23,7 @@ GenericNodeData = TypeVar("GenericNodeData", bound=BaseNodeData)
 
 class BaseNode(Generic[GenericNodeData]):
     _node_data_cls: type[GenericNodeData]
-    _node_type: NodeType
+    _node_type: ClassVar[NodeType]
 
     def __init__(
         self,
@@ -90,8 +90,38 @@ class BaseNode(Generic[GenericNodeData]):
         graph_config: Mapping[str, Any],
         config: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
+        """Extracts references variable selectors from node configuration.
+
+        The `config` parameter represents the configuration for a specific node type and corresponds
+        to the `data` field in the node definition object.
+
+        The returned mapping has the following structure:
+
+            {'1747829548239.#1747829667553.result#': ['1747829667553', 'result']}
+
+        For loop and iteration nodes, the mapping may look like this:
+
+            {
+                "1748332301644.input_selector": ["1748332363630", "result"],
+                "1748332325079.1748332325079.#sys.workflow_id#": ["sys", "workflow_id"],
+            }
+
+        where `1748332301644` is the ID of the loop / iteration node,
+        and `1748332325079` is the ID of the node inside the loop or iteration node.
+
+        Here, the key consists of two parts: the current node ID (provided as the `node_id`
+        parameter to `_extract_variable_selector_to_variable_mapping`) and the variable selector,
+        enclosed in `#` symbols. These two parts are separated by a dot (`.`).
+
+        The value is a list of string representing the variable selector, where the first element is the node ID
+        of the referenced variable, and the second element is the variable name within that node.
+
+        The meaning of the above response is:
+
+        The node with ID `1747829548239` references the variable `result` from the node with
+        ID `1747829667553`. For example, if `1747829548239` is a LLM node, its prompt may contain a
+        reference to the `result` output variable of node `1747829667553`.
+
         :param graph_config: graph config
         :param config: node config
         :return:
@@ -101,9 +131,10 @@ class BaseNode(Generic[GenericNodeData]):
             raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
 
         node_data = cls._node_data_cls(**config.get("data", {}))
-        return cls._extract_variable_selector_to_variable_mapping(
+        data = cls._extract_variable_selector_to_variable_mapping(
             graph_config=graph_config, node_id=node_id, node_data=cast(GenericNodeData, node_data)
         )
+        return data
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -138,6 +169,16 @@ class BaseNode(Generic[GenericNodeData]):
         :return:
         """
         return self._node_type
+
+    @classmethod
+    @abstractmethod
+    def version(cls) -> str:
+        """`node_version` returns the version of current node type."""
+        # NOTE(QuantumGhost): This should be in sync with `NODE_TYPE_CLASSES_MAPPING`.
+        #
+        # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
+        # in `api/core/workflow/nodes/__init__.py`.
+        raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @property
     def should_continue_on_error(self) -> bool:

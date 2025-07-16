@@ -58,6 +58,8 @@ const translation = {
     format: '형식',
     more: '더 많은',
     downloadSuccess: '다운로드 완료.',
+    selectAll: '모두 선택',
+    deSelectAll: '모두 선택 해제',
   },
   placeholder: {
     input: '입력해주세요',
@@ -103,20 +105,20 @@ const translation = {
   model: {
     params: {
       temperature: '온도',
-      temperatureTip: '랜덤성을 제어합니다. 온도를 낮추면 더 랜덤한 결과물을 얻을 수 있습니다. 온도가 0에 가까워질수록 모델은 결정적이고 반복적으로 작동합니다.',
-      top_p: '상위P',
-      top_pTip: '뉴클리어스 샘플링에 의한 다양성 제어: 0.5는 모든 확률 가중 옵션의 절반을 고려함을 의미합니다.',
+      temperatureTip: '랜덤성을 제어합니다. 온도를 낮추면 더 랜덤한 결과물을 얻을 수 있습니다. 온도가 0 에 가까워질수록 모델은 결정적이고 반복적으로 작동합니다.',
+      top_p: '상위 P',
+      top_pTip: '뉴클리어스 샘플링에 의한 다양성 제어: 0.5 는 모든 확률 가중 옵션의 절반을 고려함을 의미합니다.',
       presence_penalty: '존재 페널티',
       presence_penaltyTip: '이전 텍스트에서 토큰이 나타나는지 여부에 따라 새로운 토큰에 얼마나 많은 페널티를 부여할지 제어합니다. 모델이 새로운 주제에 대해 말할 가능성이 높아집니다.',
       frequency_penalty: '빈도 페널티',
       frequency_penaltyTip: '이전 텍스트 내 토큰의 기존 빈도에 따라 새로운 토큰에 얼마나 많은 페널티를 부여할지 제어합니다. 모델이 같은 문구를 글자 그대로 반복할 가능성이 줄어듭니다.',
       max_tokens: '최대 토큰',
       max_tokensTip:
-        '응답의 최대 길이를 토큰 단위로 제한하는 데 사용됩니다. 큰 값은 프롬프트, 채팅 로그 및 남은 공간에 대한 제한을 가질 수 있습니다. 2/3 이하로 설정하는 것이 좋습니다. gpt-4-1106-preview, gpt-4-vision-preview의 최대 토큰 (입력 128k 출력 4k)보다 작게 설정하는 것이 좋습니다.',
+        '응답의 최대 길이를 토큰 단위로 제한하는 데 사용됩니다. 큰 값은 프롬프트, 채팅 로그 및 남은 공간에 대한 제한을 가질 수 있습니다. 2/3 이하로 설정하는 것이 좋습니다. gpt-4-1106-preview, gpt-4-vision-preview 의 최대 토큰 (입력 128k 출력 4k) 보다 작게 설정하는 것이 좋습니다.',
       maxTokenSettingTip: '최대 토큰 설정이 높아서 프롬프트, 쿼리 및 데이터 공간에 제한이 생길 수 있습니다. 현재 모델의 최대 토큰의 80% 이하로 설정해주세요.',
-      setToCurrentModelMaxTokenTip: '최대 토큰이 현재 모델의 최대 토큰의 80%로 업데이트되었습니다 {{maxToken}}.',
+      setToCurrentModelMaxTokenTip: '최대 토큰이 현재 모델의 최대 토큰의 80% 로 업데이트되었습니다 {{maxToken}}.',
       stop_sequences: '중단 시퀀스',
-      stop_sequencesTip: 'API가 진행 중인 토큰 생성을 중단하는 최대 4개의 시퀀스입니다. 반환된 텍스트에는 중단 시퀀스가 포함되지 않습니다.',
+      stop_sequencesTip: 'API 가 진행 중인 토큰 생성을 중단하는 최대 4 개의 시퀀스입니다. 반환된 텍스트에는 중단 시퀀스가 포함되지 않습니다.',
       stop_sequencesPlaceholder: '시퀀스를 입력하고 탭 키를 누르세요',
     },
     tone: {
@@ -141,6 +143,8 @@ const translation = {
     newDataset: '지식 만들기',
     tools: '도구',
     exploreMarketplace: 'Marketplace 둘러보기',
+    appDetail: '앱 세부정보',
+    account: '계정',
   },
   userProfile: {
     settings: '설정',
@@ -199,7 +203,7 @@ const translation = {
     deletePlaceholder: '이메일을 입력해 주세요',
     sendVerificationButton: '인증 코드 보내기',
     verificationLabel: '인증 코드',
-    verificationPlaceholder: '6자리 코드를 붙여넣습니다.',
+    verificationPlaceholder: '6 자리 코드를 붙여넣습니다.',
     permanentlyDeleteButton: '계정 영구 삭제',
     feedbackTitle: '피드백',
     feedbackLabel: '계정을 삭제한 이유를 알려주시겠습니까?',
@@ -232,7 +236,7 @@ const translation = {
     sendInvite: '초대 보내기',
     invitedAsRole: '{{role}} 사용자로 초대되었습니다',
     invitationSent: '초대가 전송되었습니다',
-    invitationSentTip: '초대가 전송되었으며, 그들은 Dify에 로그인하여 당신의 팀 데이터에 액세스할 수 있습니다.',
+    invitationSentTip: '초대가 전송되었으며, 그들은 Dify 에 로그인하여 당신의 팀 데이터에 액세스할 수 있습니다.',
     invitationLink: '초대 링크',
     failedInvitationEmails: '다음 사용자들은 성공적으로 초대되지 않았습니다',
     ok: '확인',
@@ -269,7 +273,7 @@ const translation = {
     validatedError: '검증 실패:',
     validating: '키를 확인하는 중...',
     saveFailed: 'API 키 저장 실패',
-    apiKeyExceedBill: '이 API KEY에는 사용 가능한 할당량이 없습니다. 자세한 내용은',
+    apiKeyExceedBill: '이 API KEY 에는 사용 가능한 할당량이 없습니다. 자세한 내용은',
     addKey: '키 추가',
     comingSoon: '곧 출시됨',
     editKey: '편집',
@@ -285,7 +289,7 @@ const translation = {
       openaiHosted: '호스팅된 OpenAI',
       onTrial: '트라이얼 중',
       exhausted: '할당량이 다 사용되었습니다',
-      desc: 'Dify가 제공하는 OpenAI 호스팅 서비스를 사용하면 GPT-3.5와 같은 모델을 사용할 수 있습니다. 트라이얼 할당량이 다 사용되기 전에 다른 모델 제공자를 설정해야 합니다.',
+      desc: 'Dify 가 제공하는 OpenAI 호스팅 서비스를 사용하면 GPT-3.5 와 같은 모델을 사용할 수 있습니다. 트라이얼 할당량이 다 사용되기 전에 다른 모델 제공자를 설정해야 합니다.',
       callTimes: '호출 횟수',
       usedUp: '트라이얼 할당량이 다 사용되었습니다. 다른 모델 제공자를 추가하세요.',
       useYourModel: '현재 사용자 정의 모델 제공자를 사용 중입니다.',
@@ -306,10 +310,10 @@ const translation = {
       using: '임베드 기능을 사용 중입니다',
       enableTip: 'Anthropic 모델을 활성화하려면 먼저 OpenAI 또는 Azure OpenAI 서비스에 바인딩해야 합니다.',
       notEnabled: '비활성화됨',
-      keyFrom: 'Anthropic에서 API 키를 받으세요',
+      keyFrom: 'Anthropic 에서 API 키를 받으세요',
     },
     encrypted: {
-      front: 'API KEY는',
+      front: 'API KEY 는',
       back: '기술을 사용하여 암호화 및 저장됩니다.',
     },
   },
@@ -364,7 +368,7 @@ const translation = {
       tip: '지불된 할당량에 우선순위가 부여됩니다. 평가판 할당량은 유료 할당량이 소진된 후 사용됩니다.',
     },
     item: {
-      deleteDesc: '{{modelName}}은(는) 시스템 추론 모델로 사용 중입니다. 제거 후 일부 기능을 사용할 수 없습니다. 확인하시겠습니까?',
+      deleteDesc: '{{modelName}}은 (는) 시스템 추론 모델로 사용 중입니다. 제거 후 일부 기능을 사용할 수 없습니다. 확인하시겠습니까?',
       freeQuota: '무료 할당량',
     },
     addApiKey: 'API 키 추가',
@@ -399,7 +403,7 @@ const translation = {
     apiKey: 'API 키',
     defaultConfig: '기본 구성',
     providerManaged: '제공자 관리',
-    loadBalancing: '부하 분산Load balancing',
+    loadBalancing: '부하 분산 Load balancing',
     addConfig: '구성 추가',
     apiKeyStatusNormal: 'APIKey 상태는 정상입니다.',
     configLoadBalancing: 'Config 로드 밸런싱',
@@ -409,8 +413,8 @@ const translation = {
     loadBalancingDescription: '여러 자격 증명 세트로 부담을 줄입니다.',
     upgradeForLoadBalancing: '로드 밸런싱을 사용하도록 계획을 업그레이드합니다.',
     apiKeyRateLimit: '속도 제한에 도달했으며, {{seconds}}s 후에 사용할 수 있습니다.',
-    loadBalancingInfo: '기본적으로 부하 분산은 라운드 로빈 전략을 사용합니다. 속도 제한이 트리거되면 1분의 휴지 기간이 적용됩니다.',
-    loadBalancingLeastKeyWarning: '로드 밸런싱을 사용하려면 최소 2개의 키를 사용하도록 설정해야 합니다.',
+    loadBalancingInfo: '기본적으로 부하 분산은 라운드 로빈 전략을 사용합니다. 속도 제한이 트리거되면 1 분의 휴지 기간이 적용됩니다.',
+    loadBalancingLeastKeyWarning: '로드 밸런싱을 사용하려면 최소 2 개의 키를 사용하도록 설정해야 합니다.',
     providerManagedDescription: '모델 공급자가 제공하는 단일 자격 증명 집합을 사용합니다.',
     installProvider: '모델 공급자 설치',
     discoverMore: '더 알아보기',
@@ -461,7 +465,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API 기반 확장은 Dify 애플리케이션 전체에서 간편한 사용을 위한 설정을 단순화하고 집중적인 API 관리를 제공합니다.',
     link: '사용자 정의 API 기반 확장을 개발하는 방법 배우기',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API 기반 확장 추가',
     selector: {
       title: 'API 기반 확장',
@@ -482,7 +485,7 @@ const translation = {
       apiKey: {
         title: 'API 키',
         placeholder: 'API 키를 입력하세요',
-        lengthError: 'API 키는 5자 미만이어야 합니다',
+        lengthError: 'API 키는 5 자 미만이어야 합니다',
       },
     },
     type: '유형',
@@ -602,7 +605,7 @@ const translation = {
     uploadFromComputer: '컴퓨터에서 업로드',
     uploadFromComputerReadError: '이미지 읽기 실패. 다시 시도하세요.',
     uploadFromComputerUploadError: '이미지 업로드 실패. 다시 업로드하세요.',
-    uploadFromComputerLimit: '업로드 이미지 크기는 {{size}} MB를 초과할 수 없습니다',
+    uploadFromComputerLimit: '업로드 이미지 크기는 {{size}} MB 를 초과할 수 없습니다',
     pasteImageLink: '이미지 링크 붙여넣기',
     pasteImageLinkInputPlaceholder: '여기에 이미지 링크를 붙여넣으세요',
     pasteImageLinkInvalid: '유효하지 않은 이미지 링크',
@@ -624,7 +627,7 @@ const translation = {
     failed: '태그 생성에 실패했습니다',
   },
   errorMsg: {
-    urlError: 'URL은 http:// 또는 https:// 로 시작해야 합니다.',
+    urlError: 'URL 은 http:// 또는 https:// 로 시작해야 합니다.',
     fieldRequired: '{{field}}는 필수입니다.',
   },
   fileUploader: {
@@ -640,14 +643,15 @@ const translation = {
   license: {
     expiring_plural: '{{count}}일 후에 만료',
     expiring: '하루 후에 만료',
+    unlimited: '무제한',
   },
   pagination: {
     perPage: '페이지당 항목 수',
   },
   theme: {
-    theme: '주제',
-    light: '빛',
-    dark: '어둠',
+    theme: '테마',
+    light: '밝은',
+    dark: '어두운',
     auto: '시스템',
   },
   compliance: {
@@ -659,10 +663,11 @@ const translation = {
     sandboxUpgradeTooltip: '전문가 또는 팀 플랜에서만 사용할 수 있습니다.',
   },
   imageInput: {
-    supportedFormats: 'PNG, JPG, JPEG, WEBP 및 GIF를 지원합니다.',
+    supportedFormats: 'PNG, JPG, JPEG, WEBP 및 GIF 를 지원합니다.',
     browse: '브라우즈',
     dropImageHere: '여기에 이미지를 드롭하거나',
   },
+  you: '너',
 }
 
 export default translation

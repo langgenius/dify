@@ -75,7 +75,7 @@ class AgentConfigManager:
                     strategy=strategy,
                     prompt=agent_prompt_entity,
                     tools=agent_tools,
-                    max_iteration=agent_dict.get("max_iteration", 5),
+                    max_iteration=agent_dict.get("max_iteration", 10),
                 )
 
         return None

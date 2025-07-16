@@ -4,9 +4,9 @@ from datetime import datetime
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from models import App, EndUser, WorkflowAppLog, WorkflowRun
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from models import Account, App, EndUser, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowRunStatus
 
 
 class WorkflowAppService:
@@ -16,11 +16,13 @@ class WorkflowAppService:
         session: Session,
         app_model: App,
         keyword: str | None = None,
-        status: WorkflowRunStatus | None = None,
+        status: WorkflowExecutionStatus | None = None,
         created_at_before: datetime | None = None,
         created_at_after: datetime | None = None,
         page: int = 1,
         limit: int = 20,
+        created_by_end_user_session_id: str | None = None,
+        created_by_account: str | None = None,
     ) -> dict:
         """
         Get paginate workflow app logs using SQLAlchemy 2.0 style
@@ -32,6 +34,8 @@ class WorkflowAppService:
         :param created_at_after: filter logs created after this timestamp
         :param page: page number
         :param limit: items per page
+        :param created_by_end_user_session_id: filter by end user session id
+        :param created_by_account: filter by account email
         :return: Pagination object
         """
         # Build base statement using SQLAlchemy 2.0 style
@@ -70,6 +74,26 @@ class WorkflowAppService:
 
         if created_at_after:
             stmt = stmt.where(WorkflowAppLog.created_at >= created_at_after)
+
+        # Filter by end user session id or account email
+        if created_by_end_user_session_id:
+            stmt = stmt.join(
+                EndUser,
+                and_(
+                    WorkflowAppLog.created_by == EndUser.id,
+                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
+                    EndUser.session_id == created_by_end_user_session_id,
+                ),
+            )
+        if created_by_account:
+            stmt = stmt.join(
+                Account,
+                and_(
+                    WorkflowAppLog.created_by == Account.id,
+                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
+                    Account.email == created_by_account,
+                ),
+            )
 
         stmt = stmt.order_by(WorkflowAppLog.created_at.desc())
 

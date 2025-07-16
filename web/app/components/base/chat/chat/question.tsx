@@ -98,7 +98,7 @@ const Question: FC<QuestionProps> = ({
 
   return (
     <div className='mb-2 flex justify-end last:mb-0'>
-      <div className={cn('group relative mr-4 flex max-w-full items-start pl-14', isEditing && 'flex-1')}>
+      <div className={cn('group relative mr-4 flex max-w-full items-start pl-14 overflow-x-hidden', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
@@ -117,7 +117,7 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div
           ref={contentRef}
-          className='w-full rounded-2xl bg-[#D1E9FF]/50 px-4 py-3 text-sm text-gray-900'
+          className='w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {

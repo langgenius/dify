@@ -27,7 +27,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, D
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
-from services.account_service import RegisterService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
@@ -68,6 +68,7 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
+    AccountService.reset_login_error_rate_limit(email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -280,6 +281,7 @@ def migrate_knowledge_vector_database():
         VectorType.ELASTICSEARCH,
         VectorType.OPENGAUSS,
         VectorType.TABLESTORE,
+        VectorType.MATRIXONE,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -846,6 +848,9 @@ def clear_orphaned_file_records(force: bool):
         {"type": "text", "table": "workflow_node_executions", "column": "outputs"},
         {"type": "text", "table": "conversations", "column": "introduction"},
         {"type": "text", "table": "conversations", "column": "system_instruction"},
+        {"type": "text", "table": "accounts", "column": "avatar"},
+        {"type": "text", "table": "apps", "column": "icon"},
+        {"type": "text", "table": "sites", "column": "icon"},
         {"type": "json", "table": "messages", "column": "inputs"},
         {"type": "json", "table": "messages", "column": "message"},
     ]

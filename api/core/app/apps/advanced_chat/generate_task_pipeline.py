@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator, Mapping
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -56,25 +56,24 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
+from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import WorkflowCycleManager
+from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
-from models.workflow import (
-    Workflow,
-    WorkflowRunStatus,
-)
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +93,9 @@ class AdvancedChatAppGenerateTaskPipeline:
         user: Union[Account, EndUser],
         stream: bool,
         dialogue_count: int,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        draft_var_saver_factory: DraftVariableSaverFactory,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -123,13 +124,24 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.DIALOGUE_COUNT: dialogue_count,
                 SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
-                SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_info=CycleManagerWorkflowInfo(
+                workflow_id=workflow.id,
+                workflow_type=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph_data=workflow.graph_dict,
+            ),
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
+        self._workflow_response_converter = WorkflowResponseConverter(
+            application_generate_entity=application_generate_entity,
+        )
+
         self._task_state = WorkflowTaskState()
-        self._message_cycle_manager = MessageCycleManage(
+        self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
         )
 
@@ -143,6 +155,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         self._conversation_name_generate_thread: Thread | None = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
+        self._draft_var_saver_factory = draft_var_saver_factory
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -150,7 +163,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         # start generate conversation name thread
-        self._conversation_name_generate_thread = self._message_cycle_manager._generate_conversation_name(
+        self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
             conversation_id=self._conversation_id, query=self._application_generate_entity.query
         )
 
@@ -294,19 +307,15 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_start(
-                        session=session,
-                        workflow_id=self._workflow_id,
-                        user_id=self._user_id,
-                        created_by_role=self._created_by_role,
-                    )
-                    self._workflow_run_id = workflow_run.id
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()
+                    self._workflow_run_id = workflow_execution.id_
                     message = self._get_message(session=session)
                     if not message:
                         raise ValueError(f"Message not found: {self._message_id}")
-                    message.workflow_run_id = workflow_run.id
-                    workflow_start_resp = self._workflow_cycle_manager._workflow_start_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    message.workflow_run_id = workflow_execution.id_
+                    workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
                     session.commit()
 
@@ -319,13 +328,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("workflow run not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                    workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
+                        workflow_execution_id=self._workflow_run_id, event=event
                     )
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
-                        workflow_run=workflow_run, event=event
-                    )
-                    node_retry_resp = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
+                    node_retry_resp = self._workflow_response_converter.workflow_node_retry_to_stream_response(
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -338,20 +344,15 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        workflow_run=workflow_run, event=event
-                    )
+                workflow_node_execution = self._workflow_cycle_manager.handle_node_execution_start(
+                    workflow_execution_id=self._workflow_run_id, event=event
+                )
 
-                    node_start_resp = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                node_start_resp = self._workflow_response_converter.workflow_node_start_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_start_resp:
                     yield node_start_resp
@@ -359,20 +360,21 @@ class AdvancedChatAppGenerateTaskPipeline:
                 # Record files if it's an answer node or end node
                 if event.node_type in [NodeType.ANSWER, NodeType.END]:
                     self._recorded_files.extend(
-                        self._workflow_cycle_manager._fetch_files_from_node_outputs(event.outputs or {})
+                        self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
                     )
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
+                    workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(
                         event=event
                     )
 
-                    node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
                     )
                     session.commit()
+                self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -383,15 +385,17 @@ class AdvancedChatAppGenerateTaskPipeline:
                 | QueueNodeInLoopFailedEvent
                 | QueueNodeExceptionEvent,
             ):
-                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_failed(
                     event=event
                 )
 
-                node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
+                if isinstance(event, QueueNodeExceptionEvent):
+                    self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -399,132 +403,92 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                parallel_start_resp = (
+                    self._workflow_response_converter.workflow_parallel_branch_start_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution_id=self._workflow_run_id,
+                        event=event,
                     )
-                    parallel_start_resp = (
-                        self._workflow_cycle_manager._workflow_parallel_branch_start_to_stream_response(
-                            session=session,
-                            task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
-                            event=event,
-                        )
-                    )
+                )
 
                 yield parallel_start_resp
             elif isinstance(event, QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                parallel_finish_resp = (
+                    self._workflow_response_converter.workflow_parallel_branch_finished_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution_id=self._workflow_run_id,
+                        event=event,
                     )
-                    parallel_finish_resp = (
-                        self._workflow_cycle_manager._workflow_parallel_branch_finished_to_stream_response(
-                            session=session,
-                            task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
-                            event=event,
-                        )
-                    )
+                )
 
                 yield parallel_finish_resp
             elif isinstance(event, QueueIterationStartEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_start_resp = self._workflow_cycle_manager._workflow_iteration_start_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_start_resp = self._workflow_response_converter.workflow_iteration_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_start_resp
             elif isinstance(event, QueueIterationNextEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_next_resp = self._workflow_cycle_manager._workflow_iteration_next_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_next_resp = self._workflow_response_converter.workflow_iteration_next_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_next_resp
             elif isinstance(event, QueueIterationCompletedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_finish_resp = self._workflow_cycle_manager._workflow_iteration_completed_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_finish_resp = self._workflow_response_converter.workflow_iteration_completed_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_finish_resp
             elif isinstance(event, QueueLoopStartEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_start_resp = self._workflow_cycle_manager._workflow_loop_start_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_start_resp = self._workflow_response_converter.workflow_loop_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_start_resp
             elif isinstance(event, QueueLoopNextEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_next_resp = self._workflow_cycle_manager._workflow_loop_next_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_next_resp = self._workflow_response_converter.workflow_loop_next_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_next_resp
             elif isinstance(event, QueueLoopCompletedEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_finish_resp = self._workflow_cycle_manager._workflow_loop_completed_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_finish_resp = self._workflow_response_converter.workflow_loop_completed_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_finish_resp
             elif isinstance(event, QueueWorkflowSucceededEvent):
@@ -535,10 +499,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("workflow run not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -546,10 +508,11 @@ class AdvancedChatAppGenerateTaskPipeline:
                         trace_manager=trace_manager,
                     )
 
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
@@ -562,10 +525,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_partial_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_partial_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -573,10 +534,11 @@ class AdvancedChatAppGenerateTaskPipeline:
                         conversation_id=None,
                         trace_manager=trace_manager,
                     )
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
@@ -589,26 +551,25 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_failed(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
-                        status=WorkflowRunStatus.FAILED,
-                        error=event.error,
+                        status=WorkflowExecutionStatus.FAILED,
+                        error_message=event.error,
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
                         exceptions_count=event.exceptions_count,
                     )
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_run.error}"))
+                    err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_execution.error_message}"))
                     err = self._base_task_pipeline._handle_error(
                         event=err_event, session=session, message_id=self._message_id
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 yield self._base_task_pipeline._error_to_stream_response(err)
@@ -616,21 +577,19 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueStopEvent):
                 if self._workflow_run_id and graph_runtime_state:
                     with Session(db.engine, expire_on_commit=False) as session:
-                        workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
-                            session=session,
+                        workflow_execution = self._workflow_cycle_manager.handle_workflow_run_failed(
                             workflow_run_id=self._workflow_run_id,
-                            start_at=graph_runtime_state.start_at,
                             total_tokens=graph_runtime_state.total_tokens,
                             total_steps=graph_runtime_state.node_run_steps,
-                            status=WorkflowRunStatus.STOPPED,
-                            error=event.get_stop_reason(),
+                            status=WorkflowExecutionStatus.STOPPED,
+                            error_message=event.get_stop_reason(),
                             conversation_id=self._conversation_id,
                             trace_manager=trace_manager,
                         )
-                        workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                        workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                             session=session,
                             task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
+                            workflow_execution=workflow_execution,
                         )
                         # Save message
                         self._save_message(session=session, graph_runtime_state=graph_runtime_state)
@@ -650,22 +609,18 @@ class AdvancedChatAppGenerateTaskPipeline:
                 yield self._message_end_to_stream_response()
                 break
             elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._message_cycle_manager._handle_retriever_resources(event)
+                self._message_cycle_manager.handle_retriever_resources(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
-                    message.message_metadata = (
-                        json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-                    )
+                    message.message_metadata = self._task_state.metadata.model_dump_json()
                     session.commit()
             elif isinstance(event, QueueAnnotationReplyEvent):
-                self._message_cycle_manager._handle_annotation_reply(event)
+                self._message_cycle_manager.handle_annotation_reply(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
-                    message.message_metadata = (
-                        json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-                    )
+                    message.message_metadata = self._task_state.metadata.model_dump_json()
                     session.commit()
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
@@ -682,12 +637,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
-                yield self._message_cycle_manager._message_to_stream_response(
+                yield self._message_cycle_manager.message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(
+                yield self._message_cycle_manager.message_replace_to_stream_response(
                     answer=event.text, reason=event.reason
                 )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
@@ -699,7 +654,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
-                    yield self._message_cycle_manager._message_replace_to_stream_response(
+                    yield self._message_cycle_manager.message_replace_to_stream_response(
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
@@ -711,7 +666,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueAgentLogEvent):
-                yield self._workflow_cycle_manager._handle_agent_log(
+                yield self._workflow_response_converter.handle_agent_log(
                     task_id=self._application_generate_entity.task_id, event=event
                 )
             else:
@@ -728,9 +683,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         message = self._get_message(session=session)
         message.answer = self._task_state.answer
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
-        message.message_metadata = (
-            json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-        )
+        message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -758,9 +711,9 @@ class AdvancedChatAppGenerateTaskPipeline:
             message.answer_price_unit = usage.completion_price_unit
             message.total_price = usage.total_price
             message.currency = usage.currency
-            self._task_state.metadata["usage"] = jsonable_encoder(usage)
+            self._task_state.metadata.usage = usage
         else:
-            self._task_state.metadata["usage"] = jsonable_encoder(LLMUsage.empty_usage())
+            self._task_state.metadata.usage = LLMUsage.empty_usage()
         message_was_created.send(
             message,
             application_generate_entity=self._application_generate_entity,
@@ -771,18 +724,16 @@ class AdvancedChatAppGenerateTaskPipeline:
         Message end to stream response.
         :return:
         """
-        extras = {}
-        if self._task_state.metadata:
-            extras["metadata"] = self._task_state.metadata.copy()
+        extras = self._task_state.metadata.model_dump()
 
-            if "annotation_reply" in extras["metadata"]:
-                del extras["metadata"]["annotation_reply"]
+        if self._task_state.metadata.annotation_reply:
+            del extras["annotation_reply"]
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             files=self._recorded_files,
-            metadata=extras.get("metadata", {}),
+            metadata=extras,
         )
 
     def _handle_output_moderation_chunk(self, text: str) -> bool:
@@ -814,3 +765,15 @@ class AdvancedChatAppGenerateTaskPipeline:
         if not message:
             raise ValueError(f"Message not found: {self._message_id}")
         return message
+
+    def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
+        with Session(db.engine) as session, session.begin():
+            saver = self._draft_var_saver_factory(
+                session=session,
+                app_id=self._application_generate_entity.app_config.app_id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                node_execution_id=node_execution_id,
+                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+            )
+            saver.save(event.process_data, event.outputs)

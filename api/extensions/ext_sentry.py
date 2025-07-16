@@ -35,6 +35,6 @@ def init_app(app: DifyApp):
             traces_sample_rate=dify_config.SENTRY_TRACES_SAMPLE_RATE,
             profiles_sample_rate=dify_config.SENTRY_PROFILES_SAMPLE_RATE,
             environment=dify_config.DEPLOY_ENV,
-            release=f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
+            release=f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
             before_send=before_send,
         )

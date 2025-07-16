@@ -47,13 +47,13 @@ const translation = {
     completionUserDescription: 'Quickly build an AI assistant for text generation tasks with simple configuration.',
     agentShortDescription: 'Intelligent agent with reasoning and autonomous tool use',
     agentUserDescription: 'An intelligent agent capable of iterative reasoning and autonomous tool use to achieve task goals.',
-    workflowShortDescription: 'Orchestration for single-turn automation tasks',
-    workflowUserDescription: 'Workflow orchestration for single-round tasks like automation and batch processing.',
+    workflowShortDescription: 'Agentic flow for intelligent automations',
+    workflowUserDescription: 'Visually build autonomous AI workflows with drag-and-drop simplicity.',
     workflowWarning: 'Currently in beta',
-    advancedShortDescription: 'Workflow for complex multi-turn dialogues with memory',
-    advancedUserDescription: 'Workflow orchestration for multi-round complex dialogue tasks with memory capabilities.',
-    chooseAppType: 'Choose App Type',
-    forBeginners: 'FOR BEGINNERS',
+    advancedShortDescription: 'Workflow enhanced for multi-turn chats',
+    advancedUserDescription: 'Workflow with additional memory features and a chatbot interface.',
+    chooseAppType: 'Choose an App Type',
+    forBeginners: 'More basic app types',
     forAdvanced: 'FOR ADVANCED USERS',
     noIdeaTip: 'No ideas? Check out our templates',
     captionName: 'App Name & Icon',
@@ -87,6 +87,7 @@ const translation = {
     appCreateDSLErrorPart3: 'Current application DSL version: ',
     appCreateDSLErrorPart4: 'System-supported DSL version: ',
     appCreateFailed: 'Failed to create app',
+    dropDSLToCreateApp: 'Drop DSL file here to create app',
   },
   newAppFromTemplate: {
     byCategories: 'BY CATEGORIES',
@@ -149,6 +150,14 @@ const translation = {
       notConfigured: 'Config provider to enable tracing',
       moreProvider: 'More Provider',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Enterprise-grade LLM observability, online & offline evaluation, monitoring, and experimentation—powered by OpenTelemetry. Purpose-built for LLM & agent-driven applications.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
@@ -164,6 +173,10 @@ const translation = {
     weave: {
       title: 'Weave',
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
+    },
+    aliyun: {
+      title: 'Cloud Monitor',
+      description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
     inUse: 'In use',
     configProvider: {
@@ -197,9 +210,10 @@ const translation = {
   },
   accessControl: 'Web App Access Control',
   accessItemsDescription: {
-    anyone: 'Anyone can access the web app',
-    specific: 'Only specific groups or members can access the web app',
-    organization: 'Anyone in the organization can access the web app',
+    anyone: 'Anyone can access the web app (no login required)',
+    specific: 'Only specific members within the platform can access the web app',
+    organization: 'All members within the platform can access the web app',
+    external: 'Only authenticated external users can access the web app',
   },
   accessControlDialog: {
     title: 'Web App Access Control',
@@ -207,15 +221,16 @@ const translation = {
     accessLabel: 'Who has access',
     accessItems: {
       anyone: 'Anyone with the link',
-      specific: 'Specific groups or members',
-      organization: 'Only members within the enterprise',
+      specific: 'Specific members within the platform',
+      organization: 'All members within the platform',
+      external: 'Authenticated external users',
     },
     groups_one: '{{count}} GROUP',
     groups_other: '{{count}} GROUPS',
     members_one: '{{count}} MEMBER',
     members_other: '{{count}} MEMBERS',
     noGroupsOrMembers: 'No groups or members selected',
-    webAppSSONotEnabledTip: 'Please contact enterprise administrator to configure the web app authentication method.',
+    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the web app.',
     operateGroupAndMember: {
       searchPlaceholder: 'Search groups and members',
       allMembers: 'All members',

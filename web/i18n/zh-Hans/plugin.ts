@@ -67,7 +67,7 @@ const translation = {
     endpointsDocLink: '查看文档',
     endpointsEmpty: '点击 \'+\' 按钮添加 API 端点',
     endpointDisableTip: '停用 API 端点',
-    endpointDisableContent: '是否要停用 {{name}} 的 API 端点 ？',
+    endpointDisableContent: '是否要停用 {{name}} 的 API 端点？',
     endpointDeleteTip: '移除 API 端点',
     endpointDeleteContent: '是否要移除 {{name}} ？',
     endpointModalTitle: '设置 API 端点',
@@ -77,6 +77,7 @@ const translation = {
     modelNum: '{{num}} 模型已包含',
     toolSelector: {
       title: '添加工具',
+      toolSetting: '工具设置',
       toolLabel: '工具',
       descriptionLabel: '工具描述',
       descriptionPlaceholder: '简要描述工具目的，例如，获取特定位置的温度。',
@@ -93,6 +94,7 @@ const translation = {
       unsupportedTitle: '不支持的 Action',
       unsupportedContent: '已安装的插件版本不提供这个 action。',
       unsupportedContent2: '点击切换版本',
+      unsupportedMCPTool: '当前选定的 Agent 策略插件版本不支持 MCP 工具。',
     },
     configureApp: '应用设置',
     configureModel: '模型设置',
@@ -123,7 +125,7 @@ const translation = {
     pluginInfo: '插件信息',
     delete: '移除插件',
     deleteContentLeft: '是否要移除 ',
-    deleteContentRight: ' 插件?',
+    deleteContentRight: ' 插件？',
     usedInApps: '此插件正在 {{num}} 个应用中使用。',
   },
   installModal: {
@@ -153,6 +155,7 @@ const translation = {
     next: '下一步',
     pluginLoadError: '插件加载错误',
     pluginLoadErrorDesc: '此插件将不会被安装',
+    installWarning: '此插件不允许安装。',
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',
@@ -208,7 +211,8 @@ const translation = {
     installedError: '{{errorLength}} 个插件安装失败',
     clearAll: '清除所有',
   },
-  submitPlugin: '上传插件',
+  requestAPlugin: '申请插件',
+  publishPlugins: '发布插件',
   difyVersionNotCompatible: '当前 Dify 版本不兼容该插件，其最低版本要求为 {{minimalDifyVersion}}',
 }
 

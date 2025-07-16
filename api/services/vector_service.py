@@ -23,11 +23,10 @@ class VectorService:
     ):
         documents: list[Document] = []
 
-        document: Document | None = None
         for segment in segments:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
-                document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
-                if not document:
+                dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
+                if not dataset_document:
                     _logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
                         segment.document_id,
@@ -37,7 +36,7 @@ class VectorService:
                 # get the process rule
                 processing_rule = (
                     db.session.query(DatasetProcessRule)
-                    .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                    .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
                 if not processing_rule:
@@ -61,9 +60,11 @@ class VectorService:
                         )
                 else:
                     raise ValueError("The knowledge base index technique is not high quality!")
-                cls.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, False)
+                cls.generate_child_chunks(
+                    segment, dataset_document, dataset, embedding_model_instance, processing_rule, False
+                )
             else:
-                document = Document(
+                rag_document = Document(
                     page_content=segment.content,
                     metadata={
                         "doc_id": segment.index_node_id,
@@ -72,7 +73,7 @@ class VectorService:
                         "dataset_id": segment.dataset_id,
                     },
                 )
-                documents.append(document)
+                documents.append(rag_document)
         if len(documents) > 0:
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)
@@ -96,16 +97,16 @@ class VectorService:
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
-
-        # update keyword index
-        keyword = Keyword(dataset)
-        keyword.delete_by_ids([segment.index_node_id])
-
-        # save keyword index
-        if keywords and len(keywords) > 0:
-            keyword.add_texts([document], keywords_list=[keywords])
         else:
-            keyword.add_texts([document])
+            # update keyword index
+            keyword = Keyword(dataset)
+            keyword.delete_by_ids([segment.index_node_id])
+
+            # save keyword index
+            if keywords and len(keywords) > 0:
+                keyword.add_texts([document], keywords_list=[keywords])
+            else:
+                keyword.add_texts([document])
 
     @classmethod
     def generate_child_chunks(

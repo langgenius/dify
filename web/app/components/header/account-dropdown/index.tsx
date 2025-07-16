@@ -23,7 +23,6 @@ import GithubStar from '../github-star'
 import Support from './support'
 import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useGetDocLanguage } from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { logout } from '@/service/common'
@@ -33,10 +32,11 @@ import { useModalContext } from '@/context/modal-context'
 import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useDocLink } from '@/context/i18n'
 
 export default function AppSelector() {
   const itemClassName = `
-    flex items-center w-full h-9 pl-3 pr-2 text-text-secondary system-md-regular
+    flex items-center w-full h-8 pl-3 pr-2 text-text-secondary system-md-regular
     rounded-lg hover:bg-state-base-hover cursor-pointer gap-1
   `
   const router = useRouter()
@@ -44,10 +44,10 @@ export default function AppSelector() {
   const { systemFeatures } = useGlobalPublicStore()
 
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const docLanguage = useGetDocLanguage()
 
   const handleLogout = async () => {
     await logout({
@@ -87,24 +87,24 @@ export default function AppSelector() {
                     backdrop-blur-sm focus:outline-none
                   "
                 >
-                  <MenuItem disabled>
-                    <div className='flex flex-nowrap items-center py-[13px] pl-3 pr-2'>
-                      <div className='grow'>
-                        <div className='system-md-medium break-all text-text-primary'>
-                          {userProfile.name}
-                          {isEducationAccount && (
-                            <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
-                              <RiGraduationCapFill className='mr-1 h-3 w-3' />
-                              <span className='system-2xs-medium'>EDU</span>
-                            </PremiumBadge>
-                          )}
-                        </div>
-                        <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
-                      </div>
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
-                    </div>
-                  </MenuItem>
                   <div className="px-1 py-1">
+                    <MenuItem disabled>
+                      <div className='flex flex-nowrap items-center py-2 pl-3 pr-2'>
+                        <div className='grow'>
+                          <div className='system-md-medium break-all text-text-primary'>
+                            {userProfile.name}
+                            {isEducationAccount && (
+                              <PremiumBadge size='s' color='blue' className='ml-1 !px-2'>
+                                <RiGraduationCapFill className='mr-1 h-3 w-3' />
+                                <span className='system-2xs-medium'>EDU</span>
+                              </PremiumBadge>
+                            )}
+                          </div>
+                          <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
+                        </div>
+                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
+                      </div>
+                    </MenuItem>
                     <MenuItem>
                       <Link
                         className={cn(itemClassName, 'group',
@@ -133,7 +133,7 @@ export default function AppSelector() {
                           className={cn(itemClassName, 'group justify-between',
                             'data-[active]:bg-state-base-hover',
                           )}
-                          href={`https://docs.dify.ai/${docLanguage}/introduction`}
+                          href={docLink('/introduction')}
                           target='_blank' rel='noopener noreferrer'>
                           <RiBookOpenLine className='size-4 shrink-0 text-text-tertiary' />
                           <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.helpCenter')}</div>

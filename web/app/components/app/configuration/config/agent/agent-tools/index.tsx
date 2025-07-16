@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
@@ -30,16 +30,32 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import { updateBuiltInToolCredential } from '@/service/tools'
 import cn from '@/utils/classnames'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { canFindTool } from '@/utils'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useMittContextSelector } from '@/context/mitt-context'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { modelConfig, setModelConfig, collectionList } = useContext(ConfigContext)
-  const formattingChangedDispatcher = useFormattingChangedDispatcher()
+  const { modelConfig, setModelConfig } = useContext(ConfigContext)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const collectionList = useMemo(() => {
+    const allTools = [
+      ...(buildInTools || []),
+      ...(customTools || []),
+      ...(workflowTools || []),
+      ...(mcpTools || []),
+    ]
+    return allTools
+  }, [buildInTools, customTools, workflowTools, mcpTools])
 
+  const formattingChangedDispatcher = useFormattingChangedDispatcher()
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
@@ -61,6 +77,17 @@ const AgentTools: FC = () => {
       collection,
     }
   })
+  const useSubscribe = useMittContextSelector(s => s.useSubscribe)
+  const handleUpdateToolsWhenInstallToolSuccess = useCallback((installedPluginNames: string[]) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.forEach((item: any) => {
+        if (item.isDeleted && installedPluginNames.includes(item.provider_id))
+          item.isDeleted = false
+      })
+    })
+    setModelConfig(newModelConfig)
+  }, [modelConfig, setModelConfig])
+  useSubscribe('plugin:install:success', handleUpdateToolsWhenInstallToolSuccess as any)
 
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
@@ -85,21 +112,36 @@ const AgentTools: FC = () => {
   }
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
-
+  const getToolValue = (tool: ToolDefaultValue) => {
+    return {
+      provider_id: tool.provider_id,
+      provider_type: tool.provider_type as CollectionType,
+      provider_name: tool.provider_name,
+      tool_name: tool.tool_name,
+      tool_label: tool.tool_label,
+      tool_parameters: tool.params,
+      notAuthor: !tool.is_team_authorization,
+      enabled: true,
+    }
+  }
   const handleSelectTool = (tool: ToolDefaultValue) => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.agentConfig.tools.push({
-        provider_id: tool.provider_id,
-        provider_type: tool.provider_type as CollectionType,
-        provider_name: tool.provider_name,
-        tool_name: tool.tool_name,
-        tool_label: tool.tool_label,
-        tool_parameters: tool.params,
-        notAuthor: !tool.is_team_authorization,
-        enabled: true,
-      })
+      draft.agentConfig.tools.push(getToolValue(tool))
     })
     setModelConfig(newModelConfig)
+  }
+
+  const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.push(...tool.map(getToolValue))
+    })
+    setModelConfig(newModelConfig)
+  }
+  const getProviderShowName = (item: AgentTool) => {
+    const type = item.provider_type
+    if(type === CollectionType.builtIn)
+      return item.provider_name.split('/').pop()
+    return item.provider_name
   }
 
   return (
@@ -132,7 +174,9 @@ const AgentTools: FC = () => {
                   disabled={false}
                   supportAddCustomTool
                   onSelect={handleSelectTool}
-                  selectedTools={tools}
+                  onSelectMultiple={handleSelectMultipleTool}
+                  selectedTools={tools as unknown as ToolValue[]}
+                  canChooseMCPTool
                 />
               </>
             )}
@@ -150,7 +194,7 @@ const AgentTools: FC = () => {
               <div className='flex w-0 grow items-center'>
                 {item.isDeleted && <DefaultToolIcon className='h-5 w-5' />}
                 {!item.isDeleted && (
-                  <div className={cn((item.notAuthor || !item.enabled) && 'opacity-50')}>
+                  <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
                     {typeof item.icon === 'string' && <div className='h-5 w-5 rounded-md bg-cover bg-center' style={{ backgroundImage: `url(${item.icon})` }} />}
                     {typeof item.icon !== 'string' && <AppIcon className='rounded-md' size='xs' icon={item.icon?.content} background={item.icon?.background} />}
                   </div>
@@ -161,7 +205,7 @@ const AgentTools: FC = () => {
                     (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
                   )}
                 >
-                  <span className='system-xs-medium pr-1.5 text-text-secondary'>{item.provider_type === CollectionType.builtIn ? item.provider_name.split('/').pop() : item.tool_label}</span>
+                  <span className='system-xs-medium pr-1.5 text-text-secondary'>{getProviderShowName(item)}</span>
                   <span className='text-text-tertiary'>{item.tool_label}</span>
                   {!item.isDeleted && (
                     <Tooltip
@@ -274,8 +318,7 @@ const AgentTools: FC = () => {
         <SettingBuiltInTool
           toolName={currentTool?.tool_name as string}
           setting={currentTool?.tool_parameters}
-          collection={currentTool?.collection as Collection}
-          isBuiltIn={currentTool?.collection?.type === CollectionType.builtIn}
+          collection={currentTool?.collection as ToolWithProvider}
           isModel={currentTool?.collection?.type === CollectionType.model}
           onSave={handleToolSettingChange}
           onHide={() => setIsShowSettingTool(false)}

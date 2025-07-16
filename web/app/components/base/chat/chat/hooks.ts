@@ -83,12 +83,11 @@ export const useChat = (
     const ret = [...threadMessages]
     if (config?.opening_statement) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-
       if (index > -1) {
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         }
       }
       else {
@@ -97,7 +96,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         })
       }
     }
@@ -366,8 +365,9 @@ export const useChat = (
             if (!newResponseItem)
               return
 
+            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
             updateChatTreeNode(responseItem.id, {
-              content: newResponseItem.answer,
+              content: isUseAgentThought ? '' : newResponseItem.answer,
               log: [
                 ...newResponseItem.message,
                 ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'

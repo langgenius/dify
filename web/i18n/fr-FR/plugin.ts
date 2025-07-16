@@ -53,15 +53,16 @@ const translation = {
       placeholder: 'Sélectionnez un outil...',
       params: 'CONFIGURATION DE RAISONNEMENT',
       unsupportedContent: 'La version du plugin installée ne fournit pas cette action.',
-      auto: 'Automatique',
+      auto: 'Auto',
       descriptionPlaceholder: 'Brève description de l’objectif de l’outil, par exemple, obtenir la température d’un endroit spécifique.',
       unsupportedContent2: 'Cliquez pour changer de version.',
       uninstalledTitle: 'Outil non installé',
       empty: 'Cliquez sur le bouton « + » pour ajouter des outils. Vous pouvez ajouter plusieurs outils.',
       toolLabel: 'Outil',
       settings: 'PARAMÈTRES UTILISATEUR',
-      paramsTip2: 'Lorsque « Automatique » est désactivé, la valeur par défaut est utilisée.',
+      paramsTip2: 'Lorsque « Auto » est désactivé, la valeur par défaut est utilisée.',
       paramsTip1: 'Contrôle les paramètres d’inférence LLM.',
+      toolSetting: 'Paramètres de l\'outil',
     },
     modelNum: '{{num}} MODÈLES INCLUS',
     endpointDeleteTip: 'Supprimer le point de terminaison',
@@ -136,6 +137,7 @@ const translation = {
     next: 'Prochain',
     installPlugin: 'Installer le plugin',
     installFailedDesc: 'L’installation du plug-in a échoué.',
+    installWarning: 'Ce plugin n’est pas autorisé à être installé.',
   },
   installFromGitHub: {
     installFailed: 'Échec de l’installation',
@@ -192,7 +194,6 @@ const translation = {
     installing: 'Installation des plugins {{installingLength}}, 0 fait.',
   },
   search: 'Rechercher',
-  submitPlugin: 'Soumettre le plugin',
   installAction: 'Installer',
   from: 'De',
   searchCategories: 'Catégories de recherche',
@@ -210,6 +211,8 @@ const translation = {
     title: 'Plugins',
   },
   difyVersionNotCompatible: 'La version actuelle de Dify n\'est pas compatible avec ce plugin, veuillez mettre à niveau vers la version minimale requise : {{minimalDifyVersion}}',
+  requestAPlugin: 'Demander un plugin',
+  publishPlugins: 'Publier des plugins',
 }
 
 export default translation

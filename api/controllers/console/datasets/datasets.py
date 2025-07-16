@@ -540,9 +540,22 @@ class DatasetIndexingStatusApi(Resource):
                 .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
-            document.completed_segments = completed_segments
-            document.total_segments = total_segments
-            documents_status.append(marshal(document, document_status_fields))
+            # Create a dictionary with document attributes and additional fields
+            document_dict = {
+                "id": document.id,
+                "indexing_status": document.indexing_status,
+                "processing_started_at": document.processing_started_at,
+                "parsing_completed_at": document.parsing_completed_at,
+                "cleaning_completed_at": document.cleaning_completed_at,
+                "splitting_completed_at": document.splitting_completed_at,
+                "completed_at": document.completed_at,
+                "paused_at": document.paused_at,
+                "error": document.error,
+                "stopped_at": document.stopped_at,
+                "completed_segments": completed_segments,
+                "total_segments": total_segments,
+            }
+            documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
 
@@ -673,6 +686,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [
@@ -720,6 +734,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.TENCENT
                 | VectorType.HUAWEI_CLOUD
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [

@@ -54,7 +54,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index mode
-          - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
+          - <code>high_quality</code> High quality: Embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
       </Property>
       <Property name='doc_form' type='string' key='doc_form'>
@@ -1125,6 +1125,186 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
+  url='/datasets/{dataset_id}/documents/{document_id}'
+  method='GET'
+  title='Get Document Detail'
+  name='#get-document-detail'
+/>
+<Row>
+  <Col>
+  Get a document's detail.
+  ### Path
+  - `dataset_id` (string) Dataset ID
+  - `document_id` (string) Document ID
+
+  ### Query
+  - `metadata` (string) Metadata filter, can be `all`, `only`, or `without`. Default is `all`.
+
+  ### Response
+  Returns the document's detail.
+  </Col>
+  <Col sticky>
+  ### Request Example
+  <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents/{document_id}" targetCode={`curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "id": "f46ae30c-5c11-471b-96d0-464f5f32a7b2", 
+    "position": 1, 
+    "data_source_type": "upload_file", 
+    "data_source_info": {
+        "upload_file": {
+            ...
+        }
+    }, 
+    "dataset_process_rule_id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+    "dataset_process_rule": {
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "document_process_rule": {
+        "id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+        "dataset_id": "48a0db76-d1a9-46c1-ae35-2baaa919a8a9", 
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "name": "xxxx", 
+    "created_from": "web", 
+    "created_by": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0", 
+    "created_at": 1750464191, 
+    "tokens": null, 
+    "indexing_status": "waiting", 
+    "completed_at": null, 
+    "updated_at": 1750464191, 
+    "indexing_latency": null, 
+    "error": null, 
+    "enabled": true, 
+    "disabled_at": null, 
+    "disabled_by": null, 
+    "archived": false, 
+    "segment_count": 0, 
+    "average_segment_length": 0, 
+    "hit_count": null, 
+    "display_status": "queuing", 
+    "doc_form": "hierarchical_model", 
+    "doc_language": "Chinese Simplified"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/status/{action}'
+  method='PATCH'
+  title='Update Document Status'
+  name='#batch_document_status'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        - `enable` - Enable document
+        - `disable` - Disable document
+        - `archive` - Archive document
+        - `un_archive` - Unarchive document
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='document_ids' type='array[string]' key='document_ids'>
+        List of document IDs
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/status/{action}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "document_ids": ["doc-id-1", "doc-id-2"]\n}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "document_ids": ["doc-id-1", "doc-id-2"]
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='POST'
   title='Add Chunks to a Document'
@@ -1290,6 +1470,76 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       "limit": 20,
       "total": 9,
       "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='Get a Chunk Details in a Document'
+  name='#view_document_chunk'
+/>
+<Row>
+  <Col>
+    Get details of a specific document segment in the specified knowledge base
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge Base ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "chunk_id",
+        "position": 2,
+        "document_id": "document_id",
+        "content": "Segment content text",
+        "sign_content": "Signature content text",
+        "answer": "Answer content (if in Q&A mode)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["keyword1", "keyword2"],
+        "index_node_id": "index_node_id",
+        "index_node_hash": "index_node_hash",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "creator_id",
+        "created_at": creation_timestamp,
+        "updated_at": update_timestamp,
+        "indexing_at": indexing_timestamp,
+        "completed_at": completion_timestamp,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
     }
     ```
     </CodeGroup>
@@ -1771,20 +2021,45 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         Query keyword
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        Retrieval model (optional, if not filled, it will be recalled according to the default method)
-        - <code>search_method</code> (text) Search method: One of the following four keywords is required
-          - <code>keyword_search</code> Keyword search
-          - <code>semantic_search</code> Semantic search
-          - <code>full_text_search</code> Full-text search
-          - <code>hybrid_search</code> Hybrid search
-        - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
-        - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
-            - <code>reranking_provider_name</code> (string) Rerank model provider
-            - <code>reranking_model_name</code> (string) Rerank model name
-        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
-        - <code>top_k</code> (integer) Number of results to return (optional)
-        - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
-        - <code>score_threshold</code> (float) Score threshold
+        Retrieval parameters (optional, if not filled, it will be recalled according to the default method)
+          - <code>search_method</code> (text) Search method: One of the following four keywords is required
+            - <code>keyword_search</code> Keyword search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+            - <code>hybrid_search</code> Hybrid search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
+          - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
+              - <code>reranking_provider_name</code> (string) Rerank model provider
+              - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
+          - <code>top_k</code> (integer) Number of results to return (optional)
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+          - <code>metadata_filtering_conditions</code> (object) Metadata filtering conditions
+            - <code>logical_operator</code> (string) Logical operator: <code>and</code> | <code>or</code>
+            - <code>conditions</code> (array[object]) Conditions list
+              - <code>name</code> (string) Metadata field name
+              - <code>comparison_operator</code> (string) Comparison operator, allowed values:
+                - String comparison:
+                  - <code>contains</code>: Contains
+                  - <code>not contains</code>: Does not contain
+                  - <code>start with</code>: Starts with
+                  - <code>end with</code>: Ends with
+                  - <code>is</code>: Equals
+                  - <code>is not</code>: Does not equal
+                  - <code>empty</code>: Is empty
+                  - <code>not empty</code>: Is not empty
+                - Numeric comparison:
+                  - <code>=</code>: Equals
+                  - <code>≠</code>: Does not equal
+                  - <code>></code>: Greater than
+                  - <code>< </code>: Less than
+                  - <code>≥</code>: Greater than or equal
+                  - <code>≤</code>: Less than or equal
+                - Time comparison:
+                  - <code>before</code>: Before
+                  - <code>after</code>: After
+              - <code>value</code> (string|number|null) Comparison value
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           Unused field
@@ -1809,7 +2084,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "weights": null,
         "top_k": 1,
         "score_threshold_enabled": false,
-        "score_threshold": null
+        "score_threshold": null,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "document_name",
+                    "comparison_operator": "contains",
+                    "value": "test"
+                }
+            ]
+        }
     }
 }'`}
     >
@@ -2089,9 +2374,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       label="/datasets/{dataset_id}/documents/metadata"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
     >
-    ```bash {{ title: 'cURL' }}
-    ```
-    </CodeGroup>
+    ```bash {{ title: 'cURL' }}    </CodeGroup>
   </Col>
 </Row>
 
@@ -2246,6 +2529,316 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 </Row>
 
 <hr className='ml-0 mr-0' />
+Okay, I will translate the Chinese text in your document while keeping all formatting and code content unchanged.
+
+<Heading
+  url='/datasets/tags'
+  method='POST'
+  title='Create New Knowledge Base Type Tag'
+  name='#create_new_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) New tag name, required, maximum length 50
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag1"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag1"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "testtag1", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='GET'
+  title='Get Knowledge Base Type Tags'
+  name='#get_knowledge_type_tags'
+/>
+<Row>
+  <Col>
+    ### Request Body
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/tags"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' 
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    [
+        {
+            "id": "39d6934c-ed36-463d-b4a7-377fa1503dc0", 
+            "name": "testtag1", 
+            "type": "knowledge", 
+            "binding_count": "0"
+        }, 
+        ...
+    ]
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='PATCH'
+  title='Modify Knowledge Base Type Tag Name'
+  name='#modify_knowledge_tag_name'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) Modified tag name, required, maximum length 50
+      </Property>
+      <Property name='tag_id' type='string'>
+        (text) Tag ID, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/tags"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "tag-renamed", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+
+<Heading
+  url='/datasets/tags'
+  method='DELETE'
+  title='Delete Knowledge Base Type Tag'
+  name='#delete_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) Tag ID, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/tags"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+ 
+    {"result": "success"}
+    
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/binding'
+  method='POST'
+  title='Bind Dataset to Knowledge Base Type Tag'
+  name='#bind_dataset_to_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_ids' type='list'>
+        (list) List of Tag IDs, required
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) Dataset ID, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/binding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/unbinding'
+  method='POST'
+  title='Unbind Dataset and Knowledge Base Type Tag'
+  name='#unbind_dataset_and_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) Tag ID, required
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) Dataset ID, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/unbinding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/<uuid:dataset_id>/tags'
+  method='POST'
+  title='Query Tags Bound to a Dataset'
+  name='#query_dataset_tags'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string'>
+        (text) Dataset ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/<uuid:dataset_id>/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": 
+        [
+          {"id": "4a601f4f-f8a2-4166-ae7c-58c3b252a524", 
+          "name": "123"
+          }, 
+          ...
+        ], 
+      "total": 3
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
 
 <Row>
   <Col>

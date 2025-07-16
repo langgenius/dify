@@ -312,6 +312,7 @@ const translation = {
     'inputPlaceholder': 'कृपया इनपुट करें',
     'content': 'सामग्री',
     'required': 'आवश्यक',
+    'hide': 'छुपाएँ',
     'errorMsg': {
       varNameRequired: 'वेरिएबल नाम आवश्यक है',
       labelNameRequired: 'लेबल नाम आवश्यक है',
@@ -361,6 +362,7 @@ const translation = {
     placeholder:
       'यहां अपना प्रारंभक संदेश लिखें, आप वेरिएबल्स का उपयोग कर सकते हैं, {{variable}} टाइप करने का प्रयास करें।',
     openingQuestion: 'प्रारंभिक प्रश्न',
+    openingQuestionPlaceholder: 'आप वेरिएबल्स का उपयोग कर सकते हैं, {{variable}} टाइप करके देखें।',
     noDataPlaceHolder:
       'उपयोगकर्ता के साथ संवाद प्रारंभ करने से एआई को संवादात्मक अनुप्रयोगों में उनके साथ निकट संबंध स्थापित करने में मदद मिल सकती है।',
     varTip:

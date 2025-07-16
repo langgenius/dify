@@ -58,6 +58,8 @@ const translation = {
     format: 'Format',
     downloadSuccess: 'Descărcarea a fost finalizată.',
     more: 'Mai mult',
+    deSelectAll: 'Deselectați tot',
+    selectAll: 'Selectați tot',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -145,6 +147,8 @@ const translation = {
     newDataset: 'Creează Cunoștințe',
     tools: 'Instrumente',
     exploreMarketplace: 'Explorați Marketplace',
+    appDetail: 'Detalii aplicație',
+    account: 'Cont',
   },
   userProfile: {
     settings: 'Setări',
@@ -465,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'Extensiile bazate pe API oferă o gestionare centralizată a API-urilor, simplificând configurația pentru o utilizare ușoară în aplicațiile Dify.',
     link: 'Aflați cum să dezvoltați propria extensie bazată pe API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Adăugați extensie API',
     selector: {
       title: 'Extensie API',
@@ -550,7 +553,7 @@ const translation = {
       vectorHash: 'Hash vector:',
       hitScore: 'Scor de recuperare:',
     },
-    inputPlaceholder: 'Vorbește cu Bot',
+    inputPlaceholder: 'Vorbește cu {{botName}}',
     thinking: 'Gândire...',
     thought: 'Gând',
     resend: 'Reexpediați',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring: 'Expiră într-o zi',
     expiring_plural: 'Expiră în {{count}} zile',
+    unlimited: 'Nelimitat',
   },
   pagination: {
     perPage: 'Articole pe pagină',
@@ -667,6 +671,7 @@ const translation = {
     browse: 'naviga',
     dropImageHere: 'Trageți imaginea aici sau',
   },
+  you: 'Tu',
 }
 
 export default translation

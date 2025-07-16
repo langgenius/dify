@@ -11,6 +11,7 @@ import {
   useEdgesInteractions,
   useNodesInteractions,
   useNodesSyncDraft,
+  useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
   useWorkflowStartRun,
@@ -35,6 +36,7 @@ export const useShortcuts = (): void => {
     handleModePointer,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
+  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const {
     zoomTo,
@@ -144,6 +146,16 @@ export const useShortcuts = (): void => {
       handleLayout()
     }
   }, { exactMatch: true, useCapture: true })
+
+  useKeyPress('f', (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleToggleMaximizeCanvas()
+    }
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
     if (shouldHandleShortcut(e)) {

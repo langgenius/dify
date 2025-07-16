@@ -58,6 +58,8 @@ const translation = {
     more: 'Больше',
     downloadFailed: 'Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.',
     downloadSuccess: 'Загрузка завершена.',
+    selectAll: 'Выбрать все',
+    deSelectAll: 'Снять выделение со всех',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -149,6 +151,8 @@ const translation = {
     newDataset: 'Создать знания',
     tools: 'Инструменты',
     exploreMarketplace: 'Подробнее о Marketplace',
+    appDetail: 'Детали приложения',
+    account: 'Учетная запись',
   },
   userProfile: {
     settings: 'Настройки',
@@ -469,7 +473,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API-расширения обеспечивают централизованное управление API, упрощая настройку для удобного использования в приложениях Dify.',
     link: 'Узнайте, как разработать собственное API-расширение.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Добавить API Extension',
     selector: {
       title: 'API Extension',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring: 'Срок действия истекает за один день',
     expiring_plural: 'Срок действия истекает через {{count}} дней',
+    unlimited: 'Неограниченный',
   },
   pagination: {
     perPage: 'Элементов на странице',
@@ -667,6 +671,7 @@ const translation = {
     dropImageHere: 'Перетащите ваше изображение сюда или',
     supportedFormats: 'Поддерживает PNG, JPG, JPEG, WEBP и GIF',
   },
+  you: 'Ты',
 }
 
 export default translation

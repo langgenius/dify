@@ -58,6 +58,8 @@ const translation = {
     more: 'بیشتر',
     format: 'قالب',
     downloadSuccess: 'دانلود کامل شد.',
+    selectAll: 'انتخاب همه',
+    deSelectAll: 'همه را انتخاب نکنید',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -149,6 +151,8 @@ const translation = {
     newDataset: 'ایجاد دانش',
     tools: 'ابزارها',
     exploreMarketplace: 'بازار را کاوش کنید',
+    appDetail: 'جزئیات برنامه',
+    account: 'حساب',
   },
   userProfile: {
     settings: 'تنظیمات',
@@ -469,7 +473,6 @@ const translation = {
   apiBasedExtension: {
     title: 'افزونه‌های مبتنی بر API مدیریت متمرکز API را فراهم می‌کنند و پیکربندی را برای استفاده آسان در برنامه‌های Dify ساده می‌کنند.',
     link: 'نحوه توسعه افزونه API خود را بیاموزید.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'افزودن افزونه API',
     selector: {
       title: 'افزونه API',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring_plural: 'انقضا در {{count}} روز',
     expiring: 'انقضا در یک روز',
+    unlimited: 'نامحدود',
   },
   pagination: {
     perPage: 'موارد در هر صفحه',
@@ -667,6 +671,7 @@ const translation = {
     supportedFormats: 'از فرمت‌های PNG، JPG، JPEG، WEBP و GIF پشتیبانی می‌کند',
     browse: 'مرورگر',
   },
+  you: 'تو',
 }
 
 export default translation

@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Tải xuống thất bại. Vui lòng thử lại sau.',
     format: 'Định dạng',
     downloadSuccess: 'Tải xuống đã hoàn thành.',
+    deSelectAll: 'Bỏ chọn tất cả',
+    selectAll: 'Chọn Tất Cả',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -145,6 +147,8 @@ const translation = {
     newDataset: 'Tạo Kiến thức',
     tools: 'Công cụ',
     exploreMarketplace: 'Khám phá Marketplace',
+    appDetail: 'Chi tiết ứng dụng',
+    account: 'báo cáo',
   },
   userProfile: {
     settings: 'Cài đặt',
@@ -465,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'Các tiện ích API cung cấp quản lý API tập trung, giúp cấu hình dễ dàng sử dụng trên các ứng dụng của Dify.',
     link: 'Tìm hiểu cách phát triển Phần mở rộng API của riêng bạn.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Thêm Phần mở rộng API',
     selector: {
       title: 'Phần mở rộng API',
@@ -550,7 +553,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Điểm truy xuất:',
     },
-    inputPlaceholder: 'Nói chuyện với Bot',
+    inputPlaceholder: 'Nói chuyện với {{botName}}',
     thought: 'Tư duy',
     thinking: 'Suy nghĩ...',
     resend: 'Gửi lại',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
     expiring: 'Hết hạn trong một ngày',
+    unlimited: 'Vô hạn',
   },
   pagination: {
     perPage: 'Mục trên mỗi trang',
@@ -667,6 +671,7 @@ const translation = {
     dropImageHere: 'Kéo hình ảnh của bạn vào đây, hoặc',
     browse: 'duyệt',
   },
+  you: 'Bạn',
 }
 
 export default translation

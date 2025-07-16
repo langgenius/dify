@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: '下載完成。',
     downloadFailed: '下載失敗。請稍後再試。',
     format: '格式',
+    deSelectAll: '全不選',
+    selectAll: '全選',
   },
   placeholder: {
     input: '請輸入',
@@ -116,7 +118,7 @@ const translation = {
         '影響常見與罕見詞彙使用。\n值較大時，傾向於生成不常見的詞彙和表達方式。\n值越小，更傾向於使用常見和普遍接受的詞彙或短語。',
       max_tokens: '單次回覆限制 max_tokens',
       max_tokensTip:
-        '用於限制回覆的最大長度，以 token 為單位。\n較大的值可能會限制給提示詞、聊天記錄和知識庫留出的空間。\n建議將其設定在三分之二以下。\ngpt-4-1106-preview、gpt-4-vision-preview 最大長度 (輸入128k，輸出4k)',
+        '用於限制回覆的最大長度，以 token 為單位。\n較大的值可能會限制給提示詞、聊天記錄和知識庫留出的空間。\n建議將其設定在三分之二以下。\ngpt-4-1106-preview、gpt-4-vision-preview 最大長度 (輸入 128k，輸出 4k)',
       maxTokenSettingTip: '您設定的最大 tokens 數較大，可能會導致 prompt、使用者問題、知識庫內容沒有 token 空間進行處理，建議設定到 2/3 以下。',
       setToCurrentModelMaxTokenTip: '最大令牌數更新為當前模型最大的令牌數 {{maxToken}} 的 80%。',
       stop_sequences: '停止序列 stop_sequences',
@@ -142,7 +144,7 @@ const translation = {
     plugins: '外掛',
     pluginsTips: '整合第三方外掛或建立與 ChatGPT 相容的 AI 外掛。',
     datasets: '知識庫',
-    datasetsTips: '即將到來: 上傳自己的長文字資料，或透過 Webhook 整合自己的資料來源',
+    datasetsTips: '即將到來：上傳自己的長文字資料，或透過 Webhook 整合自己的資料來源',
     newApp: '建立應用',
     newDataset: '建立知識庫',
     tools: '工具',
@@ -205,7 +207,7 @@ const translation = {
     deleteLabel: '要確認，請在下方輸入您的電子郵件',
     deletePlaceholder: '請輸入您的電子郵件',
     verificationLabel: '驗證碼',
-    verificationPlaceholder: '粘貼6位代碼',
+    verificationPlaceholder: '粘貼 6 位代碼',
     permanentlyDeleteButton: '永久刪除帳戶',
     feedbackTitle: '反饋',
     feedbackLabel: '告訴我們您刪除帳戶的原因？',
@@ -250,7 +252,7 @@ const translation = {
     disInvite: '取消邀請',
     deleteMember: '刪除成員',
     you: '（你）',
-    setBuilder: 'Set as builder （設置為建構器）',
+    setBuilder: 'Set as builder（設置為建構器）',
     datasetOperator: '知識管理員',
     builder: '建築工人',
     builderTip: '可以構建和編輯自己的應用程式',
@@ -331,7 +333,7 @@ const translation = {
     },
     embeddingModel: {
       key: 'Embedding 模型',
-      tip: '設定知識庫文件嵌入處理的預設模型，檢索和匯入知識庫均使用該Embedding模型進行向量化處理，切換後將導致已匯入的知識庫與問題之間的向量維度不一致，從而導致檢索失敗。為避免檢索失敗，請勿隨意切換該模型。',
+      tip: '設定知識庫文件嵌入處理的預設模型，檢索和匯入知識庫均使用該 Embedding 模型進行向量化處理，切換後將導致已匯入的知識庫與問題之間的向量維度不一致，從而導致檢索失敗。為避免檢索失敗，請勿隨意切換該模型。',
       required: '請選擇 Embedding 模型',
     },
     speechToTextModel: {
@@ -367,7 +369,7 @@ const translation = {
       buyQuota: '購買額度',
       priorityUse: '優先使用',
       removeKey: '刪除 API 金鑰',
-      tip: '已付費額度將優先考慮。 試用額度將在付費額度用完後使用。',
+      tip: '已付費額度將優先考慮。試用額度將在付費額度用完後使用。',
     },
     item: {
       deleteDesc: '{{modelName}} 被用作系統推理模型。刪除後部分功能將無法使用。請確認。',
@@ -398,7 +400,7 @@ const translation = {
     getFreeTokens: '獲得免費 Tokens',
     priorityUsing: '優先使用',
     deprecated: '已棄用',
-    confirmDelete: '確認刪除?',
+    confirmDelete: '確認刪除？',
     quotaTip: '剩餘免費額度',
     loadPresets: '載入預設',
     parameters: '引數',
@@ -408,7 +410,7 @@ const translation = {
     configLoadBalancing: '配置負載均衡',
     loadBalancingDescription: '使用多組憑證減輕壓力。',
     addConfig: '添加配置',
-    upgradeForLoadBalancing: '升級您的計劃以啟用Load Balancing。',
+    upgradeForLoadBalancing: '升級您的計劃以啟用 Load Balancing。',
     apiKey: 'API 金鑰',
     loadBalancing: '負載均衡',
     providerManagedDescription: '使用模型提供程式提供的單組憑證。',
@@ -467,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API 擴充套件提供了一個集中式的 API 管理，在此統一新增 API 配置後，方便在 Dify 上的各類應用中直接使用。',
     link: '瞭解如何開發您自己的 API 擴充套件。',
-    linkUrl: 'https://docs.dify.ai/zh-hans/guides/tools/extensions/api-based/api-based-extension',
     add: '新增 API 擴充套件',
     selector: {
       title: 'API 擴充套件',
@@ -552,7 +553,7 @@ const translation = {
       vectorHash: '向量雜湊：',
       hitScore: '召回得分：',
     },
-    inputPlaceholder: '與 Bot 對話',
+    inputPlaceholder: '與 {{botName}} 對話',
     thinking: '思維。。。',
     thought: '思想',
     resend: '重新發送',
@@ -631,7 +632,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 為必填項',
-    urlError: 'URL應以 http:// 或 https:// 開頭',
+    urlError: 'URL 應以 http:// 或 https:// 開頭',
   },
   fileUploader: {
     pasteFileLink: '粘貼文件連結',
@@ -644,8 +645,9 @@ const translation = {
     uploadFromComputerLimit: '上傳文件不能超過 {{size}}',
   },
   license: {
-    expiring: '將在1天內過期',
+    expiring: '將在 1 天內過期',
     expiring_plural: '將在 {{count}} 天后過期',
+    unlimited: '無限制',
   },
   pagination: {
     perPage: '每頁項目數',
@@ -665,10 +667,11 @@ const translation = {
     iso27001: 'ISO 27001:2022 認證',
   },
   imageInput: {
-    supportedFormats: '支援PNG、JPG、JPEG、WEBP和GIF',
+    supportedFormats: '支援 PNG、JPG、JPEG、WEBP 和 GIF',
     browse: '瀏覽',
     dropImageHere: '將您的圖片放在這裡，或',
   },
+  you: '你',
 }
 
 export default translation

@@ -21,8 +21,13 @@ const InputsFormNode = ({
     isMobile,
     currentConversationId,
     handleStartChat,
+    allInputsHidden,
     themeBuilder,
+    inputsForms,
   } = useChatWithHistoryContext()
+
+  if (allInputsHidden || inputsForms.length === 0)
+    return null
 
   return (
     <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>

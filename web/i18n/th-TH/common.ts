@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.',
     more: 'มากขึ้น',
     downloadSuccess: 'ดาวน์โหลดเสร็จสิ้นแล้ว.',
+    selectAll: 'เลือกทั้งหมด',
+    deSelectAll: 'ยกเลิกการเลือกทั้งหมด',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -144,6 +146,8 @@ const translation = {
     newDataset: 'สร้างความรู้',
     tools: 'เครื่อง มือ',
     exploreMarketplace: 'สํารวจ Marketplace',
+    appDetail: 'รายละเอียดแอป',
+    account: 'บัญชี',
   },
   userProfile: {
     settings: 'การตั้งค่า',
@@ -464,7 +468,6 @@ const translation = {
   apiBasedExtension: {
     title: 'ส่วนขยาย API ให้การจัดการ API แบบรวมศูนย์ ทําให้การกําหนดค่าง่ายขึ้นเพื่อให้ใช้งานได้ง่ายในแอปพลิเคชันของ Dify',
     link: 'เรียนรู้วิธีพัฒนาส่วนขยาย API ของคุณเอง',
-    linkUrl: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     add: 'เพิ่มส่วนขยาย API',
     selector: {
       title: 'ส่วนขยาย API',
@@ -639,6 +642,7 @@ const translation = {
   license: {
     expiring: 'หมดอายุในหนึ่งวัน',
     expiring_plural: 'หมดอายุใน {{count}} วัน',
+    unlimited: 'ไม่มีขีดจำกัด',
   },
   pagination: {
     perPage: 'รายการต่อหน้า',
@@ -662,6 +666,7 @@ const translation = {
     browse: 'ท่องเว็บ',
     supportedFormats: 'รองรับ PNG, JPG, JPEG, WEBP และ GIF',
   },
+  you: 'คุณ',
 }
 
 export default translation

@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: 'Download abgeschlossen.',
     more: 'Mehr',
     format: 'Format',
+    selectAll: 'Alles auswählen',
+    deSelectAll: 'Alle abwählen',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -145,6 +147,8 @@ const translation = {
     newDataset: 'Wissen erstellen',
     tools: 'Werkzeuge',
     exploreMarketplace: 'Marketplace erkunden',
+    appDetail: 'App-Details',
+    account: 'Konto',
   },
   userProfile: {
     settings: 'Einstellungen',
@@ -465,7 +469,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API-Erweiterungen bieten zentralisiertes API-Management und vereinfachen die Konfiguration für eine einfache Verwendung in Difys Anwendungen.',
     link: 'Erfahren Sie, wie Sie Ihre eigene API-Erweiterung entwickeln.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API-Erweiterung hinzufügen',
     selector: {
       title: 'API-Erweiterung',
@@ -550,7 +553,7 @@ const translation = {
       vectorHash: 'Vektorhash:',
       hitScore: 'Abrufwertung:',
     },
-    inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    inputPlaceholder: 'Sprechen Sie mit dem {{botName}}',
     thought: 'Gedanke',
     thinking: 'Denken...',
     resend: 'Erneut senden',
@@ -644,6 +647,7 @@ const translation = {
   license: {
     expiring: 'Läuft an einem Tag ab',
     expiring_plural: 'Läuft in {{count}} Tagen ab',
+    unlimited: 'Unbegrenzt',
   },
   pagination: {
     perPage: 'Artikel pro Seite',
@@ -667,6 +671,7 @@ const translation = {
     browse: 'blättern',
     supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
+  you: 'Du',
 }
 
 export default translation

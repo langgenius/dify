@@ -38,8 +38,6 @@ const translation = {
     setVarValuePlaceholder: 'वेरिएबल सेट करें',
     needConnectTip: 'यह चरण किसी से जुड़ा नहीं है',
     maxTreeDepth: 'प्रति शाखा अधिकतम {{depth}} नोड्स की सीमा',
-    needEndNode: 'अंत ब्लॉक जोड़ा जाना चाहिए',
-    needAnswerNode: 'उत्तर ब्लॉक जोड़ा जाना चाहिए',
     workflowProcess: 'कार्यप्रवाह प्रक्रिया',
     notRunning: 'अभी तक नहीं चल रहा',
     previewPlaceholder:
@@ -60,7 +58,6 @@ const translation = {
     learnMore: 'अधिक जानें',
     copy: 'कॉपी करें',
     duplicate: 'डुप्लिकेट करें',
-    addBlock: 'ब्लॉक जोड़ें',
     pasteHere: 'यहां पेस्ट करें',
     pointerMode: 'पॉइंटर मोड',
     handMode: 'हैंड मोड',
@@ -118,6 +115,9 @@ const translation = {
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
     versionHistory: 'संस्करण इतिहास',
+    needAnswerNode: 'उत्तर नोड जोड़ा जाना चाहिए',
+    addBlock: 'नोड जोड़ें',
+    needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -132,6 +132,8 @@ const translation = {
       value: 'मान',
       valuePlaceholder: 'पर्यावरण मान',
       secretTip: 'संवेदनशील जानकारी या डेटा को परिभाषित करने के लिए उपयोग किया जाता है, DSL सेटिंग्स लीक रोकथाम के लिए कॉन्फ़िगर की गई हैं।',
+      description: 'विवरण',
+      descriptionPlaceholder: 'चर का वर्णन करें',
     },
     export: {
       title: 'गुप्त पर्यावरण चर निर्यात करें?',
@@ -179,19 +181,19 @@ const translation = {
     stepForward_other: '{{count}} कदम आगे',
     sessionStart: 'सत्र प्रारंभ',
     currentState: 'वर्तमान स्थिति',
-    nodeTitleChange: 'ब्लॉक शीर्षक बदला गया',
-    nodeDescriptionChange: 'ब्लॉक विवरण बदला गया',
-    nodeDragStop: 'ब्लॉक स्थानांतरित किया गया',
-    nodeChange: 'ब्लॉक बदला गया',
-    nodeConnect: 'ब्लॉक कनेक्ट किया गया',
-    nodePaste: 'ब्लॉक पेस्ट किया गया',
-    nodeDelete: 'ब्लॉक हटाया गया',
-    nodeAdd: 'ब्लॉक जोड़ा गया',
-    nodeResize: 'ब्लॉक का आकार बदला गया',
     noteAdd: 'नोट जोड़ा गया',
     noteChange: 'नोट बदला गया',
     noteDelete: 'नोट हटाया गया',
-    edgeDelete: 'ब्लॉक डिस्कनेक्ट किया गया',
+    nodeConnect: 'नोड कनेक्टेड',
+    nodeResize: 'नोड का आकार बदला गया',
+    nodeDelete: 'नोड हटा दिया गया',
+    nodeDragStop: 'नोड स्थानांतरित किया गया',
+    nodeChange: 'नोड बदला गया',
+    nodeAdd: 'नोड जोड़ा गया',
+    nodeTitleChange: 'नोड का शीर्षक बदल दिया गया',
+    edgeDelete: 'नोड डिस्कनेक्ट हो गया',
+    nodePaste: 'नोड चिपका हुआ',
+    nodeDescriptionChange: 'नोड का वर्णन बदल गया',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -220,8 +222,6 @@ const translation = {
     loop: 'लूप',
   },
   tabs: {
-    'searchBlock': 'ब्लॉक खोजें',
-    'blocks': 'ब्लॉक्स',
     'tools': 'टूल्स',
     'allTool': 'सभी',
     'builtInTool': 'अंतर्निहित',
@@ -235,6 +235,8 @@ const translation = {
     'searchTool': 'खोज उपकरण',
     'plugin': 'प्लगइन',
     'agent': 'एजेंट रणनीति',
+    'searchBlock': 'खोज नोड',
+    'blocks': 'नोड्स',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -299,21 +301,24 @@ const translation = {
   },
   panel: {
     userInputField: 'उपयोगकर्ता इनपुट फ़ील्ड',
-    changeBlock: 'ब्लॉक बदलें',
     helpLink: 'सहायता लिंक',
     about: 'के बारे में',
     createdBy: 'द्वारा बनाया गया ',
     nextStep: 'अगला कदम',
-    addNextStep: 'इस वर्कफ़्लो में अगला ब्लॉक जोड़ें',
-    selectNextStep: 'अगला ब्लॉक चुनें',
     runThisStep: 'इस कदम को चलाएं',
     checklist: 'चेकलिस्ट',
     checklistTip:
       'प्रकाशित करने से पहले सुनिश्चित करें कि सभी समस्याएं हल हो गई हैं',
     checklistResolved: 'सभी समस्याएं हल हो गई हैं',
-    organizeBlocks: 'ब्लॉक्स को व्यवस्थित करें',
     change: 'बदलें',
     optional: '(वैकल्पिक)',
+    moveToThisNode: 'इस नोड पर जाएं',
+    changeBlock: 'नोड बदलें',
+    addNextStep: 'इस कार्यप्रवाह में अगला कदम जोड़ें',
+    selectNextStep: 'अगला कदम चुनें',
+    organizeBlocks: 'नोड्स का आयोजन करें',
+    minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
+    maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
   },
   nodes: {
     common: {
@@ -371,6 +376,7 @@ const translation = {
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
       },
+      typeSwitch: {},
     },
     start: {
       required: 'आवश्यक',
@@ -547,6 +553,10 @@ const translation = {
         placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
         title: 'cURL से आयात करें',
       },
+      verifySSL: {
+        title: 'SSL प्रमाणपत्र की पुष्टि करें',
+        warningTooltip: 'SSL सत्यापन को अक्षम करना उत्पादन वातावरण के लिए अनुशंसित नहीं है। इसका उपयोग केवल विकास या परीक्षण में किया जाना चाहिए, क्योंकि यह कनेक्शन को मिडल-मैन हमलों जैसे सुरक्षा खतरों के लिए कमजोर बना देता है।',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -663,7 +673,6 @@ const translation = {
       'noAssignedVars': 'कोई उपलब्ध असाइन किए गए चर नहीं',
     },
     tool: {
-      toAuthorize: 'अधिकृत करने के लिए',
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         text: 'उपकरण द्वारा उत्पन्न सामग्री',
@@ -676,12 +685,14 @@ const translation = {
         },
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
+      authorize: 'अधिकृत करें',
     },
     questionClassifiers: {
       model: 'मॉडल',
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         className: 'क्लास नाम',
+        usage: 'मॉडल उपयोग जानकारी',
       },
       class: 'क्लास',
       classNamePlaceholder: 'अपना क्लास नाम लिखें',
@@ -696,6 +707,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'इनपुट वेरिएबल',
+      outputVars: {
+        isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
+        errorReason: 'त्रुटि का कारण',
+        usage: 'मॉडल उपयोग जानकारी',
+      },
       extractParameters: 'पैरामीटर्स निकालें',
       importFromTool: 'उपकरणों से आयात करें',
       addExtractParameter: 'एक्सट्रेक्ट पैरामीटर जोड़ें',
@@ -718,8 +734,6 @@ const translation = {
       reasoningMode: 'रीज़निंग मोड',
       reasoningModeTip:
         'फ़ंक्शन कॉलिंग या प्रॉम्प्ट्स के लिए निर्देशों का जवाब देने की मॉडल की क्षमता के आधार पर उपयुक्त रीज़निंग मोड चुन सकते हैं।',
-      isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
-      errorReason: 'त्रुटि का कारण',
     },
     iteration: {
       deleteTitle: 'इटरेशन नोड हटाएं?',
@@ -935,6 +949,35 @@ const translation = {
     restorationTip: 'संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।',
     defaultName: 'अविभाजित संस्करण',
     deletionTip: 'हटाना अप्रतिबंधी है, कृपया पुष्टि करें।',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'इस नोड को चलाएँ',
+      description: 'अंतिम दौड़ के परिणाम यहाँ प्रदर्शित किए जाएंगे',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'स्पष्ट',
+        stop: 'रुको दौड़',
+        running: 'कैशिंग चल रहा स्थिति',
+        normal: 'चर चरखा',
+        cached: 'कैश की गई परिवर्तनीयताओं को देखें',
+      },
+      emptyLink: 'और जानें',
+      systemNode: 'प्रणाली',
+      chatNode: 'संवाद',
+      reset: 'अंतिम रन मान पर रीसेट करें',
+      view: 'लॉग देखें',
+      clearAll: 'सभी रीसेट करें',
+      title: 'चर चर के निरीक्षण',
+      edited: 'संशोधित किया गया',
+      envNode: 'पर्यावरण',
+      clearNode: 'कैश की गई वैरिएबल को साफ करें',
+      resetConversationVar: 'संवाद चर को डिफ़ॉल्ट मान पर रीसेट करें',
+      emptyTip: 'कैनवास पर एक नोड पर कदम रखने के बाद या चरण दर चरण एक नोड चलाने के बाद, आप वेरिएबल इंस्पेक्ट में नोड वेरिएबल का वर्तमान मान देख सकते हैं।',
+    },
+    settingsTab: 'सेटिंग्स',
+    lastRunTab: 'अंतिम रन',
   },
 }
 

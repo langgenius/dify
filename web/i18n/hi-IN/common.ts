@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: 'डाउनलोड पूरा हुआ।',
     downloadFailed: 'डाउनलोड विफल। कृपया बाद में पुनः प्रयास करें।',
     format: 'फॉर्मेट',
+    selectAll: 'सभी चुनें',
+    deSelectAll: 'सभी चयन हटाएँ',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -154,6 +156,8 @@ const translation = {
     newDataset: 'ज्ञान बनाएं',
     tools: 'उपकरण',
     exploreMarketplace: 'मार्केटप्लेस का अन्वेषण करें',
+    appDetail: 'ऐप विवरण',
+    account: 'खाता',
   },
   userProfile: {
     settings: 'सेटिंग्स',
@@ -486,7 +490,6 @@ const translation = {
     title:
       'एपीआई एक्सटेंशन केंद्रीकृत एपीआई प्रबंधन प्रदान करते हैं, जो Dify के अनुप्रयोगों में आसान उपयोग के लिए कॉन्फ़िगरेशन को सरल बनाते हैं।',
     link: 'अपना खुद का एपीआई एक्सटेंशन कैसे विकसित करें, यह जानें।',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'एपीआई एक्सटेंशन जोड़ें',
     selector: {
       title: 'एपीआई एक्सटेंशन',
@@ -666,6 +669,7 @@ const translation = {
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',
     expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+    unlimited: 'असीमित',
   },
   pagination: {
     perPage: 'प्रति पृष्ठ आइटम',
@@ -689,6 +693,7 @@ const translation = {
     browse: 'ब्राउज़ करें',
     dropImageHere: 'अपनी छवि यहाँ छोड़ें, या',
   },
+  you: 'आप',
 }
 
 export default translation

@@ -1,6 +1,5 @@
 import React from 'react'
 import ChartView from './chartView'
-import CardView from './cardView'
 import TracingPanel from './tracing/panel'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
 
@@ -16,11 +15,12 @@ const Overview = async (props: IDevelopProps) => {
   } = params
 
   return (
-    <div className="h-full overflow-scroll bg-chatbot-bg px-4 py-6 sm:px-12">
+    <div className="h-full overflow-y-auto bg-chatbot-bg px-4 py-6 sm:px-12">
       <ApikeyInfoPanel />
-      <TracingPanel />
-      <CardView appId={appId} />
-      <ChartView appId={appId} />
+      <ChartView
+        appId={appId}
+        headerRight={<TracingPanel />}
+      />
     </div>
   )
 }

@@ -46,6 +46,8 @@ class QdrantConfig(BaseModel):
     root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
+    replication_factor: int = 1
+    write_consistency_factor: int = 1
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith("path:"):
@@ -119,11 +121,14 @@ class QdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
+
                 self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
+                    replication_factor=self._client_config.replication_factor,
+                    write_consistency_factor=self._client_config.write_consistency_factor,
                 )
 
                 # create group_id payload index
@@ -466,5 +471,6 @@ class QdrantVectorFactory(AbstractVectorFactory):
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
             ),
         )

@@ -62,6 +62,7 @@ const translation = {
       uninstalledContent: 'این افزونه از مخزن local/GitHub نصب شده است. لطفا پس از نصب استفاده کنید.',
       unsupportedTitle: 'اکشن پشتیبانی نشده',
       unsupportedContent2: 'برای تغییر نسخه کلیک کنید.',
+      toolSetting: 'تنظیمات ابزار',
     },
     endpointDeleteTip: 'حذف نقطه پایانی',
     disabled: 'غیر فعال',
@@ -136,6 +137,7 @@ const translation = {
     installPlugin: 'افزونه را نصب کنید',
     installComplete: 'نصب کامل شد',
     uploadFailed: 'آپلود انجام نشد',
+    installWarning: 'این افزونه اجازه نصب ندارد.',
   },
   installFromGitHub: {
     installPlugin: 'افزونه را از GitHub نصب کنید',
@@ -194,7 +196,6 @@ const translation = {
   searchTools: 'ابزارهای جستجو...',
   findMoreInMarketplace: 'اطلاعات بیشتر در Marketplace',
   searchInMarketplace: 'جستجو در Marketplace',
-  submitPlugin: 'ارسال افزونه',
   searchCategories: 'دسته بندی ها را جستجو کنید',
   fromMarketplace: 'از بازار',
   installPlugin: 'افزونه را نصب کنید',
@@ -210,6 +211,8 @@ const translation = {
     title: 'پلاگین ها',
   },
   difyVersionNotCompatible: 'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
+  requestAPlugin: 'درخواست یک افزونه',
+  publishPlugins: 'انتشار افزونه ها',
 }
 
 export default translation

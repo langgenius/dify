@@ -192,15 +192,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - original_document_id が渡されない場合、新しい操作が実行され、process_rule が必要です。
 
         - <code>indexing_technique</code> インデックスモード
-          - <code>high_quality</code> 高品質: 埋め込みモデルを使用してベクトルデータベースインデックスを構築
-          - <code>economy</code> 経済: キーワードテーブルインデックスの反転インデックスを構築
+          - <code>high_quality</code> 高品質：埋め込みモデルを使用してベクトルデータベースインデックスを構築
+          - <code>economy</code> 経済：キーワードテーブルインデックスの反転インデックスを構築
 
         - <code>doc_form</code> インデックス化された内容の形式
           - <code>text_model</code> テキストドキュメントは直接埋め込まれます; `economy` モードではこの形式がデフォルト
           - <code>hierarchical_model</code> 親子モード
-          - <code>qa_model</code> Q&A モード: 分割されたドキュメントの質問と回答ペアを生成し、質問を埋め込みます
+          - <code>qa_model</code> Q&A モード：分割されたドキュメントの質問と回答ペアを生成し、質問を埋め込みます
 
-        - <code>doc_language</code> Q&A モードでは、ドキュメントの言語を指定します。例: <code>English</code>, <code>Chinese</code>
+        - <code>doc_language</code> Q&A モードでは、ドキュメントの言語を指定します。例：<code>English</code>, <code>Chinese</code>
 
         - <code>process_rule</code> 処理ルール
           - <code>mode</code> (string) クリーニング、セグメンテーションモード、自動 / カスタム
@@ -214,7 +214,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>segmentation</code> (object) セグメンテーションルール
               - <code>separator</code> カスタムセグメント識別子。現在は 1 つの区切り文字のみ設定可能。デフォルトは \n
               - <code>max_tokens</code> 最大長 (トークン) デフォルトは 1000
-            - <code>parent_mode</code> 親チャンクの検索モード: <code>full-doc</code> 全文検索 / <code>paragraph</code> 段落検索
+            - <code>parent_mode</code> 親チャンクの検索モード：<code>full-doc</code> 全文検索 / <code>paragraph</code> 段落検索
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
@@ -324,7 +324,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - <code>partial_members</code> 一部のメンバー
       </Property>
       <Property name='provider' type='string' key='provider'>
-        プロバイダー (オプション、デフォルト: vendor)
+        プロバイダー (オプション、デフォルト：vendor)
           - <code>vendor</code> ベンダー
           - <code>external</code> 外部ナレッジ
       </Property>
@@ -415,16 +415,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         検索キーワード、オプション
       </Property>
       <Property name='tag_ids' type='array[string]' key='tag_ids'>
-        タグIDリスト、オプション
+        タグ ID リスト、オプション
       </Property>
       <Property name='page' type='string' key='page'>
-        ページ番号、オプション、デフォルト1
+        ページ番号、オプション、デフォルト 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        返されるアイテム数、オプション、デフォルト20、範囲1-100
+        返されるアイテム数、オプション、デフォルト 20、範囲 1-100
       </Property>
       <Property name='include_all' type='boolean' key='include_all'>
-        すべてのデータセットを含めるかどうか（所有者のみ有効）、オプション、デフォルトはfalse
+        すべてのデータセットを含めるかどうか（所有者のみ有効）、オプション、デフォルトは false
       </Property>
     </Properties>
   </Col>
@@ -882,6 +882,187 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
+  url='/datasets/{dataset_id}/documents/{document_id}'
+  method='GET'
+  title='ドキュメントの詳細を取得'
+  name='#get-document-detail'
+/>
+<Row>
+  <Col>
+  ドキュメントの詳細を取得.
+  ### Path
+  - `dataset_id` (string) ナレッジベースID
+  - `document_id` (string) ドキュメントID
+
+  ### Query
+  - `metadata` (string) metadataのフィルター条件 `all`、`only`、または`without`。デフォルトは `all`。
+
+  ### Response
+  ナレッジベースドキュメントの詳細を返す.
+  </Col>
+ <Col sticky>
+  ### Request Example
+  <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents/{document_id}" targetCode={`curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "id": "f46ae30c-5c11-471b-96d0-464f5f32a7b2", 
+    "position": 1, 
+    "data_source_type": "upload_file", 
+    "data_source_info": {
+        "upload_file": {
+            ...
+        }
+    }, 
+    "dataset_process_rule_id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+    "dataset_process_rule": {
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "document_process_rule": {
+        "id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+        "dataset_id": "48a0db76-d1a9-46c1-ae35-2baaa919a8a9", 
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "name": "xxxx", 
+    "created_from": "web", 
+    "created_by": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0", 
+    "created_at": 1750464191, 
+    "tokens": null, 
+    "indexing_status": "waiting", 
+    "completed_at": null, 
+    "updated_at": 1750464191, 
+    "indexing_latency": null, 
+    "error": null, 
+    "enabled": true, 
+    "disabled_at": null, 
+    "disabled_by": null, 
+    "archived": false, 
+    "segment_count": 0, 
+    "average_segment_length": 0, 
+    "hit_count": null, 
+    "display_status": "queuing", 
+    "doc_form": "hierarchical_model", 
+    "doc_language": "Chinese Simplified"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
+<hr className='ml-0 mr-0' />
+
+
+<Heading
+  url='/datasets/{dataset_id}/documents/status/{action}'
+  method='PATCH'
+  title='ドキュメントステータスの更新'
+  name='#batch_document_status'
+/>
+<Row>
+  <Col>
+    ### パス
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        ナレッジ ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        - `enable` - ドキュメントを有効化
+        - `disable` - ドキュメントを無効化
+        - `archive` - ドキュメントをアーカイブ
+        - `un_archive` - ドキュメントのアーカイブを解除
+      </Property>
+    </Properties>
+
+    ### リクエストボディ
+    <Properties>
+      <Property name='document_ids' type='array[string]' key='document_ids'>
+        ドキュメントIDのリスト
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/status/{action}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "document_ids": ["doc-id-1", "doc-id-2"]\n}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "document_ids": ["doc-id-1", "doc-id-2"]
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="レスポンス">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='POST'
   title='ドキュメントにチャンクを追加'
@@ -1057,6 +1238,75 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='ドキュメントセグメントの詳細を表示'
+  name='#view_document_segment'
+/>
+<Row>
+  <Col>
+    指定されたナレッジベース内の特定のドキュメントセグメントの詳細を表示します
+
+    ### パス
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        ナレッジベースID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        ドキュメントID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        セグメントID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="レスポンス">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "セグメントID",
+        "position": 2,
+        "document_id": "ドキュメントID",
+        "content": "セグメント内容テキスト",
+        "sign_content": "署名内容テキスト",
+        "answer": "回答内容(Q&Aモードの場合)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["キーワード1", "キーワード2"],
+        "index_node_id": "インデックスノードID",
+        "index_node_hash": "インデックスノードハッシュ",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "作成者ID",
+        "created_at": 作成タイムスタンプ,
+        "updated_at": 更新タイムスタンプ,
+        "indexing_at": インデックス作成タイムスタンプ,
+        "completed_at": 完了タイムスタンプ,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   method='DELETE'
   title='ドキュメント内のチャンクを削除'
   name='#delete_segment'
@@ -1100,7 +1350,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
   title='ドキュメント内のチャンクを更新'
   name='#update_segment'
@@ -1528,20 +1777,45 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         クエリキーワード
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        検索モデル (オプション、入力されない場合はデフォルトの方法でリコールされます)
-        - <code>search_method</code> (text) 検索方法: 以下の 4 つのキーワードのいずれかが必要です
-          - <code>keyword_search</code> キーワード検索
-          - <code>semantic_search</code> セマンティック検索
-          - <code>full_text_search</code> 全文検索
-          - <code>hybrid_search</code> ハイブリッド検索
-        - <code>reranking_enable</code> (bool) 再ランキングを有効にするかどうか、検索モードが semantic_search または hybrid_search の場合に必須 (オプション)
-        - <code>reranking_mode</code> (object) 再ランキングモデル構成、再ランキングが有効な場合に必須
-            - <code>reranking_provider_name</code> (string) 再ランキングモデルプロバイダー
-            - <code>reranking_model_name</code> (string) 再ランキングモデル名
-        - <code>weights</code> (float) ハイブリッド検索モードでのセマンティック検索の重み設定
-        - <code>top_k</code> (integer) 返される結果の数 (オプション)
-        - <code>score_threshold_enabled</code> (bool) スコア閾値を有効にするかどうか
-        - <code>score_threshold</code> (float) スコア閾値
+        検索パラメータ（オプション、入力されない場合はデフォルトの方法でリコールされます）
+          - <code>search_method</code> (text) 検索方法: 以下の4つのキーワードのいずれかが必要です
+            - <code>keyword_search</code> キーワード検索
+            - <code>semantic_search</code> セマンティック検索
+            - <code>full_text_search</code> 全文検索
+            - <code>hybrid_search</code> ハイブリッド検索
+          - <code>reranking_enable</code> (bool) 再ランキングを有効にするかどうか、検索モードがsemantic_searchまたはhybrid_searchの場合に必須（オプション）
+          - <code>reranking_mode</code> (object) 再ランキングモデル構成、再ランキングが有効な場合に必須
+              - <code>reranking_provider_name</code> (string) 再ランキングモデルプロバイダー
+              - <code>reranking_model_name</code> (string) 再ランキングモデル名
+          - <code>weights</code> (float) ハイブリッド検索モードでのセマンティック検索の重み設定
+          - <code>top_k</code> (integer) 返される結果の数（オプション）
+          - <code>score_threshold_enabled</code> (bool) スコア閾値を有効にするかどうか
+          - <code>score_threshold</code> (float) スコア閾値
+          - <code>metadata_filtering_conditions</code> (object) メタデータフィルタリング条件
+            - <code>logical_operator</code> (string) 論理演算子: <code>and</code> | <code>or</code>
+            - <code>conditions</code> (array[object]) 条件リスト
+              - <code>name</code> (string) メタデータフィールド名
+              - <code>comparison_operator</code> (string) 比較演算子、許可される値:
+                - 文字列比較:
+                  - <code>contains</code>: 含む
+                  - <code>not contains</code>: 含まない
+                  - <code>start with</code>: で始まる
+                  - <code>end with</code>: で終わる
+                  - <code>is</code>: 等しい
+                  - <code>is not</code>: 等しくない
+                  - <code>empty</code>: 空
+                  - <code>not empty</code>: 空でない
+                - 数値比較:
+                  - <code>=</code>: 等しい
+                  - <code>≠</code>: 等しくない
+                  - <code>></code>: より大きい
+                  - <code>< </code>: より小さい
+                  - <code>≥</code>: 以上
+                  - <code>≤</code>: 以下
+                - 時間比較:
+                  - <code>before</code>: より前
+                  - <code>after</code>: より後
+              - <code>value</code> (string|number|null) 比較値
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未使用フィールド
@@ -1566,7 +1840,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "weights": null,
         "top_k": 1,
         "score_threshold_enabled": false,
-        "score_threshold": null
+        "score_threshold": null,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "document_name",
+                    "comparison_operator": "contains",
+                    "value": "test"
+                }
+            ]
+        }
     }
 }'`}
     >
@@ -1899,6 +2183,313 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 </Row>
 
 <hr className='ml-0 mr-0' />
+<Heading
+  url='/datasets/tags'
+  method='POST'
+  title='ナレッジベースタイプタグの新規作成'
+  name='#create_new_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) 新しいタグ名、必須、最大長 50 文字
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag1"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag1"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "testtag1", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='GET'
+  title='ナレッジベースタイプタグの取得'
+  name='#get_knowledge_type_tags'
+/>
+<Row>
+  <Col>
+    ### Request Body
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/tags"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' 
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    [
+        {
+            "id": "39d6934c-ed36-463d-b4a7-377fa1503dc0", 
+            "name": "testtag1", 
+            "type": "knowledge", 
+            "binding_count": "0"
+        }, 
+        ...
+    ]
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='PATCH'
+  title='ナレッジベースタイプタグ名の変更'
+  name='#modify_knowledge_tag_name'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) 変更後のタグ名、必須、最大長 50 文字
+      </Property>
+      <Property name='tag_id' type='string'>
+        (text) タグ ID、必須
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/tags"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "tag-renamed", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+
+<Heading
+  url='/datasets/tags'
+  method='DELETE'
+  title='ナレッジベースタイプタグの削除'
+  name='#delete_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) タグ ID、必須
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/tags"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+ 
+    {"result": "success"}
+    
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/binding'
+  method='POST'
+  title='ナレッジベースをナレッジベースタイプタグに紐付け'
+  name='#bind_dataset_to_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_ids' type='list'>
+        (list) タグ ID リスト、必須
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) ナレッジベース ID、必須
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/binding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/unbinding'
+  method='POST'
+  title='ナレッジベースとナレッジベースタイプタグの紐付け解除'
+  name='#unbind_dataset_and_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) タグ ID、必須
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) ナレッジベース ID、必須
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/unbinding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/<uuid:dataset_id>/tags'
+  method='POST'
+  title='ナレッジベースに紐付けられたタグの照会'
+  name='#query_dataset_tags'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string'>
+        (text) ナレッジベース ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/<uuid:dataset_id>/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": 
+        [
+          {"id": "4a601f4f-f8a2-4166-ae7c-58c3b252a524", 
+          "name": "123"
+          }, 
+          ...
+        ], 
+      "total": 3
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
 
 <Row>
   <Col>
@@ -2003,3 +2594,4 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
   </tbody>
 </table>
 <div className="pb-4" />
+

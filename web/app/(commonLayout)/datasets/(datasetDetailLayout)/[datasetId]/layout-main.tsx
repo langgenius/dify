@@ -25,9 +25,8 @@ import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
@@ -45,9 +44,9 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -78,7 +77,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </Tooltip>
         )}
 
-        {isMobile && <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
+        {isMobile && <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 !px-0')}>
           {relatedAppsTotal || '--'}
           <PaperClipIcon className='h-4 w-4 text-text-secondary' />
         </div>}
@@ -97,11 +96,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
             <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
             <a
               className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={
-                locale === LanguagesSupported[1]
-                  ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                  : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
-              }
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target='_blank' rel='noopener noreferrer'
             >
               <RiBookOpenLine className='mr-1 text-text-accent' />

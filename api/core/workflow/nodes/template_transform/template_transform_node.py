@@ -4,10 +4,10 @@ from typing import Any, Optional
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
-from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))
 
@@ -27,6 +27,10 @@ class TemplateTransformNode(BaseNode[TemplateTransformNodeData]):
             "type": "template-transform",
             "config": {"variables": [{"variable": "arg1", "value_selector": []}], "template": "{{ arg1 }}"},
         }
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         # Get variables

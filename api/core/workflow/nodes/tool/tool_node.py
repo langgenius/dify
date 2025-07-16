@@ -1,21 +1,23 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayAnySegment
+from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import AgentLogEvent
 from core.workflow.nodes.base import BaseNode
@@ -25,7 +27,6 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
 from models import ToolFile
-from models.workflow import WorkflowNodeExecutionStatus
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .entities import ToolNodeData
@@ -43,6 +44,10 @@ class ToolNode(BaseNode[ToolNodeData]):
 
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> Generator:
         """
@@ -62,15 +67,16 @@ class ToolNode(BaseNode[ToolNodeData]):
         try:
             from core.tools.tool_manager import ToolManager
 
+            variable_pool = self.graph_runtime_state.variable_pool if self.node_data.version != "1" else None
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
+                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
                     error=f"Failed to get tool runtime: {str(e)}",
                     error_type=type(e).__name__,
                 )
@@ -90,7 +96,6 @@ class ToolNode(BaseNode[ToolNodeData]):
             node_data=self.node_data,
             for_log=True,
         )
-
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
@@ -110,7 +115,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
                     error=f"Failed to invoke tool: {str(e)}",
                     error_type=type(e).__name__,
                 )
@@ -125,7 +130,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
                     error=f"Failed to transform tool message: {str(e)}",
                     error_type=type(e).__name__,
                 )
@@ -163,7 +168,9 @@ class ToolNode(BaseNode[ToolNodeData]):
             if tool_input.type == "variable":
                 variable = variable_pool.get(tool_input.value)
                 if variable is None:
-                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    if parameter.required:
+                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    continue
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
                 segment_group = variable_pool.convert_template(str(tool_input.value))
@@ -184,6 +191,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         messages: Generator[ToolInvokeMessage, None, None],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
+        agent_thoughts: Optional[list] = None,
     ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -201,8 +209,8 @@ class ToolNode(BaseNode[ToolNodeData]):
         json: list[dict] = []
 
         agent_logs: list[AgentLogEvent] = []
-        agent_execution_metadata: Mapping[NodeRunMetadataKey, Any] = {}
-
+        agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
+        llm_usage: LLMUsage | None = None
         variables: dict[str, Any] = {}
 
         for message in message_stream:
@@ -270,13 +278,15 @@ class ToolNode(BaseNode[ToolNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if self.node_type == NodeType.AGENT:
-                    msg_metadata = message.message.json_object.pop("execution_metadata", {})
+                    msg_metadata: dict[str, Any] = message.message.json_object.pop("execution_metadata", {})
+                    llm_usage = LLMUsage.from_metadata(msg_metadata)
                     agent_execution_metadata = {
-                        key: value
+                        WorkflowNodeExecutionMetadataKey(key): value
                         for key, value in msg_metadata.items()
-                        if key in NodeRunMetadataKey.__members__.values()
+                        if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
-                json.append(message.message.json_object)
+                if message.message.json_object is not None:
+                    json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
@@ -300,6 +310,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
+                assert isinstance(message.meta, File)
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
@@ -318,6 +329,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                             icon = current_plugin.declaration.icon
                         except StopIteration:
                             pass
+                        icon_dark = None
                         try:
                             builtin_tool = next(
                                 provider
@@ -328,10 +340,12 @@ class ToolNode(BaseNode[ToolNodeData]):
                                 if provider.name == dict_metadata["provider"]
                             )
                             icon = builtin_tool.icon
+                            icon_dark = builtin_tool.icon_dark
                         except StopIteration:
                             pass
 
                         dict_metadata["icon"] = icon
+                        dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata
                 agent_log = AgentLogEvent(
                     id=message.message.id,
@@ -360,16 +374,41 @@ class ToolNode(BaseNode[ToolNodeData]):
 
                 yield agent_log
 
+        # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
+        json_output: list[dict[str, Any]] = []
+
+        # Step 1: append each agent log as its own dict.
+        if agent_logs:
+            for log in agent_logs:
+                json_output.append(
+                    {
+                        "id": log.id,
+                        "parent_id": log.parent_id,
+                        "error": log.error,
+                        "status": log.status,
+                        "data": log.data,
+                        "label": log.label,
+                        "metadata": log.metadata,
+                        "node_id": log.node_id,
+                    }
+                )
+        # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
+        if json:
+            json_output.extend(json)
+        else:
+            json_output.append({"data": []})
+
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": files, "json": json, **variables},
+                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
                 metadata={
                     **agent_execution_metadata,
-                    NodeRunMetadataKey.TOOL_INFO: tool_info,
-                    NodeRunMetadataKey.AGENT_LOG: agent_logs,
+                    WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
+                    WorkflowNodeExecutionMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
+                llm_usage=llm_usage,
             )
         )
 

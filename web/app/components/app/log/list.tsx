@@ -32,7 +32,6 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -42,6 +41,7 @@ import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import PromptLogModal from '../../base/prompt-log-modal'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -191,6 +191,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
+  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -312,18 +313,34 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       return item
     }))
   }, [allChatItems])
-  const handleAnnotationRemoved = useCallback((index: number) => {
-    setAllChatItems(allChatItems.map((item, i) => {
-      if (i === index) {
-        return {
-          ...item,
-          content: item.content,
-          annotation: undefined,
-        }
+  const handleAnnotationRemoved = useCallback(async (index: number): Promise<boolean> => {
+    const annotation = allChatItems[index]?.annotation
+
+    try {
+      if (annotation?.id) {
+        const { delAnnotation } = await import('@/service/annotation')
+        await delAnnotation(appDetail?.id || '', annotation.id)
       }
-      return item
-    }))
-  }, [allChatItems])
+
+      setAllChatItems(allChatItems.map((item, i) => {
+        if (i === index) {
+          return {
+            ...item,
+            content: item.content,
+            annotation: undefined,
+          }
+        }
+        return item
+      }))
+
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      return true
+    }
+    catch {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      return false
+    }
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
@@ -357,7 +374,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }
 
   useEffect(() => {
-    adjustModalWidth()
+    const raf = requestAnimationFrame(adjustModalWidth)
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   return (
@@ -452,8 +470,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               className="py-4"
               id="scrollableDiv"
               style={{
-                height: 1000, // Specify a value
-                overflow: 'auto',
                 display: 'flex',
                 flexDirection: 'column-reverse',
               }}>
@@ -518,7 +534,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           defaultTab={currentLogModalActiveTab}
         />
       )}
-      {showPromptLogModal && (
+      {!isChatMode && showPromptLogModal && (
         <PromptLogModal
           width={width}
           currentLogItem={currentLogItem}
