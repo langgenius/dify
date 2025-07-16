@@ -27,7 +27,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_node_ai_modify_fields, workflow_run_node_execution_fields
+from fields.workflow_run_fields import workflow_run_node_execution_fields, workflow_node_ai_modify_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
