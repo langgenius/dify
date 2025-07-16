@@ -21,6 +21,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
 from models.enums import UserFrom
@@ -254,7 +255,7 @@ class WorkflowEntry:
 
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=[],
         )
