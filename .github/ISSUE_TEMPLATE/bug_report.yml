@@ -42,20 +42,22 @@ body:
     attributes:
       label: Steps to reproduce
       description: We highly suggest including screenshots and a bug report log. Please use the right markdown syntax for code blocks.
-      placeholder: Having detailed steps helps us reproduce the bug.
+      placeholder: Having detailed steps helps us reproduce the bug. If you have logs, please use fenced code blocks (triple backticks ```) to format them.
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: ✔️ Expected Behavior
-      placeholder: What were you expecting?
+      description: Describe what you expected to happen.
+      placeholder: What were you expecting? Please do not copy and paste the steps to reproduce here.
     validations:
-      required: false
+      required: true
 
   - type: textarea
     attributes:
       label: ❌ Actual Behavior
-      placeholder: What happened instead?
+      description: Describe what actually happened.
+      placeholder: What happened instead? Please do not copy and paste the steps to reproduce here.
     validations:
       required: false
