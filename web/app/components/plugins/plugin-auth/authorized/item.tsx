@@ -79,11 +79,13 @@ const Item = ({
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
               placeholder={t('common.placeholder.input')}
+              onClick={e => e.stopPropagation()}
             />
             <Button
               size='small'
               variant='primary'
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 onRename?.({
                   credential_id: credential.id,
                   name: renameValue,
@@ -95,7 +97,10 @@ const Item = ({
             </Button>
             <Button
               size='small'
-              onClick={() => setRenaming(false)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setRenaming(false)
+              }}
             >
               {t('common.operation.cancel')}
             </Button>
