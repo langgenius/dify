@@ -6,6 +6,7 @@ import Textarea from '@/app/components/base/textarea'
 import { PortalSelect } from '@/app/components/base/select'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { InputVarType } from '@/app/components/workflow/types'
+import Select from '@/app/components/base/select'
 
 type Props = {
   showTip?: boolean
@@ -71,13 +72,14 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <PortalSelect
-              popupClassName='w-[200px]'
-              value={inputsFormValue?.[form.variable]}
-              items={form.options.map((option: string) => ({ value: option, name: option }))}
-              onSelect={item => handleFormChange(form.variable, item.value as string)}
-              placeholder={form.label}
-            />
+            <Select
+                placeholder={form.label}
+                className='w-full'
+                defaultValue={inputsFormValue?.[form.variable]}
+                onSelect={item => handleFormChange(form.variable, item.value as string)}
+                items={form.options.map((option: string) => ({ value: option, name: option }))}
+                allowSearch={true}
+              />
           )}
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
