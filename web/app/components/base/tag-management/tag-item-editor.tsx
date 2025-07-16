@@ -110,7 +110,6 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             <div className='text-sm leading-5 text-text-secondary'>
               {tag.name}
             </div>
-            <div className='leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary'>{tag.binding_count}</div>
             <Tooltip
               popupContent={
                 <div>{t('workflow.common.tagBound')}</div>
