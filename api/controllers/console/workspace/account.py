@@ -482,7 +482,6 @@ class ChangeEmailResetApi(Resource):
 
         reset_data = AccountService.get_change_email_data(args["token"])
         if not reset_data:
-            print("reset_data is None")
             raise InvalidTokenError()
 
         AccountService.revoke_change_email_token(args["token"])
