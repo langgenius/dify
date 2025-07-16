@@ -1,6 +1,7 @@
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
+
+import pytest
 
 from services.account_service import AccountService
 from services.mfa_service import MFAService
@@ -71,7 +72,7 @@ class TestMFAEndpoints:
         with patch.object(MFAService, 'setup_mfa') as mock_setup:
             mock_setup.return_value = {
                 "backup_codes": ["CODE1", "CODE2", "CODE3", "CODE4", "CODE5", "CODE6", "CODE7", "CODE8"],
-                "setup_at": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+                "setup_at": datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
             }
             
             response = test_client.post(
@@ -97,7 +98,8 @@ class TestMFAEndpoints:
         
         assert response.status_code == 400
         data = response.json
-        assert "message" in data and "TOTP token is required" in data["message"]
+        assert "message" in data
+        assert "TOTP token is required" in data["message"]
     
     def test_mfa_setup_complete_invalid_token(self, test_client, setup_account, auth_header):
         """Test MFA setup completion with invalid token."""

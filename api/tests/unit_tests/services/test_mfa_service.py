@@ -1,9 +1,7 @@
 import json
 import unittest
+from datetime import datetime
 from unittest.mock import Mock, patch
-from datetime import datetime, timezone
-
-import pytest
 
 from models.account import Account, AccountMFASettings
 from services.mfa_service import MFAService

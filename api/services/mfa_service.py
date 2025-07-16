@@ -2,13 +2,10 @@ import base64
 import io
 import json
 import secrets
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import pyotp
 import qrcode
-from sqlalchemy import and_
-from sqlalchemy.orm import Session
 
 from models.account import Account, AccountMFASettings
 from models.engine import db
@@ -53,7 +50,7 @@ class MFAService:
         
         # Convert to base64
         buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         
         return f"data:image/png;base64,{img_str}"
@@ -120,7 +117,7 @@ class MFAService:
         # Enable MFA
         mfa_settings.enabled = True
         mfa_settings.backup_codes = json.dumps(backup_codes)
-        mfa_settings.setup_at = datetime.now(timezone.utc)
+        mfa_settings.setup_at = datetime.now(UTC)
         
         db.session.commit()
         
@@ -176,7 +173,7 @@ class MFAService:
     def is_mfa_required(account: Account) -> bool:
         """Check if MFA is required for this account."""
         mfa_settings = db.session.query(AccountMFASettings).filter_by(account_id=account.id).first()
-        return mfa_settings and mfa_settings.enabled and mfa_settings.secret is not None
+        return bool(mfa_settings and mfa_settings.enabled and mfa_settings.secret is not None)
 
     @staticmethod
     def authenticate_with_mfa(account: Account, token: str) -> bool:
