@@ -1656,7 +1656,7 @@ workflow:
       positionAbsolute:
         x: 1854
         y: 492
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1974,13 +1974,13 @@ workflow:
             {{#1741227526517.params#}}
 
             请给出一些建议'
-        selected: true
+        selected: false
         title: LLM 3
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 96
       id: '1745391138767'
       position:
         x: 1246
@@ -1988,7 +1988,7 @@ workflow:
       positionAbsolute:
         x: 1246
         y: 731
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -3035,16 +3035,16 @@ workflow:
       id: '1751602687916'
       position:
         x: 3982
-        y: 570
+        y: 372.4284637855866
       positionAbsolute:
         x: 3982
-        y: 570
+        y: 372.4284637855866
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: 47.03146648242307
-      y: 94.5672153955509
-      zoom: 0.3941309919597938
+      x: -1661.5523226791147
+      y: -9.429599378653393
+      zoom: 0.6912168164295371
