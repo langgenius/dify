@@ -82,7 +82,7 @@ class QuestionClassifierNode(BaseNode):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = QuestionClassifierNodeData(**data)
+        self.node_data = QuestionClassifierNodeData.model_validate(data)
 
     @classmethod
     def version(cls):
@@ -239,7 +239,7 @@ class QuestionClassifierNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = QuestionClassifierNodeData(**node_data)
+        typed_node_data = QuestionClassifierNodeData.model_validate(node_data)
 
         variable_mapping = {"query": typed_node_data.query_variable_selector}
         variable_selectors = []

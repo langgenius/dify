@@ -27,7 +27,7 @@ class CodeNode(BaseNode):
     node_data: CodeNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = CodeNodeData(**data)
+        self.node_data = CodeNodeData.model_validate(data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -341,15 +341,8 @@ class CodeNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = CodeNodeData(**node_data)
+        typed_node_data = CodeNodeData.model_validate(node_data)
 
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
             for variable_selector in typed_node_data.variables

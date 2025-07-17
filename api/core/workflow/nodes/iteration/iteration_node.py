@@ -66,7 +66,7 @@ class IterationNode(BaseNode):
     node_data: IterationNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = IterationNodeData(**data)
+        self.node_data = IterationNodeData.model_validate(data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -312,7 +312,7 @@ class IterationNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = IterationNodeData(**node_data)
+        typed_node_data = IterationNodeData.model_validate(node_data)
 
         variable_mapping: dict[str, Sequence[str]] = {
             f"{node_id}.input_selector": typed_node_data.iterator_selector,

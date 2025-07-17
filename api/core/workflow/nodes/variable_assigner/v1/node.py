@@ -29,7 +29,7 @@ class VariableAssignerNode(BaseNode):
     node_data: VariableAssignerData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = VariableAssignerData(**data)
+        self.node_data = VariableAssignerData.model_validate(data)
 
     def __init__(
         self,
@@ -66,7 +66,7 @@ class VariableAssignerNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = VariableAssignerData(**node_data)
+        typed_node_data = VariableAssignerData.model_validate(node_data)
 
         mapping = {}
         assigned_variable_node_id = typed_node_data.assigned_variable_selector[0]

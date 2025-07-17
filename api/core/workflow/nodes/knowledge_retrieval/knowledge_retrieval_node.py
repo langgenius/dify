@@ -125,7 +125,7 @@ class KnowledgeRetrievalNode(BaseNode):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = KnowledgeRetrievalNodeData(**data)
+        self.node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
     @classmethod
     def version(cls):
@@ -622,7 +622,7 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = KnowledgeRetrievalNodeData(**node_data)
+        typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
 
         variable_mapping = {}
         variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector

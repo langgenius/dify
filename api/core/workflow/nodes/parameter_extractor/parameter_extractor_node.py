@@ -96,7 +96,7 @@ class ParameterExtractorNode(BaseNode):
     node_data: ParameterExtractorNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = ParameterExtractorNodeData(**data)
+        self.node_data = ParameterExtractorNodeData.model_validate(data)
 
     _model_instance: Optional[ModelInstance] = None
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
@@ -833,7 +833,7 @@ class ParameterExtractorNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = ParameterExtractorNodeData(**node_data)
+        typed_node_data = ParameterExtractorNodeData.model_validate(node_data)
 
         variable_mapping: dict[str, Sequence[str]] = {"query": typed_node_data.query}
 

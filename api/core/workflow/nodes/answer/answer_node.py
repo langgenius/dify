@@ -22,7 +22,7 @@ class AnswerNode(BaseNode):
     node_data: AnswerNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = AnswerNodeData(**data)
+        self.node_data = AnswerNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -67,15 +67,8 @@ class AnswerNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = AnswerNodeData(**node_data)
+        typed_node_data = AnswerNodeData.model_validate(node_data)
 
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
         variable_template_parser = VariableTemplateParser(template=typed_node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 

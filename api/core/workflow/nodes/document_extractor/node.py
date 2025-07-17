@@ -47,7 +47,7 @@ class DocumentExtractorNode(BaseNode):
     node_data: DocumentExtractorNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = DocumentExtractorNodeData(**data)
+        self.node_data = DocumentExtractorNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -104,7 +104,7 @@ class DocumentExtractorNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = DocumentExtractorNodeData(**node_data)
+        typed_node_data = DocumentExtractorNodeData.model_validate(node_data)
 
         return {node_id + ".files": typed_node_data.variable_selector}
 

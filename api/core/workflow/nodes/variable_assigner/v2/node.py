@@ -60,7 +60,7 @@ class VariableAssignerNode(BaseNode):
     node_data: VariableAssignerNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = VariableAssignerNodeData(**data)
+        self.node_data = VariableAssignerNodeData.model_validate(data)
 
     def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
         return conversation_variable_updater_factory()
@@ -78,7 +78,7 @@ class VariableAssignerNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = VariableAssignerNodeData(**node_data)
+        typed_node_data = VariableAssignerNodeData.model_validate(node_data)
 
         var_mapping: dict[str, Sequence[str]] = {}
         for item in typed_node_data.items:

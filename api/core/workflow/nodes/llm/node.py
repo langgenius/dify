@@ -138,7 +138,7 @@ class LLMNode(BaseNode):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = LLMNodeData(**data)
+        self.node_data = LLMNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -791,7 +791,7 @@ class LLMNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = LLMNodeData(**node_data)
+        typed_node_data = LLMNodeData.model_validate(node_data)
 
         prompt_template = typed_node_data.prompt_template
         variable_selectors = []

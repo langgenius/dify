@@ -18,7 +18,7 @@ class TemplateTransformNode(BaseNode):
     node_data: TemplateTransformNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = TemplateTransformNodeData(**data)
+        self.node_data = TemplateTransformNodeData.model_validate(data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -67,7 +67,7 @@ class TemplateTransformNode(BaseNode):
         cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = TemplateTransformNodeData(**node_data)
+        typed_node_data = TemplateTransformNodeData.model_validate(node_data)
 
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector

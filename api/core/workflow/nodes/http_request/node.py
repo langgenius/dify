@@ -38,7 +38,7 @@ class HttpRequestNode(BaseNode):
     node_data: HttpRequestNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = HttpRequestNodeData(**data)
+        self.node_data = HttpRequestNodeData.model_validate(data)
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
@@ -138,7 +138,7 @@ class HttpRequestNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = HttpRequestNodeData(**node_data)
+        typed_node_data = HttpRequestNodeData.model_validate(node_data)
 
         selectors: list[VariableSelector] = []
         selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.url)

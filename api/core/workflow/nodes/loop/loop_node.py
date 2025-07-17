@@ -53,7 +53,7 @@ class LoopNode(BaseNode):
     node_data: LoopNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = LoopNodeData(**data)
+        self.node_data = LoopNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -445,7 +445,7 @@ class LoopNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = LoopNodeData(**node_data)
+        typed_node_data = LoopNodeData.model_validate(node_data)
 
         variable_mapping = {}
 

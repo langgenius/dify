@@ -45,7 +45,7 @@ class ToolNode(BaseNode):
     node_data: ToolNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = ToolNodeData(**data)
+        self.node_data = ToolNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -383,7 +383,7 @@ class ToolNode(BaseNode):
         :return:
         """
         # Create typed NodeData from dict
-        typed_node_data = ToolNodeData(**node_data)
+        typed_node_data = ToolNodeData.model_validate(node_data)
 
         result = {}
         for parameter_name in typed_node_data.tool_parameters:

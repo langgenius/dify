@@ -65,7 +65,7 @@ class AgentNode(BaseNode):
     node_data: AgentNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = AgentNodeData(**data)
+        self.node_data = AgentNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -365,7 +365,7 @@ class AgentNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = AgentNodeData(**node_data)
+        typed_node_data = AgentNodeData.model_validate(node_data)
 
         result: dict[str, Any] = {}
         for parameter_name in typed_node_data.agent_parameters:

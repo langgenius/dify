@@ -19,7 +19,7 @@ class IfElseNode(BaseNode):
     node_data: IfElseNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = IfElseNodeData(**data)
+        self.node_data = IfElseNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -105,7 +105,7 @@ class IfElseNode(BaseNode):
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
-        typed_node_data = IfElseNodeData(**node_data)
+        typed_node_data = IfElseNodeData.model_validate(node_data)
 
         var_mapping: dict[str, list[str]] = {}
         for case in typed_node_data.cases or []:
