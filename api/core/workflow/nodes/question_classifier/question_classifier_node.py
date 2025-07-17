@@ -184,6 +184,7 @@ class QuestionClassifierNode(BaseNode):
                 stop=stop,
                 user_id=self.user_id,
                 structured_output_enabled=False,
+                structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self.node_id,

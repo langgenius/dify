@@ -546,6 +546,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 stop=stop,
                 user_id=self.user_id,
                 structured_output_enabled=self.node_data.structured_output_enabled,
+                structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self.node_id,

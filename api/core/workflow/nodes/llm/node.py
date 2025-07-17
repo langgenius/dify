@@ -254,6 +254,7 @@ class LLMNode(BaseNode):
                 stop=stop,
                 user_id=self.user_id,
                 structured_output_enabled=self.node_data.structured_output_enabled,
+                structured_output=self.node_data.structured_output,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self.node_id,
@@ -335,6 +336,7 @@ class LLMNode(BaseNode):
         stop: Optional[Sequence[str]] = None,
         user_id: str,
         structured_output_enabled: bool,
+        structured_output: Optional[Mapping[str, Any]] = None,
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
@@ -346,7 +348,9 @@ class LLMNode(BaseNode):
             raise ValueError(f"Model schema not found for {node_data_model.name}")
 
         if structured_output_enabled:
-            output_schema = LLMNode.fetch_structured_output_schema()
+            output_schema = LLMNode.fetch_structured_output_schema(
+                structured_output=structured_output or {},
+            )
             invoke_result = invoke_llm_with_structured_output(
                 provider=model_instance.provider,
                 model_schema=model_schema,
@@ -1020,7 +1024,7 @@ class LLMNode(BaseNode):
     @staticmethod
     def fetch_structured_output_schema(
         *,
-        structured_output: Mapping[str, Any] | None = None,
+        structured_output: Mapping[str, Any],
     ) -> dict[str, Any]:
         """
         Fetch the structured output schema from the node data.
