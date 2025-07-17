@@ -287,6 +287,14 @@ const translation = {
     zoomTo50: '缩放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
+    searchNodes: '搜索节点',
+    searchNodesShortcut: '搜索节点 ({{shortcut}})',
+    noNodesFound: '未找到节点',
+    searchResults: '{{count}}个结果',
+    navigate: '导航',
+    select: '选择',
+    close: '关闭',
+    searchHint: '尝试按节点名称或类型搜索',
   },
   variableReference: {
     noAvailableVars: '没有可用变量',
@@ -941,6 +949,11 @@ const translation = {
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    copyLastRun: '复制上次运行值',
+    noLastRunFound: '未找到上次运行记录',
+    noMatchingInputsFound: '上次运行中未找到匹配的输入',
+    lastRunInputsCopied: '已复制{{count}}个输入值',
+    copyLastRunError: '复制上次运行输入失败',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
