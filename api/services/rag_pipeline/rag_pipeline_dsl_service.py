@@ -24,7 +24,6 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
@@ -761,7 +760,10 @@ class RagPipelineDslService:
                                 )
                         if knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model":
                             if knowledge_index_entity.retrieval_model.reranking_enable:
-                                if knowledge_index_entity.retrieval_model.reranking_model and knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model":
+                                if (
+                                    knowledge_index_entity.retrieval_model.reranking_model
+                                    and knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model"
+                                ):
                                     if knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name:
                                         dependencies.append(
                                             DependenciesAnalysisService.analyze_model_provider_dependency(
