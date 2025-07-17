@@ -1,6 +1,5 @@
 import os
 import sys
-import logging
 
 
 def is_db_command():
