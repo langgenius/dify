@@ -380,7 +380,7 @@ const translation = {
     regenerationConfirmTitle: 'Si desidera rigenerare i blocchi figlio?',
     chunks_other: 'BLOCCHI',
     editedAt: 'A cura di',
-    dateTimeFormat: 'MM/DD/YYYY h:mm',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     collapseChunks: 'Comprimi blocchi',
     clearFilter: 'Cancella filtro',
     chunks_one: 'PEZZO',
