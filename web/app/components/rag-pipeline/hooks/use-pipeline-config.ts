@@ -8,6 +8,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useDataSourceList } from '@/service/use-pipeline'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { basePath } from '@/utils/var'
+import type { FileUploadConfigResponse } from '@/models/common'
 
 export const usePipelineConfig = () => {
   const pipelineId = useStore(s => s.pipelineId)
@@ -52,6 +53,12 @@ export const usePipelineConfig = () => {
     const { setDataSourceList } = workflowStore.getState()
     setDataSourceList!(dataSourceList)
   }, [workflowStore])
+
+  const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
+    const { setFileUploadConfig } = workflowStore.getState()
+    setFileUploadConfig(config)
+  }, [workflowStore])
+  useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   useDataSourceList(!!pipelineId, handleUpdateDataSourceList)
 }
