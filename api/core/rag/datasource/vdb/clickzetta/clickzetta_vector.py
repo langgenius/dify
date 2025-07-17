@@ -321,16 +321,13 @@ class ClickzettaVector(BaseVector):
             # For JSON column in Clickzetta, use safe JSON formatting
             metadata_json = self._escape_json_string(doc.metadata)
             embedding_str = self._format_vector(embedding)
-            escaped_content = self._escape_string(doc.page_content)
-            values.append(f"('{doc_id}', '{escaped_content}', "
+            cleaned_content = self._clean_document_content(doc.page_content)
+            values.append(f"('{doc_id}', '{cleaned_content}', "
                         f"JSON '{metadata_json}', {embedding_str})")
 
         # Use regular INSERT - primary key will handle duplicates
-        insert_sql = f"""
-        INSERT INTO {self._config.schema}.{self._table_name}
-        (id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}, {Field.VECTOR.value})
-        VALUES {','.join(values)}
-        """
+        columns = f"id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}, {Field.VECTOR.value}"
+        insert_sql = f"INSERT INTO {self._config.schema}.{self._table_name} ({columns}) VALUES {','.join(values)}"
         
         with self._connection.cursor() as cursor:
             cursor.execute(insert_sql)
@@ -547,12 +544,16 @@ class ClickzettaVector(BaseVector):
             return ""
         # Replace single quotes and other potentially problematic characters
         s = str(s)
+        s = s.replace("\\", "\\\\")  # Escape backslashes first
         s = s.replace("'", "''")  # Escape single quotes
-        s = s.replace("\\", "\\\\")  # Escape backslashes
-        s = s.replace("\n", "\\n")  # Escape newlines
-        s = s.replace("\r", "\\r")  # Escape carriage returns
-        s = s.replace("\t", "\\t")  # Escape tabs
-        return s
+        s = s.replace("`", "\\`")  # Escape backticks
+        s = s.replace('"', '\\"')  # Escape double quotes
+        s = s.replace("\n", " ")  # Replace newlines with spaces
+        s = s.replace("\r", " ")  # Replace carriage returns with spaces
+        s = s.replace("\t", " ")  # Replace tabs with spaces
+        # Remove any remaining control characters
+        s = ''.join(char for char in s if ord(char) >= 32 or char in [' '])
+        return s.strip()
     
     def _format_vector(self, vector: list[float]) -> str:
         """Safely format vector for SQL, handling special float values."""
@@ -594,6 +595,32 @@ class ClickzettaVector(BaseVector):
         if not safe_id:  # If all characters were removed
             return str(uuid.uuid4())
         return safe_id[:255]  # Limit length
+    
+    def _clean_document_content(self, content: str) -> str:
+        """Clean document content for safe SQL insertion."""
+        if not content:
+            return ""
+        
+        content = str(content)
+        # Remove or replace problematic characters that can break SQL
+        content = content.replace("'", "''")  # SQL quote escaping
+        content = content.replace("\\", "\\\\")  # Escape backslashes
+        content = content.replace("`", "'")  # Replace backticks with single quotes
+        content = content.replace('"', "''")  # Replace double quotes with escaped single quotes
+        
+        # Replace line breaks and tabs with spaces to avoid multiline issues
+        content = content.replace("\n", " ")
+        content = content.replace("\r", " ")
+        content = content.replace("\t", " ")
+        
+        # Remove control characters but keep printable ones
+        cleaned = ''.join(char if ord(char) >= 32 else ' ' for char in content)
+        
+        # Normalize multiple spaces to single space
+        import re
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        return cleaned.strip()
 
 
 class ClickzettaVectorFactory(AbstractVectorFactory):
