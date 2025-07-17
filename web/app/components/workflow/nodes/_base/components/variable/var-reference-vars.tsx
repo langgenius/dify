@@ -175,7 +175,8 @@ const Item: FC<ItemProps> = ({
           className={cn(
             (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
             isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-            'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3')
+            'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3',
+          )
           }
           onClick={handleChosen}
           onMouseDown={e => e.preventDefault()}
@@ -378,7 +379,7 @@ const VarReferenceVars: FC<Props> = ({
 
           {
             filteredVars.map((item, i) => (
-              <div key={i}>
+              <div key={i} className={cn(!item.isFlat && 'mt-3')}>
                 {!item.isFlat && (
                   <div
                     className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'
@@ -402,6 +403,13 @@ const VarReferenceVars: FC<Props> = ({
                     zIndex={zIndex}
                   />
                 ))}
+                {item.isFlat && !filteredVars[i + 1]?.isFlat && (
+                  <div className='relative mt-[14px] flex  items-center space-x-1'>
+                    <div className='h-0 w-3 shrink-0 border border-divider-subtle'></div>
+                    <div className='system-2xs-semibold-uppercase text-text-tertiary'>{t('workflow.debug.lastOutput')}</div>
+                    <div className='h-0  shrink-0 grow border border-divider-subtle'></div>
+                  </div>
+                )}
               </div>))
           }
         </div>

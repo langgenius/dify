@@ -965,6 +965,7 @@ const translation = {
       chatNode: 'Conversation',
       systemNode: 'System',
     },
+    lastOutput: 'Last Output',
   },
 }
 

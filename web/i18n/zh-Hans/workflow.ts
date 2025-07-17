@@ -966,6 +966,7 @@ const translation = {
       chatNode: '会话变量',
       systemNode: '系统变量',
     },
+    lastOutput: '上次输出',
   },
 }
 
