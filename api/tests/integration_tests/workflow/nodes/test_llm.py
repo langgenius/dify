@@ -26,6 +26,7 @@ from models.workflow import WorkflowType
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 
 def init_llm_node(config: dict) -> LLMNode:
@@ -91,7 +92,7 @@ def init_llm_node(config: dict) -> LLMNode:
     return node
 
 
-def test_execute_llm(flask_req_ctx):
+def test_execute_llm(flask_req_ctx, setup_model_mock):
     node = init_llm_node(
         config={
             "id": "llm",
@@ -118,65 +119,22 @@ def test_execute_llm(flask_req_ctx):
         },
     )
 
-    # Create a proper LLM result with real entities
-    mock_usage = LLMUsage(
-        prompt_tokens=30,
-        prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal(1000),
-        prompt_price=Decimal("0.00003"),
-        completion_tokens=20,
-        completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal(1000),
-        completion_price=Decimal("0.00004"),
-        total_tokens=50,
-        total_price=Decimal("0.00007"),
-        currency="USD",
-        latency=0.5,
-    )
+    db.session.close = MagicMock()
 
-    mock_message = AssistantPromptMessage(content="This is a test response from the mocked LLM.")
+    # execute node
+    result = node._run()
+    assert isinstance(result, Generator)
 
-    mock_llm_result = LLMResult(
-        model="gpt-3.5-turbo",
-        prompt_messages=[],
-        message=mock_message,
-        usage=mock_usage,
-    )
-
-    # Create a simple mock model instance that doesn't call real providers
-    mock_model_instance = MagicMock()
-    mock_model_instance.invoke_llm.return_value = mock_llm_result
-
-    # Create a simple mock model config with required attributes
-    mock_model_config = MagicMock()
-    mock_model_config.mode = "chat"
-    mock_model_config.provider = "langgenius/openai/openai"
-    mock_model_config.model = "gpt-3.5-turbo"
-    mock_model_config.provider_model_bundle.configuration.tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
-
-    # Mock the _fetch_model_config method
-    def mock_fetch_model_config_func(_node_data_model):
-        return mock_model_instance, mock_model_config
-
-    # Also mock ModelManager.get_model_instance to avoid database calls
-    def mock_get_model_instance(_self, **kwargs):
-        return mock_model_instance
-
-    with (
-        patch.object(node, "_fetch_model_config", mock_fetch_model_config_func),
-        patch("core.model_manager.ModelManager.get_model_instance", mock_get_model_instance),
-    ):
-        # execute node
-        result = node._run()
-        assert isinstance(result, Generator)
-
-        for item in result:
-            if isinstance(item, RunCompletedEvent):
-                assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-                assert item.run_result.process_data is not None
-                assert item.run_result.outputs is not None
-                assert item.run_result.outputs.get("text") is not None
-                assert item.run_result.outputs.get("usage", {})["total_tokens"] > 0
+    for item in result:
+        if isinstance(item, RunCompletedEvent):
+            if item.run_result.status != WorkflowNodeExecutionStatus.SUCCEEDED:
+                print(f"Error: {item.run_result.error}")
+                print(f"Error type: {item.run_result.error_type}")
+            assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.run_result.process_data is not None
+            assert item.run_result.outputs is not None
+            assert item.run_result.outputs.get("text") is not None
+            assert item.run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
 @pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
