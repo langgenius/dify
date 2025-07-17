@@ -950,13 +950,8 @@ const translation = {
   },
   debug: {
     settingsTab: '设置',
-    lastRunTab: '上次运行',
-    copyLastRun: '复制上次运行值',
-    noLastRunFound: '未找到上次运行记录',
-    noMatchingInputsFound: '上次运行中未找到匹配的输入',
-    lastRunInputsCopied: '已复制{{count}}个输入值',
-    copyLastRunError: '复制上次运行输入失败',
-    noData: {
+          lastRunTab: '上次运行',
+      noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
     },
