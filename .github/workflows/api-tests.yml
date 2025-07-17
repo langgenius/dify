@@ -51,7 +51,7 @@ jobs:
         run: |
           cd api
           uv add --dev ty
-          uv run ty || true
+          uv run ty check || true
       - name: Run pyrefly check
         run: |
           cd api
