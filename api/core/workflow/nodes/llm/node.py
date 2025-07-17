@@ -5,6 +5,9 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
@@ -68,10 +71,6 @@ from core.workflow.nodes.event import (
     RunStreamChunkEvent,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-
-# --- New imports for file-usage persistence ---
-from sqlalchemy.orm import Session
-from sqlalchemy import select
 from extensions.ext_database import db
 from models.model import NodeFileUsage
 
@@ -218,7 +217,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                                     )
                             session.commit()
                     except Exception:
-                        # Non-critical – failure to persist should not break node execution
                         pass
 
             if files:
