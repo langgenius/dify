@@ -127,6 +127,8 @@ class RAGPipelineVariable(BaseModel):
 class RAGPipelineVariableInput(BaseModel):
     variable: RAGPipelineVariable
     value: Any
+
+
 # The `VariableUnion`` type is used to enable serialization and deserialization with Pydantic.
 # Use `Variable` for type hinting when serialization is not required.
 #
