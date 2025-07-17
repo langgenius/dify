@@ -9,6 +9,7 @@ set -e
 DOCKER_HUB_USERNAME="czqiliang"
 IMAGE_NAME="dify-clickzetta"
 TAG="latest"
+VERSION_TAG="v1.6.0"
 PLATFORMS="linux/amd64,linux/arm64"
 
 # Colors for output
@@ -65,6 +66,7 @@ docker buildx build \
     --platform $PLATFORMS \
     --file api.Dockerfile \
     --tag ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:${TAG} \
+    --tag ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:${VERSION_TAG} \
     --tag ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:clickzetta-integration \
     --push \
     ..
@@ -72,17 +74,9 @@ docker buildx build \
 echo -e "${GREEN}✓ API image built and pushed successfully${NC}"
 echo
 
-# Build and push Web image  
-echo -e "${BLUE}Step 4: Building and pushing Web image${NC}"
-docker buildx build \
-    --platform $PLATFORMS \
-    --file web.Dockerfile \
-    --tag ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-web:${TAG} \
-    --tag ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-web:clickzetta-integration \
-    --push \
-    ..
-
-echo -e "${GREEN}✓ Web image built and pushed successfully${NC}"
+# Web service uses official Dify image (no ClickZetta-specific changes needed)
+echo -e "${BLUE}Step 4: Web service uses official langgenius/dify-web image${NC}"
+echo -e "${GREEN}✓ Web service configuration completed${NC}"
 echo
 
 # User files are already created in clickzetta/ directory
@@ -100,11 +94,13 @@ echo
 
 # Display final information
 echo -e "${GREEN}=== Build Complete! ===${NC}"
-echo -e "${YELLOW}Images pushed to Docker Hub:${NC}"
+echo -e "${YELLOW}ClickZetta API images pushed to Docker Hub:${NC}"
 echo -e "  • ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:${TAG}"
+echo -e "  • ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:${VERSION_TAG}"
 echo -e "  • ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-api:clickzetta-integration"
-echo -e "  • ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-web:${TAG}"
-echo -e "  • ${DOCKER_HUB_USERNAME}/${IMAGE_NAME}-web:clickzetta-integration"
+echo
+echo -e "${YELLOW}Web service uses official Dify image:${NC}"
+echo -e "  • langgenius/dify-web:1.6.0 (no ClickZetta changes needed)"
 echo
 echo -e "${YELLOW}User files created:${NC}"
 echo -e "  • docker-compose.clickzetta.yml - Ready-to-use compose file"

@@ -151,6 +151,11 @@ This is a preview version. If you encounter issues:
 
 ## 🔄 Updates
 
+**Available Image Tags:**
+- `v1.6.0` - Stable release (recommended)
+- `latest` - Latest build 
+- `clickzetta-integration` - Development version
+
 To update to the latest version:
 ```bash
 # Pull latest images
@@ -158,6 +163,17 @@ docker-compose -f docker-compose.clickzetta.yml pull
 
 # Restart services  
 docker-compose -f docker-compose.clickzetta.yml up -d
+```
+
+To use a specific version, edit `docker-compose.clickzetta.yml`:
+```yaml
+services:
+  api:
+    image: czqiliang/dify-clickzetta-api:v1.6.0  # or latest
+  worker:
+    image: czqiliang/dify-clickzetta-api:v1.6.0  # or latest  
+  web:
+    image: langgenius/dify-web:1.6.0  # official Dify web image
 ```
 
 ## ⚠️ Production Use

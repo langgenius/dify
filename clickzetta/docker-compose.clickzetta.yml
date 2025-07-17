@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # API service with ClickZetta integration
   api:
-    image: czqiliang/dify-clickzetta-api:latest
+    image: czqiliang/dify-clickzetta-api:v1.6.0
     restart: always
     environment:
       # Core settings
@@ -61,7 +61,7 @@ services:
 
   # Worker service
   worker:
-    image: czqiliang/dify-clickzetta-api:latest
+    image: czqiliang/dify-clickzetta-api:v1.6.0
     restart: always
     environment:
       - MODE=worker
@@ -110,7 +110,7 @@ services:
 
   # Web service
   web:
-    image: czqiliang/dify-clickzetta-web:latest
+    image: langgenius/dify-web:1.6.0
     restart: always
     environment:
       - CONSOLE_API_URL=${CONSOLE_API_URL:-}

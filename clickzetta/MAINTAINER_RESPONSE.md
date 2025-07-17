@@ -56,10 +56,10 @@ The implementation is ready for production use with comprehensive testing showin
 While the PR is under review, users can test the ClickZetta integration using multi-architecture Docker images:
 
 **Available Images:**
-- `czqiliang/dify-clickzetta-api:latest` (linux/amd64, linux/arm64)
-- `czqiliang/dify-clickzetta-web:latest` (linux/amd64, linux/arm64)
-- `czqiliang/dify-clickzetta-api:clickzetta-integration` (tagged version)
-- `czqiliang/dify-clickzetta-web:clickzetta-integration` (tagged version)
+- `czqiliang/dify-clickzetta-api:v1.6.0` (linux/amd64, linux/arm64) - Stable release
+- `czqiliang/dify-clickzetta-api:latest` (linux/amd64, linux/arm64) - Latest build
+- `czqiliang/dify-clickzetta-api:clickzetta-integration` (linux/amd64, linux/arm64) - Development
+- Web service uses official `langgenius/dify-web:1.6.0` (no ClickZetta changes needed)
 
 **Quick Start Guide:**
 ```bash
