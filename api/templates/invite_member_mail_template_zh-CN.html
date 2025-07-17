@@ -1,72 +1,93 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 16pt;
-            color: #374151;
-            background-color: #E5E7EB;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            width: 100%;
-            max-width: 560px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #F3F4F6;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header img {
-            max-width: 100px;
-            height: auto;
-        }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #2970FF;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            text-align: center;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #265DD4;
-        }
-        .footer {
-            font-size: 0.9em;
-            color: #777777;
-            margin-top: 30px;
-        }
-        .content {
-            margin-top: 20px;
-        }
-    </style>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 16pt;
+      color: #374151;
+      background-color: #E5E7EB;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 504px;
+      height: 444px;
+      margin: 40px auto;
+      padding: 0 48px;
+      background-color: #fcfcfd;
+      border-radius: 16px;
+      border: 1px solid #ffffff;
+      box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
+    }
+
+    .header {
+      padding-top: 36px;
+      padding-bottom: 24px;
+    }
+
+    .header img {
+      max-width: 63px;
+      height: auto;
+    }
+    .button {
+      display: inline-block;
+      width: 480px;
+      padding: 8px 12px;
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      text-align: center;
+      transition: background-color 0.3s ease;
+      border: 0.5px solid rgba(16, 24, 40, 0.04);
+      background-color: #155AEF;
+      box-shadow: 0px -6px 12px -4px rgba(9, 9, 11, 0.08) inset, 0px 0px 1px 0px rgba(255, 255, 255, 0.16) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.08) inset, 0px 2px 2px -1px rgba(0, 0, 0, 0.12), 0px 1px 1px -1px rgba(0, 0, 0, 0.12), 0px 0px 0px 0.5px rgba(9, 9, 11, 0.05);
+      font-family: Inter;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 20px; /* 142.857% */
+    }
+    .button:hover {
+      background-color: #004AEB;
+      border: 0.5px solid rgba(16, 24, 40, 0.08);
+      box-shadow: 0px 1px 2px 0px rgba(9, 9, 11, 0.05);
+    }
+    .content {
+      color: #354052;
+      font-family: Inter;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px; /* 142.857% */
+      letter-spacing: -0.07px;
+    }
+    .content1 {
+      margin: 0;
+      padding-top: 24px;
+      padding-bottom: 12px;
+      font-weight: 500;
+    }
+    .content2 {
+      margin: 0;
+      padding-bottom: 12px;
+    }
+  </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo">
-        </div>
-        <div class="content">
-            <p>尊敬的 {{ to }}，</p>
-            <p>{{ inviter_name }} 现邀请您加入我们在 Dify 的工作区，这是一个专为 LLM 应用开发而设计的平台。在 Dify 上，您可以探索、创造和合作，构建和运营 AI 应用。</p>
-            <p>点击下方按钮即可登录 Dify 并且加入空间。</p>
-            <p style="text-align: center;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">在此登录</a></p>
-        </div>
-        <div class="footer">
-            <p>此致，</p>
-            <p>Dify 团队</p>
-            <p>请不要直接回复此电子邮件；由系统自动发送。</p>
-        </div>
+  <div class="container">
+    <div class="header">
+      <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo">
     </div>
+    <div class="content">
+      <p class="content1">尊敬的 {{ to }}，</p>
+      <p class="content2">{{ inviter_name }} 现邀请您加入我们在 Dify 的工作区，这是一个专为 LLM 应用开发而设计的平台。在 Dify 上，您可以探索、创造和合作，构建和运营 AI 应用。</p>
+      <p class="content2">点击下方按钮即可登录 Dify 并且加入空间。</p>
+      <p style="text-align: center; margin: 0; margin-bottom: 32px;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">在此登录</a></p>
+      <p class="content2">此致，</p>
+      <p class="content2">Dify 团队</p>
+    </div>
+  </div>
 </body>
 </html>
