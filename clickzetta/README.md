@@ -14,6 +14,7 @@ This directory contains the implementation and testing materials for integrating
 - `test_clickzetta_integration.py` - Comprehensive integration test suite with Dify framework
 - `TESTING_GUIDE.md` - Testing instructions and methodology
 - `PR_SUMMARY.md` - Complete PR preparation summary
+- `USER_GUIDE.md` - **NEW**: Complete user guide for configuring Clickzetta in Dify
 
 ## Quick Start
 
@@ -42,7 +43,10 @@ python test_clickzetta_integration.py
 cat TESTING_GUIDE.md
 ```
 
-### 3. PR Status
+### 3. User Guide
+For detailed configuration and usage instructions, see `USER_GUIDE.md`.
+
+### 4. PR Status
 See `PR_SUMMARY.md` for complete PR preparation status and submission strategy.
 
 ## Technical Highlights
