@@ -115,10 +115,10 @@ class TestSystemOAuthEncrypter:
         """Test encryption with invalid input types"""
         encrypter = SystemOAuthEncrypter("test_secret")
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             encrypter.encrypt_oauth_params(None)  # type: ignore
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             encrypter.encrypt_oauth_params("not_a_dict")  # type: ignore
 
     def test_decrypt_oauth_params_basic(self):
@@ -162,7 +162,11 @@ class TestSystemOAuthEncrypter:
     def test_decrypt_oauth_params_unicode_data(self):
         """Test decryption with unicode data"""
         encrypter = SystemOAuthEncrypter("test_secret")
-        original_params = {"client_id": "test_id", "client_secret": "test_secret", "description": "This is a test case 🚀"}
+        original_params = {
+            "client_id": "test_id",
+            "client_secret": "test_secret",
+            "description": "This is a test case 🚀",
+        }
 
         encrypted = encrypter.encrypt_oauth_params(original_params)
         decrypted = encrypter.decrypt_oauth_params(encrypted)
@@ -456,7 +460,7 @@ class TestConvenienceFunctions:
     def test_convenience_functions_with_errors(self):
         """Test convenience functions with error conditions"""
         # Test encryption with invalid input
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             encrypt_system_oauth_params(None)  # type: ignore
 
         # Test decryption with invalid input
