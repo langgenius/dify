@@ -1,12 +1,8 @@
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Annotated, Any, TypeAlias, cast
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
-from typing import Annotated, TypeAlias, cast
-from uuid import uuid4
-
-from pydantic import Discriminator, Field, Tag
+from pydantic import BaseModel, Discriminator, Field, Tag
 
 from core.helper import encrypter
 
