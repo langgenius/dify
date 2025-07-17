@@ -94,28 +94,28 @@ class ParameterExtractorNode(BaseNode):
 
     _node_type = NodeType.PARAMETER_EXTRACTOR
 
-    node_data: ParameterExtractorNodeData
+    _node_data: ParameterExtractorNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = ParameterExtractorNodeData.model_validate(data)
+        self._node_data = ParameterExtractorNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     _model_instance: Optional[ModelInstance] = None
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
@@ -141,7 +141,7 @@ class ParameterExtractorNode(BaseNode):
         """
         Run the node.
         """
-        node_data = cast(ParameterExtractorNodeData, self.node_data)
+        node_data = cast(ParameterExtractorNodeData, self._node_data)
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 

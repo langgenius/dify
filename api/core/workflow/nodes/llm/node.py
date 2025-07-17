@@ -99,7 +99,7 @@ logger = logging.getLogger(__name__)
 class LLMNode(BaseNode):
     _node_type = NodeType.LLM
 
-    node_data: LLMNodeData
+    _node_data: LLMNodeData
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
@@ -139,25 +139,25 @@ class LLMNode(BaseNode):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = LLMNodeData.model_validate(data)
+        self._node_data = LLMNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -173,13 +173,13 @@ class LLMNode(BaseNode):
 
         try:
             # init messages template
-            self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
+            self._node_data.prompt_template = self._transform_chat_messages(self._node_data.prompt_template)
 
             # fetch variables and fetch values from variable pool
-            inputs = self._fetch_inputs(node_data=self.node_data)
+            inputs = self._fetch_inputs(node_data=self._node_data)
 
             # fetch jinja2 inputs
-            jinja_inputs = self._fetch_jinja_inputs(node_data=self.node_data)
+            jinja_inputs = self._fetch_jinja_inputs(node_data=self._node_data)
 
             # merge inputs
             inputs.update(jinja_inputs)
@@ -190,9 +190,9 @@ class LLMNode(BaseNode):
             files = (
                 llm_utils.fetch_files(
                     variable_pool=variable_pool,
-                    selector=self.node_data.vision.configs.variable_selector,
+                    selector=self._node_data.vision.configs.variable_selector,
                 )
-                if self.node_data.vision.enabled
+                if self._node_data.vision.enabled
                 else []
             )
 
@@ -200,7 +200,7 @@ class LLMNode(BaseNode):
                 node_inputs["#files#"] = [file.to_dict() for file in files]
 
             # fetch context value
-            generator = self._fetch_context(node_data=self.node_data)
+            generator = self._fetch_context(node_data=self._node_data)
             context = None
             for event in generator:
                 if isinstance(event, RunRetrieverResourceEvent):
@@ -211,7 +211,7 @@ class LLMNode(BaseNode):
 
             # fetch model config
             model_instance, model_config = LLMNode._fetch_model_config(
-                node_data_model=self.node_data.model,
+                node_data_model=self._node_data.model,
                 tenant_id=self.tenant_id,
             )
 
@@ -219,13 +219,13 @@ class LLMNode(BaseNode):
             memory = llm_utils.fetch_memory(
                 variable_pool=variable_pool,
                 app_id=self.app_id,
-                node_data_memory=self.node_data.memory,
+                node_data_memory=self._node_data.memory,
                 model_instance=model_instance,
             )
 
             query = None
-            if self.node_data.memory:
-                query = self.node_data.memory.query_prompt_template
+            if self._node_data.memory:
+                query = self._node_data.memory.query_prompt_template
                 if not query and (
                     query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
                 ):
@@ -237,24 +237,24 @@ class LLMNode(BaseNode):
                 context=context,
                 memory=memory,
                 model_config=model_config,
-                prompt_template=self.node_data.prompt_template,
-                memory_config=self.node_data.memory,
-                vision_enabled=self.node_data.vision.enabled,
-                vision_detail=self.node_data.vision.configs.detail,
+                prompt_template=self._node_data.prompt_template,
+                memory_config=self._node_data.memory,
+                vision_enabled=self._node_data.vision.enabled,
+                vision_detail=self._node_data.vision.configs.detail,
                 variable_pool=variable_pool,
-                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
+                jinja2_variables=self._node_data.prompt_config.jinja2_variables,
                 tenant_id=self.tenant_id,
             )
 
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
+                node_data_model=self._node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
                 user_id=self.user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
-                structured_output=self.node_data.structured_output,
+                structured_output_enabled=self._node_data.structured_output_enabled,
+                structured_output=self._node_data.structured_output,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self.node_id,
@@ -1010,7 +1010,7 @@ class LLMNode(BaseNode):
         """
         Fetch model schema
         """
-        model_name = self.node_data.model.name
+        model_name = self._node_data.model.name
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
@@ -1089,11 +1089,11 @@ class LLMNode(BaseNode):
 
     @property
     def continue_on_error(self) -> bool:
-        return self.node_data.error_strategy is not None
+        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:
-        return self.node_data.retry_config.retry_enabled
+        return self._node_data.retry_config.retry_enabled
 
 
 def _combine_message_content_with_role(

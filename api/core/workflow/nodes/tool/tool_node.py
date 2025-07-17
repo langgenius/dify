@@ -43,10 +43,10 @@ class ToolNode(BaseNode):
 
     _node_type = NodeType.TOOL
 
-    node_data: ToolNodeData
+    _node_data: ToolNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = ToolNodeData.model_validate(data)
+        self._node_data = ToolNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -57,7 +57,7 @@ class ToolNode(BaseNode):
         Run the tool node
         """
 
-        node_data = cast(ToolNodeData, self.node_data)
+        node_data = cast(ToolNodeData, self._node_data)
 
         # fetch tool icon
         tool_info = {
@@ -70,9 +70,9 @@ class ToolNode(BaseNode):
         try:
             from core.tools.tool_manager import ToolManager
 
-            variable_pool = self.graph_runtime_state.variable_pool if self.node_data.version != "1" else None
+            variable_pool = self.graph_runtime_state.variable_pool if self._node_data.version != "1" else None
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from, variable_pool
+                self.tenant_id, self.app_id, self.node_id, self._node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield RunCompletedEvent(
@@ -91,12 +91,12 @@ class ToolNode(BaseNode):
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self.node_data,
+            node_data=self._node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self.node_data,
+            node_data=self._node_data,
             for_log=True,
         )
         # get conversation id
@@ -404,27 +404,27 @@ class ToolNode(BaseNode):
         return result
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @property
     def continue_on_error(self) -> bool:
-        return self.node_data.error_strategy is not None
+        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:
-        return self.node_data.retry_config.retry_enabled
+        return self._node_data.retry_config.retry_enabled

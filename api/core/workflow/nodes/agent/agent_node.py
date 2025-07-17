@@ -63,28 +63,28 @@ class AgentNode(BaseNode):
     """
 
     _node_type = NodeType.AGENT
-    node_data: AgentNodeData
+    _node_data: AgentNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = AgentNodeData.model_validate(data)
+        self._node_data = AgentNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -94,7 +94,7 @@ class AgentNode(BaseNode):
         """
         Run the agent node
         """
-        node_data = cast(AgentNodeData, self.node_data)
+        node_data = cast(AgentNodeData, self._node_data)
 
         try:
             strategy = get_plugin_agent_strategy(
@@ -160,18 +160,18 @@ class AgentNode(BaseNode):
                 type=ToolInvokeMessage.MessageType.LOG,
                 message=ToolInvokeMessage.LogMessage(
                     id=str(uuid.uuid4()),
-                    label=f"Agent Strategy: {cast(AgentNodeData, self.node_data).agent_strategy_name}",
+                    label=f"Agent Strategy: {cast(AgentNodeData, self._node_data).agent_strategy_name}",
                     parent_id=None,
                     error=None,
                     status=ToolInvokeMessage.LogMessage.LogStatus.START,
                     data={
-                        "strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                        "strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
                         "parameters": parameters_for_log,
                         "thought_process": "Agent strategy execution started",
                     },
                     metadata={
                         "icon": self.agent_strategy_icon,
-                        "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                        "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
                     },
                 ),
             )
@@ -180,7 +180,7 @@ class AgentNode(BaseNode):
                 messages=message_stream,
                 tool_info={
                     "icon": self.agent_strategy_icon,
-                    "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                    "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
@@ -299,7 +299,7 @@ class AgentNode(BaseNode):
                         )
 
                         extra = tool.get("extra", {})
-                        runtime_variable_pool = variable_pool if self.node_data.version != "1" else None
+                        runtime_variable_pool = variable_pool if self._node_data.version != "1" else None
                         tool_runtime = ToolManager.get_agent_tool_runtime(
                             self.tenant_id, self.app_id, entity, self.invoke_from, runtime_variable_pool
                         )
@@ -415,7 +415,7 @@ class AgentNode(BaseNode):
                 plugin
                 for plugin in plugins
                 if f"{plugin.plugin_id}/{plugin.name}"
-                == cast(AgentNodeData, self.node_data).agent_strategy_provider_name
+                == cast(AgentNodeData, self._node_data).agent_strategy_provider_name
             )
             icon = current_plugin.declaration.icon
         except StopIteration:

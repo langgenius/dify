@@ -86,7 +86,7 @@ default_retrieval_model = {
 class KnowledgeRetrievalNode(BaseNode):
     _node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
-    node_data: KnowledgeRetrievalNodeData
+    _node_data: KnowledgeRetrievalNodeData
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
@@ -126,32 +126,32 @@ class KnowledgeRetrievalNode(BaseNode):
         self._llm_file_saver = llm_file_saver
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = KnowledgeRetrievalNodeData.model_validate(data)
+        self._node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls):
         return "1"
 
     def _run(self) -> NodeRunResult:  # type: ignore
-        node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
+        node_data = cast(KnowledgeRetrievalNodeData, self._node_data)
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
@@ -545,7 +545,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 prompt_messages=prompt_messages,
                 stop=stop,
                 user_id=self.user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
+                structured_output_enabled=self._node_data.structured_output_enabled,
                 structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,

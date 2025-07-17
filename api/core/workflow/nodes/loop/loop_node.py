@@ -51,28 +51,28 @@ class LoopNode(BaseNode):
 
     _node_type = NodeType.LOOP
 
-    node_data: LoopNodeData
+    _node_data: LoopNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = LoopNodeData.model_validate(data)
+        self._node_data = LoopNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -81,17 +81,17 @@ class LoopNode(BaseNode):
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """Run the node."""
         # Get inputs
-        loop_count = self.node_data.loop_count
-        break_conditions = self.node_data.break_conditions
-        logical_operator = self.node_data.logical_operator
+        loop_count = self._node_data.loop_count
+        break_conditions = self._node_data.break_conditions
+        logical_operator = self._node_data.logical_operator
 
         inputs = {"loop_count": loop_count}
 
-        if not self.node_data.start_node_id:
+        if not self._node_data.start_node_id:
             raise ValueError(f"field start_node_id in loop {self.node_id} not found")
 
         # Initialize graph
-        loop_graph = Graph.init(graph_config=self.graph_config, root_node_id=self.node_data.start_node_id)
+        loop_graph = Graph.init(graph_config=self.graph_config, root_node_id=self._node_data.start_node_id)
         if not loop_graph:
             raise ValueError("loop graph not found")
 
@@ -101,8 +101,8 @@ class LoopNode(BaseNode):
 
         # Initialize loop variables
         loop_variable_selectors = {}
-        if self.node_data.loop_variables:
-            for loop_variable in self.node_data.loop_variables:
+        if self._node_data.loop_variables:
+            for loop_variable in self._node_data.loop_variables:
                 value_processor = {
                     "constant": lambda var=loop_variable: self._get_segment_for_constant(var.var_type, var.value),
                     "variable": lambda var=loop_variable: variable_pool.get(var.value),
@@ -151,7 +151,7 @@ class LoopNode(BaseNode):
             loop_id=self.id,
             loop_node_id=self.node_id,
             loop_node_type=self.node_type,
-            loop_node_data=self.node_data,
+            loop_node_data=self._node_data,
             start_at=start_at,
             inputs=inputs,
             metadata={"loop_length": loop_count},
@@ -208,10 +208,10 @@ class LoopNode(BaseNode):
                 loop_id=self.id,
                 loop_node_id=self.node_id,
                 loop_node_type=self.node_type,
-                loop_node_data=self.node_data,
+                loop_node_data=self._node_data,
                 start_at=start_at,
                 inputs=inputs,
-                outputs=self.node_data.outputs,
+                outputs=self._node_data.outputs,
                 steps=loop_count,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
@@ -229,7 +229,7 @@ class LoopNode(BaseNode):
                         WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                         WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
-                    outputs=self.node_data.outputs,
+                    outputs=self._node_data.outputs,
                     inputs=inputs,
                 )
             )
@@ -241,7 +241,7 @@ class LoopNode(BaseNode):
                 loop_id=self.id,
                 loop_node_id=self.node_id,
                 loop_node_type=self.node_type,
-                loop_node_data=self.node_data,
+                loop_node_data=self._node_data,
                 start_at=start_at,
                 inputs=inputs,
                 steps=loop_count,
@@ -344,7 +344,7 @@ class LoopNode(BaseNode):
                         loop_id=self.id,
                         loop_node_id=self.node_id,
                         loop_node_type=self.node_type,
-                        loop_node_data=self.node_data,
+                        loop_node_data=self._node_data,
                         start_at=start_at,
                         inputs=inputs,
                         steps=current_index,
@@ -375,7 +375,7 @@ class LoopNode(BaseNode):
                     loop_id=self.id,
                     loop_node_id=self.node_id,
                     loop_node_type=self.node_type,
-                    loop_node_data=self.node_data,
+                    loop_node_data=self._node_data,
                     start_at=start_at,
                     inputs=inputs,
                     steps=current_index,
@@ -411,7 +411,7 @@ class LoopNode(BaseNode):
                 _outputs[loop_variable_key] = None
 
         _outputs["loop_round"] = current_index + 1
-        self.node_data.outputs = _outputs
+        self._node_data.outputs = _outputs
 
         if check_break_result:
             return {"check_break_result": True}
@@ -424,9 +424,9 @@ class LoopNode(BaseNode):
             loop_id=self.id,
             loop_node_id=self.node_id,
             loop_node_type=self.node_type,
-            loop_node_data=self.node_data,
+            loop_node_data=self._node_data,
             index=next_index,
-            pre_loop_output=self.node_data.outputs,
+            pre_loop_output=self._node_data.outputs,
         )
 
         return {"check_break_result": False}

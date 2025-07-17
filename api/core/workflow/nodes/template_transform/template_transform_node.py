@@ -16,28 +16,28 @@ MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MA
 class TemplateTransformNode(BaseNode):
     _node_type = NodeType.TEMPLATE_TRANSFORM
 
-    node_data: TemplateTransformNodeData
+    _node_data: TemplateTransformNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = TemplateTransformNodeData.model_validate(data)
+        self._node_data = TemplateTransformNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -58,14 +58,14 @@ class TemplateTransformNode(BaseNode):
     def _run(self) -> NodeRunResult:
         # Get variables
         variables = {}
-        for variable_selector in self.node_data.variables:
+        for variable_selector in self._node_data.variables:
             variable_name = variable_selector.variable
             value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             variables[variable_name] = value.to_object() if value else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
-                language=CodeLanguage.JINJA2, code=self.node_data.template, inputs=variables
+                language=CodeLanguage.JINJA2, code=self._node_data.template, inputs=variables
             )
         except CodeExecutionError as e:
             return NodeRunResult(inputs=variables, status=WorkflowNodeExecutionStatus.FAILED, error=str(e))

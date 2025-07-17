@@ -17,28 +17,28 @@ from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError
 class ListOperatorNode(BaseNode):
     _node_type = NodeType.LIST_OPERATOR
 
-    node_data: ListOperatorNodeData
+    _node_data: ListOperatorNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = ListOperatorNodeData(**data)
+        self._node_data = ListOperatorNodeData(**data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -49,9 +49,9 @@ class ListOperatorNode(BaseNode):
         process_data: dict[str, list] = {}
         outputs: dict[str, Any] = {}
 
-        variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
+        variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)
         if variable is None:
-            error_message = f"Variable not found for selector: {self.node_data.variable}"
+            error_message = f"Variable not found for selector: {self._node_data.variable}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
@@ -71,7 +71,7 @@ class ListOperatorNode(BaseNode):
             )
         if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
-                f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
+                f"Variable {self._node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
                 "or ArrayStringSegment"
             )
             return NodeRunResult(
@@ -87,19 +87,19 @@ class ListOperatorNode(BaseNode):
 
         try:
             # Filter
-            if self.node_data.filter_by.enabled:
+            if self._node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
             # Extract
-            if self.node_data.extract_by.enabled:
+            if self._node_data.extract_by.enabled:
                 variable = self._extract_slice(variable)
 
             # Order
-            if self.node_data.order_by.enabled:
+            if self._node_data.order_by.enabled:
                 variable = self._apply_order(variable)
 
             # Slice
-            if self.node_data.limit.enabled:
+            if self._node_data.limit.enabled:
                 variable = self._apply_slice(variable)
 
             outputs = {
@@ -127,7 +127,7 @@ class ListOperatorNode(BaseNode):
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
         filter_func: Callable[[Any], bool]
         result: list[Any] = []
-        for condition in self.node_data.filter_by.conditions:
+        for condition in self._node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
                 if not isinstance(condition.value, str):
                     raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
@@ -160,14 +160,14 @@ class ListOperatorNode(BaseNode):
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
         if isinstance(variable, ArrayStringSegment):
-            result = _order_string(order=self.node_data.order_by.value, array=variable.value)
+            result = _order_string(order=self._node_data.order_by.value, array=variable.value)
             variable = variable.model_copy(update={"value": result})
         elif isinstance(variable, ArrayNumberSegment):
-            result = _order_number(order=self.node_data.order_by.value, array=variable.value)
+            result = _order_number(order=self._node_data.order_by.value, array=variable.value)
             variable = variable.model_copy(update={"value": result})
         elif isinstance(variable, ArrayFileSegment):
             result = _order_file(
-                order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
+                order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
         return variable
@@ -175,13 +175,13 @@ class ListOperatorNode(BaseNode):
     def _apply_slice(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        result = variable.value[: self.node_data.limit.size]
+        result = variable.value[: self._node_data.limit.size]
         return variable.model_copy(update={"value": result})
 
     def _extract_slice(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text)
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self._node_data.extract_by.serial).text)
         if value < 1:
             raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
         value -= 1

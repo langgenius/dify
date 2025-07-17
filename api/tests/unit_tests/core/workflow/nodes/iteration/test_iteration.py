@@ -665,8 +665,8 @@ def test_iteration_run_in_parallel_mode():
         # execute node
         parallel_result = parallel_iteration_node._run()
         sequential_result = sequential_iteration_node._run()
-        assert parallel_iteration_node.node_data.parallel_nums == 10
-        assert parallel_iteration_node.node_data.error_handle_mode == ErrorHandleMode.TERMINATED
+        assert parallel_iteration_node._node_data.parallel_nums == 10
+        assert parallel_iteration_node._node_data.error_handle_mode == ErrorHandleMode.TERMINATED
         count = 0
         parallel_arr = []
         sequential_arr = []
@@ -876,7 +876,7 @@ def test_iteration_run_error_handle():
 
     assert count == 14
     # execute remove abnormal output
-    iteration_node.node_data.error_handle_mode = ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT
+    iteration_node._node_data.error_handle_mode = ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT
     result = iteration_node._run()
     count = 0
     for item in result:

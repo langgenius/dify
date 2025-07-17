@@ -17,28 +17,28 @@ from core.workflow.utils.condition.processor import ConditionProcessor
 class IfElseNode(BaseNode):
     _node_type = NodeType.IF_ELSE
 
-    node_data: IfElseNodeData
+    _node_data: IfElseNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = IfElseNodeData.model_validate(data)
+        self._node_data = IfElseNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -59,8 +59,8 @@ class IfElseNode(BaseNode):
         condition_processor = ConditionProcessor()
         try:
             # Check if the new cases structure is used
-            if self.node_data.cases:
-                for case in self.node_data.cases:
+            if self._node_data.cases:
+                for case in self._node_data.cases:
                     input_conditions, group_result, final_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
                         conditions=case.conditions,
@@ -86,8 +86,8 @@ class IfElseNode(BaseNode):
                 input_conditions, group_result, final_result = _should_not_use_old_function(
                     condition_processor=condition_processor,
                     variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=self.node_data.conditions or [],
-                    operator=self.node_data.logical_operator or "and",
+                    conditions=self._node_data.conditions or [],
+                    operator=self._node_data.logical_operator or "and",
                 )
 
                 selected_case_id = "true" if final_result else "false"

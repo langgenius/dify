@@ -25,28 +25,28 @@ from .exc import (
 class CodeNode(BaseNode):
     _node_type = NodeType.CODE
 
-    node_data: CodeNodeData
+    _node_data: CodeNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self.node_data = CodeNodeData.model_validate(data)
+        self._node_data = CodeNodeData.model_validate(data)
 
     def get_error_strategy(self) -> Optional[ErrorStrategy]:
-        return self.node_data.error_strategy
+        return self._node_data.error_strategy
 
     def get_retry_config(self) -> RetryConfig:
-        return self.node_data.retry_config
+        return self._node_data.retry_config
 
     def get_title(self) -> str:
-        return self.node_data.title
+        return self._node_data.title
 
     def get_description(self) -> Optional[str]:
-        return self.node_data.desc
+        return self._node_data.desc
 
     def get_default_value_dict(self) -> dict[str, Any]:
-        return self.node_data.default_value_dict
+        return self._node_data.default_value_dict
 
     def get_base_node_data(self) -> BaseNodeData:
-        return self.node_data
+        return self._node_data
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -70,12 +70,12 @@ class CodeNode(BaseNode):
 
     def _run(self) -> NodeRunResult:
         # Get code language
-        code_language = self.node_data.code_language
-        code = self.node_data.code
+        code_language = self._node_data.code_language
+        code = self._node_data.code
 
         # Get variables
         variables = {}
-        for variable_selector in self.node_data.variables:
+        for variable_selector in self._node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if isinstance(variable, ArrayFileSegment):
@@ -91,7 +91,7 @@ class CodeNode(BaseNode):
             )
 
             # Transform result
-            result = self._transform_result(result=result, output_schema=self.node_data.outputs)
+            result = self._transform_result(result=result, output_schema=self._node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
@@ -369,8 +369,8 @@ class CodeNode(BaseNode):
 
     @property
     def continue_on_error(self) -> bool:
-        return self.node_data.error_strategy is not None
+        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:
-        return self.node_data.retry_config.retry_enabled
+        return self._node_data.retry_config.retry_enabled
