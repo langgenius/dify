@@ -118,7 +118,8 @@ const AppPublisher = ({
     }
   }, [appAccessSubjects, appDetail])
   const language = useGetLanguage()
-  const formatTimeFromNow = useCallback(async (time: number) => {
+
+  const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
 
@@ -182,8 +183,7 @@ const AppPublisher = ({
     if (publishDisabled || published)
       return
     handlePublish()
-  },
-    { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   return (
     <>
