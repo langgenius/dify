@@ -56,7 +56,6 @@ class OAuthHandler(BasePluginClient):
         Get credentials from the given request.
         """
 
-
         try:
             # encode request to raw http request
             raw_request_bytes = self._convert_request_to_raw_data(request)

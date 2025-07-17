@@ -807,7 +807,7 @@ class ToolOAuthCustomClient(Resource):
                 tenant_id=current_user.current_tenant_id, provider=provider
             )
         )
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -844,6 +844,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
                 provider=provider,
             )
         )
+
 
 class ToolProviderMCPApi(Resource):
     @setup_required

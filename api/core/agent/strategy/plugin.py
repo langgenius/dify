@@ -60,7 +60,5 @@ class PluginAgentStrategy(BaseAgentStrategy):
             conversation_id=conversation_id,
             app_id=app_id,
             message_id=message_id,
-            context=PluginInvokeContext(
-                credentials=credentials or InvokeCredentials()
-            ),
+            context=PluginInvokeContext(credentials=credentials or InvokeCredentials()),
         )

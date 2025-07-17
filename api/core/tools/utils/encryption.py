@@ -127,6 +127,7 @@ class ProviderConfigEncrypter:
 def create_provider_encrypter(tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache):
     return ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache), cache
 
+
 def create_tool_provider_encrypter(tenant_id: str, controller: ToolProviderController):
     cache = SingletonProviderCredentialsCache(
         tenant_id=tenant_id,

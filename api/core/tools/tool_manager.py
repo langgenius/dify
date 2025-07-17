@@ -207,7 +207,7 @@ class ToolManager:
                     # if the provider has been deleted, raise an error
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
-                
+
                 # fallback to the default provider
                 if builtin_provider is None:
                     # use the default provider
