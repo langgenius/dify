@@ -508,6 +508,7 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
+      integratedAlert: 'Notion通过内部凭证集成，无需重新授权。',
     },
     website: {
       title: '网站',

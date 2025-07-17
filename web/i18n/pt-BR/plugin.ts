@@ -63,6 +63,7 @@ const translation = {
       uninstalledTitle: 'Ferramenta não instalada',
       unsupportedTitle: 'Ação sem suporte',
       toolSetting: 'Configurações da Ferramenta',
+      unsupportedMCPTool: 'A versão atual do plugin de estratégia do agente selecionado não suporta ferramentas MCP.',
     },
     serviceOk: 'Serviço OK',
     endpointsTip: 'Este plug-in fornece funcionalidades específicas por meio de endpoints e você pode configurar vários conjuntos de endpoints para o workspace atual.',

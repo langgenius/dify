@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Добавить узел',
     needAnswerNode: 'В узел ответа необходимо добавить',
     needEndNode: 'Узел конца должен быть добавлен',
+    tagBound: 'Количество приложений, использующих этот тег',
   },
   env: {
     envPanelTitle: 'Переменные среды',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'Агентская стратегия',
     'blocks': 'Узлы',
     'searchBlock': 'Поиск узла',
+    'addAll': 'Добавить всё',
+    'allAdded': 'Все добавлено',
   },
   blocks: {
     'start': 'Начало',
@@ -364,7 +367,10 @@ const translation = {
         retryFailedTimes: 'Повторные попытки {{times}} не увенчались успехом',
         retries: '{{число}} Повторных попыток',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Входное значение',
+        variable: 'Используйте переменную',
+      },
     },
     start: {
       required: 'обязательно',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Расширенные зависимости',
       advancedDependenciesTip: 'Добавьте сюда некоторые предварительно загруженные зависимости, которые занимают больше времени для потребления или не являются встроенными по умолчанию',
       searchDependencies: 'Поиск зависимостей',
+      syncFunctionSignature: 'Синхронизировать сигнатуру функции с кодом',
     },
     templateTransform: {
       inputVars: 'Входные переменные',
@@ -670,6 +677,9 @@ const translation = {
         json: 'json, сгенерированный инструментом',
       },
       authorize: 'Авторизовать',
+      settings: 'Настройки',
+      insertPlaceholder2: 'вставьте переменную',
+      insertPlaceholder1: 'Наберите или нажмите',
     },
     questionClassifiers: {
       model: 'модель',
@@ -854,6 +864,8 @@ const translation = {
       pluginNotFoundDesc: 'Этот плагин устанавливается с GitHub. Пожалуйста, перейдите в раздел Плагины для переустановки',
       configureModel: 'Сконфигурировать модель',
       maxIterations: 'Максимальное количество итераций',
+      parameterSchema: 'Схема параметров',
+      clickToViewParameterSchema: 'Нажмите, чтобы просмотреть схему параметров',
     },
     loop: {
       ErrorMethod: {

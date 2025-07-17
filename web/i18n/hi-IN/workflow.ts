@@ -118,6 +118,7 @@ const translation = {
     needAnswerNode: 'उत्तर नोड जोड़ा जाना चाहिए',
     addBlock: 'नोड जोड़ें',
     needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
+    tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -237,6 +238,8 @@ const translation = {
     'agent': 'एजेंट रणनीति',
     'searchBlock': 'खोज नोड',
     'blocks': 'नोड्स',
+    'addAll': 'सभी जोड़ें',
+    'allAdded': 'सभी जोड़े गए',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -376,7 +379,10 @@ const translation = {
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'इनपुट मान',
+        variable: 'चर चर का प्रयोग करें',
+      },
     },
     start: {
       required: 'आवश्यक',
@@ -565,6 +571,7 @@ const translation = {
       advancedDependenciesTip:
         'कुछ प्रीलोडेड निर्भरताएँ जोड़ें जिनका उपयोग करने में अधिक समय लगता है या जो डिफ़ॉल्ट निर्मित में नहीं हैं',
       searchDependencies: 'निर्भरताएँ खोजें',
+      syncFunctionSignature: 'कोड के साथ फ़ंक्शन हस्ताक्षर को सिंक करें',
     },
     templateTransform: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -686,6 +693,9 @@ const translation = {
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
       authorize: 'अधिकृत करें',
+      insertPlaceholder1: 'टाइप करें या दबाएँ',
+      settings: 'सेटिंग्स',
+      insertPlaceholder2: 'चरित्र डालें',
     },
     questionClassifiers: {
       model: 'मॉडल',
@@ -874,6 +884,8 @@ const translation = {
       maxIterations: 'अधिकतम पुनरावृत्तियाँ',
       strategyNotSet: 'एजेंटिक रणनीति सेट नहीं की गई',
       strategyNotFoundDescAndSwitchVersion: 'स्थापित प्लगइन संस्करण इस रणनीति को प्रदान नहीं करता है। संस्करण बदलने के लिए क्लिक करें।',
+      parameterSchema: 'पैरामीटर स्कीमा',
+      clickToViewParameterSchema: 'पैरामीटर स्कीमा देखने के लिए क्लिक करें',
     },
     loop: {
       ErrorMethod: {
