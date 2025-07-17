@@ -172,7 +172,10 @@ const translation = {
       description: 'Weave é uma plataforma de código aberto para avaliar, testar e monitorar aplicações de LLM.',
       title: 'Trançar',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Monitoramento em Nuvem',
+      description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',
@@ -256,6 +259,8 @@ const translation = {
   },
   accessControl: 'Controle de Acesso do Aplicativo Web',
   noAccessPermission: 'Sem permissão para acessar o aplicativo web',
+  maxActiveRequestsPlaceholder: 'Digite 0 para ilimitado',
+  maxActiveRequests: 'Máximo de solicitações simultâneas',
 }
 
 export default translation

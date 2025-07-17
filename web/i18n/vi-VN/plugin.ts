@@ -63,6 +63,7 @@ const translation = {
       empty: 'Nhấp vào nút \'+\' để thêm công cụ. Bạn có thể thêm nhiều công cụ.',
       unsupportedTitle: 'Hành động không được hỗ trợ',
       toolSetting: 'Cài đặt công cụ',
+      unsupportedMCPTool: 'Phiên bản plugin chiến lược đại lý được chọn hiện tại không hỗ trợ công cụ MCP.',
     },
     switchVersion: 'Chuyển đổi phiên bản',
     endpointDisableTip: 'Tắt điểm cuối',

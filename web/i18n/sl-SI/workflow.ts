@@ -113,6 +113,7 @@ const translation = {
     autoSaved: 'Samodejno shranjeno',
     configure: 'Konfiguriraj',
     inRunMode: 'V načinu izvajanja',
+    tagBound: 'Število aplikacij, ki uporabljajo to oznako',
   },
   env: {
     modal: {
@@ -231,6 +232,8 @@ const translation = {
     'blocks': 'Vozlišča',
     'question-understand': 'Vprašanje Razumevanje',
     'agent': 'Agentska strategija',
+    'addAll': 'Dodaj vse',
+    'allAdded': 'Vse dodano',
   },
   blocks: {
     'iteration': 'Iteracija',
@@ -366,7 +369,10 @@ const translation = {
       },
       insertVarTip: 'Vstavite spremenljivko',
       outputVars: 'Izhodne spremenljivke',
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Uporabi spremenljivko',
+        input: 'Vhodna vrednost',
+      },
     },
     start: {
       outputVars: {
@@ -553,6 +559,7 @@ const translation = {
       outputVars: 'Izhodne spremenljivke',
       inputVars: 'Vhodne spremenljivke',
       advancedDependenciesTip: 'Dodajte nekaj vnaprej naloženih odvisnosti, ki potrebujejo več časa za obdelavo ali niso privzete vgrajene.',
+      syncFunctionSignature: 'Sinhronizirajte podpis funkcije s kodo',
     },
     templateTransform: {
       outputVars: {
@@ -670,6 +677,9 @@ const translation = {
       },
       inputVars: 'Vhodne spremenljivke',
       authorize: 'Pooblasti',
+      insertPlaceholder2: 'vstavite spremenljivko',
+      insertPlaceholder1: 'Vnesite ali pritisnite',
+      settings: 'Nastavitve',
     },
     questionClassifiers: {
       outputVars: {
@@ -886,6 +896,8 @@ const translation = {
       toolNotAuthorizedTooltip: '{{tool}} Ni pooblaščen',
       strategyNotFoundDescAndSwitchVersion: 'Nameščena različica vtičnika ne podpira te strategije. Kliknite za preklop na drugo različico.',
       pluginNotInstalledDesc: 'Ta vtičnik je nameščen iz GitHuba. Prosimo, da greste v vtičnike in ga ponovo namestite.',
+      parameterSchema: 'Parametrska shema',
+      clickToViewParameterSchema: 'Kliknite za prikaz sheme parametrov',
     },
   },
   tracing: {

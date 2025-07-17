@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
+    tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -234,6 +235,8 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Nút',
     'searchBlock': 'Tìm kiếm nút',
+    'allAdded': 'Tất cả đã được thêm vào',
+    'addAll': 'Thêm tất cả',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -364,7 +367,10 @@ const translation = {
         times: 'lần',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Giá trị đầu vào',
+        variable: 'Sử dụng biến',
+      },
     },
     start: {
       required: 'bắt buộc',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Phụ thuộc nâng cao',
       advancedDependenciesTip: 'Thêm một số phụ thuộc được tải trước mà tốn nhiều thời gian hoặc không phải là mặc định tại đây',
       searchDependencies: 'Tìm kiếm phụ thuộc',
+      syncFunctionSignature: 'Đồng bộ chữ ký hàm với mã',
     },
     templateTransform: {
       inputVars: 'Biến đầu vào',
@@ -670,6 +677,9 @@ const translation = {
         json: 'JSON được tạo bởi công cụ',
       },
       authorize: 'Ủy quyền',
+      settings: 'Cài đặt',
+      insertPlaceholder2: 'Chèn biến vào',
+      insertPlaceholder1: 'Gõ hoặc nhấn',
     },
     questionClassifiers: {
       model: 'mô hình',
@@ -854,6 +864,8 @@ const translation = {
       notAuthorized: 'Không được ủy quyền',
       strategyNotFoundDesc: 'Phiên bản plugin đã cài đặt không cung cấp chiến lược này.',
       toolbox: 'hộp công cụ',
+      clickToViewParameterSchema: 'Nhấp để xem sơ đồ tham số',
+      parameterSchema: 'Sơ đồ Tham số',
     },
     loop: {
       ErrorMethod: {

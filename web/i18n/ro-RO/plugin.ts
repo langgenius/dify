@@ -63,6 +63,7 @@ const translation = {
       toolLabel: 'Unealtă',
       uninstalledTitle: 'Instrumentul nu este instalat',
       toolSetting: 'Setările instrumentului',
+      unsupportedMCPTool: 'Versiunea pluginului de strategie a agentului selectat în prezent nu suportă uneltele MCP.',
     },
     endpointDeleteContent: 'Doriți să eliminați {{name}}?',
     strategyNum: '{{num}} {{strategie}} INCLUS',
