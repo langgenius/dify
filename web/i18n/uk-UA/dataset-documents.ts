@@ -369,6 +369,7 @@ const translation = {
     empty: 'Шматок не знайдено',
     chunks_other: 'ШМАТКИ',
     editedAt: 'За редакцією',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     searchResults_zero: 'РЕЗУЛЬТАТ',
     collapseChunks: 'Згортання шматків',
     childChunkAdded: 'Додано 1 дочірній фрагмент',
