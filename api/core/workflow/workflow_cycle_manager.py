@@ -55,6 +55,11 @@ class WorkflowCycleManager:
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
+        # Initialize caches for workflow execution cycle
+        # These caches avoid redundant repository calls during a single workflow execution
+        self._workflow_execution_cache: dict[str, WorkflowExecution] = {}
+        self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
+
     def handle_workflow_run_start(self) -> WorkflowExecution:
         inputs = {**self._application_generate_entity.inputs}
 
@@ -84,6 +89,9 @@ class WorkflowCycleManager:
         )
 
         self._workflow_execution_repository.save(execution)
+
+        # Cache the execution
+        self._workflow_execution_cache[execution.id_] = execution
 
         return execution
 
@@ -176,10 +184,13 @@ class WorkflowCycleManager:
         workflow_execution.finished_at = now
         workflow_execution.exceptions_count = exceptions_count
 
-        # Use the instance repository to find running executions for a workflow run
-        running_node_executions = self._workflow_node_execution_repository.get_running_executions(
-            workflow_run_id=workflow_execution.id_
-        )
+        # First check cached node executions for running status
+        running_node_executions = [
+            node_exec
+            for node_exec in self._node_execution_cache.values()
+            if node_exec.workflow_execution_id == workflow_execution.id_
+            and node_exec.status == WorkflowNodeExecutionStatus.RUNNING
+        ]
 
         # Update the domain models
         for node_execution in running_node_executions:
@@ -240,11 +251,16 @@ class WorkflowCycleManager:
         # Use the instance repository to save the domain model
         self._workflow_node_execution_repository.save(domain_execution)
 
+        # Cache the node execution
+        if domain_execution.node_execution_id:
+            self._node_execution_cache[domain_execution.node_execution_id] = domain_execution
+
         return domain_execution
 
     def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
-        # Get the domain model from repository
-        domain_execution = self._workflow_node_execution_repository.get_by_node_execution_id(event.node_execution_id)
+        # Check cache first
+        domain_execution = self._node_execution_cache.get(event.node_execution_id)
+
         if not domain_execution:
             raise ValueError(f"Domain node execution not found: {event.node_execution_id}")
 
@@ -288,8 +304,9 @@ class WorkflowCycleManager:
         :param event: queue node failed event
         :return:
         """
-        # Get the domain model from repository
-        domain_execution = self._workflow_node_execution_repository.get_by_node_execution_id(event.node_execution_id)
+        # Check cache first
+        domain_execution = self._node_execution_cache.get(event.node_execution_id)
+
         if not domain_execution:
             raise ValueError(f"Domain node execution not found: {event.node_execution_id}")
 
@@ -374,10 +391,15 @@ class WorkflowCycleManager:
         # Use the instance repository to save the domain model
         self._workflow_node_execution_repository.save(domain_execution)
 
+        # Cache the node execution
+        if domain_execution.node_execution_id:
+            self._node_execution_cache[domain_execution.node_execution_id] = domain_execution
+
         return domain_execution
 
     def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
-        execution = self._workflow_execution_repository.get(id)
-        if not execution:
-            raise WorkflowRunNotFoundError(id)
-        return execution
+        # Check cache first
+        if id in self._workflow_execution_cache:
+            return self._workflow_execution_cache[id]
+
+        raise WorkflowRunNotFoundError(id)
