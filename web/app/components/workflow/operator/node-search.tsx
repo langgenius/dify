@@ -104,7 +104,13 @@ const NodeSearch = () => {
 
   const searchableNodes = useMemo(() => {
     const filteredNodes = nodes.filter((node) => {
-      return node.id && node.data && node.type !== 'sticky'
+      if (!node.id || !node.data || node.type === 'sticky') return false
+
+      const nodeData = node.data as any
+      const nodeType = nodeData?.type
+
+      const internalStartNodes = ['iteration-start', 'loop-start']
+      return !internalStartNodes.includes(nodeType)
     })
 
     const result = filteredNodes
