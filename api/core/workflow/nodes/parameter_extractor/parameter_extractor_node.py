@@ -95,7 +95,7 @@ class ParameterExtractorNode(BaseNode):
 
     node_data: ParameterExtractorNodeData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = ParameterExtractorNodeData(**data)
 
     _model_instance: Optional[ModelInstance] = None

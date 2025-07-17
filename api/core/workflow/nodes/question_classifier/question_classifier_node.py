@@ -81,7 +81,7 @@ class QuestionClassifierNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = QuestionClassifierNodeData(**data)
 
     @classmethod

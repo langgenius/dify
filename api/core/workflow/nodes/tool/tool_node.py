@@ -44,7 +44,7 @@ class ToolNode(BaseNode):
 
     node_data: ToolNodeData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = ToolNodeData(**data)
 
     @classmethod
@@ -373,7 +373,7 @@ class ToolNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ToolNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -382,9 +382,12 @@ class ToolNode(BaseNode):
         :param node_data: node data
         :return:
         """
+        # Create typed NodeData from dict
+        typed_node_data = ToolNodeData(**node_data)
+        
         result = {}
-        for parameter_name in node_data.tool_parameters:
-            input = node_data.tool_parameters[parameter_name]
+        for parameter_name in typed_node_data.tool_parameters:
+            input = typed_node_data.tool_parameters[parameter_name]
             if input.type == "mixed":
                 assert isinstance(input.value, str)
                 selectors = VariableTemplateParser(input.value).extract_variable_selectors()

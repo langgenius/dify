@@ -137,7 +137,7 @@ class LLMNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = LLMNodeData(**data)
 
     @classmethod
@@ -788,10 +788,12 @@ class LLMNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: LLMNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        prompt_template = node_data.prompt_template
-
+        # Create typed NodeData from dict
+        typed_node_data = LLMNodeData(**node_data)
+        
+        prompt_template = typed_node_data.prompt_template
         variable_selectors = []
         if isinstance(prompt_template, list) and all(
             isinstance(prompt, LLMNodeChatModelMessage) for prompt in prompt_template
@@ -811,7 +813,7 @@ class LLMNode(BaseNode):
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        memory = node_data.memory
+        memory = typed_node_data.memory
         if memory and memory.query_prompt_template:
             query_variable_selectors = VariableTemplateParser(
                 template=memory.query_prompt_template
@@ -819,16 +821,16 @@ class LLMNode(BaseNode):
             for variable_selector in query_variable_selectors:
                 variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
-        if node_data.context.enabled:
-            variable_mapping["#context#"] = node_data.context.variable_selector
+        if typed_node_data.context.enabled:
+            variable_mapping["#context#"] = typed_node_data.context.variable_selector
 
-        if node_data.vision.enabled:
-            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
+        if typed_node_data.vision.enabled:
+            variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
-        if node_data.memory:
+        if typed_node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
 
-        if node_data.prompt_config:
+        if typed_node_data.prompt_config:
             enable_jinja = False
 
             if isinstance(prompt_template, list):
@@ -841,7 +843,7 @@ class LLMNode(BaseNode):
                     enable_jinja = True
 
             if enable_jinja:
-                for variable_selector in node_data.prompt_config.jinja2_variables or []:
+                for variable_selector in typed_node_data.prompt_config.jinja2_variables or []:
                     variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}

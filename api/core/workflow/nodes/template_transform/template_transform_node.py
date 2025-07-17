@@ -17,7 +17,7 @@ class TemplateTransformNode(BaseNode):
 
     node_data: TemplateTransformNodeData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = TemplateTransformNodeData(**data)
 
     @classmethod

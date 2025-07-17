@@ -65,7 +65,7 @@ class IterationNode(BaseNode):
 
     node_data: IterationNodeData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = IterationNodeData(**data)
 
     @classmethod

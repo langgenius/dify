@@ -50,7 +50,7 @@ class BaseNode:
         self.node_id = node_id
 
     @abstractmethod
-    def from_dict(self, data: Mapping[str, Any]) -> None: ...
+    def init_node_data(self, data: Mapping[str, Any]) -> None: ...
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:

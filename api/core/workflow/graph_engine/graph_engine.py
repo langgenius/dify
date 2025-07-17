@@ -276,7 +276,7 @@ class GraphEngine:
                 previous_node_id=previous_node_id,
                 thread_pool_id=self.thread_pool_id,
             )
-            node_instance.from_dict(node_config.get("data", {}))
+            node_instance.init_node_data(node_config.get("data", {}))
             try:
                 # run node
                 generator = self._run_node(

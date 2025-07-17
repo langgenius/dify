@@ -28,7 +28,7 @@ class VariableAssignerNode(BaseNode):
 
     node_data: VariableAssignerData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = VariableAssignerData(**data)
 
     def __init__(

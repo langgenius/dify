@@ -18,7 +18,7 @@ class IfElseNode(BaseNode):
 
     node_data: IfElseNodeData
 
-    def from_dict(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = IfElseNodeData(**data)
 
     @classmethod
