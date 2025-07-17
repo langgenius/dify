@@ -3,10 +3,11 @@
 Test Clickzetta integration in Docker environment
 """
 import os
-import json
-import requests
 import time
+
+import requests
 from clickzetta import connect
+
 
 def test_clickzetta_connection():
     """Test direct connection to Clickzetta"""
