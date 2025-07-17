@@ -2,7 +2,6 @@ import json
 import logging
 import queue
 import threading
-import time
 import uuid
 from typing import Any, Optional
 
@@ -13,7 +12,6 @@ from configs import dify_config
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
-from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
@@ -120,14 +118,14 @@ class ClickzettaVector(BaseVector):
                     result = func(*args, **kwargs)
                     result_queue.put((True, result))
                 except Exception as e:
-                    logger.error(f"Write task failed: {e}")
+                    logger.exception("Write task failed")
                     result_queue.put((False, e))
                 finally:
                     cls._write_queue.task_done()
             except queue.Empty:
                 continue
             except Exception as e:
-                logger.error(f"Write worker error: {e}")
+                logger.exception("Write worker error")
     
     def _execute_write(self, func, *args, **kwargs):
         """Execute a write operation through the queue."""
@@ -231,7 +229,7 @@ class ClickzettaVector(BaseVector):
                 "with the same type" in error_msg):
                 logger.info(f"Vector index already exists: {e}")
             else:
-                logger.error(f"Failed to create vector index: {e}")
+                logger.exception("Failed to create vector index")
                 raise
 
     def _create_inverted_index(self, cursor):
@@ -466,7 +464,7 @@ class ClickzettaVector(BaseVector):
                     doc = Document(page_content=row[1], metadata=metadata)
                     documents.append(doc)
             except Exception as e:
-                logger.error(f"Full-text search failed: {e}")
+                logger.exception("Full-text search failed")
                 # Fallback to LIKE search if full-text search fails
                 return self._search_by_like(query, **kwargs)
 
