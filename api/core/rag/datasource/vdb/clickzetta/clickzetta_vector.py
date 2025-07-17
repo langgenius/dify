@@ -19,6 +19,9 @@ from models.dataset import Dataset
 logger = logging.getLogger(__name__)
 
 
+# ClickZetta Lakehouse Vector Database Configuration
+
+
 class ClickzettaConfig(BaseModel):
     """
     Configuration class for Clickzetta connection.
