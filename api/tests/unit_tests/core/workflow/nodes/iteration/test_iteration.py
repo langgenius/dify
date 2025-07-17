@@ -162,24 +162,29 @@ def test_run():
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
+    node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "tt",
+            "title": "迭代",
+            "type": "iteration",
+        },
+        "id": "iteration-1",
+    }
+
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "tt",
-                "title": "迭代",
-                "type": "iteration",
-            },
-            "id": "iteration-1",
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -379,24 +384,29 @@ def test_run_parallel():
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
+    node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+        },
+        "id": "iteration-1",
+    }
+
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-            },
-            "id": "iteration-1",
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -595,44 +605,54 @@ def test_iteration_run_in_parallel_mode():
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
+    parallel_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+            "is_parallel": True,
+        },
+        "id": "iteration-1",
+    }
+
     parallel_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-                "is_parallel": True,
-            },
-            "id": "iteration-1",
-        },
+        config=parallel_node_config,
     )
+
+    # Initialize node data
+    parallel_iteration_node.init_node_data(parallel_node_config["data"])
+    sequential_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+            "is_parallel": True,
+        },
+        "id": "iteration-1",
+    }
+
     sequential_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-                "is_parallel": True,
-            },
-            "id": "iteration-1",
-        },
+        config=sequential_node_config,
     )
+
+    # Initialize node data
+    sequential_iteration_node.init_node_data(sequential_node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -818,26 +838,31 @@ def test_iteration_run_error_handle():
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["1", "1"])
+    error_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "iteration",
+            "type": "iteration",
+            "is_parallel": True,
+            "error_handle_mode": ErrorHandleMode.CONTINUE_ON_ERROR,
+        },
+        "id": "iteration-1",
+    }
+
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "iteration",
-                "type": "iteration",
-                "is_parallel": True,
-                "error_handle_mode": ErrorHandleMode.CONTINUE_ON_ERROR,
-            },
-            "id": "iteration-1",
-        },
+        config=error_node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(error_node_config["data"])
     # execute continue on error node
     result = iteration_node._run()
     result_arr = []
