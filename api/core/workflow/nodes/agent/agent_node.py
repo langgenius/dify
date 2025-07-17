@@ -31,7 +31,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.tool_manager import ToolManager
-from core.variables.segments import ArrayFileSegment, FileSegment, StringSegment, ArrayAnySegment
+from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -198,17 +198,11 @@ class AgentNode(ToolNode):
                 return "sys.files" in str(_agent_input.value)
             return False
 
-        uses_sys_files_for_node: bool = any(
-            _input_uses_sys_files(inp) for inp in node_data.agent_parameters.values()
-        )
+        uses_sys_files_for_node: bool = any(_input_uses_sys_files(inp) for inp in node_data.agent_parameters.values())
 
         sys_files_segment = variable_pool.get(["sys", SystemVariableKey.FILES.value])
-        sys_files_empty: bool = (
-            sys_files_segment is None
-            or (
-                isinstance(sys_files_segment, (ArrayFileSegment, ArrayAnySegment))
-                and len(sys_files_segment.value) == 0
-            )
+        sys_files_empty: bool = sys_files_segment is None or (
+            isinstance(sys_files_segment, (ArrayFileSegment, ArrayAnySegment)) and len(sys_files_segment.value) == 0
         )
 
         result: dict[str, Any] = {}
