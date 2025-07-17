@@ -15,16 +15,18 @@ export function connectOnlineUserWebSocket(appId: string): Socket {
     socket.disconnect()
 
   const url = process.env.NEXT_PUBLIC_SOCKET_URL || 'ws://localhost:5001'
+  const token = localStorage.getItem('console_token')
 
   socket = io(url, {
     path: '/socket.io',
     transports: ['websocket'],
-    query: { app_id: appId },
+    auth: { token },
     withCredentials: true,
   })
 
   // Add your event listeners here
   socket.on('connect', () => {
+    socket?.emit('user_connect', { workflow_id: appId })
     console.log('WebSocket connected')
   })
 

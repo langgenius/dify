@@ -1,21 +1,21 @@
 import json
 
 from flask import request
-from flask_login import current_user, login_required
 
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import ext_socketio
 
 
+
 @ext_socketio.on("user_connect")
-@login_required
 def handle_user_connect(data):
     """
     Handle user connect event, check login and get user info.
     """
-
     sid = request.sid
     workflow_id = data.get("workflow_id")
+    if not (current_user := request.environ.get("ws_user")):
+        return {"msg": "unauthorized"}, 401
 
     old_info_json = redis_client.hget(f"workflow_online_users:{workflow_id}", current_user.id)
     if old_info_json:

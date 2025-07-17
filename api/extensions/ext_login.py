@@ -1,13 +1,15 @@
 import json
 
 import flask_login  # type: ignore
-from flask import Response, request
+from flask import Response, request, g
+from flask_socketio import disconnect
 from flask_login import user_loaded_from_request, user_logged_in
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_database import db
+from extensions.ext_socketio import ext_socketio
 from libs.passport import PassportService
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
@@ -111,6 +113,36 @@ def unauthorized_handler():
         status=401,
         content_type="application/json",
     )
+
+
+@ext_socketio.on('connect')
+def socket_connect(auth):
+    """
+    WebSocket connect event, do authentication here.
+    """
+    token = None
+    if auth and isinstance(auth, dict):
+        token = auth.get('token')
+    if not token:
+        disconnect()
+        return False
+
+    try:
+        decoded = PassportService().verify(token)
+        user_id = decoded.get("user_id")
+        if not user_id:
+            disconnect()
+            return False
+        user = AccountService.load_logged_in_account(account_id=user_id)
+        if not user:
+            disconnect()
+            return False
+
+        request.environ['ws_user'] = user
+
+    except Exception:
+        disconnect()
+        return False
 
 
 def init_app(app: DifyApp):
