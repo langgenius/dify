@@ -50,7 +50,7 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames('flex justify-between w-full gap-2')}>
+    <div className={classNames('flex w-full justify-between gap-2')}>
       {
         options.map((option) => {
           const isParentChild = docForm === ChunkingMode.parentChild

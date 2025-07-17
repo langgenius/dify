@@ -137,8 +137,8 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
             <div className='py-2'>
               <div
                 className={classNames(
-                  'min-h-16 bg-components-panel-bg border rounded-xl transition-colors',
-                  draftConfig.enabled ? 'border-components-panel-border cursor-pointer' : 'border-util-colors-blue-blue-600 cursor-default',
+                  'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+                  draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600',
                 )}
                 onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
               >

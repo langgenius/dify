@@ -145,7 +145,7 @@ const ModelLoadBalancingConfigs = ({
     <>
       <div
         className={classNames(
-          'min-h-16 bg-components-panel-bg border rounded-xl transition-colors',
+          'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
           (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600',
           (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer',
           className,
@@ -259,7 +259,7 @@ const ModelLoadBalancingConfigs = ({
         <GridMask canvasClassName='!rounded-xl'>
           <div className='mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md'>
             <div
-              className={classNames('text-sm font-semibold leading-tight text-gradient', s.textGradient)}
+              className={classNames('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
             >
               {t('common.modelProvider.upgradeForLoadBalancing')}
             </div>
