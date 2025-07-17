@@ -6,7 +6,7 @@ import classNames from '@/utils/classnames'
 export type InputNumberProps = {
   unit?: string
   value?: number
-  onChange: (value?: number) => void
+  onChange: (value: number) => void
   amount?: number
   size?: 'regular' | 'large'
   max?: number
@@ -46,7 +46,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     if (disabled) return
 
     if (value === undefined) {
-      onChange(defaultValue)
+      onChange(defaultValue ?? 0)
       return
     }
     const newValue = value + amount
@@ -58,7 +58,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     if (disabled) return
 
     if (value === undefined) {
-      onChange(defaultValue)
+      onChange(defaultValue ?? 0)
       return
     }
     const newValue = value - amount
@@ -69,7 +69,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value === '') {
-      onChange(undefined)
+      onChange(0)
       return
     }
     const parsed = Number(e.target.value)
@@ -85,8 +85,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     <Input {...rest}
       // disable default controller
       type='number'
-      className={classNames('no-spinner rounded-r-none', className)}
-      value={value}
+      className={classNames('rounded-r-none', className)}
+      value={value ?? 0}
       max={max}
       min={min}
       disabled={disabled}

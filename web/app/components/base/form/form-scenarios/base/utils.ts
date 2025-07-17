@@ -47,7 +47,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
     }
     else {
-      zodType = zodType.optional()
+      zodType = zodType.optional().nullable()
     }
 
     shape[field.variable] = zodType

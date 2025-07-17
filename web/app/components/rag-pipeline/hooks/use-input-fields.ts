@@ -12,7 +12,7 @@ export const useInitialData = (variables: RAGPipelineVariables, lastRunInputData
       if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
         acc[variableName] = defaultValue ?? ''
       if (type === BaseFieldType.numberInput)
-        acc[variableName] = defaultValue
+        acc[variableName] = defaultValue ?? 0
       if (type === BaseFieldType.checkbox)
         acc[variableName] = defaultValue ?? false
       if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))

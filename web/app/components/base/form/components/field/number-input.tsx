@@ -18,7 +18,7 @@ const NumberInputField = ({
   className,
   ...inputProps
 }: TextFieldProps) => {
-  const field = useFieldContext<number | undefined>()
+  const field = useFieldContext<number>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
