@@ -15,6 +15,7 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeBody,
     HttpRequestNodeData,
 )
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -40,7 +41,7 @@ def test_http_request_node_binary_file(monkeypatch):
         ),
     )
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(
@@ -128,7 +129,7 @@ def test_http_request_node_form_with_file(monkeypatch):
         ),
     )
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(
@@ -223,7 +224,7 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
     )
 
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
 

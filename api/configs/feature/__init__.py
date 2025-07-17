@@ -31,6 +31,15 @@ class SecurityConfig(BaseSettings):
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
     )
+    CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a change email token remains valid",
+        default=5,
+    )
+
+    OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a owner transfer token remains valid",
+        default=5,
+    )
 
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
@@ -611,6 +620,16 @@ class AuthConfig(BaseSettings):
 
     FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
+        default=86400,
+    )
+
+    CHANGE_EMAIL_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying change email after exceeding the rate limit.",
+        default=86400,
+    )
+
+    OWNER_TRANSFER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying owner transfer after exceeding the rate limit.",
         default=86400,
     )
 

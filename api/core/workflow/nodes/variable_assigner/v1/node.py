@@ -130,6 +130,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
 
 
 def get_zero_value(t: SegmentType):
+    # TODO(QuantumGhost): this should be a method of `SegmentType`.
     match t:
         case SegmentType.ARRAY_OBJECT | SegmentType.ARRAY_STRING | SegmentType.ARRAY_NUMBER:
             return variable_factory.build_segment([])
@@ -137,6 +138,10 @@ def get_zero_value(t: SegmentType):
             return variable_factory.build_segment({})
         case SegmentType.STRING:
             return variable_factory.build_segment("")
+        case SegmentType.INTEGER:
+            return variable_factory.build_segment(0)
+        case SegmentType.FLOAT:
+            return variable_factory.build_segment(0.0)
         case SegmentType.NUMBER:
             return variable_factory.build_segment(0)
         case _:

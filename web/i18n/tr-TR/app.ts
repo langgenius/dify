@@ -172,7 +172,10 @@ const translation = {
       title: 'Dokuma',
       description: 'Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Bulut İzleyici',
+      description: 'Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',
@@ -252,6 +255,8 @@ const translation = {
   },
   accessControl: 'Web Uygulaması Erişim Kontrolü',
   noAccessPermission: 'Web uygulamasına erişim izni yok',
+  maxActiveRequestsPlaceholder: 'Sınırsız için 0 girin',
+  maxActiveRequests: 'Maksimum eş zamanlı istekler',
 }
 
 export default translation

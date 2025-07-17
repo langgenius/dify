@@ -9,12 +9,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -50,7 +50,7 @@ def init_code_node(code_config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -354,3 +354,35 @@ def test_execute_code_output_object_list():
     # validate
     with pytest.raises(ValueError):
         node._transform_result(result, node.node_data.outputs)
+
+
+def test_execute_code_scientific_notation():
+    code = """
+    def main() -> dict:
+        return {
+            "result": -8.0E-5
+        }
+    """
+    code = "\n".join([line[4:] for line in code.split("\n")])
+
+    code_config = {
+        "id": "code",
+        "data": {
+            "outputs": {
+                "result": {
+                    "type": "number",
+                },
+            },
+            "title": "123",
+            "variables": [],
+            "answer": "123",
+            "code_language": "python3",
+            "code": code,
+        },
+    }
+
+    node = init_code_node(code_config)
+    # execute node
+    result = node._run()
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED

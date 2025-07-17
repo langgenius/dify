@@ -1,10 +1,7 @@
 'use client'
 import {
-  useCallback,
   useEffect,
-  useState,
 } from 'react'
-import { useAsyncEffect } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
   EmbeddedChatbotContext,
@@ -14,8 +11,6 @@ import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
-import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
@@ -25,21 +20,16 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 const Chatbot = () => {
   const {
-    userCanAccess,
     isMobile,
     allowResetChat,
-    appInfoError,
-    appInfoLoading,
     appData,
     appChatListDataLoading,
     chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
-    isInstalledApp,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -55,58 +45,6 @@ const Chatbot = () => {
 
   useDocumentTitle(site?.title || 'Chat')
 
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
-  const getSigninUrl = useCallback(() => {
-    const params = new URLSearchParams(searchParams)
-    params.delete('message')
-    params.set('redirect_url', pathname)
-    return `/webapp-signin?${params.toString()}`
-  }, [searchParams, pathname])
-
-  const backToHome = useCallback(() => {
-    removeAccessToken()
-    const url = getSigninUrl()
-    router.replace(url)
-  }, [getSigninUrl, router])
-
-  if (appInfoLoading) {
-    return (
-      <>
-        {!isMobile && <Loading type='app' />}
-        {isMobile && (
-          <div className={cn('relative')}>
-            <div className={cn('flex h-[calc(100vh_-_60px)] flex-col rounded-2xl border-[0.5px] border-components-panel-border shadow-xs')}>
-              <Loading type='app' />
-            </div>
-          </div>
-        )}
-      </>
-    )
-  }
-
-  if (!userCanAccess) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
-    </div>
-  }
-
-  if (appInfoError) {
-    return (
-      <>
-        {!isMobile && <AppUnavailable />}
-        {isMobile && (
-          <div className={cn('relative')}>
-            <div className={cn('flex h-[calc(100vh_-_60px)] flex-col rounded-2xl border-[0.5px] border-components-panel-border shadow-xs')}>
-              <AppUnavailable />
-            </div>
-          </div>
-        )}
-      </>
-    )
-  }
   return (
     <div className='relative'>
       <div
@@ -162,8 +100,6 @@ const EmbeddedChatbotWrapper = () => {
   const themeBuilder = useThemeContext()
 
   const {
-    appInfoError,
-    appInfoLoading,
     appData,
     userCanAccess,
     appParams,
@@ -200,8 +136,6 @@ const EmbeddedChatbotWrapper = () => {
 
   return <EmbeddedChatbotContext.Provider value={{
     userCanAccess,
-    appInfoError,
-    appInfoLoading,
     appData,
     appParams,
     appMeta,
@@ -241,34 +175,6 @@ const EmbeddedChatbotWrapper = () => {
 }
 
 const EmbeddedChatbot = () => {
-  const [initialized, setInitialized] = useState(false)
-  const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
-  const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
-
-  useAsyncEffect(async () => {
-    if (!initialized) {
-      try {
-        await checkOrSetAccessToken()
-      }
-      catch (e: any) {
-        if (e.status === 404) {
-          setAppUnavailable(true)
-        }
-        else {
-          setIsUnknownReason(true)
-          setAppUnavailable(true)
-        }
-      }
-      setInitialized(true)
-    }
-  }, [])
-
-  if (!initialized)
-    return null
-
-  if (appUnavailable)
-    return <AppUnavailable isUnknownReason={isUnknownReason} />
-
   return <EmbeddedChatbotWrapper />
 }
 

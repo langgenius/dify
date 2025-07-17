@@ -206,7 +206,7 @@ export const useCreateMCPServer = () => {
     mutationKey: [NAME_SPACE, 'create-mcp-server'],
     mutationFn: (payload: {
       appID: string
-      description: string
+      description?: string
       parameters?: Record<string, string>
     }) => {
       const { appID, ...rest } = payload

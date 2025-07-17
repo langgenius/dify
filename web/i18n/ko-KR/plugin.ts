@@ -63,6 +63,7 @@ const translation = {
       paramsTip2: '\'자동\'이 꺼져 있으면 기본값이 사용됩니다.',
       unsupportedContent: '설치된 플러그인 버전은 이 작업을 제공하지 않습니다.',
       toolSetting: '도구 설정',
+      unsupportedMCPTool: '현재 선택된 에이전트 전략 플러그인 버전은 MCP 도구를 지원하지 않습니다.',
     },
     configureApp: '앱 구성',
     strategyNum: '{{번호}} {{전략}} 포함',
