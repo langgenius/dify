@@ -51,6 +51,31 @@ The Clickzetta integration follows Dify's established patterns:
 
 The implementation is ready for production use with comprehensive testing showing 100% pass rates in our validation environment.
 
+## 🐳 Preview Docker Images for Community Testing
+
+While the PR is under review, users can test the ClickZetta integration using multi-architecture Docker images:
+
+**Available Images:**
+- `czqiliang/dify-clickzetta-api:latest` (linux/amd64, linux/arm64)
+- `czqiliang/dify-clickzetta-web:latest` (linux/amd64, linux/arm64)
+- `czqiliang/dify-clickzetta-api:clickzetta-integration` (tagged version)
+- `czqiliang/dify-clickzetta-web:clickzetta-integration` (tagged version)
+
+**Quick Start Guide:**
+```bash
+# Download ready-to-use configuration
+curl -O https://raw.githubusercontent.com/yunqiqiliang/dify/feature/clickzetta-vector-db/clickzetta/docker-compose.clickzetta.yml
+curl -O https://raw.githubusercontent.com/yunqiqiliang/dify/feature/clickzetta-vector-db/clickzetta/.env.clickzetta.example
+
+# Configure and launch
+cp .env.clickzetta.example .env
+# Edit .env with your ClickZetta credentials
+mkdir -p volumes/app/storage volumes/db/data volumes/redis/data
+docker-compose -f docker-compose.clickzetta.yml up -d
+```
+
+This allows the community to test and provide feedback before the official merge.
+
 Please let me know if you need any additional information or have concerns about the remaining CI checks!
 ```
 

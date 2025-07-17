@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # API service with ClickZetta integration
+  api:
+    image: czqiliang/dify-clickzetta-api:latest
+    restart: always
+    environment:
+      # Core settings
+      - MODE=api
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=${SECRET_KEY:-dify}
+      - CONSOLE_WEB_URL=${CONSOLE_WEB_URL:-}
+      - INIT_PASSWORD=${INIT_PASSWORD:-}
+      - CONSOLE_API_URL=${CONSOLE_API_URL:-}
+      - SERVICE_API_URL=${SERVICE_API_URL:-}
+      
+      # Database settings  
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-difyai123456}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-dify}
+      
+      # Redis settings
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-difyai123456}
+      - REDIS_DB=${REDIS_DB:-0}
+      
+      # Celery settings
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
+      - BROKER_USE_SSL=${BROKER_USE_SSL:-false}
+      
+      # Storage settings
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
+      - STORAGE_LOCAL_PATH=${STORAGE_LOCAL_PATH:-storage}
+      
+      # Vector store settings - ClickZetta configuration
+      - VECTOR_STORE=${VECTOR_STORE:-clickzetta}
+      - CLICKZETTA_USERNAME=${CLICKZETTA_USERNAME}
+      - CLICKZETTA_PASSWORD=${CLICKZETTA_PASSWORD}
+      - CLICKZETTA_INSTANCE=${CLICKZETTA_INSTANCE}
+      - CLICKZETTA_SERVICE=${CLICKZETTA_SERVICE:-api.clickzetta.com}
+      - CLICKZETTA_WORKSPACE=${CLICKZETTA_WORKSPACE:-quick_start}
+      - CLICKZETTA_VCLUSTER=${CLICKZETTA_VCLUSTER:-default_ap}
+      - CLICKZETTA_SCHEMA=${CLICKZETTA_SCHEMA:-dify}
+      - CLICKZETTA_BATCH_SIZE=${CLICKZETTA_BATCH_SIZE:-20}
+      - CLICKZETTA_ENABLE_INVERTED_INDEX=${CLICKZETTA_ENABLE_INVERTED_INDEX:-true}
+      - CLICKZETTA_ANALYZER_TYPE=${CLICKZETTA_ANALYZER_TYPE:-chinese}
+      - CLICKZETTA_ANALYZER_MODE=${CLICKZETTA_ANALYZER_MODE:-smart}
+      - CLICKZETTA_VECTOR_DISTANCE_FUNCTION=${CLICKZETTA_VECTOR_DISTANCE_FUNCTION:-cosine_distance}
+      
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - dify
+
+  # Worker service
+  worker:
+    image: czqiliang/dify-clickzetta-api:latest
+    restart: always
+    environment:
+      - MODE=worker
+      - LOG_LEVEL=INFO
+      - SECRET_KEY=${SECRET_KEY:-dify}
+      
+      # Database settings
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-difyai123456}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-dify}
+      
+      # Redis settings
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-difyai123456}
+      - REDIS_DB=${REDIS_DB:-0}
+      
+      # Celery settings
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
+      - BROKER_USE_SSL=${BROKER_USE_SSL:-false}
+      
+      # Vector store settings - ClickZetta configuration
+      - VECTOR_STORE=${VECTOR_STORE:-clickzetta}
+      - CLICKZETTA_USERNAME=${CLICKZETTA_USERNAME}
+      - CLICKZETTA_PASSWORD=${CLICKZETTA_PASSWORD}
+      - CLICKZETTA_INSTANCE=${CLICKZETTA_INSTANCE}
+      - CLICKZETTA_SERVICE=${CLICKZETTA_SERVICE:-api.clickzetta.com}
+      - CLICKZETTA_WORKSPACE=${CLICKZETTA_WORKSPACE:-quick_start}
+      - CLICKZETTA_VCLUSTER=${CLICKZETTA_VCLUSTER:-default_ap}
+      - CLICKZETTA_SCHEMA=${CLICKZETTA_SCHEMA:-dify}
+      - CLICKZETTA_BATCH_SIZE=${CLICKZETTA_BATCH_SIZE:-20}
+      - CLICKZETTA_ENABLE_INVERTED_INDEX=${CLICKZETTA_ENABLE_INVERTED_INDEX:-true}
+      - CLICKZETTA_ANALYZER_TYPE=${CLICKZETTA_ANALYZER_TYPE:-chinese}
+      - CLICKZETTA_ANALYZER_MODE=${CLICKZETTA_ANALYZER_MODE:-smart}
+      - CLICKZETTA_VECTOR_DISTANCE_FUNCTION=${CLICKZETTA_VECTOR_DISTANCE_FUNCTION:-cosine_distance}
+      
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - dify
+
+  # Web service
+  web:
+    image: czqiliang/dify-clickzetta-web:latest
+    restart: always
+    environment:
+      - CONSOLE_API_URL=${CONSOLE_API_URL:-}
+      - APP_API_URL=${APP_API_URL:-}
+    depends_on:
+      - api
+    networks:
+      - dify
+
+  # Database
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - PGUSER=${PGUSER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-difyai123456}
+      - POSTGRES_DB=${DB_DATABASE:-dify}
+    command: >
+      postgres -c max_connections=100
+               -c shared_preload_libraries=pg_stat_statements
+               -c pg_stat_statements.max=10000
+               -c pg_stat_statements.track=all
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+    networks:
+      - dify
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Redis
+  redis:
+    image: redis:6-alpine
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
+    volumes:
+      - ./volumes/redis/data:/data
+    networks:
+      - dify
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./docker/nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./docker/nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    environment:
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME:-_}
+      - NGINX_HTTPS_ENABLED=${NGINX_HTTPS_ENABLED:-false}
+      - NGINX_SSL_PORT=${NGINX_SSL_PORT:-443}
+      - NGINX_PORT=${NGINX_PORT:-80}
+    entrypoint: ["/bin/sh", "-c", "envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"]
+    depends_on:
+      - api
+      - web
+    ports:
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+    networks:
+      - dify
+
+networks:
+  dify:
+    driver: bridge
