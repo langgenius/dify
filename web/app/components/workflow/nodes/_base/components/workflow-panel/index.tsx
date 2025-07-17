@@ -61,6 +61,12 @@ import SpecialResultPanel from '@/app/components/workflow/run/special-result-pan
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { FlowType } from '@/types/common'
+import {
+  AuthorizedInNode,
+  PluginAuth,
+} from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
+import { canFindTool } from '@/utils'
 
 type BasePanelProps = {
   children: ReactNode
@@ -227,6 +233,22 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
+  const buildInTools = useStore(s => s.buildInTools)
+  const currCollection = useMemo(() => {
+    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
+  }, [buildInTools, data.provider_id])
+  const showPluginAuth = useMemo(() => {
+    return data.type === BlockEnum.Tool && currCollection?.allow_delete
+  }, [currCollection, data.type])
+  const handleAuthorizationItemClick = useCallback((credential_id: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        credential_id,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -364,12 +386,42 @@ const BasePanel: FC<BasePanelProps> = ({
               onChange={handleDescriptionChange}
             />
           </div>
-          <div className='pl-4'>
-            <Tab
-              value={tabType}
-              onChange={setTabType}
-            />
-          </div>
+          {
+            showPluginAuth && (
+              <PluginAuth
+                className='px-4 pb-2'
+                pluginPayload={{
+                  provider: currCollection?.name || '',
+                  category: AuthCategory.tool,
+                }}
+              >
+                <div className='flex items-center justify-between pl-4 pr-3'>
+                  <Tab
+                    value={tabType}
+                    onChange={setTabType}
+                  />
+                  <AuthorizedInNode
+                    pluginPayload={{
+                      provider: currCollection?.name || '',
+                      category: AuthCategory.tool,
+                    }}
+                    onAuthorizationItemClick={handleAuthorizationItemClick}
+                    credentialId={data.credential_id}
+                  />
+                </div>
+              </PluginAuth>
+            )
+          }
+          {
+            !showPluginAuth && (
+              <div className='flex items-center justify-between pl-4 pr-3'>
+                <Tab
+                  value={tabType}
+                  onChange={setTabType}
+                />
+              </div>
+            )
+          }
           <Split />
         </div>
 

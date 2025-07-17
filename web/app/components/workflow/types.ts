@@ -100,6 +100,7 @@ export type CommonNodeType<T = {}> = {
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
+  credential_id?: string
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
   & Partial<Pick<DataSourceDefaultValue, 'plugin_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
 

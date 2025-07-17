@@ -9,7 +9,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginToolProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
 
 
 class PluginToolManager(BasePluginClient):
@@ -81,6 +81,7 @@ class PluginToolManager(BasePluginClient):
         tool_provider: str,
         tool_name: str,
         credentials: dict[str, Any],
+        credential_type: CredentialType,
         tool_parameters: dict[str, Any],
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
@@ -105,6 +106,7 @@ class PluginToolManager(BasePluginClient):
                     "provider": tool_provider_id.provider_name,
                     "tool": tool_name,
                     "credentials": credentials,
+                    "credential_type": credential_type,
                     "tool_parameters": tool_parameters,
                 },
             },
