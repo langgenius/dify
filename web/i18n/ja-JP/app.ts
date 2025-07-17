@@ -180,7 +180,10 @@ const translation = {
       title: '織る',
       description: 'Weave は、LLM アプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'クラウドモニター',
+      description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
+    },
   },
   answerIcon: {
     title: 'Web アプリアイコンを使用して🤖を置き換える',
@@ -255,6 +258,8 @@ const translation = {
     notSetDesc: '現在この Web アプリには誰もアクセスできません。権限を設定してください。',
   },
   noAccessPermission: 'Web アプリにアクセス権限がありません',
+  maxActiveRequestsPlaceholder: '無制限のために0を入力してください',
+  maxActiveRequests: '最大同時リクエスト数',
 }
 
 export default translation

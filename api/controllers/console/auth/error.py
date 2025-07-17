@@ -27,19 +27,19 @@ class InvalidTokenError(BaseHTTPException):
 
 class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
-    description = "Too many password reset emails have been sent. Please try again in 1 minutes."
+    description = "Too many password reset emails have been sent. Please try again in 1 minute."
     code = 429
 
 
 class EmailChangeRateLimitExceededError(BaseHTTPException):
     error_code = "email_change_rate_limit_exceeded"
-    description = "Too many email change emails have been sent. Please try again in 1 minutes."
+    description = "Too many email change emails have been sent. Please try again in 1 minute."
     code = 429
 
 
 class OwnerTransferRateLimitExceededError(BaseHTTPException):
     error_code = "owner_transfer_rate_limit_exceeded"
-    description = "Too many owner tansfer emails have been sent. Please try again in 1 minutes."
+    description = "Too many owner transfer emails have been sent. Please try again in 1 minute."
     code = 429
 
 

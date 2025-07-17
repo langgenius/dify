@@ -264,11 +264,9 @@ class OwnerTransfer(Resource):
 
         transfer_token_data = AccountService.get_owner_transfer_data(args["token"])
         if not transfer_token_data:
-            print(transfer_token_data, "transfer_token_data")
             raise InvalidTokenError()
 
         if transfer_token_data.get("email") != current_user.email:
-            print(transfer_token_data.get("email"), current_user.email)
             raise InvalidEmailError()
 
         AccountService.revoke_owner_transfer_token(args["token"])

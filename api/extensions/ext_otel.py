@@ -205,7 +205,7 @@ def init_app(app: DifyApp):
 
             metric_endpoint = dify_config.OTLP_METRIC_ENDPOINT
             if not metric_endpoint:
-                metric_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/traces"
+                metric_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics"
             metric_exporter = HTTPMetricExporter(
                 endpoint=metric_endpoint,
                 headers=headers,
