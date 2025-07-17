@@ -12,7 +12,7 @@ from typing import Any, Optional, cast
 from flask import Flask, current_app
 
 from configs import dify_config
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
@@ -48,11 +48,9 @@ from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
@@ -260,6 +258,10 @@ class GraphEngine:
             # convert to specific node
             node_type = NodeType(node_config.get("data", {}).get("type"))
             node_version = node_config.get("data", {}).get("version", "1")
+
+            # Import here to avoid circular import
+            from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+
             node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
@@ -414,7 +416,7 @@ class GraphEngine:
                     next_node_id = final_node_id
                 elif (
                     node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
-                    and node_instance.should_continue_on_error
+                    and node_instance.continue_on_error
                     and previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
                 ):
                     break
@@ -597,7 +599,7 @@ class GraphEngine:
 
     def _run_node(
         self,
-        node_instance: BaseNode[BaseNodeData],
+        node_instance: BaseNode,
         route_node_state: RouteNodeState,
         parallel_id: Optional[str] = None,
         parallel_start_node_id: Optional[str] = None,
@@ -660,10 +662,10 @@ class GraphEngine:
                                     retries == max_retries
                                     and node_instance.node_type == NodeType.HTTP_REQUEST
                                     and run_result.outputs
-                                    and not node_instance.should_continue_on_error
+                                    and not node_instance.continue_on_error
                                 ):
                                     run_result.status = WorkflowNodeExecutionStatus.SUCCEEDED
-                                if node_instance.should_retry and retries < max_retries:
+                                if node_instance.retry and retries < max_retries:
                                     retries += 1
                                     route_node_state.node_run_result = run_result
                                     yield NodeRunRetryEvent(
@@ -687,7 +689,7 @@ class GraphEngine:
                             route_node_state.set_finished(run_result=run_result)
 
                             if run_result.status == WorkflowNodeExecutionStatus.FAILED:
-                                if node_instance.should_continue_on_error:
+                                if node_instance.continue_on_error:
                                     # if run failed, handle error
                                     run_result = self._handle_continue_on_error(
                                         node_instance,
@@ -736,7 +738,7 @@ class GraphEngine:
                                 should_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                                 if (
-                                    node_instance.should_continue_on_error
+                                    node_instance.continue_on_error
                                     and self.graph.edge_mapping.get(node_instance.node_id)
                                     and node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH
                                 ):
@@ -886,7 +888,7 @@ class GraphEngine:
 
     def _handle_continue_on_error(
         self,
-        node_instance: BaseNode[BaseNodeData],
+        node_instance: BaseNode,
         error_result: NodeRunResult,
         variable_pool: VariablePool,
         handle_exceptions: list[str] = [],

@@ -351,3 +351,11 @@ class CodeNode(BaseNode):
             node_id + "." + variable_selector.variable: variable_selector.value_selector
             for variable_selector in node_data.variables
         }
+
+    @property
+    def continue_on_error(self) -> bool:
+        return self.node_data.error_strategy is not None
+
+    @property
+    def retry(self) -> bool:
+        return self.node_data.retry_config.retry_enabled

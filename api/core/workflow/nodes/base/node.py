@@ -1,15 +1,15 @@
 import logging
 from abc import abstractmethod
-from collections.abc import Callable, Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, RETRY_ON_ERROR_NODE_TYPE, NodeType
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 
 if TYPE_CHECKING:
-    from core.workflow.graph_engine import Graph, GraphEngine, GraphInitParams, GraphRuntimeState
+    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
     from core.workflow.graph_engine.entities.event import InNodeEvent
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,6 @@ class BaseNode:
 
         self.node_id = node_id
 
-        node_data = self._node_data_cls.model_validate(config.get("data", {}))
     @abstractmethod
     def from_dict(self, data: Mapping[str, Any]) -> None: ...
 
@@ -136,7 +135,7 @@ class BaseNode:
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: GenericNodeData,
+        node_data: Any,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -175,19 +174,14 @@ class BaseNode:
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @property
-    def should_continue_on_error(self) -> bool:
-        """judge if should continue on error
-
-        Returns:
-            bool: if should continue on error
-        """
-        return self.node_data.error_strategy is not None and self.node_type in CONTINUE_ON_ERROR_NODE_TYPE
+    def continue_on_error(self) -> bool:
+        return False
 
     @property
-    def should_retry(self) -> bool:
+    def retry(self) -> bool:
         """judge if should retry
 
         Returns:
             bool: if should retry
         """
-        return self.node_data.retry_config.retry_enabled and self.node_type in RETRY_ON_ERROR_NODE_TYPE
+        return False

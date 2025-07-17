@@ -1062,6 +1062,14 @@ class LLMNode(BaseNode):
             logger.warning("unknown contents type encountered, type=%s", type(contents))
             yield str(contents)
 
+    @property
+    def continue_on_error(self) -> bool:
+        return self.node_data.error_strategy is not None
+
+    @property
+    def retry(self) -> bool:
+        return self.node_data.retry_config.retry_enabled
+
 
 def _combine_message_content_with_role(
     *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole

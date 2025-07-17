@@ -398,3 +398,11 @@ class ToolNode(BaseNode):
         result = {node_id + "." + key: value for key, value in result.items()}
 
         return result
+
+    @property
+    def continue_on_error(self) -> bool:
+        return self.node_data.error_strategy is not None
+
+    @property
+    def retry(self) -> bool:
+        return self.node_data.retry_config.retry_enabled
