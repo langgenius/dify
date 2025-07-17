@@ -44,6 +44,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { GeneratorType } from './types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
+const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
   mode: AppType
   isShow: boolean
@@ -310,14 +311,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
                 onClick={toggleFoldIdeaOutput}
               >
-                <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>Idea output</div>
-                <div className='system-xs-regular text-text-tertiary'>(option)</div>
+                <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.ideaOutput`)}</div>
+                <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
                 <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
               </div>
               { !isFoldIdeaOutput && (
                 <Textarea
                   className="h-[80px]"
-                  placeholder={'Describe your ideal response format, length, tone, and content requirements...'}
+                  placeholder={t(`${i18nPrefix}.ideaOutputPlaceholder`)}
                   value={ideaOutput}
                   onChange={e => setIdeaOutput(e.target.value)}
                 />
@@ -325,7 +326,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             </div>
 
             <div className='mt-7 flex justify-end space-x-2'>
-              <Button>Dismiss(i18n)</Button>
+              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
               <Button
                 className='flex space-x-1'
                 variant='primary'

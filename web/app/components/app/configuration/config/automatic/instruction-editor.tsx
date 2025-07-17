@@ -18,9 +18,7 @@ type Props = {
   generatorType: GeneratorType
 }
 
-const placeholder = `
-
-`
+const i18nPrefix = 'appDebug.generate'
 
 const InstructionEditor: FC<Props> = ({
   generatorType,
@@ -34,11 +32,11 @@ const InstructionEditor: FC<Props> = ({
   const getVarType = useWorkflowVariableType()
   const placeholder = (
     <div className='system-sm-regular  text-text-placeholder'>
-      <div className='leading-6'>Describe how you would like to improve this Prompt. For example:</div>
+      <div className='leading-6'>{t(`${i18nPrefix}.instructionPlaceHolderTitle`)}</div>
       <div className='mt-2'>
-        <div>Make the output more concise, retaining the core points.</div>
-        <div>The output format is incorrect, please strictly follow the JSON format.</div>
-        <div>The tone is too harsh, please make it more friendly.</div>
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`)}</div>
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`)}</div>
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`)}</div>
       </div>
     </div>
   )
@@ -50,7 +48,6 @@ const InstructionEditor: FC<Props> = ({
         key={controlPromptEditorRerenderKey}
         placeholder={placeholder}
         placeholderClassName='px-4 pt-3'
-        // compact
         className={cn('min-h-[240px] ')}
         value={value}
         workflowVariableBlock={{
