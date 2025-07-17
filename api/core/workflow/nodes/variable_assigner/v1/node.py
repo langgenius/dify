@@ -63,18 +63,21 @@ class VariableAssignerNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: VariableAssignerData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        mapping = {}
-        assigned_variable_node_id = node_data.assigned_variable_selector[0]
-        if assigned_variable_node_id == CONVERSATION_VARIABLE_NODE_ID:
-            selector_key = ".".join(node_data.assigned_variable_selector)
-            key = f"{node_id}.#{selector_key}#"
-            mapping[key] = node_data.assigned_variable_selector
+        # Create typed NodeData from dict
+        typed_node_data = VariableAssignerData(**node_data)
 
-        selector_key = ".".join(node_data.input_variable_selector)
+        mapping = {}
+        assigned_variable_node_id = typed_node_data.assigned_variable_selector[0]
+        if assigned_variable_node_id == CONVERSATION_VARIABLE_NODE_ID:
+            selector_key = ".".join(typed_node_data.assigned_variable_selector)
+            key = f"{node_id}.#{selector_key}#"
+            mapping[key] = typed_node_data.assigned_variable_selector
+
+        selector_key = ".".join(typed_node_data.input_variable_selector)
         key = f"{node_id}.#{selector_key}#"
-        mapping[key] = node_data.input_variable_selector
+        mapping[key] = typed_node_data.input_variable_selector
         return mapping
 
     def _run(self) -> NodeRunResult:

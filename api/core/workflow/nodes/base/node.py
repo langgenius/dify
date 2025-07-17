@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -123,9 +123,9 @@ class BaseNode:
         if not node_id:
             raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
 
-        node_data = cls._node_data_cls(**config.get("data", {}))
+        # Pass raw dict data instead of creating NodeData instance
         data = cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config, node_id=node_id, node_data=cast(GenericNodeData, node_data)
+            graph_config=graph_config, node_id=node_id, node_data=config.get("data", {})
         )
         return data
 
@@ -135,7 +135,7 @@ class BaseNode:
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Any,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

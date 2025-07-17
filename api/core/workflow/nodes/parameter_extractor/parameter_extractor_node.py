@@ -830,19 +830,15 @@ class ParameterExtractorNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ParameterExtractorNodeData,  # type: ignore
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
+        # Create typed NodeData from dict
+        typed_node_data = ParameterExtractorNodeData(**node_data)
 
-        if node_data.instruction:
-            selectors = variable_template_parser.extract_selectors_from_template(node_data.instruction)
+        variable_mapping: dict[str, Sequence[str]] = {"query": typed_node_data.query}
+
+        if typed_node_data.instruction:
+            selectors = variable_template_parser.extract_selectors_from_template(typed_node_data.instruction)
             for selector in selectors:
                 variable_mapping[selector.variable] = selector.value_selector
 

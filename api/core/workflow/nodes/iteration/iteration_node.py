@@ -309,21 +309,17 @@ class IterationNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: IterationNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
+        # Create typed NodeData from dict
+        typed_node_data = IterationNodeData(**node_data)
+
         variable_mapping: dict[str, Sequence[str]] = {
-            f"{node_id}.input_selector": node_data.iterator_selector,
+            f"{node_id}.input_selector": typed_node_data.iterator_selector,
         }
 
         # init graph
-        iteration_graph = Graph.init(graph_config=graph_config, root_node_id=node_data.start_node_id)
+        iteration_graph = Graph.init(graph_config=graph_config, root_node_id=typed_node_data.start_node_id)
 
         if not iteration_graph:
             raise IterationGraphNotFoundError("iteration graph not found")

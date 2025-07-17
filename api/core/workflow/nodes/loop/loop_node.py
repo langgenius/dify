@@ -442,19 +442,15 @@ class LoopNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: LoopNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
+        # Create typed NodeData from dict
+        typed_node_data = LoopNodeData(**node_data)
+
         variable_mapping = {}
 
         # init graph
-        loop_graph = Graph.init(graph_config=graph_config, root_node_id=node_data.start_node_id)
+        loop_graph = Graph.init(graph_config=graph_config, root_node_id=typed_node_data.start_node_id)
 
         if not loop_graph:
             raise ValueError("loop graph not found")
@@ -490,7 +486,7 @@ class LoopNode(BaseNode):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in node_data.loop_variables or []:
+        for loop_variable in typed_node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping

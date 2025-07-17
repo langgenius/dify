@@ -64,16 +64,12 @@ class TemplateTransformNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: TemplateTransformNodeData
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: Mapping[str, Any]
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
+        # Create typed NodeData from dict
+        typed_node_data = TemplateTransformNodeData(**node_data)
+
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in node_data.variables
+            for variable_selector in typed_node_data.variables
         }

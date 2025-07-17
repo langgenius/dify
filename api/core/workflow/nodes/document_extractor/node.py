@@ -101,16 +101,12 @@ class DocumentExtractorNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: DocumentExtractorNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        return {node_id + ".files": node_data.variable_selector}
+        # Create typed NodeData from dict
+        typed_node_data = DocumentExtractorNodeData(**node_data)
+
+        return {node_id + ".files": typed_node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:

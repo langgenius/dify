@@ -792,7 +792,7 @@ class LLMNode(BaseNode):
     ) -> Mapping[str, Sequence[str]]:
         # Create typed NodeData from dict
         typed_node_data = LLMNodeData(**node_data)
-        
+
         prompt_template = typed_node_data.prompt_template
         variable_selectors = []
         if isinstance(prompt_template, list) and all(

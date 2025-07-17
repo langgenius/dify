@@ -75,10 +75,13 @@ class VariableAssignerNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: VariableAssignerNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # Create typed NodeData from dict
+        typed_node_data = VariableAssignerNodeData(**node_data)
+
         var_mapping: dict[str, Sequence[str]] = {}
-        for item in node_data.items:
+        for item in typed_node_data.items:
             _target_mapping_from_item(var_mapping, node_id, item)
             _source_mapping_from_item(var_mapping, node_id, item)
         return var_mapping

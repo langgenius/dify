@@ -135,15 +135,18 @@ class HttpRequestNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: HttpRequestNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # Create typed NodeData from dict
+        typed_node_data = HttpRequestNodeData(**node_data)
+
         selectors: list[VariableSelector] = []
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
-        selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
-        if node_data.body:
-            body_type = node_data.body.type
-            data = node_data.body.data
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.url)
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.headers)
+        selectors += variable_template_parser.extract_selectors_from_template(typed_node_data.params)
+        if typed_node_data.body:
+            body_type = typed_node_data.body.type
+            data = typed_node_data.body.data
             match body_type:
                 case "binary":
                     if len(data) != 1:

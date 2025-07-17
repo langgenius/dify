@@ -384,7 +384,7 @@ class ToolNode(BaseNode):
         """
         # Create typed NodeData from dict
         typed_node_data = ToolNodeData(**node_data)
-        
+
         result = {}
         for parameter_name in typed_node_data.tool_parameters:
             input = typed_node_data.tool_parameters[parameter_name]

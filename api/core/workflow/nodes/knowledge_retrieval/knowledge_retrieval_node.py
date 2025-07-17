@@ -619,17 +619,13 @@ class KnowledgeRetrievalNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: KnowledgeRetrievalNodeData,  # type: ignore
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
+        # Create typed NodeData from dict
+        typed_node_data = KnowledgeRetrievalNodeData(**node_data)
+
         variable_mapping = {}
-        variable_mapping[node_id + ".query"] = node_data.query_variable_selector
+        variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
         return variable_mapping
 
     def get_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:

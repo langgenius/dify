@@ -64,8 +64,11 @@ class AnswerNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: AnswerNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # Create typed NodeData from dict
+        typed_node_data = AnswerNodeData(**node_data)
+
         """
         Extract variable selector to variable mapping
         :param graph_config: graph config
@@ -73,7 +76,7 @@ class AnswerNode(BaseNode):
         :param node_data: node data
         :return:
         """
-        variable_template_parser = VariableTemplateParser(template=node_data.answer)
+        variable_template_parser = VariableTemplateParser(template=typed_node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 
         variable_mapping = {}

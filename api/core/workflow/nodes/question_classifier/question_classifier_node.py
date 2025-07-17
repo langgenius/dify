@@ -236,20 +236,15 @@ class QuestionClassifierNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: Any,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        node_data = cast(QuestionClassifierNodeData, node_data)
-        variable_mapping = {"query": node_data.query_variable_selector}
+        # Create typed NodeData from dict
+        typed_node_data = QuestionClassifierNodeData(**node_data)
+
+        variable_mapping = {"query": typed_node_data.query_variable_selector}
         variable_selectors = []
-        if node_data.instruction:
-            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
+        if typed_node_data.instruction:
+            variable_template_parser = VariableTemplateParser(template=typed_node_data.instruction)
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector

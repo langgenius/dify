@@ -338,8 +338,11 @@ class CodeNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: CodeNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # Create typed NodeData from dict
+        typed_node_data = CodeNodeData(**node_data)
+
         """
         Extract variable selector to variable mapping
         :param graph_config: graph config
@@ -349,7 +352,7 @@ class CodeNode(BaseNode):
         """
         return {
             node_id + "." + variable_selector.variable: variable_selector.value_selector
-            for variable_selector in node_data.variables
+            for variable_selector in typed_node_data.variables
         }
 
     @property
