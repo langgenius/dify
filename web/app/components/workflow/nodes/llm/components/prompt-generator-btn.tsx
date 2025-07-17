@@ -8,17 +8,22 @@ import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { AppType } from '@/types/app'
 import type { AutomaticRes } from '@/service/debug'
-import type { ModelConfig } from '@/app/components/workflow/types'
+import type { ModelConfig, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 
 type Props = {
   className?: string
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
+  nodesOutputVars,
+  availableNodes,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = useCallback((res: AutomaticRes) => {
@@ -38,7 +43,9 @@ const PromptGeneratorBtn: FC<Props> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
-          isInLLMNode
+          generatorType={GeneratorType.prompt}
+          nodesOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
         />
       )}
     </div>

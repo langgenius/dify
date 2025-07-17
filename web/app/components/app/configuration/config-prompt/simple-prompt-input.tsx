@@ -27,6 +27,7 @@ import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/ba
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { noop } from 'lodash-es'
+import { GeneratorType } from '../config/automatic/types'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -276,6 +277,8 @@ const Prompt: FC<ISimplePromptInput> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
+          isBasicMode
+          generatorType={GeneratorType.prompt}
         />
       )}
     </div>

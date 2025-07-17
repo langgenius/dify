@@ -39,13 +39,20 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelModeType } from '@/types/app'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import InstructionEditor from './instruction-editor'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { GeneratorType } from './types'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 export type IGetAutomaticResProps = {
   mode: AppType
   isShow: boolean
   onClose: () => void
   onFinished: (res: AutomaticRes) => void
-  isInLLMNode?: boolean
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
+  generatorType: GeneratorType
+  isBasicMode?: boolean
 }
 
 const TryLabel: FC<{
@@ -68,7 +75,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   mode,
   isShow,
   onClose,
-  isInLLMNode,
+  nodesOutputVars,
+  availableNodes,
+  generatorType,
+  isBasicMode,
   onFinished,
 }) => {
   const { t } = useTranslation()
@@ -124,6 +134,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   ]
 
   const [instruction, setInstruction] = useState<string>('')
+  const [ideaOutput, setIdeaOutput] = useState<string>('')
+  const [isFoldIdeaOutput, {
+    toggle: toggleFoldIdeaOutput,
+  }] = useBoolean(true)
+
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
       const template = t(`appDebug.generate.template.${key}.instruction`)
@@ -210,7 +225,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       const { error, ...res } = await generateRule({
         instruction,
         model_config: model,
-        no_variable: !!isInLLMNode,
       })
       setRes(res)
       if (error) {
@@ -240,11 +254,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     >
       <div className='flex h-[680px] flex-wrap'>
         <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-8'>
+          <div className='mb-4'>
             <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.generate.description')}</div>
           </div>
-          <div className='mb-8'>
+          <div>
             <ModelParameterModal
               popupClassName='!w-[520px]'
               portalToFollowElemContentClassName='z-[1000]'
@@ -258,36 +272,60 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               hideDebugWithMultipleModel
             />
           </div>
-          <div >
-            <div className='flex items-center'>
-              <div className='mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary'>{t('appDebug.generate.tryIt')}</div>
-              <div className='h-px grow' style={{
-                background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
-              }}></div>
+          {isBasicMode && (
+            <div className='mt-4'>
+              <div className='flex items-center'>
+                <div className='mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary'>{t('appDebug.generate.tryIt')}</div>
+                <div className='h-px grow' style={{
+                  background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
+                }}></div>
+              </div>
+              <div className='flex flex-wrap'>
+                {tryList.map(item => (
+                  <TryLabel
+                    key={item.key}
+                    Icon={item.icon}
+                    text={t(`appDebug.generate.template.${item.key}.name`)}
+                    onClick={handleChooseTemplate(item.key)}
+                  />
+                ))}
+              </div>
             </div>
-            <div className='flex flex-wrap'>
-              {tryList.map(item => (
-                <TryLabel
-                  key={item.key}
-                  Icon={item.icon}
-                  text={t(`appDebug.generate.template.${item.key}.name`)}
-                  onClick={handleChooseTemplate(item.key)}
-                />
-              ))}
-            </div>
-          </div>
+          )}
+
           {/* inputs */}
-          <div className='mt-6'>
-            <div className='text-[0px]'>
-              <div className='mb-2 text-sm font-medium leading-5 text-text-primary'>{t('appDebug.generate.instruction')}</div>
-              <Textarea
-                className="h-[200px] resize-none"
-                placeholder={t('appDebug.generate.instructionPlaceHolder') as string}
+          <div className='mt-4'>
+            <div>
+              <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.generate.instruction')}</div>
+              <InstructionEditor
                 value={instruction}
-                onChange={e => setInstruction(e.target.value)} />
+                onChange={setInstruction}
+                nodesOutputVars={nodesOutputVars}
+                availableNodes={availableNodes}
+                generatorType={generatorType}
+              />
+            </div>
+            <div className='mt-4 text-[0px]'>
+              <div
+                className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
+                onClick={toggleFoldIdeaOutput}
+              >
+                <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>Idea output</div>
+                <div className='system-xs-regular text-text-tertiary'>(option)</div>
+                <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
+              </div>
+              { !isFoldIdeaOutput && (
+                <Textarea
+                  className="h-[80px]"
+                  placeholder={'Describe your ideal response format, length, tone, and content requirements...'}
+                  value={ideaOutput}
+                  onChange={e => setIdeaOutput(e.target.value)}
+                />
+              )}
             </div>
 
-            <div className='mt-5 flex justify-end'>
+            <div className='mt-7 flex justify-end space-x-2'>
+              <Button>Dismiss(i18n)</Button>
               <Button
                 className='flex space-x-1'
                 variant='primary'
@@ -304,18 +342,18 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {(!isLoading && res) && (
           <div className='h-full w-0 grow p-6 pb-0'>
             <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
-            <div className={cn('max-h-[555px] overflow-y-auto', !isInLLMNode && 'pb-2')}>
+            <div className={cn('max-h-[555px] overflow-y-auto', isBasicMode && 'pb-2')}>
               <ConfigPrompt
                 mode={mode}
                 promptTemplate={res?.prompt || ''}
                 promptVariables={[]}
                 readonly
-                noTitle={isInLLMNode}
+                noTitle={!isBasicMode}
                 gradientBorder
-                editorHeight={isInLLMNode ? 524 : 0}
-                noResize={isInLLMNode}
+                editorHeight={!isBasicMode ? 524 : 0}
+                noResize={!isBasicMode}
               />
-              {!isInLLMNode && (
+              {isBasicMode && (
                 <>
                   {(res?.variables?.length && res?.variables?.length > 0)
                     ? (

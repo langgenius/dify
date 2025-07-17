@@ -79,7 +79,6 @@ import {
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
-import { GeneratorType } from '../../app/configuration/config/automatic/types'
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -125,16 +124,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
-  currentBlock = {
-    show: true,
-    generatorType: GeneratorType.code,
-  },
-  errorMessageBlock = {
-    show: true,
-  },
-  lastRunBlock = {
-    show: true,
-  },
+  currentBlock,
+  errorMessageBlock,
+  lastRunBlock,
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
