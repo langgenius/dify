@@ -1,8 +1,8 @@
 'use client'
 
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
@@ -497,4 +497,4 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   )
 }
 
-export default AppCard
+export default React.memo(AppCard)

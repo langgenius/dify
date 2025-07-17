@@ -36,7 +36,8 @@
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "npx only-allow pnpm",
+    "analyze": "ANALYZE=true pnpm build"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -58,6 +59,7 @@
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
     "@monaco-editor/react": "^4.6.0",
+    "@next/bundle-analyzer": "^15.4.1",
     "@next/mdx": "~15.3.5",
     "@octokit/core": "^6.1.2",
     "@octokit/request-error": "^6.1.5",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   useRouter,
   useSearchParams,
@@ -25,17 +25,14 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 export type CreateAppCardProps = {
   className?: string
   onSuccess?: () => void
+  ref: React.RefObject<HTMLDivElement | null>
 }
 
-const CreateAppCard = (
-  {
-    ref,
-    className,
-    onSuccess,
-  }: CreateAppCardProps & {
-    ref: React.RefObject<HTMLDivElement>;
-  },
-) => {
+const CreateAppCard = ({
+  ref,
+  className,
+  onSuccess,
+}: CreateAppCardProps) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
@@ -129,5 +126,5 @@ const CreateAppCard = (
 }
 
 CreateAppCard.displayName = 'CreateAppCard'
-export default CreateAppCard
-export { CreateAppCard }
+
+export default React.memo(CreateAppCard)
