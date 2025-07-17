@@ -334,7 +334,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='ワークフロー実行詳細を取得'
   name='#get-workflow-run-detail'
@@ -343,7 +343,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     ワークフロー実行 ID に基づいて、ワークフロータスクの現在の実行結果を取得します。
     ### パス
-    - `workflow_id` (string) ワークフローID、ストリーミングチャンクの返り値から取得可能
+    - `workflow_run_id` (string) ワークフロー実行ID、ストリーミングチャンクの返り値から取得可能
     ### 応答
     - `id` (string) ワークフロー実行の ID
     - `workflow_id` (string) 関連するワークフローの ID
@@ -359,9 +359,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
     ### リクエスト例
-    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
