@@ -320,7 +320,7 @@ class ClickzettaVector(BaseVector):
             doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
             # For JSON column in Clickzetta, use JSON 'json_string' format
             metadata_json = json.dumps(doc.metadata).replace("'", "''")  # Escape single quotes
-            embedding_str = f"VECTOR({','.join(map(str, embedding))})"
+            embedding_str = self._format_vector(embedding)
             values.append(f"('{doc_id}', '{self._escape_string(doc.page_content)}', "
                         f"JSON '{metadata_json}', {embedding_str})")
 
@@ -401,21 +401,24 @@ class ClickzettaVector(BaseVector):
             # For cosine distance, smaller is better (0 = identical, 2 = opposite)
             distance_func = "COSINE_DISTANCE"
             if score_threshold > 0:
+                query_vector_str = self._format_vector(query_vector)
                 filter_clauses.append(f"{distance_func}({Field.VECTOR.value}, "
-                                    f"VECTOR({','.join(map(str, query_vector))})) < {2 - score_threshold}")
+                                    f"{query_vector_str}) < {2 - score_threshold}")
         else:
             # For L2 distance, smaller is better
             distance_func = "L2_DISTANCE"
             if score_threshold > 0:
+                query_vector_str = self._format_vector(query_vector)
                 filter_clauses.append(f"{distance_func}({Field.VECTOR.value}, "
-                                    f"VECTOR({','.join(map(str, query_vector))})) < {score_threshold}")
+                                    f"{query_vector_str}) < {score_threshold}")
 
         where_clause = " AND ".join(filter_clauses) if filter_clauses else "1=1"
 
         # Execute vector search query
+        query_vector_str = self._format_vector(query_vector)
         search_sql = f"""
         SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value},
-               {distance_func}({Field.VECTOR.value}, VECTOR({','.join(map(str, query_vector))})) AS distance
+               {distance_func}({Field.VECTOR.value}, {query_vector_str}) AS distance
         FROM {self._config.schema}.{self._table_name}
         WHERE {where_clause}
         ORDER BY distance
@@ -532,6 +535,25 @@ class ClickzettaVector(BaseVector):
     def _escape_string(self, s: str) -> str:
         """Escape single quotes in strings for SQL."""
         return s.replace("'", "''")
+    
+    def _format_vector(self, vector: list[float]) -> str:
+        """Safely format vector for SQL, handling special float values."""
+        safe_values = []
+        for val in vector:
+            if isinstance(val, (int, float)):
+                # Handle special float values
+                if val != val:  # NaN check
+                    safe_values.append("0.0")
+                elif val == float('inf'):
+                    safe_values.append("3.4028235e+38")  # Max float32
+                elif val == float('-inf'):
+                    safe_values.append("-3.4028235e+38")  # Min float32
+                else:
+                    # Ensure finite precision to avoid very long numbers
+                    safe_values.append(f"{float(val):.8g}")
+            else:
+                safe_values.append("0.0")
+        return f"VECTOR({','.join(safe_values)})"
 
 
 class ClickzettaVectorFactory(AbstractVectorFactory):
