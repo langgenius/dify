@@ -331,11 +331,13 @@ class MCPToolProvider(Base):
 
         provider_controller = MCPToolProviderController._from_db(self)
 
-        return create_provider_encrypter(
+        encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
             config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
             cache=NoOpProviderCredentialCache(),
-        )[0].decrypt(self.credentials)
+        )
+
+        return encrypter.decrypt(self.credentials)  # type: ignore
 
 
 class ToolModelInvoke(Base):

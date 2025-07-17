@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Optional
 
@@ -475,7 +476,7 @@ class BuiltinToolManageService:
             return user_client is not None and user_client.enabled
 
     @staticmethod
-    def get_oauth_client(tenant_id: str, provider: str) -> dict[str, Any] | None:
+    def get_oauth_client(tenant_id: str, provider: str) -> Mapping[str, Any] | None:
         """
         get builtin tool provider
         """
@@ -497,7 +498,7 @@ class BuiltinToolManageService:
                 )
                 .first()
             )
-            oauth_params: dict[str, Any] | None = None
+            oauth_params: Mapping[str, Any] | None = None
             if user_client:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
                 return oauth_params
