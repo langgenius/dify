@@ -19,13 +19,13 @@ class ClusterNodeCountTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cadvisor_job_name = APOUtils.get_and_fill_param(tool_parameters, 'cadvisor_job_name')
+        cadvisor_job_name = tool_parameters.get('cadvisor_job_name')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
             'metricName': '集群总览 - 总览 - 节点数',
             'params': {
-                'cadvisor_job_name': cadvisor_job_name
+                **({'cadvisor_job_name': cadvisor_job_name} if cadvisor_job_name else {})
             },
             'startTime': start_time,
             'endTime': end_time,

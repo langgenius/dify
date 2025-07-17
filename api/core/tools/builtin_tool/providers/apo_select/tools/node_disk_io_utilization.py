@@ -19,8 +19,8 @@ class NodeDiskIoUtilizationTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        job = APOUtils.get_and_fill_param(tool_parameters, 'job')
-        node = APOUtils.get_and_fill_param(tool_parameters, 'node')
+        job = tool_parameters.get('job', '.*')
+        node = tool_parameters.get('node', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         if not job:

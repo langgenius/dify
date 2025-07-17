@@ -19,8 +19,8 @@ class NamespaceCpuUsageDockerTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cadvisor_job_name = APOUtils.get_and_fill_param(tool_parameters, 'cadvisor_job_name')
-        cluster = APOUtils.get_and_fill_param(tool_parameters, 'cluster')
+        cadvisor_job_name = tool_parameters.get('cadvisor_job_name', '.*')
+        cluster = tool_parameters.get('cluster', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

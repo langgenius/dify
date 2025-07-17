@@ -18,8 +18,8 @@ class OriginxServiceRedAvgRespTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        service_name = APOUtils.get_and_fill_param(tool_parameters, "service_name")
-        content_key = APOUtils.get_and_fill_param(tool_parameters, 'content_key')
+        service_name = tool_parameters.get("service_name")
+        content_key = tool_parameters.get("content_key")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

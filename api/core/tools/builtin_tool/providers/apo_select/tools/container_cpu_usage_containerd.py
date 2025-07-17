@@ -19,17 +19,17 @@ class ContainerCpuUsageContainerdTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cadvisor_job_name = APOUtils.get_and_fill_param(tool_parameters, 'cadvisor_job_name')
-        namespace = APOUtils.get_and_fill_param(tool_parameters, 'namespace')
-        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
+        cadvisor_job_name = tool_parameters.get('cadvisor_job_name')
+        namespace = tool_parameters.get('namespace')
+        pod = tool_parameters.get('pod')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
             'metricName': '基础设施情况 - 容器CPU - 容器CPU使用率 - Containerd',
             'params': {
-                'cadvisor_job_name': cadvisor_job_name,
-                'namespace': namespace,
-                'pod': pod
+                **({'cadvisor_job_name': cadvisor_job_name} if cadvisor_job_name else {}),
+                **({'namespace': namespace} if namespace else {}),
+                **({'pod': pod} if pod else {})
             },
             'startTime': start_time,
             'endTime': end_time,

@@ -19,13 +19,13 @@ class ClusterNetworkLinuxTransmitDroppedPacketsTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cluster = APOUtils.get_and_fill_param(tool_parameters, 'cluster')
+        cluster = tool_parameters.get('cluster')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
             'metricName': '集群总览 - 总览 - 网络饱和 - 丢包数 - Linux Packets dropped (transmit)',
             'params': {
-                'cluster': cluster
+                **({'cluster': cluster} if cluster else {})
             },
             'startTime': start_time,
             'endTime': end_time,

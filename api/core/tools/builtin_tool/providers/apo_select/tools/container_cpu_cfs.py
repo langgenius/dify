@@ -18,8 +18,8 @@ class SelectContainerCPUTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = APOUtils.get_and_fill_param(tool_parameters, 'pod')
-        namespace = APOUtils.get_and_fill_param(tool_parameters, 'namespace')
+        pod = tool_parameters.get("pod")
+        namespace = tool_parameters.get("namespace")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

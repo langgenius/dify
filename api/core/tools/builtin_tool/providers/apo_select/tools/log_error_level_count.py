@@ -19,9 +19,9 @@ class LogErrorLevelCountTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod_name = APOUtils.get_and_fill_param(tool_parameters, 'pod_name')
-        namespace = APOUtils.get_and_fill_param(tool_parameters, 'namespace')
-        pid = APOUtils.get_and_fill_param(tool_parameters, 'pid')
+        pod_name = tool_parameters.get('pod_name', '.*')
+        namespace = tool_parameters.get('namespace', '.*')
+        pid = tool_parameters.get('pid', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {

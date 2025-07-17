@@ -19,13 +19,13 @@ class ClusterNodeNetworkTransmitExclVirtualBytesTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cluster = APOUtils.get_and_fill_param(tool_parameters, 'cluster')
+        cluster = tool_parameters.get('cluster')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
             'metricName': '集群总览 - 节点资源使用 - 节点的网络使用量(不含回环/虚拟设备) - Transmitted bytes in',
             'params': {
-                'cluster': cluster
+                **({'cluster': cluster} if cluster else {})
             },
             'startTime': start_time,
             'endTime': end_time,
