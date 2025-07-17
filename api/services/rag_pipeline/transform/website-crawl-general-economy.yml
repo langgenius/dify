@@ -389,15 +389,15 @@ workflow:
           input_variable: ''
           max_chunk_length: ''
           replace_consecutive_spaces_newlines_tabs: ''
-        provider_id: langgenius/general_chunk/general_chunk
-        provider_name: langgenius/general_chunk/general_chunk
+        provider_id: langgenius/general_chunker/general_chunker
+        provider_name: langgenius/general_chunker/general_chunker
         provider_type: builtin
         selected: false
         title: 通用文本分块
         tool_configurations: {}
         tool_description: 一个用于通用文本分块模式的工具，检索和召回的块是相同的。
         tool_label: 通用文本分块
-        tool_name: general_chunk
+        tool_name: general_chunker
         tool_parameters:
           chunk_overlap_length:
             type: variable
