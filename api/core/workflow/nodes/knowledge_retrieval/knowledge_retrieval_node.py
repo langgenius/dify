@@ -151,9 +151,8 @@ class KnowledgeRetrievalNode(BaseNode):
         return "1"
 
     def _run(self) -> NodeRunResult:  # type: ignore
-        node_data = cast(KnowledgeRetrievalNodeData, self._node_data)
         # extract variables
-        variable = self.graph_runtime_state.variable_pool.get(node_data.query_variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -194,7 +193,7 @@ class KnowledgeRetrievalNode(BaseNode):
 
         # retrieve knowledge
         try:
-            results = self._fetch_dataset_retriever(node_data=node_data, query=query)
+            results = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
