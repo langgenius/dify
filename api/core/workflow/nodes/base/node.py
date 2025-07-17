@@ -195,7 +195,7 @@ class BaseNode:
         ...
 
     @abstractmethod
-    def _get_base_node_data(self) -> BaseNodeData:
+    def get_base_node_data(self) -> BaseNodeData:
         """Get the BaseNodeData object for this node."""
         ...
 

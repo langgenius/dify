@@ -76,7 +76,7 @@ class VariableAssignerNode(BaseNode):
     def _get_default_value_dict(self) -> dict[str, Any]:
         return self._node_data.default_value_dict
 
-    def _get_base_node_data(self) -> BaseNodeData:
+    def get_base_node_data(self) -> BaseNodeData:
         return self._node_data
 
     def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
