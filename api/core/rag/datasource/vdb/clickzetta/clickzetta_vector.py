@@ -33,7 +33,7 @@ class ClickzettaConfig(BaseModel):
     service: str = "api.clickzetta.com"
     workspace: str = "quick_start"
     vcluster: str = "default_ap"
-    schema: str = "dify"
+    schema_name: str = "dify"  # Renamed to avoid shadowing BaseModel.schema
     # Advanced settings
     batch_size: int = 20  # Reduced batch size to avoid large SQL statements
     enable_inverted_index: bool = True  # Enable inverted index for full-text search
@@ -59,7 +59,7 @@ class ClickzettaConfig(BaseModel):
             raise ValueError("config CLICKZETTA_WORKSPACE is required")
         if not values.get("vcluster"):
             raise ValueError("config CLICKZETTA_VCLUSTER is required")
-        if not values.get("schema"):
+        if not values.get("schema_name"):
             raise ValueError("config CLICKZETTA_SCHEMA is required")
         return values
 
@@ -92,8 +92,14 @@ class ClickzettaVector(BaseVector):
             service=self._config.service,
             workspace=self._config.workspace,
             vcluster=self._config.vcluster,
-            schema=self._config.schema
+            schema=self._config.schema_name
         )
+        
+        # Set session parameters for better string handling
+        with self._connection.cursor() as cursor:
+            # Use quote mode for string literal escaping to handle quotes better
+            cursor.execute("SET cz.sql.string.literal.escape.mode = 'quote'")
+            logger.info("Set string literal escape mode to 'quote' for better quote handling")
     
     @classmethod
     def _init_write_queue(cls):
@@ -152,7 +158,7 @@ class ClickzettaVector(BaseVector):
         """Check if the table exists."""
         try:
             with self._connection.cursor() as cursor:
-                cursor.execute(f"DESC {self._config.schema}.{self._table_name}")
+                cursor.execute(f"DESC {self._config.schema_name}.{self._table_name}")
                 return True
         except Exception as e:
             if "table or view not found" in str(e).lower():
@@ -174,25 +180,25 @@ class ClickzettaVector(BaseVector):
         """Create table and indexes (executed in write worker thread)."""
         # Check if table already exists to avoid unnecessary index creation
         if self._table_exists():
-            logger.info(f"Table {self._config.schema}.{self._table_name} already exists, skipping creation")
+            logger.info(f"Table {self._config.schema_name}.{self._table_name} already exists, skipping creation")
             return
             
         # Create table with vector and metadata columns
         dimension = len(embeddings[0]) if embeddings else 768
 
         create_table_sql = f"""
-        CREATE TABLE IF NOT EXISTS {self._config.schema}.{self._table_name} (
-            id STRING NOT NULL,
-            {Field.CONTENT_KEY.value} STRING NOT NULL,
-            {Field.METADATA_KEY.value} JSON,
-            {Field.VECTOR.value} VECTOR(FLOAT, {dimension}) NOT NULL,
+        CREATE TABLE IF NOT EXISTS {self._config.schema_name}.{self._table_name} (
+            id STRING NOT NULL COMMENT 'Unique document identifier',
+            {Field.CONTENT_KEY.value} STRING NOT NULL COMMENT 'Document text content for search and retrieval',
+            {Field.METADATA_KEY.value} JSON COMMENT 'Document metadata including source, type, and other attributes',
+            {Field.VECTOR.value} VECTOR(FLOAT, {dimension}) NOT NULL COMMENT 'High-dimensional embedding vector for semantic similarity search',
             PRIMARY KEY (id)
-        )
+        ) COMMENT 'Dify RAG knowledge base vector storage table for document embeddings and content'
         """
 
         with self._connection.cursor() as cursor:
             cursor.execute(create_table_sql)
-            logger.info(f"Created table {self._config.schema}.{self._table_name}")
+            logger.info(f"Created table {self._config.schema_name}.{self._table_name}")
 
             # Create vector index
             self._create_vector_index(cursor)
@@ -208,7 +214,7 @@ class ClickzettaVector(BaseVector):
         
         # First check if an index already exists on this column
         try:
-            cursor.execute(f"SHOW INDEX FROM {self._config.schema}.{self._table_name}")
+            cursor.execute(f"SHOW INDEX FROM {self._config.schema_name}.{self._table_name}")
             existing_indexes = cursor.fetchall()
             for idx in existing_indexes:
                 # Check if vector index already exists on the embedding column
@@ -220,7 +226,7 @@ class ClickzettaVector(BaseVector):
         
         index_sql = f"""
         CREATE VECTOR INDEX IF NOT EXISTS {index_name}
-        ON TABLE {self._config.schema}.{self._table_name}({Field.VECTOR.value})
+        ON TABLE {self._config.schema_name}.{self._table_name}({Field.VECTOR.value})
         PROPERTIES (
             "distance.function" = "{self._config.vector_distance_function}",
             "scalar.type" = "f32",
@@ -248,7 +254,7 @@ class ClickzettaVector(BaseVector):
         
         # Check if an inverted index already exists on this column
         try:
-            cursor.execute(f"SHOW INDEX FROM {self._config.schema}.{self._table_name}")
+            cursor.execute(f"SHOW INDEX FROM {self._config.schema_name}.{self._table_name}")
             existing_indexes = cursor.fetchall()
             for idx in existing_indexes:
                 idx_str = str(idx).lower()
@@ -263,7 +269,7 @@ class ClickzettaVector(BaseVector):
         
         index_sql = f"""
         CREATE INVERTED INDEX IF NOT EXISTS {index_name}
-        ON TABLE {self._config.schema}.{self._table_name} ({Field.CONTENT_KEY.value})
+        ON TABLE {self._config.schema_name}.{self._table_name} ({Field.CONTENT_KEY.value})
         PROPERTIES (
             "analyzer" = "{self._config.analyzer_type}",
             "mode" = "{self._config.analyzer_mode}"
@@ -283,7 +289,7 @@ class ClickzettaVector(BaseVector):
                 logger.info(f"Inverted index already exists on column {Field.CONTENT_KEY.value}")
                 # Try to get the existing index name for logging
                 try:
-                    cursor.execute(f"SHOW INDEX FROM {self._config.schema}.{self._table_name}")
+                    cursor.execute(f"SHOW INDEX FROM {self._config.schema_name}.{self._table_name}")
                     existing_indexes = cursor.fetchall()
                     for idx in existing_indexes:
                         if "inverted" in str(idx).lower() and Field.CONTENT_KEY.value.lower() in str(idx).lower():
@@ -313,46 +319,61 @@ class ClickzettaVector(BaseVector):
     
     def _insert_batch(self, batch_docs: list[Document], batch_embeddings: list[list[float]], 
                       batch_index: int, batch_size: int, total_batches: int):
-        """Insert a batch of documents (executed in write worker thread)."""
-        # Prepare batch insert
-        values = []
-        for doc, embedding in zip(batch_docs, batch_embeddings):
-            doc_id = self._safe_doc_id(doc.metadata.get("doc_id", str(uuid.uuid4())))
-            # For JSON column in Clickzetta, use safe JSON formatting
-            metadata_json = self._escape_json_string(doc.metadata)
-            embedding_str = self._format_vector(embedding)
-            cleaned_content = self._clean_document_content(doc.page_content)
-            values.append(f"('{doc_id}', '{cleaned_content}', "
-                        f"JSON '{metadata_json}', {embedding_str})")
-
-        # Use regular INSERT - primary key will handle duplicates
-        columns = f"id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}, {Field.VECTOR.value}"
-        insert_sql = f"INSERT INTO {self._config.schema}.{self._table_name} ({columns}) VALUES {','.join(values)}"
-        
-        # Log SQL length for debugging
-        sql_length = len(insert_sql)
-        logger.debug(f"SQL statement length: {sql_length} characters")
-        
-        # If SQL is too long, split into smaller batches
-        if sql_length > 1000000:  # 1MB limit
-            logger.warning(f"SQL statement too long ({sql_length} chars), splitting batch")
-            mid_point = len(batch_docs) // 2
-            # Split and process recursively
-            self._insert_batch_impl(batch_docs[:mid_point], batch_embeddings[:mid_point], 
-                                   batch_index, batch_size, total_batches)
-            self._insert_batch_impl(batch_docs[mid_point:], batch_embeddings[mid_point:], 
-                                   batch_index + mid_point, batch_size, total_batches)
+        """Insert a batch of documents using parameterized queries (executed in write worker thread)."""
+        if not batch_docs or not batch_embeddings:
+            logger.warning("Empty batch provided, skipping insertion")
             return
+            
+        if len(batch_docs) != len(batch_embeddings):
+            logger.error(f"Mismatch between docs ({len(batch_docs)}) and embeddings ({len(batch_embeddings)})")
+            return
+            
+        # Prepare data for parameterized insertion
+        data_rows = []
+        vector_dimension = len(batch_embeddings[0]) if batch_embeddings and batch_embeddings[0] else 768
+        
+        for doc, embedding in zip(batch_docs, batch_embeddings):
+            # Optimized: minimal checks for common case, fallback for edge cases
+            metadata = doc.metadata if doc.metadata else {}
+            
+            if not isinstance(metadata, dict):
+                metadata = {}
+                
+            doc_id = self._safe_doc_id(metadata.get("doc_id", str(uuid.uuid4())))
+            
+            # Fast path for JSON serialization
+            try:
+                metadata_json = json.dumps(metadata, ensure_ascii=True)
+            except (TypeError, ValueError):
+                logger.warning("JSON serialization failed, using empty dict")
+                metadata_json = "{}"
+            
+            content = doc.page_content or ""
+            
+            # According to ClickZetta docs, vector should be formatted as array string 
+            # for external systems: '[1.0, 2.0, 3.0]'
+            vector_str = '[' + ','.join(map(str, embedding)) + ']'
+            data_rows.append([doc_id, content, metadata_json, vector_str])
+
+        # Check if we have any valid data to insert
+        if not data_rows:
+            logger.warning(f"No valid documents to insert in batch {batch_index // batch_size + 1}/{total_batches}")
+            return
+            
+        # Use parameterized INSERT with executemany for better performance and security
+        # Cast JSON and VECTOR in SQL, pass raw data as parameters
+        columns = f"id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}, {Field.VECTOR.value}"
+        insert_sql = f"INSERT INTO {self._config.schema_name}.{self._table_name} ({columns}) VALUES (?, ?, CAST(? AS JSON), CAST(? AS VECTOR({vector_dimension})))"
         
         with self._connection.cursor() as cursor:
             try:
-                cursor.execute(insert_sql)
+                cursor.executemany(insert_sql, data_rows)
                 logger.info(f"Inserted batch {batch_index // batch_size + 1}/{total_batches} "
-                           f"({len(batch_docs)} docs, SQL: {sql_length} chars)")
-            except Exception:
-                logger.exception(f"SQL execution failed. SQL length: {sql_length}")
-                logger.exception(f"First 500 chars of SQL: {insert_sql[:500]}")
-                logger.exception(f"Last 500 chars of SQL: {insert_sql[-500:]}")
+                           f"({len(data_rows)} valid docs using parameterized query with VECTOR({vector_dimension}) cast)")
+            except Exception as e:
+                logger.exception(f"Parameterized SQL execution failed for {len(data_rows)} documents: {e}")
+                logger.exception(f"SQL template: {insert_sql}")
+                logger.exception(f"Sample data row: {data_rows[0] if data_rows else 'None'}")
                 raise
 
     def text_exists(self, id: str) -> bool:
@@ -360,7 +381,8 @@ class ClickzettaVector(BaseVector):
         safe_id = self._safe_doc_id(id)
         with self._connection.cursor() as cursor:
             cursor.execute(
-                f"SELECT COUNT(*) FROM {self._config.schema}.{self._table_name} WHERE id = '{safe_id}'"
+                f"SELECT COUNT(*) FROM {self._config.schema_name}.{self._table_name} WHERE id = ?",
+                [safe_id]
             )
             result = cursor.fetchone()
             return result[0] > 0 if result else False
@@ -372,7 +394,7 @@ class ClickzettaVector(BaseVector):
 
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema}.{self._table_name} does not exist, skipping delete")
+            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
             return
 
         # Execute delete through write queue
@@ -381,17 +403,19 @@ class ClickzettaVector(BaseVector):
     def _delete_by_ids_impl(self, ids: list[str]) -> None:
         """Implementation of delete by IDs (executed in write worker thread)."""
         safe_ids = [self._safe_doc_id(id) for id in ids]
-        ids_str = ",".join(f"'{id}'" for id in safe_ids)
+        # Create placeholders for parameterized query
+        placeholders = ",".join("?" for _ in safe_ids)
         with self._connection.cursor() as cursor:
             cursor.execute(
-                f"DELETE FROM {self._config.schema}.{self._table_name} WHERE id IN ({ids_str})"
+                f"DELETE FROM {self._config.schema_name}.{self._table_name} WHERE id IN ({placeholders})",
+                safe_ids
             )
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema}.{self._table_name} does not exist, skipping delete")
+            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
             return
 
         # Execute delete through write queue
@@ -399,53 +423,58 @@ class ClickzettaVector(BaseVector):
     
     def _delete_by_metadata_field_impl(self, key: str, value: str) -> None:
         """Implementation of delete by metadata field (executed in write worker thread)."""
-        # Safely escape the key and value
-        safe_key = self._escape_string(key)
-        safe_value = self._escape_string(value)
         with self._connection.cursor() as cursor:
-            # Using JSON path to filter
-            cursor.execute(
-                f"DELETE FROM {self._config.schema}.{self._table_name} "
-                f"WHERE {Field.METADATA_KEY.value}->>'$.{safe_key}' = '{safe_value}'"
-            )
+            # Using JSON path to filter with parameterized query
+            # Note: JSON path requires literal key name, cannot be parameterized
+            # Use json_extract_string function for ClickZetta compatibility
+            sql = (f"DELETE FROM {self._config.schema_name}.{self._table_name} "
+                   f"WHERE json_extract_string({Field.METADATA_KEY.value}, '$.{key}') = ?")
+            cursor.execute(sql, [value])
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Search for documents by vector similarity."""
         top_k = kwargs.get("top_k", 10)
         score_threshold = kwargs.get("score_threshold", 0.0)
         document_ids_filter = kwargs.get("document_ids_filter")
+        
+        # Handle filter parameter from canvas (workflow)
+        filter_param = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
         if document_ids_filter:
-            safe_doc_ids = [self._escape_string(str(id)) for id in document_ids_filter]
+            safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
-            filter_clauses.append(f"{Field.METADATA_KEY.value}->>'$.document_id' IN ({doc_ids_str})")
+            # Use json_extract_string function for ClickZetta compatibility
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})")
+        
+        # No need for dataset_id filter since each dataset has its own table
 
         # Add distance threshold based on distance function
+        vector_dimension = len(query_vector)
         if self._config.vector_distance_function == "cosine_distance":
             # For cosine distance, smaller is better (0 = identical, 2 = opposite)
             distance_func = "COSINE_DISTANCE"
             if score_threshold > 0:
-                query_vector_str = self._format_vector(query_vector)
+                query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
                 filter_clauses.append(f"{distance_func}({Field.VECTOR.value}, "
                                     f"{query_vector_str}) < {2 - score_threshold}")
         else:
             # For L2 distance, smaller is better
             distance_func = "L2_DISTANCE"
             if score_threshold > 0:
-                query_vector_str = self._format_vector(query_vector)
+                query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
                 filter_clauses.append(f"{distance_func}({Field.VECTOR.value}, "
                                     f"{query_vector_str}) < {score_threshold}")
 
         where_clause = " AND ".join(filter_clauses) if filter_clauses else "1=1"
 
         # Execute vector search query
-        query_vector_str = self._format_vector(query_vector)
+        query_vector_str = f"CAST('[{self._format_vector_simple(query_vector)}]' AS VECTOR({vector_dimension}))"
         search_sql = f"""
         SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value},
                {distance_func}({Field.VECTOR.value}, {query_vector_str}) AS distance
-        FROM {self._config.schema}.{self._table_name}
+        FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         ORDER BY distance
         LIMIT {top_k}
@@ -457,13 +486,37 @@ class ClickzettaVector(BaseVector):
             results = cursor.fetchall()
 
             for row in results:
-                metadata = json.loads(row[2]) if row[2] else {}
-                # Convert distance to score (inverse for better intuition)
+                # Parse metadata from JSON string (may be double-encoded)
+                try:
+                    if row[2]:
+                        metadata = json.loads(row[2])
+                        
+                        # If result is a string, it's double-encoded JSON - parse again
+                        if isinstance(metadata, str):
+                            metadata = json.loads(metadata)
+                        
+                        if not isinstance(metadata, dict):
+                            metadata = {}
+                    else:
+                        metadata = {}
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.error(f"JSON parsing failed: {e}")
+                    # Fallback: extract document_id with regex
+                    import re
+                    doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
+                    metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
+                
+                # Ensure required fields are set
+                metadata["doc_id"] = row[0]  # segment id
+                
+                # Ensure document_id exists (critical for Dify's format_retrieval_documents)
+                if "document_id" not in metadata:
+                    metadata["document_id"] = row[0]  # fallback to segment id
+                
+                # Add score based on distance
                 if self._config.vector_distance_function == "cosine_distance":
-                    # Cosine distance to similarity: 1 - (distance / 2)
                     metadata["score"] = 1 - (row[3] / 2)
                 else:
-                    # L2 distance to score (arbitrary conversion)
                     metadata["score"] = 1 / (1 + row[3])
 
                 doc = Document(page_content=row[1], metadata=metadata)
@@ -479,24 +532,32 @@ class ClickzettaVector(BaseVector):
 
         top_k = kwargs.get("top_k", 10)
         document_ids_filter = kwargs.get("document_ids_filter")
+        
+        # Handle filter parameter from canvas (workflow)
+        filter_param = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
         if document_ids_filter:
-            safe_doc_ids = [self._escape_string(str(id)) for id in document_ids_filter]
+            safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
-            filter_clauses.append(f"{Field.METADATA_KEY.value}->>'$.document_id' IN ({doc_ids_str})")
+            # Use json_extract_string function for ClickZetta compatibility
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})")
+        
+        # No need for dataset_id filter since each dataset has its own table
 
         # Use match_all function for full-text search
         # match_all requires all terms to be present
-        filter_clauses.append(f"MATCH_ALL({Field.CONTENT_KEY.value}, '{self._escape_string(query)}')")
+        # Use simple quote escaping for MATCH_ALL since it needs to be in the WHERE clause
+        escaped_query = query.replace("'", "''")
+        filter_clauses.append(f"MATCH_ALL({Field.CONTENT_KEY.value}, '{escaped_query}')")
 
         where_clause = " AND ".join(filter_clauses)
 
         # Execute full-text search query
         search_sql = f"""
         SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}
-        FROM {self._config.schema}.{self._table_name}
+        FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         LIMIT {top_k}
         """
@@ -508,7 +569,33 @@ class ClickzettaVector(BaseVector):
                 results = cursor.fetchall()
 
                 for row in results:
-                    metadata = json.loads(row[2]) if row[2] else {}
+                    # Parse metadata from JSON string (may be double-encoded)
+                    try:
+                        if row[2]:
+                            metadata = json.loads(row[2])
+                            
+                            # If result is a string, it's double-encoded JSON - parse again
+                            if isinstance(metadata, str):
+                                metadata = json.loads(metadata)
+                            
+                            if not isinstance(metadata, dict):
+                                metadata = {}
+                        else:
+                            metadata = {}
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.error(f"JSON parsing failed: {e}")
+                        # Fallback: extract document_id with regex
+                        import re
+                        doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
+                        metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
+                    
+                    # Ensure required fields are set
+                    metadata["doc_id"] = row[0]  # segment id
+                    
+                    # Ensure document_id exists (critical for Dify's format_retrieval_documents)
+                    if "document_id" not in metadata:
+                        metadata["document_id"] = row[0]  # fallback to segment id
+                        
                     # Add a relevance score for full-text search
                     metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
                     doc = Document(page_content=row[1], metadata=metadata)
@@ -524,20 +611,28 @@ class ClickzettaVector(BaseVector):
         """Fallback search using LIKE operator."""
         top_k = kwargs.get("top_k", 10)
         document_ids_filter = kwargs.get("document_ids_filter")
+        
+        # Handle filter parameter from canvas (workflow)
+        filter_param = kwargs.get("filter", {})
 
         # Build filter clause
         filter_clauses = []
         if document_ids_filter:
-            safe_doc_ids = [self._escape_string(str(id)) for id in document_ids_filter]
+            safe_doc_ids = [str(id).replace("'", "''") for id in document_ids_filter]
             doc_ids_str = ",".join(f"'{id}'" for id in safe_doc_ids)
-            filter_clauses.append(f"{Field.METADATA_KEY.value}->>'$.document_id' IN ({doc_ids_str})")
+            # Use json_extract_string function for ClickZetta compatibility
+            filter_clauses.append(f"json_extract_string({Field.METADATA_KEY.value}, '$.document_id') IN ({doc_ids_str})")
+        
+        # No need for dataset_id filter since each dataset has its own table
 
-        filter_clauses.append(f"{Field.CONTENT_KEY.value} LIKE '%{self._escape_string(query)}%'")
+        # Use simple quote escaping for LIKE clause
+        escaped_query = query.replace("'", "''")
+        filter_clauses.append(f"{Field.CONTENT_KEY.value} LIKE '%{escaped_query}%'")
         where_clause = " AND ".join(filter_clauses)
 
         search_sql = f"""
         SELECT id, {Field.CONTENT_KEY.value}, {Field.METADATA_KEY.value}
-        FROM {self._config.schema}.{self._table_name}
+        FROM {self._config.schema_name}.{self._table_name}
         WHERE {where_clause}
         LIMIT {top_k}
         """
@@ -548,7 +643,33 @@ class ClickzettaVector(BaseVector):
             results = cursor.fetchall()
 
             for row in results:
-                metadata = json.loads(row[2]) if row[2] else {}
+                # Parse metadata from JSON string (may be double-encoded)
+                try:
+                    if row[2]:
+                        metadata = json.loads(row[2])
+                        
+                        # If result is a string, it's double-encoded JSON - parse again
+                        if isinstance(metadata, str):
+                            metadata = json.loads(metadata)
+                        
+                        if not isinstance(metadata, dict):
+                            metadata = {}
+                    else:
+                        metadata = {}
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.error(f"JSON parsing failed: {e}")
+                    # Fallback: extract document_id with regex
+                    import re
+                    doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
+                    metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
+                
+                # Ensure required fields are set
+                metadata["doc_id"] = row[0]  # segment id
+                
+                # Ensure document_id exists (critical for Dify's format_retrieval_documents)
+                if "document_id" not in metadata:
+                    metadata["document_id"] = row[0]  # fallback to segment id
+                    
                 metadata["score"] = 0.5  # Lower score for LIKE search
                 doc = Document(page_content=row[1], metadata=metadata)
                 documents.append(doc)
@@ -558,53 +679,12 @@ class ClickzettaVector(BaseVector):
     def delete(self) -> None:
         """Delete the entire collection."""
         with self._connection.cursor() as cursor:
-            cursor.execute(f"DROP TABLE IF EXISTS {self._config.schema}.{self._table_name}")
+            cursor.execute(f"DROP TABLE IF EXISTS {self._config.schema_name}.{self._table_name}")
 
-    def _escape_string(self, s: str) -> str:
-        """Escape single quotes and other special characters for SQL."""
-        if s is None:
-            return ""
-        # Replace single quotes and other potentially problematic characters
-        s = str(s)
-        s = s.replace("\\", "\\\\")  # Escape backslashes first
-        s = s.replace("'", "''")  # Escape single quotes
-        s = s.replace("`", "\\`")  # Escape backticks
-        s = s.replace('"', '\\"')  # Escape double quotes
-        s = s.replace("\n", " ")  # Replace newlines with spaces
-        s = s.replace("\r", " ")  # Replace carriage returns with spaces
-        s = s.replace("\t", " ")  # Replace tabs with spaces
-        # Remove any remaining control characters
-        s = ''.join(char for char in s if ord(char) >= 32 or char in [' '])
-        return s.strip()
     
-    def _format_vector(self, vector: list[float]) -> str:
-        """Safely format vector for SQL, handling special float values."""
-        safe_values = []
-        for val in vector:
-            if isinstance(val, (int, float)):
-                # Handle special float values
-                if val != val:  # NaN check
-                    safe_values.append("0.0")
-                elif val == float('inf'):
-                    safe_values.append("3.4028235e+38")  # Max float32
-                elif val == float('-inf'):
-                    safe_values.append("-3.4028235e+38")  # Min float32
-                else:
-                    # Ensure finite precision to avoid very long numbers
-                    safe_values.append(f"{float(val):.8g}")
-            else:
-                safe_values.append("0.0")
-        return f"VECTOR({','.join(safe_values)})"
-    
-    def _escape_json_string(self, obj: dict) -> str:
-        """Safely format JSON for SQL, escaping special characters."""
-        try:
-            json_str = json.dumps(obj, ensure_ascii=True)
-            # Escape single quotes for SQL
-            return json_str.replace("'", "''")
-        except (TypeError, ValueError) as e:
-            logger.warning(f"Failed to serialize metadata to JSON: {e}")
-            return "{}"
+    def _format_vector_simple(self, vector: list[float]) -> str:
+        """Simple vector formatting for SQL queries."""
+        return ','.join(map(str, vector))
     
     def _safe_doc_id(self, doc_id: str) -> str:
         """Ensure doc_id is safe for SQL and doesn't contain special characters."""
@@ -618,31 +698,6 @@ class ClickzettaVector(BaseVector):
             return str(uuid.uuid4())
         return safe_id[:255]  # Limit length
     
-    def _clean_document_content(self, content: str) -> str:
-        """Clean document content for safe SQL insertion."""
-        if not content:
-            return ""
-        
-        content = str(content)
-        # Remove or replace problematic characters that can break SQL
-        content = content.replace("'", "''")  # SQL quote escaping
-        content = content.replace("\\", "\\\\")  # Escape backslashes
-        content = content.replace("`", "'")  # Replace backticks with single quotes
-        content = content.replace('"', "''")  # Replace double quotes with escaped single quotes
-        
-        # Replace line breaks and tabs with spaces to avoid multiline issues
-        content = content.replace("\n", " ")
-        content = content.replace("\r", " ")
-        content = content.replace("\t", " ")
-        
-        # Remove control characters but keep printable ones
-        cleaned = ''.join(char if ord(char) >= 32 else ' ' for char in content)
-        
-        # Normalize multiple spaces to single space
-        import re
-        cleaned = re.sub(r'\s+', ' ', cleaned)
-        
-        return cleaned.strip()
 
 
 class ClickzettaVectorFactory(AbstractVectorFactory):
@@ -658,7 +713,7 @@ class ClickzettaVectorFactory(AbstractVectorFactory):
             service=dify_config.CLICKZETTA_SERVICE,
             workspace=dify_config.CLICKZETTA_WORKSPACE,
             vcluster=dify_config.CLICKZETTA_VCLUSTER,
-            schema=dify_config.CLICKZETTA_SCHEMA,
+            schema_name=dify_config.CLICKZETTA_SCHEMA,
             batch_size=dify_config.CLICKZETTA_BATCH_SIZE or 100,
             enable_inverted_index=dify_config.CLICKZETTA_ENABLE_INVERTED_INDEX or True,
             analyzer_type=dify_config.CLICKZETTA_ANALYZER_TYPE or "chinese",
