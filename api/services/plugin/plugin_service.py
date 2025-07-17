@@ -197,6 +197,17 @@ class PluginService:
         return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
 
     @staticmethod
+    def is_plugin_verified(tenant_id: str, plugin_unique_identifier: str) -> bool:
+        """
+        Check if the plugin is verified
+        """
+        manager = PluginInstaller()
+        try:
+            return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier).verified
+        except Exception:
+            return False
+
+    @staticmethod
     def fetch_install_tasks(tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
         """
         Fetch plugin installation tasks

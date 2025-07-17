@@ -36,6 +36,9 @@ import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
+import { PluginAuth } from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
+import { useAllToolProviders } from '@/service/use-tools'
 
 const i18nPrefix = 'plugin.action'
 
@@ -68,7 +71,14 @@ const DetailHeader = ({
     meta,
     plugin_id,
   } = detail
-  const { author, category, name, label, description, icon, verified } = detail.declaration
+  const { author, category, name, label, description, icon, verified, tool } = detail.declaration
+  const isTool = category === PluginType.tool
+  const providerBriefInfo = tool?.identity
+  const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
+  const { data: collectionList = [] } = useAllToolProviders(isTool)
+  const provider = useMemo(() => {
+    return collectionList.find(collection => collection.name === providerKey)
+  }, [collectionList, providerKey])
   const isFromGitHub = source === PluginSource.github
   const isFromMarketplace = source === PluginSource.marketplace
 
@@ -262,7 +272,17 @@ const DetailHeader = ({
           </ActionButton>
         </div>
       </div>
-      <Description className='mt-3' text={description[locale]} descriptionLineRows={2}></Description>
+      <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
+      {
+        category === PluginType.tool && (
+          <PluginAuth
+            pluginPayload={{
+              provider: provider?.name || '',
+              category: AuthCategory.tool,
+            }}
+          />
+        )
+      }
       {isShowPluginInfo && (
         <PluginInfo
           repository={isFromGitHub ? meta?.repo : ''}

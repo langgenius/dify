@@ -21,6 +21,43 @@ from .model import Account, App, Tenant
 from .types import StringUUID
 
 
+# system level tool oauth client params (client_id, client_secret, etc.)
+class ToolOAuthSystemClient(Base):
+    __tablename__ = "tool_oauth_system_clients"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_oauth_system_client_pkey"),
+        db.UniqueConstraint("plugin_id", "provider", name="tool_oauth_system_client_plugin_id_provider_idx"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    plugin_id: Mapped[str] = mapped_column(db.String(512), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    # oauth params of the tool provider
+    encrypted_oauth_params: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+
+# tenant level tool oauth client params (client_id, client_secret, etc.)
+class ToolOAuthTenantClient(Base):
+    __tablename__ = "tool_oauth_tenant_clients"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_oauth_tenant_client_pkey"),
+        db.UniqueConstraint("tenant_id", "plugin_id", "provider", name="unique_tool_oauth_tenant_client"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    # tenant id
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    plugin_id: Mapped[str] = mapped_column(db.String(512), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    # oauth params of the tool provider
+    encrypted_oauth_params: Mapped[str] = mapped_column(db.Text, nullable=False)
+
+    @property
+    def oauth_params(self) -> dict:
+        return cast(dict, json.loads(self.encrypted_oauth_params or "{}"))
+
+
 class BuiltinToolProvider(Base):
     """
     This table stores the tool provider information for built-in tools for each tenant.
@@ -29,12 +66,14 @@ class BuiltinToolProvider(Base):
     __tablename__ = "tool_builtin_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_builtin_provider_pkey"),
-        # one tenant can only have one tool provider with the same name
-        db.UniqueConstraint("tenant_id", "provider", name="unique_builtin_tool_provider"),
+        db.UniqueConstraint("tenant_id", "provider", "name", name="unique_builtin_tool_provider"),
     )
 
     # id of the tool provider
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    name: Mapped[str] = mapped_column(
+        db.String(256), nullable=False, server_default=db.text("'API KEY 1'::character varying")
+    )
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
     # who created this tool provider
@@ -48,6 +87,11 @@ class BuiltinToolProvider(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+    is_default: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    # credential type, e.g., "api-key", "oauth2"
+    credential_type: Mapped[str] = mapped_column(
+        db.String(32), nullable=False, server_default=db.text("'api-key'::character varying")
     )
 
     @property
@@ -68,7 +112,7 @@ class ApiToolProvider(Base):
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the api provider
-    name = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False, server_default=db.text("'API KEY 1'::character varying"))
     # icon
     icon = db.Column(db.String(255), nullable=False)
     # original schema
@@ -281,18 +325,19 @@ class MCPToolProvider(Base):
 
     @property
     def decrypted_credentials(self) -> dict:
+        from core.helper.provider_cache import NoOpProviderCredentialCache
         from core.tools.mcp_tool.provider import MCPToolProviderController
-        from core.tools.utils.configuration import ProviderConfigEncrypter
+        from core.tools.utils.encryption import create_provider_encrypter
 
         provider_controller = MCPToolProviderController._from_db(self)
 
-        tool_configuration = ProviderConfigEncrypter(
+        encrypter, _ = create_provider_encrypter(
             tenant_id=self.tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.provider_id,
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+            cache=NoOpProviderCredentialCache(),
         )
-        return tool_configuration.decrypt(self.credentials, use_cache=False)
+
+        return encrypter.decrypt(self.credentials)  # type: ignore
 
 
 class ToolModelInvoke(Base):
