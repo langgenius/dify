@@ -309,7 +309,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
-  const filterJinjia2InputVar = useCallback((varPayload: Var) => {
+  const filterJinja2InputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
   }, [])
 
@@ -356,7 +356,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
-    filterJinjia2InputVar,
+    filterJinja2InputVar,
   }
 }
 
