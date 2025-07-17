@@ -131,6 +131,15 @@ export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: stri
   return del<CommonResponse>(url)
 }
 
+export const sendOwnerEmail = (body: { language?: string }) =>
+  post<CommonResponse & { data: string }>('/workspaces/current/members/send-owner-transfer-confirm-email', { body })
+
+export const verifyOwnerEmail = (body: { code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/workspaces/current/members/owner-transfer-check', { body })
+
+export const ownershipTransfer = (memberID: string, body: { token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(`/workspaces/current/members/${memberID}/owner-transfer`, { body })
+
 export const fetchFilePreview: Fetcher<{ content: string }, { fileID: string }> = ({ fileID }) => {
   return get<{ content: string }>(`/files/${fileID}/preview`)
 }
@@ -376,3 +385,15 @@ export const submitDeleteAccountFeedback = (body: { feedback: string; email: str
 
 export const getDocDownloadUrl = (doc_name: string) =>
   get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
+
+export const sendVerifyCode = (body: { email: string; phase: string; token?: string }) =>
+  post<CommonResponse & { data: string }>('/account/change-email', { body })
+
+export const verifyEmail = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/account/change-email/validity', { body })
+
+export const resetEmail = (body: { new_email: string; token: string }) =>
+  post<CommonResponse>('/account/change-email/reset', { body })
+
+export const checkEmailExisted = (body: { email: string }) =>
+  post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })

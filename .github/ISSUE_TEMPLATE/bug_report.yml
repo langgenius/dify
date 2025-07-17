@@ -16,6 +16,8 @@ body:
           required: true
         - label: I confirm that I am using English to submit this report, otherwise it will be closed.
           required: true
+        - label: 【中文用户 & Non English User】请使用英语提交，否则会被关闭 ：）
+          required: true
         - label: "Please do not modify this template :) and fill in all the required fields."
           required: true
 
