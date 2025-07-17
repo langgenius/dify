@@ -35,7 +35,7 @@ export type AppMeta = {
 export type AppData = {
   app_id: string
   can_replace_logo?: boolean
-  custom_config?: Record<string, any>
+  custom_config: Record<string, any> | null
   enable_site?: boolean
   end_user_id?: string
   site: SiteInfo
