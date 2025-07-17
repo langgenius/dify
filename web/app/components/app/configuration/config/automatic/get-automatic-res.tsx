@@ -21,14 +21,10 @@ import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
-import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import type { CompletionParams, Model } from '@/types/app'
-import { AppType } from '@/types/app'
-import ConfigVar from '@/app/components/app/configuration/config-var'
-import GroupName from '@/app/components/app/configuration/base/group-name'
+import type { AppType } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 
 // type
 import type { AutomaticRes } from '@/service/debug'
@@ -44,6 +40,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { GeneratorType } from './types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Link from 'next/link'
+import Result from './result'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
@@ -54,6 +51,8 @@ export type IGetAutomaticResProps = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   generatorType: GeneratorType
+  flowId: string
+  nodeId?: string
   isBasicMode?: boolean
 }
 
@@ -80,6 +79,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   nodesOutputVars,
   availableNodes,
   generatorType,
+  flowId,
+  nodeId,
   isBasicMode,
   onFinished,
 }) => {
@@ -189,7 +190,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const renderNoData = (
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
-      <Generator className='h-14 w-14 text-text-tertiary' />
+      <Generator className='size-8 text-text-quaternary' />
       <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
         <div>{t('appDebug.generate.newNoDataLine1')}</div>
         <Link className='text-text-accent' href='//todo' target='_blank'>{t('appDebug.generate.newNoDataLine2')}</Link>
@@ -241,7 +242,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }
 
-  const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
+  const [isShowConfirmOverwrite, {
+    setTrue: showConfirmOverwrite,
+    setFalse: hideShowConfirmOverwrite,
+  }] = useBoolean(false)
 
   const isShowAutoPromptResPlaceholder = () => {
     return !isLoading && !res
@@ -252,7 +256,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       isShow={isShow}
       onClose={onClose}
       className='min-w-[1140px] !p-0'
-      closable
     >
       <div className='flex h-[680px] flex-wrap'>
         <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
@@ -341,73 +344,28 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
         </div>
 
-        {(!isLoading && res) && (
+        {/* {(!isLoading && res) && ( */}
+        {
           <div className='h-full w-0 grow p-6 pb-0'>
-            <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
-            <div className={cn('max-h-[555px] overflow-y-auto', isBasicMode && 'pb-2')}>
-              <ConfigPrompt
-                mode={mode}
-                promptTemplate={res?.prompt || ''}
-                promptVariables={[]}
-                readonly
-                noTitle={!isBasicMode}
-                gradientBorder
-                editorHeight={!isBasicMode ? 524 : 0}
-                noResize={!isBasicMode}
-              />
-              {isBasicMode && (
-                <>
-                  {(res?.variables?.length && res?.variables?.length > 0)
-                    ? (
-                      <ConfigVar
-                        promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
-                        readonly
-                      />
-                    )
-                    : ''}
-
-                  {(mode !== AppType.completion && res?.opening_statement) && (
-                    <div className='mt-7'>
-                      <GroupName name={t('appDebug.feature.groupChat.title')} />
-                      <div
-                        className='mb-1 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-3'
-                      >
-                        <div className='mb-2 flex items-center gap-2'>
-                          <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-                            <LoveMessage className='h-4 w-4 text-text-primary-on-surface' />
-                          </div>
-                          <div className='system-sm-semibold flex grow items-center text-text-secondary'>
-                            {t('appDebug.feature.conversationOpener.title')}
-                          </div>
-                        </div>
-                        <div className='system-xs-regular min-h-8 text-text-tertiary'>{res.opening_statement}</div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className='flex justify-end bg-background-default py-4'>
-              <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='ml-2' onClick={() => {
-                setShowConfirmOverwrite(true)
-              }}>{t('appDebug.generate.apply')}</Button>
-            </div>
+            <Result
+              storageKey={`${flowId}${isBasicMode ? '' : `-${nodeId}`}`}
+              onApply={showConfirmOverwrite}
+              generatorType={generatorType}
+            />
           </div>
-        )}
+        }
         {isLoading && renderLoading}
-        {isShowAutoPromptResPlaceholder() && renderNoData}
-        {showConfirmOverwrite && (
+        {isShowAutoPromptResPlaceholder() && !renderNoData}
+        {isShowConfirmOverwrite && (
           <Confirm
             title={t('appDebug.generate.overwriteTitle')}
             content={t('appDebug.generate.overwriteMessage')}
-            isShow={showConfirmOverwrite}
+            isShow
             onConfirm={() => {
-              setShowConfirmOverwrite(false)
+              hideShowConfirmOverwrite()
               onFinished(res!)
             }}
-            onCancel={() => setShowConfirmOverwrite(false)}
+            onCancel={hideShowConfirmOverwrite}
           />
         )}
       </div>
