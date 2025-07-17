@@ -43,6 +43,7 @@ import InstructionEditor from './instruction-editor'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { GeneratorType } from './types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import Link from 'next/link'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
@@ -190,8 +191,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
       <Generator className='h-14 w-14 text-text-tertiary' />
       <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
-        <div>{t('appDebug.generate.noDataLine1')}</div>
-        <div>{t('appDebug.generate.noDataLine2')}</div>
+        <div>{t('appDebug.generate.newNoDataLine1')}</div>
+        <Link className='text-text-accent' href='//todo' target='_blank'>{t('appDebug.generate.newNoDataLine2')}</Link>
       </div>
     </div>
   )
