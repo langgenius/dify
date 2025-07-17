@@ -287,6 +287,14 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    searchNodes: 'Search nodes',
+    searchNodesShortcut: 'Search nodes ({{shortcut}})',
+    noNodesFound: 'No nodes found',
+    searchResults: '{{count}} result(s)',
+    navigate: 'navigate',
+    select: 'select',
+    close: 'close',
+    searchHint: 'Try searching by node name or type',
   },
   variableReference: {
     noAvailableVars: 'No available variables',
@@ -943,6 +951,11 @@ const translation = {
   debug: {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
+    copyLastRun: 'Copy Last Run',
+    noLastRunFound: 'No previous run found',
+    noMatchingInputsFound: 'No matching inputs found from last run',
+    lastRunInputsCopied: '{{count}} input(s) copied from last run',
+    copyLastRunError: 'Failed to copy last run inputs',
     noData: {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
