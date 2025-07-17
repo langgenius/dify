@@ -164,7 +164,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   return res
 }
 
-const formatItem = (
+export const formatItem = (
   item: any,
   isChatMode: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,

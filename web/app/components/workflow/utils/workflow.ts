@@ -5,19 +5,28 @@ import {
 } from 'reactflow'
 import { v4 as uuid4 } from 'uuid'
 import {
+  clone,
   groupBy,
   isEqual,
   uniqBy,
 } from 'lodash-es'
 import type {
+  CommonNodeType,
+  ConversationVariable,
   Edge,
+  EnvironmentVariable,
   Node,
+  Var,
 } from '../types'
 import {
   BlockEnum,
 } from '../types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
+import { VAR_REGEX_TEXT } from '@/config'
+import { formatItem } from '../nodes/_base/components/variable/utils'
+import type { StructuredOutput } from '../nodes/llm/types'
+import { SUB_VARIABLES } from '../nodes/constants'
 
 export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
@@ -93,7 +102,17 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
+function getParentOutputVarMap(item: Var, path: string, varMap: Record<string, Var>) {
+  if (!item.children || (Array.isArray(item.children) && !item.children.length) || ((item.children as StructuredOutput).schema))
+    return
+  (item.children as Var[]).forEach((child) => {
+    const newPath = `${path}.${child.variable}`
+    varMap[newPath] = child
+    getParentOutputVarMap(child, newPath, varMap)
+  })
+}
+
+export const getValidTreeNodes = (nodes: Node[], edges: Edge[], isCollectVar?: boolean) => {
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
   if (!startNode) {
@@ -101,6 +120,42 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
       validNodes: [],
       maxDepth: 0,
     }
+  }
+
+  const traverseTegionalBlock = (root: Node, blockNodes: Node[], edges: Edge[]) => {
+    const outgoers = getOutgoers(root, [root, ...blockNodes], edges)
+    outgoers.forEach((outgoer) => {
+      if (isCollectVar) {
+        const nodeObj = formatItem(root, false, () => true)
+        const varMap = {} as Record<string, Var>
+        nodeObj.vars.forEach((item) => {
+          if (item.variable.startsWith('sys.'))
+            return
+          const newPath = `${nodeObj.nodeId}.${item.variable}`
+          varMap[newPath] = item
+          getParentOutputVarMap(item, newPath, varMap)
+        })
+        outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...(outgoer._parentOutputVarMap ?? {}), ...varMap }
+      }
+
+      traverseTegionalBlock(outgoer, blockNodes, edges)
+    })
+  }
+
+  const handleIterationOrLoop = (root: Node, blockNodes: Node[]) => {
+    const rootStart = clone(root) as Node<CommonNodeType<{ start_node_id: string }>>
+    rootStart.id = rootStart.data.start_node_id
+    if ([BlockEnum.Iteration].includes(root.data.type)) {
+      rootStart._parentOutputVarMap = {
+        ...(rootStart._parentOutputVarMap ?? {}),
+        [`${root.id}.index`]: {},
+        [`${root.id}.item`]: {},
+      }
+      SUB_VARIABLES.forEach((key) => {
+        rootStart._parentOutputVarMap![`${root.id}.item.${key}`] = {}
+      })
+    }
+    traverseTegionalBlock(rootStart, blockNodes, edges)
   }
 
   const list: Node[] = [startNode]
@@ -116,10 +171,24 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
       outgoers.forEach((outgoer) => {
         list.push(outgoer)
 
-        if (outgoer.data.type === BlockEnum.Iteration)
-          list.push(...nodes.filter(node => node.parentId === outgoer.id))
-        if (outgoer.data.type === BlockEnum.Loop)
-          list.push(...nodes.filter(node => node.parentId === outgoer.id))
+        if (isCollectVar) {
+          const nodeObj = formatItem(root, false, () => true)
+          const varMap = {} as Record<string, Var>
+          nodeObj.vars.forEach((item) => {
+            if (item.variable.startsWith('sys.'))
+              return
+            const newPath = `${nodeObj.nodeId}.${item.variable}`
+            varMap[newPath] = item
+            getParentOutputVarMap(item, newPath, varMap)
+          })
+          outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...(outgoer._parentOutputVarMap ?? {}), ...varMap }
+        }
+
+        if ([BlockEnum.Iteration, BlockEnum.Loop].includes(root.data.type)) {
+          const blockNodes = nodes.filter(node => node.parentId === root.id)
+          handleIterationOrLoop(root, blockNodes)
+          list.push(...blockNodes)
+        }
 
         traverse(outgoer, depth + 1)
       })
@@ -127,10 +196,11 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     else {
       list.push(root)
 
-      if (root.data.type === BlockEnum.Iteration)
-        list.push(...nodes.filter(node => node.parentId === root.id))
-      if (root.data.type === BlockEnum.Loop)
-        list.push(...nodes.filter(node => node.parentId === root.id))
+      if ([BlockEnum.Iteration, BlockEnum.Loop].includes(root.data.type)) {
+        const blockNodes = nodes.filter(node => node.parentId === root.id)
+        handleIterationOrLoop(root, blockNodes)
+        list.push(...blockNodes)
+      }
     }
   }
 
@@ -333,4 +403,49 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+}
+
+export const transformStartNodeVariables = (chatVarList: ConversationVariable[], environmentVariables: EnvironmentVariable[]) => {
+  const variablesMap: Record<string, ConversationVariable | EnvironmentVariable> = {}
+  chatVarList.forEach((variable) => {
+    variablesMap[`conversation.${variable.name}`] = variable
+  })
+  environmentVariables.forEach((variable) => {
+    variablesMap[`env.${variable.name}`] = variable
+  })
+  return variablesMap
+}
+
+export const getNotExistVariablesByText = (text: string, varMap: Record<string, Var>) => {
+  const var_warnings: string[] = []
+  text?.replace(VAR_REGEX_TEXT, (str, id_name) => {
+    if (id_name.startsWith('sys.'))
+      return str
+    if (varMap[id_name])
+      return str
+    const arr = id_name.split('.')
+    arr.shift()
+    var_warnings.push(arr.join('.'))
+    return str
+  })
+  return var_warnings
+}
+
+export const getNotExistVariablesByArray = (array: string[][], varMap: Record<string, Var>) => {
+  if (!array.length)
+    return []
+  const var_warnings: string[] = []
+  array.forEach((item) => {
+    if (!item.length || !Array.isArray(item))
+      return
+    if (['sys'].includes(item[0]))
+      return
+    const var_warning = varMap[item.join('.')]
+    if (var_warning)
+      return
+    const arr = [...item]
+    arr.shift()
+    var_warnings.push(arr.join('.'))
+  })
+  return var_warnings
 }
