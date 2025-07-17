@@ -209,9 +209,10 @@ class DatabaseConfig(BaseSettings):
 
 
 class CeleryConfig(DatabaseConfig):
+    
     CELERY_BACKEND: str = Field(
         description="Backend for Celery task results. Options: 'database', 'redis'.",
-        default="database",
+        default="redis",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(
@@ -240,6 +241,7 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     def CELERY_RESULT_BACKEND(self) -> str | None:
+        
         return (
             "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
             if self.CELERY_BACKEND == "database"
