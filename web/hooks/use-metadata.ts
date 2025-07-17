@@ -7,8 +7,8 @@ import useTimestamp from '@/hooks/use-timestamp'
 export type inputType = 'input' | 'select' | 'textarea'
 export type metadataType = DocType | 'originInfo' | 'technicalParameters'
 
-type MetadataMap =
-  Record<
+type MetadataMap
+  = Record<
     metadataType,
     {
       text: string
