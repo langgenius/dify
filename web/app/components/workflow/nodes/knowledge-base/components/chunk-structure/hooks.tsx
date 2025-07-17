@@ -53,7 +53,7 @@ export const useChunkStructure = () => {
   const options = [
     GeneralOption,
     ParentChildOption,
-    // QuestionAnswerOption,
+    QuestionAnswerOption,
   ]
 
   return {

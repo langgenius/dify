@@ -68,7 +68,7 @@ const AppDetailNav = ({
     }
   }, [appSidebarExpand, setAppSidebarExpand])
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.b`, (e) => {
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.b`, (e) => {
     e.preventDefault()
     handleToggle()
   }, { exactMatch: true, useCapture: true })

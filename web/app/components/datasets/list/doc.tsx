@@ -83,26 +83,26 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
   }, [apiBaseUrl, locale])
 
   return (
-    <div className="flex">
+    <div className='flex'>
       <div className={`fixed right-20 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-components-panel-bg p-4 shadow-md">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-text-primary">{t('appApi.develop.toc')}</h3>
+            <nav className='toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-components-panel-bg p-4 shadow-md'>
+              <div className='mb-4 flex items-center justify-between'>
+                <h3 className='text-lg font-semibold text-text-primary'>{t('appApi.develop.toc')}</h3>
                 <button
                   onClick={() => setIsTocExpanded(false)}
-                  className="text-text-tertiary hover:text-text-secondary"
+                  className='text-text-tertiary hover:text-text-secondary'
                 >
                   ✕
                 </button>
               </div>
-              <ul className="space-y-2">
+              <ul className='space-y-2'>
                 {toc.map((item, index) => (
                   <li key={index}>
                     <a
                       href={item.href}
-                      className="text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline"
+                      className='text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline'
                       onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
@@ -115,13 +115,18 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-components-button-secondary-bg shadow-md transition-colors duration-200 hover:bg-components-button-secondary-bg-hover"
+              className='flex h-10 w-10 items-center justify-center rounded-full bg-components-button-secondary-bg shadow-md transition-colors duration-200 hover:bg-components-button-secondary-bg-hover'
             >
-              <RiListUnordered className="h-6 w-6 text-components-button-secondary-text" />
+              <RiListUnordered className='h-6 w-6 text-components-button-secondary-text' />
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'prose-invert')}>
+      <article
+        className={cn(
+          'prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12',
+          theme === Theme.dark && 'prose-invert',
+        )}
+      >
         {Template}
       </article>
     </div>

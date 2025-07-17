@@ -1,7 +1,7 @@
 'use client'
 
 // Libraries
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useDebounceFn } from 'ahooks'
@@ -55,7 +55,6 @@ const List = () => {
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'dataset',
   })
-  const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useQuery(
     {
       queryKey: ['datasetApiBaseInfo'],
@@ -89,7 +88,7 @@ const List = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
+    <div className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
       <div className='sticky top-0 z-10 flex items-center justify-between gap-x-1 bg-background-body px-12 pb-2 pt-4'>
         <SegmentedControl
           value={activeTab}
@@ -131,7 +130,7 @@ const List = () => {
       </div>
       {activeTab === 'dataset' && (
         <>
-          <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+          <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
           {!systemFeatures.branding.enabled && <DatasetFooter />}
           {showTagManagementModal && (
             <TagManagementModal type='knowledge' show={showTagManagementModal} />

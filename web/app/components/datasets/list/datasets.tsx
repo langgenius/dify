@@ -8,7 +8,6 @@ import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetList, useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 type Props = {
-  containerRef: React.RefObject<HTMLDivElement>
   tags: string[]
   keywords: string
   includeAll: boolean
@@ -57,13 +56,13 @@ const Datasets = ({
 
   return (
     <>
-      <nav className='grid shrink-0 grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+      <nav className='grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={resetDatasetList} />),
         ))}
+        <div ref={anchorRef} className='h-0' />
       </nav>
-      <div ref={anchorRef} className='h-0' />
     </>
   )
 }

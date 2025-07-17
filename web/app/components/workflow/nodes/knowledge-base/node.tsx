@@ -12,12 +12,26 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   return (
     <div className='mb-1 space-y-0.5 px-3 py-1'>
       <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5'>
-        <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>{t('datasetCreation.stepTwo.indexMode')}</div>
-        <div className='system-xs-medium grow truncate text-right text-text-secondary' title={data.indexing_technique}>{settingsDisplay[data.indexing_technique]}</div>
+        <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>
+          {t('datasetCreation.stepTwo.indexMode')}
+        </div>
+        <div
+          className='system-xs-medium grow truncate text-right text-text-secondary'
+          title={data.indexing_technique}
+        >
+          {settingsDisplay[data.indexing_technique as keyof typeof settingsDisplay]}
+        </div>
       </div>
       <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5'>
-        <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-        <div className='system-xs-medium grow truncate text-right text-text-secondary' title={data.retrieval_model.search_method}>{(settingsDisplay as Record<string, string>)[data.retrieval_model.search_method]}</div>
+        <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>
+          {t('datasetSettings.form.retrievalSetting.title')}
+        </div>
+        <div
+          className='system-xs-medium grow truncate text-right text-text-secondary'
+          title={data.retrieval_model.search_method}
+        >
+          {settingsDisplay[data.retrieval_model.search_method as keyof typeof settingsDisplay]}
+        </div>
       </div>
     </div>
   )
