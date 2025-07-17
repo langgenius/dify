@@ -91,8 +91,6 @@ class SegmentType(StrEnum):
             return SegmentType.OBJECT
         elif isinstance(value, File):
             return SegmentType.FILE
-        elif isinstance(value, str):
-            return SegmentType.STRING
         else:
             return None
 

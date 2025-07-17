@@ -63,6 +63,7 @@ const translation = {
       unsupportedTitle: 'اکشن پشتیبانی نشده',
       unsupportedContent2: 'برای تغییر نسخه کلیک کنید.',
       toolSetting: 'تنظیمات ابزار',
+      unsupportedMCPTool: 'نسخه فعلی پلاگین استراتژی عامل انتخاب‌شده از ابزارهای MCP پشتیبانی نمی‌کند.',
     },
     endpointDeleteTip: 'حذف نقطه پایانی',
     disabled: 'غیر فعال',

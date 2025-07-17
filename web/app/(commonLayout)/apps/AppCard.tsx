@@ -308,7 +308,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
-      dateFormat: 'MM/DD/YYYY h:mm',
+      dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
     })
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -171,7 +171,10 @@ const translation = {
       title: '編織',
       description: 'Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。',
     },
-    aliyun: {},
+    aliyun: {
+      title: '雲端監控',
+      description: '阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。',
+    },
   },
   answerIcon: {
     descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',
@@ -255,6 +258,8 @@ const translation = {
   },
   accessControl: '網頁應用程式存取控制',
   noAccessPermission: '沒有權限訪問網絡應用程式',
+  maxActiveRequestsPlaceholder: '輸入 0 以表示無限',
+  maxActiveRequests: '同時最大請求數',
 }
 
 export default translation

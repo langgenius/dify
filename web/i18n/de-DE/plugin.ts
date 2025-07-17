@@ -63,6 +63,7 @@ const translation = {
       toolLabel: 'Werkzeug',
       uninstalledContent: 'Dieses Plugin wird aus dem lokalen/GitHub-Repository installiert. Bitte nach der Installation verwenden.',
       toolSetting: 'Werkzeugs Einstellungen',
+      unsupportedMCPTool: 'Die derzeit ausgewählte Agentenstrategie-Plugin-Version unterstützt keine MCP-Tools.',
     },
     strategyNum: '{{num}} {{Strategie}} IINKLUSIVE',
     configureApp: 'App konfigurieren',

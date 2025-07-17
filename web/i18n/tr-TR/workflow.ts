@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
+    tagBound: 'Bu etiketi kullanan uygulama sayısı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -234,6 +235,8 @@ const translation = {
     'plugin': 'Eklenti',
     'blocks': 'Düğümler',
     'searchBlock': 'Arama düğümü',
+    'allAdded': 'Hepsi eklendi',
+    'addAll': 'Hepsini ekle',
   },
   blocks: {
     'start': 'Başlat',
@@ -364,7 +367,10 @@ const translation = {
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Değişken kullan',
+        input: 'Girdi değeri',
+      },
     },
     start: {
       required: 'gerekli',
@@ -552,6 +558,7 @@ const translation = {
       advancedDependencies: 'Gelişmiş Bağımlılıklar',
       advancedDependenciesTip: 'Burada daha uzun sürede tüketilen veya varsayılan olarak yerleşik olmayan bazı ön yüklenmiş bağımlılıkları ekleyin',
       searchDependencies: 'Bağımlılıkları Ara',
+      syncFunctionSignature: 'Senkrone işlev imzasını koda eşitle',
     },
     templateTransform: {
       inputVars: 'Giriş Değişkenleri',
@@ -671,6 +678,9 @@ const translation = {
         json: 'araç tarafından oluşturulan json',
       },
       authorize: 'Yetkilendirmek',
+      settings: 'Ayarlar',
+      insertPlaceholder2: 'değişken ekle',
+      insertPlaceholder1: 'Yazın veya basın',
     },
     questionClassifiers: {
       model: 'model',
@@ -855,6 +865,8 @@ const translation = {
       strategyNotInstallTooltip: '{{strateji}} yüklü değil',
       toolNotAuthorizedTooltip: '{{araç}} Yetkili Değil',
       model: 'model',
+      parameterSchema: 'Parametre Şeması',
+      clickToViewParameterSchema: 'Parametre şemasını görüntülemek için tıklayın',
     },
     loop: {
       ErrorMethod: {
