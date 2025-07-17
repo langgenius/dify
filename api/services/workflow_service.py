@@ -509,10 +509,10 @@ class WorkflowService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node = e.node
+            node = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
 
         # Create a NodeExecution domain model
         node_execution = WorkflowNodeExecution(

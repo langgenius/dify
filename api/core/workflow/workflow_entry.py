@@ -193,7 +193,7 @@ class WorkflowEntry:
             generator = node.run()
         except Exception as e:
             logger.exception(f"error while running node, {workflow.id=}, {node.id=}, {node.type_=}, {node.version()=}")
-            raise WorkflowNodeRunFailedError(node=node, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
         return node, generator
 
     @classmethod
@@ -296,7 +296,7 @@ class WorkflowEntry:
             return node, generator
         except Exception as e:
             logger.exception(f"error while running node, {node.id=}, {node.type_=}, {node.version()=}")
-            raise WorkflowNodeRunFailedError(node=node, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
