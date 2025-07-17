@@ -141,6 +141,7 @@
     "server-only": "^0.0.1",
     "sharp": "^0.33.2",
     "shave": "^5.0.4",
+    "socket.io-client": "^4.8.1",
     "sortablejs": "^1.15.0",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.5.4",
@@ -242,5 +243,6 @@
       "prismjs@<1.30.0": "1.30.0",
       "brace-expansion@<2.0.2": "2.0.2"
     }
-  }
+  },
+  "packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912"
 }

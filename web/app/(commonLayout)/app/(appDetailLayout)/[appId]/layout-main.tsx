@@ -26,6 +26,7 @@ import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { connectOnlineUserWebSocket, disconnectOnlineUserWebSocket } from '@/service/demo/online-user'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -114,6 +115,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setIsLoadingAppDetail(true)
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
       setAppDetailRes(res)
+      if (res.mode === 'workflow' || res.mode === 'advanced-chat')
+        connectOnlineUserWebSocket(appId)
     }).catch((e: any) => {
       if (e.status === 404)
         router.replace('/apps')
@@ -148,6 +151,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useUnmount(() => {
     setAppDetail()
+    disconnectOnlineUserWebSocket()
   })
 
   if (!appDetail) {

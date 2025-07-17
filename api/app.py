@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 
 def is_db_command():
@@ -33,9 +34,10 @@ else:
         psycogreen.gevent.patch_psycopg()
 
     from app_factory import create_app
+    from extensions.ext_socketio import ext_socketio
 
     app = create_app()
     celery = app.extensions["celery"]
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    ext_socketio.run(app, host="0.0.0.0", port=5001, debug=True)
