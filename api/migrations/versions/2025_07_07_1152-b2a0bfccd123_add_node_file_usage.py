@@ -1,7 +1,7 @@
 """add node_file_usage table
 
 Revision ID: b2a0bfccd123
-Revises: 0ab65e1cc7fa
+Revises: 71f5020c6470
 Create Date: 2025-07-07 11:52:00
 
 """
