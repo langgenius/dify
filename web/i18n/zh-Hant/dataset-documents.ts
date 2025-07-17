@@ -369,7 +369,7 @@ const translation = {
     expandChunks: '擴展塊',
     chunkAdded: '添加了 1 個數據塊',
     editedAt: '編輯於',
-    dateTimeFormat: 'MM/DD/YYYY h:mm',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     regeneratingMessage: '這可能需要一些時間，請稍候...',
     editChunk: '編輯數據塊',
     regenerationSuccessMessage: '您可以關閉此視窗。',
