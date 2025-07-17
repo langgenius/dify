@@ -5,6 +5,7 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+import services
 from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -124,33 +125,15 @@ class MessageFeedbackApi(Resource):
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
 
-        message_id = str(args["message_id"])
-
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        feedback = message.admin_feedback
-
-        if not args["rating"] and feedback:
-            db.session.delete(feedback)
-        elif args["rating"] and feedback:
-            feedback.rating = args["rating"]
-        elif not args["rating"] and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
-        else:
-            feedback = MessageFeedback(
-                app_id=app_model.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                rating=args["rating"],
-                from_source="admin",
-                from_account_id=current_user.id,
+        try:
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=str(args["message_id"]),
+                user=current_user,
+                rating=args.get("rating"),
             )
-            db.session.add(feedback)
-
-        db.session.commit()
+        except services.errors.message.MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
 
