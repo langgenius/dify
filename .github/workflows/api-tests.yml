@@ -47,7 +47,15 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
-
+      - name: Run ty check
+        run: |
+          cd api
+          uvx ty check || true
+      - name: Run pyrefly check
+        run: |
+          cd api
+          uvx pyrefly init || true
+          uvx pyrefly check || true
       - name: Coverage Summary
         run: |
           set -x
