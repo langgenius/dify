@@ -316,19 +316,6 @@ class AgentNode(ToolNode):
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
                     history_prompt_messages: list[dict[str, Any]] = []
-
-                    # Check if this agent node references sys.files
-                    def _input_uses_sys_files(_agent_input):
-                        if _agent_input.type == "variable":
-                            return _agent_input.value == ["sys", SystemVariableKey.FILES.value]
-                        if _agent_input.type in {"mixed", "constant"}:
-                            return "sys.files" in str(_agent_input.value)
-                        return False
-
-                    uses_sys_files_for_node: bool = any(
-                        _input_uses_sys_files(inp) for inp in node_data.agent_parameters.values()
-                    )
-
                     conv_var = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
                     conversation_id_val = conv_var.value if isinstance(conv_var, StringSegment) else None
 
