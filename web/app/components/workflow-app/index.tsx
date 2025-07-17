@@ -1,7 +1,6 @@
 import {
   useMemo,
 } from 'react'
-import useSWR from 'swr'
 import {
   SupportUploadFileTypes,
 } from '@/app/components/workflow/types'
@@ -16,7 +15,6 @@ import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { fetchFileUploadConfig } from '@/service/common'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
@@ -29,8 +27,8 @@ const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
+    fileUploadConfigResponse,
   } = useWorkflowInit()
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
   const nodesData = useMemo(() => {
     if (data)

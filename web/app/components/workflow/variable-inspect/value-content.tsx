@@ -12,7 +12,6 @@ import {
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
@@ -21,6 +20,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import { useStore } from '@/app/components/workflow/store'
 
 type Props = {
   currentVar: VarInInspect
@@ -40,6 +40,7 @@ const ValueContent = ({
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'
+  const fileUploadConfig = useStore(s => s.fileUploadConfig)
 
   const formatFileValue = (value: VarInInspect) => {
     if (value.value_type === 'file')
@@ -53,7 +54,6 @@ const ValueContent = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const fileFeature = useFeatures(s => s.features.file)
   const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
@@ -206,8 +206,8 @@ const ValueContent = ({
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: currentVar.value_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
-                fileUploadConfig: (fileFeature as any).fileUploadConfig,
+                number_limits: currentVar.value_type === 'file' ? 1 : fileUploadConfig?.workflow_file_upload_limit || 5,
+                fileUploadConfig,
               }}
               isDisabled={textEditorDisabled}
             />

@@ -17,6 +17,8 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import type { FileUploadConfigResponse } from '@/models/common'
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -37,6 +39,15 @@ export const useWorkflowInit = () => {
     setWorkflowConfig(config)
   }, [workflowStore])
   useWorkflowConfig(`/apps/${appDetail.id}/workflows/draft/config`, handleUpdateWorkflowConfig)
+
+  const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
+    const { setFileUploadConfig } = workflowStore.getState()
+    setFileUploadConfig(config)
+  }, [workflowStore])
+  const {
+    data: fileUploadConfigResponse,
+    isLoading: isFileUploadConfigLoading,
+  } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -117,6 +128,7 @@ export const useWorkflowInit = () => {
 
   return {
     data,
-    isLoading,
+    isLoading: isLoading || isFileUploadConfigLoading,
+    fileUploadConfigResponse,
   }
 }
