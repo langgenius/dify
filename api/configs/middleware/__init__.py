@@ -20,6 +20,7 @@ from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
+from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
@@ -309,6 +310,7 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    ClickzettaConfig,
     HuaweiCloudConfig,
     MilvusConfig,
     MyScaleConfig,

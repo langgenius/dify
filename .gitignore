@@ -215,3 +215,7 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+
+# Clickzetta test credentials
+.env.clickzetta
+.env.clickzetta.test
