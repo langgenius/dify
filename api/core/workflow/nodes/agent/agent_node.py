@@ -1,5 +1,4 @@
 import json
-import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -91,16 +90,11 @@ class AgentNode(BaseNode):
         return "1"
 
     def _run(self) -> Generator:
-        """
-        Run the agent node
-        """
-        node_data = cast(AgentNodeData, self._node_data)
-
         try:
             strategy = get_plugin_agent_strategy(
                 tenant_id=self.tenant_id,
-                agent_strategy_provider_name=node_data.agent_strategy_provider_name,
-                agent_strategy_name=node_data.agent_strategy_name,
+                agent_strategy_provider_name=self._node_data.agent_strategy_provider_name,
+                agent_strategy_name=self._node_data.agent_strategy_name,
             )
         except Exception as e:
             yield RunCompletedEvent(
@@ -118,13 +112,13 @@ class AgentNode(BaseNode):
         parameters = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=node_data,
+            node_data=self._node_data,
             strategy=strategy,
         )
         parameters_for_log = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=node_data,
+            node_data=self._node_data,
             for_log=True,
             strategy=strategy,
         )
@@ -153,29 +147,6 @@ class AgentNode(BaseNode):
             return
 
         try:
-            # convert tool messages
-            agent_thoughts: list = []
-
-            thought_log_message = ToolInvokeMessage(
-                type=ToolInvokeMessage.MessageType.LOG,
-                message=ToolInvokeMessage.LogMessage(
-                    id=str(uuid.uuid4()),
-                    label=f"Agent Strategy: {cast(AgentNodeData, self._node_data).agent_strategy_name}",
-                    parent_id=None,
-                    error=None,
-                    status=ToolInvokeMessage.LogMessage.LogStatus.START,
-                    data={
-                        "strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
-                        "parameters": parameters_for_log,
-                        "thought_process": "Agent strategy execution started",
-                    },
-                    metadata={
-                        "icon": self.agent_strategy_icon,
-                        "agent_strategy": cast(AgentNodeData, self._node_data).agent_strategy_name,
-                    },
-                ),
-            )
-
             yield from self._transform_message(
                 messages=message_stream,
                 tool_info={
