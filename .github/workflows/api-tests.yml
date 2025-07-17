@@ -50,12 +50,14 @@ jobs:
       - name: Run ty check
         run: |
           cd api
-          uvx ty check || true
+          uv add --dev ty
+          uv run ty || true
       - name: Run pyrefly check
         run: |
           cd api
-          uvx pyrefly init || true
-          uvx pyrefly check || true
+          uv add --dev pyrefly
+          uv run pyrefly init || true
+          uv run pyrefly check || true
       - name: Coverage Summary
         run: |
           set -x
