@@ -190,7 +190,7 @@ class ToolManager:
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
-                # get credentials
+                # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
                         builtin_provider = (
@@ -201,16 +201,13 @@ class ToolManager:
                             )
                             .first()
                         )
-                        if builtin_provider is None:
-                            raise ToolProviderNotFoundError(f"builtin provider {credential_id} not found")
                     except Exception as e:
-                        # if credential_id is not a builtin provider, use the default provider
-                        logger.error(
-                            f"FALLBACK TO DEFAULT BUILTIN PROVIDER: Error getting builtin provider {credential_id}:{e}",
-                            exc_info=True,
-                        )
                         builtin_provider = None
-
+                        logger.info(f"Error getting builtin provider {credential_id}:{e}", exc_info=True)
+                    # if the provider has been deleted, raise an error
+                    if builtin_provider is None:
+                        raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
+                
                 # fallback to the default provider
                 if builtin_provider is None:
                     # use the default provider
@@ -225,7 +222,7 @@ class ToolManager:
                         .first()
                     )
                     if builtin_provider is None:
-                        raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+                        raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
             else:
                 builtin_provider = (
                     db.session.query(BuiltinToolProvider)
