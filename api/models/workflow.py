@@ -12,6 +12,7 @@ from sqlalchemy import orm
 from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.variables import utils as variable_utils
+from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -359,7 +360,7 @@ class Workflow(Base):
         )
 
     @property
-    def environment_variables(self) -> Sequence[Variable]:
+    def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
         # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = "{}"
@@ -379,11 +380,15 @@ class Workflow(Base):
         def decrypt_func(var):
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            else:
+            elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
                 return var
+            else:
+                raise AssertionError("this statement should be unreachable.")
 
-        results = list(map(decrypt_func, results))
-        return results
+        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = list(
+            map(decrypt_func, results)
+        )
+        return decrypted_results
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[Variable]):

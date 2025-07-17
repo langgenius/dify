@@ -32,13 +32,15 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  environmentVariables?: Var[]
+  conversationVariables?: Var[]
   getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
@@ -50,6 +52,8 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
   getVarType,
+  environmentVariables,
+  conversationVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -69,6 +73,19 @@ const WorkflowVariableBlockComponent = ({
   const isEnv = isENV(variables)
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
+
+  let variableValid = true
+  if (isEnv) {
+    if (environmentVariables)
+      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else if (isChatVar) {
+    if (conversationVariables)
+      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else {
+    variableValid = !!node
+  }
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -115,7 +132,7 @@ const WorkflowVariableBlockComponent = ({
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
-        !node && !isEnv && !isChatVar && !isRagVar && '!border-state-destructive-solid !bg-state-destructive-hover',
+        !variableValid && !isRagVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -160,7 +177,7 @@ const WorkflowVariableBlockComponent = ({
           isRagVar && 'text-text-accent',
         )} title={varName}>{varName}</div>
         {
-          !node && !isEnv && !isChatVar && !isRagVar && (
+          !variableValid && !isRagVar && (
             <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />
           )
         }
@@ -168,7 +185,7 @@ const WorkflowVariableBlockComponent = ({
     </div>
   )
 
-  if (!node && !isEnv && !isChatVar && !isRagVar) {
+  if (!variableValid && !isRagVar) {
     return (
       <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
         {Item}

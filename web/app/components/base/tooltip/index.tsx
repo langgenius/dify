@@ -33,7 +33,7 @@ const Tooltip: FC<TooltipProps> = ({
   noDecoration,
   offset,
   asChild = true,
-  needsDelay = false,
+  needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -68,7 +68,7 @@ const Tooltip: FC<TooltipProps> = ({
       setTimeout(() => {
         if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
           setOpen(false)
-      }, 500)
+      }, 300)
     }
     else {
       setOpen(false)

@@ -445,7 +445,7 @@ export const ssePost = async (
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
-                  globalThis.location.reload()
+                  requiredWebSSOLogin()
                 }
               }
             })
@@ -542,7 +542,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         removeAccessToken()
-        globalThis.location.reload()
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {

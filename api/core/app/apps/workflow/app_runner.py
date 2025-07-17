@@ -11,7 +11,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -95,13 +95,14 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = {
-                SystemVariableKey.FILES: files,
-                SystemVariableKey.USER_ID: user_id,
-                SystemVariableKey.APP_ID: app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
-                SystemVariableKey.WORKFLOW_EXECUTION_ID: self.application_generate_entity.workflow_execution_id,
-            }
+
+            system_inputs = SystemVariable(
+                files=files,
+                user_id=user_id,
+                app_id=app_config.app_id,
+                workflow_id=app_config.workflow_id,
+                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+            )
 
             variable_pool = VariablePool(
                 system_variables=system_inputs,

@@ -88,6 +88,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     icon_background,
     description,
     use_icon_as_answer_icon,
+    max_active_requests,
   }) => {
     try {
       await updateAppInfo({
@@ -98,6 +99,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         icon_background,
         description,
         use_icon_as_answer_icon,
+        max_active_requests,
       })
       setShowEditModal(false)
       notify({
@@ -306,7 +308,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
-      dateFormat: 'MM/DD/YYYY h:mm',
+      dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
     })
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,6 +434,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           appDescription={app.description}
           appMode={app.mode}
           appUseIconAsAnswerIcon={app.use_icon_as_answer_icon}
+          max_active_requests={app.max_active_requests ?? null}
           show={showEditModal}
           onConfirm={onEdit}
           onHide={() => setShowEditModal(false)}

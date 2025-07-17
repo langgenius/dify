@@ -374,6 +374,7 @@ const translation = {
     expandChunks: 'Développer des blocs',
     characters_other: 'caractères',
     editedAt: 'Édité le',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     searchResults_other: 'RÉSULTATS',
     regenerationSuccessMessage: 'Vous pouvez fermer cette fenêtre.',
     parentChunks_one: 'MORCEAU PARENT',

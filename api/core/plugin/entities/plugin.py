@@ -141,17 +141,6 @@ class PluginEntity(PluginInstallation):
         return self
 
 
-class GithubPackage(BaseModel):
-    repo: str
-    version: str
-    package: str
-
-
-class GithubVersion(BaseModel):
-    repo: str
-    version: str
-
-
 class GenericProviderID:
     organization: str
     plugin_name: str

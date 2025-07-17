@@ -68,4 +68,5 @@ html[data-theme="light"] {
     --color-tag-selector-mask-hover-bg: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 100%);
     --color-pipeline-template-card-hover-bg: linear-gradient(0deg, rgba(249, 250, 251, 1) 60.27%, rgba(249, 250, 251, 0) 100%);
 	--color-pipeline-add-documents-title-bg: linear-gradient(92deg, rgba(11, 165, 236, 0.95) 0%, rgba(21, 90, 239, 0.95) 97.78%);
+    --color-background-gradient-bg-fill-chat-bubble-bg-3: #e1effe;
 }
