@@ -145,7 +145,7 @@ class BaseNode:
         return {}
 
     @property
-    def node_type(self) -> NodeType:
+    def type_(self) -> NodeType:
         return self._node_type
 
     @classmethod
@@ -170,32 +170,32 @@ class BaseNode:
     # to BaseNodeData properties in a type-safe way
 
     @abstractmethod
-    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
         """Get the error strategy for this node."""
         ...
 
     @abstractmethod
-    def get_retry_config(self) -> RetryConfig:
+    def _get_retry_config(self) -> RetryConfig:
         """Get the retry configuration for this node."""
         ...
 
     @abstractmethod
-    def get_title(self) -> str:
+    def _get_title(self) -> str:
         """Get the node title."""
         ...
 
     @abstractmethod
-    def get_description(self) -> Optional[str]:
+    def _get_description(self) -> Optional[str]:
         """Get the node description."""
         ...
 
     @abstractmethod
-    def get_default_value_dict(self) -> dict[str, Any]:
+    def _get_default_value_dict(self) -> dict[str, Any]:
         """Get the default values dictionary for this node."""
         ...
 
     @abstractmethod
-    def get_base_node_data(self) -> BaseNodeData:
+    def _get_base_node_data(self) -> BaseNodeData:
         """Get the BaseNodeData object for this node."""
         ...
 
@@ -203,24 +203,24 @@ class BaseNode:
     @property
     def error_strategy(self) -> Optional[ErrorStrategy]:
         """Get the error strategy for this node."""
-        return self.get_error_strategy()
+        return self._get_error_strategy()
 
     @property
-    def node_retry_config(self) -> RetryConfig:
+    def retry_config(self) -> RetryConfig:
         """Get the retry configuration for this node."""
-        return self.get_retry_config()
+        return self._get_retry_config()
 
     @property
-    def node_title(self) -> str:
+    def title(self) -> str:
         """Get the node title."""
-        return self.get_title()
+        return self._get_title()
 
     @property
-    def node_description(self) -> Optional[str]:
+    def description(self) -> Optional[str]:
         """Get the node description."""
-        return self.get_description()
+        return self._get_description()
 
     @property
     def default_value_dict(self) -> dict[str, Any]:
         """Get the default values dictionary for this node."""
-        return self.get_default_value_dict()
+        return self._get_default_value_dict()

@@ -21,22 +21,22 @@ class LoopStartNode(BaseNode):
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self._node_data = LoopStartNodeData(**data)
 
-    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
         return self._node_data.error_strategy
 
-    def get_retry_config(self) -> RetryConfig:
+    def _get_retry_config(self) -> RetryConfig:
         return self._node_data.retry_config
 
-    def get_title(self) -> str:
+    def _get_title(self) -> str:
         return self._node_data.title
 
-    def get_description(self) -> Optional[str]:
+    def _get_description(self) -> Optional[str]:
         return self._node_data.desc
 
-    def get_default_value_dict(self) -> dict[str, Any]:
+    def _get_default_value_dict(self) -> dict[str, Any]:
         return self._node_data.default_value_dict
 
-    def get_base_node_data(self) -> BaseNodeData:
+    def _get_base_node_data(self) -> BaseNodeData:
         return self._node_data
 
     @classmethod

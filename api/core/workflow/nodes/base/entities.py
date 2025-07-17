@@ -122,9 +122,9 @@ class RetryConfig(BaseModel):
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
+    version: str = "1"
     error_strategy: Optional[ErrorStrategy] = None
     default_value: Optional[list[DefaultValue]] = None
-    version: str = "1"
     retry_config: RetryConfig = RetryConfig()
 
     @property
