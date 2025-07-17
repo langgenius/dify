@@ -334,7 +334,7 @@ class QuestionClassifierNode(BaseNode):
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
     ):
-        model_mode = ModelMode.value_of(node_data.model.mode)
+        model_mode = ModelMode(node_data.model.mode)
         classes = node_data.classes
         categories = []
         for class_ in classes:

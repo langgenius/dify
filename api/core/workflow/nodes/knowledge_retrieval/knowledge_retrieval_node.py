@@ -510,13 +510,8 @@ class KnowledgeRetrievalNode(BaseNode):
         # get all metadata field
         metadata_fields = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
-        # get metadata model config
-        metadata_model_config = node_data.metadata_model_config
-        if metadata_model_config is None:
-            raise ValueError("metadata_model_config is required")
-        # get metadata model instance
-        # fetch model config
-        model_instance, model_config = self.get_model_config(metadata_model_config)
+        # get metadata model instance and fetch model config
+        model_instance, model_config = self.get_model_config(node_data.metadata_model_config)
         # fetch prompt messages
         prompt_template = self._get_prompt_template(
             node_data=node_data,
@@ -707,7 +702,7 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
-        model_mode = ModelMode.value_of(node_data.metadata_model_config.mode)  # type: ignore
+        model_mode = ModelMode(node_data.metadata_model_config.mode)
         input_text = query
 
         prompt_messages: list[LLMNodeChatModelMessage] = []

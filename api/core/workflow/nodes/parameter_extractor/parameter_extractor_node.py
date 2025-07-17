@@ -420,7 +420,7 @@ class ParameterExtractorNode(BaseNode):
         """
         Generate prompt engineering prompt.
         """
-        model_mode = ModelMode.value_of(data.model.mode)
+        model_mode = ModelMode(data.model.mode)
 
         if model_mode == ModelMode.COMPLETION:
             return self._generate_prompt_engineering_completion_prompt(
@@ -716,7 +716,7 @@ class ParameterExtractorNode(BaseNode):
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
-        model_mode = ModelMode.value_of(node_data.model.mode)
+        model_mode = ModelMode(node_data.model.mode)
         input_text = query
         memory_str = ""
         instruction = variable_pool.convert_template(node_data.instruction or "").text
@@ -743,7 +743,7 @@ class ParameterExtractorNode(BaseNode):
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
     ):
-        model_mode = ModelMode.value_of(node_data.model.mode)
+        model_mode = ModelMode(node_data.model.mode)
         input_text = query
         memory_str = ""
         instruction = variable_pool.convert_template(node_data.instruction or "").text
