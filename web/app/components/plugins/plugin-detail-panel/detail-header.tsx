@@ -107,7 +107,7 @@ const DetailHeader = ({
   const { referenceSetting } = useReferenceSetting()
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
   const isAutoUpgradeEnabled = useMemo(() => {
-    if (!autoUpgradeInfo)
+    if (!autoUpgradeInfo || !isFromMarketplace)
       return false
     if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
       return true
@@ -116,7 +116,7 @@ const DetailHeader = ({
     if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
       return true
     return false
-  }, [autoUpgradeInfo, plugin_id])
+  }, [autoUpgradeInfo, plugin_id, isFromMarketplace])
 
   const [isDowngrade, setIsDowngrade] = useState(false)
   const handleUpdate = async (isDowngrade?: boolean) => {
