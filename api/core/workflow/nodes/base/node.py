@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 class BaseNode:
     _node_type: ClassVar[NodeType]
-    # Each subclass will declare: node_data: SpecificNodeData
 
     def __init__(
         self,
@@ -139,30 +138,14 @@ class BaseNode:
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
         return {}
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
-        """
-        Get default config of node.
-        :param filters: filter by node config parameters.
-        :return:
-        """
         return {}
 
     @property
     def node_type(self) -> NodeType:
-        """
-        Get node type
-        :return:
-        """
         return self._node_type
 
     @classmethod
@@ -181,11 +164,6 @@ class BaseNode:
 
     @property
     def retry(self) -> bool:
-        """judge if should retry
-
-        Returns:
-            bool: if should retry
-        """
         return False
 
     # Abstract methods that subclasses must implement to provide access
