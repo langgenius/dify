@@ -1,14 +1,14 @@
 # Clickzetta Vector Database Testing Guide
 
-## 测试概述
+## Testing Overview
 
-本文档提供了 Clickzetta 向量数据库集成的详细测试指南，包括测试用例、执行步骤和预期结果。
+This document provides detailed testing guidelines for the Clickzetta vector database integration, including test cases, execution steps, and expected results.
 
-## 测试环境准备
+## Test Environment Setup
 
-### 1. 环境变量设置
+### 1. Environment Variable Configuration
 
-确保设置以下环境变量：
+Ensure the following environment variables are set:
 
 ```bash
 export CLICKZETTA_USERNAME=your_username
@@ -20,89 +20,96 @@ export CLICKZETTA_VCLUSTER=default_ap
 export CLICKZETTA_SCHEMA=dify
 ```
 
-### 2. 依赖安装
+### 2. Dependency Installation
 
 ```bash
 pip install clickzetta-connector-python>=0.8.102
 pip install numpy
 ```
 
-## 测试套件
+## Test Suite
 
-### 1. 独立测试 (standalone_clickzetta_test.py)
+### 1. Standalone Testing (standalone_clickzetta_test.py)
 
-**目的**: 验证 Clickzetta 基础连接和核心功能
+**Purpose**: Verify Clickzetta basic connection and core functionality
 
-**测试用例**:
-- ✅ 数据库连接测试
-- ✅ 表创建和数据插入
-- ✅ 向量索引创建
-- ✅ 向量相似性搜索
-- ✅ 并发写入安全性
+**Test Cases**:
+- ✅ Database connection test
+- ✅ Table creation and data insertion
+- ✅ Vector index creation
+- ✅ Vector similarity search
+- ✅ Concurrent write safety
 
-**执行命令**:
+**Execution Command**:
 ```bash
 python standalone_clickzetta_test.py
 ```
 
-**预期结果**:
+**Expected Results**:
 ```
-🚀 Clickzetta 独立测试开始
-✅ 连接成功
+🚀 Clickzetta Independent Test Started
+✅ Connection Successful
 
-🧪 测试表操作...
-✅ 表创建成功: test_vectors_1234567890
-✅ 数据插入成功: 5 条记录，耗时 0.529秒
-✅ 数据查询成功: 表中共有 5 条记录
+🧪 Testing Table Operations...
+✅ Table Created Successfully: test_vectors_1752736608
+✅ Data Insertion Successful: 5 records, took 0.529 seconds
+✅ Data Query Successful: 5 records in table
 
-🧪 测试向量操作...
-✅ 向量索引创建成功
-✅ 向量搜索成功: 返回 3 个结果，耗时 170ms
+🧪 Testing Vector Operations...
+✅ Vector Index Created Successfully
+✅ Vector Search Successful: returned 3 results, took 170ms
+   Result 1: distance=0.2507, document=doc_3
+   Result 2: distance=0.2550, document=doc_4
+   Result 3: distance=0.2604, document=doc_2
 
-🧪 测试并发写入...
-启动 3 个并发工作线程...
-✅ 并发写入测试完成:
-  - 总耗时: 3.79 秒
-  - 成功线程: 3/3
-  - 总文档数: 20
-  - 整体速率: 5.3 docs/sec
+🧪 Testing Concurrent Writes...
+Started 3 concurrent worker threads...
+✅ Concurrent Write Test Complete:
+  - Total time: 3.79 seconds
+  - Successful threads: 3/3
+  - Total documents: 20
+  - Overall rate: 5.3 docs/sec
+  - Thread 1: 8 documents, 2.5 docs/sec
+  - Thread 2: 6 documents, 1.7 docs/sec
+  - Thread 0: 6 documents, 1.7 docs/sec
 
-📊 测试报告:
-  - table_operations: ✅ 通过
-  - vector_operations: ✅ 通过
-  - concurrent_writes: ✅ 通过
+📊 Test Report:
+  - table_operations: ✅ Passed
+  - vector_operations: ✅ Passed
+  - concurrent_writes: ✅ Passed
 
-🎯 总体结果: 3/3 通过 (100.0%)
-✅ 清理完成
+🎯 Overall Result: 3/3 Passed (100.0%)
+🎉 Test overall success! Clickzetta integration ready.
+✅ Cleanup Complete
 ```
 
-### 2. 集成测试 (test_clickzetta_integration.py)
+### 2. Integration Testing (test_clickzetta_integration.py)
 
-**目的**: 全面测试 Dify 集成环境下的功能
+**Purpose**: Comprehensive testing of functionality in Dify integration environment
 
-**测试用例**:
-- ✅ 基础操作测试 (CRUD)
-- ✅ 并发操作安全性
-- ✅ 性能基准测试
-- ✅ 错误处理测试
-- ✅ 全文搜索测试
+**Test Cases**:
+- ✅ Basic operations testing (CRUD)
+- ✅ Concurrent operation safety
+- ✅ Performance benchmarking
+- ✅ Error handling testing
+- ✅ Full-text search testing
 
-**执行命令** (需要在 Dify API 环境中):
+**Execution Command** (requires Dify API environment):
 ```bash
 cd /path/to/dify/api
 python ../test_clickzetta_integration.py
 ```
 
-### 3. Docker 环境测试
+### 3. Docker Environment Testing
 
-**执行步骤**:
+**Execution Steps**:
 
-1. 构建本地镜像:
+1. Build local image:
 ```bash
 docker build -f api/Dockerfile -t dify-api-clickzetta:local api/
 ```
 
-2. 更新 docker-compose.yaml 使用本地镜像:
+2. Update docker-compose.yaml to use local image:
 ```yaml
 api:
   image: dify-api-clickzetta:local
@@ -110,105 +117,105 @@ worker:
   image: dify-api-clickzetta:local
 ```
 
-3. 启动服务并测试:
+3. Start services and test:
 ```bash
 docker-compose up -d
-# 在 Web 界面中创建知识库并选择 Clickzetta 作为向量数据库
+# Create knowledge base in Web UI and select Clickzetta as vector database
 ```
 
-## 性能基准
+## Performance Benchmarks
 
-### 单线程性能
+### Single-threaded Performance
 
-| 操作类型 | 文档数量 | 平均耗时 | 吞吐量 |
-|---------|---------|---------|-------|
-| 批量插入 | 10 | 0.5秒 | 20 docs/sec |
-| 批量插入 | 50 | 2.1秒 | 24 docs/sec |
-| 批量插入 | 100 | 4.3秒 | 23 docs/sec |
-| 向量搜索 | - | 45ms | - |
-| 文本搜索 | - | 38ms | - |
+| Operation Type | Document Count | Average Time | Throughput |
+|---------------|----------------|--------------|------------|
+| Batch Insert | 10 | 0.5s | 20 docs/sec |
+| Batch Insert | 50 | 2.1s | 24 docs/sec |
+| Batch Insert | 100 | 4.3s | 23 docs/sec |
+| Vector Search | - | 170ms | - |
+| Text Search | - | 38ms | - |
 
-### 并发性能
+### Concurrent Performance
 
-| 线程数 | 每线程文档数 | 总耗时 | 成功率 | 整体吞吐量 |
-|-------|-------------|--------|-------|-----------|
-| 2 | 15 | 1.8秒 | 100% | 16.7 docs/sec |
-| 3 | 15 | 1.2秒 | 100% | 37.5 docs/sec |
-| 4 | 15 | 1.5秒 | 75% | 40.0 docs/sec |
+| Thread Count | Docs per Thread | Total Time | Success Rate | Overall Throughput |
+|-------------|----------------|------------|-------------|------------------|
+| 2 | 15 | 1.8s | 100% | 16.7 docs/sec |
+| 3 | 15 | 3.79s | 100% | 5.3 docs/sec |
+| 4 | 15 | 1.5s | 75% | 40.0 docs/sec |
 
-## 测试证据收集
+## Test Evidence Collection
 
-### 1. 功能验证证据
+### 1. Functional Validation Evidence
 
-- [x] 成功创建向量表和索引
-- [x] 正确处理1536维向量数据
-- [x] HNSW索引自动创建和使用
-- [x] 倒排索引支持全文搜索
-- [x] 批量操作性能优化
+- [x] Successfully created vector tables and indexes
+- [x] Correctly handles 1536-dimensional vector data
+- [x] HNSW index automatically created and used
+- [x] Inverted index supports full-text search
+- [x] Batch operation performance optimization
 
-### 2. 并发安全证据
+### 2. Concurrent Safety Evidence
 
-- [x] 写队列机制防止并发冲突
-- [x] 线程安全的连接管理
-- [x] 并发写入时无数据竞争
-- [x] 错误恢复和重试机制
+- [x] Write queue mechanism prevents concurrent conflicts
+- [x] Thread-safe connection management
+- [x] No data races during concurrent writes
+- [x] Error recovery and retry mechanism
 
-### 3. 性能测试证据
+### 3. Performance Testing Evidence
 
-- [x] 插入性能: 20-40 docs/sec
-- [x] 搜索延迟: <50ms
-- [x] 并发处理: 支持多线程写入
-- [x] 内存使用: 合理的资源占用
+- [x] Insertion performance: 5.3-24 docs/sec
+- [x] Search latency: <200ms
+- [x] Concurrent processing: supports multi-threaded writes
+- [x] Memory usage: reasonable resource consumption
 
-### 4. 兼容性证据
+### 4. Compatibility Evidence
 
-- [x] 符合 Dify BaseVector 接口
-- [x] 与现有向量数据库并存
-- [x] Docker 环境正常运行
-- [x] 依赖版本兼容性
+- [x] Complies with Dify BaseVector interface
+- [x] Coexists with existing vector databases
+- [x] Runs normally in Docker environment
+- [x] Dependency version compatibility
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **连接失败**
-   - 检查环境变量设置
-   - 验证网络连接到 Clickzetta 服务
-   - 确认用户权限和实例状态
+1. **Connection Failure**
+   - Check environment variable settings
+   - Verify network connection to Clickzetta service
+   - Confirm user permissions and instance status
 
-2. **并发冲突**
-   - 确认写队列机制正常工作
-   - 检查是否有旧的连接未正确关闭
-   - 验证线程池配置
+2. **Concurrent Conflicts**
+   - Ensure write queue mechanism is working properly
+   - Check if old connections are not properly closed
+   - Verify thread pool configuration
 
-3. **性能问题**
-   - 检查向量索引是否正确创建
-   - 验证批量操作的批次大小
-   - 监控网络延迟和数据库负载
+3. **Performance Issues**
+   - Check if vector indexes are created correctly
+   - Verify batch operation batch size
+   - Monitor network latency and database load
 
-### 调试命令
+### Debug Commands
 
 ```bash
-# 检查 Clickzetta 连接
-python -c "from clickzetta.connector import connect; print('连接正常')"
+# Check Clickzetta connection
+python -c "from clickzetta.connector import connect; print('Connection OK')"
 
-# 验证环境变量
+# Verify environment variables
 env | grep CLICKZETTA
 
-# 测试基础功能
+# Test basic functionality
 python standalone_clickzetta_test.py
 ```
 
-## 测试结论
+## Test Conclusion
 
-Clickzetta 向量数据库集成已通过以下验证：
+The Clickzetta vector database integration has passed the following validations:
 
-1. **功能完整性**: 所有 BaseVector 接口方法正确实现
-2. **并发安全性**: 写队列机制确保并发写入安全
-3. **性能表现**: 满足生产环境性能要求
-4. **稳定性**: 错误处理和恢复机制健全
-5. **兼容性**: 与 Dify 框架完全兼容
+1. **Functional Completeness**: All BaseVector interface methods correctly implemented
+2. **Concurrent Safety**: Write queue mechanism ensures concurrent write safety
+3. **Performance**: Meets production environment performance requirements
+4. **Stability**: Error handling and recovery mechanisms are robust
+5. **Compatibility**: Fully compatible with Dify framework
 
-测试通过率: **100%** (独立测试) / **95%+** (需完整Dify环境的集成测试)
+Test Pass Rate: **100%** (Standalone Testing) / **95%+** (Full Dify environment integration testing)
 
-适合作为 PR 提交到 langgenius/dify 主仓库。
+Suitable for PR submission to langgenius/dify main repository.
