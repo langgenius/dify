@@ -84,6 +84,10 @@ def init_llm_node(config: dict) -> LLMNode:
         config=config,
     )
 
+    # Initialize node data
+    if "data" in config:
+        node.init_node_data(config["data"])
+
     return node
 
 

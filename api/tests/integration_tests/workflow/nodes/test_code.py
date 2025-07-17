@@ -66,6 +66,10 @@ def init_code_node(code_config: dict):
         config=code_config,
     )
 
+    # Initialize node data
+    if "data" in code_config:
+        node.init_node_data(code_config["data"])
+
     return node
 
 
