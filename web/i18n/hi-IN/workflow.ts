@@ -381,7 +381,7 @@ const translation = {
       },
       typeSwitch: {
         input: 'इनपुट मान',
-        variable: 'चर चर का प्रयोग करें',
+        variable: 'चर का प्रयोग करें',
       },
     },
     start: {
@@ -695,7 +695,7 @@ const translation = {
       authorize: 'अधिकृत करें',
       insertPlaceholder1: 'टाइप करें या दबाएँ',
       settings: 'सेटिंग्स',
-      insertPlaceholder2: 'चरित्र डालें',
+      insertPlaceholder2: 'वेरिएबल डालें',
     },
     questionClassifiers: {
       model: 'मॉडल',

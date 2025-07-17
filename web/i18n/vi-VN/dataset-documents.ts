@@ -369,7 +369,7 @@ const translation = {
     expandChunks: 'Mở rộng các đoạn',
     chunks_other: 'KHỐI',
     editedAt: 'Chỉnh sửa tại',
-    dateTimeFormat: 'MM/DD/YYYY h:mm',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     addAnother: 'Thêm một cái khác',
     regenerationConfirmTitle: 'Bạn có muốn tái tạo các chunk con không?',
     searchResults_one: 'KẾT QUẢ',
