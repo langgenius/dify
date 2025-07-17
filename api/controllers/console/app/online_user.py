@@ -6,7 +6,6 @@ from extensions.ext_redis import redis_client
 from extensions.ext_socketio import ext_socketio
 
 
-
 @ext_socketio.on("user_connect")
 def handle_user_connect(data):
     """
