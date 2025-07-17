@@ -9,7 +9,7 @@
 - **类型**: Dify核心功能集成
 - **用途**: 将Clickzetta Lakehouse作为Dify的底层向量数据库
 - **目标用户**: Dify部署管理员
-- **文档**: `USER_GUIDE.md`
+- **文档**: `CLICKZETTA_VECTOR_DB_GUIDE.md`
 
 ### 2. 插件工具集成 (独立项目)
 - **位置**: `/Users/liangmo/Documents/GitHub/clickzetta_dify/`
@@ -17,7 +17,7 @@
 - **用途**: 提供Clickzetta相关的工具供Dify工作流使用
 - **目标用户**: Dify应用开发者
 - **GitHub**: https://github.com/yunqiqiliang/clickzetta_dify
-- **文档**: 插件项目中的`docs/INSTALLATION_GUIDE.md`
+- **文档**: 插件项目中的`docs/CLICKZETTA_PLUGIN_INSTALLATION_GUIDE.md`
 
 ## 使用场景对比
 
@@ -34,7 +34,7 @@
 ### 场景1: 企业级部署
 - **使用**: 核心向量数据库集成
 - **优势**: 统一的数据存储，更好的性能和管理
-- **配置**: 参考 `USER_GUIDE.md`
+- **配置**: 参考 `CLICKZETTA_VECTOR_DB_GUIDE.md`
 
 ### 场景2: 应用开发
 - **使用**: 插件工具集成
