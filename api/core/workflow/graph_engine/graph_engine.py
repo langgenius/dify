@@ -311,7 +311,7 @@ class GraphEngine:
                     id=node_instance.id,
                     node_id=next_node_id,
                     node_type=node_type,
-                    node_data=node_instance.node_data,
+                    node_data=node_instance.get_base_node_data(),
                     route_node_state=route_node_state,
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
@@ -339,7 +339,7 @@ class GraphEngine:
                 edge = edge_mappings[0]
                 if (
                     previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
-                    and node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+                    and node_instance.error_strategy == ErrorStrategy.FAIL_BRANCH
                     and edge.run_condition is None
                 ):
                     break
@@ -415,7 +415,7 @@ class GraphEngine:
 
                     next_node_id = final_node_id
                 elif (
-                    node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+                    node_instance.error_strategy == ErrorStrategy.FAIL_BRANCH
                     and node_instance.continue_on_error
                     and previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
                 ):
@@ -613,7 +613,7 @@ class GraphEngine:
         # trigger node run start event
         agent_strategy = (
             AgentNodeStrategyInit(
-                name=cast(AgentNodeData, node_instance.node_data).agent_strategy_name,
+                name=cast(AgentNodeData, node_instance.get_base_node_data()).agent_strategy_name,
                 icon=cast(AgentNode, node_instance).agent_strategy_icon,
             )
             if node_instance.node_type == NodeType.AGENT
@@ -623,7 +623,7 @@ class GraphEngine:
             id=node_instance.id,
             node_id=node_instance.node_id,
             node_type=node_instance.node_type,
-            node_data=node_instance.node_data,
+            node_data=node_instance.get_base_node_data(),
             route_node_state=route_node_state,
             predecessor_node_id=node_instance.previous_node_id,
             parallel_id=parallel_id,
@@ -634,8 +634,8 @@ class GraphEngine:
             node_version=node_instance.version(),
         )
 
-        max_retries = node_instance.node_data.retry_config.max_retries
-        retry_interval = node_instance.node_data.retry_config.retry_interval_seconds
+        max_retries = node_instance.node_retry_config.max_retries
+        retry_interval = node_instance.node_retry_config.retry_interval_seconds
         retries = 0
         should_continue_retry = True
         while should_continue_retry and retries <= max_retries:
@@ -672,7 +672,7 @@ class GraphEngine:
                                         id=str(uuid.uuid4()),
                                         node_id=node_instance.node_id,
                                         node_type=node_instance.node_type,
-                                        node_data=node_instance.node_data,
+                                        node_data=node_instance.get_base_node_data(),
                                         route_node_state=route_node_state,
                                         predecessor_node_id=node_instance.previous_node_id,
                                         parallel_id=parallel_id,
@@ -712,7 +712,7 @@ class GraphEngine:
                                         id=node_instance.id,
                                         node_id=node_instance.node_id,
                                         node_type=node_instance.node_type,
-                                        node_data=node_instance.node_data,
+                                        node_data=node_instance.get_base_node_data(),
                                         route_node_state=route_node_state,
                                         parallel_id=parallel_id,
                                         parallel_start_node_id=parallel_start_node_id,
@@ -727,7 +727,7 @@ class GraphEngine:
                                         id=node_instance.id,
                                         node_id=node_instance.node_id,
                                         node_type=node_instance.node_type,
-                                        node_data=node_instance.node_data,
+                                        node_data=node_instance.get_base_node_data(),
                                         route_node_state=route_node_state,
                                         parallel_id=parallel_id,
                                         parallel_start_node_id=parallel_start_node_id,
@@ -740,7 +740,7 @@ class GraphEngine:
                                 if (
                                     node_instance.continue_on_error
                                     and self.graph.edge_mapping.get(node_instance.node_id)
-                                    and node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH
+                                    and node_instance.error_strategy is ErrorStrategy.FAIL_BRANCH
                                 ):
                                     run_result.edge_source_handle = FailBranchSourceHandle.SUCCESS
                                 if run_result.metadata and run_result.metadata.get(
@@ -788,7 +788,7 @@ class GraphEngine:
                                     id=node_instance.id,
                                     node_id=node_instance.node_id,
                                     node_type=node_instance.node_type,
-                                    node_data=node_instance.node_data,
+                                    node_data=node_instance.get_base_node_data(),
                                     route_node_state=route_node_state,
                                     parallel_id=parallel_id,
                                     parallel_start_node_id=parallel_start_node_id,
@@ -804,7 +804,7 @@ class GraphEngine:
                                 id=node_instance.id,
                                 node_id=node_instance.node_id,
                                 node_type=node_instance.node_type,
-                                node_data=node_instance.node_data,
+                                node_data=node_instance.get_base_node_data(),
                                 chunk_content=event.chunk_content,
                                 from_variable_selector=event.from_variable_selector,
                                 route_node_state=route_node_state,
@@ -819,7 +819,7 @@ class GraphEngine:
                                 id=node_instance.id,
                                 node_id=node_instance.node_id,
                                 node_type=node_instance.node_type,
-                                node_data=node_instance.node_data,
+                                node_data=node_instance.get_base_node_data(),
                                 retriever_resources=event.retriever_resources,
                                 context=event.context,
                                 route_node_state=route_node_state,
@@ -838,7 +838,7 @@ class GraphEngine:
                     id=node_instance.id,
                     node_id=node_instance.node_id,
                     node_type=node_instance.node_type,
-                    node_data=node_instance.node_data,
+                    node_data=node_instance.get_base_node_data(),
                     route_node_state=route_node_state,
                     parallel_id=parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
@@ -848,7 +848,7 @@ class GraphEngine:
                 )
                 return
             except Exception as e:
-                logger.exception(f"Node {node_instance.node_data.title} run failed")
+                logger.exception(f"Node {node_instance.node_title} run failed")
                 raise e
 
     def _append_variables_recursively(self, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
@@ -911,20 +911,20 @@ class GraphEngine:
             "error": error_result.error,
             "inputs": error_result.inputs,
             "metadata": {
-                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy,
+                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node_instance.error_strategy,
             },
         }
 
-        if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+        if node_instance.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             return NodeRunResult(
                 **node_error_args,
                 outputs={
-                    **node_instance.node_data.default_value_dict,
+                    **node_instance.default_value_dict,
                     "error_message": error_result.error,
                     "error_type": error_result.error_type,
                 },
             )
-        elif node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH:
+        elif node_instance.error_strategy is ErrorStrategy.FAIL_BRANCH:
             if self.graph.edge_mapping.get(node_instance.node_id):
                 node_error_args["edge_source_handle"] = FailBranchSourceHandle.FAILED
             return NodeRunResult(

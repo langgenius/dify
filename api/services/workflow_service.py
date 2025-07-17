@@ -484,13 +484,13 @@ class WorkflowService:
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                    "metadata": {"error_strategy": node_instance.error_strategy},
                 }
-                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                if node_instance.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
                         **node_error_args,
                         outputs={
-                            **node_instance.node_data.default_value_dict,
+                            **node_instance.default_value_dict,
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
                         },
@@ -521,7 +521,7 @@ class WorkflowService:
             index=1,
             node_id=node_id,
             node_type=node_instance.node_type,
-            title=node_instance.node_data.title,
+            title=node_instance.node_title,
             elapsed_time=time.perf_counter() - start_at,
             created_at=datetime.now(UTC).replace(tzinfo=None),
             finished_at=datetime.now(UTC).replace(tzinfo=None),

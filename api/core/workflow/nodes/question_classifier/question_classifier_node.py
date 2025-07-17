@@ -11,9 +11,11 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
     LLMNode,
@@ -83,6 +85,24 @@ class QuestionClassifierNode(BaseNode):
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = QuestionClassifierNodeData.model_validate(data)
+
+    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self.node_data.error_strategy
+
+    def get_retry_config(self) -> RetryConfig:
+        return self.node_data.retry_config
+
+    def get_title(self) -> str:
+        return self.node_data.title
+
+    def get_description(self) -> Optional[str]:
+        return self.node_data.desc
+
+    def get_default_value_dict(self) -> dict[str, Any]:
+        return self.node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self.node_data
 
     @classmethod
     def version(cls):
@@ -242,12 +262,12 @@ class QuestionClassifierNode(BaseNode):
         typed_node_data = QuestionClassifierNodeData.model_validate(node_data)
 
         variable_mapping = {"query": typed_node_data.query_variable_selector}
-        variable_selectors = []
+        variable_selectors: list[VariableSelector] = []
         if typed_node_data.instruction:
             variable_template_parser = VariableTemplateParser(template=typed_node_data.instruction)
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
-            variable_mapping[variable_selector.variable] = variable_selector.value_selector
+            variable_mapping[variable_selector.variable] = list(variable_selector.value_selector)
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}
 

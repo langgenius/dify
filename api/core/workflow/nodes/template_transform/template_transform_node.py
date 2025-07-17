@@ -6,7 +6,8 @@ from core.helper.code_executor.code_executor import CodeExecutionError, CodeExec
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))
@@ -19,6 +20,24 @@ class TemplateTransformNode(BaseNode):
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self.node_data = TemplateTransformNodeData.model_validate(data)
+
+    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self.node_data.error_strategy
+
+    def get_retry_config(self) -> RetryConfig:
+        return self.node_data.retry_config
+
+    def get_title(self) -> str:
+        return self.node_data.title
+
+    def get_description(self) -> Optional[str]:
+        return self.node_data.desc
+
+    def get_default_value_dict(self) -> dict[str, Any]:
+        return self.node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self.node_data
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,8 +19,9 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
@@ -401,6 +402,24 @@ class ToolNode(BaseNode):
         result = {node_id + "." + key: value for key, value in result.items()}
 
         return result
+
+    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self.node_data.error_strategy
+
+    def get_retry_config(self) -> RetryConfig:
+        return self.node_data.retry_config
+
+    def get_title(self) -> str:
+        return self.node_data.title
+
+    def get_description(self) -> Optional[str]:
+        return self.node_data.desc
+
+    def get_default_value_dict(self) -> dict[str, Any]:
+        return self.node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self.node_data
 
     @property
     def continue_on_error(self) -> bool:

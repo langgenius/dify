@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class BaseNode:
     _node_type: ClassVar[NodeType]
+    # Each subclass will declare: node_data: SpecificNodeData
 
     def __init__(
         self,
@@ -185,3 +187,62 @@ class BaseNode:
             bool: if should retry
         """
         return False
+
+    # Abstract methods that subclasses must implement to provide access
+    # to BaseNodeData properties in a type-safe way
+
+    @abstractmethod
+    def get_error_strategy(self) -> Optional[ErrorStrategy]:
+        """Get the error strategy for this node."""
+        ...
+
+    @abstractmethod
+    def get_retry_config(self) -> RetryConfig:
+        """Get the retry configuration for this node."""
+        ...
+
+    @abstractmethod
+    def get_title(self) -> str:
+        """Get the node title."""
+        ...
+
+    @abstractmethod
+    def get_description(self) -> Optional[str]:
+        """Get the node description."""
+        ...
+
+    @abstractmethod
+    def get_default_value_dict(self) -> dict[str, Any]:
+        """Get the default values dictionary for this node."""
+        ...
+
+    @abstractmethod
+    def get_base_node_data(self) -> BaseNodeData:
+        """Get the BaseNodeData object for this node."""
+        ...
+
+    # Public interface properties that delegate to abstract methods
+    @property
+    def error_strategy(self) -> Optional[ErrorStrategy]:
+        """Get the error strategy for this node."""
+        return self.get_error_strategy()
+
+    @property
+    def node_retry_config(self) -> RetryConfig:
+        """Get the retry configuration for this node."""
+        return self.get_retry_config()
+
+    @property
+    def node_title(self) -> str:
+        """Get the node title."""
+        return self.get_title()
+
+    @property
+    def node_description(self) -> Optional[str]:
+        """Get the node description."""
+        return self.get_description()
+
+    @property
+    def default_value_dict(self) -> dict[str, Any]:
+        """Get the default values dictionary for this node."""
+        return self.get_default_value_dict()
