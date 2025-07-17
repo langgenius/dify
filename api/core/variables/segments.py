@@ -148,6 +148,15 @@ class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
     value: Sequence[Any]
 
+    @property
+    def log(self) -> str:
+        """
+        When the array is empty, return an empty string rather than "[]".
+        """
+        if len(self.value) == 0:
+            return ""
+        return str(self.value)
+
 
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
