@@ -115,6 +115,7 @@ const translation = {
     needEndNode: 'باید گره پایان اضافه شود',
     needAnswerNode: 'باید گره پاسخ اضافه شود',
     addBlock: 'نود اضافه کنید',
+    tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'استراتژی نمایندگی',
     'blocks': 'گره‌ها',
     'searchBlock': 'گره جستجو',
+    'addAll': 'همه را اضافه کنید',
+    'allAdded': 'همه اضافه شده است',
   },
   blocks: {
     'start': 'شروع',
@@ -364,7 +367,10 @@ const translation = {
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'مقدار ورودی',
+        variable: 'از متغیر استفاده کن',
+      },
     },
     start: {
       required: 'الزامی',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'وابستگی‌های پیشرفته',
       advancedDependenciesTip: 'برخی وابستگی‌های پیش‌بارگذاری شده که زمان بیشتری برای مصرف نیاز دارند یا به طور پیش‌فرض در اینجا موجود نیستند، اضافه کنید',
       searchDependencies: 'جستجوی وابستگی‌ها',
+      syncFunctionSignature: 'امضای تابع همگام‌سازی را به کد متصل کنید',
     },
     templateTransform: {
       inputVars: 'متغیرهای ورودی',
@@ -670,6 +677,9 @@ const translation = {
         json: 'json تولید شده توسط ابزار',
       },
       authorize: 'مجوز دادن',
+      settings: 'تنظیمات',
+      insertPlaceholder2: 'متغیر را وارد کنید',
+      insertPlaceholder1: 'نوع کنید یا فشار دهید',
     },
     questionClassifiers: {
       model: 'مدل',
@@ -854,6 +864,8 @@ const translation = {
       strategyNotFoundDesc: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد.',
       strategyNotFoundDescAndSwitchVersion: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد. برای تغییر نسخه کلیک کنید.',
       model: 'مدل',
+      parameterSchema: 'طرح پارامتر',
+      clickToViewParameterSchema: 'برای مشاهده طرح پارامتر کلیک کنید',
     },
     loop: {
       ErrorMethod: {

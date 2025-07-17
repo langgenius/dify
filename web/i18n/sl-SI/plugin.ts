@@ -66,6 +66,7 @@ const translation = {
       paramsTip1: 'Nadzoruje parametre sklepanja LLM.',
       paramsTip2: 'Ko je \'Avtomatsko\' izklopljeno, se uporablja privzeta vrednost.',
       toolSetting: 'Nastavitve orodja',
+      unsupportedMCPTool: 'Trenutno izbrana različica vtičnika strategije agenta ne podpira orodij MCP.',
     },
     endpointDisableContent: 'Ali želite onemogočiti {{name}}?',
     serviceOk: 'Storitve so v redu',

@@ -57,9 +57,14 @@ const translation = {
         api_key: 'API-ключ',
         apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
         apiValuePlaceholder: 'Введіть API-ключ',
+        api_key_header: 'Заголовок',
+        queryParamPlaceholder: 'Назва параметра запиту для API Ключа',
+        api_key_query: 'Параметр запиту',
       },
       key: 'Ключ',
       value: 'Значення',
+      queryParam: 'Параметр запиту',
+      queryParamTooltip: 'Ім\'я параметра запиту для ключа API, який потрібно передати, наприклад, "key" в "https://example.com/test?key=API_KEY".',
     },
     authHeaderPrefix: {
       types: {

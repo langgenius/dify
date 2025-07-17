@@ -63,6 +63,7 @@ const translation = {
       auto: 'Automatico',
       paramsTip2: 'Quando \'Automatico\' è disattivato, viene utilizzato il valore predefinito.',
       toolSetting: 'Impostazioni degli strumenti',
+      unsupportedMCPTool: 'La versione attualmente selezionata del plugin strategia agente non supporta gli strumenti MCP.',
     },
     modelNum: '{{num}} MODELLI INCLUSI',
     endpointModalTitle: 'Endpoint di configurazione',

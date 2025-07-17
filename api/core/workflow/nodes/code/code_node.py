@@ -1,4 +1,5 @@
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from typing import Any, Optional
 
 from configs import dify_config
@@ -114,8 +115,10 @@ class CodeNode(BaseNode[CodeNodeData]):
             )
 
         if isinstance(value, float):
+            decimal_value = Decimal(str(value)).normalize()
+            precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0  # type: ignore[operator]
             # raise error if precision is too high
-            if len(str(value).split(".")[1]) > dify_config.CODE_MAX_PRECISION:
+            if precision > dify_config.CODE_MAX_PRECISION:
                 raise OutputValidationError(
                     f"Output variable `{variable}` has too high precision,"
                     f" it must be less than {dify_config.CODE_MAX_PRECISION} digits."

@@ -109,6 +109,7 @@ const translation = {
     noLoginMethod: 'Metoda de autentificare nu este configurată pentru aplicația web',
     noLoginMethodTip: 'Vă rugăm să contactați administratorul sistemului pentru a adăuga o metodă de autentificare.',
     disabled: 'Autentificarea webapp-ului este dezactivată. Vă rugăm să contactați administratorul sistemului pentru a o activa. Puteți încerca să folosiți aplicația direct.',
+    login: 'Conectare',
   },
 }
 

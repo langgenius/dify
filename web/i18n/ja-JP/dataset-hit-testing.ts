@@ -1,7 +1,7 @@
 const translation = {
   title: '検索テスト',
   desc: '与えられたクエリテキストに基づいたナレッジのヒット効果をテストします。',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'YYYY/MM/DD hh:mm A',
   records: '記録',
   table: {
     header: {

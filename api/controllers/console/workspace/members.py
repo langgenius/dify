@@ -1,22 +1,34 @@
 from urllib import parse
 
+from flask import request
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.error import WorkspaceMembersLimitExceeded
+from controllers.console.auth.error import (
+    CannotTransferOwnerToSelfError,
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+    MemberNotInTenantError,
+    NotOwnerError,
+    OwnerTransferLimitError,
+)
+from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    is_allow_transfer_owner,
     setup_required,
 )
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
+from libs.helper import extract_remote_ip
 from libs.login import login_required
 from models.account import Account, TenantAccountRole
-from services.account_service import RegisterService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
@@ -156,8 +168,146 @@ class DatasetOperatorMemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
+class SendOwnerTransferEmailApi(Resource):
+    """Send owner transfer email."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_allow_transfer_owner
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("language", type=str, required=False, location="json")
+        args = parser.parse_args()
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
+
+        # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
+
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
+        email = current_user.email
+
+        token = AccountService.send_owner_transfer_email(
+            account=current_user,
+            email=email,
+            language=language,
+            workspace_name=current_user.current_tenant.name,
+        )
+
+        return {"result": "success", "data": token}
+
+
+class OwnerTransferCheckApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_allow_transfer_owner
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
+
+        user_email = current_user.email
+
+        is_owner_transfer_error_rate_limit = AccountService.is_owner_transfer_error_rate_limit(user_email)
+        if is_owner_transfer_error_rate_limit:
+            raise OwnerTransferLimitError()
+
+        token_data = AccountService.get_owner_transfer_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if user_email != token_data.get("email"):
+            raise InvalidEmailError()
+
+        if args["code"] != token_data.get("code"):
+            AccountService.add_owner_transfer_error_rate_limit(user_email)
+            raise EmailCodeError()
+
+        # Verified, revoke the first token
+        AccountService.revoke_owner_transfer_token(args["token"])
+
+        # Refresh token data by generating a new token
+        _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args["code"], additional_data={})
+
+        AccountService.reset_owner_transfer_error_rate_limit(user_email)
+        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+
+
+class OwnerTransfer(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_allow_transfer_owner
+    def post(self, member_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        # check if the current user is the owner of the workspace
+        if not TenantService.is_owner(current_user, current_user.current_tenant):
+            raise NotOwnerError()
+
+        if current_user.id == str(member_id):
+            raise CannotTransferOwnerToSelfError()
+
+        transfer_token_data = AccountService.get_owner_transfer_data(args["token"])
+        if not transfer_token_data:
+            raise InvalidTokenError()
+
+        if transfer_token_data.get("email") != current_user.email:
+            raise InvalidEmailError()
+
+        AccountService.revoke_owner_transfer_token(args["token"])
+
+        member = db.session.get(Account, str(member_id))
+        if not member:
+            abort(404)
+        else:
+            member_account = member
+        if not TenantService.is_member(member_account, current_user.current_tenant):
+            raise MemberNotInTenantError()
+
+        try:
+            assert member is not None, "Member not found"
+            TenantService.update_member_role(current_user.current_tenant, member, "owner", current_user)
+
+            AccountService.send_new_owner_transfer_notify_email(
+                account=member,
+                email=member.email,
+                workspace_name=current_user.current_tenant.name,
+            )
+
+            AccountService.send_old_owner_transfer_notify_email(
+                account=current_user,
+                email=current_user.email,
+                workspace_name=current_user.current_tenant.name,
+                new_owner_email=member.email,
+            )
+
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {"result": "success"}
+
+
 api.add_resource(MemberListApi, "/workspaces/current/members")
 api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email")
 api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
 api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
 api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
+# owner transfer
+api.add_resource(SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email")
+api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")
+api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")

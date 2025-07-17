@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'ต้องเพิ่มโหนดคำตอบ',
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
+    tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -234,6 +235,8 @@ const translation = {
     'plugin': 'ปลั๊กอิน',
     'searchBlock': 'ค้นหาโหนด',
     'blocks': 'โหนด',
+    'allAdded': 'ทั้งหมดที่เพิ่มเข้ามา',
+    'addAll': 'เพิ่มทั้งหมด',
   },
   blocks: {
     'start': 'เริ่ม',
@@ -364,7 +367,10 @@ const translation = {
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'ค่าป้อนข้อมูล',
+        variable: 'ใช้ตัวแปร',
+      },
     },
     start: {
       required: 'ต้องระบุ',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'การพึ่งพาขั้นสูง',
       advancedDependenciesTip: 'เพิ่มการพึ่งพาที่โหลดไว้ล่วงหน้าซึ่งใช้เวลามากขึ้นในการใช้หรือไม่ใช่ค่าเริ่มต้นในตัวที่นี่',
       searchDependencies: 'การพึ่งพาการค้นหา',
+      syncFunctionSignature: 'ซิงก์ลายเซ็นฟังก์ชันให้ตรงกับโค้ด',
     },
     templateTransform: {
       inputVars: 'ตัวแปรอินพุต',
@@ -669,6 +676,9 @@ const translation = {
         json: 'เครื่องมือสร้าง JSON',
       },
       authorize: 'อนุญาต',
+      insertPlaceholder2: 'แทรกตัวแปร',
+      insertPlaceholder1: 'พิมพ์หรือลงทะเบียน',
+      settings: 'การตั้งค่า',
     },
     questionClassifiers: {
       model: 'แบบ',
@@ -853,6 +863,8 @@ const translation = {
       tools: 'เครื่อง มือ',
       modelNotSelected: 'ไม่ได้เลือกรุ่น',
       linkToPlugin: 'ลิงก์ไปยังปลั๊กอิน',
+      parameterSchema: 'แบบจำลองพารามิเตอร์',
+      clickToViewParameterSchema: 'คลิกเพื่อดูโครงร่างพารามิเตอร์',
     },
     loop: {
       ErrorMethod: {

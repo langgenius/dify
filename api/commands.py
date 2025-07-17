@@ -2,10 +2,11 @@ import base64
 import json
 import logging
 import secrets
-from typing import Optional
+from typing import Any, Optional
 
 import click
 from flask import current_app
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -1174,12 +1175,12 @@ def setup_system_tool_oauth_client(provider, client_params):
     try:
         # json validate
         click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
-        json.loads(client_params)
+        client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
         click.echo(click.style("Client params validated successfully.", fg="green"))
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_oauth_params(client_params)
+        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))

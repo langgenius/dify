@@ -56,6 +56,7 @@ type ProviderContextState = {
     }
   },
   refreshLicenseLimit: () => void
+  isAllowTransferWorkspace: boolean
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -97,6 +98,7 @@ const ProviderContext = createContext<ProviderContextState>({
     },
   },
   refreshLicenseLimit: noop,
+  isAllowTransferWorkspace: false,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -134,6 +136,7 @@ export const ProviderContextProvider = ({
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
   const { data: isEducationAccount } = useEducationStatus(!enableEducationPlan)
+  const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
 
   const fetchPlan = async () => {
     try {
@@ -162,6 +165,8 @@ export const ProviderContextProvider = ({
         setWebappCopyrightEnabled(true)
       if (data.workspace_members)
         setLicenseLimit({ workspace_members: data.workspace_members })
+      if (data.is_allow_transfer_workspace)
+        setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
@@ -222,6 +227,7 @@ export const ProviderContextProvider = ({
       webappCopyrightEnabled,
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
+      isAllowTransferWorkspace,
     }}>
       {children}
     </ProviderContext.Provider>

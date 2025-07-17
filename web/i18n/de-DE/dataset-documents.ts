@@ -384,6 +384,7 @@ const translation = {
     chunkAdded: '1 Stück hinzugefügt',
     expandChunks: 'Blöcke erweitern',
     editedAt: 'Bearbeitet am',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     addChunk: 'Block hinzufügen',
     addAnother: 'Fügen Sie eine weitere hinzu',
     regeneratingTitle: 'Regenerieren von untergeordneten Blöcken',

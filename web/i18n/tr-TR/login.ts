@@ -109,6 +109,7 @@ const translation = {
     disabled: 'Web uygulaması kimlik doğrulaması devre dışı. Lütfen bu özelliği etkinleştirmesi için sistem yöneticisi ile iletişime geçin. Uygulamayı doğrudan kullanmayı deneyebilirsiniz.',
     noLoginMethod: 'Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış',
     noLoginMethodTip: 'Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.',
+    login: 'Giriş',
   },
 }
 

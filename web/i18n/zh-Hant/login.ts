@@ -109,6 +109,7 @@ const translation = {
     noLoginMethod: '未為網絡應用程序配置身份驗證方法',
     noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
     disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
+    login: '登入',
   },
 }
 

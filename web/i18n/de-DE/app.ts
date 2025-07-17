@@ -174,7 +174,10 @@ const translation = {
       title: 'Weben',
       description: 'Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Cloud-Monitor',
+      description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
@@ -263,6 +266,8 @@ const translation = {
   },
   accessControl: 'Zugriffskontrolle für Webanwendungen',
   noAccessPermission: 'Keine Berechtigung zum Zugriff auf die Webanwendung',
+  maxActiveRequests: 'Maximale gleichzeitige Anfragen',
+  maxActiveRequestsPlaceholder: 'Geben Sie 0 für unbegrenzt ein',
 }
 
 export default translation

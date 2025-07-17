@@ -148,9 +148,11 @@ class LLMGenerator:
 
             model_manager = ModelManager()
 
-            model_instance = model_manager.get_default_model_instance(
+            model_instance = model_manager.get_model_instance(
                 tenant_id=tenant_id,
                 model_type=ModelType.LLM,
+                provider=model_config.get("provider", ""),
+                model=model_config.get("name", ""),
             )
 
             try:

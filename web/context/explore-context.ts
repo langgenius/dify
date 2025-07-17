@@ -8,6 +8,8 @@ type IExplore = {
   hasEditPermission: boolean
   installedApps: InstalledApp[]
   setInstalledApps: (installedApps: InstalledApp[]) => void
+  isFetchingInstalledApps: boolean
+  setIsFetchingInstalledApps: (isFetchingInstalledApps: boolean) => void
 }
 
 const ExploreContext = createContext<IExplore>({
@@ -16,6 +18,8 @@ const ExploreContext = createContext<IExplore>({
   hasEditPermission: false,
   installedApps: [],
   setInstalledApps: noop,
+  isFetchingInstalledApps: false,
+  setIsFetchingInstalledApps: noop,
 })
 
 export default ExploreContext

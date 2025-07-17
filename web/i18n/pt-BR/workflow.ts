@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Adicionar Nó',
     needEndNode: 'O nó de Fim deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
+    tagBound: 'Número de aplicativos usando esta tag',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'Estratégia do agente',
     'blocks': 'Nodos',
     'searchBlock': 'Nó de busca',
+    'addAll': 'Adicionar tudo',
+    'allAdded': 'Todos adicionados',
   },
   blocks: {
     'start': 'Iniciar',
@@ -364,7 +367,10 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Tentativas',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Use variável',
+        input: 'Valor de entrada',
+      },
     },
     start: {
       required: 'requerido',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dependências avançadas',
       advancedDependenciesTip: 'Adicione algumas dependências pré-carregadas que levam mais tempo para consumir ou não são padrão aqui',
       searchDependencies: 'Buscar dependências',
+      syncFunctionSignature: 'Sincronizar a assinatura da função com o código',
     },
     templateTransform: {
       inputVars: 'Variáveis de entrada',
@@ -670,6 +677,9 @@ const translation = {
         json: 'JSON gerado por ferramenta',
       },
       authorize: 'Autorizar',
+      insertPlaceholder2: 'inserir variável',
+      insertPlaceholder1: 'Digite ou pressione',
+      settings: 'Configurações',
     },
     questionClassifiers: {
       model: 'modelo',
@@ -854,6 +864,8 @@ const translation = {
       tools: 'Ferramentas',
       toolNotAuthorizedTooltip: '{{ferramenta}} Não autorizado',
       toolbox: 'caixa de ferramentas',
+      parameterSchema: 'Esquema de Parâmetro',
+      clickToViewParameterSchema: 'Clique para ver o esquema de parâmetros',
     },
     loop: {
       ErrorMethod: {

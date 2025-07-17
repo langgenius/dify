@@ -377,6 +377,7 @@ const translation = {
     editChildChunk: 'Editar fragmento secundario',
     regeneratingTitle: 'Regeneración de fragmentos secundarios',
     editedAt: 'Editado en',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     searchResults_zero: 'RESULTADO',
     clearFilter: 'Borrar filtro',
     newChildChunk: 'Nuevo fragmento secundario',

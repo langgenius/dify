@@ -63,6 +63,7 @@ const translation = {
       paramsTip2: '\'Otomatik\' kapalıyken, varsayılan değer kullanılır.',
       unsupportedTitle: 'Desteklenmeyen Eylem',
       toolSetting: 'Araç Ayarları',
+      unsupportedMCPTool: 'Şu anda seçili olan ajan stratejisi eklenti sürümü MCP araçlarını desteklemiyor.',
     },
     strategyNum: '{{sayı}} {{strateji}} DAHİL',
     switchVersion: 'Sürümü Değiştir',

@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Knoten hinzufügen',
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
+    tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'Agenten-Strategie',
     'searchBlock': 'Suchknoten',
     'blocks': 'Knoten',
+    'allAdded': 'Alle hinzugefügt',
+    'addAll': 'Alles hinzufügen',
   },
   blocks: {
     'start': 'Start',
@@ -364,7 +367,10 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Eingabewert',
+        variable: 'Verwende die Variable',
+      },
     },
     start: {
       required: 'erforderlich',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Erweiterte Abhängigkeiten',
       advancedDependenciesTip: 'Fügen Sie hier einige vorinstallierte Abhängigkeiten hinzu, die mehr Zeit in Anspruch nehmen oder nicht standardmäßig eingebaut sind',
       searchDependencies: 'Abhängigkeiten suchen',
+      syncFunctionSignature: 'Synchronisiere die Funktionssignatur mit dem Code',
     },
     templateTransform: {
       inputVars: 'Eingabevariablen',
@@ -670,6 +677,9 @@ const translation = {
         json: 'von einem Tool generiertes JSON',
       },
       authorize: 'Autorisieren',
+      insertPlaceholder2: 'Fügen Sie die Variable ein.',
+      insertPlaceholder1: 'Tippen oder drücken',
+      settings: 'Einstellungen',
     },
     questionClassifiers: {
       model: 'Modell',
@@ -854,6 +864,8 @@ const translation = {
       learnMore: 'Weitere Informationen',
       configureModel: 'Modell konfigurieren',
       linkToPlugin: 'Link zu Plugins',
+      parameterSchema: 'Parameter-Schema',
+      clickToViewParameterSchema: 'Klicken Sie hier, um das Parameterschema anzuzeigen.',
     },
     loop: {
       ErrorMethod: {

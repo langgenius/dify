@@ -369,6 +369,7 @@ const translation = {
     regenerationSuccessTitle: 'Regeneracja zakończona',
     edited: 'EDYTOWANE',
     editedAt: 'Zredagowane w',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     collapseChunks: 'Zwijanie fragmentów',
     empty: 'Nie znaleziono fragmentu',
     newChunk: 'Nowy fragment',

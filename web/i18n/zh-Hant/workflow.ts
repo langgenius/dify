@@ -115,6 +115,7 @@ const translation = {
     exitVersions: '退出版本',
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
+    tagBound: '使用此標籤的應用程式數量',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -234,6 +235,8 @@ const translation = {
     'searchTool': '搜索工具',
     'agent': '代理策略',
     'plugin': '插件',
+    'allAdded': '所有已添加的',
+    'addAll': '全部添加',
   },
   blocks: {
     'start': '開始',
@@ -364,7 +367,10 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}}重試',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '輸入值',
+        variable: '使用變數',
+      },
     },
     start: {
       required: '必填',
@@ -671,6 +677,9 @@ const translation = {
         },
         json: '工具生成的 JSON',
       },
+      insertPlaceholder2: '插入變量',
+      insertPlaceholder1: '輸入或按壓',
+      settings: '設定',
     },
     questionClassifiers: {
       model: '模型',
@@ -855,6 +864,8 @@ const translation = {
       linkToPlugin: '連結到插件',
       pluginNotInstalled: '此插件未安裝',
       notAuthorized: '未授權',
+      clickToViewParameterSchema: '點擊查看參數架構',
+      parameterSchema: '參數架構',
     },
     loop: {
       ErrorMethod: {

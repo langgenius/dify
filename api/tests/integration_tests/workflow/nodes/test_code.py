@@ -354,3 +354,35 @@ def test_execute_code_output_object_list():
     # validate
     with pytest.raises(ValueError):
         node._transform_result(result, node.node_data.outputs)
+
+
+def test_execute_code_scientific_notation():
+    code = """
+    def main() -> dict:
+        return {
+            "result": -8.0E-5
+        }
+    """
+    code = "\n".join([line[4:] for line in code.split("\n")])
+
+    code_config = {
+        "id": "code",
+        "data": {
+            "outputs": {
+                "result": {
+                    "type": "number",
+                },
+            },
+            "title": "123",
+            "variables": [],
+            "answer": "123",
+            "code_language": "python3",
+            "code": code,
+        },
+    }
+
+    node = init_code_node(code_config)
+    # execute node
+    result = node._run()
+    assert isinstance(result, NodeRunResult)
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED

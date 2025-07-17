@@ -63,6 +63,7 @@ const translation = {
       paramsTip2: 'Gdy opcja "Auto" jest wyłączona, używana jest wartość domyślna.',
       toolLabel: 'Narzędzie',
       toolSetting: 'Ustawienia narzędzi',
+      unsupportedMCPTool: 'Obecnie wybrana wersja wtyczki strategii agenta nie obsługuje narzędzi MCP.',
     },
     strategyNum: '{{liczba}} {{strategia}} ZAWARTE',
     endpointsEmpty: 'Kliknij przycisk "+", aby dodać punkt końcowy',

@@ -63,6 +63,7 @@ const translation = {
       paramsTip2: 'Lorsque « Auto » est désactivé, la valeur par défaut est utilisée.',
       paramsTip1: 'Contrôle les paramètres d’inférence LLM.',
       toolSetting: 'Paramètres de l\'outil',
+      unsupportedMCPTool: 'La version actuelle du plugin de stratégie d\'agent sélectionné ne prend pas en charge les outils MCP.',
     },
     modelNum: '{{num}} MODÈLES INCLUS',
     endpointDeleteTip: 'Supprimer le point de terminaison',

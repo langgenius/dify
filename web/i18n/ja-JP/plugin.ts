@@ -63,6 +63,7 @@ const translation = {
       toolLabel: '道具',
       unsupportedTitle: 'サポートされていないアクション',
       toolSetting: 'ツール設定',
+      unsupportedMCPTool: '現在選択されているエージェント戦略プラグインのバージョンはMCPツールをサポートしていません。',
     },
     endpointDisableTip: 'エンドポイントを無効にする',
     endpointModalDesc: '設定が完了すると、API エンドポイントを介してプラグインが提供する機能を使用できます。',

@@ -183,3 +183,42 @@ rename_conversation_response.raise_for_status()
 print('[rename result]')
 print(rename_conversation_response.json())
 ```
+
+* Using the Workflow Client
+```python
+import json 
+import requests
+from dify_client import WorkflowClient
+
+api_key = "your_api_key"
+
+# Initialize Workflow Client
+client = WorkflowClient(api_key)
+
+# Prepare parameters for Workflow Client
+user_id = "your_user_id"
+context = "previous user interaction / metadata"
+user_prompt = "What is the capital of France?"
+
+inputs = {
+    "context": context, 
+    "user_prompt": user_prompt,
+    # Add other input fields expected by your workflow (e.g., additional context, task parameters)
+
+}
+
+# Set response mode (default: streaming)
+response_mode = "blocking"
+
+# Run the workflow
+response = client.run(inputs=inputs, response_mode=response_mode, user=user_id)
+response.raise_for_status()
+
+# Parse result
+result = json.loads(response.text)
+
+answer = result.get("data").get("outputs")
+
+print(answer["answer"])
+
+```

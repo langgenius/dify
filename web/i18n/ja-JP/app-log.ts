@@ -1,7 +1,7 @@
 const translation = {
   title: 'ログ',
   description: 'ログは、アプリケーションの実行状態を記録します。ユーザーの入力や AI の応答などが含まれます。',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'YYYY/MM/DD hh:mm A',
   table: {
     header: {
       updatedTime: '更新時間',

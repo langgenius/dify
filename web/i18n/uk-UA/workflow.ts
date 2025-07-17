@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Додати вузол',
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
+    tagBound: 'Кількість додатків, що використовують цей тег',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'Стратегія агента',
     'blocks': 'Вузли',
     'searchBlock': 'Пошуковий вузол',
+    'addAll': 'Додати все',
+    'allAdded': 'Всі додані',
   },
   blocks: {
     'start': 'Початок',
@@ -364,7 +367,10 @@ const translation = {
         retryFailedTimes: '{{times}} повторні спроби не вдалися',
         retryTimes: 'Повторіть спробу {{times}} у разі невдачі',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Вхідне значення',
+        variable: 'Використовуйте змінну',
+      },
     },
     start: {
       required: 'обов\'язковий',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Розширені залежності',
       advancedDependenciesTip: 'Додайте тут деякі попередньо завантажені залежності, які потребують більше часу для споживання або не є за замовчуванням вбудованими',
       searchDependencies: 'Шукати залежності',
+      syncFunctionSignature: 'Синхронізувати підпис функції з кодом',
     },
     templateTransform: {
       inputVars: 'Вхідні змінні',
@@ -670,6 +677,9 @@ const translation = {
         json: 'JSON, згенерований інструментом',
       },
       authorize: 'Уповноважити',
+      settings: 'Налаштування',
+      insertPlaceholder2: 'вставте змінну',
+      insertPlaceholder1: 'Введіть або натисніть',
     },
     questionClassifiers: {
       model: 'модель',
@@ -854,6 +864,8 @@ const translation = {
       pluginNotInstalledDesc: 'Цей плагін встановлюється з GitHub. Будь ласка, перейдіть до Плагіни для перевстановлення',
       modelNotSelected: 'Модель не обрана',
       strategyNotFoundDescAndSwitchVersion: 'Встановлена версія плагіна не забезпечує цю стратегію. Натисніть, щоб змінити версію.',
+      parameterSchema: 'Схема параметрів',
+      clickToViewParameterSchema: 'Натисніть, щоб переглянути схему параметрів',
     },
     loop: {
       ErrorMethod: {

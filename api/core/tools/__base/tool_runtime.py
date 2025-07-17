@@ -17,7 +17,7 @@ class ToolRuntime(BaseModel):
     invoke_from: Optional[InvokeFrom] = None
     tool_invoke_from: Optional[ToolInvokeFrom] = None
     credentials: dict[str, Any] = Field(default_factory=dict)
-    credential_type: Optional[CredentialType] = CredentialType.API_KEY
+    credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 
 

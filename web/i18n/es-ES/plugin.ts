@@ -63,6 +63,7 @@ const translation = {
       params: 'CONFIGURACIÓN DE RAZONAMIENTO',
       uninstalledLink: 'Administrar en Plugins',
       toolSetting: 'Configuraciones de la herramienta',
+      unsupportedMCPTool: 'La versión actual del plugin de estrategia del agente seleccionado no es compatible con las herramientas MCP.',
     },
     endpointDeleteContent: '¿Te gustaría eliminar {{nombre}}?',
     endpointDisableTip: 'Deshabilitar punto de conexión',

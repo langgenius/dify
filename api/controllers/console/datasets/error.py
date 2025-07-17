@@ -25,12 +25,6 @@ class UnsupportedFileTypeError(BaseHTTPException):
     code = 415
 
 
-class HighQualityDatasetOnlyError(BaseHTTPException):
-    error_code = "high_quality_dataset_only"
-    description = "Current operation only supports 'high-quality' datasets."
-    code = 400
-
-
 class DatasetNotInitializedError(BaseHTTPException):
     error_code = "dataset_not_initialized"
     description = "The dataset is still being initialized or indexing. Please wait a moment."

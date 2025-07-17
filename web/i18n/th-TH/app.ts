@@ -177,7 +177,10 @@ const translation = {
       title: 'ทอ',
       description: 'Weave เป็นแพลตฟอร์มโอเพนซอร์สสำหรับการประเมินผล ทดสอบ และตรวจสอบแอปพลิเคชัน LLM',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'การตรวจสอบคลาวด์',
+      description: 'แพลตฟอร์มการสังเกตการณ์ที่จัดการโดย Alibaba Cloud ซึ่งไม่ต้องดูแลและบำรุงรักษา ช่วยให้สามารถติดตาม ตรวจสอบ และประเมินแอปพลิเคชัน Dify ได้ทันที',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',
@@ -252,6 +255,8 @@ const translation = {
   },
   accessControl: 'การควบคุมการเข้าถึงเว็บแอปพลิเคชัน',
   noAccessPermission: 'ไม่มีสิทธิ์เข้าถึงเว็บแอป',
+  maxActiveRequestsPlaceholder: 'ใส่ 0 สำหรับไม่จำกัด',
+  maxActiveRequests: 'จำนวนคำขอพร้อมกันสูงสุด',
 }
 
 export default translation

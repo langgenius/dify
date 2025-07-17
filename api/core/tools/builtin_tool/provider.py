@@ -125,7 +125,7 @@ class BuiltinToolProviderController(ToolProviderController):
         if credential_type == CredentialType.API_KEY.value:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
         raise ValueError(f"Invalid credential type: {credential_type}")
-    
+
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
         """
         returns the oauth client schema of the provider

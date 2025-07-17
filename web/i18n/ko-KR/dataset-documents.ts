@@ -371,6 +371,7 @@ const translation = {
     childChunks_one: '자식 청크 (CHILD CHUNK)',
     regenerationSuccessTitle: '재생이 완료되었습니다.',
     editedAt: '편집 위치',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     addAnother: '다른 항목 추가',
     chunkAdded: '청크 1 개 추가됨',
     searchResults_one: '결과',

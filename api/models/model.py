@@ -610,14 +610,6 @@ class InstalledApp(Base):
         return tenant
 
 
-class ConversationSource(StrEnum):
-    """This enumeration is designed for use with `Conversation.from_source`."""
-
-    # NOTE(QuantumGhost): The enumeration members may not cover all possible cases.
-    API = "api"
-    CONSOLE = "console"
-
-
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (

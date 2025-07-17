@@ -172,7 +172,10 @@ const translation = {
       title: 'Dệt',
       description: 'Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Giám sát Đám mây',
+      description: 'Nền tảng quan sát được quản lý hoàn toàn và không cần bảo trì do Alibaba Cloud cung cấp, cho phép giám sát, theo dõi và đánh giá các ứng dụng Dify ngay lập tức.',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',
@@ -256,6 +259,8 @@ const translation = {
   },
   noAccessPermission: 'Không được phép truy cập ứng dụng web',
   accessControl: 'Kiểm soát truy cập ứng dụng web',
+  maxActiveRequestsPlaceholder: 'Nhập 0 để không giới hạn',
+  maxActiveRequests: 'Số yêu cầu đồng thời tối đa',
 }
 
 export default translation

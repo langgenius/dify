@@ -4,10 +4,20 @@ import pytz
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
+from controllers.console.auth.error import (
+    EmailAlreadyInUseError,
+    EmailChangeLimitError,
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
+from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -18,15 +28,17 @@ from controllers.console.workspace.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_enabled,
+    enable_change_email,
     enterprise_license_required,
     only_edition_cloud,
     setup_required,
 )
 from extensions.ext_database import db
 from fields.member_fields import account_fields
-from libs.helper import TimestampField, timezone
+from libs.helper import TimestampField, email, extract_remote_ip, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
+from models.account import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -369,6 +381,134 @@ class EducationAutoCompleteApi(Resource):
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
 
+class ChangeEmailSendEmailApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
+        parser.add_argument("phase", type=str, required=False, location="json")
+        parser.add_argument("token", type=str, required=False, location="json")
+        args = parser.parse_args()
+
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
+
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+        account = None
+        user_email = args["email"]
+        if args["phase"] is not None and args["phase"] == "new_email":
+            if args["token"] is None:
+                raise InvalidTokenError()
+
+            reset_data = AccountService.get_change_email_data(args["token"])
+            if reset_data is None:
+                raise InvalidTokenError()
+            user_email = reset_data.get("email", "")
+
+            if user_email != current_user.email:
+                raise InvalidEmailError()
+        else:
+            with Session(db.engine) as session:
+                account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
+            if account is None:
+                raise AccountNotFound()
+
+        token = AccountService.send_change_email_email(
+            account=account, email=args["email"], old_email=user_email, language=language, phase=args["phase"]
+        )
+        return {"result": "success", "data": token}
+
+
+class ChangeEmailCheckApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        user_email = args["email"]
+
+        is_change_email_error_rate_limit = AccountService.is_change_email_error_rate_limit(args["email"])
+        if is_change_email_error_rate_limit:
+            raise EmailChangeLimitError()
+
+        token_data = AccountService.get_change_email_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if user_email != token_data.get("email"):
+            raise InvalidEmailError()
+
+        if args["code"] != token_data.get("code"):
+            AccountService.add_change_email_error_rate_limit(args["email"])
+            raise EmailCodeError()
+
+        # Verified, revoke the first token
+        AccountService.revoke_change_email_token(args["token"])
+
+        # Refresh token data by generating a new token
+        _, new_token = AccountService.generate_change_email_token(
+            user_email, code=args["code"], old_email=token_data.get("old_email"), additional_data={}
+        )
+
+        AccountService.reset_change_email_error_rate_limit(args["email"])
+        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+
+
+class ChangeEmailResetApi(Resource):
+    @enable_change_email
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(account_fields)
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("new_email", type=email, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        reset_data = AccountService.get_change_email_data(args["token"])
+        if not reset_data:
+            raise InvalidTokenError()
+
+        AccountService.revoke_change_email_token(args["token"])
+
+        if not AccountService.check_email_unique(args["new_email"]):
+            raise EmailAlreadyInUseError()
+
+        old_email = reset_data.get("old_email", "")
+        if current_user.email != old_email:
+            raise AccountNotFound()
+
+        updated_account = AccountService.update_account(current_user, email=args["new_email"])
+
+        return updated_account
+
+
+class CheckEmailUnique(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        args = parser.parse_args()
+        if not AccountService.check_email_unique(args["email"]):
+            raise EmailAlreadyInUseError()
+        return {"result": "success"}
+
+
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
 api.add_resource(AccountProfileApi, "/account/profile")
@@ -385,5 +525,10 @@ api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
 api.add_resource(EducationVerifyApi, "/account/education/verify")
 api.add_resource(EducationApi, "/account/education")
 api.add_resource(EducationAutoCompleteApi, "/account/education/autocomplete")
+# Change email
+api.add_resource(ChangeEmailSendEmailApi, "/account/change-email")
+api.add_resource(ChangeEmailCheckApi, "/account/change-email/validity")
+api.add_resource(ChangeEmailResetApi, "/account/change-email/reset")
+api.add_resource(CheckEmailUnique, "/account/change-email/check-email-unique")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')

@@ -6,7 +6,7 @@ import {
   RiClipboardLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardCheck } from '../../base/icons/src/vender/line/files'
+import { CopyCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
 import cn from '@/utils/classnames'
 import ActionButton from '@/app/components/base/action-button'
@@ -44,7 +44,7 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
+  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
 
   return (
     <div className='flex items-center gap-1'>

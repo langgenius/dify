@@ -181,7 +181,10 @@ const translation = {
       title: 'Tkanje',
       description: 'Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Oblačni nadzor',
+      description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',
@@ -256,6 +259,8 @@ const translation = {
   },
   accessControl: 'Nadzor dostopa do spletne aplikacije',
   noAccessPermission: 'Brez dovoljenja za dostop do spletne aplikacije',
+  maxActiveRequestsPlaceholder: 'Vnesite 0 za neomejeno',
+  maxActiveRequests: 'Maksimalno število hkratnih zahtevkov',
 }
 
 export default translation

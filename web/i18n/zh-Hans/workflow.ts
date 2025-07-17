@@ -113,6 +113,7 @@ const translation = {
     openInExplore: '在“探索”中打开',
     loadMore: '加载更多',
     noHistory: '没有历史版本',
+    tagBound: '使用此标签的应用数量',
   },
   env: {
     envPanelTitle: '环境变量',

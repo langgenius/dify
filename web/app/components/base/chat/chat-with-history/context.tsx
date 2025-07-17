@@ -18,11 +18,8 @@ import type {
 import { noop } from 'lodash-es'
 
 export type ChatWithHistoryContextValue = {
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
-  userCanAccess?: boolean
+  appMeta?: AppMeta | null
+  appData?: AppData | null
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -62,7 +59,6 @@ export type ChatWithHistoryContextValue = {
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
-  userCanAccess: false,
   currentConversationId: '',
   appPrevChatTree: [],
   pinnedConversationList: [],
