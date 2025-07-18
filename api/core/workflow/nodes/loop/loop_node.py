@@ -11,6 +11,7 @@ from core.variables import (
     Segment,
     SegmentType,
 )
+from libs.datetime_utils import naive_utc_now
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.event import (

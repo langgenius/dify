@@ -12,6 +12,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from libs.datetime_utils import naive_utc_now
+
 
 class WorkflowType(StrEnum):
     """

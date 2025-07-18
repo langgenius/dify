@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from libs.datetime_utils import naive_utc_now
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,

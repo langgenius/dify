@@ -12,6 +12,7 @@ from typing import Any, Optional, cast
 from flask import Flask, current_app
 
 from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult

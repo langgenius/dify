@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 from flask import Flask, current_app
 
 from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities.node_entities import (
