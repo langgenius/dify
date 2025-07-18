@@ -527,11 +527,8 @@ class KnowledgeRetrievalNode(BaseNode):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=self.graph_runtime_state.variable_pool,
             jinja2_variables=[],
-
             uses_sys_files_for_node=False,
-
             tenant_id=self.tenant_id,
-
         )
 
         result_text = ""

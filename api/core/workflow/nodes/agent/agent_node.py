@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.agent.strategy.plugin import PluginAgentStrategy
-
-from core.file import file_manager
+from core.file import File, FileTransferMethod, file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
@@ -19,12 +18,7 @@ from core.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-
-from core.file import File, FileTransferMethod
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
-
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.entities.request import InvokeCredentials
 from core.plugin.impl.exc import PluginDaemonClientSideError
@@ -37,12 +31,8 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.tool_manager import ToolManager
-
-from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, StringSegment
-
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment, StringSegment
-
+from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -57,11 +47,8 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
-
-from models.model import Conversation, NodeFileUsage
-
 from models import ToolFile
-from models.model import Conversation
+from models.model import Conversation, NodeFileUsage
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
@@ -72,7 +59,6 @@ from .exc import (
     AgentVariableTypeError,
     ToolFileNotFoundError,
 )
-
 
 
 class AgentNode(BaseNode):

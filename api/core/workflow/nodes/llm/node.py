@@ -206,8 +206,8 @@ class LLMNode(BaseNode):
             # A node is considered "using" sys.files when vision is enabled and a variable selector is configured.
             # ------------------------------
 
-            uses_sys_files_for_node = self.node_data.vision.enabled and bool(
-                self.node_data.vision.configs.variable_selector
+            uses_sys_files_for_node = self._node_data.vision.enabled and bool(
+                self._node_data.vision.configs.variable_selector
             )
 
             if uses_sys_files_for_node and files:
@@ -286,13 +286,9 @@ class LLMNode(BaseNode):
                 vision_enabled=self._node_data.vision.enabled,
                 vision_detail=self._node_data.vision.configs.detail,
                 variable_pool=variable_pool,
-
-                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
                 uses_sys_files_for_node=uses_sys_files_for_node,
-
                 jinja2_variables=self._node_data.prompt_config.jinja2_variables,
                 tenant_id=self.tenant_id,
-
             )
 
             # handle invoke result
@@ -679,11 +675,8 @@ class LLMNode(BaseNode):
         vision_detail: ImagePromptMessageContent.DETAIL,
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
-
         uses_sys_files_for_node: bool,
-
         tenant_id: str,
-
     ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
         prompt_messages: list[PromptMessage] = []
 
