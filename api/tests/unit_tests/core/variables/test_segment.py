@@ -376,7 +376,7 @@ class TestSegmentDumpAndLoad:
                 f"get_segment_discriminator failed for serialized form of type {type(variable)}"
             )
 
-    def test_invlaid_value_for_discriminator(self):
+    def test_invalid_value_for_discriminator(self):
         # Test invalid cases
         assert get_segment_discriminator({"value_type": "invalid"}) is None
         assert get_segment_discriminator({}) is None

@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Adaugă nod',
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
     needEndNode: 'Nodul de sfârșit trebuie adăugat',
+    tagBound: 'Numărul de aplicații care folosesc acest tag',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -234,6 +235,8 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Noduri',
     'searchBlock': 'Căutare nod',
+    'addAll': 'Adaugă tot',
+    'allAdded': 'Toate adăugate',
   },
   blocks: {
     'start': 'Începe',
@@ -364,7 +367,10 @@ const translation = {
         retries: '{{num}} Încercări',
         retryTimes: 'Reîncercați {{times}} ori în caz de eșec',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Folosește variabila',
+        input: 'Valoare de intrare',
+      },
     },
     start: {
       required: 'necesar',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dependențe avansate',
       advancedDependenciesTip: 'Adăugați câteva dependențe preîncărcate care necesită mai mult timp pentru a consuma sau nu sunt integrate implicit aici',
       searchDependencies: 'Căutați dependențe',
+      syncFunctionSignature: 'Sincronizați semnătura funcției cu codul',
     },
     templateTransform: {
       inputVars: 'Variabile de intrare',
@@ -670,6 +677,9 @@ const translation = {
         json: 'JSON generat de instrument',
       },
       authorize: 'Autorizați',
+      insertPlaceholder2: 'introduce o variabilă',
+      insertPlaceholder1: 'Scrieți sau apăsați',
+      settings: 'Setări',
     },
     questionClassifiers: {
       model: 'model',
@@ -854,6 +864,8 @@ const translation = {
       modelNotInstallTooltip: 'Acest model nu este instalat',
       linkToPlugin: 'Link către pluginuri',
       model: 'model',
+      parameterSchema: 'Schema parametrului',
+      clickToViewParameterSchema: 'Click pentru a vizualiza schema parametrilor',
     },
     loop: {
       ErrorMethod: {

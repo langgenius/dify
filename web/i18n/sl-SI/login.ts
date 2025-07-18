@@ -109,6 +109,7 @@ const translation = {
     noLoginMethod: 'Metoda overjanja ni nastavljena za spletno aplikacijo',
     noLoginMethodTip: 'Prosimo, da se obrnete na sistemskega skrbnika, da dodate metodo za avtentikacijo.',
     disabled: 'Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.',
+    login: 'Prijava',
   },
 }
 

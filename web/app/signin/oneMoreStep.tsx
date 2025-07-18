@@ -21,8 +21,8 @@ type IState = {
   timezone: string
 }
 
-type IAction =
-  | { type: 'failed', payload: null }
+type IAction
+  = | { type: 'failed', payload: null }
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }

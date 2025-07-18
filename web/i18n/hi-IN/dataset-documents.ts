@@ -373,6 +373,7 @@ const translation = {
     addChunk: 'चंक जोड़ें',
     editChildChunk: 'संपादित करें बाल चंक',
     editedAt: 'पर संपादित',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     childChunk: 'चाइल्ड-चंक',
     parentChunk: 'माता-पिता-चंक',
     empty: 'कोई हिस्सा नहीं मिला',

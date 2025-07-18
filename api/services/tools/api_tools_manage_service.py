@@ -18,7 +18,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
@@ -164,15 +164,11 @@ class ApiToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # encrypt credentials
-        tool_configuration = ProviderConfigEncrypter(
+        encrypter, _ = create_tool_provider_encrypter(
             tenant_id=tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name,
+            controller=provider_controller,
         )
-
-        encrypted_credentials = tool_configuration.encrypt(credentials)
-        db_provider.credentials_str = json.dumps(encrypted_credentials)
+        db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
         db.session.add(db_provider)
         db.session.commit()
@@ -297,28 +293,26 @@ class ApiToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # get original credentials if exists
-        tool_configuration = ProviderConfigEncrypter(
+        encrypter, cache = create_tool_provider_encrypter(
             tenant_id=tenant_id,
-            config=list(provider_controller.get_credentials_schema()),
-            provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name,
+            controller=provider_controller,
         )
 
-        original_credentials = tool_configuration.decrypt(provider.credentials)
-        masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
+        original_credentials = encrypter.decrypt(provider.credentials)
+        masked_credentials = encrypter.mask_tool_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
 
-        credentials = tool_configuration.encrypt(credentials)
+        credentials = encrypter.encrypt(credentials)
         provider.credentials_str = json.dumps(credentials)
 
         db.session.add(provider)
         db.session.commit()
 
         # delete cache
-        tool_configuration.delete_tool_credentials_cache()
+        cache.delete()
 
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
@@ -416,15 +410,13 @@ class ApiToolManageService:
 
         # decrypt credentials
         if db_provider.id:
-            tool_configuration = ProviderConfigEncrypter(
+            encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=tenant_id,
-                config=list(provider_controller.get_credentials_schema()),
-                provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name,
+                controller=provider_controller,
             )
-            decrypted_credentials = tool_configuration.decrypt(credentials)
+            decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
-            masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)
+            masked_credentials = encrypter.mask_tool_credentials(decrypted_credentials)
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]
@@ -446,7 +438,7 @@ class ApiToolManageService:
         return {"result": result or "empty response"}
 
     @staticmethod
-    def list_api_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         list api tools
         """
@@ -474,7 +466,7 @@ class ApiToolManageService:
             for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.convert_tool_entity_to_api_entity(
-                        tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels
+                        tenant_id=tenant_id, tool=tool, labels=labels
                     )
                 )
 

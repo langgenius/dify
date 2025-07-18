@@ -849,7 +849,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if message.edition_type == "jinja2":
                 result_text = _render_jinja2_message(
                     template=message.jinja2_text or "",
-                    jinjia2_variables=jinja2_variables,
+                    jinja2_variables=jinja2_variables,
                     variable_pool=variable_pool,
                 )
                 prompt_message = _combine_message_content_with_role(
@@ -1021,20 +1021,20 @@ def _combine_message_content_with_role(
 def _render_jinja2_message(
     *,
     template: str,
-    jinjia2_variables: Sequence[VariableSelector],
+    jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
 ):
     if not template:
         return ""
 
-    jinjia2_inputs = {}
-    for jinja2_variable in jinjia2_variables:
+    jinja2_inputs = {}
+    for jinja2_variable in jinja2_variables:
         variable = variable_pool.get(jinja2_variable.value_selector)
-        jinjia2_inputs[jinja2_variable.variable] = variable.to_object() if variable else ""
+        jinja2_inputs[jinja2_variable.variable] = variable.to_object() if variable else ""
     code_execute_resp = CodeExecutor.execute_workflow_code_template(
         language=CodeLanguage.JINJA2,
         code=template,
-        inputs=jinjia2_inputs,
+        inputs=jinja2_inputs,
     )
     result_text = code_execute_resp["result"]
     return result_text
@@ -1130,7 +1130,7 @@ def _handle_completion_template(
     if template.edition_type == "jinja2":
         result_text = _render_jinja2_message(
             template=template.jinja2_text or "",
-            jinjia2_variables=jinja2_variables,
+            jinja2_variables=jinja2_variables,
             variable_pool=variable_pool,
         )
     else:

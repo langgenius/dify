@@ -63,6 +63,7 @@ const translation = {
       unsupportedContent2: '按兩下以切換版本。',
       paramsTip1: '控制 LLM 推理參數。',
       toolSetting: '工具設定',
+      unsupportedMCPTool: '目前選定的代理策略插件版本不支持 MCP 工具。',
     },
     actionNum: '{{num}}{{作}}包括',
     switchVersion: 'Switch 版本',

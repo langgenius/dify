@@ -365,6 +365,7 @@ const translation = {
     parentChunks_one: 'РОДИТЕЛЬСКИЙ БЛОК',
     childChunk: 'Чайлд-Чанк',
     editedAt: 'Отредактировано в',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     editChildChunk: 'Редактирование дочернего фрагмента',
     parentChunks_other: 'РОДИТЕЛЬСКИЕ БЛОКИ',
     regenerationSuccessTitle: 'Регенерация завершена',
