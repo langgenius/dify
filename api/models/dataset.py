@@ -660,10 +660,10 @@ class DocumentSegment(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content = mapped_column(db.Text, nullable=False)
-    answer = mapped_column(db.Text, nullable=True)
-    word_count = mapped_column(db.Integer, nullable=False)
-    tokens = mapped_column(db.Integer, nullable=False)
+    content: Mapped[str]
+    answer: Mapped[Optional[str]]
+    word_count: Mapped[int]
+    tokens: Mapped[int]
 
     # indexing fields
     keywords = mapped_column(db.JSON, nullable=True)

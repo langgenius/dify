@@ -214,11 +214,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        # type: ignore
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        # type: ignore
-        dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
+        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None  # type: ignore
+        dataset.embedding_model = embedding_model.model if embedding_model else None  # type: ignore
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None  # type: ignore
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -1541,9 +1539,10 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # update document segment
-        # type: ignore
-        update_params = {DocumentSegment.status: "re_segment"}
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(update_params)
+
+        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
+            {DocumentSegment.status: "re_segment"}
+        )  # type: ignore
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)
@@ -2228,7 +2227,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
