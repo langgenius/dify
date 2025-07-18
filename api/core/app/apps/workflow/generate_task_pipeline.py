@@ -2,7 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Optional, Protocol, Union
+from typing import Any, Optional, Union
 
 from sqlalchemy.orm import Session
 
@@ -246,19 +246,6 @@ class WorkflowAppGenerateTaskPipeline:
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
-
-    class EventHandler(Protocol):
-        """Protocol for event handlers."""
-
-        def __call__(
-            self,
-            event: Any,
-            *,
-            graph_runtime_state: Optional[Any] = None,
-            tts_publisher: Optional[Any] = None,
-            trace_manager: Optional[Any] = None,
-            queue_message: Optional[Any] = None,
-        ) -> Generator[Any, None, None]: ...
 
     @contextmanager
     def _database_session(self):

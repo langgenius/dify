@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from threading import Thread
-from typing import Any, Optional, Protocol, Union
+from typing import Any, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -276,18 +276,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
-
-    class EventHandler(Protocol):
-        """Protocol for event handlers."""
-
-        def __call__(
-            self,
-            event: Any,
-            *,
-            graph_runtime_state: Optional[Any] = None,
-            tts_publisher: Optional[Any] = None,
-            trace_manager: Optional[Any] = None,
-        ) -> Generator[Any, None, None]: ...
 
     @contextmanager
     def _database_session(self):
