@@ -97,9 +97,7 @@ class Account(UserMixin, Base):
     last_login_at: Mapped[datetime] = mapped_column(db.DateTime)
     last_login_ip: Mapped[str] = mapped_column(db.String(255))
     last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
-    status: Mapped[str] = mapped_column(
-        db.String(16), server_default=db.text("'active'::character varying")
-    )
+    status: Mapped[str] = mapped_column(db.String(16), server_default=db.text("'active'::character varying"))
     initialized_at: Mapped[datetime] = mapped_column(db.DateTime)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
@@ -298,7 +296,5 @@ class TenantPluginPermission(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
-    install_permission: Mapped[InstallPermission] = mapped_column(
-        db.String(16), server_default="everyone"
-    )
+    install_permission: Mapped[InstallPermission] = mapped_column(db.String(16), server_default="everyone")
     debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), server_default="noone")

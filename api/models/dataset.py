@@ -1,3 +1,4 @@
+from datetime import datetime
 import base64
 import enum
 import hashlib
@@ -674,13 +675,13 @@ class DocumentSegment(Base):
     enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at = mapped_column(db.DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
-    status = mapped_column(db.String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
+    status: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     indexing_at = mapped_column(db.DateTime, nullable=True)
-    completed_at = mapped_column(db.DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     error = mapped_column(db.Text, nullable=True)
     stopped_at = mapped_column(db.DateTime, nullable=True)
 
