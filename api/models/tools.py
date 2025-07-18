@@ -98,41 +98,6 @@ class BuiltinToolProvider(Base):
     def credentials(self) -> dict:
         return cast(dict, json.loads(self.encrypted_credentials))
 
-
-class BuiltinDatasourceProvider(Base):
-    """
-    This table stores the datasource provider information for built-in datasources for each tenant.
-    """
-
-    __tablename__ = "tool_builtin_datasource_providers"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="tool_builtin_datasource_provider_pkey"),
-        # one tenant can only have one tool provider with the same name
-        db.UniqueConstraint("tenant_id", "provider", name="unique_builtin_datasource_provider"),
-    )
-
-    # id of the tool provider
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    # id of the tenant
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    # who created this tool provider
-    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    # name of the tool provider
-    provider: Mapped[str] = mapped_column(db.String(256), nullable=False)
-    # credential of the tool provider
-    encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
-    )
-
-    @property
-    def credentials(self) -> dict:
-        return cast(dict, json.loads(self.encrypted_credentials))
-
-
 class ApiToolProvider(Base):
     """
     The table stores the api providers.
