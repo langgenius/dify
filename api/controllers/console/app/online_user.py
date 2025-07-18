@@ -2,6 +2,7 @@ import json
 
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse
+from flask_socketio import join_room
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -36,8 +37,11 @@ def handle_user_connect(data):
     }
 
     redis_client.hset(f"workflow_online_users:{workflow_id}", current_user.id, json.dumps(user_info))
-
     redis_client.set(f"ws_sid_map:{sid}", json.dumps({"workflow_id": workflow_id, "user_id": current_user.id}))
+
+    join_room(workflow_id)
+    broadcast_online_users(workflow_id)
+
     return {"msg": "connected", "user_id": current_user.id, "sid": sid}
 
 
@@ -54,6 +58,25 @@ def handle_disconnect():
         user_id = data["user_id"]
         redis_client.hdel(f"workflow_online_users:{workflow_id}", user_id)
         redis_client.delete(f"ws_sid_map:{sid}")
+
+        broadcast_online_users(workflow_id)
+
+def broadcast_online_users(workflow_id):
+    """
+    broadcast online users to the workflow room
+    """
+    users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+    users = []
+    for _, user_info_json in users_json.items():
+        try:
+            users.append(json.loads(user_info_json))
+        except Exception:
+            continue
+    ext_socketio.emit(
+        "online_users",
+        {"workflow_id": workflow_id, "users": users},
+        room=workflow_id
+    )
 
 
 class OnlineUserApi(Resource):

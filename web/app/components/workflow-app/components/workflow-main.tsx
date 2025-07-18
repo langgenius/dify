@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -17,6 +18,8 @@ import {
 } from '../hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useCollaborativeCursors } from '../hooks'
+import { connectOnlineUserWebSocket } from '@/service/demo/online-user'
+import type { OnlineUser } from '@/service/demo/online-user'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -26,6 +29,7 @@ const WorkflowMain = ({
 }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
+  const appId = useStore(s => s.appId)
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -65,9 +69,35 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
-  const appId = useStore(s => s.appId)
 
   const { cursors, myUserId } = useCollaborativeCursors(appId)
+
+  // Add online users logging
+  useEffect(() => {
+    if (!appId) return
+
+    // Connect to WebSocket for online users
+    const socket = connectOnlineUserWebSocket(appId)
+
+    // Handle online users update
+    const handleOnlineUsersUpdate = (data: { users: OnlineUser[] }) => {
+      data.users.forEach((user) => {
+        console.log(`👤 User: ${user.username} (ID: ${user.user_id})`)
+      })
+    }
+
+    // Add event listeners
+    socket.on('online_users', handleOnlineUsersUpdate)
+
+    // Log initial connection
+    console.log('🔌 Connecting to online users WebSocket for app:', appId)
+
+    // Cleanup function
+    return () => {
+      console.log(' Cleaning up online users WebSocket listeners')
+      socket.off('online_users', handleOnlineUsersUpdate)
+    }
+  }, [appId])
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowId: appId,

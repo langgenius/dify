@@ -1,15 +1,11 @@
 'use client'
+import { get } from '../base'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 
 let socket: Socket | null = null
 let lastAppId: string | null = null
 
-/**
- * Connect to the online user websocket server.
- * @param appId The app id to join a specific room or namespace.
- * @returns The socket instance.
- */
 export function connectOnlineUserWebSocket(appId: string): Socket {
   if (socket && lastAppId === appId)
     return socket
@@ -57,4 +53,30 @@ export function disconnectOnlineUserWebSocket() {
     socket.disconnect()
     socket = null
   }
+}
+
+export const getOnlineUsersSocket = (): Socket | null => {
+  return socket
+}
+
+export type OnlineUser = {
+  user_id: string
+  username: string
+  avatar: string
+  sid: string
+}
+
+export type WorkflowOnlineUsers = {
+  workflow_id: string
+  users: OnlineUser[]
+}
+
+export type OnlineUserListResponse = {
+  data: WorkflowOnlineUsers[]
+}
+
+export const fetchAppsOnlineUsers = (appIds: string[]) => {
+  return get<OnlineUserListResponse>('/online-users', {
+    params: { app_ids: appIds.join(',') },
+  })
 }
