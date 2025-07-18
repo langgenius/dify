@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Дізнатися більше',
       description: ' про метод вибірки.',
       longDescription: ' про метод вибірки, ви можете змінити це будь-коли в налаштуваннях бази знань.',
+      method: 'Метод отримання',
     },
     save: 'Зберегти',
     me: '(Ви)',
@@ -35,6 +36,7 @@ const translation = {
     helpText: 'Дізнайтеся, як написати хороший опис набору даних.',
     indexMethodChangeToEconomyDisabledTip: 'Недоступно для пониження з HQ до ECO',
     upgradeHighQualityTip: 'Після оновлення до режиму високої якості повернення до економного режиму недоступне',
+    searchModel: 'Пошук моделі',
   },
 }
 

@@ -9,6 +9,8 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 type Props = {
   isShow: boolean
   onHide: () => void
+  dialogClassName?: string
+  dialogBackdropClassName?: string
   panelClassName?: string
   maxWidthClassName?: string
   contentClassName?: string
@@ -26,6 +28,8 @@ type Props = {
 const DrawerPlus: FC<Props> = ({
   isShow,
   onHide,
+  dialogClassName = '',
+  dialogBackdropClassName = '',
   panelClassName = '',
   maxWidthClassName = '!max-w-[640px]',
   height = 'calc(100vh - 72px)',
@@ -55,7 +59,9 @@ const DrawerPlus: FC<Props> = ({
       footer={null}
       mask={isMobile || isShowMask}
       positionCenter={positionCenter}
-      panelClassname={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', panelClassName, maxWidthClassName)}
+      dialogClassName={dialogClassName}
+      dialogBackdropClassName={dialogBackdropClassName}
+      panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', panelClassName, maxWidthClassName)}
     >
       <div
         className={cn(contentClassName, 'flex w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl')}

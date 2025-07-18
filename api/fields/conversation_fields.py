@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
@@ -42,6 +42,7 @@ message_file_fields = {
     "size": fields.Integer,
     "transfer_method": fields.String,
     "belongs_to": fields.String(default="user"),
+    "upload_file_id": fields.String(default=None),
 }
 
 agent_thought_fields = {

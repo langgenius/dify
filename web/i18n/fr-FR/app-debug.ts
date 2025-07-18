@@ -268,6 +268,7 @@ const translation = {
     'labelName': 'Label Name',
     'inputPlaceholder': 'Please input',
     'required': 'Required',
+    'hide': 'Caché',
     'errorMsg': {
       varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
@@ -316,6 +317,7 @@ const translation = {
     writeOpener: 'Écrire l\'introduction',
     placeholder: 'Rédigez votre message d\'ouverture ici, vous pouvez utiliser des variables, essayez de taper {{variable}}.',
     openingQuestion: 'Questions d\'ouverture',
+    openingQuestionPlaceholder: 'Vous pouvez utiliser des variables, essayez de taper {{variable}}.',
     noDataPlaceHolder:
       'Commencer la conversation avec l\'utilisateur peut aider l\'IA à établir une connexion plus proche avec eux dans les applications conversationnelles.',
     varTip: 'Vous pouvez utiliser des variables, essayez de taper {{variable}}',

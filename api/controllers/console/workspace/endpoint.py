@@ -1,10 +1,11 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.impl.exc import PluginPermissionDeniedError
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
@@ -28,15 +29,18 @@ class EndpointCreateApi(Resource):
         settings = args["settings"]
         name = args["name"]
 
-        return {
-            "success": EndpointService.create_endpoint(
-                tenant_id=user.current_tenant_id,
-                user_id=user.id,
-                plugin_unique_identifier=plugin_unique_identifier,
-                name=name,
-                settings=settings,
-            )
-        }
+        try:
+            return {
+                "success": EndpointService.create_endpoint(
+                    tenant_id=user.current_tenant_id,
+                    user_id=user.id,
+                    plugin_unique_identifier=plugin_unique_identifier,
+                    name=name,
+                    settings=settings,
+                )
+            }
+        except PluginPermissionDeniedError as e:
+            raise ValueError(e.description) from e
 
 
 class EndpointListApi(Resource):

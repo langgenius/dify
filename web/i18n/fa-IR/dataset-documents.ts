@@ -29,6 +29,8 @@ const translation = {
       delete: 'حذف',
       enableWarning: 'فایل بایگانی شده نمی‌تواند فعال شود',
       sync: 'همگام‌سازی',
+      resume: 'ادامه',
+      pause: 'مکث',
     },
     index: {
       enable: 'فعال کردن',
@@ -354,6 +356,7 @@ const translation = {
     chunks_other: 'تکه',
     characters_one: 'شخصیت',
     editedAt: 'ویرایش شده در',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     parentChunks_other: 'تکه های والدین',
     editChunk: 'ویرایش تکه',
     collapseChunks: 'جمع کردن تکه ها',
@@ -388,6 +391,8 @@ const translation = {
     regeneratingMessage: 'این ممکن است یک لحظه طول بکشد، لطفا صبر کنید...',
     regenerationConfirmTitle: 'آیا می خواهید تکه های کودک را بازسازی کنید؟',
     regenerationSuccessMessage: 'می توانید این پنجره را ببندید.',
+    keywordEmpty: 'کلمه کلیدی نمی‌تواند خالی باشد',
+    keywordDuplicate: 'این کلیدواژه قبلاً وجود دارد',
   },
 }
 

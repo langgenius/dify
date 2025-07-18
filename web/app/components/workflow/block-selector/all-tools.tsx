@@ -5,49 +5,55 @@ import {
   useState,
 } from 'react'
 import type {
+  BlockEnum,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import type { ToolValue } from './types'
+import type { ToolDefaultValue, ToolValue } from './types'
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import ActionButton from '../../base/action-button'
-import { RiAddLine } from '@remixicon/react'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type AllToolsProps = {
   className?: string
   toolContentClassName?: string
   searchText: string
-  tags: string[]
+  tags: ListProps['tags']
   buildInTools: ToolWithProvider[]
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
+  mcpTools: ToolWithProvider[]
   onSelect: OnSelectBlock
-  supportAddCustomTool?: boolean
-  onAddedCustomTool?: () => void
-  onShowAddCustomCollectionModal?: () => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
+
+const DEFAULT_TAGS: AllToolsProps['tags'] = []
+
 const AllTools = ({
   className,
   toolContentClassName,
   searchText,
-  tags = [],
+  tags = DEFAULT_TAGS,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   buildInTools,
   workflowTools,
   customTools,
-  supportAddCustomTool,
-  onShowAddCustomCollectionModal,
+  mcpTools = [],
   selectedTools,
+  canChooseMCPTool,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -60,13 +66,15 @@ const AllTools = ({
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
-      mergedTools = [...buildInTools, ...customTools, ...workflowTools]
+      mergedTools = [...buildInTools, ...customTools, ...workflowTools, ...mcpTools]
     if (activeTab === ToolTypeEnum.BuiltIn)
       mergedTools = buildInTools
     if (activeTab === ToolTypeEnum.Custom)
       mergedTools = customTools
     if (activeTab === ToolTypeEnum.Workflow)
       mergedTools = workflowTools
+    if (activeTab === ToolTypeEnum.MCP)
+      mergedTools = mcpTools
 
     if (!hasFilter)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
@@ -76,17 +84,16 @@ const AllTools = ({
         return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
-  }, [activeTab, buildInTools, customTools, workflowTools, searchText, language, hasFilter])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, searchText, language, hasFilter])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
-
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   useEffect(() => {
-    if (enable_marketplace) return
+    if (!enable_marketplace) return
     if (searchText || tags.length > 0) {
       fetchPlugins({
         query: searchText,
@@ -97,12 +104,13 @@ const AllTools = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText, tags, enable_marketplace])
 
-  const pluginRef = useRef(null)
+  const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
+  const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   return (
-    <div className={cn(className)}>
-      <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
+    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+      <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
         <div className='flex h-8 items-center space-x-1'>
           {
             tabs.map(tab => (
@@ -120,37 +128,32 @@ const AllTools = ({
             ))
           }
         </div>
-        <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
-        {supportAddCustomTool && (
-          <div className='flex items-center'>
-            <div className='mr-1.5 h-3.5 w-px  bg-divider-regular'></div>
-            <ActionButton
-              className='bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text'
-              onClick={onShowAddCustomCollectionModal}
-            >
-              <RiAddLine className='h-4 w-4' />
-            </ActionButton>
-          </div>
+        {isSupportGroupView && (
+          <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
       <div
         ref={wrapElemRef}
         className='max-h-[464px] overflow-y-auto'
-        onScroll={(pluginRef.current as any)?.handleScroll}
+        onScroll={pluginRef.current?.handleScroll}
       >
         <Tools
           className={toolContentClassName}
-          showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
-          viewType={activeView}
+          canNotSelectMultiple={canNotSelectMultiple}
+          onSelectMultiple={onSelectMultiple}
+          toolType={activeTab}
+          viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
           selectedTools={selectedTools}
+          canChooseMCPTool={canChooseMCPTool}
         />
         {/* Plugins from marketplace */}
         {enable_marketplace && <PluginList
+          ref={pluginRef}
           wrapElemRef={wrapElemRef}
-          list={notInstalledPlugins as any} ref={pluginRef}
+          list={notInstalledPlugins}
           searchText={searchText}
           toolContentClassName={toolContentClassName}
           tags={tags}

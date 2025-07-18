@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'ศึกษาเพิ่มเติม',
       description: 'เกี่ยวกับวิธีการดึงข้อมูล',
       longDescription: 'เกี่ยวกับวิธีการดึงข้อมูล คุณสามารถเปลี่ยนแปลงได้ตลอดเวลาในการตั้งค่าความรู้',
+      method: 'วิธีการค้นคืน',
     },
     externalKnowledgeAPI: 'API ความรู้ภายนอก',
     externalKnowledgeID: 'ID ความรู้ภายนอก',
@@ -35,6 +36,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'ไม่สามารถดาวน์เกรดจาก HQ เป็น ECO ได้',
     helpText: 'เรียนรู้วิธีเขียนคําอธิบายชุดข้อมูลที่ดี',
     upgradeHighQualityTip: 'เมื่ออัปเกรดเป็นโหมดคุณภาพสูงแล้ว จะไม่สามารถเปลี่ยนกลับเป็นโหมดประหยัดได้',
+    searchModel: 'ค้นหารุ่น',
   },
 }
 

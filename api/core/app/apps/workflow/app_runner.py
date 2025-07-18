@@ -11,7 +11,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.enums import UserFrom
@@ -30,6 +31,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self,
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
+        variable_loader: VariableLoader,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> None:
         """
@@ -37,9 +39,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         :param queue_manager: application queue manager
         :param workflow_thread_pool_id: workflow thread pool id
         """
+        super().__init__(queue_manager, variable_loader)
         self.application_generate_entity = application_generate_entity
-        self.queue_manager = queue_manager
         self.workflow_thread_pool_id = workflow_thread_pool_id
+
+    def _get_app_id(self) -> str:
+        return self.application_generate_entity.app_config.app_id
 
     def run(self) -> None:
         """
@@ -90,13 +95,14 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = {
-                SystemVariableKey.FILES: files,
-                SystemVariableKey.USER_ID: user_id,
-                SystemVariableKey.APP_ID: app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
-                SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
-            }
+
+            system_inputs = SystemVariable(
+                files=files,
+                user_id=user_id,
+                app_id=app_config.app_id,
+                workflow_id=app_config.workflow_id,
+                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+            )
 
             variable_pool = VariablePool(
                 system_variables=system_inputs,

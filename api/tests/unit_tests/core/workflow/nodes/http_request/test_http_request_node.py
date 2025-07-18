@@ -4,6 +4,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileVariable, FileVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 from core.workflow.nodes.answer import AnswerStreamGenerateRoute
 from core.workflow.nodes.end import EndStreamParam
@@ -14,8 +15,9 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeBody,
     HttpRequestNodeData,
 )
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_http_request_node_binary_file(monkeypatch):
@@ -39,7 +41,7 @@ def test_http_request_node_binary_file(monkeypatch):
         ),
     )
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(
@@ -55,12 +57,15 @@ def test_http_request_node_binary_file(monkeypatch):
             ),
         ),
     )
+
+    node_config = {
+        "id": "1",
+        "data": data.model_dump(),
+    }
+
     node = HttpRequestNode(
         id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=GraphInitParams(
             tenant_id="1",
             app_id="1",
@@ -88,6 +93,9 @@ def test_http_request_node_binary_file(monkeypatch):
             start_at=0,
         ),
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     monkeypatch.setattr(
         "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda *args, **kwargs: b"test",
@@ -127,7 +135,7 @@ def test_http_request_node_form_with_file(monkeypatch):
         ),
     )
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
     variable_pool.add(
@@ -143,12 +151,15 @@ def test_http_request_node_form_with_file(monkeypatch):
             ),
         ),
     )
+
+    node_config = {
+        "id": "1",
+        "data": data.model_dump(),
+    }
+
     node = HttpRequestNode(
         id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=GraphInitParams(
             tenant_id="1",
             app_id="1",
@@ -176,6 +187,10 @@ def test_http_request_node_form_with_file(monkeypatch):
             start_at=0,
         ),
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
+
     monkeypatch.setattr(
         "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda *args, **kwargs: b"test",
@@ -222,7 +237,7 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
     )
 
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
 
@@ -255,12 +270,14 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
         ),
     )
 
+    node_config = {
+        "id": "1",
+        "data": data.model_dump(),
+    }
+
     node = HttpRequestNode(
         id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=GraphInitParams(
             tenant_id="1",
             app_id="1",
@@ -288,6 +305,9 @@ def test_http_request_node_form_with_multiple_files(monkeypatch):
             start_at=0,
         ),
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     monkeypatch.setattr(
         "core.workflow.nodes.http_request.executor.file_manager.download",

@@ -10,6 +10,7 @@ export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   triggerClassName?: string
+  triggerTestId?: string
   disabled?: boolean
   popupContent?: React.ReactNode
   children?: React.ReactNode
@@ -24,6 +25,7 @@ const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
   triggerClassName,
+  triggerTestId,
   disabled = false,
   popupContent,
   children,
@@ -31,7 +33,7 @@ const Tooltip: FC<TooltipProps> = ({
   noDecoration,
   offset,
   asChild = true,
-  needsDelay = false,
+  needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -66,7 +68,7 @@ const Tooltip: FC<TooltipProps> = ({
       setTimeout(() => {
         if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
           setOpen(false)
-      }, 500)
+      }, 300)
     }
     else {
       setOpen(false)
@@ -90,15 +92,16 @@ const Tooltip: FC<TooltipProps> = ({
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
+        className={!asChild ? triggerClassName : ''}
       >
-        {children || <div className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"
       >
         {popupContent && (<div
           className={cn(
-            !noDecoration && 'system-xs-regular relative break-words rounded-md bg-components-panel-bg px-3 py-2 text-text-tertiary shadow-lg',
+            !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

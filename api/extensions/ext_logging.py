@@ -26,8 +26,11 @@ def init_app(app: DifyApp):
 
     # Always add StreamHandler to log to console
     sh = logging.StreamHandler(sys.stdout)
-    sh.addFilter(RequestIdFilter())
     log_handlers.append(sh)
+
+    # Apply RequestIdFilter to all handlers
+    for handler in log_handlers:
+        handler.addFilter(RequestIdFilter())
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
@@ -36,6 +39,12 @@ def init_app(app: DifyApp):
         handlers=log_handlers,
         force=True,
     )
+
+    # Apply RequestIdFormatter to all handlers
+    apply_request_id_formatter()
+
+    # Disable propagation for noisy loggers to avoid duplicate logs
+    logging.getLogger("sqlalchemy.engine").propagate = False
     log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime
@@ -69,3 +78,16 @@ class RequestIdFilter(logging.Filter):
     def filter(self, record):
         record.req_id = get_request_id() if flask.has_request_context() else ""
         return True
+
+
+class RequestIdFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "req_id"):
+            record.req_id = ""
+        return super().format(record)
+
+
+def apply_request_id_formatter():
+    for handler in logging.root.handlers:
+        if handler.formatter:
+            handler.formatter = RequestIdFormatter(dify_config.LOG_FORMAT, dify_config.LOG_DATEFORMAT)

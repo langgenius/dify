@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -33,71 +34,10 @@ from models.model import App, AppMode, Message, MessageAnnotation
 if TYPE_CHECKING:
     from core.file.models import File
 
+_logger = logging.getLogger(__name__)
+
 
 class AppRunner:
-    def get_pre_calculate_rest_tokens(
-        self,
-        app_record: App,
-        model_config: ModelConfigWithCredentialsEntity,
-        prompt_template_entity: PromptTemplateEntity,
-        inputs: Mapping[str, str],
-        files: Sequence["File"],
-        query: Optional[str] = None,
-    ) -> int:
-        """
-        Get pre calculate rest tokens
-        :param app_record: app record
-        :param model_config: model config entity
-        :param prompt_template_entity: prompt template entity
-        :param inputs: inputs
-        :param files: files
-        :param query: query
-        :return:
-        """
-        # Invoke model
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-        )
-
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-
-        max_tokens = 0
-        for parameter_rule in model_config.model_schema.parameter_rules:
-            if parameter_rule.name == "max_tokens" or (
-                parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-            ):
-                max_tokens = (
-                    model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template or "")
-                ) or 0
-
-        if model_context_tokens is None:
-            return -1
-
-        if max_tokens is None:
-            max_tokens = 0
-
-        # get prompt messages without memory and context
-        prompt_messages, stop = self.organize_prompt_messages(
-            app_record=app_record,
-            model_config=model_config,
-            prompt_template_entity=prompt_template_entity,
-            inputs=inputs,
-            files=files,
-            query=query,
-        )
-
-        prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-        rest_tokens: int = model_context_tokens - max_tokens - prompt_tokens
-        if rest_tokens < 0:
-            raise InvokeBadRequestError(
-                "Query or prefix prompt is too long, you can reduce the prefix prompt, "
-                "or shrink the max token, or switch to a llm with a larger token limit size."
-            )
-
-        return rest_tokens
-
     def recalc_llm_max_tokens(
         self, model_config: ModelConfigWithCredentialsEntity, prompt_messages: list[PromptMessage]
     ):
@@ -178,7 +118,7 @@ class AppRunner:
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
-            model_mode = ModelMode.value_of(model_config.mode)
+            model_mode = ModelMode(model_config.mode)
             prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
@@ -298,7 +238,7 @@ class AppRunner:
         )
 
     def _handle_invoke_result_stream(
-        self, invoke_result: Generator, queue_manager: AppQueueManager, agent: bool
+        self, invoke_result: Generator[LLMResultChunk, None, None], queue_manager: AppQueueManager, agent: bool
     ) -> None:
         """
         Handle invoke result
@@ -317,18 +257,28 @@ class AppRunner:
             else:
                 queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
-            text += result.delta.message.content
+            message = result.delta.message
+            if isinstance(message.content, str):
+                text += message.content
+            elif isinstance(message.content, list):
+                for content in message.content:
+                    if not isinstance(content, str):
+                        # TODO(QuantumGhost): Add multimodal output support for easy ui.
+                        _logger.warning("received multimodal output, type=%s", type(content))
+                        text += content.data
+                    else:
+                        text += content  # failback to str
 
             if not model:
                 model = result.model
 
             if not prompt_messages:
-                prompt_messages = result.prompt_messages
+                prompt_messages = list(result.prompt_messages)
 
             if result.delta.usage:
                 usage = result.delta.usage
 
-        if not usage:
+        if usage is None:
             usage = LLMUsage.empty_usage()
 
         llm_result = LLMResult(

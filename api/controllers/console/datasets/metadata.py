@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
@@ -12,18 +12,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
-
-
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
 
 
 class DatasetMetadataCreateApi(Resource):
@@ -94,7 +82,7 @@ class DatasetMetadataApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 200
+        return {"result": "success"}, 204
 
 
 class DatasetMetadataBuiltInFieldApi(Resource):

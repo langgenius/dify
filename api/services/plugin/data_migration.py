@@ -3,7 +3,7 @@ import logging
 
 import click
 
-from core.entities import DEFAULT_PLUGIN_ID
+from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
 from models.engine import db
 
 logger = logging.getLogger(__name__)
@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 class PluginDataMigration:
     @classmethod
     def migrate(cls) -> None:
-        cls.migrate_db_records("providers", "provider_name")  # large table
-        cls.migrate_db_records("provider_models", "provider_name")
-        cls.migrate_db_records("provider_orders", "provider_name")
-        cls.migrate_db_records("tenant_default_models", "provider_name")
-        cls.migrate_db_records("tenant_preferred_model_providers", "provider_name")
-        cls.migrate_db_records("provider_model_settings", "provider_name")
-        cls.migrate_db_records("load_balancing_model_configs", "provider_name")
+        cls.migrate_db_records("providers", "provider_name", ModelProviderID)  # large table
+        cls.migrate_db_records("provider_models", "provider_name", ModelProviderID)
+        cls.migrate_db_records("provider_orders", "provider_name", ModelProviderID)
+        cls.migrate_db_records("tenant_default_models", "provider_name", ModelProviderID)
+        cls.migrate_db_records("tenant_preferred_model_providers", "provider_name", ModelProviderID)
+        cls.migrate_db_records("provider_model_settings", "provider_name", ModelProviderID)
+        cls.migrate_db_records("load_balancing_model_configs", "provider_name", ModelProviderID)
         cls.migrate_datasets()
-        cls.migrate_db_records("embeddings", "provider_name")  # large table
-        cls.migrate_db_records("dataset_collection_bindings", "provider_name")
-        cls.migrate_db_records("tool_builtin_providers", "provider")
+        cls.migrate_db_records("embeddings", "provider_name", ModelProviderID)  # large table
+        cls.migrate_db_records("dataset_collection_bindings", "provider_name", ModelProviderID)
+        cls.migrate_db_records("tool_builtin_providers", "provider", ToolProviderID)
 
     @classmethod
     def migrate_datasets(cls) -> None:
@@ -66,9 +66,10 @@ limit 1000"""
                                     fg="white",
                                 )
                             )
-                            retrieval_model["reranking_model"]["reranking_provider_name"] = (
-                                f"{DEFAULT_PLUGIN_ID}/{retrieval_model['reranking_model']['reranking_provider_name']}/{retrieval_model['reranking_model']['reranking_provider_name']}"
-                            )
+                            # update google to langgenius/gemini/google etc.
+                            retrieval_model["reranking_model"]["reranking_provider_name"] = ModelProviderID(
+                                retrieval_model["reranking_model"]["reranking_provider_name"]
+                            ).to_string()
                             retrieval_model_changed = True
 
                     click.echo(
@@ -86,9 +87,11 @@ limit 1000"""
                             update_retrieval_model_sql = ", retrieval_model = :retrieval_model"
                             params["retrieval_model"] = json.dumps(retrieval_model)
 
-                        sql = f"""update {table_name} 
-                        set {provider_column_name} = 
-                        concat('{DEFAULT_PLUGIN_ID}/', {provider_column_name}, '/', {provider_column_name}) 
+                        params["provider_name"] = ModelProviderID(provider_name).to_string()
+
+                        sql = f"""update {table_name}
+                        set {provider_column_name} =
+                        :provider_name
                         {update_retrieval_model_sql}
                         where id = :record_id"""
                         conn.execute(db.text(sql), params)
@@ -122,23 +125,39 @@ limit 1000"""
         )
 
     @classmethod
-    def migrate_db_records(cls, table_name: str, provider_column_name: str) -> None:
+    def migrate_db_records(
+        cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]
+    ) -> None:
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
 
         processed_count = 0
         failed_ids = []
+        last_id = "00000000-0000-0000-0000-000000000000"
+
         while True:
-            sql = f"""select id, {provider_column_name} as provider_name from {table_name}
-where {provider_column_name} not like '%/%' and {provider_column_name} is not null and {provider_column_name} != ''
-limit 1000"""
+            sql = f"""
+                SELECT id, {provider_column_name} AS provider_name
+                FROM {table_name}
+                WHERE {provider_column_name} NOT LIKE '%/%'
+                    AND {provider_column_name} IS NOT NULL
+                    AND {provider_column_name} != ''
+                    AND id > :last_id
+                ORDER BY id ASC
+                LIMIT 5000
+            """
+            params = {"last_id": last_id or ""}
+
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(sql))
+                rs = conn.execute(db.text(sql), params)
 
                 current_iter_count = 0
+                batch_updates = []
+
                 for i in rs:
                     current_iter_count += 1
                     processed_count += 1
                     record_id = str(i.id)
+                    last_id = record_id
                     provider_name = str(i.provider_name)
 
                     if record_id in failed_ids:
@@ -152,19 +171,10 @@ limit 1000"""
                     )
 
                     try:
-                        # update provider name append with "langgenius/{provider_name}/{provider_name}"
-                        sql = f"""update {table_name} 
-                        set {provider_column_name} = 
-                        concat('{DEFAULT_PLUGIN_ID}/', {provider_column_name}, '/', {provider_column_name}) 
-                        where id = :record_id"""
-                        conn.execute(db.text(sql), {"record_id": record_id})
-                        click.echo(
-                            click.style(
-                                f"[{processed_count}] Migrated [{table_name}] {record_id} ({provider_name})",
-                                fg="green",
-                            )
-                        )
-                    except Exception:
+                        # update jina to langgenius/jina_tool/jina etc.
+                        updated_value = provider_cls(provider_name).to_string()
+                        batch_updates.append((updated_value, record_id))
+                    except Exception as e:
                         failed_ids.append(record_id)
                         click.echo(
                             click.style(
@@ -176,6 +186,20 @@ limit 1000"""
                             f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
                         )
                         continue
+
+                if batch_updates:
+                    update_sql = f"""
+                        UPDATE {table_name}
+                        SET {provider_column_name} = :updated_value
+                        WHERE id = :record_id
+                    """
+                    conn.execute(db.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
+                    click.echo(
+                        click.style(
+                            f"[{processed_count}] Batch migrated [{len(batch_updates)}] records from [{table_name}]",
+                            fg="green",
+                        )
+                    )
 
             if not current_iter_count:
                 break

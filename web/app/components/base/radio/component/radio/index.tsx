@@ -37,14 +37,15 @@ export default function Radio({
   const isChecked = groupContext ? groupContext.value === value : checked
   const divClassName = `
     flex items-center py-1 relative
-    px-7 cursor-pointer hover:bg-gray-200 rounded
+    px-7 cursor-pointer text-text-secondary rounded
+    hover:bg-components-option-card-option-bg-hover hover:shadow-xs
   `
 
   return (
     <div className={cn(
       s.label,
       disabled ? s.disabled : '',
-      isChecked ? 'bg-white shadow' : '',
+      isChecked ? 'bg-components-option-card-option-bg-hover shadow-xs' : '',
       divClassName,
       className)}
     onClick={() => handleChange(value)}

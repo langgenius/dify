@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Daha fazla bilgi edinin',
       description: ' geri alım yöntemi hakkında.',
       longDescription: ' geri alım yöntemi hakkında, bunu Bilgi ayarlarında istediğiniz zaman değiştirebilirsiniz.',
+      method: 'Retrieval Yöntemi',
     },
     save: 'Kaydet',
     retrievalSettings: 'Alma Ayarları',
@@ -35,6 +36,7 @@ const translation = {
     upgradeHighQualityTip: 'Yüksek Kalite moduna yükselttikten sonra Ekonomik moda geri dönülemez',
     indexMethodChangeToEconomyDisabledTip: 'Genel Merkezden ECO\'ya düşürme için mevcut değil',
     helpText: 'İyi bir veri kümesi açıklamasının nasıl yazılacağını öğrenin.',
+    searchModel: 'Model Ara',
   },
 }
 

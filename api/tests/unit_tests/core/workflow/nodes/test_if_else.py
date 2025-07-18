@@ -6,16 +6,17 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.system_variable import SystemVariable
 from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_execute_if_else_result_true():
@@ -36,9 +37,7 @@ def test_execute_if_else_result_true():
     )
 
     # construct variable pool
-    pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"}, user_inputs={}
-    )
+    pool = VariablePool(system_variables=SystemVariable(user_id="aaa", files=[]), user_inputs={})
     pool.add(["start", "array_contains"], ["ab", "def"])
     pool.add(["start", "array_not_contains"], ["ac", "def"])
     pool.add(["start", "contains"], "cabcde")
@@ -58,56 +57,61 @@ def test_execute_if_else_result_true():
     pool.add(["start", "null"], None)
     pool.add(["start", "not_null"], "1212")
 
+    node_config = {
+        "id": "if-else",
+        "data": {
+            "title": "123",
+            "type": "if-else",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "comparison_operator": "contains",
+                    "variable_selector": ["start", "array_contains"],
+                    "value": "ab",
+                },
+                {
+                    "comparison_operator": "not contains",
+                    "variable_selector": ["start", "array_not_contains"],
+                    "value": "ab",
+                },
+                {"comparison_operator": "contains", "variable_selector": ["start", "contains"], "value": "ab"},
+                {
+                    "comparison_operator": "not contains",
+                    "variable_selector": ["start", "not_contains"],
+                    "value": "ab",
+                },
+                {"comparison_operator": "start with", "variable_selector": ["start", "start_with"], "value": "ab"},
+                {"comparison_operator": "end with", "variable_selector": ["start", "end_with"], "value": "ab"},
+                {"comparison_operator": "is", "variable_selector": ["start", "is"], "value": "ab"},
+                {"comparison_operator": "is not", "variable_selector": ["start", "is_not"], "value": "ab"},
+                {"comparison_operator": "empty", "variable_selector": ["start", "empty"], "value": "ab"},
+                {"comparison_operator": "not empty", "variable_selector": ["start", "not_empty"], "value": "ab"},
+                {"comparison_operator": "=", "variable_selector": ["start", "equals"], "value": "22"},
+                {"comparison_operator": "≠", "variable_selector": ["start", "not_equals"], "value": "22"},
+                {"comparison_operator": ">", "variable_selector": ["start", "greater_than"], "value": "22"},
+                {"comparison_operator": "<", "variable_selector": ["start", "less_than"], "value": "22"},
+                {
+                    "comparison_operator": "≥",
+                    "variable_selector": ["start", "greater_than_or_equal"],
+                    "value": "22",
+                },
+                {"comparison_operator": "≤", "variable_selector": ["start", "less_than_or_equal"], "value": "22"},
+                {"comparison_operator": "null", "variable_selector": ["start", "null"]},
+                {"comparison_operator": "not null", "variable_selector": ["start", "not_null"]},
+            ],
+        },
+    }
+
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "id": "if-else",
-            "data": {
-                "title": "123",
-                "type": "if-else",
-                "logical_operator": "and",
-                "conditions": [
-                    {
-                        "comparison_operator": "contains",
-                        "variable_selector": ["start", "array_contains"],
-                        "value": "ab",
-                    },
-                    {
-                        "comparison_operator": "not contains",
-                        "variable_selector": ["start", "array_not_contains"],
-                        "value": "ab",
-                    },
-                    {"comparison_operator": "contains", "variable_selector": ["start", "contains"], "value": "ab"},
-                    {
-                        "comparison_operator": "not contains",
-                        "variable_selector": ["start", "not_contains"],
-                        "value": "ab",
-                    },
-                    {"comparison_operator": "start with", "variable_selector": ["start", "start_with"], "value": "ab"},
-                    {"comparison_operator": "end with", "variable_selector": ["start", "end_with"], "value": "ab"},
-                    {"comparison_operator": "is", "variable_selector": ["start", "is"], "value": "ab"},
-                    {"comparison_operator": "is not", "variable_selector": ["start", "is_not"], "value": "ab"},
-                    {"comparison_operator": "empty", "variable_selector": ["start", "empty"], "value": "ab"},
-                    {"comparison_operator": "not empty", "variable_selector": ["start", "not_empty"], "value": "ab"},
-                    {"comparison_operator": "=", "variable_selector": ["start", "equals"], "value": "22"},
-                    {"comparison_operator": "≠", "variable_selector": ["start", "not_equals"], "value": "22"},
-                    {"comparison_operator": ">", "variable_selector": ["start", "greater_than"], "value": "22"},
-                    {"comparison_operator": "<", "variable_selector": ["start", "less_than"], "value": "22"},
-                    {
-                        "comparison_operator": "≥",
-                        "variable_selector": ["start", "greater_than_or_equal"],
-                        "value": "22",
-                    },
-                    {"comparison_operator": "≤", "variable_selector": ["start", "less_than_or_equal"], "value": "22"},
-                    {"comparison_operator": "null", "variable_selector": ["start", "null"]},
-                    {"comparison_operator": "not null", "variable_selector": ["start", "not_null"]},
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -156,39 +160,44 @@ def test_execute_if_else_result_false():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["start", "array_contains"], ["1ab", "def"])
     pool.add(["start", "array_not_contains"], ["ab", "def"])
 
+    node_config = {
+        "id": "if-else",
+        "data": {
+            "title": "123",
+            "type": "if-else",
+            "logical_operator": "or",
+            "conditions": [
+                {
+                    "comparison_operator": "contains",
+                    "variable_selector": ["start", "array_contains"],
+                    "value": "ab",
+                },
+                {
+                    "comparison_operator": "not contains",
+                    "variable_selector": ["start", "array_not_contains"],
+                    "value": "ab",
+                },
+            ],
+        },
+    }
+
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "id": "if-else",
-            "data": {
-                "title": "123",
-                "type": "if-else",
-                "logical_operator": "or",
-                "conditions": [
-                    {
-                        "comparison_operator": "contains",
-                        "variable_selector": ["start", "array_contains"],
-                        "value": "ab",
-                    },
-                    {
-                        "comparison_operator": "not contains",
-                        "variable_selector": ["start", "array_not_contains"],
-                        "value": "ab",
-                    },
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -229,16 +238,21 @@ def test_array_file_contains_file_name():
         ],
     )
 
+    node_config = {
+        "id": "if-else",
+        "data": node_data.model_dump(),
+    }
+
     node = IfElseNode(
         id=str(uuid.uuid4()),
         graph_init_params=Mock(),
         graph=Mock(),
         graph_runtime_state=Mock(),
-        config={
-            "id": "if-else",
-            "data": node_data.model_dump(),
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
         value=[

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'next/navigation'
 import style from '../page.module.css'
 import Button from '@/app/components/base/button'
-import { apiPrefix } from '@/config'
+import { API_PREFIX } from '@/config'
 import classNames from '@/utils/classnames'
 import { getPurifyHref } from '@/utils'
 
@@ -15,7 +15,7 @@ export default function SocialAuth(props: SocialAuthProps) {
   const searchParams = useSearchParams()
 
   const getOAuthLink = (href: string) => {
-    const url = getPurifyHref(`${apiPrefix}${href}`)
+    const url = getPurifyHref(`${API_PREFIX}${href}`)
     if (searchParams.has('invite_token'))
       return `${url}?${searchParams.toString()}`
 
@@ -32,10 +32,10 @@ export default function SocialAuth(props: SocialAuthProps) {
             <span className={
               classNames(
                 style.githubIcon,
-                'w-5 h-5 mr-2',
+                'mr-2 h-5 w-5',
               )
             } />
-            <span className="truncate">{t('login.withGitHub')}</span>
+            <span className="truncate leading-normal">{t('login.withGitHub')}</span>
           </>
         </Button>
       </a>
@@ -50,10 +50,10 @@ export default function SocialAuth(props: SocialAuthProps) {
             <span className={
               classNames(
                 style.googleIcon,
-                'w-5 h-5 mr-2',
+                'mr-2 h-5 w-5',
               )
             } />
-            <span className="truncate">{t('login.withGoogle')}</span>
+            <span className="truncate leading-normal">{t('login.withGoogle')}</span>
           </>
         </Button>
       </a>

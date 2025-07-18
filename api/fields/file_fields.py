@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from libs.helper import TimestampField
 
@@ -19,6 +19,7 @@ file_fields = {
     "mime_type": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+    "preview_url": fields.String,
 }
 
 remote_file_info_fields = {

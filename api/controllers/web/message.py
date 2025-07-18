@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -46,6 +46,7 @@ class MessageListApi(WebApiResource):
         "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
+        "metadata": fields.Raw(attribute="message_metadata_dict"),
         "status": fields.String,
         "error": fields.String,
     }

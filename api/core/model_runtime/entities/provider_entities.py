@@ -123,6 +123,8 @@ class ProviderEntity(BaseModel):
     description: Optional[I18nObject] = None
     icon_small: Optional[I18nObject] = None
     icon_large: Optional[I18nObject] = None
+    icon_small_dark: Optional[I18nObject] = None
+    icon_large_dark: Optional[I18nObject] = None
     background: Optional[str] = None
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: Sequence[ModelType]
@@ -133,6 +135,9 @@ class ProviderEntity(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+    # position from plugin _position.yaml
+    position: Optional[dict[str, list[str]]] = {}
 
     @field_validator("models", mode="before")
     @classmethod

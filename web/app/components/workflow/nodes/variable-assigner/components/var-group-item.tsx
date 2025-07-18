@@ -15,7 +15,7 @@ import { VarType } from '@/app/components/workflow/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
@@ -89,6 +89,7 @@ const VarGroupItem: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleGroupNameChange = useCallback((e: ChangeEvent<any>) => {
+    replaceSpaceWithUnderscreInVarNameInput(e.target)
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {
@@ -132,7 +133,7 @@ const VarGroupItem: FC<Props> = ({
           </div>
           {canRemove && (
             <div
-              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-gray-500 hover:bg-[#FEE4E2] hover:text-[#D92D20] group-hover:block'
+              className='ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block'
               onClick={onRemove}
             >
               <RiDeleteBinLine

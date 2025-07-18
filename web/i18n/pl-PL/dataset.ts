@@ -174,6 +174,55 @@ const translation = {
   enable: 'Umożliwiać',
   allKnowledge: 'Cała wiedza',
   allKnowledgeDescription: 'Wybierz tę opcję, aby wyświetlić całą wiedzę w tym obszarze roboczym. Tylko właściciel obszaru roboczego może zarządzać całą wiedzą.',
+  metadata: {
+    createMetadata: {
+      back: 'Tył',
+      namePlaceholder: 'Dodaj nazwę metadanych',
+      name: 'Imię',
+      title: 'Nowe metadane',
+      type: 'Typ',
+    },
+    checkName: {
+      empty: 'Nazwa metadanych nie może być pusta',
+      invalid: 'Nazwa metadanych może zawierać tylko małe litery, cyfry i podkreślenia oraz musi zaczynać się od małej litery',
+      tooLong: 'Nazwa metadanych nie może przekraczać {{max}} znaków',
+    },
+    batchEditMetadata: {
+      multipleValue: 'Wielokrotna wartość',
+      editMetadata: 'Edytuj metadane',
+      editDocumentsNum: 'Edycja {{num}} dokumentów',
+      applyToAllSelectDocument: 'Zastosuj do wszystkich wybranych dokumentów',
+      applyToAllSelectDocumentTip: 'Automatycznie utwórz wszystkie powyżej wymienione edytowane i nowe metadane dla wszystkich wybranych dokumentów, w przeciwnym razie edytowanie metadanych będzie dotyczyć tylko dokumentów, które je posiadają.',
+    },
+    selectMetadata: {
+      manageAction: 'Zarządzaj',
+      newAction: 'Nowe metadane',
+      search: 'Szukaj metadanych',
+    },
+    datasetMetadata: {
+      values: '{{num}} Wartości',
+      rename: 'Zmień nazwę',
+      namePlaceholder: 'Nazwa metadanych',
+      addMetaData: 'Dodaj metadane',
+      deleteContent: 'Czy na pewno chcesz usunąć metadane "{{name}}"?',
+      builtIn: 'Wbudowany',
+      deleteTitle: 'Potwierdź usunięcie',
+      description: 'Możesz zarządzać wszystkimi metadanymi w tej wiedzy tutaj. Modyfikacje będą synchronizowane z każdym dokumentem.',
+      name: 'Imię',
+      disabled: 'Wyłączone',
+      builtInDescription: 'Wbudowane metadane są automatycznie ekstraktowane i generowane. Muszą być włączone przed użyciem i nie można ich edytować.',
+    },
+    documentMetadata: {
+      technicalParameters: 'Parametry techniczne',
+      startLabeling: 'Rozpocznij etykietowanie',
+      documentInformation: 'Informacje o dokumencie',
+      metadataToolTip: 'Metadane służą jako istotny filtr, który zwiększa dokładność i trafność wyszukiwania informacji. Możesz modyfikować i dodawać metadane do tego dokumentu tutaj.',
+    },
+    metadata: 'Metadane',
+    addMetadata: 'Dodaj metadane',
+    chooseTime: 'Wybierz czas...',
+  },
+  embeddingModelNotAvailable: 'Model osadzający jest niedostępny.',
 }
 
 export default translation

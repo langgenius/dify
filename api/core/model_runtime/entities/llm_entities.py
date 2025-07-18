@@ -1,8 +1,9 @@
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from enum import StrEnum
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
@@ -15,19 +16,6 @@ class LLMMode(StrEnum):
 
     COMPLETION = "completion"
     CHAT = "chat"
-
-    @classmethod
-    def value_of(cls, value: str) -> "LLMMode":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid mode value {value}")
 
 
 class LLMUsage(ModelUsage):
@@ -63,6 +51,37 @@ class LLMUsage(ModelUsage):
             total_price=Decimal("0.0"),
             currency="USD",
             latency=0.0,
+        )
+
+    @classmethod
+    def from_metadata(cls, metadata: dict) -> "LLMUsage":
+        """
+        Create LLMUsage instance from metadata dictionary with default values.
+
+        Args:
+            metadata: Dictionary containing usage metadata
+
+        Returns:
+            LLMUsage instance with values from metadata or defaults
+        """
+        total_tokens = metadata.get("total_tokens", 0)
+        completion_tokens = metadata.get("completion_tokens", 0)
+        if total_tokens > 0 and completion_tokens == 0:
+            completion_tokens = total_tokens
+
+        return cls(
+            prompt_tokens=metadata.get("prompt_tokens", 0),
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            prompt_unit_price=Decimal(str(metadata.get("prompt_unit_price", 0))),
+            completion_unit_price=Decimal(str(metadata.get("completion_unit_price", 0))),
+            total_price=Decimal(str(metadata.get("total_price", 0))),
+            currency=metadata.get("currency", "USD"),
+            prompt_price_unit=Decimal(str(metadata.get("prompt_price_unit", 0))),
+            completion_price_unit=Decimal(str(metadata.get("completion_price_unit", 0))),
+            prompt_price=Decimal(str(metadata.get("prompt_price", 0))),
+            completion_price=Decimal(str(metadata.get("completion_price", 0))),
+            latency=metadata.get("latency", 0.0),
         )
 
     def plus(self, other: "LLMUsage") -> "LLMUsage":
@@ -107,10 +126,24 @@ class LLMResult(BaseModel):
 
     id: Optional[str] = None
     model: str
-    prompt_messages: list[PromptMessage]
+    prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     message: AssistantPromptMessage
     usage: LLMUsage
     system_fingerprint: Optional[str] = None
+
+
+class LLMStructuredOutput(BaseModel):
+    """
+    Model class for llm structured output.
+    """
+
+    structured_output: Optional[Mapping[str, Any]] = None
+
+
+class LLMResultWithStructuredOutput(LLMResult, LLMStructuredOutput):
+    """
+    Model class for llm result with structured output.
+    """
 
 
 class LLMResultChunkDelta(BaseModel):
@@ -130,9 +163,15 @@ class LLMResultChunk(BaseModel):
     """
 
     model: str
-    prompt_messages: list[PromptMessage]
+    prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     system_fingerprint: Optional[str] = None
     delta: LLMResultChunkDelta
+
+
+class LLMResultChunkWithStructuredOutput(LLMResultChunk, LLMStructuredOutput):
+    """
+    Model class for llm result chunk with structured output.
+    """
 
 
 class NumTokensResult(PriceInfo):

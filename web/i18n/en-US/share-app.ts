@@ -34,6 +34,8 @@ const translation = {
     },
     tryToSolve: 'Try to solve',
     temporarySystemIssue: 'Sorry, temporary system issue.',
+    expand: 'Expand',
+    collapse: 'Collapse',
   },
   generation: {
     tabs: {
@@ -74,6 +76,9 @@ const translation = {
       moreThanMaxLengthLine: 'Row {{rowIndex}}: {{varName}} value can not be more than {{maxLength}} characters',
       atLeastOne: 'Please input at least one row in the uploaded file.',
     },
+  },
+  login: {
+    backToHome: 'Back to Home',
   },
 }
 

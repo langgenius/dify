@@ -1,6 +1,7 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
+import { basePath } from '@/utils/var'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -107,8 +108,14 @@ function unicodeToChar(text: string) {
   })
 }
 
-function requiredWebSSOLogin() {
-  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
+function requiredWebSSOLogin(message?: string, code?: number) {
+  const params = new URLSearchParams()
+  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
+  if (message)
+    params.append('message', message)
+  if (code)
+    params.append('code', String(code))
+  globalThis.location.href = `/webapp-signin?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -169,7 +176,7 @@ const handleStream = (
             try {
               bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
             }
-            catch (e) {
+            catch {
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
@@ -286,9 +293,9 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = getAccessToken(isPublicAPI)
+  const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -323,7 +330,7 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
   })
 }
 
-export const ssePost = (
+export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
   otherOptions: IOtherOptions,
@@ -384,24 +391,29 @@ export const ssePost = (
   if (body)
     options.body = JSON.stringify(body)
 
-  const accessToken = getAccessToken(isPublicAPI)
-  ;(options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
+  const accessToken = await getAccessToken(isPublicAPI)
+    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
-      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
-                if (data.code === 'web_sso_auth_required')
+                if (data.code === 'web_app_access_denied')
+                  requiredWebSSOLogin(data.message, 403)
+
+                if (data.code === 'web_sso_auth_required') {
+                  removeAccessToken()
                   requiredWebSSOLogin()
+                }
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
-                  globalThis.location.reload()
+                  requiredWebSSOLogin()
                 }
               }
             })
@@ -425,29 +437,29 @@ export const ssePost = (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
@@ -466,7 +478,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     const errResp: Response = err as any
     if (errResp.status === 401) {
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}/signin`
+      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
@@ -474,7 +486,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // special code
       const { code, message } = errRespData
       // webapp sso
+      if (code === 'web_app_access_denied') {
+        requiredWebSSOLogin(message, 403)
+        return Promise.reject(err)
+      }
       if (code === 'web_sso_auth_required') {
+        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -490,7 +507,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         removeAccessToken()
-        globalThis.location.reload()
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
@@ -498,11 +515,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}/init`
+        globalThis.location.href = `${globalThis.location.origin}${basePath}/init`
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}/install`
+        globalThis.location.href = `${globalThis.location.origin}${basePath}/install`
         return Promise.reject(err)
       }
 
@@ -510,7 +527,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== '/signin' || !IS_CE_EDITION) {
+      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }

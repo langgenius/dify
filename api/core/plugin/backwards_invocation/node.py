@@ -39,6 +39,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param query: str
         :return: dict
         """
+        # FIXME(-LAN-): Avoid import service into core
         workflow_service = WorkflowService()
         node_id = "1919810"
         node_data = ParameterExtractorNodeData(
@@ -63,9 +64,9 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }
 
     @classmethod
@@ -89,6 +90,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param query: str
         :return: dict
         """
+        # FIXME(-LAN-): Avoid import service into core
         workflow_service = WorkflowService()
         node_id = "1919810"
         node_data = QuestionClassifierNodeData(
@@ -111,7 +113,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }

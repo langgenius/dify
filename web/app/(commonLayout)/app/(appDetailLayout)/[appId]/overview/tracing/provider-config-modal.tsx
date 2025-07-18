@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,14 +22,27 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
 const I18N_PREFIX = 'app.tracing.configProvider'
+
+const arizeConfigTemplate = {
+  api_key: '',
+  space_id: '',
+  project: '',
+  endpoint: '',
+}
+
+const phoenixConfigTemplate = {
+  api_key: '',
+  project: '',
+  endpoint: '',
+}
 
 const langSmithConfigTemplate = {
   api_key: '',
@@ -50,6 +63,20 @@ const opikConfigTemplate = {
   workspace: '',
 }
 
+const weaveConfigTemplate = {
+  api_key: '',
+  entity: '',
+  project: '',
+  endpoint: '',
+  host: '',
+}
+
+const aliyunConfigTemplate = {
+  app_name: '',
+  license_key: '',
+  endpoint: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -63,17 +90,29 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig>((() => {
     if (isEdit)
       return payload
 
-    if (type === TracingProvider.langSmith)
+    if (type === TracingProvider.arize)
+      return arizeConfigTemplate
+
+    else if (type === TracingProvider.phoenix)
+      return phoenixConfigTemplate
+
+    else if (type === TracingProvider.langSmith)
       return langSmithConfigTemplate
 
     else if (type === TracingProvider.langfuse)
       return langFuseConfigTemplate
 
-    return opikConfigTemplate
+    else if (type === TracingProvider.opik)
+      return opikConfigTemplate
+
+    else if (type === TracingProvider.aliyun)
+      return aliyunConfigTemplate
+
+    return weaveConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -104,6 +143,24 @@ const ProviderConfigModal: FC<Props> = ({
 
   const checkValid = useCallback(() => {
     let errorMessage = ''
+    if (type === TracingProvider.arize) {
+      const postData = config as ArizeConfig
+      if (!postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!postData.space_id)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Space ID' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
+    if (type === TracingProvider.phoenix) {
+      const postData = config as PhoenixConfig
+      if (!postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
     if (type === TracingProvider.langSmith) {
       const postData = config as LangSmithConfig
       if (!postData.api_key)
@@ -125,6 +182,24 @@ const ProviderConfigModal: FC<Props> = ({
     if (type === TracingProvider.opik) {
       // todo: check field validity
       // const postData = config as OpikConfig
+    }
+
+    if (type === TracingProvider.weave) {
+      const postData = config as WeaveConfig
+      if (!errorMessage && !postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
+    if (type === TracingProvider.aliyun) {
+      const postData = config as AliyunConfig
+      if (!errorMessage && !postData.app_name)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'App Name' })
+      if (!errorMessage && !postData.license_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'License Key' })
+      if (!errorMessage && !postData.endpoint)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
     }
 
     return errorMessage
@@ -176,6 +251,134 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
 
                     <div className='space-y-4'>
+                      {type === TracingProvider.arize && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label='Space ID'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).space_id}
+                            onChange={handleConfigChange('space_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Space ID' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as ArizeConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://otlp.arize.com'}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.phoenix && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as PhoenixConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as PhoenixConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as PhoenixConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://app.phoenix.arize.com'}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.aliyun && (
+                        <>
+                          <Field
+                            label='License Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as AliyunConfig).license_key}
+                            onChange={handleConfigChange('license_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'License Key' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as AliyunConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://tracing.arms.aliyuncs.com'}
+                          />
+                          <Field
+                            label='App Name'
+                            labelClassName='!text-sm'
+                            value={(config as AliyunConfig).app_name}
+                            onChange={handleConfigChange('app_name')}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.weave && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Entity'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).entity}
+                            onChange={handleConfigChange('entity')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Entity' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://trace.wandb.ai/'}
+                          />
+                          <Field
+                            label='Host'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).host}
+                            onChange={handleConfigChange('host')}
+                            placeholder={'https://api.wandb.ai'}
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.langSmith && (
                         <>
                           <Field
@@ -263,7 +466,6 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
-
                     </div>
                     <div className='my-8 flex h-8 items-center justify-between'>
                       <a

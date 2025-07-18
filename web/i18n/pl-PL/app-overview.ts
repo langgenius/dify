@@ -38,15 +38,15 @@ const translation = {
       preview: 'Podgląd',
       regenerate: 'Wygeneruj ponownie',
       regenerateNotice: 'Czy chcesz wygenerować ponownie publiczny adres URL?',
-      preUseReminder: 'Przed kontynuowaniem włącz aplikację WebApp.',
+      preUseReminder: 'Przed kontynuowaniem włącz aplikację web app.',
       settings: {
         entry: 'Ustawienia',
-        title: 'Ustawienia WebApp',
-        webName: 'Nazwa WebApp',
-        webDesc: 'Opis WebApp',
+        title: 'Ustawienia web app',
+        webName: 'Nazwa web app',
+        webDesc: 'Opis web app',
         webDescTip:
           'Ten tekst będzie wyświetlany po stronie klienta, zapewniając podstawowe wskazówki, jak korzystać z aplikacji',
-        webDescPlaceholder: 'Wpisz opis WebApp',
+        webDescPlaceholder: 'Wpisz opis web app',
         language: 'Język',
         workflow: {
           title: 'Kroki przepływu pracy',
@@ -59,6 +59,7 @@ const translation = {
         chatColorThemeDesc: 'Ustaw motyw kolorystyczny czatu',
         chatColorThemeInverted: 'Odwrócony',
         invalidHexMessage: 'Nieprawidłowa wartość heksadecymalna',
+        invalidPrivacyPolicy: 'Nieprawidłowy link do polityki prywatności. Proszę użyć prawidłowego linku zaczynającego się od http lub https',
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',

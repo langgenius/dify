@@ -3,6 +3,8 @@ import logging
 import uuid
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
@@ -21,14 +23,13 @@ from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
@@ -92,6 +93,8 @@ class BaseAgentRunner(AppRunner):
             return_resource=app_config.additional_features.show_retrieve_source,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
+            user_id=user_id,
+            inputs=cast(dict, application_generate_entity.inputs),
         )
         # get how many agent thoughts have been created
         self.agent_thought_count = (
@@ -160,10 +163,14 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            message_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
+            message_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
 
             if len(enum) > 0:
                 message_tool.parameters["properties"][parameter.name]["enum"] = enum
@@ -253,10 +260,14 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            prompt_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
+            prompt_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
 
             if len(enum) > 0:
                 prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
@@ -408,12 +419,15 @@ class BaseAgentRunner(AppRunner):
             if isinstance(prompt_message, SystemPromptMessage):
                 result.append(prompt_message)
 
-        messages: list[Message] = (
-            db.session.query(Message)
-            .filter(
-                Message.conversation_id == self.message.conversation_id,
+        messages = (
+            (
+                db.session.execute(
+                    select(Message)
+                    .where(Message.conversation_id == self.message.conversation_id)
+                    .order_by(Message.created_at.desc())
+                )
             )
-            .order_by(Message.created_at.desc())
+            .scalars()
             .all()
         )
 
@@ -501,7 +515,7 @@ class BaseAgentRunner(AppRunner):
         )
         if not file_objs:
             return UserPromptMessage(content=message.query)
-        prompt_message_contents: list[PromptMessageContent] = []
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         prompt_message_contents.append(TextPromptMessageContent(data=message.query))
         for file in file_objs:
             prompt_message_contents.append(

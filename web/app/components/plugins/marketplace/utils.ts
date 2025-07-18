@@ -4,11 +4,12 @@ import { PluginType } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
+  PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import {
   MARKETPLACE_API_PREFIX,
-  MARKETPLACE_URL_PREFIX,
 } from '@/config'
+import { getMarketplaceUrl } from '@/utils/var'
 
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
@@ -31,10 +32,16 @@ export const getFormattedPlugin = (bundle: any) => {
   }
 }
 
-export const getPluginLinkInMarketplace = (plugin: Plugin) => {
+export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<string, string | undefined>) => {
   if (plugin.type === 'bundle')
-    return `${MARKETPLACE_URL_PREFIX}/bundles/${plugin.org}/${plugin.name}`
-  return `${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`
+    return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
+  return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
+}
+
+export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
+  if (plugin.type === 'bundle')
+    return `/bundles/${plugin.org}/${plugin.name}`
+  return `/plugins/${plugin.org}/${plugin.name}`
 }
 
 export const getMarketplacePluginsByCollectionId = async (collectionId: string, query?: CollectionsAndPluginsSearchParams) => {
@@ -124,4 +131,23 @@ export const getMarketplaceListFilterType = (category: string) => {
     return 'bundle'
 
   return 'plugin'
+}
+
+export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => {
+  const { query, category, tags } = pluginsSearchParams
+  const url = new URL(window.location.href)
+  const categoryChanged = url.searchParams.get('category') !== category
+  if (query)
+    url.searchParams.set('q', query)
+  else
+    url.searchParams.delete('q')
+  if (category)
+    url.searchParams.set('category', category)
+  else
+    url.searchParams.delete('category')
+  if (tags && tags.length)
+    url.searchParams.set('tags', tags.join(','))
+  else
+    url.searchParams.delete('tags')
+  history[`${categoryChanged ? 'pushState' : 'replaceState'}`]({}, '', url)
 }

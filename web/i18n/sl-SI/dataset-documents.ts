@@ -29,6 +29,8 @@ const translation = {
       delete: 'Izbriši',
       enableWarning: 'Arhivirane datoteke ni mogoče omogočiti',
       sync: 'Sinhroniziraj',
+      pause: 'Zaustavi',
+      resume: 'Nadaljuj',
     },
     index: {
       enable: 'Omogoči',
@@ -332,7 +334,7 @@ const translation = {
     previewTip: 'Predogled odstavkov bo na voljo po zaključku vdelave',
     hierarchical: 'Starš-otrok',
     childMaxTokens: 'Otrok',
-    pause: 'Pavza',
+    pause: 'Zaustavi',
     parentMaxTokens: 'Starš',
   },
   segment: {
@@ -356,6 +358,7 @@ const translation = {
     expandChunks: 'Razširitev kosov',
     childChunk: 'Otroški kos',
     editedAt: 'Urejeno na',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     edited: 'UREJATI',
     addAnother: 'Dodajanje še enega',
     childChunks_one: 'OTROŠKI KOS',
@@ -389,6 +392,8 @@ const translation = {
     chunk: 'Kos',
     addChunk: 'Dodajanje kosa',
     childChunkAdded: 'Dodan je 1 kos otroka',
+    keywordDuplicate: 'Ključna beseda že obstaja',
+    keywordEmpty: 'Ključna beseda ne more biti prazna',
   },
 }
 

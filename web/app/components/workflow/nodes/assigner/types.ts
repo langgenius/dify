@@ -10,6 +10,8 @@ export enum WriteMode {
   decrement = '-=',
   multiply = '*=',
   divide = '/=',
+  removeFirst = 'remove-first',
+  removeLast = 'remove-last',
 }
 
 export enum AssignerNodeInputType {
@@ -28,3 +30,5 @@ export type AssignerNodeType = CommonNodeType & {
   version?: '1' | '2'
   items: AssignerNodeOperation[]
 }
+
+export const writeModeTypesNum = [WriteMode.increment, WriteMode.decrement, WriteMode.multiply, WriteMode.divide]

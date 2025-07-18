@@ -1,9 +1,9 @@
 import logging
-from datetime import datetime
 
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
-from sqlalchemy.orm import Session
+from dateutil.parser import isoparse
+from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api
@@ -24,12 +24,13 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun, WorkflowRunStatus
+from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
@@ -59,10 +60,18 @@ class WorkflowRunDetailApi(Resource):
         Get a workflow task running detail
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
+        # Use repository to get workflow run
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+        workflow_run = workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_id=workflow_run_id,
+        )
         return workflow_run
 
 
@@ -134,16 +143,30 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
         parser.add_argument("created_at__before", type=str, location="args")
         parser.add_argument("created_at__after", type=str, location="args")
+        parser.add_argument(
+            "created_by_end_user_session_id",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
+        parser.add_argument(
+            "created_by_account",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        args.status = WorkflowRunStatus(args.status) if args.status else None
+        args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
-            args.created_at__before = datetime.fromisoformat(args.created_at__before.replace("Z", "+00:00"))
+            args.created_at__before = isoparse(args.created_at__before)
 
         if args.created_at__after:
-            args.created_at__after = datetime.fromisoformat(args.created_at__after.replace("Z", "+00:00"))
+            args.created_at__after = isoparse(args.created_at__after)
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
@@ -157,6 +180,8 @@ class WorkflowAppLogApi(Resource):
                 created_at_after=args.created_at__after,
                 page=args.page,
                 limit=args.limit,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
             )
 
             return workflow_app_log_pagination

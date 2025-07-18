@@ -3,36 +3,33 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
-from services.plugin.plugin_service import PluginService
+from core.tools.signature import sign_tool_file
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
 
-from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, cast
-
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin  # type: ignore
+from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
+from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from core.file.tool_file_parser import ToolFileParser
 from libs.helper import generate_string
-from models.base import Base
-from models.enums import CreatedByRole
-from models.workflow import WorkflowRunStatus
 
 from .account import Account, Tenant
+from .base import Base
 from .engine import db
+from .enums import CreatorUserRole
 from .types import StringUUID
 
 if TYPE_CHECKING:
@@ -53,7 +50,6 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
-    CHANNEL = "channel"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -171,6 +167,7 @@ class App(Base):
     @property
     def deleted_tools(self) -> list:
         from core.tools.tool_manager import ToolManager
+        from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
         app_model_config = self.app_model_config
@@ -295,6 +292,15 @@ class App(Base):
         )
 
         return tags or []
+
+    @property
+    def author_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            if account:
+                return account.name
+
+        return None
 
 
 class AppModelConfig(Base):
@@ -442,7 +448,7 @@ class AppModelConfig(Base):
             else {
                 "image": {
                     "enabled": False,
-                    "number_limits": 3,
+                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
                     "detail": "high",
                     "transfer_methods": ["remote_url", "local_file"],
                 }
@@ -604,7 +610,7 @@ class InstalledApp(Base):
         return tenant
 
 
-class Conversation(db.Model):  # type: ignore[name-defined]
+class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -625,7 +631,14 @@ class Conversation(db.Model):  # type: ignore[name-defined]
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     status = db.Column(db.String(255), nullable=False)
+
+    # The `invoke_from` records how the conversation is created.
+    #
+    # Its value corresponds to the members of `InvokeFrom`.
+    # (api/core/app/entities/app_invoke_entities.py)
     invoke_from = db.Column(db.String(255), nullable=True)
+
+    # ref: ConversationSource.
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
@@ -654,7 +667,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -664,7 +677,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
 
@@ -696,7 +709,6 @@ class Conversation(db.Model):  # type: ignore[name-defined]
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
-                    assert app_model_config is not None, "app model config not found"
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -787,22 +799,22 @@ class Conversation(db.Model):  # type: ignore[name-defined]
     def status_count(self):
         messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
         status_counts = {
-            WorkflowRunStatus.RUNNING: 0,
-            WorkflowRunStatus.SUCCEEDED: 0,
-            WorkflowRunStatus.FAILED: 0,
-            WorkflowRunStatus.STOPPED: 0,
-            WorkflowRunStatus.PARTIAL_SUCCEEDED: 0,
+            WorkflowExecutionStatus.RUNNING: 0,
+            WorkflowExecutionStatus.SUCCEEDED: 0,
+            WorkflowExecutionStatus.FAILED: 0,
+            WorkflowExecutionStatus.STOPPED: 0,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
         }
 
         for message in messages:
             if message.workflow_run:
-                status_counts[message.workflow_run.status] += 1
+                status_counts[WorkflowExecutionStatus(message.workflow_run.status)] += 1
 
         return (
             {
-                "success": status_counts[WorkflowRunStatus.SUCCEEDED],
-                "failed": status_counts[WorkflowRunStatus.FAILED],
-                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCEEDED],
+                "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
+                "failed": status_counts[WorkflowExecutionStatus.FAILED],
+                "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
             }
             if messages
             else None
@@ -810,7 +822,12 @@ class Conversation(db.Model):  # type: ignore[name-defined]
 
     @property
     def first_message(self):
-        return db.session.query(Message).filter(Message.conversation_id == self.id).first()
+        return (
+            db.session.query(Message)
+            .filter(Message.conversation_id == self.id)
+            .order_by(Message.created_at.asc())
+            .first()
+        )
 
     @property
     def app(self):
@@ -866,7 +883,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
         }
 
 
-class Message(db.Model):  # type: ignore[name-defined]
+class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="message_pkey"),
@@ -887,11 +904,11 @@ class Message(db.Model):  # type: ignore[name-defined]
     _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
-    message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    message_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     answer: Mapped[str] = db.Column(db.Text, nullable=False)
-    answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    answer_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     parent_message_id = db.Column(StringUUID, nullable=True)
@@ -908,7 +925,7 @@ class Message(db.Model):  # type: ignore[name-defined]
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    workflow_run_id = db.Column(StringUUID)
+    workflow_run_id: Mapped[str] = db.Column(StringUUID)
 
     @property
     def inputs(self):
@@ -920,7 +937,7 @@ class Message(db.Model):  # type: ignore[name-defined]
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -930,7 +947,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs
@@ -988,9 +1005,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                 if not tool_file_id:
                     continue
 
-                sign_url = ToolFileParser.get_tool_file_manager().sign_file(
-                    tool_file_id=tool_file_id, extension=extension
-                )
+                sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
                 upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
@@ -1014,7 +1029,9 @@ class Message(db.Model):  # type: ignore[name-defined]
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             else:
                 continue
-
+            # if as_attachment is in the url, add it to the sign_url.
+            if "as_attachment" in url:
+                sign_url += "&as_attachment=true"
             re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
 
         return re_sign_file_url_answer
@@ -1090,12 +1107,7 @@ class Message(db.Model):  # type: ignore[name-defined]
 
     @property
     def retriever_resources(self):
-        return (
-            db.session.query(DatasetRetrieverResource)
-            .filter(DatasetRetrieverResource.message_id == self.id)
-            .order_by(DatasetRetrieverResource.position.asc())
-            .all()
-        )
+        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
     def message_files(self):
@@ -1154,7 +1166,7 @@ class Message(db.Model):  # type: ignore[name-defined]
             files.append(file)
 
         result = [
-            {"belongs_to": message_file.belongs_to, **file.to_dict()}
+            {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
 
@@ -1218,7 +1230,7 @@ class Message(db.Model):  # type: ignore[name-defined]
         )
 
 
-class MessageFeedback(db.Model):  # type: ignore[name-defined]
+class MessageFeedback(Base):
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1244,8 +1256,23 @@ class MessageFeedback(db.Model):  # type: ignore[name-defined]
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
 
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "app_id": str(self.app_id),
+            "conversation_id": str(self.conversation_id),
+            "message_id": str(self.message_id),
+            "rating": self.rating,
+            "content": self.content,
+            "from_source": self.from_source,
+            "from_end_user_id": str(self.from_end_user_id) if self.from_end_user_id else None,
+            "from_account_id": str(self.from_account_id) if self.from_account_id else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
-class MessageFile(db.Model):  # type: ignore[name-defined]
+
+class MessageFile(Base):
     __tablename__ = "message_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1262,7 +1289,7 @@ class MessageFile(db.Model):  # type: ignore[name-defined]
         url: str | None = None,
         belongs_to: Literal["user", "assistant"] | None = None,
         upload_file_id: str | None = None,
-        created_by_role: CreatedByRole,
+        created_by_role: CreatorUserRole,
         created_by: str,
     ):
         self.message_id = message_id
@@ -1286,7 +1313,7 @@ class MessageFile(db.Model):  # type: ignore[name-defined]
     created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class MessageAnnotation(db.Model):  # type: ignore[name-defined]
+class MessageAnnotation(Base):
     __tablename__ = "message_annotations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1317,7 +1344,7 @@ class MessageAnnotation(db.Model):  # type: ignore[name-defined]
         return account
 
 
-class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
+class AppAnnotationHitHistory(Base):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1329,7 +1356,7 @@ class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
-    annotation_id = db.Column(StringUUID, nullable=False)
+    annotation_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     source = db.Column(db.Text, nullable=False)
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -1355,7 +1382,7 @@ class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
         return account
 
 
-class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
+class AppAnnotationSetting(Base):
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
@@ -1370,26 +1397,6 @@ class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_user_id = db.Column(StringUUID, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
-    @property
-    def created_account(self):
-        account = (
-            db.session.query(Account)
-            .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
-            .filter(AppAnnotationSetting.id == self.annotation_id)
-            .first()
-        )
-        return account
-
-    @property
-    def updated_account(self):
-        account = (
-            db.session.query(Account)
-            .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
-            .filter(AppAnnotationSetting.id == self.annotation_id)
-            .first()
-        )
-        return account
 
     @property
     def collection_binding_detail(self):
@@ -1429,7 +1436,7 @@ class EndUser(Base, UserMixin):
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
     external_user_id = db.Column(db.String(255), nullable=True)
@@ -1438,6 +1445,39 @@ class EndUser(Base, UserMixin):
     session_id: Mapped[str] = mapped_column()
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class AppMCPServer(Base):
+    __tablename__ = "app_mcp_servers"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
+        db.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
+        db.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
+    )
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    server_code = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    parameters = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @staticmethod
+    def generate_server_code(n):
+        while True:
+            result = generate_string(n)
+            while db.session.query(AppMCPServer).filter(AppMCPServer.server_code == result).count() > 0:
+                result = generate_string(n)
+
+            return result
+
+    @property
+    def parameters_dict(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.parameters))
 
 
 class Site(Base):
@@ -1559,7 +1599,7 @@ class UploadFile(Base):
         size: int,
         extension: str,
         mime_type: str,
-        created_by_role: CreatedByRole,
+        created_by_role: CreatorUserRole,
         created_by: str,
         created_at: datetime,
         used: bool,

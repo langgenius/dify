@@ -35,7 +35,7 @@ const translation = {
     },
     uploader: {
       title: 'Upload file',
-      button: 'Drag and drop file, or',
+      button: 'Drag and drop file or folder, or',
       browse: 'Browse',
       tip: 'Supports {{supportTypes}}. Max {{size}}MB each.',
       validation: {
@@ -69,8 +69,6 @@ const translation = {
       chooseProvider: 'Select a provider',
       fireCrawlNotConfigured: 'Firecrawl is not configured',
       fireCrawlNotConfiguredDescription: 'Configure Firecrawl with API key to use it.',
-      watercrawlNotConfigured: 'Watercrawl is not configured',
-      watercrawlNotConfiguredDescription: 'Configure Watercrawl with API key to use it.',
       jinaReaderNotConfigured: 'Jina Reader is not configured',
       jinaReaderNotConfiguredDescription: 'Set up Jina Reader by entering your free API key for access.',
       waterCrawlNotConfigured: 'Watercrawl is not configured',
@@ -82,10 +80,8 @@ const translation = {
       run: 'Run',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       watercrawlTitle: 'Extract web content with Watercrawl',
       watercrawlDoc: 'Watercrawl docs',
-      watercrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       jinaReaderTitle: 'Convert the entire site to Markdown',
       jinaReaderDoc: 'Learn more about Jina Reader',
       jinaReaderDocLink: 'https://jina.ai/reader',

@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Aflați mai multe',
       description: ' despre metoda de recuperare.',
       longDescription: ' despre metoda de recuperare, o puteți schimba în orice moment în setările cunoștințelor.',
+      method: 'Metoda de recuperare',
     },
     save: 'Salvare',
     permissionsInvitedMembers: 'Membri parțiali ai echipei',
@@ -35,6 +36,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Nu este disponibil pentru retrogradarea de la HQ la ECO',
     upgradeHighQualityTip: 'După ce faceți upgrade la modul Înaltă calitate, revenirea la modul Economic nu este disponibilă',
     helpText: 'Aflați cum să scrieți o descriere bună a setului de date.',
+    searchModel: 'Căutare model',
   },
 }
 

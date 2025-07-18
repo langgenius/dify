@@ -75,7 +75,6 @@ const VarList: FC<Props> = ({
           />
           {!readonly && (
             <RemoveButton
-              className='!bg-gray-100 !p-2 hover:!bg-gray-200'
               onClick={handleVarRemove(index)}
             />
           )}

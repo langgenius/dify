@@ -1,8 +1,8 @@
 import io
 
 from flask import request, send_file
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -10,9 +10,10 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
@@ -41,12 +42,33 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=False, location="args", default=1)
+        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
+        args = parser.parse_args()
         try:
-            plugins = PluginService.list(tenant_id)
+            plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
-        return jsonable_encoder({"plugins": plugins})
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
+
+
+class PluginListLatestVersionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_ids", type=list, required=True, location="json")
+        args = req.parse_args()
+
+        try:
+            versions = PluginService.list_latest_versions(args["plugin_ids"])
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"versions": versions})
 
 
 class PluginListInstallationsFromIdsApi(Resource):
@@ -230,6 +252,31 @@ class PluginInstallFromMarketplaceApi(Resource):
             raise ValueError(e)
 
         return jsonable_encoder(response)
+
+
+class PluginFetchMarketplacePkgApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            return jsonable_encoder(
+                {
+                    "manifest": PluginService.fetch_marketplace_pkg(
+                        tenant_id,
+                        args["plugin_unique_identifier"],
+                    )
+                }
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
 
 class PluginFetchManifestApi(Resource):
@@ -451,8 +498,45 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+class PluginFetchDynamicSelectOptionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        # check if the user is admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = current_user.current_tenant_id
+        user_id = current_user.id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser.add_argument("provider", type=str, required=True, location="args")
+        parser.add_argument("action", type=str, required=True, location="args")
+        parser.add_argument("parameter", type=str, required=True, location="args")
+        parser.add_argument("provider_type", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options(
+                tenant_id,
+                user_id,
+                args["plugin_id"],
+                args["provider"],
+                args["action"],
+                args["parameter"],
+                args["provider_type"],
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
 api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
@@ -470,6 +554,9 @@ api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<
 api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
 api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
+api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")

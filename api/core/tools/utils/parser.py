@@ -1,5 +1,4 @@
 import re
-import uuid
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
@@ -55,6 +54,13 @@ class ApiBasedToolSchemaParser:
             # convert parameters
             parameters = []
             if "parameters" in interface["operation"]:
+                for i, parameter in enumerate(interface["operation"]["parameters"]):
+                    if "$ref" in parameter:
+                        root = openapi
+                        reference = parameter["$ref"].split("/")[1:]
+                        for ref in reference:
+                            root = root[ref]
+                        interface["operation"]["parameters"][i] = root
                 for parameter in interface["operation"]["parameters"]:
                     tool_parameter = ToolParameter(
                         name=parameter["name"],
@@ -147,7 +153,7 @@ class ApiBasedToolSchemaParser:
                 # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
                 path = re.sub(r"[^a-zA-Z0-9_-]", "", path)
                 if not path:
-                    path = str(uuid.uuid4())
+                    path = "<root>"
 
                 interface["operation"]["operationId"] = f"{path}_{interface['method']}"
 

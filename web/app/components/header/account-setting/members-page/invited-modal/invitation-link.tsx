@@ -18,6 +18,7 @@ const InvitationLink = ({
   const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
+    // No prefix is needed here because the backend has already processed it
     copy(`${!value.url.startsWith('http') ? window.location.origin : ''}${value.url}`)
     setIsCopied(true)
   }, [value])
@@ -41,7 +42,7 @@ const InvitationLink = ({
           <Tooltip
             popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           >
-            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={copyHandle}>{value.url}</div>
+            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary' onClick={copyHandle}>{value.url}</div>
           </Tooltip>
         </div>
         <div className="h-4 shrink-0 border bg-divider-regular" />

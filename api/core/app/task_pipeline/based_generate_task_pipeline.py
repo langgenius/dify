@@ -19,6 +19,7 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from models.enums import MessageStatus
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class BasedGenerateTaskPipeline:
             return err
 
         err_desc = self._error_to_desc(err)
-        message.status = "error"
+        message.status = MessageStatus.ERROR
         message.error = err_desc
         return err
 
@@ -126,12 +127,12 @@ class BasedGenerateTaskPipeline:
         if self._output_moderation_handler:
             self._output_moderation_handler.stop_thread()
 
-            completion = self._output_moderation_handler.moderation_completion(
+            completion, flagged = self._output_moderation_handler.moderation_completion(
                 completion=completion, public_event=False
             )
 
             self._output_moderation_handler = None
-
-            return completion
+            if flagged:
+                return completion
 
         return None

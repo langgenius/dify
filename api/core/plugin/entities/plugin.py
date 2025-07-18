@@ -52,7 +52,7 @@ class PluginResourceRequirements(BaseModel):
         model: Optional[Model] = Field(default=None)
         node: Optional[Node] = Field(default=None)
         endpoint: Optional[Endpoint] = Field(default=None)
-        storage: Storage = Field(default=None)
+        storage: Optional[Storage] = Field(default=None)
 
     permission: Optional[Permission] = Field(default=None)
 
@@ -66,26 +66,33 @@ class PluginCategory(enum.StrEnum):
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: Optional[list[str]] = Field(default_factory=list)
-        models: Optional[list[str]] = Field(default_factory=list)
-        endpoints: Optional[list[str]] = Field(default_factory=list)
+        tools: Optional[list[str]] = Field(default_factory=list[str])
+        models: Optional[list[str]] = Field(default_factory=list[str])
+        endpoints: Optional[list[str]] = Field(default_factory=list[str])
+
+    class Meta(BaseModel):
+        minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        version: Optional[str] = Field(default=None)
 
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     description: I18nObject
     icon: str
+    icon_dark: Optional[str] = Field(default=None)
     label: I18nObject
     category: PluginCategory
     created_at: datetime.datetime
     resource: PluginResourceRequirements
     plugins: Plugins
     tags: list[str] = Field(default_factory=list)
+    repo: Optional[str] = Field(default=None)
     verified: bool = Field(default=False)
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
     agent_strategy: Optional[AgentStrategyProviderEntity] = None
+    meta: Meta
 
     @model_validator(mode="before")
     @classmethod
@@ -120,25 +127,12 @@ class PluginEntity(PluginInstallation):
     name: str
     installation_id: str
     version: str
-    latest_version: Optional[str] = None
-    latest_unique_identifier: Optional[str] = None
 
     @model_validator(mode="after")
     def set_plugin_id(self):
         if self.declaration.tool:
             self.declaration.tool.plugin_id = self.plugin_id
         return self
-
-
-class GithubPackage(BaseModel):
-    repo: str
-    version: str
-    package: str
-
-
-class GithubVersion(BaseModel):
-    repo: str
-    version: str
 
 
 class GenericProviderID:

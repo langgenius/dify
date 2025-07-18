@@ -280,6 +280,7 @@ const translation = {
     'inputPlaceholder': 'Por favor ingresa',
     'content': 'Contenido',
     'required': 'Requerido',
+    'hide': 'Ocultar',
     'errorMsg': {
       varNameRequired: 'Nombre de la variable es requerido',
       labelNameRequired: 'Nombre de la etiqueta es requerido',
@@ -328,6 +329,7 @@ const translation = {
     writeOpener: 'Escribir apertura',
     placeholder: 'Escribe tu mensaje de apertura aquí, puedes usar variables, intenta escribir {{variable}}.',
     openingQuestion: 'Preguntas de Apertura',
+    openingQuestionPlaceholder: 'Puede usar variables, intente escribir {{variable}}.',
     noDataPlaceHolder: 'Iniciar la conversación con el usuario puede ayudar a la IA a establecer una conexión más cercana con ellos en aplicaciones de conversación.',
     varTip: 'Puedes usar variables, intenta escribir {{variable}}',
     tooShort: 'Se requieren al menos 20 palabras en la indicación inicial para generar una apertura de conversación.',

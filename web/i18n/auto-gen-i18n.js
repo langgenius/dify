@@ -42,8 +42,8 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
           const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
           targetObject[key] = translation
         }
-        catch (e) {
-          console.error(`Error translating ${sourceObj[key]}(${key}) to ${toLanguage}`)
+        catch {
+          console.error(`Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`)
         }
       }
     }
@@ -57,7 +57,16 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
 async function autoGenTrans(fileName, toGenLanguage) {
   const fullKeyFilePath = path.join(__dirname, targetLanguage, `${fileName}.ts`)
   const toGenLanguageFilePath = path.join(__dirname, toGenLanguage, `${fileName}.ts`)
+  // eslint-disable-next-line sonarjs/code-eval
   const fullKeyContent = eval(transpile(fs.readFileSync(fullKeyFilePath, 'utf8')))
+  // if toGenLanguageFilePath is not exist, create it
+  if (!fs.existsSync(toGenLanguageFilePath)) {
+    fs.writeFileSync(toGenLanguageFilePath, `const translation = {
+}
+
+export default translation
+`)
+  }
   // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
   const readContent = await loadFile(toGenLanguageFilePath)
   const { code: toGenContent } = generateCode(readContent)

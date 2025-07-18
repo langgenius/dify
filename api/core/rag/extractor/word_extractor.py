@@ -19,7 +19,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,7 @@ class WordExtractor(BaseExtractor):
         parsed = urlparse(url)
         return bool(parsed.netloc) and bool(parsed.scheme)
 
-    def _extract_images_from_docx(self, doc, image_folder):
-        os.makedirs(image_folder, exist_ok=True)
+    def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
 
@@ -85,7 +84,7 @@ class WordExtractor(BaseExtractor):
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
-                    url = rel.reltype
+                    url = rel.target_ref
                     response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
@@ -117,7 +116,7 @@ class WordExtractor(BaseExtractor):
                     extension=str(image_ext),
                     mime_type=mime_type or "",
                     created_by=self.user_id,
-                    created_by_role=CreatedByRole.ACCOUNT,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
@@ -126,9 +125,7 @@ class WordExtractor(BaseExtractor):
 
                 db.session.add(upload_file)
                 db.session.commit()
-                image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
-                )
+                image_map[rel.target_part] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
 
         return image_map
 
@@ -212,7 +209,7 @@ class WordExtractor(BaseExtractor):
 
         content = []
 
-        image_map = self._extract_images_from_docx(doc, image_folder)
+        image_map = self._extract_images_from_docx(doc)
 
         hyperlinks_url = None
         url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
@@ -227,7 +224,7 @@ class WordExtractor(BaseExtractor):
                         xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
-                            if x_child is None:
+                            if x is None:
                                 continue
                             if x.tag.endswith("instrText"):
                                 if x.text is None:
@@ -241,9 +238,11 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             for run in paragraph.runs:
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
+                    # Process drawing type images
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
+                    has_drawing = False
                     for drawing in drawing_elements:
                         blip_elements = drawing.findall(
                             ".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
@@ -255,6 +254,34 @@ class WordExtractor(BaseExtractor):
                             if embed_id:
                                 image_part = doc.part.related_parts.get(embed_id)
                                 if image_part in image_map:
+                                    has_drawing = True
+                                    paragraph_content.append(image_map[image_part])
+                    # Process pict type images
+                    shape_elements = run.element.findall(
+                        ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
+                    )
+                    for shape in shape_elements:
+                        # Find image data in VML
+                        shape_image = shape.find(
+                            ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}binData"
+                        )
+                        if shape_image is not None and shape_image.text:
+                            image_id = shape_image.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
+                                    paragraph_content.append(image_map[image_part])
+                        # Find imagedata element in VML
+                        image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
+                        if image_data is not None:
+                            image_id = image_data.get("id") or image_data.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
                                     paragraph_content.append(image_map[image_part])
                 if run.text.strip():
                     paragraph_content.append(run.text.strip())

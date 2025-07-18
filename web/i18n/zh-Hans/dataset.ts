@@ -27,7 +27,7 @@ const translation = {
   createDataset: '创建知识库',
   noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
-  createNewExternalAPI: '创建新的外部知识库API',
+  createNewExternalAPI: '创建新的外部知识库 API',
   editExternalAPIFormTitle: '编辑外部知识库 API',
   editExternalAPITooltipTitle: '个关联知识库',
   editExternalAPIConfirmWarningContent: {
@@ -69,8 +69,8 @@ const translation = {
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
   deleteDatasetConfirmTitle: '要删除知识库吗？',
   deleteDatasetConfirmContent:
-    '删除知识库是不可逆的。用户将无法再访问您的知识库,所有的提示配置和日志将被永久删除。',
-  datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库,所有的提示配置和日志将被永久删除。',
+    '删除知识库是不可逆的。用户将无法再访问您的知识库，所有的提示配置和日志将被永久删除。',
+  datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库，所有的提示配置和日志将被永久删除。',
   datasetDeleted: '知识库已删除',
   datasetDeleteFailed: '删除知识库失败',
   selectExternalKnowledgeAPI: {
@@ -183,6 +183,7 @@ const translation = {
     checkName: {
       empty: '元数据名称不能为空',
       invalid: '元数据名称只能包含小写字母、数字和下划线，并且必须以小写字母开头',
+      tooLong: '元数据名称不得超过{{max}}个字符',
     },
     batchEditMetadata: {
       editMetadata: '编辑元数据',
@@ -207,7 +208,7 @@ const translation = {
       builtIn: '内置',
       builtInDescription: '内置元数据是系统预定义的元数据，您可以在此处查看和管理内置元数据。',
       deleteTitle: '确定删除',
-      deleteContent: '你确定要删除元数据 "{{name}}" 吗?',
+      deleteContent: '你确定要删除元数据 "{{name}}" 吗？',
     },
     documentMetadata: {
       metadataToolTip: '元数据是关于文档的数据，用于描述文档的属性。元数据可以帮助您更好地组织和管理文档。',

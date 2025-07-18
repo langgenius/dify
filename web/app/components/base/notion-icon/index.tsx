@@ -1,4 +1,4 @@
-import s from './index.module.css'
+import { RiFileTextLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { DataSourceNotionPage } from '@/models/common'
 
@@ -51,7 +51,7 @@ const NotionIcon = ({
   }
 
   return (
-    <div className={cn(s['default-page-icon'], className)} />
+    <RiFileTextLine className={cn('h-5 w-5 text-text-tertiary', className)} />
   )
 }
 

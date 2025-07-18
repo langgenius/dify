@@ -47,7 +47,7 @@ export const useWorkflowNodeIterationFinished = () => {
       incomeEdges.forEach((edge) => {
         edge.data = {
           ...edge.data,
-          _targetRunningStatus: data.status as any,
+          _targetRunningStatus: data.status,
         }
       })
     })

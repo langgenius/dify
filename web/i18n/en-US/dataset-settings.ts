@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Name cannot be empty',
     desc: 'Knowledge Description',
     descInfo: 'Please write a clear textual description to outline the content of the Knowledge. This description will be used as a basis for matching when selecting from multiple Knowledge for inference.',
-    descPlaceholder: 'Describe what is in this data set. A detailed description allows AI to access the content of the data set in a timely manner. If empty, LangGenius will use the default hit strategy.',
+    descPlaceholder: 'Describe what is in this data set. A detailed description allows AI to access the content of the data set in a timely manner. If empty, Dify will use the default hit strategy.',
     helpText: 'Learn how to write a good dataset description.',
     descWrite: 'Learn how to write a good Knowledge description.',
     permissions: 'Permissions',
@@ -36,6 +36,7 @@ const translation = {
     retrievalSettings: 'Retrieval Settings',
     save: 'Save',
     indexMethodChangeToEconomyDisabledTip: 'Not available for downgrading from HQ to ECO',
+    searchModel: 'Search model',
   },
 }
 

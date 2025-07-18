@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'En savoir plus',
       description: 'à propos de la méthode de récupération.',
       longDescription: 'À propos de la méthode de récupération, vous pouvez la modifier à tout moment dans les paramètres de Connaissance.',
+      method: 'Méthode de récupération',
     },
     save: 'Enregistrer',
     me: '(Vous)',
@@ -35,6 +36,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Non disponible pour le déclassement de HQ à ECO',
     upgradeHighQualityTip: 'Une fois la mise à niveau vers le mode Haute Qualité, il n’est pas possible de revenir au mode Économique',
     helpText: 'Apprenez à rédiger une bonne description de jeu de données.',
+    searchModel: 'Rechercher un modèle',
   },
 }
 

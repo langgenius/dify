@@ -3,13 +3,14 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities.metadata_entities import MetadataCondition
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
@@ -46,7 +47,7 @@ class RetrievalService:
         if not query:
             return []
         dataset = cls._get_dataset(dataset_id)
-        if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
+        if not dataset:
             return []
 
         all_documents: list[Document] = []
@@ -119,18 +120,32 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def external_retrieve(cls, dataset_id: str, query: str, external_retrieval_model: Optional[dict] = None):
+    def external_retrieve(
+        cls,
+        dataset_id: str,
+        query: str,
+        external_retrieval_model: Optional[dict] = None,
+        metadata_filtering_conditions: Optional[dict] = None,
+    ):
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:
             return []
+        metadata_condition = (
+            MetadataCondition(**metadata_filtering_conditions) if metadata_filtering_conditions else None
+        )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            dataset.tenant_id, dataset_id, query, external_retrieval_model or {}
+            dataset.tenant_id,
+            dataset_id,
+            query,
+            external_retrieval_model or {},
+            metadata_condition=metadata_condition,
         )
         return all_documents
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
-        return db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        with Session(db.engine) as session:
+            return session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
     @classmethod
     def keyword_search(
@@ -391,7 +406,29 @@ class RetrievalService:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
-            return [RetrievalSegments(**record) for record in records]
+            result = []
+            for record in records:
+                # Extract segment
+                segment = record["segment"]
+
+                # Extract child_chunks, ensuring it's a list or None
+                child_chunks = record.get("child_chunks")
+                if not isinstance(child_chunks, list):
+                    child_chunks = None
+
+                # Extract score, ensuring it's a float or None
+                score_value = record.get("score")
+                score = (
+                    float(score_value)
+                    if score_value is not None and isinstance(score_value, int | float | str)
+                    else None
+                )
+
+                # Create RetrievalSegments object
+                retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score)
+                result.append(retrieval_segment)
+
+            return result
         except Exception as e:
             db.session.rollback()
             raise e

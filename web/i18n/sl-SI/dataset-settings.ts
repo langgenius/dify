@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Izvedite več',
       description: ' o metodi pridobivanja.',
       longDescription: ' o metodi pridobivanja, to lahko kadar koli spremenite v nastavitvah znanja.',
+      method: 'Metoda pridobivanja',
     },
     externalKnowledgeAPI: 'Zunanji API za znanje',
     externalKnowledgeID: 'ID zunanjega znanja',
@@ -35,6 +36,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Ni na voljo za pregradnjo iz HQ v ECO',
     upgradeHighQualityTip: 'Ko nadgradite na način visoke kakovosti, vrnitev v ekonomični način ni na voljo',
     helpText: 'Naučite se napisati dober opis nabora podatkov.',
+    searchModel: 'Išči model',
   },
 }
 

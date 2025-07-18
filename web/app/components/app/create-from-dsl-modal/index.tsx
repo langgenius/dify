@@ -1,11 +1,12 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { useDebounceFn, useKeyPress } from 'ahooks'
 import Uploader from './uploader'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -34,6 +35,7 @@ type CreateFromDSLModalProps = {
   onClose: () => void
   activeTab?: string
   dslUrl?: string
+  droppedFile?: File
 }
 
 export enum CreateFromDSLModalTab {
@@ -41,11 +43,11 @@ export enum CreateFromDSLModalTab {
   FROM_URL = 'from-url',
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '' }: CreateFromDSLModalProps) => {
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [currentFile, setDSLFile] = useState<File>()
+  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
@@ -76,6 +78,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
+
+  useEffect(() => {
+    if (droppedFile)
+      handleFile(droppedFile)
+  }, [droppedFile])
 
   const onCreate: MouseEventHandler = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
@@ -142,6 +149,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
     }
     isCreatingRef.current = false
   }
+
+  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+
+  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
+      handleCreateApp()
+  })
+
+  useKeyPress('esc', () => {
+    if (show && !showErrorModal)
+      onClose()
+  })
 
   const onDSLConfirm: MouseEventHandler = async () => {
     try {
@@ -249,7 +268,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className='system-md-semibold leading6 mb-1'>DSL URL</div>
+                <div className='system-md-semibold mb-1 text-text-secondary'>DSL URL</div>
                 <Input
                   placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
                   value={dslUrlValue}
@@ -266,7 +285,18 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         )}
         <div className='flex justify-end px-6 py-5'>
           <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-          <Button disabled={buttonDisabled} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+          <Button
+            disabled={buttonDisabled}
+            variant="primary"
+            onClick={handleCreateApp}
+            className="gap-1"
+          >
+            <span>{t('app.newApp.Create')}</span>
+            <div className='flex gap-0.5'>
+              <RiCommandLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+              <RiCornerDownLeftLine size={14} className='system-kbd rounded-sm bg-components-kbd-bg-white p-0.5' />
+            </div>
+          </Button>
         </div>
       </Modal>
       <Modal

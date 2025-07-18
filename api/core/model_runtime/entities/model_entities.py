@@ -2,7 +2,7 @@ from decimal import Decimal
 from enum import Enum, StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
 
@@ -85,6 +85,7 @@ class ModelFeature(Enum):
     DOCUMENT = "document"
     VIDEO = "video"
     AUDIO = "audio"
+    STRUCTURED_OUTPUT = "structured-output"
 
 
 class DefaultParameterName(StrEnum):
@@ -159,6 +160,10 @@ class ProviderModel(BaseModel):
     deprecated: bool = False
     model_config = ConfigDict(protected_namespaces=())
 
+    @property
+    def support_structure_output(self) -> bool:
+        return self.features is not None and ModelFeature.STRUCTURED_OUTPUT in self.features
+
 
 class ParameterRule(BaseModel):
     """
@@ -196,6 +201,19 @@ class AIModelEntity(ProviderModel):
 
     parameter_rules: list[ParameterRule] = []
     pricing: Optional[PriceConfig] = None
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        supported_schema_keys = ["json_schema"]
+        schema_key = next((rule.name for rule in self.parameter_rules if rule.name in supported_schema_keys), None)
+        if not schema_key:
+            return self
+        if self.features is None:
+            self.features = [ModelFeature.STRUCTURED_OUTPUT]
+        else:
+            if ModelFeature.STRUCTURED_OUTPUT not in self.features:
+                self.features.append(ModelFeature.STRUCTURED_OUTPUT)
+        return self
 
 
 class ModelUsage(BaseModel):

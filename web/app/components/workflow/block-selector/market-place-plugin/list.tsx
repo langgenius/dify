@@ -1,16 +1,16 @@
 'use client'
-import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import cn from '@/utils/classnames'
 import Link from 'next/link'
-import { marketplaceUrlPrefix } from '@/config'
 import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
-// import { RiArrowRightUpLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+export type ListProps = {
   wrapElemRef: React.RefObject<HTMLElement>
   list: Plugin[]
   searchText: string
@@ -19,21 +19,20 @@ type Props = {
   disableMaxWidth?: boolean
 }
 
-const List = (
-  {
-    ref,
-    wrapElemRef,
-    searchText,
-    tags,
-    list,
-    toolContentClassName,
-    disableMaxWidth = false,
-  },
-) => {
+export type ListRef = { handleScroll: () => void }
+
+const List = forwardRef<ListRef, ListProps>(({
+  wrapElemRef,
+  searchText,
+  tags,
+  list,
+  toolContentClassName,
+  disableMaxWidth = false,
+}, ref) => {
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
-  const urlWithSearchText = `${marketplaceUrlPrefix}/?q=${searchText}&tags=${tags.join(',')}`
+  const urlWithSearchText = getMarketplaceUrl('', { q: searchText, tags: tags.join(',') })
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -72,7 +71,7 @@ const List = (
     return (
       <Link
         className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-        href={`${marketplaceUrlPrefix}/`}
+        href={getMarketplaceUrl('')}
         target='_blank'
       >
         <span>{t('plugin.findMoreInMarketplace')}</span>
@@ -81,7 +80,7 @@ const List = (
     )
   }
 
-  const maxWidthClassName = toolContentClassName || 'max-w-[300px]'
+  const maxWidthClassName = toolContentClassName || 'max-w-[100%]'
 
   return (
     <>
@@ -107,25 +106,27 @@ const List = (
           <Item
             key={index}
             payload={item}
-            onAction={() => { }}
+            onAction={noop}
           />
         ))}
-        <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
-          <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
-          <Link
-            href={urlWithSearchText}
-            target='_blank'
-            className='system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only'
-          >
-            <RiSearchLine className='mr-0.5 h-3 w-3' />
-            <span>{t('plugin.searchInMarketplace')}</span>
-          </Link>
-          <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
-        </div>
+        {list.length > 0 && (
+          <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
+            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
+            <Link
+              href={urlWithSearchText}
+              target='_blank'
+              className='system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only'
+            >
+              <RiSearchLine className='mr-0.5 h-3 w-3' />
+              <span>{t('plugin.searchInMarketplace')}</span>
+            </Link>
+            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
+          </div>
+        )}
       </div>
     </>
   )
-}
+})
 
 List.displayName = 'List'
 

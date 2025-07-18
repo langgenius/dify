@@ -61,7 +61,7 @@ const DatasetCard = ({
       if (onSuccess)
         onSuccess()
     }
-    catch (e: any) {
+    catch {
     }
     setShowConfirmDelete(false)
   }, [dataset.id, notify, onSuccess, t])
@@ -111,7 +111,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
+        className='group relative col-span-1 flex min-h-[171px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -170,7 +170,7 @@ const DatasetCard = ({
           {dataset.description}
         </div>
         <div className={cn(
-          'mt-1 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
+          'mt-4 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           <div className={cn('flex w-0 grow items-center gap-1', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {

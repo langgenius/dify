@@ -1,10 +1,10 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Tự triển khai</a> ·
   <a href="https://docs.dify.ai">Tài liệu</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Yêu cầu doanh nghiệp</a>
+  <a href="https://dify.ai/pricing">Tổng quan các lựa chọn sản phẩm Dify</a>
 </p>
 
 <p align="center">
@@ -54,11 +54,6 @@ Dify là một nền tảng phát triển ứng dụng LLM mã nguồn mở. Gia
 
 **1. Quy trình làm việc**: 
   Xây dựng và kiểm tra các quy trình làm việc AI mạnh mẽ trên một canvas trực quan, tận dụng tất cả các tính năng sau đây và hơn thế nữa.
-
-
-  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
-
 
 **2. Hỗ trợ mô hình toàn diện**: 
   Tích hợp liền mạch với hàng trăm mô hình LLM độc quyền / mã nguồn mở từ hàng chục nhà cung cấp suy luận và giải pháp tự lưu trữ, bao gồm GPT, Mistral, Llama3, và bất kỳ mô hình tương thích API OpenAI nào. Danh sách đầy đủ các nhà cung cấp mô hình được hỗ trợ có thể được tìm thấy [tại đây](https://docs.dify.ai/getting-started/readme/model-providers).
@@ -201,6 +196,7 @@ Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có 
 - [Helm Chart bởi @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Tệp YAML bởi @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Tệp YAML bởi @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 MỚI! Tệp YAML (Hỗ trợ Dify v1.6.0) bởi @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Sử dụng Terraform để Triển khai
 
@@ -218,6 +214,16 @@ Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
 - [AWS CDK bởi @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
+
+#### Alibaba Cloud
+
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+
+Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
 
 ## Đóng góp
 

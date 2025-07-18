@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
+import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
@@ -21,7 +21,6 @@ import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
@@ -135,7 +134,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     params: { metadata: 'without' },
   })
 
-  const { data: documentMetadata, error: metadataErr, refetch: metadataMutate } = useDocumentMetadata({
+  const { data: documentMetadata } = useDocumentMetadata({
     datasetId,
     documentId,
     params: { metadata: 'only' },
@@ -146,7 +145,6 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const isDetailLoading = !documentDetail && !error
-  const isMetadataLoading = !documentMetadata && !metadataErr
 
   const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
 
@@ -251,7 +249,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <LayoutRight2LineMod className='h-4 w-4 text-components-button-secondary-text' />
+                  ? <RiLayoutLeft2Line className='h-4 w-4 text-components-button-secondary-text' />
                   : <RiLayoutRight2Line className='h-4 w-4 text-components-button-secondary-text' />
               }
             </button>
@@ -279,7 +277,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               }
             </div>
           }
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassname='!justify-start' footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName='!justify-start' footer={null}>
             <Metadata
               className='mr-2 mt-3'
               datasetId={datasetId}

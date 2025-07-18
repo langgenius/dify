@@ -16,9 +16,11 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.moderation.base import ModerationError
+from core.variables.variables import VariableUnion
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.enums import UserFrom
@@ -40,13 +42,16 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         conversation: Conversation,
         message: Message,
         dialogue_count: int,
+        variable_loader: VariableLoader,
     ) -> None:
-        super().__init__(queue_manager)
-
+        super().__init__(queue_manager, variable_loader)
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
         self.message = message
         self._dialogue_count = dialogue_count
+
+    def _get_app_id(self) -> str:
+        return self.application_generate_entity.app_config.app_id
 
     def run(self) -> None:
         app_config = self.application_generate_entity.app_config
@@ -60,7 +65,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if not workflow:
             raise ValueError("Workflow not initialized")
 
-        user_id = None
+        user_id: str | None = None
         if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
@@ -132,23 +137,25 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 session.commit()
 
             # Create a variable pool.
-            system_inputs = {
-                SystemVariableKey.QUERY: query,
-                SystemVariableKey.FILES: files,
-                SystemVariableKey.CONVERSATION_ID: self.conversation.id,
-                SystemVariableKey.USER_ID: user_id,
-                SystemVariableKey.DIALOGUE_COUNT: self._dialogue_count,
-                SystemVariableKey.APP_ID: app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
-                SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
-            }
+            system_inputs = SystemVariable(
+                query=query,
+                files=files,
+                conversation_id=self.conversation.id,
+                user_id=user_id,
+                dialogue_count=self._dialogue_count,
+                app_id=app_config.app_id,
+                workflow_id=app_config.workflow_id,
+                workflow_execution_id=self.application_generate_entity.workflow_run_id,
+            )
 
             # init variable pool
             variable_pool = VariablePool(
                 system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
-                conversation_variables=conversation_variables,
+                # Based on the definition of `VariableUnion`,
+                # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+                conversation_variables=cast(list[VariableUnion], conversation_variables),
             )
 
             # init graph

@@ -28,6 +28,8 @@ const translation = {
       delete: 'Usuń',
       enableWarning: 'Zarchiwizowany plik nie może zostać włączony',
       sync: 'Synchronizuj',
+      resume: 'Wznawiać',
+      pause: 'Pauza',
     },
     index: {
       enable: 'Włącz',
@@ -367,6 +369,7 @@ const translation = {
     regenerationSuccessTitle: 'Regeneracja zakończona',
     edited: 'EDYTOWANE',
     editedAt: 'Zredagowane w',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     collapseChunks: 'Zwijanie fragmentów',
     empty: 'Nie znaleziono fragmentu',
     newChunk: 'Nowy fragment',
@@ -390,6 +393,8 @@ const translation = {
     newChildChunk: 'Nowy fragment podrzędny',
     clearFilter: 'Wyczyść filtr',
     childChunks_one: 'FRAGMENT POTOMNY',
+    keywordDuplicate: 'Słowo kluczowe już istnieje',
+    keywordEmpty: 'Słowo kluczowe nie może być puste',
   },
 }
 

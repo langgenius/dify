@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import uuid
@@ -7,6 +6,7 @@ from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import OpikConfig
@@ -21,9 +21,11 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.repositories import DifyCoreRepositoryFactory
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecution
+from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "metadata": workflow_metadata,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
+                "thread_id": trace_info.conversation_id,
                 "tags": ["message", "workflow"],
                 "project_name": self.project,
             }
@@ -142,62 +145,51 @@ class OpikDataTrace(BaseTraceInstance):
                 "metadata": workflow_metadata,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
+                "thread_id": trace_info.conversation_id,
                 "tags": ["workflow"],
                 "project_name": self.project,
             }
             self.add_trace(trace_data)
 
-        # through workflow_run_id get all_nodes_execution
-        workflow_nodes_execution_id_records = (
-            db.session.query(WorkflowNodeExecution.id)
-            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .all()
+        # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+        # Find the app's creator account
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
+
+        service_account = self.get_service_account_with_tenant(app_id)
+
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            session_factory=session_factory,
+            user=service_account,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        for node_execution_id_record in workflow_nodes_execution_id_records:
-            node_execution = (
-                db.session.query(
-                    WorkflowNodeExecution.id,
-                    WorkflowNodeExecution.tenant_id,
-                    WorkflowNodeExecution.app_id,
-                    WorkflowNodeExecution.title,
-                    WorkflowNodeExecution.node_type,
-                    WorkflowNodeExecution.status,
-                    WorkflowNodeExecution.inputs,
-                    WorkflowNodeExecution.outputs,
-                    WorkflowNodeExecution.created_at,
-                    WorkflowNodeExecution.elapsed_time,
-                    WorkflowNodeExecution.process_data,
-                    WorkflowNodeExecution.execution_metadata,
-                )
-                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
-                .first()
-            )
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
 
-            if not node_execution:
-                continue
-
+        for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
-            tenant_id = node_execution.tenant_id
-            app_id = node_execution.app_id
+            tenant_id = trace_info.tenant_id  # Use from trace_info instead
+            app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == "llm":
-                inputs = (
-                    json.loads(node_execution.process_data).get("prompts", {}) if node_execution.process_data else {}
-                )
+            if node_type == NodeType.LLM:
+                inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
-            outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
+                inputs = node_execution.inputs if node_execution.inputs else {}
+            outputs = node_execution.outputs if node_execution.outputs else {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = (
-                json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
-            )
-            metadata = execution_metadata.copy()
+            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,
@@ -210,7 +202,7 @@ class OpikDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+            process_data = node_execution.process_data if node_execution.process_data else {}
 
             provider = None
             model = None
@@ -230,10 +222,10 @@ class OpikDataTrace(BaseTraceInstance):
                 )
 
                 try:
-                    if outputs.get("usage"):
-                        total_tokens = outputs["usage"].get("total_tokens", 0)
-                        prompt_tokens = outputs["usage"].get("prompt_tokens", 0)
-                        completion_tokens = outputs["usage"].get("completion_tokens", 0)
+                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    total_tokens = usage_data.get("total_tokens", 0)
+                    prompt_tokens = usage_data.get("prompt_tokens", 0)
+                    completion_tokens = usage_data.get("completion_tokens", 0)
                 except Exception:
                     logger.error("Failed to extract usage", exc_info=True)
 
@@ -243,13 +235,13 @@ class OpikDataTrace(BaseTraceInstance):
             parent_span_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
 
             if not total_tokens:
-                total_tokens = execution_metadata.get("total_tokens", 0)
+                total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
 
             span_data = {
                 "trace_id": opik_trace_id,
                 "id": prepare_opik_uuid(created_at, node_execution_id),
                 "parent_span_id": prepare_opik_uuid(trace_info.start_time, parent_span_id),
-                "name": node_type,
+                "name": node_name,
                 "type": run_type,
                 "start_time": created_at,
                 "end_time": finished_at,
@@ -305,6 +297,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(metadata),
             "input": trace_info.inputs,
             "output": message_data.answer,
+            "thread_id": message_data.conversation_id,
             "tags": ["message", str(trace_info.conversation_mode)],
             "project_name": self.project,
         }
@@ -419,6 +412,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(trace_info.metadata),
             "input": trace_info.inputs,
             "output": trace_info.outputs,
+            "thread_id": trace_info.conversation_id,
             "tags": ["generate_name"],
             "project_name": self.project,
         }

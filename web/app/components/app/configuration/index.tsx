@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
+import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -78,6 +79,9 @@ import {
 } from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
+import { MittProvider } from '@/context/mitt-context'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import Toast from '@/app/components/base/toast'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -197,9 +201,6 @@ const Configuration: FC = () => {
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
-  useEffect(() => {
-
-  }, [])
   const [datasetConfigs, doSetDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
@@ -230,7 +231,7 @@ const Configuration: FC = () => {
   }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const contextVar = modelConfig.configs.prompt_variables.find((item: any) => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
@@ -248,7 +249,7 @@ const Configuration: FC = () => {
     formattingChangedDispatcher()
     let newDatasets = data
     if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft: any) => {
+      const newSelected = produce(data, (draft) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database
             const newItem = dataSets.find(i => i.id === item.id)
@@ -454,11 +455,26 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
-    setCompletionParams({})
+
+    try {
+      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+        provider,
+        modelId,
+        completionParams,
+      )
+      if (Object.keys(removedDetails).length)
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
+      setCompletionParams(filtered)
+    }
+    catch (e) {
+      Toast.notify({ type: 'error', message: t('common.error') })
+      setCompletionParams({})
+    }
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -506,6 +522,12 @@ const Configuration: FC = () => {
   useEffect(() => {
     (async () => {
       const collectionList = await fetchCollectionList()
+      if (basePath) {
+        collectionList.forEach((item) => {
+          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+            item.icon = `${basePath}${item.icon}`
+        })
+      }
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
@@ -516,7 +538,7 @@ const Configuration: FC = () => {
           if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
             setChatPromptConfig(modelConfig.chat_prompt_config)
           else
-            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG))
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
           setCanReturnToSimpleMode(false)
         }
@@ -899,12 +921,13 @@ const Configuration: FC = () => {
       setVisionConfig: handleSetVisionConfig,
       isAllowVideoUpload,
       isShowDocumentConfig,
+      isShowAudioConfig,
       rerankSettingModalOpen,
       setRerankSettingModalOpen,
     }}
     >
       <FeaturesProvider features={featuresData}>
-        <>
+        <MittProvider>
           <div className="flex h-full flex-col">
             <div className='relative flex h-[200px] grow pt-14'>
               {/* Header */}
@@ -1056,7 +1079,7 @@ const Configuration: FC = () => {
             />
           )}
           <PluginDependency />
-        </>
+        </MittProvider>
       </FeaturesProvider>
     </ConfigContext.Provider>
   )

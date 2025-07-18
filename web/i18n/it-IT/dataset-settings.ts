@@ -32,6 +32,7 @@ const translation = {
       description: ' sul metodo di recupero.',
       longDescription:
         ' sul metodo di recupero, puoi cambiare questo in qualsiasi momento nelle impostazioni della Conoscenza.',
+      method: 'Metodo di recupero',
     },
     save: 'Salva',
     retrievalSettings: 'Impostazioni di recupero',
@@ -40,6 +41,7 @@ const translation = {
     helpText: 'Scopri come scrivere una buona descrizione del set di dati.',
     upgradeHighQualityTip: 'Una volta effettuato l\'aggiornamento alla modalità Alta qualità, il ripristino della modalità Risparmio non è disponibile',
     indexMethodChangeToEconomyDisabledTip: 'Non disponibile per il downgrade da HQ a ECO',
+    searchModel: 'Cerca modello',
   },
 }
 

@@ -51,6 +51,7 @@ class TencentVector(BaseVector):
         self._client = RPCVectorDBClient(**self._client_config.to_tencent_params())
         self._enable_hybrid_search = False
         self._dimension = 1024
+        self._init_database()
         self._load_collection()
         self._bm25 = BM25Encoder.default("zh")
 
@@ -121,7 +122,6 @@ class TencentVector(BaseVector):
                 metric_type,
                 params,
             )
-            index_text = vdb_index.FilterIndex(self.field_text, enum.FieldType.String, enum.IndexType.FILTER)
             index_metadate = vdb_index.FilterIndex(self.field_metadata, enum.FieldType.Json, enum.IndexType.FILTER)
             index_sparse_vector = vdb_index.SparseIndex(
                 name="sparse_vector",
@@ -129,7 +129,7 @@ class TencentVector(BaseVector):
                 index_type=enum.IndexType.SPARSE_INVERTED,
                 metric_type=enum.MetricType.IP,
             )
-            indexes = [index_id, index_vector, index_text, index_metadate]
+            indexes = [index_id, index_vector, index_metadate]
             if self._enable_hybrid_search:
                 indexes.append(index_sparse_vector)
             try:
@@ -148,7 +148,7 @@ class TencentVector(BaseVector):
                 index_metadate = vdb_index.FilterIndex(
                     self.field_metadata, enum.FieldType.String, enum.IndexType.FILTER
                 )
-                indexes = [index_id, index_vector, index_text, index_metadate]
+                indexes = [index_id, index_vector, index_metadate]
                 if self._enable_hybrid_search:
                     indexes.append(index_sparse_vector)
                 self._client.create_collection(
@@ -270,16 +270,22 @@ class TencentVector(BaseVector):
 
         for result in res[0]:
             meta = result.get(self.field_metadata)
+            if isinstance(meta, str):
+                # Compatible with version 1.1.3 and below.
+                meta = json.loads(meta)
+                score = 1 - result.get("score", 0.0)
             score = result.get("score", 0.0)
             if score > score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)
                 docs.append(doc)
-
         return docs
 
     def delete(self) -> None:
-        self._client.drop_collection(database_name=self._client_config.database, collection_name=self.collection_name)
+        if self._has_collection():
+            self._client.drop_collection(
+                database_name=self._client_config.database, collection_name=self.collection_name
+            )
 
 
 class TencentVectorFactory(AbstractVectorFactory):

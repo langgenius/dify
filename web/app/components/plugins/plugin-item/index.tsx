@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
+import { useTheme } from 'next-themes'
 import {
   RiArrowRightUpLine,
   RiBugLine,
+  RiErrorWarningLine,
   RiHardDrive3Line,
   RiLoginCircleLine,
   RiVerifiedBadgeLine,
@@ -19,10 +21,15 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import { useSingleCategories } from '../hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { useAppContext } from '@/context/app-context'
+import { gte } from 'semver'
+import Tooltip from '@/app/components/base/tooltip'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   className?: string
@@ -34,6 +41,7 @@ const PluginItem: FC<Props> = ({
   plugin,
 }) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const { categoriesMap } = useSingleCategories()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
@@ -48,11 +56,19 @@ const PluginItem: FC<Props> = ({
     meta,
     plugin_id,
   } = plugin
-  const { category, author, name, label, description, icon, verified } = plugin.declaration
+  const { category, author, name, label, description, icon, verified, meta: declarationMeta } = plugin.declaration
 
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
+
+  const { langeniusVersionInfo } = useAppContext()
+
+  const isDifyVersionCompatible = useMemo(() => {
+    if (!langeniusVersionInfo.current_version)
+      return true
+    return gte(langeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+  }, [declarationMeta.minimum_dify_version, langeniusVersionInfo.current_version])
 
   const handleDelete = () => {
     refreshPluginList({ category } as any)
@@ -60,6 +76,7 @@ const PluginItem: FC<Props> = ({
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <div
@@ -89,7 +106,13 @@ const PluginItem: FC<Props> = ({
             <div className="flex h-5 items-center">
               <Title title={title} />
               {verified && <RiVerifiedBadgeLine className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />}
-              <Badge className='ml-1 shrink-0' text={source === PluginSource.github ? plugin.meta!.version : plugin.version} />
+              {!isDifyVersionCompatible && <Tooltip popupContent={
+                t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
+              }><RiErrorWarningLine color='red' className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" /></Tooltip>}
+              <Badge className='ml-1 shrink-0'
+                text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
+                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_version && plugin.latest_version !== plugin.version}
+              />
             </div>
             <div className='flex items-center justify-between'>
               <Description text={descriptionText} descriptionLineRows={1}></Description>
@@ -144,9 +167,9 @@ const PluginItem: FC<Props> = ({
               </a>
             </>
           }
-          {source === PluginSource.marketplace
+          {source === PluginSource.marketplace && enable_marketplace
             && <>
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='flex items-center gap-0.5'>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='h-3 w-3 text-text-tertiary' />
               </a>

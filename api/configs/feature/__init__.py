@@ -12,7 +12,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
-from configs.feature.hosted_service import HostedServiceConfig
+from .hosted_service import HostedServiceConfig
 
 
 class SecurityConfig(BaseSettings):
@@ -29,6 +29,15 @@ class SecurityConfig(BaseSettings):
 
     RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a password reset token remains valid",
+        default=5,
+    )
+    CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a change email token remains valid",
+        default=5,
+    )
+
+    OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a owner transfer token remains valid",
         default=5,
     )
 
@@ -74,7 +83,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
         description="URL endpoint for the code execution service",
-        default="http://sandbox:8194",
+        default=HttpUrl("http://sandbox:8194"),
     )
 
     CODE_EXECUTION_API_KEY: str = Field(
@@ -145,7 +154,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_URL: HttpUrl = Field(
         description="Plugin API URL",
-        default="http://localhost:5002",
+        default=HttpUrl("http://localhost:5002"),
     )
 
     PLUGIN_DAEMON_KEY: str = Field(
@@ -188,7 +197,7 @@ class MarketplaceConfig(BaseSettings):
 
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
-        default="https://marketplace.dify.ai",
+        default=HttpUrl("https://marketplace.dify.ai"),
     )
 
 
@@ -234,6 +243,13 @@ class FileAccessConfig(BaseSettings):
         "Url is signed and has expiration time.",
         validation_alias=AliasChoices("FILES_URL", "CONSOLE_API_URL"),
         alias_priority=1,
+        default="",
+    )
+
+    INTERNAL_FILES_URL: str = Field(
+        description="Internal base URL for file access within Docker network,"
+        " used for plugin daemon and internal service communication."
+        " Falls back to FILES_URL if not specified.",
         default="",
     )
 
@@ -398,6 +414,11 @@ class InnerAPIConfig(BaseSettings):
         default=False,
     )
 
+    INNER_API_KEY: Optional[str] = Field(
+        description="API key for accessing the internal API",
+        default=None,
+    )
+
 
 class LoggingConfig(BaseSettings):
     """
@@ -442,11 +463,16 @@ class LoggingConfig(BaseSettings):
 
 class ModelLoadBalanceConfig(BaseSettings):
     """
-    Configuration for model load balancing
+    Configuration for model load balancing and token counting
     """
 
     MODEL_LB_ENABLED: bool = Field(
         description="Enable or disable load balancing for models",
+        default=False,
+    )
+
+    PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(
+        description="Enable or disable plugin based token counting. If disabled, token counting will return 0.",
         default=False,
     )
 
@@ -514,6 +540,38 @@ class WorkflowNodeExecutionConfig(BaseSettings):
         default=100,
     )
 
+    WORKFLOW_NODE_EXECUTION_STORAGE: str = Field(
+        default="rdbms",
+        description="Storage backend for WorkflowNodeExecution. Options: 'rdbms', 'hybrid'",
+    )
+
+
+class RepositoryConfig(BaseSettings):
+    """
+    Configuration for repository implementations
+    """
+
+    CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
+    )
+
+    CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
+        "Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_RUN_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    )
+
 
 class AuthConfig(BaseSettings):
     """
@@ -565,6 +623,16 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    CHANGE_EMAIL_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying change email after exceeding the rate limit.",
+        default=86400,
+    )
+
+    OWNER_TRANSFER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying owner transfer after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -594,7 +662,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Email service provider type ('smtp' or 'resend'), default to None.",
+        description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,
     )
 
@@ -646,6 +714,11 @@ class MailConfig(BaseSettings):
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
+    )
+
+    SENDGRID_API_KEY: Optional[str] = Field(
+        description="API key for SendGrid service",
+        default=None,
     )
 
 
@@ -876,6 +949,7 @@ class FeatureConfig(
     MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
+    RepositoryConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,

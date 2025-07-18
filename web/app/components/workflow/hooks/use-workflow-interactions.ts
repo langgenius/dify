@@ -25,8 +25,8 @@ import {
   useSelectionInteractions,
   useWorkflowReadOnly,
 } from '../hooks'
-import { useEdgesInteractions } from './use-edges-interactions'
-import { useNodesInteractions } from './use-nodes-interactions'
+import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -37,8 +37,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
-  const { handleNodeCancelRunningStatus } = useNodesInteractions()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
+  const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const handleCancelDebugAndPreviewPanel = useCallback(() => {
     workflowStore.setState({
@@ -313,7 +313,6 @@ export const useWorkflowZoom = () => {
 
 export const useWorkflowUpdate = () => {
   const reactflow = useReactFlow()
-  const workflowStore = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleUpdateWorkflowCanvas = useCallback((payload: WorkflowDataUpdater) => {
@@ -333,32 +332,8 @@ export const useWorkflowUpdate = () => {
     setViewport(viewport)
   }, [eventEmitter, reactflow])
 
-  const handleRefreshWorkflowDraft = useCallback(() => {
-    const {
-      appId,
-      setSyncWorkflowDraftHash,
-      setIsSyncingWorkflowDraft,
-      setEnvironmentVariables,
-      setEnvSecrets,
-      setConversationVariables,
-    } = workflowStore.getState()
-    setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
-      setSyncWorkflowDraftHash(response.hash)
-      setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-        acc[env.id] = env.value
-        return acc
-      }, {} as Record<string, string>))
-      setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
-      // #TODO chatVar sync#
-      setConversationVariables(response.conversation_variables || [])
-    }).finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
-
   return {
     handleUpdateWorkflowCanvas,
-    handleRefreshWorkflowDraft,
   }
 }
 
@@ -391,7 +366,7 @@ export const useDSL = () => {
       a.download = `${appDetail.name}.yml`
       a.click()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
     finally {
@@ -416,7 +391,7 @@ export const useDSL = () => {
         },
       } as any)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }, [appDetail, eventEmitter, handleExportDSL, notify, t])
@@ -424,5 +399,31 @@ export const useDSL = () => {
   return {
     exportCheck,
     handleExportDSL,
+  }
+}
+
+export const useWorkflowCanvasMaximize = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
+  const {
+    getNodesReadOnly,
+  } = useNodesReadOnly()
+
+  const handleToggleMaximizeCanvas = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setMaximizeCanvas(!maximizeCanvas)
+    localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
+    eventEmitter?.emit({
+      type: 'workflow-canvas-maximize',
+      payload: !maximizeCanvas,
+    } as any)
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+
+  return {
+    handleToggleMaximizeCanvas,
   }
 }

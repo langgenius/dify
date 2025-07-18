@@ -11,6 +11,8 @@ import {
   RiEqualizer2Line,
   RiLoopLeftLine,
   RiMoreFill,
+  RiPauseCircleLine,
+  RiPlayCircleLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
@@ -42,10 +44,11 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentPause, useDocumentResume, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import useBatchEditDocumentMetadata from '../metadata/hooks/use-batch-edit-document-metadata'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
+import { noop } from 'lodash-es'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -151,7 +154,6 @@ export const StatusItem: FC<{
           <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='text-text-secondary system-xs-medium'
-            needsDelay
             disabled={!archived}
           >
             <Switch
@@ -167,7 +169,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive' | 'pause' | 'resume'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -179,13 +181,14 @@ export const OperationAction: FC<{
     id: string
     data_source_type: string
     doc_form: string
+    display_status?: string
   }
   datasetId: string
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
 }> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const { id, enabled = false, archived = false, data_source_type } = detail || {}
+  const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -198,10 +201,12 @@ export const OperationAction: FC<{
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const { mutateAsync: syncDocument } = useSyncDocument()
   const { mutateAsync: syncWebsite } = useSyncWebsite()
+  const { mutateAsync: pauseDocument } = useDocumentPause()
+  const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
-    let opApi = deleteDocument
+    let opApi
     switch (operationName) {
       case 'archive':
         opApi = archiveDocument
@@ -220,6 +225,12 @@ export const OperationAction: FC<{
           opApi = syncDocument
         else
           opApi = syncWebsite
+        break
+      case 'pause':
+        opApi = pauseDocument
+        break
+      case 'resume':
+        opApi = resumeDocument
         break
       default:
         opApi = deleteDocument
@@ -265,7 +276,7 @@ export const OperationAction: FC<{
 
   return <div className='flex items-center' onClick={e => e.stopPropagation()}>
     {isListScene && !embeddingAvailable && (
-      <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
+      <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
     )}
     {isListScene && embeddingAvailable && (
       <>
@@ -273,10 +284,9 @@ export const OperationAction: FC<{
           ? <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='!font-semibold'
-            needsDelay
           >
             <div>
-              <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
+              <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
             </div>
           </Tooltip>
           : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
@@ -321,6 +331,18 @@ export const OperationAction: FC<{
                   )}
                   <Divider className='my-1' />
                 </>
+              )}
+              {!archived && display_status?.toLowerCase() === 'indexing' && (
+                <div className={s.actionItem} onClick={() => onOperate('pause')}>
+                  <RiPauseCircleLine className='h-4 w-4 text-text-tertiary' />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.pause')}</span>
+                </div>
+              )}
+              {!archived && display_status?.toLowerCase() === 'paused' && (
+                <div className={s.actionItem} onClick={() => onOperate('resume')}>
+                  <RiPlayCircleLine className='h-4 w-4 text-text-tertiary' />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.resume')}</span>
+                </div>
               )}
               {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
                 <RiArchive2Line className='h-4 w-4 text-text-tertiary' />
@@ -489,7 +511,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
-      let opApi = deleteDocument
+      let opApi
       switch (actionName) {
         case DocumentActionType.archive:
           opApi = archiveDocument
@@ -526,7 +548,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                     <Checkbox
                       className='mr-2 shrink-0'
                       checked={isAllSelected}
-                      mixed={!isAllSelected && isSomeSelected}
+                      indeterminate={!isAllSelected && isSomeSelected}
                       onCheck={onSelectedAll}
                     />
                   )}
@@ -574,7 +596,6 @@ const DocumentList: FC<IDocumentListProps> = ({
                         )
                       }}
                     />
-                    {/* {doc.position} */}
                     {index + 1}
                   </div>
                 </td>
@@ -625,7 +646,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   <OperationAction
                     embeddingAvailable={embeddingAvailable}
                     datasetId={datasetId}
-                    detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
+                    detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
                     onUpdate={onUpdate}
                   />
                 </td>

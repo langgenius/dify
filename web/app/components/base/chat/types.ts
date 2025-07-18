@@ -46,8 +46,19 @@ export type EnableType = {
 export type ChatConfig = Omit<ModelConfig, 'model'> & {
   supportAnnotation?: boolean
   appId?: string
+  questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
+  system_parameters: {
+    audio_file_size_limit: number
+    file_size_limit: number
+    image_file_size_limit: number
+    video_file_size_limit: number
+    workflow_file_upload_limit: number
+  }
+  more_like_this: {
+    enabled: boolean
+  }
 }
 
 export type WorkflowProcess = {

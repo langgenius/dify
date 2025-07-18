@@ -15,14 +15,13 @@ from core.model_runtime.entities import (
     LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageContentType,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
@@ -49,7 +48,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         assert app_config.agent
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
@@ -66,6 +65,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage = final_llm_usage_dict["usage"]
                 llm_usage.prompt_tokens += usage.prompt_tokens
                 llm_usage.completion_tokens += usage.completion_tokens
+                llm_usage.total_tokens += usage.total_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
                 llm_usage.total_price += usage.total_price
@@ -395,7 +395,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             # get image detail config

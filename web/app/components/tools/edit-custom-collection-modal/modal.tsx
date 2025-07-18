@@ -96,7 +96,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         setCustomCollection(newCollection)
         setParamsSchemas(parameters_schema)
       }
-      catch (e) {
+      catch {
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''
@@ -172,7 +172,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       const path = decodeURI(new URL(url).pathname)
       return path || ''
     }
-    catch (e) {
+    catch {
       return url
     }
   }
@@ -184,6 +184,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         onClose={onHide}
         closable
         className='!h-[calc(100vh-16px)] !max-w-[630px] !p-0'
+        wrapperClassName='z-[1000]'
       >
         <div className='flex h-full flex-col'>
           <div className='ml-6 mt-6 text-base font-semibold text-text-primary'>

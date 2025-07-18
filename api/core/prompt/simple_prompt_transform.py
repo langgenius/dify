@@ -11,7 +11,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContent,
+    PromptMessageContentUnionTypes,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -28,19 +28,6 @@ if TYPE_CHECKING:
 class ModelMode(enum.StrEnum):
     COMPLETION = "completion"
     CHAT = "chat"
-
-    @classmethod
-    def value_of(cls, value: str) -> "ModelMode":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid mode value {value}")
 
 
 prompt_file_contents: dict[str, Any] = {}
@@ -65,7 +52,7 @@ class SimplePromptTransform(PromptTransform):
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
-        model_mode = ModelMode.value_of(model_config.mode)
+        model_mode = ModelMode(model_config.mode)
         if model_mode == ModelMode.CHAT:
             prompt_messages, stops = self._get_chat_model_prompt_messages(
                 app_mode=app_mode,
@@ -277,7 +264,7 @@ class SimplePromptTransform(PromptTransform):
         image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> UserPromptMessage:
         if files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
                 prompt_message_contents.append(

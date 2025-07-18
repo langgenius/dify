@@ -28,6 +28,8 @@ const translation = {
       delete: 'Видалити',
       enableWarning: 'Архівований файл неможливо активувати',
       sync: 'Синхронізувати',
+      pause: 'Пауза',
+      resume: 'Продовжити',
     },
     index: {
       enable: 'Активувати',
@@ -367,6 +369,7 @@ const translation = {
     empty: 'Шматок не знайдено',
     chunks_other: 'ШМАТКИ',
     editedAt: 'За редакцією',
+    dateTimeFormat: 'DD.MM.YYYY HH:mm',
     searchResults_zero: 'РЕЗУЛЬТАТ',
     collapseChunks: 'Згортання шматків',
     childChunkAdded: 'Додано 1 дочірній фрагмент',
@@ -389,6 +392,8 @@ const translation = {
     regenerationSuccessMessage: 'Ви можете закрити це вікно.',
     expandChunks: 'Розгортання фрагментів',
     regenerationConfirmTitle: 'Хочете регенерувати дитячі шматки?',
+    keywordEmpty: 'Ключове слово не може бути порожнім',
+    keywordDuplicate: 'Ключове слово вже існує',
   },
 }
 

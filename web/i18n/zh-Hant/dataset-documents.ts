@@ -28,6 +28,8 @@ const translation = {
       delete: '刪除',
       enableWarning: '歸檔的檔案無法啟用',
       sync: '同步',
+      resume: '恢復',
+      pause: '暫停',
     },
     index: {
       enable: '啟用中',
@@ -355,7 +357,7 @@ const translation = {
     addChunk: '添加數據塊',
     addChildChunk: '添加子塊',
     addAnother: '添加另一個',
-    childChunkAdded: '添加了1個子塊',
+    childChunkAdded: '添加了 1 個子塊',
     editParentChunk: '編輯父塊（Edit Parent Chunk）',
     editChildChunk: '編輯子塊',
     chunkDetail: '數據塊詳細資訊',
@@ -367,6 +369,7 @@ const translation = {
     expandChunks: '擴展塊',
     chunkAdded: '添加了 1 個數據塊',
     editedAt: '編輯於',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     regeneratingMessage: '這可能需要一些時間，請稍候...',
     editChunk: '編輯數據塊',
     regenerationSuccessMessage: '您可以關閉此視窗。',
@@ -388,6 +391,8 @@ const translation = {
     searchResults_zero: '結果',
     parentChunks_other: '父塊',
     newChildChunk: '新兒童塊',
+    keywordEmpty: '關鍵字不能為空',
+    keywordDuplicate: '關鍵字已經存在',
   },
 }
 

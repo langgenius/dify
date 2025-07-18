@@ -3,10 +3,11 @@ import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/ap
 import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderI18nObject } from '@/hooks/use-i18n'
+import { renderI18nObject } from '@/i18n'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   defaultValue: {
+    version: '2',
   },
   getAvailablePrevNodes(isChatMode) {
     return isChatMode
@@ -60,15 +61,28 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
           const schemas = toolValue.schemas || []
           const userSettings = toolValue.settings
           const reasoningConfig = toolValue.parameters
+          const version = payload.version
           schemas.forEach((schema: any) => {
             if (schema?.required) {
-              if (schema.form === 'form' && !userSettings[schema.name]?.value) {
+              if (schema.form === 'form' && !version && !userSettings[schema.name]?.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'llm' && reasoningConfig[schema.name].auto === 0 && !userSettings[schema.name]?.value) {
+              if (schema.form === 'form' && version && !userSettings[schema.name]?.value.value) {
+                return {
+                  isValid: false,
+                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                }
+              }
+              if (schema.form === 'llm' && !version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
+                return {
+                  isValid: false,
+                  errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
+                }
+              }
+              if (schema.form === 'llm' && version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
@@ -97,7 +111,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         }
         // check form of tools
         else {
-          let validState = {
+          const validState = {
             isValid: true,
             errorMessage: '',
           }
@@ -108,13 +122,13 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
             schemas.forEach((schema: any) => {
               if (schema?.required) {
                 if (schema.form === 'form' && !userSettings[schema.name]?.value) {
-                  return validState = {
+                  return {
                     isValid: false,
                     errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                   }
                 }
                 if (schema.form === 'llm' && reasoningConfig[schema.name]?.auto === 0 && !reasoningConfig[schema.name]?.value) {
-                  return validState = {
+                  return {
                     isValid: false,
                     errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                   }
@@ -126,7 +140,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         }
       }
       // common params
-      if (param.required && !payload.agent_parameters?.[param.name]?.value) {
+      if (param.required && !(payload.agent_parameters?.[param.name]?.value || param.default)) {
         return {
           isValid: false,
           errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),

@@ -7,7 +7,7 @@ import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
@@ -108,7 +108,7 @@ const EndpointCard = ({
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     },
   })
-  const handleUpdate = (state: any) => updateEndpoint({
+  const handleUpdate = (state: Record<string, any>) => updateEndpoint({
     endpointID,
     state,
   })
@@ -130,7 +130,7 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
+  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
 
   return (
     <div className='rounded-xl bg-background-section-burn p-0.5'>
@@ -149,7 +149,7 @@ const EndpointCard = ({
             </ActionButton>
           </div>
         </div>
-        {data.declaration.endpoints.map((endpoint, index) => (
+        {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
           <div key={index} className='flex h-6 items-center'>
             <div className='system-xs-regular w-12 shrink-0 text-text-tertiary'>{endpoint.method}</div>
             <div className='group/item system-xs-regular flex grow items-center truncate text-text-secondary'>

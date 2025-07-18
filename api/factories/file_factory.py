@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
@@ -52,6 +53,7 @@ def build_from_mapping(
     mapping: Mapping[str, Any],
     tenant_id: str,
     config: FileUploadConfig | None = None,
+    strict_type_validation: bool = False,
 ) -> File:
     transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
 
@@ -69,6 +71,7 @@ def build_from_mapping(
         mapping=mapping,
         tenant_id=tenant_id,
         transfer_method=transfer_method,
+        strict_type_validation=strict_type_validation,
     )
 
     if config and not _is_file_valid_with_config(
@@ -87,12 +90,16 @@ def build_from_mappings(
     mappings: Sequence[Mapping[str, Any]],
     config: FileUploadConfig | None = None,
     tenant_id: str,
+    strict_type_validation: bool = False,
 ) -> Sequence[File]:
+    # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
+    # Implement batch processing to reduce database load when handling multiple files.
     files = [
         build_from_mapping(
             mapping=mapping,
             tenant_id=tenant_id,
             config=config,
+            strict_type_validation=strict_type_validation,
         )
         for mapping in mappings
     ]
@@ -116,6 +123,7 @@ def _build_from_local_file(
     mapping: Mapping[str, Any],
     tenant_id: str,
     transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
 ) -> File:
     upload_file_id = mapping.get("upload_file_id")
     if not upload_file_id:
@@ -134,9 +142,15 @@ def _build_from_local_file(
     if row is None:
         raise ValueError("Invalid upload file")
 
-    file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
-    if file_type.value != mapping.get("type", "custom"):
+    detected_file_type = _standardize_file_type(extension="." + row.extension, mime_type=row.mime_type)
+    specified_type = mapping.get("type", "custom")
+
+    if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    file_type = (
+        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
+    )
 
     return File(
         id=mapping.get("id"),
@@ -158,6 +172,7 @@ def _build_from_remote_url(
     mapping: Mapping[str, Any],
     tenant_id: str,
     transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
 ) -> File:
     upload_file_id = mapping.get("upload_file_id")
     if upload_file_id:
@@ -174,9 +189,20 @@ def _build_from_remote_url(
         if upload_file is None:
             raise ValueError("Invalid upload file")
 
-        file_type = _standardize_file_type(extension="." + upload_file.extension, mime_type=upload_file.mime_type)
-        if file_type.value != mapping.get("type", "custom"):
+        detected_file_type = _standardize_file_type(
+            extension="." + upload_file.extension, mime_type=upload_file.mime_type
+        )
+
+        specified_type = mapping.get("type")
+
+        if strict_type_validation and specified_type and detected_file_type.value != specified_type:
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+        file_type = (
+            FileType(specified_type)
+            if specified_type and specified_type != FileType.CUSTOM.value
+            else detected_file_type
+        )
 
         return File(
             id=mapping.get("id"),
@@ -237,6 +263,7 @@ def _build_from_tool_file(
     mapping: Mapping[str, Any],
     tenant_id: str,
     transfer_method: FileTransferMethod,
+    strict_type_validation: bool = False,
 ) -> File:
     tool_file = (
         db.session.query(ToolFile)
@@ -252,7 +279,16 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
+    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=tool_file.mimetype)
+
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
+        raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    file_type = (
+        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
+    )
 
     return File(
         id=mapping.get("id"),
@@ -344,3 +380,75 @@ def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:
 
 def get_file_type_by_mime_type(mime_type: str) -> FileType:
     return _get_file_type_by_mimetype(mime_type) or FileType.CUSTOM
+
+
+class StorageKeyLoader:
+    """FileKeyLoader load the storage key from database for a list of files.
+    This loader is batched, the database query count is constant regardless of the input size.
+    """
+
+    def __init__(self, session: Session, tenant_id: str) -> None:
+        self._session = session
+        self._tenant_id = tenant_id
+
+    def _load_upload_files(self, upload_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, UploadFile]:
+        stmt = select(UploadFile).where(
+            UploadFile.id.in_(upload_file_ids),
+            UploadFile.tenant_id == self._tenant_id,
+        )
+
+        return {uuid.UUID(i.id): i for i in self._session.scalars(stmt)}
+
+    def _load_tool_files(self, tool_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, ToolFile]:
+        stmt = select(ToolFile).where(
+            ToolFile.id.in_(tool_file_ids),
+            ToolFile.tenant_id == self._tenant_id,
+        )
+        return {uuid.UUID(i.id): i for i in self._session.scalars(stmt)}
+
+    def load_storage_keys(self, files: Sequence[File]):
+        """Loads storage keys for a sequence of files by retrieving the corresponding
+        `UploadFile` or `ToolFile` records from the database based on their transfer method.
+
+        This method doesn't modify the input sequence structure but updates the `_storage_key`
+        property of each file object by extracting the relevant key from its database record.
+
+        Performance note: This is a batched operation where database query count remains constant
+        regardless of input size. However, for optimal performance, input sequences should contain
+        fewer than 1000 files. For larger collections, split into smaller batches and process each
+        batch separately.
+        """
+
+        upload_file_ids: list[uuid.UUID] = []
+        tool_file_ids: list[uuid.UUID] = []
+        for file in files:
+            related_model_id = file.related_id
+            if file.related_id is None:
+                raise ValueError("file id should not be None.")
+            if file.tenant_id != self._tenant_id:
+                err_msg = (
+                    f"invalid file, expected tenant_id={self._tenant_id}, "
+                    f"got tenant_id={file.tenant_id}, file_id={file.id}, related_model_id={related_model_id}"
+                )
+                raise ValueError(err_msg)
+            model_id = uuid.UUID(related_model_id)
+
+            if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
+                upload_file_ids.append(model_id)
+            elif file.transfer_method == FileTransferMethod.TOOL_FILE:
+                tool_file_ids.append(model_id)
+
+        tool_files = self._load_tool_files(tool_file_ids)
+        upload_files = self._load_upload_files(upload_file_ids)
+        for file in files:
+            model_id = uuid.UUID(file.related_id)
+            if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
+                upload_file_row = upload_files.get(model_id)
+                if upload_file_row is None:
+                    raise ValueError(f"Upload file not found for id: {model_id}")
+                file._storage_key = upload_file_row.key
+            elif file.transfer_method == FileTransferMethod.TOOL_FILE:
+                tool_file_row = tool_files.get(model_id)
+                if tool_file_row is None:
+                    raise ValueError(f"Tool file not found for id: {model_id}")
+                file._storage_key = tool_file_row.file_key

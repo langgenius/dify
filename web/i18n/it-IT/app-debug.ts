@@ -314,6 +314,7 @@ const translation = {
     'inputPlaceholder': 'Per favore inserisci',
     'content': 'Contenuto',
     'required': 'Richiesto',
+    'hide': 'Nascondi',
     'errorMsg': {
       varNameRequired: 'Il nome della variabile è richiesto',
       labelNameRequired: 'Il nome dell\'etichetta è richiesto',
@@ -364,6 +365,7 @@ const translation = {
     placeholder:
       'Scrivi qui il tuo messaggio introduttivo, puoi usare variabili, prova a scrivere {{variable}}.',
     openingQuestion: 'Domande iniziali',
+    openingQuestionPlaceholder: 'Puoi usare variabili, prova a digitare {{variable}}.',
     noDataPlaceHolder:
       'Iniziare la conversazione con l\'utente può aiutare l\'IA a stabilire un legame più stretto con loro nelle applicazioni conversazionali.',
     varTip: 'Puoi usare variabili, prova a scrivere {{variable}}',

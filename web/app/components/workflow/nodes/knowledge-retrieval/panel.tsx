@@ -16,9 +16,7 @@ import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -40,14 +38,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     selectedDatasets,
     selectedDatasetsLoaded,
     handleOnDatasetsChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    query,
-    setQuery,
-    runResult,
     rerankModelOpen,
     setRerankModelOpen,
     handleAddCondition,
@@ -81,6 +71,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
+          required
         >
           <VarReferencePicker
             nodeId={id}
@@ -94,6 +85,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
+          required
           operations={
             <div className='flex items-center space-x-1'>
               <RetrievalConfig
@@ -112,7 +104,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='h-3 w-px bg-gray-200'></div>)}
+              {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
@@ -189,28 +181,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
           </>
         </OutputVars>
-        {isShowSingleRun && (
-          <BeforeRunForm
-            nodeName={inputs.title}
-            onHide={hideSingleRun}
-            forms={[
-              {
-                inputs: [{
-                  label: t(`${i18nPrefix}.queryVariable`)!,
-                  variable: 'query',
-                  type: InputVarType.paragraph,
-                  required: true,
-                }],
-                values: { query },
-                onChange: keyValue => setQuery((keyValue as any).query),
-              },
-            ]}
-            runningStatus={runningStatus}
-            onRun={handleRun}
-            onStop={handleStop}
-            result={<ResultPanel {...runResult} showSteps={false} />}
-          />
-        )}
       </div>
     </div>
   )

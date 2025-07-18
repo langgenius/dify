@@ -1,3 +1,4 @@
+import type { BasicPlan } from '@/app/components/billing/type'
 import { Plan, type PlanInfo, Priority } from '@/app/components/billing/type'
 
 const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate'
@@ -10,7 +11,7 @@ export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
 export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
 export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
 
-export const ALL_PLANS: Record<Plan, PlanInfo> = {
+export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
   sandbox: {
     level: 1,
     price: 0,
@@ -22,6 +23,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: '50MB',
     documentsUploadQuota: 0,
     documentsRequestQuota: 10,
+    apiRateLimit: 5000,
     documentProcessingPriority: Priority.standard,
     messageRequest: 200,
     annotatedResponse: 10,
@@ -38,6 +40,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: '5GB',
     documentsUploadQuota: 0,
     documentsRequestQuota: 100,
+    apiRateLimit: NUM_INFINITE,
     documentProcessingPriority: Priority.priority,
     messageRequest: 5000,
     annotatedResponse: 2000,
@@ -54,6 +57,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: '20GB',
     documentsUploadQuota: 0,
     documentsRequestQuota: 1000,
+    apiRateLimit: NUM_INFINITE,
     documentProcessingPriority: Priority.topPriority,
     messageRequest: 10000,
     annotatedResponse: 5000,
@@ -62,7 +66,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
 }
 
 export const defaultPlan = {
-  type: Plan.sandbox,
+  type: Plan.sandbox as BasicPlan,
   usage: {
     documents: 50,
     vectorSpace: 1,

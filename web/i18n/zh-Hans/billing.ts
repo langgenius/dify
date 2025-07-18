@@ -54,6 +54,10 @@ const translation = {
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
     documentsRequestQuota: '{{count,number}}/分钟 知识库请求频率限制',
     documentsRequestQuotaTooltip: '指每分钟内，一个空间在知识库中可执行的操作总数，包括数据集的创建、删除、更新，文档的上传、修改、归档，以及知识库查询等，用于评估知识库请求的性能。例如，Sandbox 用户在 1 分钟内连续执行 10 次命中测试，其工作区将在接下来的 1 分钟内无法继续执行以下操作：数据集的创建、删除、更新，文档的上传、修改等操作。',
+    apiRateLimit: 'API 请求频率限制',
+    apiRateLimitUnit: '{{count,number}} 次/天',
+    unlimitedApiRate: 'API 请求频率无限制',
+    apiRateLimitTooltip: 'API 请求频率限制涵盖所有通过 Dify API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。',
     documentProcessingPriority: '文档处理',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
@@ -89,7 +93,7 @@ const translation = {
     messageRequest: {
       title: '{{count,number}} 条消息额度',
       titlePerMonth: '{{count,number}} 条消息额度/月',
-      tooltip: '为不同方案提供基于OpenAl模型的消息响应额度。',
+      tooltip: '消息额度旨在帮助您便捷地试用 Dify 中的各类 OpenAI 模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 OpenAI API 密钥。',
     },
     annotatedResponse: {
       title: '{{count,number}} 个标注回复数',
@@ -180,6 +184,7 @@ const translation = {
     fullTipLine2: '标注更多对话。',
     quotaTitle: '标注的配额',
   },
+  teamMembers: '团队成员',
 }
 
 export default translation

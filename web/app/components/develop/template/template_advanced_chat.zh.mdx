@@ -56,7 +56,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
-        由开发者定义规则，需保证用户标识在应用内唯一。
+        由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
@@ -153,7 +153,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `data` (object) 详细内容
         - `id` (string) workflow 执行 ID
         - `workflow_id` (string) 关联 Workflow ID
-        - `sequence_number` (int) 自增序号，App 内自增，从 1 开始
         - `created_at` (timestamp) 开始时间
     - `event: node_started` node 开始执行
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
@@ -297,7 +296,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### 流式模式
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -362,7 +361,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -402,7 +401,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### Request Body
   - `user` (string) Required
-    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
   ### Response
   - `result` (string) 固定返回 success
   </Col>
@@ -494,6 +493,71 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/app/feedbacks'
+  method='GET'
+  title='获取APP的消息点赞和反馈'
+  name='#app-feedbacks'
+/>
+<Row>
+  <Col>
+    获取应用的终端用户反馈、点赞。
+
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+       （选填）分页，默认值：1
+      </Property>
+    </Properties>
+
+    <Properties>
+      <Property name='limit' type='string' key='limit'>
+       （选填）每页数量，默认值：20
+      </Property>
+    </Properties>
+
+    ### Response
+    - `data` (List) 返回该APP的点赞、反馈列表。
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+        {
+        "data": [
+            {
+                "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                "rating": "like",
+                "content": "message feedback information-3",
+                "from_source": "user",
+                "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                "from_account_id": null,
+                "created_at": "2025-04-24T09:24:38",
+                "updated_at": "2025-04-24T09:24:38"
+            }
+        ]
+        }
+
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/messages/{message_id}/suggested'
   method='GET'
   title='获取下一轮建议问题列表'
@@ -523,7 +587,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123 \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested'?user=abc-123 \
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     ```
@@ -578,22 +642,22 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     ### Response
     - `data` (array[object])  消息列表
-    - `id`  (string) 消息 ID
-    - `conversation_id` (string)  会话 ID
-    - `inputs` (object) 用户输入参数。
-    - `query`  (string) 用户输入 / 提问内容。
-    - `message_files` (array[object]) 消息文件
-      - `id` (string) ID
-      - `type` (string) 文件类型，image 图片
-      - `url` (string) 预览图片地址
-      - `belongs_to` (string) 文件归属方，user 或 assistant
-    - `answer` (string)  回答消息内容
-    - `created_at`  (timestamp) 创建时间
-    - `feedback` (object) 反馈信息
-      - `rating` (string) 点赞 like / 点踩 dislike
-    - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
-  - `has_more` (bool) 是否存在下一页
-  - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
+      - `id`  (string) 消息 ID
+      - `conversation_id` (string)  会话 ID
+      - `inputs` (object) 用户输入参数。
+      - `query`  (string) 用户输入 / 提问内容。
+      - `message_files` (array[object]) 消息文件
+        - `id` (string) ID
+        - `type` (string) 文件类型，image 图片
+        - `url` (string) 预览图片地址
+        - `belongs_to` (string) 文件归属方，user 或 assistant
+      - `answer` (string)  回答消息内容
+      - `created_at`  (timestamp) 创建时间
+      - `feedback` (object) 反馈信息
+        - `rating` (string) 点赞 like / 点踩 dislike
+      - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
+    - `has_more` (bool) 是否存在下一页
+    - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
   </Col>
   <Col sticky>
     ### Request Example
@@ -799,10 +863,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
 
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -873,6 +935,106 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "introduction": "",
       "created_at": 1732731141,
       "updated_at": 1732734510
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations/:conversation_id/variables'
+  method='GET'
+  title='获取对话变量'
+  name='#conversation-variables'
+/>
+<Row>
+  <Col>
+    从特定对话中检索变量。此端点对于提取对话过程中捕获的结构化数据非常有用。
+
+    ### 路径参数
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        要从中检索变量的对话ID。
+      </Property>
+    </Properties>
+
+    ### 查询参数
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识符，由开发人员定义的规则，在应用程序内必须唯一。
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+        （选填）当前页最后面一条记录的 ID，默认 null
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
+      </Property>
+    </Properties>
+
+    ### 响应
+
+    - `limit` (int) 每页项目数
+    - `has_more` (bool) 是否有更多项目
+    - `data` (array[object]) 变量列表
+      - `id` (string) 变量 ID
+      - `name` (string) 变量名称
+      - `value_type` (string) 变量类型（字符串、数字、布尔等）
+      - `value` (string) 变量值
+      - `description` (string) 变量描述
+      - `created_at` (int) 创建时间戳
+      - `updated_at` (int) 最后更新时间戳
+
+    ### 错误
+    - 404, `conversation_not_exists`, 对话不存在
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Request with variable name filter">
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 100,
+      "has_more": false,
+      "data": [
+        {
+          "id": "variable-uuid-1",
+          "name": "customer_name",
+          "value_type": "string",
+          "value": "John Doe",
+          "description": "客户名称（从对话中提取）",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        },
+        {
+          "id": "variable-uuid-2",
+          "name": "order_details",
+          "value_type": "json",
+          "value": "{\"product\":\"Widget\",\"quantity\":5,\"price\":19.99}",
+          "description": "客户的订单详情",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        }
+      ]
     }
     ```
     </CodeGroup>
@@ -967,7 +1129,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "user": "abc-123"
     }'
     ```
-    
+
     </CodeGroup>
 
     <CodeGroup title="headers">
@@ -1010,7 +1172,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "advanced-chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -1036,6 +1200,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `enabled` (bool) 是否开启
     - `speech_to_text` (object) 语音转文本
       - `enabled` (bool) 是否开启
+    - `text_to_speech` (object) 文本转语音
+      - `enabled` (bool) 是否开启
+      - `voice` (string) 语音类型
+      - `language` (string) 语言
+      - `autoPlay` (string) 自动播放
+        - `enabled`  开启
+        - `disabled` 关闭
     - `retriever_resource` (object) 引用和归属
       - `enabled` (bool) 是否开启
     - `annotation_reply` (object) 标记回复
@@ -1130,15 +1301,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-  用于获取工具icon
+  用于获取工具 icon
   ### Response
   - `tool_icons`(object[string]) 工具图标
     - `工具名称` (string)
       - `icon` (object|string)
         - (object) 图标
-          - `background` (string) hex格式的背景色
+          - `background` (string) hex 格式的背景色
           - `content`(string) emoji
-        - (string) 图标URL
+        - (string) 图标 URL
   </Col>
   <Col>
   <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1166,7 +1337,63 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 </Row>
 ---
 
----
+<Heading
+  url='/site'
+  method='GET'
+  title='获取应用 WebApp 设置'
+  name='#site'
+/>
+<Row>
+  <Col>
+  用于获取应用的 WebApp 设置
+  ### Response
+  - `title` (string) WebApp 名称
+  - `chat_color_theme` (string) 聊天颜色主题，hex 格式
+  - `chat_color_theme_inverted` (bool) 聊天颜色主题是否反转
+  - `icon_type` (string) 图标类型，`emoji`-表情，`image`-图片
+  - `icon` (string) 图标，如果是 `emoji` 类型，则是 emoji 表情符号，如果是 `image` 类型，则是图片 URL
+  - `icon_background` (string) hex 格式的背景色
+  - `icon_url` (string) 图标 URL
+  - `description` (string) 描述
+  - `copyright` (string) 版权信息
+  - `privacy_policy` (string) 隐私政策链接
+  - `custom_disclaimer` (string) 自定义免责声明
+  - `default_language` (string) 默认语言
+  - `show_workflow_steps` (bool) 是否显示工作流详情
+  - `use_icon_as_answer_icon` (bool) 是否使用 WebApp 图标替换聊天中的 🤖
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/site' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "chat_color_theme": "#ff4a4a",
+      "chat_color_theme_inverted": false,
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+      "use_icon_as_answer_icon": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
 
 <Heading
   url='/apps/annotations'
@@ -1191,10 +1418,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \
+    curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
@@ -1245,10 +1472,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="POST"
       label="/apps/annotations"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \
+    curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1261,13 +1488,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1301,10 +1526,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1317,13 +1542,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1351,17 +1574,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+      targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
 
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {"result": "success"}
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1381,11 +1604,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='action' type='string' key='action'>
         动作，只能是 'enable' 或 'disable'
       </Property>
-      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
-        指定的嵌入模型提供商, 必须先在系统内设定好接入的模型，对应的是provider字段
+      <Property name='embedding_provider_name' type='string' key='embedding_provider_name'>
+        指定的嵌入模型提供商，必须先在系统内设定好接入的模型，对应的是 provider 字段
       </Property>
-      <Property name='embedding_model' type='string' key='embedding_model'>
-        指定的嵌入模型，对应的是model字段
+      <Property name='embedding_model_name' type='string' key='embedding_model_name'>
+        指定的嵌入模型，对应的是 model 字段
       </Property>
       <Property name='score_threshold' type='number' key='score_threshold'>
         相似度阈值，当相似度大于该阈值时，系统会自动回复，否则不回复
@@ -1393,12 +1616,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </Properties>
   </Col>
   <Col sticky>
-    嵌入模型的提供商和模型名称可以通过以下接口获取：v1/workspaces/current/models/model-types/text-embedding， 具体见：通过 API 维护知识库。 使用的Authorization是Dataset的API Token。
+    嵌入模型的提供商和模型名称可以通过以下接口获取：v1/workspaces/current/models/model-types/text-embedding，具体见：通过 API 维护知识库。使用的 Authorization 是 Dataset 的 API Token。
     <CodeGroup
       title="Request"
       tag="POST"
       label="/apps/annotation-reply/{action}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST 'https://api.dify.ai/v1/apps/annotation-reply/{action}' \
@@ -1448,10 +1671,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \
+    curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>

@@ -1,5 +1,5 @@
 'use client'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightLine, RiFolder6Line } from '@remixicon/react'
 import FilePreview from '../file-preview'
@@ -20,6 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 
 type IStepOneProps = {
   datasetId?: string
@@ -45,7 +46,8 @@ type IStepOneProps = {
 type NotionConnectorProps = {
   onSetting: () => void
 }
-export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
+export const NotionConnector = (props: NotionConnectorProps) => {
+  const { onSetting } = props
   const { t } = useTranslation()
 
   return (
@@ -93,24 +95,29 @@ const StepOne = ({
   const modalShowHandle = () => setShowModal(true)
   const modalCloseHandle = () => setShowModal(false)
 
-  const updateCurrentFile = (file: File) => {
+  const updateCurrentFile = useCallback((file: File) => {
     setCurrentFile(file)
-  }
-  const hideFilePreview = () => {
+  }, [])
+
+  const hideFilePreview = useCallback(() => {
     setCurrentFile(undefined)
-  }
+  }, [])
 
-  const updateCurrentPage = (page: NotionPage) => {
+  const updateCurrentPage = useCallback((page: NotionPage) => {
     setCurrentNotionPage(page)
-  }
+  }, [])
 
-  const hideNotionPagePreview = () => {
+  const hideNotionPagePreview = useCallback(() => {
     setCurrentNotionPage(undefined)
-  }
+  }, [])
 
-  const hideWebsitePreview = () => {
+  const updateWebsite = useCallback((website: CrawlResultItem) => {
+    setCurrentWebsite(website)
+  }, [])
+
+  const hideWebsitePreview = useCallback(() => {
     setCurrentWebsite(undefined)
-  }
+  }, [])
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
   const isInCreatePage = shouldShowDataSourceTypeList
@@ -126,9 +133,7 @@ const StepOne = ({
       return true
     if (files.some(file => !file.file.id))
       return true
-    if (isShowVectorSpaceFull)
-      return true
-    return false
+    return isShowVectorSpaceFull
   }, [files, isShowVectorSpaceFull])
 
   return (
@@ -139,7 +144,7 @@ const StepOne = ({
             <div className={classNames(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'text-text-secondary system-md-semibold')}>
+                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                 )
@@ -158,13 +163,13 @@ const StepOne = ({
                         if (dataSourceTypeDisable)
                           return
                         changeType(DataSourceType.FILE)
-                        hideFilePreview()
                         hideNotionPagePreview()
+                        hideWebsitePreview()
                       }}
                     >
                       <span className={cn(s.datasetIcon)} />
                       <span
-                        title={t('datasetCreation.stepOne.dataSourceType.file')}
+                        title={t('datasetCreation.stepOne.dataSourceType.file')!}
                         className='truncate'
                       >
                         {t('datasetCreation.stepOne.dataSourceType.file')}
@@ -182,34 +187,42 @@ const StepOne = ({
                           return
                         changeType(DataSourceType.NOTION)
                         hideFilePreview()
-                        hideNotionPagePreview()
+                        hideWebsitePreview()
                       }}
                     >
                       <span className={cn(s.datasetIcon, s.notion)} />
                       <span
-                        title={t('datasetCreation.stepOne.dataSourceType.notion')}
+                        title={t('datasetCreation.stepOne.dataSourceType.notion')!}
                         className='truncate'
                       >
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
                     </div>
-                    <div
-                      className={cn(
-                        s.dataSourceItem,
-                        'system-sm-medium',
-                        dataSourceType === DataSourceType.WEB && s.active,
-                        dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
-                      )}
-                      onClick={() => changeType(DataSourceType.WEB)}
-                    >
-                      <span className={cn(s.datasetIcon, s.web)} />
-                      <span
-                        title={t('datasetCreation.stepOne.dataSourceType.web')}
-                        className='truncate'
+                    {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
+                      <div
+                        className={cn(
+                          s.dataSourceItem,
+                          'system-sm-medium',
+                          dataSourceType === DataSourceType.WEB && s.active,
+                          dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
+                        )}
+                        onClick={() => {
+                          if (dataSourceTypeDisable)
+                            return
+                          changeType(DataSourceType.WEB)
+                          hideFilePreview()
+                          hideNotionPagePreview()
+                        }}
                       >
-                        {t('datasetCreation.stepOne.dataSourceType.web')}
-                      </span>
-                    </div>
+                        <span className={cn(s.datasetIcon, s.web)} />
+                        <span
+                          title={t('datasetCreation.stepOne.dataSourceType.web')!}
+                          className='truncate'
+                        >
+                          {t('datasetCreation.stepOne.dataSourceType.web')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )
               }
@@ -274,7 +287,7 @@ const StepOne = ({
                 <>
                   <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
                     <Website
-                      onPreview={setCurrentWebsite}
+                      onPreview={updateWebsite}
                       checkedCrawlResult={websitePages}
                       onCheckedCrawlResultChange={updateWebsitePages}
                       onCrawlProviderChange={onWebsiteCrawlProviderChange}
@@ -301,7 +314,7 @@ const StepOne = ({
               )}
               {!datasetId && (
                 <>
-                  <div className={s.dividerLine} />
+                  <div className='my-8 h-px max-w-[640px] bg-divider-regular' />
                   <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
                     <RiFolder6Line className="mr-1 size-4" />
                     {t('datasetCreation.stepOne.emptyDatasetCreation')}

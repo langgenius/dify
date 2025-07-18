@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'بیشتر بدانید',
       description: ' درباره روش بازیابی.',
       longDescription: ' درباره روش بازیابی، می‌توانید در هر زمانی در تنظیمات دانش این را تغییر دهید.',
+      method: 'روش بازیابی',
     },
     save: 'ذخیره',
     externalKnowledgeAPI: 'API دانش خارجی',
@@ -35,6 +36,7 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'برای تنزل رتبه از HQ به ECO در دسترس نیست',
     helpText: 'یاد بگیرید که چگونه یک توضیحات مجموعه داده خوب بنویسید.',
     upgradeHighQualityTip: 'پس از ارتقاء به حالت کیفیت بالا، بازگشت به حالت اقتصادی در دسترس نیست',
+    searchModel: 'جستجوی مدل',
   },
 }
 

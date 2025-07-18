@@ -1,12 +1,12 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
 
-# ワークフローアプリAPI
+# ワークフローアプリ API
 
-ワークフローアプリケーションは、セッションをサポートせず、翻訳、記事作成、要約AIなどに最適です。
+ワークフローアプリケーションは、セッションをサポートせず、翻訳、記事作成、要約 AI などに最適です。
 
 <div>
-  ### ベースURL
+  ### ベース URL
   <CodeGroup title="コード" targetCode={props.appDetail.api_base_url}>
     ```javascript
     ```
@@ -14,10 +14,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
   ### 認証
 
-  サービスAPIは`API-Key`認証を使用します。
-  <i>**APIキーの漏洩を防ぐため、APIキーはクライアント側で共有または保存せず、サーバー側で保存することを強くお勧めします。**</i>
+  サービス API は `API-Key` 認証を使用します。
+  <i>**API キーの漏洩を防ぐため、API キーはクライアント側で共有または保存せず、サーバー側で保存することを強くお勧めします。**</i>
 
-  すべてのAPIリクエストにおいて、以下のように`Authorization`HTTPヘッダーにAPIキーを含めてください：
+  すべての API リクエストにおいて、以下のように `Authorization`HTTP ヘッダーに API キーを含めてください：
 
   <CodeGroup title="コード">
     ```javascript
@@ -61,7 +61,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         応答の返却モードを指定します。サポートされているモード：
         - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
         - `blocking` ブロッキングモード、実行完了後に結果を返します。（プロセスが長い場合、リクエストが中断される可能性があります）
-        <i>Cloudflareの制限により、100秒後に応答がない場合、リクエストは中断されます。</i>
+        <i>Cloudflare の制限により、100 秒後に応答がない場合、リクエストは中断されます。</i>
       - `user` (string) 必須
         ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
         アプリケーション内で開発者によって一意に定義される必要があります。
@@ -69,67 +69,73 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         
 
     ### 応答
-    `response_mode`が`blocking`の場合、CompletionResponseオブジェクトを返します。
-    `response_mode`が`streaming`の場合、ChunkCompletionResponseストリームを返します。
+    `response_mode`が`blocking`の場合、CompletionResponse オブジェクトを返します。
+    `response_mode`が`streaming`の場合、ChunkCompletionResponse ストリームを返します。
 
     ### CompletionResponse
     アプリの結果を返します。`Content-Type`は`application/json`です。
-    - `workflow_run_id` (string) ワークフロー実行の一意のID
-    - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+    - `workflow_run_id` (string) ワークフロー実行の一意の ID
+    - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
     - `data` (object) 結果の詳細
-      - `id` (string) ワークフロー実行のID
-      - `workflow_id` (string) 関連するワークフローのID
+      - `id` (string) ワークフロー実行の ID
+      - `workflow_id` (string) 関連するワークフローの ID
       - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
       - `outputs` (json) オプションの出力内容
       - `error` (string) オプションのエラー理由
       - `elapsed_time` (float) オプションの使用時間（秒）
       - `total_tokens` (int) オプションの使用トークン数
-      - `total_steps` (int) デフォルト0
+      - `total_steps` (int) デフォルト 0
       - `created_at` (timestamp) 開始時間
       - `finished_at` (timestamp) 終了時間
 
     ### ChunkCompletionResponse
     アプリによって出力されたストリームチャンクを返します。`Content-Type`は`text/event-stream`です。
-    各ストリーミングチャンクは`data:`で始まり、2つの改行文字`\n\n`で区切られます。以下のように表示されます：
+    各ストリーミングチャンクは`data:`で始まり、2 つの改行文字`\n\n`で区切られます。以下のように表示されます：
     <CodeGroup>
     ```streaming {{ title: '応答' }}
-    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
     ```
     </CodeGroup>
     ストリーミングチャンクの構造は`event`に応じて異なります：
     - `event: workflow_started` ワークフローが実行を開始
-      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
-      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
       - `event` (string) `workflow_started`に固定
       - `data` (object) 詳細
-        - `id` (string) ワークフロー実行の一意のID
-        - `workflow_id` (string) 関連するワークフローのID
-        - `sequence_number` (int) 自己増加シリアル番号、アプリ内で自己増加し、1から始まります
+        - `id` (string) ワークフロー実行の一意の ID
+        - `workflow_id` (string) 関連するワークフローの ID
         - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
     - `event: node_started` ノード実行開始
-      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
-      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
       - `event` (string) `node_started`に固定
       - `data` (object) 詳細
-        - `id` (string) ワークフロー実行の一意のID
-        - `node_id` (string) ノードのID
+        - `id` (string) ワークフロー実行の一意の ID
+        - `node_id` (string) ノードの ID
         - `node_type` (string) ノードのタイプ
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
-        - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
+        - `predecessor_node_id` (string) オプションのプレフィックスノード ID、キャンバス表示実行パスに使用
         - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
+    - `event: text_chunk` テキストフラグメント
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
+      - `event` (string) `text_chunk`に固定
+      - `data` (object) 詳細
+        - `text` (string) テキスト内容
+        - `from_variable_selector` (array) テキスト生成元パス（開発者がどのノードのどの変数から生成されたかを理解するための情報）
     - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
-      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
-      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
       - `event` (string) `node_finished`に固定
       - `data` (object) 詳細
-        - `id` (string) ワークフロー実行の一意のID
-        - `node_id` (string) ノードのID
+        - `id` (string) ワークフロー実行の一意の ID
+        - `node_id` (string) ノードの ID
         - `node_type` (string) ノードのタイプ
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
-        - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
+        - `predecessor_node_id` (string) オプションのプレフィックスノード ID、キャンバス表示実行パスに使用
         - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `process_data` (json) オプションのノードプロセスデータ
         - `outputs` (json) オプションの出力内容
@@ -142,31 +148,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - `currency` (string) オプション 例：`USD` / `RMB`
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
     - `event: workflow_finished` ワークフロー実行終了、同じイベントで異なる状態で成功または失敗
-      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
-      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
       - `event` (string) `workflow_finished`に固定
       - `data` (object) 詳細
-        - `id` (string) ワークフロー実行のID
-        - `workflow_id` (string) 関連するワークフローのID
+        - `id` (string) ワークフロー実行の ID
+        - `workflow_id` (string) 関連するワークフローの ID
         - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
         - `outputs` (json) オプションの出力内容
         - `error` (string) オプションのエラー理由
         - `elapsed_time` (float) オプションの使用時間（秒）
         - `total_tokens` (int) オプションの使用トークン数
-        - `total_steps` (int) デフォルト0
+        - `total_steps` (int) デフォルト 0
         - `created_at` (timestamp) 開始時間
         - `finished_at` (timestamp) 終了時間
-    - `event: tts_message` TTSオーディオストリームイベント、つまり音声合成出力。内容はMp3形式のオーディオブロックで、base64文字列としてエンコードされています。再生時には、base64をデコードしてプレーヤーに入力するだけです。（このメッセージは自動再生が有効な場合にのみ利用可能）
-      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
-      - `message_id` (string) 一意のメッセージID
-      - `audio` (string) 音声合成後のオーディオ、base64テキストコンテンツとしてエンコードされており、再生時にはbase64をデコードしてプレーヤーに入力するだけです
+    - `event: tts_message` TTS オーディオストリームイベント、つまり音声合成出力。内容は Mp3 形式のオーディオブロックで、base64 文字列としてエンコードされています。再生時には、base64 をデコードしてプレーヤーに入力するだけです。（このメッセージは自動再生が有効な場合にのみ利用可能）
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージ ID
+      - `audio` (string) 音声合成後のオーディオ、base64 テキストコンテンツとしてエンコードされており、再生時には base64 をデコードしてプレーヤーに入力するだけです
       - `created_at` (int) 作成タイムスタンプ、例：1705395332
-    - `event: tts_message_end` TTSオーディオストリーム終了イベント。このイベントを受信すると、オーディオストリームの終了を示します。
-      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
-      - `message_id` (string) 一意のメッセージID
+    - `event: tts_message_end` TTS オーディオストリーム終了イベント。このイベントを受信すると、オーディオストリームの終了を示します。
+      - `task_id` (string) タスク ID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージ ID
       - `audio` (string) 終了イベントにはオーディオがないため、これは空の文字列です
       - `created_at` (int) 作成タイムスタンプ、例：1705395332
-    - `event: ping` 接続を維持するために10秒ごとに送信されるPingイベント。
+    - `event: ping` 接続を維持するために 10 秒ごとに送信される Ping イベント。
 
     ### エラー
     - 400, `invalid_param`, 異常なパラメータ入力
@@ -235,7 +241,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### ストリーミングモード
     <CodeGroup title="応答">
     ```streaming {{ title: '応答' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -328,19 +334,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='ワークフロー実行詳細を取得'
   name='#get-workflow-run-detail'
 />
 <Row>
   <Col>
-    ワークフロー実行IDに基づいて、ワークフロータスクの現在の実行結果を取得します。
+    ワークフロー実行 ID に基づいて、ワークフロータスクの現在の実行結果を取得します。
     ### パス
-    - `workflow_id` (string) ワークフローID、ストリーミングチャンクの返り値から取得可能
+    - `workflow_run_id` (string) ワークフロー実行ID、ストリーミングチャンクの返り値から取得可能
     ### 応答
-    - `id` (string) ワークフロー実行のID
-    - `workflow_id` (string) 関連するワークフローのID
+    - `id` (string) ワークフロー実行の ID
+    - `workflow_id` (string) 関連するワークフローの ID
     - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
     - `inputs` (json) 入力内容
     - `outputs` (json) 出力内容
@@ -353,9 +359,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
     ### リクエスト例
-    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
@@ -394,10 +400,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
   ストリーミングモードでのみサポートされています。
   ### パス
-  - `task_id` (string) タスクID、ストリーミングチャンクの返り値から取得可能
+  - `task_id` (string) タスク ID、ストリーミングチャンクの返り値から取得可能
   ### リクエストボディ
   - `user` (string) 必須
-    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。
+    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。サービス API は WebApp によって作成された会話を共有しません。
   ### 応答
   - `result` (string) 常に"success"を返します
   </Col>
@@ -444,35 +450,35 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `file` (File) 必須
     アップロードするファイル。
   - `user` (string) 必須
-    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。サービス API は WebApp によって作成された会話を共有しません。
 
   ### 応答
-  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。
   - `id` (uuid) ID
   - `name` (string) ファイル名
   - `size` (int) ファイルサイズ（バイト）
   - `extension` (string) ファイル拡張子
-  - `mime_type` (string) ファイルのMIMEタイプ
+  - `mime_type` (string) ファイルの MIME タイプ
   - `created_by` (uuid) エンドユーザーID
   - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
 
   ### エラー
   - 400, `no_file_uploaded`, ファイルが提供されていません
-  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けています
+  - 400, `too_many_files`, 現在は 1 つのファイルのみ受け付けています
   - 400, `unsupported_preview`, ファイルはプレビューをサポートしていません
   - 400, `unsupported_estimate`, ファイルは推定をサポートしていません
   - 413, `file_too_large`, ファイルが大きすぎます
   - 415, `unsupported_file_type`, サポートされていない拡張子、現在はドキュメントファイルのみ受け付けています
-  - 503, `s3_connection_failed`, S3サービスに接続できません
-  - 503, `s3_permission_denied`, S3にファイルをアップロードする権限がありません
-  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 503, `s3_connection_failed`, S3 サービスに接続できません
+  - 503, `s3_permission_denied`, S3 にファイルをアップロードする権限がありません
+  - 503, `s3_file_too_large`, ファイルが S3 のサイズ制限を超えています
   - 500, 内部サーバーエラー
 
 
   </Col>
   <Col sticky>
   ### リクエスト例
-  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -527,6 +533,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='limit' type='int' key='limit'>
           1回のリクエストで返すチャット履歴メッセージの数、デフォルトは20。
       </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+           どのendUserによって作成されたか、例えば、`abc-123`。
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          どのメールアカウントによって作成されたか、例えば、lizb@test.com。
+      </Property>
     </Properties>
 
     ### 応答
@@ -543,7 +555,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `error` (string) オプションのエラー理由
       - `elapsed_time` (float) 使用される総秒数
       - `total_tokens` (int) 使用されるトークン数
-      - `total_steps` (int) デフォルト0
+      - `total_steps` (int) デフォルト 0
       - `created_at` (timestamp) 開始時間
       - `finished_at` (timestamp) 終了時間
     - `created_from` (string) 作成元
@@ -553,7 +565,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `id` (string) ID
       - `type` (string) タイプ
       - `is_anonymous` (bool) 匿名かどうか
-      - `session_id` (string) セッションID
+      - `session_id` (string) セッション ID
     - `created_at` (timestamp) 作成時間
   </Col>
   <Col sticky>
@@ -621,6 +633,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `name` (string) アプリケーションの名前
   - `description` (string) アプリケーションの説明
   - `tags` (array[string]) アプリケーションのタグ
+  - `mode` (string) アプリケーションのモード
+  - `author_name` (string) 作者の名前
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -637,7 +651,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -733,3 +749,57 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
   </Col>
 </Row>
+———
+
+<Heading
+  url='/site'
+  method='GET'
+  title='アプリのWebApp設定を取得'
+  name='#site'
+/>
+<Row>
+  <Col>
+  アプリの WebApp 設定を取得するために使用します。
+  ### 応答
+  - `title` (string) WebApp 名
+  - `icon_type` (string) アイコンタイプ、`emoji`-絵文字、`image`-画像
+  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像 URL
+  - `icon_background` (string) 16 進数形式の背景色
+  - `icon_url` (string) アイコンの URL
+  - `description` (string) 説明
+  - `copyright` (string) 著作権情報
+  - `privacy_policy` (string) プライバシーポリシーのリンク
+  - `custom_disclaimer` (string) カスタム免責事項
+  - `default_language` (string) デフォルト言語
+  - `show_workflow_steps` (bool) ワークフローの詳細を表示するかどうか
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/site' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
+
