@@ -28,7 +28,7 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import AppMode, Conversation, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -131,6 +131,7 @@ class MessageFeedbackApi(Resource):
                 message_id=str(args["message_id"]),
                 user=current_user,
                 rating=args.get("rating"),
+                content=None,
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
