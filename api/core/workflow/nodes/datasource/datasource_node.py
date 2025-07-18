@@ -38,12 +38,12 @@ from .entities import DatasourceNodeData
 from .exc import DatasourceNodeError, DatasourceParameterError
 
 
-class DatasourceNode(BaseNode[DatasourceNodeData]):
+class DatasourceNode(BaseNode):
     """
     Datasource Node
     """
 
-    _node_data_cls = DatasourceNodeData
+    _node_data: DatasourceNodeData
     _node_type = NodeType.DATASOURCE
 
     def _run(self) -> Generator:
@@ -51,7 +51,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         Run the datasource node
         """
 
-        node_data = cast(DatasourceNodeData, self.node_data)
+        node_data = cast(DatasourceNodeData, self._node_data)
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
         if not datasource_type:
@@ -90,12 +90,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         parameters = self._generate_parameters(
             datasource_parameters=datasource_parameters,
             variable_pool=variable_pool,
-            node_data=self.node_data,
+            node_data=self._node_data,
         )
         parameters_for_log = self._generate_parameters(
             datasource_parameters=datasource_parameters,
             variable_pool=variable_pool,
-            node_data=self.node_data,
+            node_data=self._node_data,
             for_log=True,
         )
 
@@ -421,7 +421,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 )
             elif message.type == DatasourceMessage.MessageType.JSON:
                 assert isinstance(message.message, DatasourceMessage.JsonMessage)
-                if self.node_type == NodeType.AGENT:
+                if self._node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
                         key: value

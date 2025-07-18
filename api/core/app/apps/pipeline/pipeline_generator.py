@@ -16,7 +16,8 @@ from sqlalchemy.orm import sessionmaker
 import contexts
 from configs import dify_config
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner

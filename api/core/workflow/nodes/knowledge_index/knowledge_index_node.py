@@ -34,12 +34,12 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
-    _node_data_cls = KnowledgeIndexNodeData  # type: ignore
+class KnowledgeIndexNode(BaseNode):
+    _node_data: KnowledgeIndexNodeData
     _node_type = NodeType.KNOWLEDGE_INDEX
 
     def _run(self) -> NodeRunResult:  # type: ignore
-        node_data = cast(KnowledgeIndexNodeData, self.node_data)
+        node_data = cast(KnowledgeIndexNodeData, self._node_data)
         variable_pool = self.graph_runtime_state.variable_pool
         dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
         if not dataset_id:
