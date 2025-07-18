@@ -146,7 +146,7 @@ class FileLifecycleManager:
             return file_metadata
 
         except Exception as e:
-            logger.error(f"Failed to save file with lifecycle: {e}")
+            logger.exception("Failed to save file with lifecycle")
             raise
 
     def get_file_metadata(self, filename: str) -> Optional[FileMetadata]:
@@ -164,7 +164,7 @@ class FileLifecycleManager:
                 return FileMetadata.from_dict(metadata_dict[filename])
             return None
         except Exception as e:
-            logger.error(f"Failed to get file metadata for {filename}: {e}")
+            logger.exception(f"Failed to get file metadata for {filename}")
             return None
 
     def list_file_versions(self, filename: str) -> list[FileMetadata]:
@@ -205,7 +205,7 @@ class FileLifecycleManager:
             return sorted(versions, key=lambda x: x.version, reverse=True)
 
         except Exception as e:
-            logger.error(f"Failed to list file versions for {filename}: {e}")
+            logger.exception(f"Failed to list file versions for {filename}")
             return []
 
     def restore_version(self, filename: str, version: int) -> bool:
@@ -238,7 +238,7 @@ class FileLifecycleManager:
             return self.save_with_lifecycle(filename, version_data, {"restored_from": str(version)})
 
         except Exception as e:
-            logger.error(f"Failed to restore {filename} to version {version}: {e}")
+            logger.exception(f"Failed to restore {filename} to version {version}")
             return False
 
     def archive_file(self, filename: str) -> bool:
@@ -271,7 +271,7 @@ class FileLifecycleManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to archive file {filename}: {e}")
+            logger.exception(f"Failed to archive file {filename}")
             return False
 
     def soft_delete_file(self, filename: str) -> bool:
@@ -315,7 +315,7 @@ class FileLifecycleManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to soft delete file {filename}: {e}")
+            logger.exception(f"Failed to soft delete file {filename}")
             return False
 
     def cleanup_old_versions(self, max_versions: int = 5, max_age_days: int = 30) -> int:
@@ -374,7 +374,7 @@ class FileLifecycleManager:
             return cleaned_count
 
         except Exception as e:
-            logger.error(f"Failed to cleanup old versions: {e}")
+            logger.exception("Failed to cleanup old versions")
             return 0
 
     def get_storage_statistics(self) -> dict[str, any]:
@@ -429,7 +429,7 @@ class FileLifecycleManager:
             return stats
 
         except Exception as e:
-            logger.error(f"Failed to get storage statistics: {e}")
+            logger.exception("Failed to get storage statistics")
             return {}
 
     def _create_version_backup(self, filename: str, metadata: dict):
@@ -466,7 +466,7 @@ class FileLifecycleManager:
             self._storage.save(self._metadata_file, metadata_content.encode("utf-8"))
             logger.debug("Metadata saved successfully")
         except Exception as e:
-            logger.error(f"Failed to save metadata: {e}")
+            logger.exception("Failed to save metadata")
             raise
 
     def _calculate_checksum(self, data: bytes) -> str:
@@ -508,6 +508,6 @@ class FileLifecycleManager:
             return self._permission_manager.validate_operation(mapped_operation, self._dataset_id)
 
         except Exception as e:
-            logger.error(f"Permission check failed for {filename} operation {operation}: {e}")
+            logger.exception(f"Permission check failed for {filename} operation {operation}")
             # 安全默认：权限检查失败时拒绝访问
             return False

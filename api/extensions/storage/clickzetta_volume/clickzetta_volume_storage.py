@@ -140,7 +140,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             )
             logger.debug("ClickZetta connection established")
         except Exception as e:
-            logger.error(f"Failed to connect to ClickZetta: {e}")
+            logger.exception("Failed to connect to ClickZetta")
             raise
 
     def _init_permission_manager(self):
@@ -151,7 +151,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             )
             logger.debug("Permission manager initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize permission manager: {e}")
+            logger.exception("Failed to initialize permission manager")
             raise
 
     def _get_volume_path(self, filename: str, dataset_id: Optional[str] = None) -> str:
@@ -212,7 +212,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                     return cursor.fetchall()
                 return None
         except Exception as e:
-            logger.error(f"SQL execution failed: {sql}, Error: {e}")
+            logger.exception(f"SQL execution failed: {sql}")
             raise
 
     def _ensure_table_volume_exists(self, dataset_id: str) -> None:
@@ -521,5 +521,5 @@ class ClickZettaVolumeStorage(BaseStorage):
             return result
 
         except Exception as e:
-            logger.error(f"Error scanning path {path}: {e}")
+            logger.exception(f"Error scanning path {path}")
             return []

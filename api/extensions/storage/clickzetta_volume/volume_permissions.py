@@ -24,7 +24,7 @@ class VolumePermission(Enum):
 class VolumePermissionManager:
     """Volume权限管理器"""
 
-    def __init__(self, connection_or_config, volume_type: str = None, volume_name: Optional[str] = None):
+    def __init__(self, connection_or_config, volume_type: str | None = None, volume_name: Optional[str] = None):
         """初始化权限管理器
 
         Args:
@@ -85,7 +85,7 @@ class VolumePermissionManager:
                 return False
 
         except Exception as e:
-            logger.error(f"Permission check failed: {e}")
+            logger.exception("Permission check failed")
             return False
 
     def _check_user_volume_permission(self, operation: VolumePermission) -> bool:
@@ -119,7 +119,7 @@ class VolumePermissionManager:
                     return False
 
         except Exception as e:
-            logger.error(f"User Volume permission check failed: {e}")
+            logger.exception("User Volume permission check failed")
             # 对于User Volume，如果权限检查失败，可能是配置问题，给出更友好的错误提示
             logger.info("User Volume permission check failed, but permission checking is disabled in this version")
             return False
@@ -154,7 +154,7 @@ class VolumePermissionManager:
             return has_permission
 
         except Exception as e:
-            logger.error(f"Table volume permission check failed for {table_name}: {e}")
+            logger.exception(f"Table volume permission check failed for {table_name}")
             return False
 
     def _check_external_volume_permission(self, operation: VolumePermission) -> bool:
@@ -208,7 +208,7 @@ class VolumePermissionManager:
             return has_permission
 
         except Exception as e:
-            logger.error(f"External volume permission check failed for {self._volume_name}: {e}")
+            logger.exception(f"External volume permission check failed for {self._volume_name}")
             logger.info("External Volume permission check failed, but permission checking is disabled in this version")
             return False
 
@@ -284,7 +284,7 @@ class VolumePermissionManager:
                     self._current_username = result[0]
                     return self._current_username
         except Exception as e:
-            logger.error(f"Failed to get current username: {e}")
+            logger.exception("Failed to get current username")
 
         return "unknown"
 
@@ -510,7 +510,7 @@ class VolumePermissionManager:
                 return False
 
         except Exception as e:
-            logger.error(f"Permission inheritance check failed: {e}")
+            logger.exception("Permission inheritance check failed")
             return False
 
     def _contains_path_traversal(self, file_path: str) -> bool:
@@ -567,11 +567,7 @@ class VolumePermissionManager:
 
         file_path_lower = file_path.lower()
 
-        for pattern in sensitive_patterns:
-            if pattern in file_path_lower:
-                return True
-
-        return False
+        return any(pattern in file_path_lower for pattern in sensitive_patterns)
 
     def validate_operation(self, operation: str, dataset_id: Optional[str] = None) -> bool:
         """验证操作权限
