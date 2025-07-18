@@ -93,7 +93,7 @@ class MCPClient:
                 else {}
             )
             self._streams_context = client_factory(url=self.server_url, headers=headers)
-            if not self._streams_context :
+            if not self._streams_context:
                 raise MCPConnectionError("Failed to create connection context")
 
             # Use exit_stack to manage context managers properly
