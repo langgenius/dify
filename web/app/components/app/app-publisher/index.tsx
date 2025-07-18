@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -48,6 +49,7 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+dayjs.extend(relativeTime)
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -116,6 +118,7 @@ const AppPublisher = ({
     }
   }, [appAccessSubjects, appDetail])
   const language = useGetLanguage()
+
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
@@ -180,8 +183,7 @@ const AppPublisher = ({
     if (publishDisabled || published)
       return
     handlePublish()
-  },
-    { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   return (
     <>

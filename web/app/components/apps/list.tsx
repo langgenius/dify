@@ -15,8 +15,8 @@ import {
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
-import AppCard from './AppCard'
-import NewAppCard from './NewAppCard'
+import AppCard from './app-card'
+import NewAppCard from './new-app-card'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import type { AppListResponse } from '@/models/app'
@@ -28,10 +28,17 @@ import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
+import dynamic from 'next/dynamic'
+import Empty from './empty'
+
+const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
+  ssr: false,
+})
+const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+  ssr: false,
+})
 
 const getKey = (
   pageIndex: number,
@@ -57,7 +64,7 @@ const getKey = (
   return null
 }
 
-const Apps = () => {
+const List = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -209,7 +216,7 @@ const Apps = () => {
           : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
             {isCurrentWorkspaceEditor
               && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} />}
-            <NoAppsFound />
+            <Empty />
           </div>}
 
         {isCurrentWorkspaceEditor && (
@@ -248,22 +255,4 @@ const Apps = () => {
   )
 }
 
-export default Apps
-
-function NoAppsFound() {
-  const { t } = useTranslation()
-  function renderDefaultCard() {
-    const defaultCards = Array.from({ length: 36 }, (_, index) => (
-      <div key={index} className='inline-flex h-[160px] rounded-xl bg-background-default-lighter'></div>
-    ))
-    return defaultCards
-  }
-  return (
-    <>
-      {renderDefaultCard()}
-      <div className='absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent'>
-        <span className='system-md-medium text-text-tertiary'>{t('app.newApp.noAppsFound')}</span>
-      </div>
-    </>
-  )
-}
+export default List
