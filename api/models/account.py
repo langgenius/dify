@@ -1,5 +1,6 @@
 import enum
 import json
+from datetime import datetime
 from typing import Optional, cast
 
 from flask_login import UserMixin  # type: ignore
@@ -93,15 +94,15 @@ class Account(UserMixin, Base):
     interface_language: Mapped[str] = mapped_column(db.String(255))
     interface_theme: Mapped[str] = mapped_column(db.String(255))
     timezone: Mapped[str] = mapped_column(db.String(255))
-    last_login_at = mapped_column(db.DateTime)
+    last_login_at: Mapped[datetime] = mapped_column(db.DateTime)
     last_login_ip: Mapped[str] = mapped_column(db.String(255))
-    last_active_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     status: Mapped[str] = mapped_column(
-        db.String(16), nullable=False, server_default=db.text("'active'::character varying")
+        db.String(16), server_default=db.text("'active'::character varying")
     )
-    initialized_at = mapped_column(db.DateTime)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    initialized_at: Mapped[datetime] = mapped_column(db.DateTime)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
 
     @reconstructor
     def init_on_load(self):
@@ -200,12 +201,12 @@ class Tenant(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(db.String(255))
-    encrypt_public_key = mapped_column(db.Text)
+    encrypt_public_key: Mapped[str] = mapped_column(db.Text)
     plan: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'basic'::character varying"))
     status: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'normal'::character varying"))
-    custom_config = mapped_column(db.Text)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    custom_config: Mapped[str] = mapped_column(db.Text)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
         return (
@@ -232,14 +233,14 @@ class TenantAccountJoin(Base):
         db.UniqueConstraint("tenant_id", "account_id", name="unique_tenant_account_join"),
     )
 
-    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
-    current = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    role = mapped_column(db.String(16), nullable=False, server_default="normal")
-    invited_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID)
+    account_id: Mapped[str] = mapped_column(StringUUID)
+    current: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
+    role: Mapped[str] = mapped_column(db.String(16), server_default="normal")
+    invited_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
 
 
 class AccountIntegrate(Base):
@@ -250,13 +251,13 @@ class AccountIntegrate(Base):
         db.UniqueConstraint("provider", "open_id", name="unique_provider_open_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    account_id = mapped_column(StringUUID, nullable=False)
-    provider = mapped_column(db.String(16), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    account_id: Mapped[str] = mapped_column(StringUUID)
+    provider: Mapped[str] = mapped_column(db.String(16))
     open_id: Mapped[str] = mapped_column(db.String(255))
     encrypted_token: Mapped[str] = mapped_column(db.String(255))
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
 
 
 class InvitationCode(Base):
@@ -267,15 +268,15 @@ class InvitationCode(Base):
         db.Index("invitation_codes_code_idx", "code", "status"),
     )
 
-    id = mapped_column(db.Integer, nullable=False)
-    batch = mapped_column(db.String(255), nullable=False)
-    code = mapped_column(db.String(32), nullable=False)
-    status = mapped_column(db.String(16), nullable=False, server_default=db.text("'unused'::character varying"))
-    used_at = mapped_column(db.DateTime)
-    used_by_tenant_id = mapped_column(StringUUID)
-    used_by_account_id = mapped_column(StringUUID)
-    deprecated_at = mapped_column(db.DateTime)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    id: Mapped[int] = mapped_column(db.Integer)
+    batch: Mapped[str] = mapped_column(db.String(255))
+    code: Mapped[str] = mapped_column(db.String(32))
+    status: Mapped[str] = mapped_column(db.String(16), server_default=db.text("'unused'::character varying"))
+    used_at: Mapped[datetime] = mapped_column(db.DateTime)
+    used_by_tenant_id: Mapped[str] = mapped_column(StringUUID)
+    used_by_account_id: Mapped[str] = mapped_column(StringUUID)
+    deprecated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
 class TenantPluginPermission(Base):
@@ -296,8 +297,8 @@ class TenantPluginPermission(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID)
     install_permission: Mapped[InstallPermission] = mapped_column(
-        db.String(16), nullable=False, server_default="everyone"
+        db.String(16), server_default="everyone"
     )
-    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), server_default="noone")
