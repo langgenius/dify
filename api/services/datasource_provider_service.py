@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
-from core.helper.provider_name_generator import generate_provider_name
+from core.helper.name_generator import generate_incremental_name
 from core.model_runtime.entities.provider_entities import FormType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin import DatasourceProviderID
@@ -40,7 +40,10 @@ class DatasourceProviderService:
             )
             .all()
         )
-        return generate_provider_name(db_providers, credential_type, f"datasource provider {provider_id}")
+        return generate_incremental_name(
+            [provider.name for provider in db_providers],
+            f"{credential_type.get_name()}",
+        )
 
     def add_datasource_oauth_provider(
         self,
@@ -57,15 +60,33 @@ class DatasourceProviderService:
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{credential_type.value}"
             with redis_client.lock(lock, timeout=20):
-                db_provider_name = name or self.generate_next_datasource_provider_name(
-                    session=session,
-                    tenant_id=tenant_id,
-                    provider_id=provider_id,
-                    credential_type=credential_type,
-                )
-
-                if session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, name=db_provider_name).count() > 0:
-                    raise ValueError("name is already exists")
+                db_provider_name = name
+                if not db_provider_name:
+                    db_provider_name = self.generate_next_datasource_provider_name(
+                        session=session,
+                        tenant_id=tenant_id,
+                        provider_id=provider_id,
+                        credential_type=credential_type,
+                    )
+                else:
+                    if session.query(DatasourceProvider).filter_by(
+                        tenant_id=tenant_id,
+                        name=db_provider_name,
+                        provider=provider_id.provider_name,
+                        plugin_id=provider_id.plugin_id,
+                        auth_type=credential_type.value,
+                    ).count() > 0:
+                        db_provider_name = generate_incremental_name(
+                        [
+                            provider.name
+                            for provider in session.query(DatasourceProvider).filter_by(
+                                tenant_id=tenant_id,
+                                provider=provider_id.provider_name,
+                                plugin_id=provider_id.plugin_id,
+                            )
+                        ],
+                        db_provider_name,
+                    )
 
                 provider_credential_secret_variables = self.extract_secret_variables(
                     tenant_id=tenant_id, provider_id=f"{provider_id}"

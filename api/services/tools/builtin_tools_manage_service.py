@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
-from core.helper.provider_name_generator import generate_provider_name
 from core.plugin.entities.plugin import ToolProviderID
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -309,8 +309,10 @@ class BuiltinToolManageService:
             .order_by(BuiltinToolProvider.created_at.desc())
             .all()
         )
-        
-        return generate_provider_name(db_providers, credential_type, f"builtin tool provider {provider}")
+        return generate_incremental_name(
+            [provider.name for provider in db_providers],
+            f"{credential_type.get_name()}",
+        )
 
     @staticmethod
     def get_builtin_tool_provider_credentials(

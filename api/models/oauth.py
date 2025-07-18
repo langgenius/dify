@@ -25,6 +25,7 @@ class DatasourceProvider(Base):
     __tablename__ = "datasource_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="datasource_provider_pkey"),
+        db.UniqueConstraint("tenant_id", "plugin_id", "provider", "name", name="datasource_provider_unique_name"),
         db.Index("datasource_provider_auth_type_provider_idx", "tenant_id", "plugin_id", "provider"),
     )
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -35,6 +36,6 @@ class DatasourceProvider(Base):
     auth_type: Mapped[str] = db.Column(db.String(255), nullable=False)
     encrypted_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
     avatar_url: Mapped[str] = db.Column(db.String(255), nullable=True)
-    
+
     created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, default=datetime.now)
