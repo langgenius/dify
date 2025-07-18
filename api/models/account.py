@@ -85,21 +85,21 @@ class Account(UserMixin, Base):
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    name = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), nullable=False)
-    password = db.Column(db.String(255), nullable=True)
-    password_salt = db.Column(db.String(255), nullable=True)
-    avatar = db.Column(db.String(255))
-    interface_language = db.Column(db.String(255))
-    interface_theme = db.Column(db.String(255))
-    timezone = db.Column(db.String(255))
-    last_login_at = db.Column(db.DateTime)
-    last_login_ip = db.Column(db.String(255))
-    last_active_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    status = db.Column(db.String(16), nullable=False, server_default=db.text("'active'::character varying"))
-    initialized_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    name = mapped_column(db.String(255), nullable=False)
+    email = mapped_column(db.String(255), nullable=False)
+    password = mapped_column(db.String(255), nullable=True)
+    password_salt = mapped_column(db.String(255), nullable=True)
+    avatar = mapped_column(db.String(255))
+    interface_language = mapped_column(db.String(255))
+    interface_theme = mapped_column(db.String(255))
+    timezone = mapped_column(db.String(255))
+    last_login_at = mapped_column(db.DateTime)
+    last_login_ip = mapped_column(db.String(255))
+    last_active_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    status = mapped_column(db.String(16), nullable=False, server_default=db.text("'active'::character varying"))
+    initialized_at = mapped_column(db.DateTime)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @reconstructor
     def init_on_load(self):
@@ -196,14 +196,14 @@ class Tenant(Base):
     __tablename__ = "tenants"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="tenant_pkey"),)
 
-    id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    name = db.Column(db.String(255), nullable=False)
-    encrypt_public_key = db.Column(db.Text)
-    plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
-    custom_config = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    name = mapped_column(db.String(255), nullable=False)
+    encrypt_public_key = mapped_column(db.Text)
+    plan = mapped_column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
+    status = mapped_column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    custom_config = mapped_column(db.Text)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
         return (
@@ -230,14 +230,14 @@ class TenantAccountJoin(Base):
         db.UniqueConstraint("tenant_id", "account_id", name="unique_tenant_account_join"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    account_id = db.Column(StringUUID, nullable=False)
-    current = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    role = db.Column(db.String(16), nullable=False, server_default="normal")
-    invited_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    account_id = mapped_column(StringUUID, nullable=False)
+    current = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    role = mapped_column(db.String(16), nullable=False, server_default="normal")
+    invited_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class AccountIntegrate(Base):
@@ -248,13 +248,13 @@ class AccountIntegrate(Base):
         db.UniqueConstraint("provider", "open_id", name="unique_provider_open_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    account_id = db.Column(StringUUID, nullable=False)
-    provider = db.Column(db.String(16), nullable=False)
-    open_id = db.Column(db.String(255), nullable=False)
-    encrypted_token = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    account_id = mapped_column(StringUUID, nullable=False)
+    provider = mapped_column(db.String(16), nullable=False)
+    open_id = mapped_column(db.String(255), nullable=False)
+    encrypted_token = mapped_column(db.String(255), nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class InvitationCode(Base):
@@ -265,15 +265,15 @@ class InvitationCode(Base):
         db.Index("invitation_codes_code_idx", "code", "status"),
     )
 
-    id = db.Column(db.Integer, nullable=False)
-    batch = db.Column(db.String(255), nullable=False)
-    code = db.Column(db.String(32), nullable=False)
-    status = db.Column(db.String(16), nullable=False, server_default=db.text("'unused'::character varying"))
-    used_at = db.Column(db.DateTime)
-    used_by_tenant_id = db.Column(StringUUID)
-    used_by_account_id = db.Column(StringUUID)
-    deprecated_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    id = mapped_column(db.Integer, nullable=False)
+    batch = mapped_column(db.String(255), nullable=False)
+    code = mapped_column(db.String(32), nullable=False)
+    status = mapped_column(db.String(16), nullable=False, server_default=db.text("'unused'::character varying"))
+    used_at = mapped_column(db.DateTime)
+    used_by_tenant_id = mapped_column(StringUUID)
+    used_by_account_id = mapped_column(StringUUID)
+    deprecated_at = mapped_column(db.DateTime)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
 class TenantPluginPermission(Base):
