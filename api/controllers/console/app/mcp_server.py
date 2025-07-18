@@ -35,16 +35,20 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_fields)
     def post(self, app_model):
-        # The role of the current user in the ta table must be editor, admin, or owner
         if not current_user.is_editor:
             raise NotFound()
         parser = reqparse.RequestParser()
-        parser.add_argument("description", type=str, required=True, location="json")
+        parser.add_argument("description", type=str, required=False, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
         args = parser.parse_args()
+
+        description = args.get("description")
+        if not description:
+            description = app_model.description or ""
+
         server = AppMCPServer(
             name=app_model.name,
-            description=args["description"],
+            description=description,
             parameters=json.dumps(args["parameters"], ensure_ascii=False),
             status=AppMCPServerStatus.ACTIVE,
             app_id=app_model.id,
@@ -65,14 +69,22 @@ class AppMCPServerController(Resource):
             raise NotFound()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, location="json")
-        parser.add_argument("description", type=str, required=True, location="json")
+        parser.add_argument("description", type=str, required=False, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
         parser.add_argument("status", type=str, required=False, location="json")
         args = parser.parse_args()
         server = db.session.query(AppMCPServer).filter(AppMCPServer.id == args["id"]).first()
         if not server:
             raise NotFound()
-        server.description = args["description"]
+
+        description = args.get("description")
+        if description is None:
+            pass
+        elif not description:
+            server.description = app_model.description or ""
+        else:
+            server.description = description
+
         server.parameters = json.dumps(args["parameters"], ensure_ascii=False)
         if args["status"]:
             if args["status"] not in [status.value for status in AppMCPServerStatus]:
@@ -92,7 +104,8 @@ class AppMCPServerRefreshController(Resource):
             raise NotFound()
         server = (
             db.session.query(AppMCPServer)
-            .filter(AppMCPServer.id == server_id and AppMCPServer.tenant_id == current_user.current_tenant_id)
+            .filter(AppMCPServer.id == server_id)
+            .filter(AppMCPServer.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not server:

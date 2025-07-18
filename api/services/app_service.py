@@ -47,8 +47,6 @@ class AppService:
             filters.append(App.mode == AppMode.ADVANCED_CHAT.value)
         elif args["mode"] == "agent-chat":
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args["mode"] == "channel":
-            filters.append(App.mode == AppMode.CHANNEL.value)
 
         if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
@@ -235,6 +233,7 @@ class AppService:
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
+        app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()

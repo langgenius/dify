@@ -59,6 +59,12 @@ import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import {
+  AuthorizedInNode,
+  PluginAuth,
+} from '@/app/components/plugins/plugin-auth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth'
+import { canFindTool } from '@/utils'
 
 type BasePanelProps = {
   children: ReactNode
@@ -83,18 +89,19 @@ const BasePanel: FC<BasePanelProps> = ({
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
 
+  const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
+
   const maxNodePanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720
-    if (!otherPanelWidth)
-      return workflowCanvasWidth - 400
 
-    return workflowCanvasWidth - otherPanelWidth - 400
+    const available = workflowCanvasWidth - (otherPanelWidth || 0) - reservedCanvasWidth
+    return Math.max(available, 400)
   }, [workflowCanvasWidth, otherPanelWidth])
 
   const updateNodePanelWidth = useCallback((width: number) => {
     // Ensure the width is within the min and max range
-    const newValue = Math.min(Math.max(width, 400), maxNodePanelWidth)
+    const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
     localStorage.setItem('workflow-node-panel-width', `${newValue}`)
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth])
@@ -118,8 +125,13 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     if (!workflowCanvasWidth)
       return
-    if (workflowCanvasWidth - 400 <= nodePanelWidth + otherPanelWidth)
-      debounceUpdate(workflowCanvasWidth - 400 - otherPanelWidth)
+
+    // If the total width of the three exceeds the canvas, shrink the node panel to the available range (at least 400px)
+    const total = nodePanelWidth + otherPanelWidth + reservedCanvasWidth
+    if (total > workflowCanvasWidth) {
+      const target = Math.max(workflowCanvasWidth - otherPanelWidth - reservedCanvasWidth, 400)
+      debounceUpdate(target)
+    }
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
 
   const { handleNodeSelect } = useNodesInteractions()
@@ -214,6 +226,22 @@ const BasePanel: FC<BasePanelProps> = ({
 
     return {}
   })()
+
+  const buildInTools = useStore(s => s.buildInTools)
+  const currCollection = useMemo(() => {
+    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
+  }, [buildInTools, data.provider_id])
+  const showPluginAuth = useMemo(() => {
+    return data.type === BlockEnum.Tool && currCollection?.allow_delete
+  }, [currCollection, data.type])
+  const handleAuthorizationItemClick = useCallback((credential_id: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        credential_id,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   if(logParams.showSpecialResultPanel) {
     return (
@@ -347,12 +375,42 @@ const BasePanel: FC<BasePanelProps> = ({
               onChange={handleDescriptionChange}
             />
           </div>
-          <div className='pl-4'>
-            <Tab
-              value={tabType}
-              onChange={setTabType}
-            />
-          </div>
+          {
+            showPluginAuth && (
+              <PluginAuth
+                className='px-4 pb-2'
+                pluginPayload={{
+                  provider: currCollection?.name || '',
+                  category: AuthCategory.tool,
+                }}
+              >
+                <div className='flex items-center justify-between pl-4 pr-3'>
+                  <Tab
+                    value={tabType}
+                    onChange={setTabType}
+                  />
+                  <AuthorizedInNode
+                    pluginPayload={{
+                      provider: currCollection?.name || '',
+                      category: AuthCategory.tool,
+                    }}
+                    onAuthorizationItemClick={handleAuthorizationItemClick}
+                    credentialId={data.credential_id}
+                  />
+                </div>
+              </PluginAuth>
+            )
+          }
+          {
+            !showPluginAuth && (
+              <div className='flex items-center justify-between pl-4 pr-3'>
+                <Tab
+                  value={tabType}
+                  onChange={setTabType}
+                />
+              </div>
+            )
+          }
           <Split />
         </div>
 

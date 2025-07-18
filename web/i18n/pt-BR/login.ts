@@ -109,6 +109,7 @@ const translation = {
     noLoginMethod: 'Método de autenticação não configurado para o aplicativo web',
     disabled: 'A autenticação do aplicativo da web está desativada. Por favor, entre em contato com o administrador do sistema para habilitá-la. Você pode tentar usar o aplicativo diretamente.',
     noLoginMethodTip: 'Por favor, entre em contato com o administrador do sistema para adicionar um método de autenticação.',
+    login: 'Entrar',
   },
 }
 

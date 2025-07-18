@@ -18,6 +18,7 @@ const WorkflowVariableBlockReplacementBlock = ({
   workflowNodesMap,
   getVarType,
   onInsert,
+  variables,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -31,8 +32,8 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType))
-  }, [onInsert, workflowNodesMap, getVarType])
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || []))
+  }, [onInsert, workflowNodesMap, getVarType, variables])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

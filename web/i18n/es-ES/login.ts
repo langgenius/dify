@@ -109,6 +109,7 @@ const translation = {
     disabled: 'La autenticación de la aplicación web está desactivada. Por favor, contacte al administrador del sistema para habilitarla. Puede intentar usar la aplicación directamente.',
     noLoginMethodTip: 'Por favor, contacta al administrador del sistema para agregar un método de autenticación.',
     noLoginMethod: 'Método de autenticación no configurado para la aplicación web',
+    login: 'Iniciar sesión',
   },
 }
 

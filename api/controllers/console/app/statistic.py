@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytz
+import sqlalchemy as sa
 from flask import jsonify
 from flask_login import current_user
 from flask_restful import Resource, reqparse
@@ -9,10 +10,11 @@ from flask_restful import Resource, reqparse
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models.model import AppMode
+from models import AppMode, Message
 
 
 class DailyMessageStatistic(Resource):
@@ -85,46 +87,41 @@ class DailyConversationStatistic(Resource):
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
-    COUNT(DISTINCT messages.conversation_id) AS conversation_count
-FROM
-    messages
-WHERE
-    app_id = :app_id"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
-
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
+
+        stmt = (
+            sa.select(
+                sa.func.date(
+                    sa.func.date_trunc("day", sa.text("created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz"))
+                ).label("date"),
+                sa.func.count(sa.distinct(Message.conversation_id)).label("conversation_count"),
+            )
+            .select_from(Message)
+            .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER.value)
+        )
 
         if args["start"]:
             start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
             start_datetime = start_datetime.replace(second=0)
-
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
-            sql_query += " AND created_at >= :start"
-            arg_dict["start"] = start_datetime_utc
+            stmt = stmt.where(Message.created_at >= start_datetime_utc)
 
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
             end_datetime = end_datetime.replace(second=0)
-
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+            stmt = stmt.where(Message.created_at < end_datetime_utc)
 
-            sql_query += " AND created_at < :end"
-            arg_dict["end"] = end_datetime_utc
-
-        sql_query += " GROUP BY date ORDER BY date"
+        stmt = stmt.group_by("date").order_by("date")
 
         response_data = []
-
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-            for i in rs:
-                response_data.append({"date": str(i.date), "conversation_count": i.conversation_count})
+            rs = conn.execute(stmt, {"tz": account.timezone})
+            for row in rs:
+                response_data.append({"date": str(row.date), "conversation_count": row.conversation_count})
 
         return jsonify({"data": response_data})
 

@@ -50,7 +50,7 @@ describe('Tooltip', () => {
 
     test('should close on mouse leave when triggerMethod is hover', () => {
       const triggerClassName = 'custom-trigger'
-      const { container } = render(<Tooltip popupContent="Tooltip content" triggerClassName={triggerClassName} />)
+      const { container } = render(<Tooltip popupContent="Tooltip content" triggerClassName={triggerClassName} needsDelay={false} />)
       const trigger = container.querySelector(`.${triggerClassName}`)
       act(() => {
         fireEvent.mouseEnter(trigger!)

@@ -21,8 +21,8 @@ type IState = {
   timezone: string
 }
 
-type IAction =
-  | { type: 'failed', payload: null }
+type IAction
+  = | { type: 'failed', payload: null }
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }
@@ -103,7 +103,6 @@ const OneMoreStep = () => {
                     </div>
                   </div>
                 }
-                needsDelay
               >
                 <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
               </Tooltip>

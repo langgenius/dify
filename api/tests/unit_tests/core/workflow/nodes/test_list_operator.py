@@ -33,16 +33,19 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData(**config)
+    node_config = {
+        "id": "test_node_id",
+        "data": node_data.model_dump(),
+    }
     node = ListOperatorNode(
         id="test_node_id",
-        config={
-            "id": "test_node_id",
-            "data": node_data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=MagicMock(),
         graph=MagicMock(),
         graph_runtime_state=MagicMock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node
