@@ -1,4 +1,3 @@
-from typing import Optional
 import base64
 import enum
 import hashlib
@@ -10,7 +9,7 @@ import pickle
 import re
 import time
 from json import JSONDecodeError
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
