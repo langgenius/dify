@@ -9,7 +9,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,10 @@ class FileMetadata:
     """文件元数据"""
 
     filename: str
-    size: int
+    size: int | None
     created_at: datetime
     modified_at: datetime
-    version: int
+    version: int | None
     status: FileStatus
     checksum: Optional[str] = None
     tags: Optional[dict[str, str]] = None
@@ -202,7 +202,7 @@ class FileLifecycleManager:
                 # 如果无法扫描版本文件，只返回当前版本
                 pass
 
-            return sorted(versions, key=lambda x: x.version, reverse=True)
+            return sorted(versions, key=lambda x: x.version or 0, reverse=True)
 
         except Exception as e:
             logger.exception(f"Failed to list file versions for {filename}")
@@ -235,7 +235,8 @@ class FileLifecycleManager:
                 self._create_version_backup(filename, current_metadata.to_dict())
 
             # 恢复文件
-            return self.save_with_lifecycle(filename, version_data, {"restored_from": str(version)})
+            self.save_with_lifecycle(filename, version_data, {"restored_from": str(version)})
+            return True
 
         except Exception as e:
             logger.exception(f"Failed to restore {filename} to version {version}")
@@ -338,7 +339,7 @@ class FileLifecycleManager:
                 version_files = [f for f in all_files if f.startswith(self._version_prefix)]
 
                 # 按文件分组
-                file_versions = {}
+                file_versions: dict[str, list[tuple[int, str]]] = {}
                 for version_file in version_files:
                     # 解析文件名和版本
                     parts = version_file[len(self._version_prefix) :].split(".v")
@@ -377,7 +378,7 @@ class FileLifecycleManager:
             logger.exception("Failed to cleanup old versions")
             return 0
 
-    def get_storage_statistics(self) -> dict[str, any]:
+    def get_storage_statistics(self) -> dict[str, Any]:
         """获取存储统计信息
 
         Returns:
@@ -412,10 +413,10 @@ class FileLifecycleManager:
                     stats["deleted_files"] += 1
 
                 # 统计大小
-                stats["total_size"] += file_meta.size
+                stats["total_size"] += file_meta.size or 0
 
                 # 统计版本
-                stats["versions_count"] += file_meta.version
+                stats["versions_count"] += file_meta.version or 0
 
                 # 找出最新和最旧的文件
                 if oldest_date is None or file_meta.created_at < oldest_date:

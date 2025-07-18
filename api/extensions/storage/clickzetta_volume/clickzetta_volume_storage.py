@@ -53,7 +53,7 @@ class ClickZettaVolumeConfig(BaseModel):
             # First try CLICKZETTA_VOLUME_* specific config
             volume_value = values.get(volume_key.lower().replace("clickzetta_volume_", ""))
             if volume_value:
-                return volume_value
+                return str(volume_value)
 
             # Then try environment variables
             volume_env = os.getenv(volume_key)
@@ -65,7 +65,7 @@ class ClickZettaVolumeConfig(BaseModel):
             if fallback_env:
                 return fallback_env
 
-            return default
+            return default or ""
 
         # Apply environment variables with fallback to existing CLICKZETTA_* config
         values.setdefault("username", get_env_with_fallback("CLICKZETTA_VOLUME_USERNAME", "CLICKZETTA_USERNAME"))
@@ -120,7 +120,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """
         self._config = config
         self._connection = None
-        self._permission_manager = None
+        self._permission_manager: VolumePermissionManager | None = None
         self._init_connection()
         self._init_permission_manager()
 
@@ -206,6 +206,8 @@ class ClickZettaVolumeStorage(BaseStorage):
     def _execute_sql(self, sql: str, fetch: bool = False):
         """Execute SQL command."""
         try:
+            if self._connection is None:
+                raise RuntimeError("Connection not initialized")
             with self._connection.cursor() as cursor:
                 cursor.execute(sql)
                 if fetch:
@@ -276,7 +278,8 @@ class ClickZettaVolumeStorage(BaseStorage):
         if self._config.permission_check:
             # Skip permission check for special directories that use USER VOLUME
             if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files"]:
-                check_volume_permission(self._permission_manager, "save", dataset_id)
+                if self._permission_manager is not None:
+                    check_volume_permission(self._permission_manager, "save", dataset_id)
 
         # Write data to temporary file
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -327,7 +330,8 @@ class ClickZettaVolumeStorage(BaseStorage):
         if self._config.permission_check:
             # Skip permission check for special directories that use USER VOLUME
             if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files"]:
-                check_volume_permission(self._permission_manager, "load_once", dataset_id)
+                if self._permission_manager is not None:
+                    check_volume_permission(self._permission_manager, "load_once", dataset_id)
 
         # Download to temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
