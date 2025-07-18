@@ -672,7 +672,7 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-
+        # type: ignore
         db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)
         db.session.commit()
 

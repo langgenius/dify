@@ -144,7 +144,7 @@ class Account(UserMixin, Base):
             return
 
         tenant, join = tenant_account_join
-        self.role = join.role
+        self.role = TenantAccountRole(join.role)
         self._current_tenant = tenant
 
     @property

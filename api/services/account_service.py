@@ -997,7 +997,7 @@ class TenantService:
             .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .first()
         )
-        return join.role if join else None
+        return TenantAccountRole(join.role) if join else None
 
     @staticmethod
     def get_tenant_count() -> int:

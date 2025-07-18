@@ -214,7 +214,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
+        # type: ignore
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
+        # type: ignore
         dataset.embedding_model = embedding_model.model if embedding_model else None
         dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
@@ -1539,6 +1541,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # update document segment
+        # type: ignore
         update_params = {DocumentSegment.status: "re_segment"}
         db.session.query(DocumentSegment).filter_by(document_id=document.id).update(update_params)
         db.session.commit()
