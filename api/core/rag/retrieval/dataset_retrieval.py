@@ -1137,7 +1137,7 @@ class DatasetRetrieval:
     def _get_prompt_template(
         self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list, query: str
     ):
-        model_mode = ModelMode.value_of(mode)
+        model_mode = ModelMode(mode)
         input_text = query
 
         prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
