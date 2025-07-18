@@ -69,7 +69,7 @@ class MCPClient:
 
         parsed_url = urlparse(self.server_url)
         path = parsed_url.path or ""
-        method_name = path.removesuffix("/").strip()
+        method_name = path.removesuffix("/").lower()
         if method_name in connection_methods:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
