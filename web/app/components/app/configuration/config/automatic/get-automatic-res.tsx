@@ -53,6 +53,7 @@ export type IGetAutomaticResProps = {
   generatorType: GeneratorType
   flowId: string
   nodeId?: string
+  currentPrompt?: string
   isBasicMode?: boolean
 }
 
@@ -81,6 +82,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   generatorType,
   flowId,
   nodeId,
+  currentPrompt,
   isBasicMode,
   onFinished,
 }) => {
@@ -138,7 +140,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const [instruction, setInstruction] = useState<string>('The travel plan to Anshun of Guizhou Province in China') // TODO: test value
   const [ideaOutput, setIdeaOutput] = useState<string>('use json format to output the result. Content in result uses Chinese. Format: {"summary: "summary content", "result": "result content"}')
-  const [currentPrompt, setCurrentPrompt] = useState<string>('')
   const [isFoldIdeaOutput, {
     toggle: toggleFoldIdeaOutput,
   }] = useBoolean(true)

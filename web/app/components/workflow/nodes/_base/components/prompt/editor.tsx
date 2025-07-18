@@ -168,6 +168,7 @@ const Editor: FC<Props> = ({
                   modelConfig={modelConfig}
                   nodesOutputVars={nodesOutputVars}
                   availableNodes={availableNodes}
+                  currentPrompt={value}
                 />
               )}
 

@@ -19,6 +19,7 @@ type Props = {
   nodeId: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  currentPrompt?: string
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
@@ -27,6 +28,7 @@ const PromptGeneratorBtn: FC<Props> = ({
   nodeId,
   nodesOutputVars,
   availableNodes,
+  currentPrompt,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = useCallback((res: AutomaticRes) => {
@@ -52,6 +54,7 @@ const PromptGeneratorBtn: FC<Props> = ({
           availableNodes={availableNodes}
           flowId={configsMap?.flowId || ''}
           nodeId={nodeId}
+          currentPrompt={currentPrompt}
         />
       )}
     </div>
