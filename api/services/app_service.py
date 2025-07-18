@@ -17,6 +17,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
@@ -235,7 +236,7 @@ class AppService:
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -249,7 +250,7 @@ class AppService:
         """
         app.name = name
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -265,7 +266,7 @@ class AppService:
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -282,7 +283,7 @@ class AppService:
 
         app.enable_site = enable_site
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app
@@ -299,7 +300,7 @@ class AppService:
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.updated_at = naive_utc_now()
         db.session.commit()
 
         return app

@@ -18,6 +18,7 @@ from controllers.console.explore.error import NotChatAppError, NotCompletionAppE
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from libs.datetime_utils import naive_utc_now
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -51,7 +52,7 @@ class CompletionApi(InstalledAppResource):
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
 
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+        installed_app.last_used_at = naive_utc_now()
         db.session.commit()
 
         try:
@@ -111,7 +112,7 @@ class ChatApi(InstalledAppResource):
 
         args["auto_generate_name"] = False
 
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+        installed_app.last_used_at = naive_utc_now()
         db.session.commit()
 
         try:

@@ -35,6 +35,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.member_fields import account_fields
+from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, email, extract_remote_ip, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
@@ -80,7 +81,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            invitation_code.used_at = naive_utc_now()
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -88,7 +89,7 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        account.initialized_at = naive_utc_now()
         db.session.commit()
 
         return {"result": "success"}
