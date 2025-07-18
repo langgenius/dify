@@ -12,7 +12,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import languages
-from core.plugin.entities.plugin import ToolProviderID
+from core.plugin.entities.plugin import DatasourceProviderID, ToolProviderID
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
@@ -29,6 +29,7 @@ from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.oauth import DatasourceOauthParamConfig
 from models.provider import Provider, ProviderModel
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
@@ -1205,3 +1206,49 @@ def setup_system_tool_oauth_client(provider, client_params):
     db.session.add(oauth_client)
     db.session.commit()
     click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+@click.command("setup-datasource-oauth-client", help="Setup datasource oauth client.")
+@click.option("--provider", prompt=True, help="Provider name")
+@click.option("--client-params", prompt=True, help="Client Params")
+def setup_datasource_oauth_client(provider, client_params):
+    """
+    Setup datasource oauth client
+    """
+    provider_id = DatasourceProviderID(provider)
+    provider_name = provider_id.provider_name
+    plugin_id = provider_id.plugin_id
+    
+    try:
+        # json validate
+        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
+        click.echo(click.style("Client params validated successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+        return
+    
+    click.echo(click.style(f"Ready to delete existing oauth client params: {provider_name}", fg="yellow"))
+    deleted_count = (
+        db.session.query(DatasourceOauthParamConfig)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
+    if deleted_count > 0:
+        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+
+    click.echo(click.style(f"Ready to setup datasource oauth client: {provider_name}", fg="yellow"))
+    oauth_client = DatasourceOauthParamConfig(
+        provider=provider_name,
+        plugin_id=plugin_id,
+        system_credentials=client_params_dict,
+    )
+    db.session.add(oauth_client)
+    db.session.commit()
+    click.echo(click.style(f"provider: {provider_name}", fg="green"))
+    click.echo(click.style(f"plugin_id: {plugin_id}", fg="green"))
+    click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
+    click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))

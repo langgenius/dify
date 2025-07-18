@@ -16,7 +16,7 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    plugin_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     system_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
 
@@ -31,7 +31,7 @@ class DatasourceProvider(Base):
     tenant_id = db.Column(StringUUID, nullable=False)
     name: Mapped[str] = db.Column(db.String(255), nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
-    plugin_id: Mapped[str] = db.Column(db.TEXT, nullable=False)
+    plugin_id: Mapped[str] = db.Column(db.String(255), nullable=False)
     auth_type: Mapped[str] = db.Column(db.String(255), nullable=False)
     encrypted_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
     created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, default=datetime.now)
