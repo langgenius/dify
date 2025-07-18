@@ -1,13 +1,17 @@
 import type { FC } from 'react'
 import { memo, useCallback, useEffect, useRef } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
-import VersionHistoryPanel from '@/app/components/workflow/panel/version-history-panel'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useReactflow } from 'reactflow'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
 import cn from '@/utils/classnames'
+import dynamic from 'next/dynamic'
+
+const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
+  ssr: false,
+})
 
 export type PanelProps = {
   components?: {
