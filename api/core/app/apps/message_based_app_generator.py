@@ -6,7 +6,8 @@ from typing import Optional, Union, cast
 
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,

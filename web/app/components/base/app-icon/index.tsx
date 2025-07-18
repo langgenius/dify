@@ -1,5 +1,6 @@
 'use client'
-import React, { type FC, useRef } from 'react'
+import React from 'react'
+import { type FC, useRef } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
 import { cva } from 'class-variance-authority'

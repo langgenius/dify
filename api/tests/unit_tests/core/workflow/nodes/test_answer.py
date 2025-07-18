@@ -61,20 +61,25 @@ def test_execute_answer():
     variable_pool.add(["start", "weather"], "sunny")
     variable_pool.add(["llm", "text"], "You are a helpful AI.")
 
+    node_config = {
+        "id": "answer",
+        "data": {
+            "title": "123",
+            "type": "answer",
+            "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        },
+    }
+
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "answer",
-            "data": {
-                "title": "123",
-                "type": "answer",
-                "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()

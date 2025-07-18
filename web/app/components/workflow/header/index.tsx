@@ -5,10 +5,17 @@ import {
 import type { HeaderInNormalProps } from './header-in-normal'
 import HeaderInNormal from './header-in-normal'
 import type { HeaderInHistoryProps } from './header-in-view-history'
-import HeaderInHistory from './header-in-view-history'
 import type { HeaderInRestoringProps } from './header-in-restoring'
-import HeaderInRestoring from './header-in-restoring'
 import { useStore } from '../store'
+import dynamic from 'next/dynamic'
+
+const HeaderInHistory = dynamic(() => import('./header-in-view-history'), {
+  ssr: false,
+})
+const HeaderInRestoring = dynamic(() => import('./header-in-restoring'), {
+  ssr: false,
+})
+
 export type HeaderProps = {
   normal?: HeaderInNormalProps
   viewHistory?: HeaderInHistoryProps
