@@ -50,6 +50,7 @@ type ItemProps = {
   isFlat?: boolean
   isInCodeGeneratorInstructionEditor?: boolean
   zIndex?: number
+  className?: string
 }
 
 const objVarTypes = [VarType.object, VarType.file]
@@ -67,6 +68,7 @@ const Item: FC<ItemProps> = ({
   isFlat,
   isInCodeGeneratorInstructionEditor,
   zIndex,
+  className,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -75,7 +77,7 @@ const Item: FC<ItemProps> = ({
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
   const flatVarIcon = useMemo(() => {
-    if(!isFlat)
+    if (!isFlat)
       return null
     const variable = itemData.variable
     let Icon
@@ -91,7 +93,7 @@ const Item: FC<ItemProps> = ({
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
   const varName = useMemo(() => {
-    if(!isFlat)
+    if (!isFlat)
       return itemData.variable
     if (itemData.variable === 'current')
       return isInCodeGeneratorInstructionEditor ? 'current_code' : 'current_prompt'
@@ -153,7 +155,7 @@ const Item: FC<ItemProps> = ({
     if (!isSupportFileVar && isFile)
       return
 
-    if(isFlat) {
+    if (isFlat) {
       onChange([itemData.variable], itemData)
     }
     else if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
@@ -175,7 +177,8 @@ const Item: FC<ItemProps> = ({
           className={cn(
             (isObj || isStructureOutput) ? ' pr-1' : 'pr-[18px]',
             isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-            'relative flex h-6 w-full cursor-pointer items-center  rounded-md pl-3',
+            'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
+            className,
           )
           }
           onClick={handleChosen}
@@ -379,7 +382,7 @@ const VarReferenceVars: FC<Props> = ({
 
           {
             filteredVars.map((item, i) => (
-              <div key={i} className={cn(!item.isFlat && 'mt-3')}>
+              <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
                 {!item.isFlat && (
                   <div
                     className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'

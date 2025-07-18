@@ -30,6 +30,7 @@ const InstructionEditor: FC<Props> = ({
   const { t } = useTranslation()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const getVarType = useWorkflowVariableType()
+  const isCode = generatorType === 'code'
   const placeholder = (
     <div className='system-sm-regular  text-text-placeholder'>
       <div className='leading-6'>{t(`${i18nPrefix}.instructionPlaceHolderTitle`)}</div>
@@ -71,14 +72,14 @@ const InstructionEditor: FC<Props> = ({
             return acc
           }, {} as any),
         }}
-        currentBlock = {{
+        currentBlock={{
           show: true,
           generatorType,
         }}
-        errorMessageBlock = {{
-          show: true,
+        errorMessageBlock={{
+          show: isCode,
         }}
-        lastRunBlock = {{
+        lastRunBlock={{
           show: true,
         }}
         onChange={onChange}
