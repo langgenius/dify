@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 class ClickZettaVolumeConfig(BaseModel):
     """Configuration for ClickZetta Volume storage."""
 
-    username: str
-    password: str
-    instance: str
+    username: str = ""
+    password: str = ""
+    instance: str = ""
     service: str = "api.clickzetta.com"
     workspace: str = "quick_start"
     vcluster: str = "default_ap"
