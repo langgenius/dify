@@ -73,7 +73,7 @@ class FileLifecycleManager:
         self._deleted_prefix = ".deleted/"
 
         # 获取权限管理器（如果存在）
-        self._permission_manager = getattr(storage, "_permission_manager", None)
+        self._permission_manager: Optional[Any] = getattr(storage, "_permission_manager", None)
 
     def save_with_lifecycle(self, filename: str, data: bytes, tags: Optional[dict[str, str]] = None) -> FileMetadata:
         """保存文件并管理生命周期
@@ -387,7 +387,7 @@ class FileLifecycleManager:
         try:
             metadata_dict = self._load_metadata()
 
-            stats = {
+            stats: dict[str, Any] = {
                 "total_files": len(metadata_dict),
                 "active_files": 0,
                 "archived_files": 0,
@@ -406,17 +406,17 @@ class FileLifecycleManager:
 
                 # 统计文件状态
                 if file_meta.status == FileStatus.ACTIVE:
-                    stats["active_files"] += 1
+                    stats["active_files"] = (stats["active_files"] or 0) + 1
                 elif file_meta.status == FileStatus.ARCHIVED:
-                    stats["archived_files"] += 1
+                    stats["archived_files"] = (stats["archived_files"] or 0) + 1
                 elif file_meta.status == FileStatus.DELETED:
-                    stats["deleted_files"] += 1
+                    stats["deleted_files"] = (stats["deleted_files"] or 0) + 1
 
                 # 统计大小
-                stats["total_size"] += file_meta.size or 0
+                stats["total_size"] = (stats["total_size"] or 0) + (file_meta.size or 0)
 
                 # 统计版本
-                stats["versions_count"] += file_meta.version or 0
+                stats["versions_count"] = (stats["versions_count"] or 0) + (file_meta.version or 0)
 
                 # 找出最新和最旧的文件
                 if oldest_date is None or file_meta.created_at < oldest_date:
@@ -448,12 +448,13 @@ class FileLifecycleManager:
         except Exception as e:
             logger.warning(f"Failed to create version backup for {filename}: {e}")
 
-    def _load_metadata(self) -> dict:
+    def _load_metadata(self) -> dict[str, Any]:
         """加载元数据文件"""
         try:
             if self._storage.exists(self._metadata_file):
                 metadata_content = self._storage.load_once(self._metadata_file)
-                return json.loads(metadata_content.decode("utf-8"))
+                result = json.loads(metadata_content.decode("utf-8"))
+                return dict(result) if result else {}
             else:
                 return {}
         except Exception as e:
@@ -506,7 +507,8 @@ class FileLifecycleManager:
             mapped_operation = operation_mapping.get(operation, operation)
 
             # 检查权限
-            return self._permission_manager.validate_operation(mapped_operation, self._dataset_id)
+            result = self._permission_manager.validate_operation(mapped_operation, self._dataset_id)
+            return bool(result)
 
         except Exception as e:
             logger.exception(f"Permission check failed for {filename} operation {operation}")
