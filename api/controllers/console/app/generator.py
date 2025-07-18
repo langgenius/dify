@@ -1,5 +1,9 @@
+import os
+from typing import Sequence
+
 from flask_login import current_user
 from flask_restful import Resource, reqparse
+from opik.rest_api import BadRequestError
 
 from controllers.console import api
 from controllers.console.app.error import (
@@ -113,37 +117,63 @@ class InstructionGenerateApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("flow_id", type=str, required=False, default="", location="json")
+        parser.add_argument("flow_id", type=str, required=True, default="", location="json")
         parser.add_argument("node_id", type=str, required=False, default="", location="json")
         parser.add_argument("current", type=str, required=False, default="", location="json")
+        parser.add_argument("language", type=str, required=False, default="javascript", location="json")
         parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
         parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
         args = parser.parse_args()
 
         try:
-            if args["flow_id"] == "" or args["current"] == "": # Fallback for legacy endpoint
-                return LLMGenerator.generate_rule_config(
-                    current_user.current_tenant_id,
-                    instruction=args["instruction"],
-                    model_config=args["model_config"],
-                    no_variable=True
-                )
-            if args["node_id"] == "": # For legacy app without a workflow
+            if args["current"] == "" and args["node_id"] != "": # Generate from nothing for a workflow node
+                from models import db
+                from models import App
+                from services.workflow_service import WorkflowService
+                app = db.session.query(App).filter(App.id == args["flow_id"]).first()
+                workflow = WorkflowService().get_draft_workflow(app_model=app)
+                nodes:Sequence = workflow.graph_dict["nodes"]
+                node: dict = [node for node in nodes if node["id"] == args["node_id"]][0]
+                if not node:
+                    raise BadRequestError(f"node {args['node_id']} not found")
+                match node_type:=node["data"]["type"]:
+                    case "llm", "agent":
+                        return LLMGenerator.generate_rule_config(
+                            current_user.current_tenant_id,
+                            instruction=args["instruction"],
+                            model_config=args["model_config"],
+                            no_variable=True
+                        )
+                    case "code":
+                        return LLMGenerator.generate_code(
+                            tenant_id=current_user.current_tenant_id,
+                            instruction=args["instruction"],
+                            model_config=args["model_config"],
+                            code_language=args["language"],
+                        )
+                    case _:
+                        raise BadRequestError(f"invalid node type: {node_type}")
+            if args["node_id"] == "" and args["current"] != "": # For legacy app without a workflow
                 return LLMGenerator.instruction_modify_legacy(
                     tenant_id=current_user.current_tenant_id,
                     flow_id=args["flow_id"],
                     current=args["current"],
                     instruction=args["instruction"],
                     model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
                 )
-            return LLMGenerator.instruction_modify_workflow(
-                tenant_id=current_user.current_tenant_id,
-                flow_id=args["flow_id"],
-                node_id=args["node_id"],
-                current=args["current"],
-                instruction=args["instruction"],
-                model_config=args["model_config"],
-            )
+            if args["node_id"] != "" and args["current"] != "": # For workflow node
+                return LLMGenerator.instruction_modify_workflow(
+                    tenant_id=current_user.current_tenant_id,
+                    flow_id=args["flow_id"],
+                    node_id=args["node_id"],
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                )
+            raise BadRequestError("incompatible parameters")
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

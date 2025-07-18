@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="CommitMessageInspectionProfile">
+    <profile version="1.0">
+      <inspection_tool class="CommitFormat" enabled="true" level="WARNING" enabled_by_default="true" />
+      <inspection_tool class="CommitNamingConvention" enabled="true" level="WARNING" enabled_by_default="true" />
+    </profile>
+  </component>
   <component name="IssueNavigationConfiguration">
     <option name="links">
       <list>

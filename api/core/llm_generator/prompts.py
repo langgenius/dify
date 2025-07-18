@@ -329,6 +329,10 @@ Both your input and output should be in JSON format.
         "instruction": {
             "type": "string",
             "description": "User's instruction to edit the current prompt"
+        },
+        "ideal_output": {
+            "type": "string",
+            "description": "The ideal output that the user expects from the large language model after modifying the prompt."
         }
     }
 }
