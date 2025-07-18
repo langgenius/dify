@@ -45,32 +45,32 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
         storage.save(test_filename, test_content)
 
         # Check if file exists
-        self.assertTrue(storage.exists(test_filename))
+        assert storage.exists(test_filename)
 
         # Load file
         loaded_content = storage.load_once(test_filename)
-        self.assertEqual(loaded_content, test_content)
+        assert loaded_content == test_content
 
         # Test streaming
         stream_content = b""
         for chunk in storage.load_stream(test_filename):
             stream_content += chunk
-        self.assertEqual(stream_content, test_content)
+        assert stream_content == test_content
 
         # Test download
         with tempfile.NamedTemporaryFile() as temp_file:
             storage.download(test_filename, temp_file.name)
             with open(temp_file.name, "rb") as f:
                 downloaded_content = f.read()
-            self.assertEqual(downloaded_content, test_content)
+            assert downloaded_content == test_content
 
         # Test scan
         files = storage.scan("", files=True, directories=False)
-        self.assertIn(test_filename, files)
+        assert test_filename in files
 
         # Delete file
         storage.delete(test_filename)
-        self.assertFalse(storage.exists(test_filename))
+        assert not storage.exists(test_filename)
 
     @pytest.mark.skipif(not os.getenv("CLICKZETTA_USERNAME"), reason="ClickZetta credentials not provided")
     def test_table_volume_operations(self):
@@ -89,24 +89,24 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
         storage.save(test_filename, test_content)
 
         # Check if file exists
-        self.assertTrue(storage.exists(test_filename))
+        assert storage.exists(test_filename)
 
         # Load file
         loaded_content = storage.load_once(test_filename)
-        self.assertEqual(loaded_content, test_content)
+        assert loaded_content == test_content
 
         # Test scan for dataset
         files = storage.scan(dataset_id, files=True, directories=False)
-        self.assertIn("test_file.txt", files)
+        assert "test_file.txt" in files
 
         # Delete file
         storage.delete(test_filename)
-        self.assertFalse(storage.exists(test_filename))
+        assert not storage.exists(test_filename)
 
     def test_config_validation(self):
         """Test configuration validation."""
         # Test missing required fields
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             ClickZettaVolumeConfig(
                 username="",  # Empty username should fail
                 password="pass",
@@ -114,11 +114,11 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
             )
 
         # Test invalid volume type
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             ClickZettaVolumeConfig(username="user", password="pass", instance="instance", volume_type="invalid_type")
 
         # Test external volume without volume_name
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             ClickZettaVolumeConfig(
                 username="user",
                 password="pass",
@@ -133,16 +133,16 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
 
         # Test table volume path
         path = storage._get_volume_path("test.txt", "12345")
-        self.assertEqual(path, "test_dataset_12345/test.txt")
+        assert path == "test_dataset_12345/test.txt"
 
         # Test path with existing dataset_id prefix
         path = storage._get_volume_path("12345/test.txt")
-        self.assertEqual(path, "12345/test.txt")
+        assert path == "12345/test.txt"
 
         # Test user volume
         storage._config.volume_type = "user"
         path = storage._get_volume_path("test.txt")
-        self.assertEqual(path, "test.txt")
+        assert path == "test.txt"
 
     def test_sql_prefix_generation(self):
         """Test SQL prefix generation for different volume types."""
@@ -150,18 +150,18 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
 
         # Test table volume SQL prefix
         prefix = storage._get_volume_sql_prefix("12345")
-        self.assertEqual(prefix, "TABLE VOLUME test_dataset_12345")
+        assert prefix == "TABLE VOLUME test_dataset_12345"
 
         # Test user volume SQL prefix
         storage._config.volume_type = "user"
         prefix = storage._get_volume_sql_prefix()
-        self.assertEqual(prefix, "USER VOLUME")
+        assert prefix == "USER VOLUME"
 
         # Test external volume SQL prefix
         storage._config.volume_type = "external"
         storage._config.volume_name = "my_external_volume"
         prefix = storage._get_volume_sql_prefix()
-        self.assertEqual(prefix, "VOLUME my_external_volume")
+        assert prefix == "VOLUME my_external_volume"
 
 
 if __name__ == "__main__":
