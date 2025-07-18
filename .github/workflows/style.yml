@@ -167,9 +167,9 @@ jobs:
           IGNORE_GITIGNORED_FILES: true
           VALIDATE_BASH: true
           VALIDATE_BASH_EXEC: true
-          VALIDATE_EDITORCONFIG: true
           # FIXME: temporarily disabled until api-docker.yaml's run script is fixed for shellcheck
           # VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_EDITORCONFIG: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
