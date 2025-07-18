@@ -22,10 +22,10 @@ class VolumePermission(Enum):
 
 class VolumePermissionManager:
     """Volume权限管理器"""
-    
+
     def __init__(self, connection_or_config, volume_type: str = None, volume_name: Optional[str] = None):
         """初始化权限管理器
-        
+
         Args:
             connection_or_config: ClickZetta连接对象或配置字典
             volume_type: Volume类型 (user|table|external)
@@ -52,22 +52,22 @@ class VolumePermissionManager:
             self._connection = connection_or_config
             self._volume_type = volume_type
             self._volume_name = volume_name
-        
+
         if not self._connection:
             raise ValueError("Valid connection or config is required")
         if not self._volume_type:
             raise ValueError("volume_type is required")
-            
+
         self._permission_cache: Dict[str, Set[str]] = {}
         self._current_username = None  # 将从连接中获取当前用户名
-    
+
     def check_permission(self, operation: VolumePermission, dataset_id: Optional[str] = None) -> bool:
         """检查用户是否有执行特定操作的权限
-        
+
         Args:
             operation: 要执行的操作类型
             dataset_id: 数据集ID (用于table volume)
-            
+
         Returns:
             True if user has permission, False otherwise
         """
@@ -81,14 +81,14 @@ class VolumePermissionManager:
             else:
                 logger.warning(f"Unknown volume type: {self._volume_type}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Permission check failed: {e}")
             return False
-    
+
     def _check_user_volume_permission(self, operation: VolumePermission) -> bool:
         """检查User Volume权限
-        
+
         User Volume权限规则:
         - 用户对自己的User Volume有全部权限
         - 只要用户能够连接到ClickZetta，就默认具有User Volume的基本权限
@@ -97,29 +97,34 @@ class VolumePermissionManager:
         try:
             # 获取当前用户名
             current_user = self._get_current_username()
-            
+
             # 检查基本连接状态
             with self._connection.cursor() as cursor:
                 # 简单的连接测试，如果能执行查询说明用户有基本权限
                 cursor.execute("SELECT 1")
                 result = cursor.fetchone()
-                
+
                 if result:
-                    logger.debug(f"User Volume permission check for {current_user}, operation {operation.name}: granted (basic connection verified)")
+                    logger.debug(
+                        f"User Volume permission check for {current_user}, operation {operation.name}: "
+                        f"granted (basic connection verified)"
+                    )
                     return True
                 else:
-                    logger.warning(f"User Volume permission check failed: cannot verify basic connection for {current_user}")
+                    logger.warning(
+                        f"User Volume permission check failed: cannot verify basic connection for {current_user}"
+                    )
                     return False
-                
+
         except Exception as e:
             logger.error(f"User Volume permission check failed: {e}")
             # 对于User Volume，如果权限检查失败，可能是配置问题，给出更友好的错误提示
             logger.info(f"User Volume permission check failed, but permission checking is disabled in this version")
             return False
-    
+
     def _check_table_volume_permission(self, operation: VolumePermission, dataset_id: Optional[str]) -> bool:
         """检查Table Volume权限
-        
+
         Table Volume权限规则:
         - Table Volume权限继承对应表的权限
         - SELECT权限 -> 可以READ/LIST文件
@@ -128,29 +133,29 @@ class VolumePermissionManager:
         if not dataset_id:
             logger.warning("dataset_id is required for table volume permission check")
             return False
-        
+
         table_name = f"dataset_{dataset_id}" if not dataset_id.startswith("dataset_") else dataset_id
-        
+
         try:
             # 检查表权限
             permissions = self._get_table_permissions(table_name)
             required_permissions = set(operation.value.split(","))
-            
+
             # 检查是否有所需的所有权限
             has_permission = required_permissions.issubset(permissions)
-            
+
             logger.debug(f"Table Volume permission check for {table_name}, operation {operation.name}: "
                         f"required={required_permissions}, has={permissions}, granted={has_permission}")
-            
+
             return has_permission
-            
+
         except Exception as e:
             logger.error(f"Table volume permission check failed for {table_name}: {e}")
             return False
-    
+
     def _check_external_volume_permission(self, operation: VolumePermission) -> bool:
         """检查External Volume权限
-        
+
         External Volume权限规则:
         - 尝试获取对External Volume的权限
         - 如果权限检查失败，进行备选验证
@@ -159,29 +164,29 @@ class VolumePermissionManager:
         if not self._volume_name:
             logger.warning("volume_name is required for external volume permission check")
             return False
-        
+
         try:
             # 检查External Volume权限
             permissions = self._get_external_volume_permissions(self._volume_name)
-            
+
             # External Volume权限映射：根据操作类型确定所需权限
             required_permissions = set()
-            
+
             if operation in [VolumePermission.READ, VolumePermission.LIST]:
                 required_permissions.add("read")
             elif operation in [VolumePermission.WRITE, VolumePermission.DELETE]:
                 required_permissions.add("write")
-            
+
             # 检查是否有所需的所有权限
             has_permission = required_permissions.issubset(permissions)
-            
+
             logger.debug(f"External Volume permission check for {self._volume_name}, operation {operation.name}: "
                         f"required={required_permissions}, has={permissions}, granted={has_permission}")
-            
+
             # 如果权限检查失败，尝试备选验证
             if not has_permission:
                 logger.info(f"Direct permission check failed for {self._volume_name}, trying fallback verification")
-                
+
                 # 备选验证：尝试列出Volume来验证基本访问权限
                 try:
                     with self._connection.cursor() as cursor:
@@ -193,43 +198,43 @@ class VolumePermissionManager:
                                 return True
                 except Exception as fallback_e:
                     logger.warning(f"Fallback verification failed for {self._volume_name}: {fallback_e}")
-            
+
             return has_permission
-            
+
         except Exception as e:
             logger.error(f"External volume permission check failed for {self._volume_name}: {e}")
             logger.info(f"External Volume permission check failed, but permission checking is disabled in this version")
             return False
-    
+
     def _get_table_permissions(self, table_name: str) -> Set[str]:
         """获取用户对指定表的权限
-        
+
         Args:
             table_name: 表名
-            
+
         Returns:
             用户对该表的权限集合
         """
         cache_key = f"table:{table_name}"
-        
+
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
-        
+
         permissions = set()
-        
+
         try:
             with self._connection.cursor() as cursor:
                 # 使用正确的ClickZetta语法检查当前用户权限
                 cursor.execute("SHOW GRANTS")
                 grants = cursor.fetchall()
-                
+
                 # 解析权限结果，查找对该表的权限
                 for grant in grants:
                     if len(grant) >= 3:  # 典型格式: (privilege, object_type, object_name, ...)
                         privilege = grant[0].upper()
                         object_type = grant[1].upper() if len(grant) > 1 else ""
                         object_name = grant[2] if len(grant) > 2 else ""
-                        
+
                         # 检查是否是对该表的权限
                         if object_type == "TABLE" and object_name == table_name:
                             if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
@@ -244,7 +249,7 @@ class VolumePermissionManager:
                                     permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
                                 else:
                                     permissions.add(privilege)
-                
+
                 # 如果没有找到明确的权限，尝试执行一个简单的查询来验证权限
                 if not permissions:
                     try:
@@ -252,21 +257,21 @@ class VolumePermissionManager:
                         permissions.add("SELECT")
                     except Exception:
                         logger.debug(f"Cannot query table {table_name}, no SELECT permission")
-                
+
         except Exception as e:
             logger.warning(f"Could not check table permissions for {table_name}: {e}")
             # 安全默认：权限检查失败时拒绝访问
             pass
-        
+
         # 缓存权限信息
         self._permission_cache[cache_key] = permissions
         return permissions
-    
+
     def _get_current_username(self) -> str:
         """获取当前用户名"""
         if self._current_username:
             return self._current_username
-        
+
         try:
             with self._connection.cursor() as cursor:
                 cursor.execute("SELECT CURRENT_USER()")
@@ -276,73 +281,74 @@ class VolumePermissionManager:
                     return self._current_username
         except Exception as e:
             logger.error(f"Failed to get current username: {e}")
-        
+
         return "unknown"
-    
+
     def _get_user_permissions(self, username: str) -> Set[str]:
         """获取用户的基本权限集合"""
         cache_key = f"user_permissions:{username}"
-        
+
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
-        
+
         permissions = set()
-        
+
         try:
             with self._connection.cursor() as cursor:
                 # 使用正确的ClickZetta语法检查当前用户权限
                 cursor.execute("SHOW GRANTS")
                 grants = cursor.fetchall()
-                
+
                 # 解析权限结果，查找用户的基本权限
                 for grant in grants:
                     if len(grant) >= 3:  # 典型格式: (privilege, object_type, object_name, ...)
                         privilege = grant[0].upper()
                         object_type = grant[1].upper() if len(grant) > 1 else ""
-                        
+
                         # 收集所有相关权限
                         if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
                             if privilege == "ALL":
                                 permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
                             else:
                                 permissions.add(privilege)
-                
+
         except Exception as e:
             logger.warning(f"Could not check user permissions for {username}: {e}")
             # 安全默认：权限检查失败时拒绝访问
             pass
-        
+
         # 缓存权限信息
         self._permission_cache[cache_key] = permissions
         return permissions
-    
+
     def _get_external_volume_permissions(self, volume_name: str) -> Set[str]:
         """获取用户对指定External Volume的权限
-        
+
         Args:
             volume_name: External Volume名称
-            
+
         Returns:
             用户对该Volume的权限集合
         """
         cache_key = f"external_volume:{volume_name}"
-        
+
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
-        
+
         permissions = set()
-        
+
         try:
             with self._connection.cursor() as cursor:
                 # 使用正确的ClickZetta语法检查Volume权限
                 logger.info(f"Checking permissions for volume: {volume_name}")
                 cursor.execute(f"SHOW GRANTS ON VOLUME {volume_name}")
                 grants = cursor.fetchall()
-                
+
                 logger.info(f"Raw grants result for {volume_name}: {grants}")
-                
+
                 # 解析权限结果
-                # 格式: (granted_type, privilege, conditions, granted_on, object_name, granted_to, grantee_name, grantor_name, grant_option, granted_time)
+                # 格式: (granted_type, privilege, conditions, granted_on, object_name, granted_to,
+                #       grantee_name, grantor_name, grant_option, granted_time)
                 for grant in grants:
                     logger.info(f"Processing grant: {grant}")
                     if len(grant) >= 5:
@@ -350,15 +356,19 @@ class VolumePermissionManager:
                         privilege = grant[1].upper()
                         granted_on = grant[3]
                         object_name = grant[4]
-                        
-                        logger.info(f"Grant details - type: {granted_type}, privilege: {privilege}, granted_on: {granted_on}, object_name: {object_name}")
-                        
+
+                        logger.info(
+                            f"Grant details - type: {granted_type}, privilege: {privilege}, "
+                            f"granted_on: {granted_on}, object_name: {object_name}"
+                        )
+
                         # 检查是否是对该Volume的权限或者是层级权限
-                        if (granted_type == "PRIVILEGE" and granted_on == "VOLUME" and object_name.endswith(volume_name)) or \
-                           (granted_type == "OBJECT_HIERARCHY" and granted_on == "VOLUME"):
-                            
+                        if ((granted_type == "PRIVILEGE" and granted_on == "VOLUME" and
+                             object_name.endswith(volume_name)) or
+                            (granted_type == "OBJECT_HIERARCHY" and granted_on == "VOLUME")):
+
                             logger.info(f"Matching grant found for {volume_name}")
-                            
+
                             if "READ" in privilege:
                                 permissions.add("read")
                                 logger.info(f"Added READ permission for {volume_name}")
@@ -371,9 +381,9 @@ class VolumePermissionManager:
                             if privilege == "ALL":
                                 permissions.update(["read", "write", "alter"])
                                 logger.info(f"Added ALL permissions for {volume_name}")
-                
+
                 logger.info(f"Final permissions for {volume_name}: {permissions}")
-                
+
                 # 如果没有找到明确的权限，尝试查看Volume列表来验证基本权限
                 if not permissions:
                     try:
@@ -386,7 +396,7 @@ class VolumePermissionManager:
                                 break
                     except Exception:
                         logger.debug(f"Cannot access volume {volume_name}, no basic permission")
-                
+
         except Exception as e:
             logger.warning(f"Could not check external volume permissions for {volume_name}: {e}")
             # 在权限检查失败时，尝试基本的Volume访问验证
@@ -404,102 +414,102 @@ class VolumePermissionManager:
                 logger.warning(f"Basic volume access check failed for {volume_name}: {basic_e}")
                 # 最后的备选方案：假设有基本权限
                 permissions.add("read")
-        
+
         # 缓存权限信息
         self._permission_cache[cache_key] = permissions
         return permissions
-    
+
     def clear_permission_cache(self):
         """清空权限缓存"""
         self._permission_cache.clear()
         logger.debug("Permission cache cleared")
-    
+
     def get_permission_summary(self, dataset_id: Optional[str] = None) -> Dict[str, bool]:
         """获取权限摘要
-        
+
         Args:
             dataset_id: 数据集ID (用于table volume)
-            
+
         Returns:
             权限摘要字典
         """
         summary = {}
-        
+
         for operation in VolumePermission:
             summary[operation.name.lower()] = self.check_permission(operation, dataset_id)
-        
+
         return summary
-    
+
     def check_inherited_permission(self, file_path: str, operation: VolumePermission) -> bool:
         """检查文件路径的权限继承
-        
+
         Args:
             file_path: 文件路径
             operation: 要执行的操作
-            
+
         Returns:
             True if user has permission, False otherwise
         """
         try:
             # 解析文件路径
             path_parts = file_path.strip("/").split("/")
-            
+
             if not path_parts:
                 logger.warning("Invalid file path for permission inheritance check")
                 return False
-            
+
             # 对于Table Volume，第一层是dataset_id
             if self._volume_type == "table":
                 if len(path_parts) < 1:
                     return False
-                
+
                 dataset_id = path_parts[0]
-                
+
                 # 检查对dataset的权限
                 has_dataset_permission = self.check_permission(operation, dataset_id)
-                
+
                 if not has_dataset_permission:
                     logger.debug(f"Permission denied for dataset {dataset_id}")
                     return False
-                
+
                 # 检查路径遍历攻击
                 if self._contains_path_traversal(file_path):
                     logger.warning(f"Path traversal attack detected: {file_path}")
                     return False
-                
+
                 # 检查是否访问敏感目录
                 if self._is_sensitive_path(file_path):
                     logger.warning(f"Access to sensitive path denied: {file_path}")
                     return False
-                
+
                 logger.debug(f"Permission inherited for path {file_path}")
                 return True
-                
+
             elif self._volume_type == "user":
                 # User Volume的权限继承
                 current_user = self._get_current_username()
-                
+
                 # 检查是否试图访问其他用户的目录
                 if len(path_parts) > 1 and path_parts[0] != current_user:
                     logger.warning(f"User {current_user} attempted to access {path_parts[0]}'s directory")
                     return False
-                
+
                 # 检查基本权限
                 return self.check_permission(operation)
-                
+
             elif self._volume_type == "external":
                 # External Volume的权限继承
                 # 检查对External Volume的权限
                 return self.check_permission(operation)
-                
+
             else:
                 logger.warning(f"Unknown volume type for permission inheritance: {self._volume_type}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Permission inheritance check failed: {e}")
             return False
-    
+
     def _contains_path_traversal(self, file_path: str) -> bool:
         """检查路径是否包含路径遍历攻击"""
         # 检查常见的路径遍历模式
@@ -509,23 +519,23 @@ class VolumePermissionManager:
             "%2e%2e%2f", "%2e%2e%5c",
             "....//", "....\\\\",
         ]
-        
+
         file_path_lower = file_path.lower()
-        
+
         for pattern in traversal_patterns:
             if pattern in file_path_lower:
                 return True
-        
+
         # 检查绝对路径
         if file_path.startswith("/") or file_path.startswith("\\"):
             return True
-        
+
         # 检查Windows驱动器路径
         if len(file_path) >= 2 and file_path[1] == ":":
             return True
-        
+
         return False
-    
+
     def _is_sensitive_path(self, file_path: str) -> bool:
         """检查路径是否为敏感路径"""
         sensitive_patterns = [
@@ -533,22 +543,22 @@ class VolumePermissionManager:
             "private", "key", "certificate", "cert", "ssl",
             "database", "backup", "dump", "log", "tmp"
         ]
-        
+
         file_path_lower = file_path.lower()
-        
+
         for pattern in sensitive_patterns:
             if pattern in file_path_lower:
                 return True
-        
+
         return False
-    
+
     def validate_operation(self, operation: str, dataset_id: Optional[str] = None) -> bool:
         """验证操作权限
-        
+
         Args:
             operation: 操作名称 (save|load|exists|delete|scan)
             dataset_id: 数据集ID
-            
+
         Returns:
             True if operation is allowed, False otherwise
         """
@@ -562,18 +572,18 @@ class VolumePermissionManager:
             "delete": VolumePermission.DELETE,
             "scan": VolumePermission.LIST,
         }
-        
+
         if operation not in operation_mapping:
             logger.warning(f"Unknown operation: {operation}")
             return False
-        
+
         volume_permission = operation_mapping[operation]
         return self.check_permission(volume_permission, dataset_id)
 
 
 class VolumePermissionError(Exception):
     """Volume权限错误异常"""
-    
+
     def __init__(self, message: str, operation: str, volume_type: str, dataset_id: Optional[str] = None):
         self.operation = operation
         self.volume_type = volume_type
@@ -581,16 +591,16 @@ class VolumePermissionError(Exception):
         super().__init__(message)
 
 
-def check_volume_permission(permission_manager: VolumePermissionManager, 
-                          operation: str, 
+def check_volume_permission(permission_manager: VolumePermissionManager,
+                          operation: str,
                           dataset_id: Optional[str] = None) -> None:
     """权限检查装饰器函数
-    
+
     Args:
         permission_manager: 权限管理器
         operation: 操作名称
         dataset_id: 数据集ID
-        
+
     Raises:
         VolumePermissionError: 如果没有权限
     """
@@ -598,7 +608,7 @@ def check_volume_permission(permission_manager: VolumePermissionManager,
         error_message = f"Permission denied for operation '{operation}' on {permission_manager._volume_type} volume"
         if dataset_id:
             error_message += f" (dataset: {dataset_id})"
-        
+
         raise VolumePermissionError(
             error_message,
             operation=operation,

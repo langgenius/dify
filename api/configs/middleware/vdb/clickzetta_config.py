@@ -67,3 +67,4 @@ class ClickzettaConfig(BaseModel):
         description="Distance function for vector similarity: l2_distance or cosine_distance",
         default="cosine_distance",
     )
+
