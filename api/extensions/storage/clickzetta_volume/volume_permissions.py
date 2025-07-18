@@ -627,8 +627,8 @@ def check_volume_permission(
             error_message += f" (dataset: {dataset_id})"
 
         raise VolumePermissionError(
-            error_message, 
-            operation=operation, 
-            volume_type=permission_manager._volume_type or "unknown", 
-            dataset_id=dataset_id
+            error_message,
+            operation=operation,
+            volume_type=permission_manager._volume_type or "unknown",
+            dataset_id=dataset_id,
         )
