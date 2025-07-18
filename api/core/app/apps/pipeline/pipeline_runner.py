@@ -16,6 +16,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
@@ -127,7 +128,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                         )
 
             variable_pool = VariablePool(
-                system_variables=system_inputs,
+                system_variables=SystemVariable(**system_inputs),
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
                 conversation_variables=[],
