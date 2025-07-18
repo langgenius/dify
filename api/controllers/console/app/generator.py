@@ -1,5 +1,5 @@
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 from flask_login import current_user
 from flask_restful import Resource, reqparse
@@ -128,8 +128,7 @@ class InstructionGenerateApi(Resource):
 
         try:
             if args["current"] == "" and args["node_id"] != "": # Generate from nothing for a workflow node
-                from models import db
-                from models import App
+                from models import App, db
                 from services.workflow_service import WorkflowService
                 app = db.session.query(App).filter(App.id == args["flow_id"]).first()
                 workflow = WorkflowService().get_draft_workflow(app_model=app)
