@@ -12,23 +12,17 @@ import {
   RiFileUploadLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
-import SwitchAppModal from '../app/switch-app-modal'
 import cn from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
-import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
@@ -36,6 +30,26 @@ import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overvie
 import Divider from '../base/divider'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
+import dynamic from 'next/dynamic'
+
+const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
+  ssr: false,
+})
+const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
+  ssr: false,
+})
+const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
+  ssr: false,
+})
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
+const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
+  ssr: false,
+})
+const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
+  ssr: false,
+})
 
 export type IAppInfoProps = {
   expand: boolean

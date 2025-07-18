@@ -36,7 +36,8 @@
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "npx only-allow pnpm",
+    "analyze": "ANALYZE=true pnpm build"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -159,6 +160,7 @@
     "@eslint/js": "^9.20.0",
     "@faker-js/faker": "^9.0.3",
     "@happy-dom/jest-environment": "^17.4.4",
+    "@next/bundle-analyzer": "^15.4.1",
     "@next/eslint-plugin-next": "~15.3.5",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "8.5.0",

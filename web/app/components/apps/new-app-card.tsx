@@ -1,32 +1,38 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
-import CreateAppModal from '@/app/components/app/create-app-modal'
-import CreateFromDSLModal, { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
+import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import cn from '@/utils/classnames'
+import dynamic from 'next/dynamic'
+
+const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
+  ssr: false,
+})
+const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
+  ssr: false,
+})
+const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+  ssr: false,
+})
 
 export type CreateAppCardProps = {
   className?: string
   onSuccess?: () => void
+  ref: React.RefObject<HTMLDivElement | null>
 }
 
-const CreateAppCard = (
-  {
-    ref,
-    className,
-    onSuccess,
-  }: CreateAppCardProps & {
-    ref: React.RefObject<HTMLDivElement>;
-  },
-) => {
+const CreateAppCard = ({
+  ref,
+  className,
+  onSuccess,
+}: CreateAppCardProps) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
@@ -67,52 +73,58 @@ const CreateAppCard = (
         </button>
       </div>
 
-      <CreateAppModal
-        show={showNewAppModal}
-        onClose={() => setShowNewAppModal(false)}
-        onSuccess={() => {
-          onPlanInfoChanged()
-          if (onSuccess)
-            onSuccess()
-        }}
-        onCreateFromTemplate={() => {
-          setShowNewAppTemplateDialog(true)
-          setShowNewAppModal(false)
-        }}
-      />
-      <CreateAppTemplateDialog
-        show={showNewAppTemplateDialog}
-        onClose={() => setShowNewAppTemplateDialog(false)}
-        onSuccess={() => {
-          onPlanInfoChanged()
-          if (onSuccess)
-            onSuccess()
-        }}
-        onCreateFromBlank={() => {
-          setShowNewAppModal(true)
-          setShowNewAppTemplateDialog(false)
-        }}
-      />
-      <CreateFromDSLModal
-        show={showCreateFromDSLModal}
-        onClose={() => {
-          setShowCreateFromDSLModal(false)
+      {showNewAppModal && (
+        <CreateAppModal
+          show={showNewAppModal}
+          onClose={() => setShowNewAppModal(false)}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            if (onSuccess)
+              onSuccess()
+          }}
+          onCreateFromTemplate={() => {
+            setShowNewAppTemplateDialog(true)
+            setShowNewAppModal(false)
+          }}
+        />
+      )}
+      {showNewAppTemplateDialog && (
+        <CreateAppTemplateDialog
+          show={showNewAppTemplateDialog}
+          onClose={() => setShowNewAppTemplateDialog(false)}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            if (onSuccess)
+              onSuccess()
+          }}
+          onCreateFromBlank={() => {
+            setShowNewAppModal(true)
+            setShowNewAppTemplateDialog(false)
+          }}
+        />
+      )}
+      {showCreateFromDSLModal && (
+        <CreateFromDSLModal
+          show={showCreateFromDSLModal}
+          onClose={() => {
+            setShowCreateFromDSLModal(false)
 
-          if (dslUrl)
-            replace('/')
-        }}
-        activeTab={activeTab}
-        dslUrl={dslUrl}
-        onSuccess={() => {
-          onPlanInfoChanged()
-          if (onSuccess)
-            onSuccess()
-        }}
-      />
+            if (dslUrl)
+              replace('/')
+          }}
+          activeTab={activeTab}
+          dslUrl={dslUrl}
+          onSuccess={() => {
+            onPlanInfoChanged()
+            if (onSuccess)
+              onSuccess()
+          }}
+        />
+      )}
     </div>
   )
 }
 
 CreateAppCard.displayName = 'CreateAppCard'
-export default CreateAppCard
-export { CreateAppCard }
+
+export default React.memo(CreateAppCard)

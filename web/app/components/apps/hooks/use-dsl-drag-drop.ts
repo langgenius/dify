@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 type DSLDragDropHookProps = {
   onDSLFileDropped: (file: File) => void
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   enabled?: boolean
 }
 
