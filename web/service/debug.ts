@@ -3,12 +3,21 @@ import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessag
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export type AutomaticRes = {
+export type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
   error?: string
 }
+
+export type GenRes = {
+  modified: string
+  message?: string // tip for human
+  variables?: string[] // only for basic app first time rule
+  opening_statement?: string // only for basic app first time rule
+  error?: string
+}
+
 export type CodeGenRes = {
   code: string
   language: string[]
@@ -71,8 +80,14 @@ export const fetchConversationMessages = (appId: string, conversation_id: string
   })
 }
 
+export const generateBasicAppFistTimeRule = (body: Record<string, any>) => {
+  return post<BasicAppFirstRes>('/rule-generate', {
+    body,
+  })
+}
+
 export const generateRule = (body: Record<string, any>) => {
-  return post<AutomaticRes>('/instruction-generate', {
+  return post<GenRes>('/instruction-generate', {
     body,
   })
 }

@@ -20,14 +20,14 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
-import { generateRule } from '@/service/debug'
+import { generateBasicAppFistTimeRule, generateRule } from '@/service/debug'
 import type { CompletionParams, Model } from '@/types/app'
 import type { AppType } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 
 // type
-import type { AutomaticRes } from '@/service/debug'
+import type { GenRes } from '@/service/debug'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
@@ -41,17 +41,18 @@ import type { GeneratorType } from './types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Link from 'next/link'
 import Result from './result'
+import useGenData from './use-gen-data'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
   mode: AppType
   isShow: boolean
   onClose: () => void
-  onFinished: (res: AutomaticRes) => void
+  onFinished: (res: GenRes) => void
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   generatorType: GeneratorType
-  flowId: string
+  flowId?: string
   nodeId?: string
   currentPrompt?: string
   isBasicMode?: boolean
@@ -163,7 +164,18 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return true
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const [res, setRes] = useState<AutomaticRes | null>(null)
+  const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}`}`
+  const { versions, addVersion, current } = useGenData({
+    storageKey,
+  })
+
+  useEffect(() => {
+    // if (!versions.length) {
+    addVersion({
+      modified: 'ddd',
+    })
+    // }
+  }, [])
 
   useEffect(() => {
     if (defaultModel) {
@@ -227,21 +239,42 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return
     setLoadingTrue()
     try {
-      const { error, ...res } = await generateRule({
-        flow_id: flowId,
-        node_id: nodeId,
-        current: currentPrompt,
-        instruction,
-        idea_output: ideaOutput,
-        model_config: model,
-      })
-      setRes(res)
-      if (error) {
-        Toast.notify({
-          type: 'error',
-          message: error,
+      let apiRes: GenRes
+      if (isBasicMode && !currentPrompt) {
+        const { error, ...res } = await generateBasicAppFistTimeRule({
+          instruction,
+          model_config: model,
+          no_varieable: false,
         })
+        apiRes = {
+          ...res,
+          modified: res.prompt,
+        } as GenRes
+        if (error) {
+          Toast.notify({
+            type: 'error',
+            message: error,
+          })
+        }
       }
+      else {
+        const { error, ...res } = await generateRule({
+          flow_id: flowId,
+          node_id: nodeId,
+          current: currentPrompt,
+          instruction,
+          idea_output: ideaOutput,
+          model_config: model,
+        })
+        apiRes = res
+        if (error) {
+          Toast.notify({
+            type: 'error',
+            message: error,
+          })
+        }
+      }
+      addVersion(apiRes)
     }
     finally {
       setLoadingFalse()
@@ -254,7 +287,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   }] = useBoolean(false)
 
   const isShowAutoPromptResPlaceholder = () => {
-    return !isLoading && !res
+    return !isLoading && !current
   }
 
   return (
@@ -325,7 +358,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
                 <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
               </div>
-              { !isFoldIdeaOutput && (
+              {!isFoldIdeaOutput && (
                 <Textarea
                   className="h-[80px]"
                   placeholder={t(`${i18nPrefix}.ideaOutputPlaceholder`)}
@@ -354,7 +387,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {
           <div className='h-full w-0 grow p-6 pb-0'>
             <Result
-              storageKey={`${flowId}${isBasicMode ? '' : `-${nodeId}`}`}
+              storageKey={storageKey}
               onApply={showConfirmOverwrite}
               generatorType={generatorType}
             />
@@ -369,7 +402,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             isShow
             onConfirm={() => {
               hideShowConfirmOverwrite()
-              onFinished(res!)
+              onFinished(current!)
             }}
             onCancel={hideShowConfirmOverwrite}
           />
