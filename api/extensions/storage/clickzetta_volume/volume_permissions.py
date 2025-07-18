@@ -6,13 +6,14 @@
 
 import logging
 from enum import Enum
-from typing import Dict, Optional, Set
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class VolumePermission(Enum):
     """Volume权限类型枚举"""
+
     READ = "SELECT"  # 对应ClickZetta的SELECT权限
     WRITE = "INSERT,UPDATE,DELETE"  # 对应ClickZetta的写权限
     LIST = "SELECT"  # 列出文件需要SELECT权限
@@ -35,18 +36,19 @@ class VolumePermissionManager:
         if isinstance(connection_or_config, dict):
             # 从配置字典创建连接
             import clickzetta
+
             config = connection_or_config
             self._connection = clickzetta.connect(
-                username=config.get('username'),
-                password=config.get('password'),
-                instance=config.get('instance'),
-                service=config.get('service'),
-                workspace=config.get('workspace'),
-                vcluster=config.get('vcluster'),
-                schema=config.get('schema') or config.get('database')
+                username=config.get("username"),
+                password=config.get("password"),
+                instance=config.get("instance"),
+                service=config.get("service"),
+                workspace=config.get("workspace"),
+                vcluster=config.get("vcluster"),
+                schema=config.get("schema") or config.get("database"),
             )
-            self._volume_type = config.get('volume_type', volume_type)
-            self._volume_name = config.get('volume_name', volume_name)
+            self._volume_type = config.get("volume_type", volume_type)
+            self._volume_name = config.get("volume_name", volume_name)
         else:
             # 直接使用连接对象
             self._connection = connection_or_config
@@ -58,7 +60,7 @@ class VolumePermissionManager:
         if not self._volume_type:
             raise ValueError("volume_type is required")
 
-        self._permission_cache: Dict[str, Set[str]] = {}
+        self._permission_cache: dict[str, set[str]] = {}
         self._current_username = None  # 将从连接中获取当前用户名
 
     def check_permission(self, operation: VolumePermission, dataset_id: Optional[str] = None) -> bool:
@@ -119,7 +121,7 @@ class VolumePermissionManager:
         except Exception as e:
             logger.error(f"User Volume permission check failed: {e}")
             # 对于User Volume，如果权限检查失败，可能是配置问题，给出更友好的错误提示
-            logger.info(f"User Volume permission check failed, but permission checking is disabled in this version")
+            logger.info("User Volume permission check failed, but permission checking is disabled in this version")
             return False
 
     def _check_table_volume_permission(self, operation: VolumePermission, dataset_id: Optional[str]) -> bool:
@@ -144,8 +146,10 @@ class VolumePermissionManager:
             # 检查是否有所需的所有权限
             has_permission = required_permissions.issubset(permissions)
 
-            logger.debug(f"Table Volume permission check for {table_name}, operation {operation.name}: "
-                        f"required={required_permissions}, has={permissions}, granted={has_permission}")
+            logger.debug(
+                f"Table Volume permission check for {table_name}, operation {operation.name}: "
+                f"required={required_permissions}, has={permissions}, granted={has_permission}"
+            )
 
             return has_permission
 
@@ -180,8 +184,10 @@ class VolumePermissionManager:
             # 检查是否有所需的所有权限
             has_permission = required_permissions.issubset(permissions)
 
-            logger.debug(f"External Volume permission check for {self._volume_name}, operation {operation.name}: "
-                        f"required={required_permissions}, has={permissions}, granted={has_permission}")
+            logger.debug(
+                f"External Volume permission check for {self._volume_name}, operation {operation.name}: "
+                f"required={required_permissions}, has={permissions}, granted={has_permission}"
+            )
 
             # 如果权限检查失败，尝试备选验证
             if not has_permission:
@@ -203,10 +209,10 @@ class VolumePermissionManager:
 
         except Exception as e:
             logger.error(f"External volume permission check failed for {self._volume_name}: {e}")
-            logger.info(f"External Volume permission check failed, but permission checking is disabled in this version")
+            logger.info("External Volume permission check failed, but permission checking is disabled in this version")
             return False
 
-    def _get_table_permissions(self, table_name: str) -> Set[str]:
+    def _get_table_permissions(self, table_name: str) -> set[str]:
         """获取用户对指定表的权限
 
         Args:
@@ -236,14 +242,12 @@ class VolumePermissionManager:
                         object_name = grant[2] if len(grant) > 2 else ""
 
                         # 检查是否是对该表的权限
-                        if object_type == "TABLE" and object_name == table_name:
-                            if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
-                                if privilege == "ALL":
-                                    permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
-                                else:
-                                    permissions.add(privilege)
-                        # 检查是否是对整个schema的权限
-                        elif object_type == "SCHEMA" and object_name in table_name:
+                        if (
+                            object_type == "TABLE"
+                            and object_name == table_name
+                            or object_type == "SCHEMA"
+                            and object_name in table_name
+                        ):
                             if privilege in ["SELECT", "INSERT", "UPDATE", "DELETE", "ALL"]:
                                 if privilege == "ALL":
                                     permissions.update(["SELECT", "INSERT", "UPDATE", "DELETE"])
@@ -284,7 +288,7 @@ class VolumePermissionManager:
 
         return "unknown"
 
-    def _get_user_permissions(self, username: str) -> Set[str]:
+    def _get_user_permissions(self, username: str) -> set[str]:
         """获取用户的基本权限集合"""
         cache_key = f"user_permissions:{username}"
 
@@ -321,7 +325,7 @@ class VolumePermissionManager:
         self._permission_cache[cache_key] = permissions
         return permissions
 
-    def _get_external_volume_permissions(self, volume_name: str) -> Set[str]:
+    def _get_external_volume_permissions(self, volume_name: str) -> set[str]:
         """获取用户对指定External Volume的权限
 
         Args:
@@ -363,10 +367,9 @@ class VolumePermissionManager:
                         )
 
                         # 检查是否是对该Volume的权限或者是层级权限
-                        if ((granted_type == "PRIVILEGE" and granted_on == "VOLUME" and
-                             object_name.endswith(volume_name)) or
-                            (granted_type == "OBJECT_HIERARCHY" and granted_on == "VOLUME")):
-
+                        if (
+                            granted_type == "PRIVILEGE" and granted_on == "VOLUME" and object_name.endswith(volume_name)
+                        ) or (granted_type == "OBJECT_HIERARCHY" and granted_on == "VOLUME"):
                             logger.info(f"Matching grant found for {volume_name}")
 
                             if "READ" in privilege:
@@ -424,7 +427,7 @@ class VolumePermissionManager:
         self._permission_cache.clear()
         logger.debug("Permission cache cleared")
 
-    def get_permission_summary(self, dataset_id: Optional[str] = None) -> Dict[str, bool]:
+    def get_permission_summary(self, dataset_id: Optional[str] = None) -> dict[str, bool]:
         """获取权限摘要
 
         Args:
@@ -514,10 +517,16 @@ class VolumePermissionManager:
         """检查路径是否包含路径遍历攻击"""
         # 检查常见的路径遍历模式
         traversal_patterns = [
-            "../", "..\\",
-            "..%2f", "..%2F", "..%5c", "..%5C",
-            "%2e%2e%2f", "%2e%2e%5c",
-            "....//", "....\\\\",
+            "../",
+            "..\\",
+            "..%2f",
+            "..%2F",
+            "..%5c",
+            "..%5C",
+            "%2e%2e%2f",
+            "%2e%2e%5c",
+            "....//",
+            "....\\\\",
         ]
 
         file_path_lower = file_path.lower()
@@ -539,9 +548,21 @@ class VolumePermissionManager:
     def _is_sensitive_path(self, file_path: str) -> bool:
         """检查路径是否为敏感路径"""
         sensitive_patterns = [
-            "passwd", "shadow", "hosts", "config", "secrets",
-            "private", "key", "certificate", "cert", "ssl",
-            "database", "backup", "dump", "log", "tmp"
+            "passwd",
+            "shadow",
+            "hosts",
+            "config",
+            "secrets",
+            "private",
+            "key",
+            "certificate",
+            "cert",
+            "ssl",
+            "database",
+            "backup",
+            "dump",
+            "log",
+            "tmp",
         ]
 
         file_path_lower = file_path.lower()
@@ -591,9 +612,9 @@ class VolumePermissionError(Exception):
         super().__init__(message)
 
 
-def check_volume_permission(permission_manager: VolumePermissionManager,
-                          operation: str,
-                          dataset_id: Optional[str] = None) -> None:
+def check_volume_permission(
+    permission_manager: VolumePermissionManager, operation: str, dataset_id: Optional[str] = None
+) -> None:
     """权限检查装饰器函数
 
     Args:
@@ -610,8 +631,5 @@ def check_volume_permission(permission_manager: VolumePermissionManager,
             error_message += f" (dataset: {dataset_id})"
 
         raise VolumePermissionError(
-            error_message,
-            operation=operation,
-            volume_type=permission_manager._volume_type,
-            dataset_id=dataset_id
+            error_message, operation=operation, volume_type=permission_manager._volume_type, dataset_id=dataset_id
         )

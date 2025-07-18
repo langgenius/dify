@@ -80,7 +80,7 @@ class Storage:
                     # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
                     volume_config = ClickZettaVolumeConfig()
                     return ClickZettaVolumeStorage(volume_config)
-                
+
                 return create_clickzetta_volume_storage
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
