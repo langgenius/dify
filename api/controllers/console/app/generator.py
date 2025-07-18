@@ -3,7 +3,6 @@ from collections.abc import Sequence
 
 from flask_login import current_user
 from flask_restful import Resource, reqparse
-from opik.rest_api import BadRequestError
 
 from controllers.console import api
 from controllers.console.app.error import (
@@ -131,13 +130,23 @@ class InstructionGenerateApi(Resource):
                 from models import App, db
                 from services.workflow_service import WorkflowService
                 app = db.session.query(App).filter(App.id == args["flow_id"]).first()
+                if not app:
+                    return { "error": f"app {args['flow_id']} not found" }, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)
                 nodes:Sequence = workflow.graph_dict["nodes"]
-                node: dict = [node for node in nodes if node["id"] == args["node_id"]][0]
-                if not node:
-                    raise BadRequestError(f"node {args['node_id']} not found")
-                match node_type:=node["data"]["type"]:
-                    case "llm", "agent":
+                node = [node for node in nodes if node["id"] == args["node_id"]]
+                if len(node) == 0:
+                    return { "error": f"node {args['node_id']} not found" }, 400
+                node_type=node[0]["data"]["type"]
+                match node_type:
+                    case "llm":
+                        return LLMGenerator.generate_rule_config(
+                            current_user.current_tenant_id,
+                            instruction=args["instruction"],
+                            model_config=args["model_config"],
+                            no_variable=True
+                        )
+                    case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_user.current_tenant_id,
                             instruction=args["instruction"],
@@ -152,7 +161,7 @@ class InstructionGenerateApi(Resource):
                             code_language=args["language"],
                         )
                     case _:
-                        raise BadRequestError(f"invalid node type: {node_type}")
+                        return { "error": f"invalid node type: {node_type}"}
             if args["node_id"] == "" and args["current"] != "": # For legacy app without a workflow
                 return LLMGenerator.instruction_modify_legacy(
                     tenant_id=current_user.current_tenant_id,
@@ -172,7 +181,7 @@ class InstructionGenerateApi(Resource):
                     model_config=args["model_config"],
                     ideal_output=args["ideal_output"],
                 )
-            raise BadRequestError("incompatible parameters")
+            return { "error": "incompatible parameters" }, 400
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
