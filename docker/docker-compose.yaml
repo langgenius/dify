@@ -299,6 +299,18 @@ x-shared-env: &shared-api-worker-env
   TABLESTORE_INSTANCE_NAME: ${TABLESTORE_INSTANCE_NAME:-instance-name}
   TABLESTORE_ACCESS_KEY_ID: ${TABLESTORE_ACCESS_KEY_ID:-xxx}
   TABLESTORE_ACCESS_KEY_SECRET: ${TABLESTORE_ACCESS_KEY_SECRET:-xxx}
+  CLICKZETTA_USERNAME: ${CLICKZETTA_USERNAME:-}
+  CLICKZETTA_PASSWORD: ${CLICKZETTA_PASSWORD:-}
+  CLICKZETTA_INSTANCE: ${CLICKZETTA_INSTANCE:-}
+  CLICKZETTA_SERVICE: ${CLICKZETTA_SERVICE:-api.clickzetta.com}
+  CLICKZETTA_WORKSPACE: ${CLICKZETTA_WORKSPACE:-quick_start}
+  CLICKZETTA_VCLUSTER: ${CLICKZETTA_VCLUSTER:-default_ap}
+  CLICKZETTA_SCHEMA: ${CLICKZETTA_SCHEMA:-dify}
+  CLICKZETTA_BATCH_SIZE: ${CLICKZETTA_BATCH_SIZE:-100}
+  CLICKZETTA_ENABLE_INVERTED_INDEX: ${CLICKZETTA_ENABLE_INVERTED_INDEX:-true}
+  CLICKZETTA_ANALYZER_TYPE: ${CLICKZETTA_ANALYZER_TYPE:-chinese}
+  CLICKZETTA_ANALYZER_MODE: ${CLICKZETTA_ANALYZER_MODE:-smart}
+  CLICKZETTA_VECTOR_DISTANCE_FUNCTION: ${CLICKZETTA_VECTOR_DISTANCE_FUNCTION:-cosine_distance}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
@@ -527,7 +539,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.6.0
+    image: dify-api-clickzetta:local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -556,7 +568,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.6.0
+    image: dify-api-clickzetta:local
     restart: always
     environment:
       # Use the shared environment variables.
