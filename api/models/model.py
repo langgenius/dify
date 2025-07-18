@@ -1322,12 +1322,12 @@ class MessageAnnotation(Base):
         db.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    app_id = mapped_column(StringUUID, nullable=False)
-    conversation_id = mapped_column(StringUUID, db.ForeignKey("conversations.id"), nullable=True)
-    message_id = mapped_column(StringUUID, nullable=True)
-    question = mapped_column(db.Text, nullable=True)
-    content = mapped_column(db.Text, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID)
+    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, db.ForeignKey("conversations.id"))
+    message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    question: Mapped[Optional[str]]
+    content: Mapped[str]
     hit_count = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     account_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
