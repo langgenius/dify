@@ -19,18 +19,17 @@ class ContainerNetworkErrorPacketsTransmitTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cadvisor_job_name = tool_parameters.get('cadvisor_job_name', '.*')
-        namespace = tool_parameters.get('namespace', '.*')
-        pod = tool_parameters.get('pod', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+
+        key_map = {
+            "cadvisor_job_name": "cadvisor_job_name",
+            "namespace": "namespace",
+            "pod": "pod"
+        }
         params = {
             'metricName': '基础设施情况 - 容器网络 - 网络错误包数 - 发送',
-            'params': {
-                'cadvisor_job_name': cadvisor_job_name,
-                'namespace': namespace,
-                'pod': pod
-            },
+            'params': APOUtils.get_and_build_metric_params(tool_parameters, key_map),
             'startTime': start_time,
             'endTime': end_time,
             'step': APOUtils.get_step(start_time, end_time),

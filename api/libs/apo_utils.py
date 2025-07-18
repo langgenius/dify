@@ -74,3 +74,33 @@ class APOUtils:
             step = f"{step_hours}h"
 
         return step
+    
+    def get_and_build_metric_params(param: dict, key_map: dict) -> dict:
+        """
+        从param字典中提取指定的key，并根据key_map映射构建新的参数字典
+        只有当param中key的value不为空（不是None、空字符串、空列表等）时，才会添加到返回值中
+
+        Args:
+            param: 源参数字典
+            key_map: 键映射字典，格式为 {源key: 目标key}
+
+        Returns:
+            dict: 构建后的参数字典，只包含非空值
+
+        Examples:
+            >>> param = {'name': 'test', 'age': 25, 'email': '', 'phone': None}
+            >>> key_map = {'name': 'username', 'age': 'user_age', 'email': 'user_email', 'phone': 'user_phone'}
+            >>> get_and_build_params(param, key_map)
+            {'username': 'test', 'user_age': 25}
+        """
+        result = {}
+
+        for source_key, target_key in key_map.items():
+            value = param.get(source_key)
+
+            if value is not None and value != '':
+                if hasattr(value, '__len__') and len(value) == 0:
+                    continue
+                result[target_key] = value
+
+        return result

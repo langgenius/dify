@@ -19,18 +19,18 @@ class ContainerDiskReadBytesDockerTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        cadvisor_job_name = tool_parameters.get('cadvisor_job_name', '.*')
-        namespace = tool_parameters.get('namespace', '.*')
-        pod = tool_parameters.get('pod', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+
+        key_map = {
+            "cadvisor_job_name": "cadvisor_job_name",
+            "namespace": "namespace",
+            "pod": "pod"
+        }
+        metric_param = APOUtils.get_and_build_metric_params(tool_parameters, key_map)
         params = {
             'metricName': '基础设施情况 - 容器磁盘 - 读写字节数 /s - Read',
-            'params': {
-                'cadvisor_job_name': cadvisor_job_name,
-                'namespace': namespace,
-                'pod': pod
-            },
+            'params': metric_param,
             'startTime': start_time,
             'endTime': end_time,
             'step': APOUtils.get_step(start_time, end_time),

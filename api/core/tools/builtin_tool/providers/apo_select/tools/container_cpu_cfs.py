@@ -18,16 +18,17 @@ class SelectContainerCPUTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get("pod")
-        namespace = tool_parameters.get("namespace")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+
+        key_map = {
+          "pod": "pod",
+          "namespace": "namespace"
+        }
+        metric_param = APOUtils.get_and_build_metric_params(tool_parameters, key_map)
         params = {
           'metricName': '基础设施情况 - 容器CPU - 容器CPU节流时间 - Containerd',
-          'params': {
-            "pod": pod,
-            "namespace": namespace
-          },
+          'params': metric_param,
           'startTime': start_time,
           'endTime': end_time,
           'step': APOUtils.get_step(start_time, end_time),
