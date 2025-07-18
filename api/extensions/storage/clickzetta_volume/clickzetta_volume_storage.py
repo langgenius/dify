@@ -385,7 +385,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                         logger.info("DEBUG: File contains Mac line endings (\\r)")
 
                 except Exception as e:
-                    logger.error(f"ERROR: Cannot decode RSA key file {filename} as UTF-8: {e}")
+                    logger.exception(f"ERROR: Cannot decode RSA key file {filename} as UTF-8: {e}")
 
             logger.debug(f"File {filename} loaded from ClickZetta Volume")
             return content
