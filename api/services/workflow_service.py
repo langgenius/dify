@@ -465,10 +465,10 @@ class WorkflowService:
         node_id: str,
     ) -> WorkflowNodeExecution:
         try:
-            node_instance, generator = invoke_node_fn()
+            node, node_events = invoke_node_fn()
 
             node_run_result: NodeRunResult | None = None
-            for event in generator:
+            for event in node_events:
                 if isinstance(event, RunCompletedEvent):
                     node_run_result = event.run_result
 
@@ -479,18 +479,18 @@ class WorkflowService:
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.continue_on_error:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                    "metadata": {"error_strategy": node.error_strategy},
                 }
-                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
                         **node_error_args,
                         outputs={
-                            **node_instance.node_data.default_value_dict,
+                            **node.default_value_dict,
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
                         },
@@ -509,10 +509,10 @@ class WorkflowService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e.node_instance
+            node = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
 
         # Create a NodeExecution domain model
         node_execution = WorkflowNodeExecution(
@@ -520,8 +520,8 @@ class WorkflowService:
             workflow_id="",  # This is a single-step execution, so no workflow ID
             index=1,
             node_id=node_id,
-            node_type=node_instance.node_type,
-            title=node_instance.node_data.title,
+            node_type=node.type_,
+            title=node.title,
             elapsed_time=time.perf_counter() - start_at,
             created_at=datetime.now(UTC).replace(tzinfo=None),
             finished_at=datetime.now(UTC).replace(tzinfo=None),

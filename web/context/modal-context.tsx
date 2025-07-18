@@ -4,13 +4,6 @@ import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
-import AccountSetting from '@/app/components/header/account-setting'
-import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
-import ModerationSettingModal from '@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'
-import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
-import ExternalAPIModal from '@/app/components/datasets/external-api/external-api-modal'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
@@ -20,23 +13,56 @@ import type {
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
-import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
-import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
-import UpdatePlugin from '@/app/components/plugins/update-plugin'
 import { removeSpecificQueryParam } from '@/utils'
 import { noop } from 'lodash-es'
+import dynamic from 'next/dynamic'
+
+const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
+  ssr: false,
+})
+const ApiBasedExtensionModal = dynamic(() => import('@/app/components/header/account-setting/api-based-extension-page/modal'), {
+  ssr: false,
+})
+const ModerationSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'), {
+  ssr: false,
+})
+const ExternalDataToolModal = dynamic(() => import('@/app/components/app/configuration/tools/external-data-tool-modal'), {
+  ssr: false,
+})
+const Pricing = dynamic(() => import('@/app/components/billing/pricing'), {
+  ssr: false,
+})
+const AnnotationFullModal = dynamic(() => import('@/app/components/billing/annotation-full/modal'), {
+  ssr: false,
+})
+const ModelModal = dynamic(() => import('@/app/components/header/account-setting/model-provider-page/model-modal'), {
+  ssr: false,
+})
+const ExternalAPIModal = dynamic(() => import('@/app/components/datasets/external-api/external-api-modal'), {
+  ssr: false,
+})
+const ModelLoadBalancingModal = dynamic(() => import('@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'), {
+  ssr: false,
+})
+const ModelLoadBalancingEntryModal = dynamic(() => import('@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'), {
+  ssr: false,
+})
+const OpeningSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'), {
+  ssr: false,
+})
+const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
+  ssr: false,
+})
 
 export type ModalState<T> = {
   payload: T

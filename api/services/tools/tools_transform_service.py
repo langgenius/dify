@@ -334,21 +334,33 @@ class ToolTransformService:
             )
 
             # get tool parameters
-            parameters = tool.entity.parameters or []
+            base_parameters = tool.entity.parameters or []
             # get tool runtime parameters
             runtime_parameters = tool.get_runtime_parameters()
-            # override parameters
-            current_parameters = parameters.copy()
-            for runtime_parameter in runtime_parameters:
-                found = False
-                for index, parameter in enumerate(current_parameters):
-                    if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
-                        current_parameters[index] = runtime_parameter
-                        found = True
-                        break
 
-                if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
-                    current_parameters.append(runtime_parameter)
+            # merge parameters using a functional approach to avoid type issues
+            merged_parameters: list[ToolParameter] = []
+
+            # create a mapping of runtime parameters for quick lookup
+            runtime_param_map = {(rp.name, rp.form): rp for rp in runtime_parameters}
+
+            # process base parameters, replacing with runtime versions if they exist
+            for base_param in base_parameters:
+                key = (base_param.name, base_param.form)
+                if key in runtime_param_map:
+                    merged_parameters.append(runtime_param_map[key])
+                else:
+                    merged_parameters.append(base_param)
+
+            # add any runtime parameters that weren't in base parameters
+            for runtime_parameter in runtime_parameters:
+                if runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
+                    # check if this parameter is already in merged_parameters
+                    already_exists = any(
+                        p.name == runtime_parameter.name and p.form == runtime_parameter.form for p in merged_parameters
+                    )
+                    if not already_exists:
+                        merged_parameters.append(runtime_parameter)
 
             return ToolApiEntity(
                 author=tool.entity.identity.author,
@@ -356,10 +368,10 @@ class ToolTransformService:
                 label=tool.entity.identity.label,
                 description=tool.entity.description.human if tool.entity.description else I18nObject(en_US=""),
                 output_schema=tool.entity.output_schema,
-                parameters=current_parameters,
+                parameters=merged_parameters,
                 labels=labels or [],
             )
-        if isinstance(tool, ApiToolBundle):
+        elif isinstance(tool, ApiToolBundle):
             return ToolApiEntity(
                 author=tool.author,
                 name=tool.operation_id or "",
@@ -368,6 +380,9 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
+        else:
+            # Handle WorkflowTool case
+            raise ValueError(f"Unsupported tool type: {type(tool)}")
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(

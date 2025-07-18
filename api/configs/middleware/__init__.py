@@ -211,7 +211,7 @@ class DatabaseConfig(BaseSettings):
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
         description="Backend for Celery task results. Options: 'database', 'redis'.",
-        default="database",
+        default="redis",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(

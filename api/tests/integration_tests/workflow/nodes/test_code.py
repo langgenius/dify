@@ -66,6 +66,10 @@ def init_code_node(code_config: dict):
         config=code_config,
     )
 
+    # Initialize node data
+    if "data" in code_config:
+        node.init_node_data(code_config["data"])
+
     return node
 
 
@@ -234,10 +238,10 @@ def test_execute_code_output_validator_depth():
         "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
     }
 
-    node.node_data = cast(CodeNodeData, node.node_data)
+    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
-    node._transform_result(result, node.node_data.outputs)
+    node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -250,7 +254,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -263,7 +267,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -276,7 +280,7 @@ def test_execute_code_output_validator_depth():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
 
 def test_execute_code_output_object_list():
@@ -330,10 +334,10 @@ def test_execute_code_output_object_list():
         ]
     }
 
-    node.node_data = cast(CodeNodeData, node.node_data)
+    node._node_data = cast(CodeNodeData, node._node_data)
 
     # validate
-    node._transform_result(result, node.node_data.outputs)
+    node._transform_result(result, node._node_data.outputs)
 
     # construct result
     result = {
@@ -353,7 +357,7 @@ def test_execute_code_output_object_list():
 
     # validate
     with pytest.raises(ValueError):
-        node._transform_result(result, node.node_data.outputs)
+        node._transform_result(result, node._node_data.outputs)
 
 
 def test_execute_code_scientific_notation():
