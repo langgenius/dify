@@ -152,32 +152,24 @@ jobs:
             **.yml
             **Dockerfile
             dev/**
+            .editorconfig
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v7
+        uses: super-linter/super-linter/slim@v8
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json
           FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
           VALIDATE_BASH: true
           VALIDATE_BASH_EXEC: true
+          VALIDATE_EDITORCONFIG: true
           # FIXME: temporarily disabled until api-docker.yaml's run script is fixed for shellcheck
           # VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
-
-      - name: EditorConfig checks
-        uses: super-linter/super-linter/slim@v7
-        env:
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IGNORE_GENERATED_FILES: true
-          IGNORE_GITIGNORED_FILES: true
-          # EditorConfig validation
-          VALIDATE_EDITORCONFIG: true
-          EDITORCONFIG_FILE_NAME: editorconfig-checker.json
