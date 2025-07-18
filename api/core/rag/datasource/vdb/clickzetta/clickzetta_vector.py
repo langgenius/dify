@@ -403,13 +403,12 @@ class ClickzettaVector(BaseVector):
     def _delete_by_ids_impl(self, ids: list[str]) -> None:
         """Implementation of delete by IDs (executed in write worker thread)."""
         safe_ids = [self._safe_doc_id(id) for id in ids]
-        # Create placeholders for parameterized query
-        placeholders = ",".join("?" for _ in safe_ids)
+        # Create properly escaped string literals for SQL
+        id_list = ",".join(f"'{id}'" for id in safe_ids)
+        sql = f"DELETE FROM {self._config.schema_name}.{self._table_name} WHERE id IN ({id_list})"
+        
         with self._connection.cursor() as cursor:
-            cursor.execute(
-                f"DELETE FROM {self._config.schema_name}.{self._table_name} WHERE id IN ({placeholders})",
-                safe_ids
-            )
+            cursor.execute(sql)
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         """Delete documents by metadata field."""

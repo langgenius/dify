@@ -10,6 +10,7 @@ from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
 from .storage.baidu_obs_storage_config import BaiduOBSStorageConfig
+from .storage.clickzetta_volume_storage_config import ClickZettaVolumeStorageConfig
 from .storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from .storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from .storage.oci_storage_config import OCIStorageConfig
@@ -53,6 +54,7 @@ class StorageConfig(BaseSettings):
         "aliyun-oss",
         "azure-blob",
         "baidu-obs",
+        "clickzetta-volume",
         "google-storage",
         "huawei-obs",
         "oci-storage",
@@ -62,7 +64,7 @@ class StorageConfig(BaseSettings):
         "local",
     ] = Field(
         description="Type of storage to use."
-        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', "
+        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'clickzetta-volume', 'google-storage', "
         "'huawei-obs', 'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'opendal'.",
         default="opendal",
     )
@@ -298,6 +300,7 @@ class MiddlewareConfig(
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
     BaiduOBSStorageConfig,
+    ClickZettaVolumeStorageConfig,
     GoogleCloudStorageConfig,
     HuaweiCloudOBSStorageConfig,
     OCIStorageConfig,
