@@ -7,6 +7,9 @@ import PromptToast from './prompt-toast'
 import Button from '@/app/components/base/button'
 import VersionSelector from './version-selector'
 import type { GenRes } from '@/service/debug'
+import { RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   current: GenRes
@@ -39,7 +42,13 @@ const Result: FC<Props> = ({
             onChange={setCurrentVersionIndex}
           />
         </div>
-        <div className='flex space-x-2'>
+        <div className='flex items-center space-x-2'>
+          <Button className='px-2' onClick={() => {
+            copy(current.modified)
+            Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+          }}>
+            <RiClipboardLine className='h-4 w-4 text-text-secondary' />
+          </Button>
           <Button variant='primary' onClick={onApply}>
             {t('appDebug.generate.apply')}
           </Button>
