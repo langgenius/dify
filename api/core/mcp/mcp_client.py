@@ -70,10 +70,10 @@ class MCPClient:
         parsed_url = urlparse(self.server_url)
         path = parsed_url.path
         method_name = path.removesuffix("/") if path else ""
-        try:
+        if method_name in connection_methods.keys():
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
-        except KeyError:
+        else:
             try:
                 logger.debug("No specific method found in URL path, trying default 'mcp' method.")
                 self.connect_server(sse_client, "sse")
