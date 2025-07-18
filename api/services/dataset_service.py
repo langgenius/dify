@@ -995,7 +995,7 @@ class DocumentService:
         # update document to be paused
         document.is_paused = True
         document.paused_by = current_user.id
-                    document.paused_at = naive_utc_now()
+        document.paused_at = naive_utc_now()
 
         db.session.add(document)
         db.session.commit()
