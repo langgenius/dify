@@ -21,7 +21,7 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.workflow.entities.variable_pool import VariablePool
-from services.tools.mcp_tools_mange_service import MCPToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
