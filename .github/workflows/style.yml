@@ -28,7 +28,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             api/**
@@ -75,7 +75,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: web/**
 
@@ -113,7 +113,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             docker/generate_docker_compose
@@ -144,7 +144,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             **.sh
@@ -159,7 +159,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
-          DEFAULT_BRANCH: main
+          DEFAULT_BRANCH: origin/main
           EDITORCONFIG_FILE_NAME: editorconfig-checker.json
           FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
