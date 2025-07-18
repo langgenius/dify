@@ -13,6 +13,7 @@ import { RiFileTextFill, RiMoreFill, RiRobot2Fill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import RenameDatasetModal from '../../rename-modal'
 import Confirm from '@/app/components/base/confirm'
@@ -23,6 +24,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
+dayjs.extend(relativeTime)
 
 const EXTERNAL_PROVIDER = 'external'
 
