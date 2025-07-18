@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { useBoolean } from 'ahooks'
 import cn from '@/utils/classnames'
@@ -22,6 +22,16 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
     set: handleOpenSet,
   }] = useBoolean(false)
 
+  const moreThanOneVersion = versionLen > 1
+  const handleOpen = useCallback((value: boolean) => {
+    if (moreThanOneVersion)
+      handleOpenSet(value)
+  }, [moreThanOneVersion, handleOpenToggle])
+  const handleToggle = useCallback(() => {
+    if (moreThanOneVersion)
+      handleOpenToggle()
+  }, [moreThanOneVersion, handleOpenToggle])
+
   const versions = Array.from({ length: versionLen }, (_, index) => ({
     label: `Version ${index + 1}${index === versionLen - 1 ? ' · Latest' : ''}`,
     value: index,
@@ -37,16 +47,16 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         crossAxis: -8,
       }}
       open={isOpen}
-      onOpenChange={handleOpenSet}
+      onOpenChange={handleOpen}
     >
       <PortalToFollowElemTrigger
-        onClick={handleOpenToggle}
+        onClick={handleToggle}
         asChild
       >
 
-        <div className='system-xs-medium flex cursor-pointer items-center text-text-secondary'>
+        <div className={cn('system-xs-medium flex items-center text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
           <div>Version {value + 1}{isLatest && ' · Latest'}</div>
-          <RiArrowDownSLine className='size-3 ' />
+          {moreThanOneVersion && <RiArrowDownSLine className='size-3 ' />}
         </div>
       </PortalToFollowElemTrigger >
       <PortalToFollowElemContent className={cn(
