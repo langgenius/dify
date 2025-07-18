@@ -711,20 +711,16 @@ class WorkflowAppGenerateTaskPipeline:
         for queue_message in self._base_task_pipeline._queue_manager.listen():
             event = queue_message.event
 
-            # Use elegant pattern matching for event dispatch
             match event:
-                # Handle QueueWorkflowStartedEvent specially - it has a side effect
                 case QueueWorkflowStartedEvent():
-                    graph_runtime_state = event.graph_runtime_state  # Side effect!
+                    graph_runtime_state = event.graph_runtime_state
                     yield from self._handle_workflow_started_event(event)
 
-                # Handle QueueTextChunkEvent specially - needs queue_message
                 case QueueTextChunkEvent():
                     yield from self._handle_text_chunk_event(
                         event, tts_publisher=tts_publisher, queue_message=queue_message
                     )
 
-                # Handle events that cause loop breaks
                 case QueueErrorEvent():
                     yield from self._handle_error_event(event)
                     break
@@ -741,9 +737,7 @@ class WorkflowAppGenerateTaskPipeline:
                         )
                     ):
                         yield from responses
-                    # Continue with next event (elegant fallthrough)
 
-        # Cleanup - publish None when task finished
         if tts_publisher:
             tts_publisher.publish(None)
 
