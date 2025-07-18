@@ -97,7 +97,7 @@ class App(Base):
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     use_icon_as_answer_icon = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
