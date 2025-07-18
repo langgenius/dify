@@ -362,6 +362,31 @@ class ClickZettaVolumeStorage(BaseStorage):
                 raise FileNotFoundError(f"Downloaded file not found: {filename}")
 
             content = downloaded_file.read_bytes()
+
+            # Debug: Check if this is a private.pem file
+            if filename.endswith("private.pem"):
+                logger.info(f"DEBUG: Loading RSA private key file {filename}")
+                logger.info(f"DEBUG: File size: {len(content)} bytes")
+                try:
+                    content_str = content.decode("utf-8", errors="replace")
+                    logger.info(f"DEBUG: File starts with: {content_str[:100]}")
+                    logger.info(f"DEBUG: File ends with: {content_str[-100:]}")
+
+                    # Check for common issues
+                    if not content_str.strip().startswith("-----BEGIN"):
+                        logger.error(f"ERROR: RSA key file {filename} doesn't start with proper PEM header")
+                    if not content_str.strip().endswith("-----"):
+                        logger.error(f"ERROR: RSA key file {filename} doesn't end with proper PEM footer")
+
+                    # Check for Windows line endings or other encoding issues
+                    if "\r\n" in content_str:
+                        logger.info("DEBUG: File contains Windows line endings (\\r\\n)")
+                    if "\r" in content_str and "\r\n" not in content_str:
+                        logger.info("DEBUG: File contains Mac line endings (\\r)")
+
+                except Exception as e:
+                    logger.error(f"ERROR: Cannot decode RSA key file {filename} as UTF-8: {e}")
+
             logger.debug(f"File {filename} loaded from ClickZetta Volume")
             return content
 
