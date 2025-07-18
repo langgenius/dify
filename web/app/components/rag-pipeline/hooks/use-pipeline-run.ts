@@ -4,7 +4,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import produce from 'immer'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
@@ -13,6 +13,9 @@ import { ssePost } from '@/service/base'
 import { stopWorkflowRun } from '@/service/workflow'
 import type { VersionHistory } from '@/types/workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { FlowType } from '@/types/common'
 
 export const usePipelineRun = () => {
   const store = useStoreApi()
@@ -86,6 +89,13 @@ export const usePipelineRun = () => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
+  const pipelineId = useStore(s => s.pipelineId)
+  const invalidAllLastRun = useInvalidAllLastRun(FlowType.ragPipeline, pipelineId)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
+    flowType: FlowType.ragPipeline,
+    flowId: pipelineId!,
+  })
+
   const handleRun = useCallback(async (
     params: any,
     callback?: IOtherOptions,
@@ -155,6 +165,8 @@ export const usePipelineRun = () => {
         },
         onWorkflowFinished: (params) => {
           handleWorkflowFinished(params)
+          fetchInspectVars()
+          invalidAllLastRun()
 
           if (onWorkflowFinished)
             onWorkflowFinished(params)
