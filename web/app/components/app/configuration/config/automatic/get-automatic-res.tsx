@@ -136,8 +136,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instruction, setInstruction] = useState<string>('')
-  const [ideaOutput, setIdeaOutput] = useState<string>('')
+  const [instruction, setInstruction] = useState<string>('The travel plan to Anshun of Guizhou Province in China') // TODO: test value
+  const [ideaOutput, setIdeaOutput] = useState<string>('use json format to output the result. Content in result uses Chinese. Format: {"summary: "summary content", "result": "result content"}')
+  const [currentPrompt, setCurrentPrompt] = useState<string>('')
   const [isFoldIdeaOutput, {
     toggle: toggleFoldIdeaOutput,
   }] = useBoolean(true)
@@ -226,7 +227,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     setLoadingTrue()
     try {
       const { error, ...res } = await generateRule({
+        flow_id: flowId,
+        node_id: nodeId,
+        current: currentPrompt,
         instruction,
+        idea_output: ideaOutput,
         model_config: model,
       })
       setRes(res)

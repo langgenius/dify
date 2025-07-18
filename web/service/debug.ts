@@ -72,7 +72,7 @@ export const fetchConversationMessages = (appId: string, conversation_id: string
 }
 
 export const generateRule = (body: Record<string, any>) => {
-  return post<AutomaticRes>('/rule-generate', {
+  return post<AutomaticRes>('/instruction-generate', {
     body,
   })
 }

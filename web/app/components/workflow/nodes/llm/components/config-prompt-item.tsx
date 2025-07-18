@@ -136,6 +136,7 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
+      nodeId={id}
       isSupportPromptGenerator={payload.role === PromptRole.system}
       onGenerated={handleGenerated}
       modelConfig={modelConfig}

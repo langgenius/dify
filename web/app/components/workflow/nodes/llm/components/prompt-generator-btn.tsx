@@ -10,11 +10,13 @@ import { AppType } from '@/types/app'
 import type { AutomaticRes } from '@/service/debug'
 import type { ModelConfig, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
   className?: string
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
+  nodeId: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
 }
@@ -22,6 +24,7 @@ type Props = {
 const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
+  nodeId,
   nodesOutputVars,
   availableNodes,
 }) => {
@@ -30,6 +33,7 @@ const PromptGeneratorBtn: FC<Props> = ({
     onGenerated?.(res.prompt)
     showAutomaticFalse()
   }, [onGenerated, showAutomaticFalse])
+  const configsMap = useHooksStore(s => s.configsMap)
   return (
     <div className={cn(className)}>
       <ActionButton
@@ -46,6 +50,8 @@ const PromptGeneratorBtn: FC<Props> = ({
           generatorType={GeneratorType.prompt}
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
+          flowId={configsMap?.flowId || ''}
+          nodeId={nodeId}
         />
       )}
     </div>
