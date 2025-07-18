@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 
 let socket: Socket | null = null
+let lastAppId: string | null = null
 
 /**
  * Connect to the online user websocket server.
@@ -10,7 +11,8 @@ let socket: Socket | null = null
  * @returns The socket instance.
  */
 export function connectOnlineUserWebSocket(appId: string): Socket {
-  // If already connected, disconnect first
+  if (socket && lastAppId === appId)
+    return socket
   if (socket)
     socket.disconnect()
 
@@ -23,6 +25,8 @@ export function connectOnlineUserWebSocket(appId: string): Socket {
     auth: { token },
     withCredentials: true,
   })
+
+  lastAppId = appId
 
   // Add your event listeners here
   socket.on('connect', () => {

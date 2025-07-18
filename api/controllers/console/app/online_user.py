@@ -1,9 +1,14 @@
 import json
 
 from flask import request
+from flask_restful import Resource, marshal_with, reqparse
 
+from controllers.console import api
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import ext_socketio
+from fields.online_user_fields import online_user_list_fields
+from libs.login import login_required
 
 
 @ext_socketio.on("user_connect")
@@ -25,8 +30,8 @@ def handle_user_connect(data):
 
     user_info = {
         "user_id": current_user.id,
-        "username": getattr(current_user, "username", ""),
-        "avatar": getattr(current_user, "avatar", ""),
+        "username": current_user.name,
+        "avatar": current_user.avatar,
         "sid": sid,
     }
 
@@ -49,3 +54,32 @@ def handle_disconnect():
         user_id = data["user_id"]
         redis_client.hdel(f"workflow_online_users:{workflow_id}", user_id)
         redis_client.delete(f"ws_sid_map:{sid}")
+
+
+class OnlineUserApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("workflow_ids", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        workflow_ids = [id.strip() for id in args["workflow_ids"].split(",")]
+        
+        results = {}
+        for workflow_id in workflow_ids:
+            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+            
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    users.append(json.loads(user_info_json))
+                except Exception:
+                    continue
+            results[workflow_id] = users
+            
+        return {"data": results}
+
+api.add_resource(OnlineUserApi, "/online-users")
