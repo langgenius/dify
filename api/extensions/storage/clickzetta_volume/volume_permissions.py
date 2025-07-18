@@ -35,7 +35,7 @@ class VolumePermissionManager:
         # 支持两种初始化方式：连接对象或配置字典
         if isinstance(connection_or_config, dict):
             # 从配置字典创建连接
-            import clickzetta
+            import clickzetta  # type: ignore[import-untyped]
 
             config = connection_or_config
             self._connection = clickzetta.connect(
