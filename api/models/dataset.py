@@ -1,3 +1,4 @@
+from typing import Optional
 import base64
 import enum
 import hashlib
@@ -47,19 +48,19 @@ class Dataset(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    name = mapped_column(db.String(255), nullable=False)
+    name: Mapped[str] = mapped_column(db.String(255))
     description = mapped_column(db.Text, nullable=True)
-    provider = mapped_column(db.String(255), nullable=False, server_default=db.text("'vendor'::character varying"))
-    permission = mapped_column(db.String(255), nullable=False, server_default=db.text("'only_me'::character varying"))
-    data_source_type = mapped_column(db.String(255))
-    indexing_technique = mapped_column(db.String(255), nullable=True)
+    provider: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'vendor'::character varying"))
+    permission: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'only_me'::character varying"))
+    data_source_type: Mapped[str] = mapped_column(db.String(255))
+    indexing_technique: Mapped[Optional[str]] = mapped_column(db.String(255))
     index_struct = mapped_column(db.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = mapped_column(db.String(255), nullable=True)
-    embedding_model_provider = mapped_column(db.String(255), nullable=True)
+    embedding_model: Mapped[str] = mapped_column(db.String(255), nullable=True)
+    embedding_model_provider: Mapped[str] = mapped_column(db.String(255), nullable=True)
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))

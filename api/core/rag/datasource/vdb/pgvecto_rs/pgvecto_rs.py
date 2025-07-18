@@ -67,7 +67,7 @@ class PGVectoRS(BaseVector):
                 postgresql.UUID(as_uuid=True),
                 primary_key=True,
             )
-            text: Mapped[str] = mapped_column(String)
+            text: Mapped[str]
             meta: Mapped[dict] = mapped_column(postgresql.JSONB)
             vector: Mapped[ndarray] = mapped_column(VECTOR(dim))
 
