@@ -38,7 +38,6 @@ export default combine(
       'style/brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
       'style/dot-location': ['error', 'property'],
       'style/object-curly-newline': ['error', { consistent: true, multiline: true }],
-      'style/object-property-newline': ['error', { allowMultiplePropertiesPerLine: true }],
       'style/template-curly-spacing': ['error', 'never'],
       'style/keyword-spacing': 'off',
 

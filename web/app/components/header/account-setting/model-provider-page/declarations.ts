@@ -21,6 +21,7 @@ export enum FormTypeEnum {
   toolSelector = 'tool-selector',
   multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
+  any = 'any',
   object = 'object',
   array = 'array',
   dynamicSelect = 'dynamic-select',

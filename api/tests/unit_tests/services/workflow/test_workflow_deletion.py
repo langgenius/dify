@@ -10,7 +10,8 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 @pytest.fixture
 def workflow_setup():
-    workflow_service = WorkflowService()
+    mock_session_maker = MagicMock()
+    workflow_service = WorkflowService(mock_session_maker)
     session = MagicMock(spec=Session)
     tenant_id = "test-tenant-id"
     workflow_id = "test-workflow-id"

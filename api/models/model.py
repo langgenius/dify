@@ -50,7 +50,6 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
-    CHANNEL = "channel"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -611,14 +610,6 @@ class InstalledApp(Base):
         return tenant
 
 
-class ConversationSource(StrEnum):
-    """This enumeration is designed for use with `Conversation.from_source`."""
-
-    # NOTE(QuantumGhost): The enumeration members may not cover all possible cases.
-    API = "api"
-    CONSOLE = "console"
-
-
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
@@ -934,7 +925,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    workflow_run_id = db.Column(StringUUID)
+    workflow_run_id: Mapped[str] = db.Column(StringUUID)
 
     @property
     def inputs(self):

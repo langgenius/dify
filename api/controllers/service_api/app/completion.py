@@ -1,5 +1,6 @@
 import logging
 
+from flask import request
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -23,6 +24,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -110,6 +112,10 @@ class ChatApi(Resource):
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
 
         args = parser.parse_args()
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         streaming = args["response_mode"] == "streaming"
 

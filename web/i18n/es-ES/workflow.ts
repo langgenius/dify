@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
+    tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -234,6 +235,8 @@ const translation = {
     'plugin': 'Plugin',
     'searchBlock': 'Buscar nodo',
     'blocks': 'Nodos',
+    'addAll': 'Agregar todo',
+    'allAdded': 'Todo añadido',
   },
   blocks: {
     'start': 'Inicio',
@@ -364,7 +367,10 @@ const translation = {
         retries: '{{num}} Reintentos',
         retry: 'Reintentar',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Valor de entrada',
+        variable: 'Usa la variable',
+      },
     },
     start: {
       required: 'requerido',
@@ -549,6 +555,7 @@ const translation = {
       advancedDependencies: 'Dependencias avanzadas',
       advancedDependenciesTip: 'Agrega algunas dependencias precargadas que consumen más tiempo o no son incorporadas por defecto aquí',
       searchDependencies: 'Buscar dependencias',
+      syncFunctionSignature: 'Sincronizar la firma de la función con el código',
     },
     templateTransform: {
       inputVars: 'Variables de entrada',
@@ -668,6 +675,9 @@ const translation = {
         json: 'JSON generado por la herramienta',
       },
       authorize: 'autorizar',
+      insertPlaceholder2: 'insertar variable',
+      settings: 'Ajustes',
+      insertPlaceholder1: 'Escribe o presiona',
     },
     questionClassifiers: {
       model: 'modelo',
@@ -855,6 +865,8 @@ const translation = {
       strategyNotFoundDescAndSwitchVersion: 'La versión del plugin instalado no proporciona esta estrategia. Haga clic para cambiar de versión.',
       toolNotAuthorizedTooltip: '{{herramienta}} No autorizado',
       modelNotSelected: 'Modelo no seleccionado',
+      clickToViewParameterSchema: 'Haga clic para ver el esquema de parámetros',
+      parameterSchema: 'Esquema de Parámetros',
     },
     loop: {
       ErrorMethod: {

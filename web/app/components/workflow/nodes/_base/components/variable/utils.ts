@@ -612,6 +612,7 @@ const getIterationItemType = ({
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
+  const isChatVar = isConversationVar(valueSelector)
 
   const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
 
@@ -621,7 +622,7 @@ const getIterationItemType = ({
   let arrayType: VarType = VarType.string
 
   let curr: any = targetVar.vars
-  if (isSystem) {
+  if (isSystem || isChatVar) {
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
@@ -645,7 +646,7 @@ const getIterationItemType = ({
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
-      return VarType.any
+      return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
     default:

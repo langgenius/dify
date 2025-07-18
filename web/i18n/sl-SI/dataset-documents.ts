@@ -358,6 +358,7 @@ const translation = {
     expandChunks: 'Razširitev kosov',
     childChunk: 'Otroški kos',
     editedAt: 'Urejeno na',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     edited: 'UREJATI',
     addAnother: 'Dodajanje še enega',
     childChunks_one: 'OTROŠKI KOS',
