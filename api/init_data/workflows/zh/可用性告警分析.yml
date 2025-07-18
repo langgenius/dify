@@ -30,13 +30,6 @@ workflow:
       - local_file
       - remote_url
       enabled: false
-      fileUploadConfig:
-        audio_file_size_limit: 50
-        batch_count_limit: 5
-        file_size_limit: 15
-        image_file_size_limit: 10
-        video_file_size_limit: 100
-        workflow_file_upload_limit: 10
       image:
         enabled: false
         number_limits: 3
@@ -1656,7 +1649,7 @@ workflow:
       positionAbsolute:
         x: 1854
         y: 492
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -2598,60 +2591,53 @@ workflow:
       type: custom
       width: 244
     - data:
-        code: "import requests\nimport json\ndef get_topology(service, cluster, start_time,\
-          \ end_time) -> str:\n        params = {\n          'service': service,\n\
-          \          'cluster': cluster,\n          'startTime': start_time,\n   \
-          \       'endTime': end_time,\n          }\n        resp = requests.get(\"\
-          http://apo-backend-svc:8080\"+ '/api/dataplane/topology', params=params)\n\
-          \        res = {}\n\n\n        query_params = {\n                    'startTime':\
-          \ start_time,\n                    'endTime': end_time,\n              \
-          \      'service': service\n        }\n        response = requests.get(\"\
-          http://apo-backend-svc:8080\"+ '/api/dataplane/redcharts', params=query_params)\n\
-          \        metrics = {}\n        if response.status_code == 200 and response.json()['msg']\
-          \ == '':\n            metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
-          \            metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
-          \            metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
-          \        res['current'] = {\n            \"service\": service,\n       \
-          \     \"description\": \"\",\n            \"metrics\": metrics,\n      \
-          \  }\n\n        if resp.status_code == 200 and resp.json()['msg'] == \"\"\
-          :\n            list = resp.json()\n            result = []\n           \
-          \ for item in list['results'] or []:\n                if item[\"name\"]\
-          \ == service:\n                    result = item\n\n            parents\
-          \ = []\n            for p_svc in result['parents']:\n                query_params\
-          \ = {\n                    'startTime': start_time,\n                  \
-          \  'endTime': end_time,\n                    'service': p_svc\n        \
-          \        }\n                response = requests.get(\"http://apo-backend-svc:8080\"\
-          + '/api/dataplane/redcharts', params=query_params)\n                if response.status_code\
-          \ != 200:\n                    continue\n                metrics = {}\n\
-          \                metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
-          \                metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
-          \                metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
-          \                parents.append({\n                    'service': p_svc,\n\
-          \                    'description': \"\",\n                    'metrics':\
-          \ metrics,\n                })\n            \n            children = []\n\
-          \            for c_svc in result['children']:\n                query_params\
-          \ = {\n                    'startTime': start_time,\n                  \
-          \  'endTime': end_time,\n                    'service': c_svc\n        \
-          \        }\n                response = requests.get(\"http://apo-backend-svc:8080\"\
-          + '/api/dataplane/redcharts', params=query_params)\n                if response.status_code\
-          \ != 200 or response.json()['msg'] != '':\n                    continue\n\
-          \                metrics = {}\n                metrics['latency'] = response.json()['results'][0]['timeseries'][0]['chart']\n\
-          \                metrics['errorRate'] = response.json()['results'][1]['timeseries'][0]['chart']\n\
-          \                metrics['tps'] = response.json()['results'][2]['timeseries'][0]['chart']\n\
-          \                children.append({\n                    'service': c_svc,\n\
-          \                    'description': \"\",\n                    'metrics':\
-          \ metrics,\n                })\n            \n            res['children']\
-          \ = children\n            res['parents'] = parents\n            return json.dumps(res)\n\
-          \n\ndef main(service: str, startTime: int, endTime: int) -> dict:\n    rc\
-          \ = get_topology(service, \"\", startTime, endTime)\n    if rc == None:\n\
-          \        rc = \"{}\"\n    return {\n        \"result\": rc,\n    }"
+        code: "import requests\nimport json\n\n\ndef get_red(query_params):\n    response\
+          \ = requests.get(\n        \"http://apo-backend-svc:8080\" + \"/api/dataplane/redcharts\"\
+          , params=query_params\n    )\n    if response.status_code != 200 or len(response.json()[\"\
+          results\"]) == 0:\n        return {}\n    metrics = {}\n    metrics[\"latency\"\
+          ] = response.json()[\"results\"][0][\"timeseries\"][0][\"chart\"]\n    metrics[\"\
+          errorRate\"] = response.json()[\"results\"][1][\"timeseries\"][0][\"chart\"\
+          ]\n    metrics[\"tps\"] = response.json()[\"results\"][2][\"timeseries\"\
+          ][0][\"chart\"]\n    return metrics\n\n\n\ndef get_topology(service, cluster,\
+          \ start_time, end_time) -> str:\n    params = {\n        \"service\": service,\n\
+          \        \"cluster\": cluster,\n        \"startTime\": start_time,\n   \
+          \     \"endTime\": end_time,\n    }\n    resp = requests.get(\n        \"\
+          http://apo-backend-svc:8080\" + \"/api/dataplane/topology\", params=params\n\
+          \    )\n    res = {}\n\n    query_params = {\"startTime\": start_time, \"\
+          endTime\": end_time, \"service\": service}\n    metrics = get_red(query_params)\n\
+          \    res[\"current\"] = {\n        \"service\": service,\n        \"description\"\
+          : \"\",\n        \"metrics\": metrics,\n    }\n\n    if resp.status_code\
+          \ == 200 and resp.json()[\"msg\"] == \"\":\n        list = resp.json()\n\
+          \        result = {}\n        for item in list[\"results\"] or []:\n   \
+          \         if item[\"name\"] == service:\n                result = item\n\
+          \n        parents = []\n        for p_svc in result[\"parents\"] or []:\n\
+          \            query_params = {\n                \"startTime\": start_time,\n\
+          \                \"endTime\": end_time,\n                \"service\": p_svc,\n\
+          \            }\n            metrics = get_red(query_params)\n          \
+          \  if len(metrics) == 0:\n                continue\n            parents.append(\n\
+          \                {\n                    \"service\": p_svc,\n          \
+          \          \"description\": \"\",\n                    \"metrics\": metrics,\n\
+          \                }\n            )\n\n        children = []\n        for\
+          \ c_svc in result[\"children\"] or []:\n            query_params = {\n \
+          \               \"startTime\": start_time,\n                \"endTime\"\
+          : end_time,\n                \"service\": c_svc,\n            }\n      \
+          \      metrics = get_red(query_params)\n            if len(metrics) == 0:\n\
+          \                continue\n            children.append(\n              \
+          \  {\n                    \"service\": c_svc,\n                    \"description\"\
+          : \"\",\n                    \"metrics\": metrics,\n                }\n\
+          \            )\n\n        res[\"children\"] = children\n        res[\"parents\"\
+          ] = parents\n        return json.dumps(res)\n\n\ndef main(service: str,\
+          \ startTime: int, endTime: int) -> dict:\n    try:\n      rc = get_topology(service,\
+          \ \"\", startTime, endTime)\n    except Exception:\n        rc = \"{}\"\n\
+          \    if rc == None:\n        rc = \"{}\"\n    return {\n        \"result\"\
+          : rc,\n    }"
         code_language: python3
         desc: ''
         outputs:
           result:
             children: null
             type: string
-        selected: false
+        selected: true
         title: 获取拓扑
         type: code
         variables:
@@ -2675,7 +2661,7 @@ workflow:
       positionAbsolute:
         x: 4590
         y: 1202
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -3045,6 +3031,6 @@ workflow:
       type: custom
       width: 244
     viewport:
-      x: -1661.5523226791147
-      y: -9.429599378653393
+      x: -2729.552322679115
+      y: -371.4295993786534
       zoom: 0.6912168164295371
