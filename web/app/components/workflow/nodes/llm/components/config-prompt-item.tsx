@@ -19,6 +19,7 @@ type Props = {
   canNotChooseSystemRole?: boolean
   readOnly: boolean
   id: string
+  nodeId: string
   canRemove: boolean
   isChatModel: boolean
   isChatApp: boolean
@@ -63,6 +64,7 @@ const ConfigPromptItem: FC<Props> = ({
   canNotChooseSystemRole,
   readOnly,
   id,
+  nodeId,
   canRemove,
   handleChatModeMessageRoleChange,
   isChatModel,
@@ -136,7 +138,7 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
-      nodeId={id}
+      nodeId={nodeId}
       isSupportPromptGenerator={payload.role === PromptRole.system}
       onGenerated={handleGenerated}
       modelConfig={modelConfig}

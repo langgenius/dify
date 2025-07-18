@@ -188,6 +188,7 @@ const ConfigPrompt: FC<Props> = ({
                           canRemove={payload.length > 1 && !(index === 0 && item.role === PromptRole.system)}
                           readOnly={readOnly}
                           id={item.id!}
+                          nodeId={nodeId}
                           handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
                           isChatModel={isChatModel}
                           isChatApp={isChatApp}

@@ -165,17 +165,17 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
   const storageKey = `${flowId}${isBasicMode ? '' : `-${nodeId}`}`
-  const { versions, addVersion, current } = useGenData({
+  const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })
 
-  useEffect(() => {
-    // if (!versions.length) {
-    addVersion({
-      modified: 'ddd',
-    })
-    // }
-  }, [])
+  // useEffect(() => {
+  //   // if (!versions.length) {
+  //   addVersion({
+  //     modified: 'ddd',
+  //   })
+  //   // }
+  // }, [])
 
   useEffect(() => {
     if (defaultModel) {
@@ -387,7 +387,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {
           <div className='h-full w-0 grow p-6 pb-0'>
             <Result
-              storageKey={storageKey}
+              current={current!}
+              currentVersionIndex={currentVersionIndex || 0}
+              setCurrentVersionIndex={setCurrentVersionIndex}
+              versions={versions || []}
               onApply={showConfirmOverwrite}
               generatorType={generatorType}
             />

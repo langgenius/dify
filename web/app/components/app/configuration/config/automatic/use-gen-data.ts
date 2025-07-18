@@ -15,14 +15,14 @@ const useGenData = ({ storageKey }: Params) => {
     defaultValue: 0,
   })
 
-  const current = versions[currentVersionIndex]
+  const current = versions?.[currentVersionIndex || 0]
 
   const addVersion = useCallback((version: GenRes) => {
-    setCurrentVersionIndex(() => versions.length)
+    setCurrentVersionIndex(() => versions?.length || 0)
     setVersions((prev) => {
       return [...prev!, version]
     })
-  }, [setVersions, setCurrentVersionIndex, versions.length])
+  }, [setVersions, setCurrentVersionIndex, versions?.length])
 
   return {
     versions,
