@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
 from celery import states  # type: ignore
-
 from sqlalchemy.orm import mapped_column
+
 from models.base import Base
 
 from .engine import db
