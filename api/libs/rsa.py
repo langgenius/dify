@@ -58,8 +58,45 @@ def get_decrypt_decoding(tenant_id):
 
         redis_client.setex(cache_key, 120, private_key)
 
-    rsa_key = RSA.import_key(private_key)
-    cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
+    try:
+        # Ensure private_key is bytes
+        if isinstance(private_key, str):
+            private_key = private_key.encode("utf-8")
+
+        # Clean up the key content - handle potential encoding/format issues
+        key_content = private_key.decode("utf-8", errors="replace").strip()
+
+        # Fix common format issues
+        if not key_content.startswith("-----BEGIN"):
+            # If key doesn't start with BEGIN, it might be corrupted
+            raise ValueError("Private key doesn't start with proper PEM header")
+
+        if not key_content.endswith("-----"):
+            # If key doesn't end properly, it might be corrupted
+            raise ValueError("Private key doesn't end with proper PEM footer")
+
+        # Normalize line endings to Unix style
+        key_content = key_content.replace("\r\n", "\n").replace("\r", "\n")
+
+        # Re-encode to bytes
+        normalized_key = key_content.encode("utf-8")
+
+        # Debug: Log key format info
+        print(f"DEBUG: Private key length: {len(normalized_key)} bytes")
+        print(f"DEBUG: Private key starts with: {key_content[:50]}")
+        print(f"DEBUG: Private key ends with: {key_content[-50:]}")
+
+        rsa_key = RSA.import_key(normalized_key)
+        cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
+    except Exception as e:
+        print(f"ERROR: Failed to import RSA key for tenant {tenant_id}: {e}")
+        print(f"DEBUG: Original key type: {type(private_key)}")
+        print(f"DEBUG: Original key length: {len(private_key)}")
+        if isinstance(private_key, bytes):
+            key_str = private_key.decode("utf-8", errors="replace")
+            print(f"DEBUG: Key starts with: {key_str[:100]}")
+            print(f"DEBUG: Key ends with: {key_str[-100:]}")
+        raise
 
     return rsa_key, cipher_rsa
 
