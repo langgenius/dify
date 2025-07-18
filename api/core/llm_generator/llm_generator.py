@@ -519,7 +519,7 @@ class LLMGenerator:
         if CURRENT in injected_instruction:
             injected_instruction = injected_instruction.replace(CURRENT, current)
         if ERROR_MESSAGE in injected_instruction:
-            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message)
+            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
         model_instance = ModelManager().get_model_instance(
             tenant_id = tenant_id,
             model_type=ModelType.LLM,
