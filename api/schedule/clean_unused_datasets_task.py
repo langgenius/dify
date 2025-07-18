@@ -99,7 +99,6 @@ def clean_unused_datasets_task():
                     index_processor.clean(dataset, None)
 
                     # update document
-                    # type: ignore
                     db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                     db.session.commit()
                     click.echo(click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green"))
@@ -175,7 +174,6 @@ def clean_unused_datasets_task():
                         index_processor.clean(dataset, None)
 
                         # update document
-                        # type: ignore
                         db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                         db.session.commit()
                         click.echo(
