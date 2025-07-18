@@ -46,7 +46,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             user_id=current_user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
         )
         oauth_handler = OAuthHandler()
-        redirect_uri = f"{dify_config.CONSOLE_WEB_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_client_params = oauth_config.system_credentials
 
         authorization_url_response = oauth_handler.get_authorization_url(
@@ -71,10 +71,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
 class DatasourceOAuthCallback(Resource):
     @setup_required
     def get(self, provider_id: str):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        context_id = request.cookies.get("context_id")
+        context_id = request.cookies.get("context_id") or request.args.get("context_id")
         if not context_id:
             raise Forbidden("context_id not found")
 
@@ -91,7 +88,7 @@ class DatasourceOAuthCallback(Resource):
         )
         if not plugin_oauth_config:
             raise NotFound()
-        redirect_uri = f"{dify_config.CONSOLE_WEB_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
         oauth_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
@@ -106,10 +103,11 @@ class DatasourceOAuthCallback(Resource):
         datasource_provider_service.add_datasource_oauth_provider(
             tenant_id=tenant_id,
             provider_id=datasource_provider_id,
+            avatar_url=oauth_response.metadata.get("avatar_url") or None,
+            name=oauth_response.metadata.get("name") or None,
             credentials=dict(oauth_response.credentials),
-            name=None,
         )
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}")
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
 class DatasourceAuth(Resource):
@@ -136,8 +134,7 @@ class DatasourceAuth(Resource):
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
-
-        return {"result": "success"}, 201
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
     @setup_required
     @login_required

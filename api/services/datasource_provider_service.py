@@ -47,6 +47,7 @@ class DatasourceProviderService:
         name: str | None,
         tenant_id: str,
         provider_id: DatasourceProviderID,
+        avatar_url: str | None,
         credentials: dict,
     ) -> None:
         """
@@ -81,6 +82,7 @@ class DatasourceProviderService:
                     plugin_id=provider_id.plugin_id,
                     auth_type=credential_type.value,
                     encrypted_credentials=credentials,
+                    avatar_url=avatar_url,
                 )
                 session.add(datasource_provider)
                 session.commit()

@@ -191,6 +191,9 @@ class PluginOAuthAuthorizationUrlResponse(BaseModel):
 
 
 class PluginOAuthCredentialsResponse(BaseModel):
+    metadata: Mapping[str, Any] = Field(
+        default_factory=dict, description="The metadata of the OAuth, like avatar url, name, etc."
+    )
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
 
 
