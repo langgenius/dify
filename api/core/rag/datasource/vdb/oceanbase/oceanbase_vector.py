@@ -153,7 +153,7 @@ class OceanBaseVector(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
 
-        batch_size = 100
+        batch_size = 50
         for i in range(0, len(ids), batch_size):
             batch_ids = ids[i : i + batch_size]
             batch_docs = documents[i : i + batch_size]
