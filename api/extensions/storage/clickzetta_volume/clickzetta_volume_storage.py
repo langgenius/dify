@@ -161,7 +161,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             return f"{self._config.dify_prefix}/{filename}"
         elif self._config.volume_type == "table":
             # Check if this should use User Volume (special directories)
-            if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files"]:
+            if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
                 # Use User Volume with dify prefix for special directories
                 return f"{self._config.dify_prefix}/{filename}"
 
@@ -187,7 +187,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             # For Dify's current file storage pattern, most files are stored in
             # paths like "upload_files/tenant_id/uuid.ext", "tools/tenant_id/uuid.ext"
             # These should use USER VOLUME for better compatibility
-            if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files"]:
+            if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
                 return "USER VOLUME"
 
             # Only use TABLE VOLUME for actual dataset-specific paths
@@ -223,7 +223,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             return
 
         # Skip for upload_files and other special directories that use USER VOLUME
-        if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files"]:
+        if dataset_id in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
             return
 
         table_name = f"{self._config.table_prefix}{dataset_id}"
@@ -277,7 +277,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         # Check permissions (if enabled)
         if self._config.permission_check:
             # Skip permission check for special directories that use USER VOLUME
-            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files"]:
+            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
                 if self._permission_manager is not None:
                     check_volume_permission(self._permission_manager, "save", dataset_id)
 
@@ -329,7 +329,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         # Check permissions (if enabled)
         if self._config.permission_check:
             # Skip permission check for special directories that use USER VOLUME
-            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files"]:
+            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
                 if self._permission_manager is not None:
                     check_volume_permission(self._permission_manager, "load_once", dataset_id)
 
