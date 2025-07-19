@@ -70,16 +70,15 @@ class MCPToolManageService:
                     MCPToolProvider.server_url_hash == server_url_hash,
                     MCPToolProvider.server_identifier == server_identifier,
                 ),
-                MCPToolProvider.tenant_id == tenant_id,
             )
             .first()
         )
         if existing_provider:
             if existing_provider.name == name:
                 raise ValueError(f"MCP tool {name} already exists")
-            elif existing_provider.server_url_hash == server_url_hash:
+            if existing_provider.server_url_hash == server_url_hash:
                 raise ValueError(f"MCP tool {server_url} already exists")
-            elif existing_provider.server_identifier == server_identifier:
+            if existing_provider.server_identifier == server_identifier:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         mcp_tool = MCPToolProvider(
@@ -111,15 +110,14 @@ class MCPToolManageService:
         ]
 
     @classmethod
-    def list_mcp_tool_from_remote_server(cls, tenant_id: str, provider_id: str):
+    def list_mcp_tool_from_remote_server(cls, tenant_id: str, provider_id: str) -> ToolProviderApiEntity:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
-
         try:
             with MCPClient(
                 mcp_provider.decrypted_server_url, provider_id, tenant_id, authed=mcp_provider.authed, for_list=True
             ) as mcp_client:
                 tools = mcp_client.list_tools()
-        except MCPAuthError as e:
+        except MCPAuthError:
             raise ValueError("Please auth the tool first")
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
@@ -184,12 +182,11 @@ class MCPToolManageService:
             error_msg = str(e.orig)
             if "unique_mcp_provider_name" in error_msg:
                 raise ValueError(f"MCP tool {name} already exists")
-            elif "unique_mcp_provider_server_url" in error_msg:
+            if "unique_mcp_provider_server_url" in error_msg:
                 raise ValueError(f"MCP tool {server_url} already exists")
-            elif "unique_mcp_provider_server_identifier" in error_msg:
+            if "unique_mcp_provider_server_identifier" in error_msg:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
-            else:
-                raise
+            raise
 
     @classmethod
     def update_mcp_provider_credentials(
