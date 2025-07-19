@@ -40,6 +40,10 @@ const translation = {
     maxTreeDepth: '분기당 최대 {{depth}} 노드 제한',
     workflowProcess: '워크플로우 과정',
     notRunning: '아직 실행되지 않음',
+    searchNodes: '노드, 유형, 입력, 출력 검색...',
+    noSearchResults: '검색 결과 없음',
+    searchResults: '{{total}}개 중 {{matched}}개 노드',
+    searchHint: '"{{query}}"에 대해 다른 키워드를 시도해 보세요',
     previewPlaceholder: '디버깅을 시작하려면 아래 상자에 내용을 입력하세요',
     effectVarConfirm: {
       title: '변수 제거',

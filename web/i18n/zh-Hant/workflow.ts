@@ -42,6 +42,10 @@ const translation = {
     needAnswerNode: '必須添加直接回覆節點',
     workflowProcess: '工作流',
     notRunning: '尚未運行',
+    searchNodes: '搜索節點、類型、輸入、輸出...',
+    noSearchResults: '無搜索結果',
+    searchResults: '{{matched}} / {{total}} 個節點',
+    searchHint: '嘗試使用不同的關鍵詞搜索 "{{query}}"',
     previewPlaceholder: '在下面的框中輸入內容開始調試聊天機器人',
     effectVarConfirm: {
       title: '移除變量',
