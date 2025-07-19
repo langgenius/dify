@@ -97,7 +97,7 @@ class OpikDataTrace(BaseTraceInstance):
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         external_trace_id = trace_info.metadata.get("external_trace_id")
-        dify_trace_id = trace_info.metadata.get("external_trace_id") or external_trace_id or trace_info.workflow_run_id
+        dify_trace_id = external_trace_id or trace_info.workflow_run_id
         opik_trace_id = prepare_opik_uuid(trace_info.start_time, dify_trace_id)
         workflow_metadata = wrap_metadata(
             trace_info.metadata, message_id=trace_info.message_id, workflow_app_log_id=trace_info.workflow_app_log_id
