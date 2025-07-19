@@ -1,6 +1,6 @@
 #!/bin/bash
 
-npm add -g pnpm@10.11.1
+npm add -g pnpm@10.13.1
 cd web && pnpm install
 pipx install uv
 
@@ -12,3 +12,4 @@ echo 'alias start-containers="cd /workspaces/dify/docker && docker-compose -f do
 echo 'alias stop-containers="cd /workspaces/dify/docker && docker-compose -f docker-compose.middleware.yaml -p dify --env-file middleware.env down"' >> ~/.bashrc
 
 source /home/vscode/.bashrc
+
