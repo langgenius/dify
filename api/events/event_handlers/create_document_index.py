@@ -1,4 +1,3 @@
-import datetime
 import logging
 import time
 
@@ -8,6 +7,7 @@ from werkzeug.exceptions import NotFound
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from events.event_handlers.document_index_event import document_index_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Document
 
 
@@ -33,7 +33,7 @@ def handle(sender, **kwargs):
             raise NotFound("Document not found")
 
         document.indexing_status = "parsing"
-        document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.processing_started_at = naive_utc_now()
         documents.append(document)
         db.session.add(document)
     db.session.commit()

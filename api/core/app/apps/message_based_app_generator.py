@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Generator
-from datetime import UTC, datetime
 from typing import Optional, Union, cast
 
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
@@ -25,6 +24,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
@@ -184,7 +184,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.commit()
             db.session.refresh(conversation)
         else:
-            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
+            conversation.updated_at = naive_utc_now()
             db.session.commit()
 
         message = Message(
