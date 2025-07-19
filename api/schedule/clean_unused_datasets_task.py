@@ -99,9 +99,7 @@ def clean_unused_datasets_task():
                     index_processor.clean(dataset, None)
 
                     # update document
-                    update_params = {Document.enabled: False}
-
-                    db.session.query(Document).filter_by(dataset_id=dataset.id).update(update_params)
+                    db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                     db.session.commit()
                     click.echo(click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green"))
                 except Exception as e:
@@ -176,9 +174,7 @@ def clean_unused_datasets_task():
                         index_processor.clean(dataset, None)
 
                         # update document
-                        update_params = {Document.enabled: False}
-
-                        db.session.query(Document).filter_by(dataset_id=dataset.id).update(update_params)
+                        db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                         db.session.commit()
                         click.echo(
                             click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green")

@@ -95,7 +95,7 @@ def test_included_position_data(prepare_example_positions_yaml):
     position_map = get_position_map(folder_path=prepare_example_positions_yaml, file_name="example_positions.yaml")
     pin_list = ["forth", "first"]
     include_set = {"forth", "first"}
-    exclude_set = {}
+    exclude_set = set()
 
     position_map = pin_position_map(original_position_map=position_map, pin_list=pin_list)
 

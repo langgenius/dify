@@ -37,11 +37,12 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
 
     try:
         # update segment status to indexing
-        update_params = {
-            DocumentSegment.status: "indexing",
-            DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-        }
-        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(
+            {
+                DocumentSegment.status: "indexing",
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
         document = Document(
             page_content=segment.content,
@@ -74,11 +75,12 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         index_processor.load(dataset, [document])
 
         # update segment to completed
-        update_params = {
-            DocumentSegment.status: "completed",
-            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-        }
-        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(
+            {
+                DocumentSegment.status: "completed",
+                DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
 
         end_at = time.perf_counter()

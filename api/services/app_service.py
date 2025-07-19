@@ -227,11 +227,11 @@ class AppService:
         :param args: request args
         :return: App instance
         """
-        app.name = args.get("name")
+        app.name = args.get("name", "")
         app.description = args.get("description", "")
         app.icon_type = args.get("icon_type", "emoji")
-        app.icon = args.get("icon")
-        app.icon_background = args.get("icon_background")
+        app.icon = args.get("icon", "")
+        app.icon_background = args.get("icon_background", "")
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id

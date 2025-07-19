@@ -82,7 +82,7 @@ class BillingService:
         if not join:
             raise ValueError("Tenant account join not found")
 
-        if not TenantAccountRole.is_privileged_role(join.role):
+        if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
             raise ValueError("Only team owner or team admin can perform this action")
 
     @classmethod
