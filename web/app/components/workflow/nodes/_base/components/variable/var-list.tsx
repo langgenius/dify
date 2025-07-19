@@ -76,7 +76,7 @@ const VarList: FC<Props> = ({
       })
       onChange(newList)
     }
-  }, [list, onVarNameChange, onChange])
+  }, [list, onVarNameChange, onChange, t])
 
   const handleVarReferenceChange = useCallback((index: number) => {
     return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
