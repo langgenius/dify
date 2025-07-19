@@ -44,7 +44,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
-  const { type, label, variable, options, max_length } = tempPayload
+  const { type, label, var_description, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // To fix the first input element auto focus, then directly close modal will raise error
@@ -223,6 +223,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
             <Input
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+            />
+          </Field>
+          <Field title={t('appDebug.variableConfig.variableDescription')}>
+            <Input
+              value={var_description as string}
+              onChange={e => handlePayloadChange('var_description')(e.target.value)}
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>

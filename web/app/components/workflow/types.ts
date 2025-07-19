@@ -196,6 +196,7 @@ export type InputVar = {
     variable: string
     isChatVar?: boolean
   }
+  var_description: string
   variable: string
   max_length?: number
   default?: string
