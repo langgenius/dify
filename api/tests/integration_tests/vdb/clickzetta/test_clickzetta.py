@@ -150,7 +150,7 @@ class TestClickzettaVector(AbstractVectorTest):
         batch_size = 25
         documents = []
         embeddings = []
-        
+
         for i in range(batch_size):
             doc = Document(
                 page_content=f"Batch document {i}: This is a test document for batch processing.",
@@ -182,7 +182,7 @@ class TestClickzettaVector(AbstractVectorTest):
             metadata={"doc_id": "special_doc", "test": "edge_case"}
         )
         embeddings = [[0.1, 0.2, 0.3, 0.4]]
-        
+
         vector_store.add_texts(documents=[special_doc], embeddings=embeddings)
         assert vector_store.text_exists("special_doc")
 
@@ -215,9 +215,9 @@ class TestClickzettaVector(AbstractVectorTest):
                 metadata={"doc_id": "en_doc_2", "lang": "english"}
             ),
         ]
-        
+
         embeddings = [[0.1, 0.2, 0.3, 0.4] for _ in documents]
-        
+
         vector_store.create(texts=documents, embeddings=embeddings)
 
         # Test Chinese full-text search

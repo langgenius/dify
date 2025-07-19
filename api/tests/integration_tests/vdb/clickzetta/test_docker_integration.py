@@ -22,18 +22,18 @@ def test_clickzetta_connection():
             vcluster=os.getenv("CLICKZETTA_VCLUSTER", "default"),
             database=os.getenv("CLICKZETTA_SCHEMA", "dify")
         )
-        
+
         with conn.cursor() as cursor:
             # Test basic connectivity
             cursor.execute("SELECT 1 as test")
             result = cursor.fetchone()
             print(f"✓ Connection test: {result}")
-            
+
             # Check if our test table exists
             cursor.execute("SHOW TABLES IN dify")
             tables = cursor.fetchall()
             print(f"✓ Existing tables: {[t[1] for t in tables if t[0] == 'dify']}")
-            
+
             # Check if test collection exists
             test_collection = "collection_test_dataset"
             if test_collection in [t[1] for t in tables if t[0] == 'dify']:
@@ -42,14 +42,14 @@ def test_clickzetta_connection():
                 print(f"✓ Table structure for {test_collection}:")
                 for col in columns:
                     print(f"  - {col[0]}: {col[1]}")
-                
+
                 # Check for indexes
                 cursor.execute(f"SHOW INDEXES IN dify.{test_collection}")
                 indexes = cursor.fetchall()
                 print(f"✓ Indexes on {test_collection}:")
                 for idx in indexes:
                     print(f"  - {idx}")
-            
+
         return True
     except Exception as e:
         print(f"✗ Connection test failed: {e}")
@@ -59,7 +59,7 @@ def test_dify_api():
     """Test Dify API with Clickzetta backend"""
     print("\n=== Testing Dify API ===")
     base_url = "http://localhost:5001"
-    
+
     # Wait for API to be ready
     max_retries = 30
     for i in range(max_retries):
@@ -73,7 +73,7 @@ def test_dify_api():
                 print("✗ Dify API is not responding")
                 return False
             time.sleep(2)
-    
+
     # Check vector store configuration
     try:
         # This is a simplified check - in production, you'd use proper auth
@@ -86,47 +86,47 @@ def test_dify_api():
 def verify_table_structure():
     """Verify the table structure meets Dify requirements"""
     print("\n=== Verifying Table Structure ===")
-    
+
     expected_columns = {
         "id": "VARCHAR",
         "page_content": "VARCHAR",
         "metadata": "VARCHAR",  # JSON stored as VARCHAR in Clickzetta
         "vector": "ARRAY<FLOAT>"
     }
-    
+
     expected_metadata_fields = [
         "doc_id",
         "doc_hash",
         "document_id",
         "dataset_id"
     ]
-    
+
     print("✓ Expected table structure:")
     for col, dtype in expected_columns.items():
         print(f"  - {col}: {dtype}")
-    
+
     print("\n✓ Required metadata fields:")
     for field in expected_metadata_fields:
         print(f"  - {field}")
-    
+
     print("\n✓ Index requirements:")
     print("  - Vector index (HNSW) on 'vector' column")
     print("  - Full-text index on 'page_content' (optional)")
     print("  - Functional index on metadata->>'$.doc_id' (recommended)")
     print("  - Functional index on metadata->>'$.document_id' (recommended)")
-    
+
     return True
 
 def main():
     """Run all tests"""
     print("Starting Clickzetta integration tests for Dify Docker\n")
-    
+
     tests = [
         ("Direct Clickzetta Connection", test_clickzetta_connection),
         ("Dify API Status", test_dify_api),
         ("Table Structure Verification", verify_table_structure),
     ]
-    
+
     results = []
     for test_name, test_func in tests:
         try:
@@ -135,21 +135,21 @@ def main():
         except Exception as e:
             print(f"\n✗ {test_name} crashed: {e}")
             results.append((test_name, False))
-    
+
     # Summary
     print("\n" + "="*50)
     print("Test Summary:")
     print("="*50)
-    
+
     passed = sum(1 for _, success in results if success)
     total = len(results)
-    
+
     for test_name, success in results:
         status = "✅ PASSED" if success else "❌ FAILED"
         print(f"{test_name}: {status}")
-    
+
     print(f"\nTotal: {passed}/{total} tests passed")
-    
+
     if passed == total:
         print("\n🎉 All tests passed! Clickzetta is ready for Dify Docker deployment.")
         print("\nNext steps:")
