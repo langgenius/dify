@@ -10,9 +10,14 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.agent.strategy.plugin import PluginAgentStrategy
-from core.file import File, FileTransferMethod
+from core.file import File, FileTransferMethod, file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
+from core.model_runtime.entities import (
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.plugin.entities.request import InvokeCredentials
@@ -27,7 +32,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.variables.segments import ArrayFileSegment, StringSegment
+from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -43,7 +48,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
 from models import ToolFile
-from models.model import Conversation
+from models.model import Conversation, NodeFileUsage
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
@@ -195,6 +200,21 @@ class AgentNode(BaseNode):
         """
         agent_parameters_dictionary = {parameter.name: parameter for parameter in agent_parameters}
 
+        # Determine once whether this node references sys.files anywhere and whether that variable is empty.
+        def _input_uses_sys_files(_agent_input):
+            if _agent_input.type == "variable":
+                return _agent_input.value == ["sys", SystemVariableKey.FILES.value]
+            if _agent_input.type in {"mixed", "constant"}:
+                return "sys.files" in str(_agent_input.value)
+            return False
+
+        uses_sys_files_for_node: bool = any(_input_uses_sys_files(inp) for inp in node_data.agent_parameters.values())
+
+        sys_files_segment = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+        sys_files_empty: bool = sys_files_segment is None or (
+            isinstance(sys_files_segment, (ArrayFileSegment, ArrayAnySegment)) and len(sys_files_segment.value) == 0
+        )
+
         result: dict[str, Any] = {}
         for parameter_name in node_data.agent_parameters:
             parameter = agent_parameters_dictionary.get(parameter_name)
@@ -305,24 +325,99 @@ class AgentNode(BaseNode):
                 if parameter.type == "model-selector":
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
-                    # memory config
-                    history_prompt_messages = []
+                    history_prompt_messages: list[dict[str, Any]] = []
+                    conv_var = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+                    conversation_id_val = conv_var.value if isinstance(conv_var, StringSegment) else None
+
                     if node_data.memory:
                         memory = self._fetch_memory(model_instance)
                         if memory:
                             prompt_messages = memory.get_history_prompt_messages(
-                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None
+                                message_limit=node_data.memory.window.size if node_data.memory.window.size else None,
+                                allowed_node_id=None if uses_sys_files_for_node else "",
                             )
                             history_prompt_messages = [
                                 prompt_message.model_dump(mode="json") for prompt_message in prompt_messages
                             ]
-                    value["history_prompt_messages"] = history_prompt_messages
+
                     if model_schema:
                         # remove structured output feature to support old version agent plugin
                         model_schema = self._remove_unsupported_model_features_for_old_version(model_schema)
                         value["entity"] = model_schema.model_dump(mode="json")
                     else:
                         value["entity"] = None
+
+                    # Extract current query and files for potential inclusion
+                    current_query_segment = variable_pool.get(["sys", SystemVariableKey.QUERY.value])
+                    current_files_segment = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+
+                    if current_query_segment is not None:
+                        if isinstance(current_query_segment, StringSegment):
+                            current_query = current_query_segment.value
+
+                            prompt_contents: list = [TextPromptMessageContent(data=current_query)]
+
+                            # Collect files from current turn
+                            files: list = []
+                            if isinstance(current_files_segment, FileSegment):
+                                files = [current_files_segment.value]
+                            elif isinstance(current_files_segment, ArrayFileSegment):
+                                files = list(current_files_segment.value)
+
+                            # Add current turn files only if node uses sys.files and files exist
+                            if files and uses_sys_files_for_node:
+                                for f in files:
+                                    try:
+                                        prompt_contents.append(
+                                            file_manager.to_prompt_message_content(
+                                                f,
+                                                image_detail_config=ImagePromptMessageContent.DETAIL.LOW,
+                                            )
+                                        )
+                                    except Exception:
+                                        continue
+
+                                # Append synthetic user message with current turn attachments
+                                synthetic_user_prompt = UserPromptMessage(
+                                    content=prompt_contents,
+                                    name=f"__SYS_FILES__|{self.node_id}",  # mark with node id for future filtering
+                                )
+                                history_prompt_messages.append(synthetic_user_prompt.model_dump(mode="json"))
+
+                                # Persist usage to durable table
+                                try:
+                                    if conversation_id_val:
+                                        with Session(db.engine) as session:
+                                            for f in files:
+                                                upload_id = getattr(f, "related_id", None)
+                                                if not upload_id:
+                                                    continue
+
+                                                # Upsert-ish: skip if record already exists
+                                                exists_stmt = select(NodeFileUsage.id).where(
+                                                    NodeFileUsage.conversation_id == conversation_id_val,
+                                                    NodeFileUsage.node_id == self.node_id,
+                                                    NodeFileUsage.upload_file_id == upload_id,
+                                                )
+                                                if not session.scalar(exists_stmt):
+                                                    session.add(
+                                                        NodeFileUsage(
+                                                            conversation_id=conversation_id_val,
+                                                            node_id=self.node_id,
+                                                            upload_file_id=upload_id,
+                                                            message_id=None,
+                                                        )
+                                                    )
+                                            session.commit()
+                                except Exception:
+                                    # ignore if failed to persist
+                                    pass
+
+                            value["history_prompt_messages"] = history_prompt_messages
+            # If sys.files is empty, strip any leftover "[]" placeholder from strings (both log and runtime params).
+            if sys_files_empty and isinstance(value, str):
+                value = value.replace("[]", "").rstrip()
+
             result[parameter_name] = value
 
         return result

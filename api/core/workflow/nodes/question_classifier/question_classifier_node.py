@@ -168,6 +168,7 @@ class QuestionClassifierNode(BaseNode):
             vision_detail=node_data.vision.configs.detail,
             variable_pool=variable_pool,
             jinja2_variables=[],
+            uses_sys_files_for_node=node_data.vision.enabled and bool(node_data.vision.configs.variable_selector),
             tenant_id=self.tenant_id,
         )
 
