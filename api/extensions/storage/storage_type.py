@@ -5,6 +5,7 @@ class StorageType(StrEnum):
     ALIYUN_OSS = "aliyun-oss"
     AZURE_BLOB = "azure-blob"
     BAIDU_OBS = "baidu-obs"
+    CLICKZETTA_VOLUME = "clickzetta-volume"
     GOOGLE_STORAGE = "google-storage"
     HUAWEI_OBS = "huawei-obs"
     LOCAL = "local"
