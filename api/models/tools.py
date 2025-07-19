@@ -254,7 +254,7 @@ class MCPToolProvider(Base):
     # name of the mcp provider
     name: Mapped[str] = mapped_column(db.String(40), nullable=False)
     # server identifier of the mcp provider
-    server_identifier: Mapped[str] = mapped_column(db.String(24), nullable=False)
+    server_identifier: Mapped[str] = mapped_column(db.String(64), nullable=False)
     # encrypted url of the mcp provider
     server_url: Mapped[str] = mapped_column(db.Text, nullable=False)
     # hash of server_url for uniqueness check
