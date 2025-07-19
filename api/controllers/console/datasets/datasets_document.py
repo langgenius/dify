@@ -1,6 +1,5 @@
 import logging
 from argparse import ArgumentTypeError
-from datetime import UTC, datetime
 from typing import cast
 
 from flask import request

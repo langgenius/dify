@@ -23,7 +23,6 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
-from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowRun

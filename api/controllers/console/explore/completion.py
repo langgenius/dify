@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 from flask_login import current_user
 from flask_restful import reqparse
@@ -18,7 +17,6 @@ from controllers.console.explore.error import NotChatAppError, NotCompletionAppE
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from libs.datetime_utils import naive_utc_now
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -28,6 +26,7 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService

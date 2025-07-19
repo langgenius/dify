@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from typing import Optional
 
 import requests

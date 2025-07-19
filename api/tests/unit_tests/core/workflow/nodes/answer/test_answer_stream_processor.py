@@ -9,7 +9,6 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from libs.datetime_utils import naive_utc_now
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor

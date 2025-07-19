@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import UTC, datetime
 from typing import Optional, cast
 
 from flask_login import current_user

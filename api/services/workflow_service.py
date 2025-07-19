@@ -2,7 +2,6 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from datetime import UTC, datetime
 from typing import Any, Optional, cast
 from uuid import uuid4
 

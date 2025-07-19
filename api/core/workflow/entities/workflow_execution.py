@@ -13,8 +13,6 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
-
-
 class WorkflowType(StrEnum):
     """
     Workflow Type Enum for domain layer

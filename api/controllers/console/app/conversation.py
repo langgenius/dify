@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytz  # pip install pytz
 from flask_login import current_user

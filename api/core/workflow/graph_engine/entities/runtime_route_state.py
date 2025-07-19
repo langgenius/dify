@@ -6,7 +6,6 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from core.workflow.entities.node_entities import NodeRunResult
-from libs.datetime_utils import naive_utc_now
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 

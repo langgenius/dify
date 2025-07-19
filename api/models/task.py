@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from celery import states  # type: ignore
 
 from libs.datetime_utils import naive_utc_now

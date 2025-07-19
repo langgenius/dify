@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
