@@ -114,6 +114,10 @@ const translation = {
     description: 'Ali uporabiti ikono web app za zamenjavo 🤖 v deljeni aplikaciji',
     descriptionInExplore: 'Ali uporabiti ikono web app za zamenjavo 🤖 v razdelku Razišči',
   },
+  alwaysNewChat: {
+    title: 'Vedno začni nov klepet',
+    description: 'Prezri prejšnji pogovor in odpri nov klepet, ko uporabniki obiščejo spletno aplikacijo',
+  },
   switch: 'Preklopi na Workflow Orchestrate',
   switchTipStart: 'Za vas bo ustvarjena nova kopija aplikacije, ki bo preklopila na Workflow Orchestrate. Nova kopija ne bo ',
   switchTip: 'dovolila',

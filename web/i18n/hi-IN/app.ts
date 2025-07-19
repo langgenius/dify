@@ -182,6 +182,10 @@ const translation = {
     descriptionInExplore: 'एक्सप्लोर में बदलने 🤖 के लिए वेबऐप आइकन का उपयोग करना है या नहीं',
     description: 'साझा अनुप्रयोग में प्रतिस्थापित 🤖 करने के लिए web app चिह्न का उपयोग करना है या नहीं',
   },
+  alwaysNewChat: {
+    title: 'हमेशा नई चैट शुरू करें',
+    description: 'पिछली बातचीत को नज़रअंदाज़ करें और जब उपयोगकर्ता वेब ऐप पर जाएं तो नई चैट खोलें',
+  },
   importFromDSLFile: 'डीएसएल फ़ाइल से',
   importFromDSLUrl: 'यूआरएल से',
   importFromDSL: 'DSL से आयात करें',

@@ -182,6 +182,10 @@ const translation = {
     description: 'Dacă se utilizează pictograma web app pentru a înlocui 🤖 în aplicația partajată',
     title: 'Utilizați pictograma web app pentru a înlocui 🤖',
   },
+  alwaysNewChat: {
+    title: 'Începe întotdeauna un chat nou',
+    description: 'Ignoră conversația anterioară și deschide un chat nou când utilizatorii vizitează aplicația web',
+  },
   importFromDSL: 'Import din DSL',
   importFromDSLUrl: 'De la URL',
   importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',

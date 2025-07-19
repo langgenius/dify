@@ -184,6 +184,10 @@ const translation = {
     title: 'Verwenden Sie das web app Symbol, um es zu ersetzen 🤖',
     description: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
   },
+  alwaysNewChat: {
+    title: 'Immer neuen Chat starten',
+    description: 'Vorherige Unterhaltung ignorieren und neuen Chat öffnen, wenn Benutzer die Web-App besuchen',
+  },
   importFromDSLUrlPlaceholder: 'DSL-Link hier einfügen',
   duplicate: 'Duplikat',
   importFromDSL: 'Import von DSL',
