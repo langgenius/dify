@@ -9,8 +9,36 @@ import { useStore } from '../store'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea } from '../utils'
 import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import type { BlockEnum, CommonNodeType } from '../types'
 
-const SearchResultItem = ({ node, searchQuery, isSelected, onClick, highlightMatch }: any) => {
+// Constants for layout dimensions and behavior
+const SEARCH_LAYOUT_CONSTANTS = {
+  DEFAULT_CANVAS_WIDTH: 800,
+  CANVAS_MARGIN: 40,
+  MAX_RESULTS_WIDTH: 320,
+  MAX_SEARCH_RESULTS: 8,
+  BLUR_DELAY_MS: 200,
+} as const
+
+// Interface for search result node data
+type SearchResultNode = {
+  blockType: BlockEnum
+  nodeData: CommonNodeType
+  title: string
+  type: string
+  desc?: string
+}
+
+// Props interface for SearchResultItem component
+type SearchResultItemProps = {
+  node: SearchResultNode
+  searchQuery: string
+  isSelected: boolean
+  onClick: () => void
+  highlightMatch: (text: string, query: string) => React.ReactNode
+}
+
+const SearchResultItem = ({ node, searchQuery, isSelected, onClick, highlightMatch }: SearchResultItemProps) => {
   const toolIcon = useToolIcon(node.nodeData)
 
   return (
@@ -106,7 +134,7 @@ const NodeSearch = () => {
     const filteredNodes = nodes.filter((node) => {
       if (!node.id || !node.data || node.type === 'sticky') return false
 
-      const nodeData = node.data as any
+      const nodeData = node.data as CommonNodeType
       const nodeType = nodeData?.type
 
       const internalStartNodes = ['iteration-start', 'loop-start']
@@ -115,7 +143,7 @@ const NodeSearch = () => {
 
     const result = filteredNodes
       .map((node) => {
-        const nodeData = node.data as any
+        const nodeData = node.data as CommonNodeType
 
         const processedNode = {
           id: node.id,
@@ -155,7 +183,7 @@ const NodeSearch = () => {
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 8)
+      .slice(0, SEARCH_LAYOUT_CONSTANTS.MAX_SEARCH_RESULTS)
 
     return results
   }, [searchableNodes, searchQuery])
@@ -234,10 +262,13 @@ const NodeSearch = () => {
     setTimeout(() => {
       setIsOpen(false)
       setSelectedIndex(-1)
-    }, 200)
+    }, SEARCH_LAYOUT_CONSTANTS.BLUR_DELAY_MS)
   }, [])
 
-  const maxResultsWidth = Math.min((workflowCanvasWidth || 800) - 40, 320)
+  const maxResultsWidth = Math.min(
+    (workflowCanvasWidth || SEARCH_LAYOUT_CONSTANTS.DEFAULT_CANVAS_WIDTH) - SEARCH_LAYOUT_CONSTANTS.CANVAS_MARGIN,
+    SEARCH_LAYOUT_CONSTANTS.MAX_RESULTS_WIDTH,
+  )
 
   return (
     <div className='relative'>
@@ -250,7 +281,7 @@ const NodeSearch = () => {
           <div className='relative'>
             <Input
               ref={inputRef}
-              wrapperClassName='w-[240px]'
+              wrapperClassName="w-[240px]"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -305,7 +336,7 @@ const NodeSearch = () => {
                 </div>
               </div>
             ) : searchQuery.trim() && (
-              <div className='p-8 text-center text-text-tertiary'>
+              <div className="p-8 text-center text-text-tertiary">
                 <div className='text-sm'>{t('workflow.operator.noNodesFound')}</div>
                 <div className='mt-1 text-xs'>{t('workflow.operator.searchHint')}</div>
               </div>
