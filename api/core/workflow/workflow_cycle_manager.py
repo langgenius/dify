@@ -85,6 +85,7 @@ class WorkflowCycleManager:
         outputs: Mapping[str, Any] | None = None,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
+        external_trace_id: Optional[str] = None,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
@@ -96,7 +97,7 @@ class WorkflowCycleManager:
             total_steps=total_steps,
         )
 
-        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id)
+        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id, external_trace_id)
 
         self._workflow_execution_repository.save(workflow_execution)
         return workflow_execution
@@ -111,6 +112,7 @@ class WorkflowCycleManager:
         exceptions_count: int = 0,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
+        external_trace_id: Optional[str] = None,
     ) -> WorkflowExecution:
         execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
@@ -123,7 +125,7 @@ class WorkflowCycleManager:
             exceptions_count=exceptions_count,
         )
 
-        self._add_trace_task_if_needed(trace_manager, execution, conversation_id)
+        self._add_trace_task_if_needed(trace_manager, execution, conversation_id, external_trace_id)
 
         self._workflow_execution_repository.save(execution)
         return execution
@@ -139,6 +141,7 @@ class WorkflowCycleManager:
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
         exceptions_count: int = 0,
+        external_trace_id: Optional[str] = None,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
         now = naive_utc_now()
@@ -154,7 +157,7 @@ class WorkflowCycleManager:
         )
 
         self._fail_running_node_executions(workflow_execution.id_, error_message, now)
-        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id)
+        self._add_trace_task_if_needed(trace_manager, workflow_execution, conversation_id, external_trace_id)
 
         self._workflow_execution_repository.save(workflow_execution)
         return workflow_execution
@@ -312,6 +315,7 @@ class WorkflowCycleManager:
         trace_manager: Optional[TraceQueueManager],
         workflow_execution: WorkflowExecution,
         conversation_id: Optional[str],
+        external_trace_id: Optional[str],
     ) -> None:
         """Add trace task if trace manager is provided."""
         if trace_manager:
@@ -321,6 +325,7 @@ class WorkflowCycleManager:
                     workflow_execution=workflow_execution,
                     conversation_id=conversation_id,
                     user_id=trace_manager.user_id,
+                    external_trace_id=external_trace_id,
                 )
             )
 

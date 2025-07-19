@@ -1,6 +1,7 @@
 import logging
 
 from dateutil.parser import isoparse
+from flask import request
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,6 +24,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
@@ -90,7 +92,9 @@ class WorkflowRunApi(Resource):
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         args = parser.parse_args()
-
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
         streaming = args.get("response_mode") == "streaming"
 
         try:

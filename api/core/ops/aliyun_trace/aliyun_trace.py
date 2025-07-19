@@ -101,7 +101,8 @@ class AliyunDataTrace(BaseTraceInstance):
             raise ValueError(f"Aliyun get run url failed: {str(e)}")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = convert_to_trace_id(trace_info.workflow_run_id)
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or convert_to_trace_id(trace_info.workflow_run_id)
         workflow_span_id = convert_to_span_id(trace_info.workflow_run_id, "workflow")
         self.add_workflow_span(trace_id, workflow_span_id, trace_info)
 

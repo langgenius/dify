@@ -153,7 +153,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.workflow_run_id)
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or uuid_to_trace_id(trace_info.workflow_run_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
