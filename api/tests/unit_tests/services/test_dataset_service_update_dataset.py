@@ -119,7 +119,7 @@ class TestDatasetServiceUpdateDataset:
     @pytest.fixture
     def mock_external_provider_dependencies(self):
         """Mock setup for external provider tests."""
-        with patch("services.dataset_service.Session") as mock_session:
+        with patch("sqlalchemy.orm.Session") as mock_session:
             from extensions.ext_database import db
 
             with patch.object(db.__class__, "engine", new_callable=Mock):
