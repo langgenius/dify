@@ -1,7 +1,7 @@
 from enum import Enum, StrEnum
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
@@ -17,6 +17,7 @@ class AgentNodeData(BaseNodeData):
     class AgentInput(BaseModel):
         value: Union[list[str], list[ToolSelector], Any]
         type: Literal["mixed", "variable", "constant"]
+        description: str | None = Field(default=None, description="Optional description for this input parameter.")
 
     agent_parameters: dict[str, AgentInput]
 
