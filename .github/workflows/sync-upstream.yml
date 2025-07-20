@@ -1,0 +1,117 @@
+name: Sync with Upstream Dify
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/langgenius/dify.git || true
+          git fetch upstream
+
+      - name: Check for new changes
+        id: check_changes
+        run: |
+          # Get the latest commit from upstream main
+          UPSTREAM_COMMIT=$(git rev-parse upstream/main)
+          CURRENT_COMMIT=$(git rev-parse origin/main)
+          
+          echo "upstream_commit=$UPSTREAM_COMMIT" >> $GITHUB_OUTPUT
+          echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
+          
+          if [ "$UPSTREAM_COMMIT" != "$CURRENT_COMMIT" ]; then
+            echo "changes_available=true" >> $GITHUB_OUTPUT
+            echo "New changes detected in upstream!"
+          else
+            echo "changes_available=false" >> $GITHUB_OUTPUT
+            echo "No new changes in upstream."
+          fi
+
+      - name: Create sync branch
+        if: steps.check_changes.outputs.changes_available == 'true'
+        run: |
+          BRANCH_NAME="sync/upstream-$(date +%Y-%m-%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Merge upstream changes
+        if: steps.check_changes.outputs.changes_available == 'true'
+        run: |
+          set +e
+          git merge upstream/main --no-edit
+          if [ $? -ne 0 ]; then
+            echo "Merge conflicts detected. Creating manual resolution PR."
+            git add .
+            git commit -m "sync: merge conflicts with upstream - manual resolution required
+
+            Upstream commit: ${{ steps.check_changes.outputs.upstream_commit }}
+            
+            Please resolve conflicts manually and complete the merge."
+          else
+            echo "Clean merge successful!"
+          fi
+
+      - name: Push sync branch
+        if: steps.check_changes.outputs.changes_available == 'true'
+        run: |
+          git push origin "$BRANCH_NAME"
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.changes_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔄 Sync with upstream Dify (${new Date().toISOString().split('T')[0]})`,
+              head: process.env.BRANCH_NAME,
+              base: 'main',
+              body: `## 🔄 Automatic Sync with Upstream Dify
+
+            This PR synchronizes our fork with the latest changes from the upstream Dify repository.
+
+            **Upstream commit:** \`${{ steps.check_changes.outputs.upstream_commit }}\`
+            **Previous commit:** \`${{ steps.check_changes.outputs.current_commit }}\`
+
+            ### Changes Included
+            - Latest features and bug fixes from upstream
+            - Security updates and improvements
+            - New functionality and enhancements
+
+            ### Review Checklist
+            - [ ] Check for any breaking changes
+            - [ ] Verify our customizations are preserved
+            - [ ] Test deployment works correctly
+            - [ ] Update documentation if needed
+
+            🤖 This PR was created automatically by the sync workflow.
+
+            ---
+            [View upstream changes](https://github.com/langgenius/dify/compare/${{ steps.check_changes.outputs.current_commit }}...${{ steps.check_changes.outputs.upstream_commit }})
+            `
+            });
+            
+            console.log(`Created PR #${pr.number}: ${pr.html_url}`);
+
+      - name: Comment if no changes
+        if: steps.check_changes.outputs.changes_available == 'false'
+        run: |
+          echo "✅ Repository is up to date with upstream Dify"
