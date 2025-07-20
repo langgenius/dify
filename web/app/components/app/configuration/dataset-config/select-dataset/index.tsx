@@ -29,7 +29,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>(selectedIds.map(id => ({ id }) as any))
+  const [selected, setSelected] = React.useState<DataSet[]>([])
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const hasNoData = !datasets || datasets?.length === 0
@@ -49,19 +49,14 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
-        if (!selected.find(item => !item.name))
-          return { list: [] }
-
-        const newSelected = produce(selected, (draft) => {
-          selected.forEach((item, index) => {
-            if (!item.name) { // not fetched database
-              const newItem = newList.find(i => i.id === item.id)
-              if (newItem)
-                draft[index] = newItem
-            }
-          })
-        })
-        setSelected(newSelected)
+        
+        // Initialize selected datasets based on selectedIds and available datasets
+        if (selected.length === 0 && selectedIds.length > 0) {
+          const validSelectedDatasets = selectedIds
+            .map(id => newList.find(item => item.id === id))
+            .filter(Boolean) as DataSet[]
+          setSelected(validSelectedDatasets)
+        }
       }
       return { list: [] }
     },
