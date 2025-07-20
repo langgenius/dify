@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytz  # pip install pytz
 from flask_login import current_user
@@ -19,6 +19,7 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
@@ -315,7 +316,7 @@ def _get_conversation(app_model, conversation_id):
         raise NotFound("Conversation Not Exists.")
 
     if not conversation.read_at:
-        conversation.read_at = datetime.now(UTC).replace(tzinfo=None)
+        conversation.read_at = naive_utc_now()
         conversation.read_account_id = current_user.id
         db.session.commit()
 

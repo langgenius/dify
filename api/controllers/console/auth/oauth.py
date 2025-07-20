@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from typing import Optional
 
 import requests
@@ -13,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
@@ -110,7 +110,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
             db.session.commit()
 
         try:

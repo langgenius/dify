@@ -118,7 +118,7 @@ class AppRunner:
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
-            model_mode = ModelMode.value_of(model_config.mode)
+            model_mode = ModelMode(model_config.mode)
             prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
