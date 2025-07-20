@@ -19,31 +19,31 @@ importers:
   .:
     dependencies:
       '@babel/runtime':
-        specifier: ^7.22.3
+        specifier: ^7.27.6
         version: 7.27.6
       '@dagrejs/dagre':
-        specifier: ^1.1.4
+        specifier: ^1.1.5
         version: 1.1.5
       '@emoji-mart/data':
         specifier: ^1.2.1
         version: 1.2.1
       '@eslint/compat':
-        specifier: ^1.2.4
+        specifier: ^1.3.1
         version: 1.3.1(eslint@9.31.0(jiti@1.21.7))
       '@floating-ui/react':
-        specifier: ^0.26.25
+        specifier: ^0.26.28
         version: 0.26.28(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@formatjs/intl-localematcher':
-        specifier: ^0.5.6
+        specifier: ^0.5.10
         version: 0.5.10
       '@headlessui/react':
-        specifier: ^2.2.0
+        specifier: ^2.2.4
         version: 2.2.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@heroicons/react':
-        specifier: ^2.0.16
+        specifier: ^2.2.0
         version: 2.2.0(react@19.1.0)
       '@hookform/resolvers':
-        specifier: ^3.9.0
+        specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.60.0(react@19.1.0))
       '@lexical/code':
         specifier: ^0.30.0
@@ -73,49 +73,49 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0(@types/react@19.1.8)(react@19.1.0)
       '@monaco-editor/react':
-        specifier: ^4.6.0
+        specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@next/mdx':
         specifier: ~15.3.5
         version: 15.3.5(@mdx-js/loader@3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)))(@mdx-js/react@3.1.0(@types/react@19.1.8)(react@19.1.0))
       '@octokit/core':
-        specifier: ^6.1.2
+        specifier: ^6.1.6
         version: 6.1.6
       '@octokit/request-error':
-        specifier: ^6.1.5
+        specifier: ^6.1.8
         version: 6.1.8
       '@remixicon/react':
-        specifier: ^4.5.0
+        specifier: ^4.6.0
         version: 4.6.0(react@19.1.0)
       '@sentry/react':
-        specifier: ^8.54.0
+        specifier: ^8.55.0
         version: 8.55.0(react@19.1.0)
       '@sentry/utils':
-        specifier: ^8.54.0
+        specifier: ^8.55.0
         version: 8.55.0
       '@svgdotjs/svg.js':
         specifier: ^3.2.4
         version: 3.2.4
       '@tailwindcss/typography':
-        specifier: ^0.5.15
+        specifier: ^0.5.16
         version: 0.5.16(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@18.15.0)(typescript@5.8.3)))
       '@tanstack/react-form':
-        specifier: ^1.3.3
+        specifier: ^1.14.1
         version: 1.14.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@tanstack/react-query':
-        specifier: ^5.60.5
+        specifier: ^5.83.0
         version: 5.83.0(react@19.1.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.60.5
+        specifier: ^5.83.0
         version: 5.83.0(@tanstack/react-query@5.83.0(react@19.1.0))(react@19.1.0)
       abcjs:
-        specifier: ^6.4.4
+        specifier: ^6.5.1
         version: 6.5.1
       ahooks:
-        specifier: ^3.8.4
+        specifier: ^3.9.0
         version: 3.9.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       class-variance-authority:
-        specifier: ^0.7.0
+        specifier: ^0.7.1
         version: 0.7.1
       classnames:
         specifier: ^2.5.1
@@ -126,20 +126,17 @@ importers:
       copy-to-clipboard:
         specifier: ^3.3.3
         version: 3.3.3
-      crypto-js:
-        specifier: ^4.2.0
-        version: 4.2.0
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
       decimal.js:
-        specifier: ^10.4.3
+        specifier: ^10.6.0
         version: 10.6.0
       dompurify:
-        specifier: ^3.2.4
+        specifier: ^3.2.6
         version: 3.2.6
       echarts:
-        specifier: ^5.5.1
+        specifier: ^5.6.0
         version: 5.6.0
       echarts-for-react:
         specifier: ^3.0.2
@@ -148,25 +145,25 @@ importers:
         specifier: ^0.9.3
         version: 0.9.3
       emoji-mart:
-        specifier: ^5.5.2
+        specifier: ^5.6.0
         version: 5.6.0
       fast-deep-equal:
         specifier: ^3.1.3
         version: 3.1.3
       globals:
-        specifier: ^15.11.0
+        specifier: ^15.15.0
         version: 15.15.0
       html-to-image:
         specifier: 1.11.11
         version: 1.11.11
       i18next:
-        specifier: ^23.16.4
+        specifier: ^23.16.8
         version: 23.16.8
       i18next-resources-to-backend:
         specifier: ^1.2.1
         version: 1.2.1
       immer:
-        specifier: ^9.0.19
+        specifier: ^9.0.21
         version: 9.0.21
       js-audio-recorder:
         specifier: ^1.0.7
@@ -177,14 +174,11 @@ importers:
       jsonschema:
         specifier: ^1.5.0
         version: 1.5.0
-      jwt-decode:
-        specifier: ^4.0.0
-        version: 4.0.0
       katex:
-        specifier: ^0.16.21
+        specifier: ^0.16.22
         version: 0.16.22
       ky:
-        specifier: ^1.7.2
+        specifier: ^1.8.2
         version: 1.8.2
       lamejs:
         specifier: ^1.2.1
@@ -202,28 +196,28 @@ importers:
         specifier: 11.4.1
         version: 11.4.1
       mime:
-        specifier: ^4.0.4
+        specifier: ^4.0.7
         version: 4.0.7
       mitt:
         specifier: ^3.0.1
         version: 3.0.1
       negotiator:
-        specifier: ^0.6.3
+        specifier: ^0.6.4
         version: 0.6.4
       next:
         specifier: ~15.3.5
         version: 15.3.5(@babel/core@7.28.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(sass@1.89.2)
       next-themes:
-        specifier: ^0.4.3
+        specifier: ^0.4.6
         version: 0.4.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       pinyin-pro:
-        specifier: ^3.25.0
+        specifier: ^3.26.0
         version: 3.26.0
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.1.0)
       qs:
-        specifier: ^6.13.0
+        specifier: ^6.14.0
         version: 6.14.0
       react:
         specifier: ~19.1.0
@@ -235,28 +229,25 @@ importers:
         specifier: ~19.1.0
         version: 19.1.0(react@19.1.0)
       react-easy-crop:
-        specifier: ^5.1.0
+        specifier: ^5.5.0
         version: 5.5.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      react-error-boundary:
-        specifier: ^4.1.2
-        version: 4.1.2(react@19.1.0)
       react-headless-pagination:
         specifier: ^1.1.6
         version: 1.1.6(react@19.1.0)
       react-hook-form:
-        specifier: ^7.53.1
+        specifier: ^7.60.0
         version: 7.60.0(react@19.1.0)
       react-hotkeys-hook:
-        specifier: ^4.6.1
+        specifier: ^4.6.2
         version: 4.6.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-i18next:
-        specifier: ^15.1.0
+        specifier: ^15.6.0
         version: 15.6.0(i18next@23.16.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
       react-infinite-scroll-component:
         specifier: ^6.1.0
         version: 6.1.0(react@19.1.0)
       react-markdown:
-        specifier: ^9.0.1
+        specifier: ^9.1.0
         version: 9.1.0(@types/react@19.1.8)(react@19.1.0)
       react-multi-email:
         specifier: ^1.0.25
@@ -265,7 +256,7 @@ importers:
         specifier: ^4.4.0
         version: 4.4.0
       react-pdf-highlighter:
-        specifier: ^8.0.0-rc.0
+        specifier: 8.0.0-rc.0
         version: 8.0.0-rc.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-slider:
         specifier: ^2.0.6
@@ -277,23 +268,20 @@ importers:
         specifier: ^15.6.1
         version: 15.6.1(react@19.1.0)
       react-textarea-autosize:
-        specifier: ^8.5.8
+        specifier: ^8.5.9
         version: 8.5.9(@types/react@19.1.8)(react@19.1.0)
       react-tooltip:
         specifier: 5.8.3
         version: 5.8.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-window:
-        specifier: ^1.8.10
+        specifier: ^1.8.11
         version: 1.8.11(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-window-infinite-loader:
-        specifier: ^1.0.9
+        specifier: ^1.0.10
         version: 1.0.10(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       reactflow:
-        specifier: ^11.11.3
+        specifier: ^11.11.4
         version: 11.11.4(@types/react@19.1.8)(immer@9.0.21)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      recordrtc:
-        specifier: ^5.6.2
-        version: 5.6.2
       rehype-katex:
         specifier: ^7.0.1
         version: 7.0.1
@@ -304,37 +292,34 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
       remark-gfm:
-        specifier: ^4.0.0
+        specifier: ^4.0.1
         version: 4.0.1
       remark-math:
         specifier: ^6.0.0
         version: 6.0.0
       scheduler:
-        specifier: ^0.23.0
+        specifier: ^0.23.2
         version: 0.23.2
       semver:
-        specifier: ^7.6.3
+        specifier: ^7.7.2
         version: 7.7.2
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
       sharp:
-        specifier: ^0.33.2
+        specifier: ^0.33.5
         version: 0.33.5
-      shave:
-        specifier: ^5.0.4
-        version: 5.0.4
       sortablejs:
-        specifier: ^1.15.0
+        specifier: ^1.15.6
         version: 1.15.6
       swr:
-        specifier: ^2.3.0
+        specifier: ^2.3.4
         version: 2.3.4(react@19.1.0)
       tailwind-merge:
-        specifier: ^2.5.4
+        specifier: ^2.6.0
         version: 2.6.0
       tldts:
-        specifier: ^7.0.9
+        specifier: ^7.0.10
         version: 7.0.10
       use-context-selector:
         specifier: ^2.0.0
@@ -343,41 +328,41 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       zod:
-        specifier: ^3.23.8
+        specifier: ^3.25.76
         version: 3.25.76
       zundo:
-        specifier: ^2.1.0
+        specifier: ^2.3.0
         version: 2.3.0(zustand@4.5.7(@types/react@19.1.8)(immer@9.0.21)(react@19.1.0))
       zustand:
-        specifier: ^4.5.2
+        specifier: ^4.5.7
         version: 4.5.7(@types/react@19.1.8)(immer@9.0.21)(react@19.1.0)
     devDependencies:
       '@antfu/eslint-config':
-        specifier: ^4.1.1
+        specifier: ^4.17.0
         version: 4.17.0(@eslint-react/eslint-plugin@1.52.3(eslint@9.31.0(jiti@1.21.7))(ts-api-utils@2.1.0(typescript@5.8.3))(typescript@5.8.3))(@vue/compiler-sfc@3.5.17)(eslint-plugin-react-hooks@5.2.0(eslint@9.31.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.4.20(eslint@9.31.0(jiti@1.21.7)))(eslint@9.31.0(jiti@1.21.7))(typescript@5.8.3)
       '@chromatic-com/storybook':
-        specifier: ^3.1.0
+        specifier: ^3.2.7
         version: 3.2.7(react@19.1.0)(storybook@8.5.0)
       '@eslint-react/eslint-plugin':
-        specifier: ^1.15.0
+        specifier: ^1.52.3
         version: 1.52.3(eslint@9.31.0(jiti@1.21.7))(ts-api-utils@2.1.0(typescript@5.8.3))(typescript@5.8.3)
       '@eslint/eslintrc':
-        specifier: ^3.1.0
+        specifier: ^3.3.1
         version: 3.3.1
       '@eslint/js':
-        specifier: ^9.20.0
+        specifier: ^9.31.0
         version: 9.31.0
       '@faker-js/faker':
-        specifier: ^9.0.3
+        specifier: ^9.9.0
         version: 9.9.0
       '@happy-dom/jest-environment':
-        specifier: ^17.4.4
+        specifier: ^17.6.3
         version: 17.6.3
       '@next/eslint-plugin-next':
         specifier: ~15.3.5
         version: 15.3.5
       '@rgrove/parse-xml':
-        specifier: ^4.1.0
+        specifier: ^4.2.0
         version: 4.2.0
       '@storybook/addon-essentials':
         specifier: 8.5.0
@@ -410,19 +395,19 @@ importers:
         specifier: ^10.4.0
         version: 10.4.0
       '@testing-library/jest-dom':
-        specifier: ^6.6.2
+        specifier: ^6.6.3
         version: 6.6.3
       '@testing-library/react':
-        specifier: ^16.0.1
+        specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.0)(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@types/crypto-js':
         specifier: ^4.2.2
         version: 4.2.2
       '@types/dagre':
-        specifier: ^0.7.52
+        specifier: ^0.7.53
         version: 0.7.53
       '@types/jest':
-        specifier: ^29.5.13
+        specifier: ^29.5.14
         version: 29.5.14
       '@types/js-cookie':
         specifier: ^3.0.6
@@ -431,13 +416,13 @@ importers:
         specifier: ^4.17.12
         version: 4.17.12
       '@types/negotiator':
-        specifier: ^0.6.3
+        specifier: ^0.6.4
         version: 0.6.4
       '@types/node':
         specifier: 18.15.0
         version: 18.15.0
       '@types/qs':
-        specifier: ^6.9.16
+        specifier: ^6.14.0
         version: 6.14.0
       '@types/react':
         specifier: ~19.1.8
@@ -461,73 +446,73 @@ importers:
         specifier: ^5.6.14
         version: 5.6.14
       '@types/semver':
-        specifier: ^7.5.8
+        specifier: ^7.7.0
         version: 7.7.0
       '@types/sortablejs':
-        specifier: ^1.15.1
+        specifier: ^1.15.8
         version: 1.15.8
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
       autoprefixer:
-        specifier: ^10.4.20
+        specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
       bing-translate-api:
-        specifier: ^4.0.2
+        specifier: ^4.1.0
         version: 4.1.0
       code-inspector-plugin:
-        specifier: ^0.18.1
+        specifier: ^0.18.3
         version: 0.18.3
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
       eslint:
-        specifier: ^9.20.1
+        specifier: ^9.31.0
         version: 9.31.0(jiti@1.21.7)
       eslint-config-next:
         specifier: ~15.3.5
         version: 15.3.5(eslint@9.31.0(jiti@1.21.7))(typescript@5.8.3)
       eslint-plugin-react-hooks:
-        specifier: ^5.1.0
+        specifier: ^5.2.0
         version: 5.2.0(eslint@9.31.0(jiti@1.21.7))
       eslint-plugin-react-refresh:
-        specifier: ^0.4.19
+        specifier: ^0.4.20
         version: 0.4.20(eslint@9.31.0(jiti@1.21.7))
       eslint-plugin-sonarjs:
-        specifier: ^3.0.2
+        specifier: ^3.0.4
         version: 3.0.4(eslint@9.31.0(jiti@1.21.7))
       eslint-plugin-storybook:
-        specifier: ^0.11.2
+        specifier: ^0.11.6
         version: 0.11.6(eslint@9.31.0(jiti@1.21.7))(typescript@5.8.3)
       eslint-plugin-tailwindcss:
-        specifier: ^3.18.0
+        specifier: ^3.18.2
         version: 3.18.2(tailwindcss@3.4.17(ts-node@10.9.2(@types/node@18.15.0)(typescript@5.8.3)))
       husky:
-        specifier: ^9.1.6
+        specifier: ^9.1.7
         version: 9.1.7
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@18.15.0)(ts-node@10.9.2(@types/node@18.15.0)(typescript@5.8.3))
       lint-staged:
-        specifier: ^15.2.10
+        specifier: ^15.5.2
         version: 15.5.2
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
       magicast:
-        specifier: ^0.3.4
+        specifier: ^0.3.5
         version: 0.3.5
       postcss:
-        specifier: ^8.4.47
+        specifier: ^8.5.6
         version: 8.5.6
       sass:
-        specifier: ^1.80.3
+        specifier: ^1.89.2
         version: 1.89.2
       storybook:
         specifier: 8.5.0
         version: 8.5.0
       tailwindcss:
-        specifier: ^3.4.14
+        specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@types/node@18.15.0)(typescript@5.8.3))
       ts-node:
         specifier: ^10.9.2
@@ -536,7 +521,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       typescript-eslint:
-        specifier: ^8.36.0
+        specifier: ^8.37.0
         version: 8.37.0(eslint@9.31.0(jiti@1.21.7))(typescript@5.8.3)
       uglify-js:
         specifier: ^3.19.3
@@ -1287,14 +1272,14 @@ packages:
     resolution: {integrity: sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==}
     engines: {node: '>17.0.0'}
 
-  '@emnapi/core@1.4.4':
-    resolution: {integrity: sha512-A9CnAbC6ARNMKcIcrQwq6HeHCjpcBZ5wSx4U01WXCqEKlrzB9F9315WDNHkrs2xbx7YjjSxbUYxuN6EQzpcY2g==}
+  '@emnapi/core@1.4.5':
+    resolution: {integrity: sha512-XsLw1dEOpkSX/WucdqUhPWP7hDxSvZiY+fsUC14h+FtQ2Ifni4znbBt8punRX+Uj2JG/uDb8nEHVKvrVlvdZ5Q==}
 
-  '@emnapi/runtime@1.4.4':
-    resolution: {integrity: sha512-hHyapA4A3gPaDCNfiqyZUStTMqIkKRshqPIuDOXv1hcBnD4U3l8cP0T1HMCfGRxQ6V64TGCcoswChANyOAwbQg==}
+  '@emnapi/runtime@1.4.5':
+    resolution: {integrity: sha512-++LApOtY0pEEz1zrd9vy1/zXVaVJJ/EbAF3u0fXIzPJEDtnITsBGbbK0EkM72amhl/R5b+5xx0Y/QhcVOpuulg==}
 
-  '@emnapi/wasi-threads@1.0.3':
-    resolution: {integrity: sha512-8K5IFFsQqF9wQNJptGbS6FNKgUTsSRYnTqNCG1vPP8jFdjSv18n2mQfJpkt2Oibo9iBEzcDnDxNwKTzC7svlJw==}
+  '@emnapi/wasi-threads@1.0.4':
+    resolution: {integrity: sha512-PJR+bOmMOPH8AtcTGAyYNiuJ3/Fcoj2XN/gBEWzDIKh254XO+mM9XoXHk5GNEhodxeMznbg7BlRojVbKN+gC6g==}
 
   '@emoji-mart/data@1.2.1':
     resolution: {integrity: sha512-no2pQMWiBy6gpBEiqGeU77/bFejDqUTRY7KX+0+iur13op3bqUsXdnwoZs6Xb1zbv0gAj5VvS1PWoUUckSr5Dw==}
@@ -2267,8 +2252,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@pkgr/core@0.2.7':
-    resolution: {integrity: sha512-YLT9Zo3oNPJoBjBc4q8G2mjU4tqIbf5CEOORbUUr48dCD9q3umJ3IPlVqOqDakPfd2HuwccBaqlGhN4Gmr5OWg==}
+  '@pkgr/core@0.2.9':
+    resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
   '@pmmmwh/react-refresh-webpack-plugin@0.5.17':
@@ -4039,9 +4024,6 @@ packages:
     resolution: {integrity: sha512-r4ESw/IlusD17lgQi1O20Fa3qNnsckR126TdUuBgAu7GBYSIPvdNyONd3Zrxh0xCwA4+6w/TDArBPsMvhur+KQ==}
     engines: {node: '>= 0.10'}
 
-  crypto-js@4.2.0:
-    resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
-
   css-loader@6.11.0:
     resolution: {integrity: sha512-CTJ+AEQJjq5NzLga5pE39qdiSV56F8ywCIsqNIRF0r7BDgWsN25aazToqAFg7ZrtA/U016xudB3ffgweORxX7g==}
     engines: {node: '>= 12.13.0'}
@@ -4424,8 +4406,8 @@ packages:
   echarts@5.6.0:
     resolution: {integrity: sha512-oTbVTsXfKuEhxftHqL5xprgLoc0k7uScAwtryCgWF6hPYFLRwOUHiFmHGCBKP5NPFNkDVopOieyUqYGH8Fa3kA==}
 
-  electron-to-chromium@1.5.186:
-    resolution: {integrity: sha512-lur7L4BFklgepaJxj4DqPk7vKbTEl0pajNlg2QjE5shefmlmBLm2HvQ7PMf1R/GvlevT/581cop33/quQcfX3A==}
+  electron-to-chromium@1.5.187:
+    resolution: {integrity: sha512-cl5Jc9I0KGUoOoSbxvTywTa40uspGJt/BDBoDLoxJRSBpWh4FFXBsjNRHfQrONsV/OoEjDfHUmZQa2d6Ze4YgA==}
 
   elkjs@0.9.3:
     resolution: {integrity: sha512-f/ZeWvW/BCXbhGEf1Ujp29EASo/lk1FDnETgNKwJrsVvGZhUWCZyg3xLJjAsxfOmt8KjswHmI5EwCQcPMpOYhQ==}
@@ -5109,8 +5091,8 @@ packages:
     resolution: {integrity: sha512-V/JgOLFCS+R6Vcq0slCuaeWEdNC3ouDlJMNIsacH2VtALiu9mV4LPrHc5cDl8k5aw6J8jwgWWpiTo5RYhmIzvg==}
     engines: {node: '>= 8'}
 
-  fs-monkey@1.0.6:
-    resolution: {integrity: sha512-b1FMfwetIKymC0eioW7mTywihSQE4oLzQn1dB6rZB5fx/3NpNEdAWeCSMB+60/AeT0TCXsxzAlcYVEFCTAksWg==}
+  fs-monkey@1.1.0:
+    resolution: {integrity: sha512-QMUezzXWII9EV5aTFXW1UBVUO77wYPpjqIF8/AviUCThNeSYZykpoTixUeaNNBwmCev0AMDWMAni+f8Hxb1IFw==}
 
   fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
@@ -5931,10 +5913,6 @@ packages:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
     engines: {node: '>=4.0'}
 
-  jwt-decode@4.0.0:
-    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
-    engines: {node: '>=18'}
-
   katex@0.16.22:
     resolution: {integrity: sha512-XCHRdUw4lf3SKBaJe4EvgqIuWwkPSo9XoeO8GjQW94Bp7TWv9hNhzZjZ+OH9yf1UmLygb7DIT5GSFQiyt16zYg==}
     hasBin: true
@@ -6433,8 +6411,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  napi-postinstall@0.3.0:
-    resolution: {integrity: sha512-M7NqKyhODKV1gRLdkwE7pDsZP2/SC2a2vHkOYh9MCpKMbWVfyVfUw5MaH83Fv6XMjxr5jryUp3IDDL9rlxsTeA==}
+  napi-postinstall@0.3.2:
+    resolution: {integrity: sha512-tWVJxJHmBWLy69PvO96TZMZDrzmw5KeiZBz3RHmiM2XZ9grBJ2WgMAFVVg25nqp3ZjTFUs2Ftw1JhscL3Teliw==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
     hasBin: true
 
@@ -7062,11 +7040,6 @@ packages:
     peerDependencies:
       react: '>=16.13.1'
 
-  react-error-boundary@4.1.2:
-    resolution: {integrity: sha512-GQDxZ5Jd+Aq/qUxbCm1UtzmL/s++V7zKgE8yMktJiCQXCCFZnMZh9ng+6/Ne6PjNSXH0L9CjeOEREfRnq6Duag==}
-    peerDependencies:
-      react: '>=16.13.1'
-
   react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
 
@@ -7245,9 +7218,6 @@ packages:
 
   recma-stringify@1.0.0:
     resolution: {integrity: sha512-cjwII1MdIIVloKvC9ErQ+OgAtwHBmcZ0Bg4ciz78FtbT8In39aAYbaA7zvxQ61xVMSPE8WxhLwLbhif4Js2C+g==}
-
-  recordrtc@5.6.2:
-    resolution: {integrity: sha512-1QNKKNtl7+KcwD1lyOgP3ZlbiJ1d0HtXnypUy7yq49xEERxk31PHvE9RCciDrulPCY7WJ+oz0R9hpNxgsIurGQ==}
 
   redent@3.0.0:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
@@ -7532,9 +7502,6 @@ packages:
     resolution: {integrity: sha512-eX2IQ6nFohW4DbvHIOLRB3MHFpYqaqvXd3Tp5e/T/dSH83fxaNJQRvDMhASmkNTsNTVF2/OOopzRCt7xokgPfg==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
 
-  shave@5.0.4:
-    resolution: {integrity: sha512-AnvEI1wM2rQmrwCl364LVLLhzCzSHJ7DQmdd+fHJTnNzbD2mjsUAOcxWLLYKam7Q63skwyQf2CB2TCdJ2O5c8w==}
-
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -7814,8 +7781,8 @@ packages:
     peerDependencies:
       react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  synckit@0.11.8:
-    resolution: {integrity: sha512-+XZ+r1XGIJGeQk3VvXhT6xx/VpbHsRzsTkGgF6E5RX9TTXD0118l87puaEBZ566FhqblC6U0d4XnubznJDm30A==}
+  synckit@0.11.11:
+    resolution: {integrity: sha512-MeQTA1r0litLUf0Rp/iisCaL8761lKAZHaimlbGK4j0HysC4PLfqygQj9srcs0m2RdtDYnF8UuYyKpbjHYp7Jw==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
   tabbable@6.2.0:
@@ -9380,18 +9347,18 @@ snapshots:
 
   '@dagrejs/graphlib@2.2.4': {}
 
-  '@emnapi/core@1.4.4':
+  '@emnapi/core@1.4.5':
     dependencies:
-      '@emnapi/wasi-threads': 1.0.3
+      '@emnapi/wasi-threads': 1.0.4
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/runtime@1.4.4':
+  '@emnapi/runtime@1.4.5':
     dependencies:
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/wasi-threads@1.0.3':
+  '@emnapi/wasi-threads@1.0.4':
     dependencies:
       tslib: 2.8.1
     optional: true
@@ -9889,12 +9856,12 @@ snapshots:
 
   '@img/sharp-wasm32@0.33.5':
     dependencies:
-      '@emnapi/runtime': 1.4.4
+      '@emnapi/runtime': 1.4.5
     optional: true
 
   '@img/sharp-wasm32@0.34.3':
     dependencies:
-      '@emnapi/runtime': 1.4.4
+      '@emnapi/runtime': 1.4.5
     optional: true
 
   '@img/sharp-win32-arm64@0.34.3':
@@ -10347,8 +10314,8 @@ snapshots:
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
-      '@emnapi/core': 1.4.4
-      '@emnapi/runtime': 1.4.4
+      '@emnapi/core': 1.4.5
+      '@emnapi/runtime': 1.4.5
       '@tybys/wasm-util': 0.10.0
     optional: true
 
@@ -10508,7 +10475,7 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@pkgr/core@0.2.7': {}
+  '@pkgr/core@0.2.9': {}
 
   '@pmmmwh/react-refresh-webpack-plugin@0.5.17(react-refresh@0.14.2)(type-fest@2.19.0)(webpack-hot-middleware@2.26.1)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))':
     dependencies:
@@ -12256,7 +12223,7 @@ snapshots:
   browserslist@4.25.1:
     dependencies:
       caniuse-lite: 1.0.30001727
-      electron-to-chromium: 1.5.186
+      electron-to-chromium: 1.5.187
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.25.1)
 
@@ -12672,8 +12639,6 @@ snapshots:
       randombytes: 2.1.0
       randomfill: 1.0.4
 
-  crypto-js@4.2.0: {}
-
   css-loader@6.11.0(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
       icss-utils: 5.1.0(postcss@8.5.6)
@@ -13066,7 +13031,7 @@ snapshots:
       tslib: 2.3.0
       zrender: 5.6.1
 
-  electron-to-chromium@1.5.186: {}
+  electron-to-chromium@1.5.187: {}
 
   elkjs@0.9.3: {}
 
@@ -13453,7 +13418,7 @@ snapshots:
       graphemer: 1.4.0
       jsonc-eslint-parser: 2.4.0
       natural-compare: 1.4.0
-      synckit: 0.11.8
+      synckit: 0.11.11
     transitivePeerDependencies:
       - '@eslint/json'
 
@@ -14082,7 +14047,7 @@ snapshots:
       minipass: 3.3.6
     optional: true
 
-  fs-monkey@1.0.6: {}
+  fs-monkey@1.1.0: {}
 
   fs.realpath@1.0.0: {}
 
@@ -15179,8 +15144,6 @@ snapshots:
       object.assign: 4.1.7
       object.values: 1.2.1
 
-  jwt-decode@4.0.0: {}
-
   katex@0.16.22:
     dependencies:
       commander: 8.3.0
@@ -15575,7 +15538,7 @@ snapshots:
 
   memfs@3.5.3:
     dependencies:
-      fs-monkey: 1.0.6
+      fs-monkey: 1.1.0
 
   memoize-one@5.2.1: {}
 
@@ -15983,7 +15946,7 @@ snapshots:
 
   nanoid@3.3.11: {}
 
-  napi-postinstall@0.3.0: {}
+  napi-postinstall@0.3.2: {}
 
   natural-compare@1.4.0: {}
 
@@ -16650,11 +16613,6 @@ snapshots:
       '@babel/runtime': 7.27.6
       react: 19.1.0
 
-  react-error-boundary@4.1.2(react@19.1.0):
-    dependencies:
-      '@babel/runtime': 7.27.6
-      react: 19.1.0
-
   react-fast-compare@3.2.2: {}
 
   react-headless-pagination@1.1.6(react@19.1.0):
@@ -16884,8 +16842,6 @@ snapshots:
       estree-util-to-js: 2.0.0
       unified: 11.0.5
       vfile: 6.0.3
-
-  recordrtc@5.6.2: {}
 
   redent@3.0.0:
     dependencies:
@@ -17290,8 +17246,6 @@ snapshots:
       '@img/sharp-win32-x64': 0.34.3
     optional: true
 
-  shave@5.0.4: {}
-
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -17588,9 +17542,9 @@ snapshots:
       react: 19.1.0
       use-sync-external-store: 1.5.0(react@19.1.0)
 
-  synckit@0.11.8:
+  synckit@0.11.11:
     dependencies:
-      '@pkgr/core': 0.2.7
+      '@pkgr/core': 0.2.9
 
   tabbable@6.2.0: {}
 
@@ -17925,7 +17879,7 @@ snapshots:
 
   unrs-resolver@1.11.1:
     dependencies:
-      napi-postinstall: 0.3.0
+      napi-postinstall: 0.3.2
     optionalDependencies:
       '@unrs/resolver-binding-android-arm-eabi': 1.11.1
       '@unrs/resolver-binding-android-arm64': 1.11.1
