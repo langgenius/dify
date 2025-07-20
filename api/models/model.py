@@ -91,7 +91,7 @@ class App(Base):
     api_rph: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"))
     is_demo: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
     is_public: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
-    is_universal: Mapped[int] = mapped_column(db.Boolean, server_default=db.text("false"))
+    is_universal: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
     tracing = mapped_column(db.Text, nullable=True)
     max_active_requests: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_by = mapped_column(StringUUID, nullable=True)
