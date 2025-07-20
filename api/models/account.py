@@ -90,7 +90,7 @@ class Account(UserMixin, Base):
     email: Mapped[str] = mapped_column(db.String(255))
     password: Mapped[Optional[str]] = mapped_column(db.String(255))
     password_salt: Mapped[Optional[str]] = mapped_column(db.String(255))
-    avatar: Mapped[str] = mapped_column(db.String(255))
+    avatar: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     interface_language: Mapped[str] = mapped_column(db.String(255))
     interface_theme: Mapped[str] = mapped_column(db.String(255))
     timezone: Mapped[str] = mapped_column(db.String(255))
