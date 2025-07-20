@@ -32,6 +32,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const { t } = useTranslation()
   const [selected, setSelected] = React.useState<DataSet[]>([])
   const [loaded, setLoaded] = React.useState(false)
+  const [hasInitialized, setHasInitialized] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
@@ -51,12 +52,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         setDataSets(newList)
         setLoaded(true)
         
-        // Initialize selected datasets based on selectedIds and available datasets
-        if (selected.length === 0 && selectedIds.length > 0) {
+        // Initialize selected datasets based on selectedIds and available datasets (only once)
+        if (!hasInitialized && selectedIds.length > 0) {
           const validSelectedDatasets = selectedIds
             .map(id => newList.find(item => item.id === id))
             .filter(Boolean) as DataSet[]
           setSelected(validSelectedDatasets)
+          setHasInitialized(true)
         }
       }
       return { list: [] }

@@ -61,7 +61,16 @@ const DatasetCard = ({
       
       // Clear SWR cache to prevent stale data in knowledge retrieval nodes
       mutate(
-        key => typeof key === 'string' && key.includes('/datasets'),
+        key => {
+          // Match both string keys and object keys for datasets API
+          if (typeof key === 'string') {
+            return key.includes('/datasets')
+          }
+          if (typeof key === 'object' && key !== null) {
+            return key.url === '/datasets' || key.url?.includes('/datasets')
+          }
+          return false
+        },
         undefined,
         { revalidate: true }
       )
