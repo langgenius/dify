@@ -43,7 +43,7 @@ const translation = {
     log: 'ログ',
     learnMore: '詳細はこちら',
     params: 'パラメータ',
-    duplicate: '重複',
+    duplicate: '複製',
     rename: '名前の変更',
     audioSourceUnavailable: 'AudioSource が利用できません',
     zoomIn: 'ズームインする',
