@@ -2,7 +2,6 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from datetime import UTC, datetime
 from typing import Any, Optional, cast
 from uuid import uuid4
 
@@ -33,6 +32,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
+from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -232,7 +232,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+            workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
@@ -268,7 +268,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=Workflow.version_from_datetime(datetime.now(UTC).replace(tzinfo=None)),
+            version=Workflow.version_from_datetime(naive_utc_now()),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
@@ -523,8 +523,8 @@ class WorkflowService:
             node_type=node.type_,
             title=node.title,
             elapsed_time=time.perf_counter() - start_at,
-            created_at=datetime.now(UTC).replace(tzinfo=None),
-            finished_at=datetime.now(UTC).replace(tzinfo=None),
+            created_at=naive_utc_now(),
+            finished_at=naive_utc_now(),
         )
 
         if run_succeeded and node_run_result:
@@ -621,7 +621,7 @@ class WorkflowService:
                 setattr(workflow, field, value)
 
         workflow.updated_by = account_id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         return workflow
 
