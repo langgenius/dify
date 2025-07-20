@@ -202,7 +202,7 @@ class Tenant(Base):
     encrypt_public_key: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     plan: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'basic'::character varying"))
     status: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'normal'::character varying"))
-    custom_config: Mapped[str] = mapped_column(db.Text)
+    custom_config: Mapped[Optional[str]] = mapped_column(db.Text)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
 
