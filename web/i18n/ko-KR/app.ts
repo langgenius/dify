@@ -90,12 +90,12 @@ const translation = {
     noTemplateFound: '템플릿을 찾을 수 없습니다.',
     completionShortDescription: '텍스트 생성 작업을 위한 AI 도우미',
     learnMore: '더 알아보세요',
-    foundResults: '{{개수}} 결과',
+    foundResults: '{{count}} 결과',
     agentShortDescription:
       '추론 및 자율적인 도구 사용 기능이 있는 지능형 에이전트',
     advancedShortDescription: '다중 대화를 위해 강화된 워크플로우',
     noAppsFound: '앱을 찾을 수 없습니다.',
-    foundResult: '{{개수}} 결과',
+    foundResult: '{{count}} 결과',
     completionUserDescription:
       '간단한 구성으로 텍스트 생성 작업을 위한 AI 도우미를 빠르게 구축합니다.',
     chatbotUserDescription:
