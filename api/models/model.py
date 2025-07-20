@@ -79,7 +79,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(db.String(255))
     description: Mapped[str] = mapped_column(db.Text, server_default=db.text("''::character varying"))
     mode: Mapped[str] = mapped_column(db.String(255))
-    icon_type = mapped_column(db.String(255), nullable=True)  # image, emoji
+    icon_type: Mapped[str] = mapped_column(db.String(255))  # image, emoji
     icon: Mapped[str] = mapped_column(db.String(255))
     icon_background: Mapped[str] = mapped_column(db.String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
@@ -93,12 +93,12 @@ class App(Base):
     is_public: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
     is_universal: Mapped[bool] = mapped_column(db.Boolean, server_default=db.text("false"))
     tracing = mapped_column(db.Text, nullable=True)
-    max_active_requests: Mapped[Optional[int]] = mapped_column(nullable=True)
+    max_active_requests: Mapped[Optional[int]]
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    use_icon_as_answer_icon = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def desc_or_prompt(self):

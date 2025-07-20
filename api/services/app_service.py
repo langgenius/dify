@@ -1,3 +1,4 @@
+from typing import TypedDict
 import json
 import logging
 from typing import Optional, cast
@@ -220,7 +221,16 @@ class AppService:
 
         return app
 
-    def update_app(self, app: App, args: dict) -> App:
+    class ArgsDict(TypedDict):
+        name: str
+        description: str
+        icon_type: str
+        icon: str
+        icon_background: str
+        use_icon_as_answer_icon: bool
+        max_active_requests: int
+
+    def update_app(self, app: App, args: ArgsDict) -> App:
         """
         Update app
         :param app: App instance
