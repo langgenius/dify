@@ -91,7 +91,7 @@ class Account(UserMixin, Base):
     password: Mapped[Optional[str]] = mapped_column(db.String(255))
     password_salt: Mapped[Optional[str]] = mapped_column(db.String(255))
     avatar: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
-    interface_language: Mapped[str] = mapped_column(db.String(255))
+    interface_language: Mapped[Optional[str]] = mapped_column(db.String(255))
     interface_theme: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     timezone: Mapped[str] = mapped_column(db.String(255))
     last_login_at: Mapped[datetime] = mapped_column(db.DateTime)
