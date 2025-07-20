@@ -94,7 +94,7 @@ class Account(UserMixin, Base):
     interface_language: Mapped[Optional[str]] = mapped_column(db.String(255))
     interface_theme: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     timezone: Mapped[Optional[str]] = mapped_column(db.String(255))
-    last_login_at: Mapped[datetime] = mapped_column(db.DateTime)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     last_login_ip: Mapped[str] = mapped_column(db.String(255))
     last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     status: Mapped[str] = mapped_column(db.String(16), server_default=db.text("'active'::character varying"))
