@@ -136,6 +136,7 @@ x-shared-env: &shared-api-worker-env
   SUPABASE_API_KEY: ${SUPABASE_API_KEY:-your-access-key}
   SUPABASE_URL: ${SUPABASE_URL:-your-server-url}
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
+  VECTOR_INDEX_NAME_PREFIX: ${VECTOR_INDEX_NAME_PREFIX:-Vector_index}
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}

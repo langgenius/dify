@@ -1,6 +1,5 @@
 import json
 from copy import deepcopy
-from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 from urllib.parse import urlparse
 
@@ -11,6 +10,7 @@ from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -120,7 +120,7 @@ class ExternalDatasetService:
         external_knowledge_api.description = args.get("description", "")
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
-        external_knowledge_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        external_knowledge_api.updated_at = naive_utc_now()
         db.session.commit()
 
         return external_knowledge_api

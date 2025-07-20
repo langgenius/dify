@@ -1,4 +1,3 @@
-import datetime
 import urllib.parse
 from typing import Any
 
@@ -6,6 +5,7 @@ import requests
 from flask_login import current_user
 
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
 
 
@@ -75,7 +75,7 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            data_source_binding.updated_at = naive_utc_now()
             db.session.commit()
         else:
             new_data_source_binding = DataSourceOauthBinding(
@@ -115,7 +115,7 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            data_source_binding.updated_at = naive_utc_now()
             db.session.commit()
         else:
             new_data_source_binding = DataSourceOauthBinding(
@@ -154,7 +154,7 @@ class NotionOAuth(OAuthDataSource):
             }
             data_source_binding.source_info = new_source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            data_source_binding.updated_at = naive_utc_now()
             db.session.commit()
         else:
             raise ValueError("Data source binding not found")

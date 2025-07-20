@@ -1,8 +1,7 @@
-from datetime import UTC, datetime
-
 from celery import states  # type: ignore
 from sqlalchemy.orm import mapped_column
 
+from libs.datetime_utils import naive_utc_now
 from models.base import Base
 
 from .engine import db
@@ -19,8 +18,8 @@ class CeleryTask(Base):
     result = mapped_column(db.PickleType, nullable=True)
     date_done = mapped_column(
         db.DateTime,
-        default=lambda: datetime.now(UTC).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
+        default=lambda: naive_utc_now(),
+        onupdate=lambda: naive_utc_now(),
         nullable=True,
     )
     traceback = mapped_column(db.Text, nullable=True)
@@ -37,7 +36,8 @@ class CeleryTaskSet(Base):
 
     __tablename__ = "celery_tasksetmeta"
 
-    id = mapped_column(db.Integer, db.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True)
-    taskset_id = mapped_column(db.String(155), unique=True)
-    result = mapped_column(db.PickleType, nullable=True)
-    date_done = mapped_column(db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=True)
+
+    id = db.Column(db.Integer, db.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True)
+    taskset_id = db.Column(db.String(155), unique=True)
+    result = db.Column(db.PickleType, nullable=True)
+    date_done = db.Column(db.DateTime, default=lambda: naive_utc_now(), nullable=True)
