@@ -96,7 +96,7 @@ class Account(UserMixin, Base):
     timezone: Mapped[Optional[str]] = mapped_column(db.String(255))
     last_login_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     last_login_ip: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
-    last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp(), nullable=False)
     status: Mapped[str] = mapped_column(db.String(16), server_default=db.text("'active'::character varying"))
     initialized_at: Mapped[datetime] = mapped_column(db.DateTime)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp(), nullable=False)
