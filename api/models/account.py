@@ -273,7 +273,7 @@ class InvitationCode(Base):
     used_at: Mapped[datetime] = mapped_column(db.DateTime)
     used_by_tenant_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     used_by_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    deprecated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    deprecated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
