@@ -1,10 +1,10 @@
 from collections.abc import Sequence
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm.entities import VisionConfig
+from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
 
 class RerankingModelConfig(BaseModel):
@@ -54,17 +54,6 @@ class MultipleRetrievalConfig(BaseModel):
     reranking_enable: bool = True
     reranking_model: Optional[RerankingModelConfig] = None
     weights: Optional[WeightedScoreConfig] = None
-
-
-class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
-    provider: str
-    name: str
-    mode: str
-    completion_params: dict[str, Any] = {}
 
 
 class SingleRetrievalConfig(BaseModel):
@@ -129,7 +118,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
     single_retrieval_config: Optional[SingleRetrievalConfig] = None
     metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
-    metadata_model_config: Optional[ModelConfig] = None
+    metadata_model_config: ModelConfig
     metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
 

@@ -1,0 +1,125 @@
+name: Deploy to Google Cloud
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  GAR_LOCATION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud as a credential helper
+        run: |
+          gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev
+
+      - name: Create Artifact Registry repository
+        run: |
+          gcloud artifacts repositories create dify-repo \
+            --repository-format=docker \
+            --location=$GAR_LOCATION \
+            --description="Dify application images" \
+            --quiet || true
+
+      - name: Build and push Docker images
+        run: |
+          # Build API image
+          docker build -f api/Dockerfile.gcp -t $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$GITHUB_SHA .
+          docker push $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$GITHUB_SHA
+          
+          # Build Web image  
+          docker build -f web/Dockerfile.gcp -t $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$GITHUB_SHA ./web
+          docker push $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$GITHUB_SHA
+
+      - name: Deploy API to Cloud Run
+        run: |
+          gcloud run deploy dify-api \
+            --image $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$GITHUB_SHA \
+            --region $REGION \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --max-instances 10 \
+            --set-env-vars="MODE=api,PORT=8080" \
+            --set-secrets="DATABASE_URL=database-url:latest" \
+            --set-secrets="REDIS_URL=redis-url:latest" \
+            --set-secrets="SECRET_KEY=secret-key:latest" \
+            --set-secrets="OPENAI_API_KEY=openai-api-key:latest" \
+            --quiet
+
+      - name: Deploy Worker to Cloud Run
+        run: |
+          gcloud run deploy dify-worker \
+            --image $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$GITHUB_SHA \
+            --region $REGION \
+            --no-allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --max-instances 5 \
+            --set-env-vars="MODE=worker,PORT=8080" \
+            --set-secrets="DATABASE_URL=database-url:latest" \
+            --set-secrets="REDIS_URL=redis-url:latest" \
+            --set-secrets="SECRET_KEY=secret-key:latest" \
+            --quiet
+
+      - name: Get API URL
+        id: api_url
+        run: |
+          API_URL=$(gcloud run services describe dify-api --region=$REGION --format='value(status.url)')
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Deploy Web to Cloud Run
+        run: |
+          gcloud run deploy dify-web \
+            --image $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$GITHUB_SHA \
+            --region $REGION \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --cpu 1 \
+            --max-instances 10 \
+            --set-env-vars="NEXT_PUBLIC_API_PREFIX=${{ steps.api_url.outputs.api_url }}/v1,PORT=8080" \
+            --quiet
+
+      - name: Run Database Migrations
+        run: |
+          gcloud run jobs create dify-migrate \
+            --image $GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$GITHUB_SHA \
+            --region $REGION \
+            --memory 1Gi \
+            --cpu 1 \
+            --max-retries 3 \
+            --set-env-vars="MODE=migrate" \
+            --set-secrets="DATABASE_URL=database-url:latest" \
+            --command="python,-m,flask,db,upgrade" \
+            --replace \
+            --quiet || true
+            
+          gcloud run jobs execute dify-migrate --region=$REGION --wait --quiet
+
+      - name: Get Deployment URLs
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "📱 Web App: $(gcloud run services describe dify-web --region=$REGION --format='value(status.url)')"
+          echo "🔧 API: $(gcloud run services describe dify-api --region=$REGION --format='value(status.url)')"

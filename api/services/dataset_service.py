@@ -26,6 +26,7 @@ from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -428,7 +429,7 @@ class DatasetService:
 
         # Add metadata fields
         filtered_data["updated_by"] = user.id
-        filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
         filtered_data["retrieval_model"] = data["retrieval_model"]
 
@@ -994,7 +995,7 @@ class DocumentService:
         # update document to be paused
         document.is_paused = True
         document.paused_by = current_user.id
-        document.paused_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.paused_at = naive_utc_now()
 
         db.session.add(document)
         db.session.commit()

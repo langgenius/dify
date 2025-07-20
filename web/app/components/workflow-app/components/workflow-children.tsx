@@ -5,10 +5,7 @@ import {
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useStore } from '@/app/components/workflow/store'
-import Features from '@/app/components/workflow/features'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
-import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
-import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import {
   useDSL,
   usePanelInteractions,
@@ -16,6 +13,17 @@ import {
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
+import dynamic from 'next/dynamic'
+
+const Features = dynamic(() => import('@/app/components/workflow/features'), {
+  ssr: false,
+})
+const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
+  ssr: false,
+})
+const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
+  ssr: false,
+})
 
 const WorkflowChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()

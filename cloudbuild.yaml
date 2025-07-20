@@ -1,0 +1,157 @@
+# Google Cloud Build Configuration
+# Builds and deploys Dify to Cloud Run
+
+steps:
+  # Build Web Frontend
+  - name: 'node:18-alpine'
+    id: 'build-web'
+    dir: 'web'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        npm ci
+        npm run build
+        cp -r .next/static .next/standalone/.next/
+        cp -r public .next/standalone/
+
+  # Build API Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-api'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dify-api:latest'
+      - '-f'
+      - 'api/Dockerfile.gcp'
+      - '.'
+    waitFor: ['-']
+
+  # Build Web Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-web-docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dify-web:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dify-web:latest'
+      - '-f'
+      - 'web/Dockerfile.gcp'
+      - 'web'
+    waitFor: ['build-web']
+
+  # Push API Image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-api'
+    args: ['push', 'gcr.io/$PROJECT_ID/dify-api:$BUILD_ID']
+    waitFor: ['build-api']
+
+  # Push Web Image  
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-web'
+    args: ['push', 'gcr.io/$PROJECT_ID/dify-web:$BUILD_ID']
+    waitFor: ['build-web-docker']
+
+  # Deploy API Service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: 'deploy-api'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'dify-api'
+      - '--image=gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--max-instances=10'
+      - '--set-env-vars=MODE=api'
+      - '--set-env-vars=DATABASE_URL=$$DATABASE_URL'
+      - '--set-env-vars=REDIS_URL=$$REDIS_URL'
+      - '--set-env-vars=SECRET_KEY=$$SECRET_KEY'
+      - '--set-env-vars=OPENAI_API_KEY=$$OPENAI_API_KEY'
+    secretEnv: ['DATABASE_URL', 'REDIS_URL', 'SECRET_KEY', 'OPENAI_API_KEY']
+    waitFor: ['push-api']
+
+  # Deploy Worker Service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: 'deploy-worker'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'dify-worker'
+      - '--image=gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--no-allow-unauthenticated'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--max-instances=5'
+      - '--set-env-vars=MODE=worker'
+      - '--set-env-vars=DATABASE_URL=$$DATABASE_URL'
+      - '--set-env-vars=REDIS_URL=$$REDIS_URL'
+      - '--set-env-vars=SECRET_KEY=$$SECRET_KEY'
+    secretEnv: ['DATABASE_URL', 'REDIS_URL', 'SECRET_KEY']
+    waitFor: ['push-api']
+
+  # Deploy Web Service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: 'deploy-web'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'dify-web'
+      - '--image=gcr.io/$PROJECT_ID/dify-web:$BUILD_ID'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=NEXT_PUBLIC_API_PREFIX=https://dify-api-$_HASH-uc.a.run.app/v1'
+    waitFor: ['push-web', 'deploy-api']
+
+  # Run Database Migrations
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    id: 'migrate-db'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'jobs'
+      - 'execute'
+      - 'dify-migrate'
+      - '--region=$_REGION'
+      - '--wait'
+    waitFor: ['deploy-api']
+
+# Environment substitutions
+substitutions:
+  _REGION: 'us-central1'
+  _HASH: '${SHORT_SHA}'
+
+# Secret Manager secrets
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/database-url/versions/latest
+      env: 'DATABASE_URL'
+    - versionName: projects/$PROJECT_ID/secrets/redis-url/versions/latest
+      env: 'REDIS_URL'
+    - versionName: projects/$PROJECT_ID/secrets/secret-key/versions/latest
+      env: 'SECRET_KEY'
+    - versionName: projects/$PROJECT_ID/secrets/openai-api-key/versions/latest
+      env: 'OPENAI_API_KEY'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+
+# Timeout
+timeout: 1800s

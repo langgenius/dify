@@ -1,5 +1,5 @@
-from collections.abc import Callable, Sequence
-from typing import Any, Literal, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Literal, Optional, Union
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
@@ -7,15 +7,38 @@ from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
 from .entities import ListOperatorNodeData
 from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
 
 
-class ListOperatorNode(BaseNode[ListOperatorNodeData]):
-    _node_data_cls = ListOperatorNodeData
+class ListOperatorNode(BaseNode):
     _node_type = NodeType.LIST_OPERATOR
+
+    _node_data: ListOperatorNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
+        self._node_data = ListOperatorNodeData(**data)
+
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> Optional[str]:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -26,9 +49,9 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
         process_data: dict[str, list] = {}
         outputs: dict[str, Any] = {}
 
-        variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
+        variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)
         if variable is None:
-            error_message = f"Variable not found for selector: {self.node_data.variable}"
+            error_message = f"Variable not found for selector: {self._node_data.variable}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
@@ -48,7 +71,7 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             )
         if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
-                f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
+                f"Variable {self._node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
                 "or ArrayStringSegment"
             )
             return NodeRunResult(
@@ -64,19 +87,19 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
 
         try:
             # Filter
-            if self.node_data.filter_by.enabled:
+            if self._node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
             # Extract
-            if self.node_data.extract_by.enabled:
+            if self._node_data.extract_by.enabled:
                 variable = self._extract_slice(variable)
 
             # Order
-            if self.node_data.order_by.enabled:
+            if self._node_data.order_by.enabled:
                 variable = self._apply_order(variable)
 
             # Slice
-            if self.node_data.limit.enabled:
+            if self._node_data.limit.enabled:
                 variable = self._apply_slice(variable)
 
             outputs = {
@@ -104,7 +127,7 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
         filter_func: Callable[[Any], bool]
         result: list[Any] = []
-        for condition in self.node_data.filter_by.conditions:
+        for condition in self._node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
                 if not isinstance(condition.value, str):
                     raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
@@ -137,14 +160,14 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
         if isinstance(variable, ArrayStringSegment):
-            result = _order_string(order=self.node_data.order_by.value, array=variable.value)
+            result = _order_string(order=self._node_data.order_by.value, array=variable.value)
             variable = variable.model_copy(update={"value": result})
         elif isinstance(variable, ArrayNumberSegment):
-            result = _order_number(order=self.node_data.order_by.value, array=variable.value)
+            result = _order_number(order=self._node_data.order_by.value, array=variable.value)
             variable = variable.model_copy(update={"value": result})
         elif isinstance(variable, ArrayFileSegment):
             result = _order_file(
-                order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
+                order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
         return variable
@@ -152,13 +175,13 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     def _apply_slice(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        result = variable.value[: self.node_data.limit.size]
+        result = variable.value[: self._node_data.limit.size]
         return variable.model_copy(update={"value": result})
 
     def _extract_slice(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text)
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self._node_data.extract_by.serial).text)
         if value < 1:
             raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
         value -= 1

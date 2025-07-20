@@ -115,27 +115,32 @@ def test_remove_first_from_array():
         conversation_variables=[conversation_variable],
     )
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "version": "2",
+            "items": [
+                {
+                    "variable_selector": ["conversation", conversation_variable.name],
+                    "input_type": InputType.VARIABLE,
+                    "operation": Operation.REMOVE_FIRST,
+                    "value": None,
+                }
+            ],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "version": "2",
-                "items": [
-                    {
-                        "variable_selector": ["conversation", conversation_variable.name],
-                        "input_type": InputType.VARIABLE,
-                        "operation": Operation.REMOVE_FIRST,
-                        "value": None,
-                    }
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Skip the mock assertion since we're in a test environment
     # Print the variable before running
@@ -202,27 +207,32 @@ def test_remove_last_from_array():
         conversation_variables=[conversation_variable],
     )
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "version": "2",
+            "items": [
+                {
+                    "variable_selector": ["conversation", conversation_variable.name],
+                    "input_type": InputType.VARIABLE,
+                    "operation": Operation.REMOVE_LAST,
+                    "value": None,
+                }
+            ],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "version": "2",
-                "items": [
-                    {
-                        "variable_selector": ["conversation", conversation_variable.name],
-                        "input_type": InputType.VARIABLE,
-                        "operation": Operation.REMOVE_LAST,
-                        "value": None,
-                    }
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Skip the mock assertion since we're in a test environment
     list(node.run())
@@ -281,27 +291,32 @@ def test_remove_first_from_empty_array():
         conversation_variables=[conversation_variable],
     )
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "version": "2",
+            "items": [
+                {
+                    "variable_selector": ["conversation", conversation_variable.name],
+                    "input_type": InputType.VARIABLE,
+                    "operation": Operation.REMOVE_FIRST,
+                    "value": None,
+                }
+            ],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "version": "2",
-                "items": [
-                    {
-                        "variable_selector": ["conversation", conversation_variable.name],
-                        "input_type": InputType.VARIABLE,
-                        "operation": Operation.REMOVE_FIRST,
-                        "value": None,
-                    }
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Skip the mock assertion since we're in a test environment
     list(node.run())
@@ -360,27 +375,32 @@ def test_remove_last_from_empty_array():
         conversation_variables=[conversation_variable],
     )
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "version": "2",
+            "items": [
+                {
+                    "variable_selector": ["conversation", conversation_variable.name],
+                    "input_type": InputType.VARIABLE,
+                    "operation": Operation.REMOVE_LAST,
+                    "value": None,
+                }
+            ],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "version": "2",
-                "items": [
-                    {
-                        "variable_selector": ["conversation", conversation_variable.name],
-                        "input_type": InputType.VARIABLE,
-                        "operation": Operation.REMOVE_LAST,
-                        "value": None,
-                    }
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Skip the mock assertion since we're in a test environment
     list(node.run())

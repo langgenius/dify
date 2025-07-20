@@ -1,0 +1,45 @@
+# Google Cloud optimized Dockerfile for Dify API
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        g++ \
+        libc-dev \
+        libffi-dev \
+        libxml2-dev \
+        libxslt-dev \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY api/pyproject.toml api/uv.lock ./
+RUN pip install --no-cache-dir uv \
+    && uv sync --frozen --no-dev \
+    && rm -rf ~/.cache/pip ~/.cache/uv
+
+# Copy application code
+COPY api/ ./
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash dify \
+    && chown -R dify:dify /app
+USER dify
+
+# Environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:$PORT/health || exit 1
+
+EXPOSE $PORT
+
+# Default command - can be overridden for worker
+CMD ["python", "app.py"]

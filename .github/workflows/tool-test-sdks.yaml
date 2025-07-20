@@ -33,11 +33,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: ''
-          cache-dependency-path: 'pnpm-lock.yaml'
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install
 
       - name: Test
-        run: pnpm test
+        run: npm test

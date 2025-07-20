@@ -1,5 +1,4 @@
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
 from typing import Optional, Union
 
 from sqlalchemy import asc, desc, func, or_, select
@@ -8,6 +7,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import ConversationVariable
 from models.account import Account
@@ -113,7 +113,7 @@ class ConversationService:
             return cls.auto_generate_name(app_model, conversation)
         else:
             conversation.name = name
-            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
+            conversation.updated_at = naive_utc_now()
             db.session.commit()
 
         return conversation
@@ -169,7 +169,7 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
         conversation.is_deleted = True
-        conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        conversation.updated_at = naive_utc_now()
         db.session.commit()
 
     @classmethod
