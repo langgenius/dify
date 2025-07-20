@@ -93,7 +93,7 @@ class Account(UserMixin, Base):
     avatar: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     interface_language: Mapped[Optional[str]] = mapped_column(db.String(255))
     interface_theme: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
-    timezone: Mapped[str] = mapped_column(db.String(255))
+    timezone: Mapped[Optional[str]] = mapped_column(db.String(255))
     last_login_at: Mapped[datetime] = mapped_column(db.DateTime)
     last_login_ip: Mapped[str] = mapped_column(db.String(255))
     last_active_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
