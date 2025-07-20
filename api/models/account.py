@@ -100,7 +100,7 @@ class Account(UserMixin, Base):
     status: Mapped[str] = mapped_column(db.String(16), server_default=db.text("'active'::character varying"))
     initialized_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp(), nullable=False)
 
     @reconstructor
     def init_on_load(self):
