@@ -1327,7 +1327,7 @@ class MessageAnnotation(Base):
     conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, db.ForeignKey("conversations.id"))
     message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(db.Text)
-    content: Mapped[str]
+    content: Mapped[str] = mapped_column(db.Text, nullable=False)
     hit_count = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     account_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
