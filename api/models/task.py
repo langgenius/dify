@@ -36,7 +36,6 @@ class CeleryTaskSet(Base):
 
     __tablename__ = "celery_tasksetmeta"
 
-
     id = db.Column(db.Integer, db.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True)
     taskset_id = db.Column(db.String(155), unique=True)
     result = db.Column(db.PickleType, nullable=True)
