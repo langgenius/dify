@@ -227,7 +227,6 @@ class DatasourceAuthOauthCustomClient(Resource):
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
-
         datasource_provider_service.setup_oauth_custom_client_params(
             tenant_id=current_user.current_tenant_id,
             datasource_provider_id=datasource_provider_id,
