@@ -1,22 +1,30 @@
-import cn from '@/utils/classnames'
-import { RiAlertFill } from '@remixicon/react'
-import Link from 'next/link'
 import React from 'react'
 import type { FC } from 'react'
+import Link from 'next/link'
+import cn from '@/utils/classnames'
+import { RiAlertFill } from '@remixicon/react'
 import { Trans, useTranslation } from 'react-i18next'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
   deprecatedReason: string
   alternativePluginId: string
+  urlPrefix: string
   className?: string
+  innerWrapperClassName?: string
+  iconWrapperClassName?: string
+  textClassName?: string
 }
 
 const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
   deprecatedReason,
   alternativePluginId,
+  urlPrefix,
   className,
+  innerWrapperClassName,
+  iconWrapperClassName,
+  textClassName,
 }) => {
   const { t } = useTranslation()
 
@@ -25,12 +33,15 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className='relative flex items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'>
+      <div className={cn(
+        'relative flex items-start gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+        innerWrapperClassName,
+      )}>
         <div className='absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40' />
-        <div className='p-1'>
+        <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
           <RiAlertFill className='size-4 text-text-warning-secondary' />
         </div>
-        <div className='system-md-medium py-1 text-text-primary'>
+        <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {
             alternativePluginId ? (
               <Trans
@@ -38,9 +49,10 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                 components={{
                   CustomLink: (
                     <Link
-                      href={`/plugins/${alternativePluginId}`}
+                      href={`${urlPrefix}/plugins/${alternativePluginId}`}
                       target='_blank'
                       rel='noopener noreferrer'
+                      className='underline'
                     />
                   ),
                 }}

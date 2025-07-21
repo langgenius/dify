@@ -33,7 +33,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
@@ -280,7 +280,8 @@ const DetailHeader = ({
         status={status}
         deprecatedReason={deprecated_reason}
         alternativePluginId={alternative_plugin_id}
-        className='mb-2 mt-1'
+        urlPrefix={MARKETPLACE_URL_PREFIX}
+        className='mt-3'
       />
       <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
