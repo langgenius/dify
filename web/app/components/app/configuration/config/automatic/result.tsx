@@ -11,8 +11,12 @@ import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
+import PromptRes from './prompt-res'
+import PromptResInWorkflow from './prompt-res-in-workflow'
 
 type Props = {
+  isBasicMode?: boolean
+  nodeId?: string
   current: GenRes
   currentVersionIndex: number
   setCurrentVersionIndex: (index: number) => void
@@ -22,6 +26,8 @@ type Props = {
 }
 
 const Result: FC<Props> = ({
+  isBasicMode,
+  nodeId,
   current,
   currentVersionIndex,
   setCurrentVersionIndex,
@@ -62,9 +68,17 @@ const Result: FC<Props> = ({
       }
       <div className='mt-3 grow'>
         {isGeneratorPrompt ? (
-          <div>
-            {current?.modified}
-          </div>
+          isBasicMode ? (
+            <PromptRes
+              value={current?.modified}
+              workflowVariableBlock={{
+                show: false,
+              }}
+            />
+          ) : (<PromptResInWorkflow
+            value={current?.modified || ''}
+            nodeId={nodeId!}
+          />)
         ) : (
           <CodeEditor
             editorWrapperClassName='h-full'

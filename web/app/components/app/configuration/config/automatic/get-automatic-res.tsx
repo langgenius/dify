@@ -357,6 +357,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
             <Result
               current={current!}
+              isBasicMode={isBasicMode}
+              nodeId={nodeId!}
               currentVersionIndex={currentVersionIndex || 0}
               setCurrentVersionIndex={setCurrentVersionIndex}
               versions={versions || []}
