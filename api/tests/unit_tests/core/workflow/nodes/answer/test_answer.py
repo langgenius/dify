@@ -144,24 +144,28 @@ def test_execute_answer_with_outputs():
     variable_pool.add(["start", "weather"], "sunny")
     variable_pool.add(["start", "score"], 85)
 
+    node_config = {
+        "id": "answer",
+        "data": {
+            "title": "Answer with outputs",
+            "type": "answer",
+            "answer": "Weather: {{#start.weather#}}, Score: {{#start.score#}}",
+            "outputs": [
+                {"variable": "confidence", "type": "number", "value_selector": ["start", "score"]},
+                {"variable": "status", "type": "string", "value_selector": ["start", "weather"]},
+            ],
+        },
+    }
+
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "answer",
-            "data": {
-                "title": "Answer with outputs",
-                "type": "answer",
-                "answer": "Weather: {{#start.weather#}}, Score: {{#start.score#}}",
-                "outputs": [
-                    {"variable": "confidence", "type": "number", "value_selector": ["start", "score"]},
-                    {"variable": "status", "type": "string", "value_selector": ["start", "weather"]},
-                ],
-            },
-        },
+        config=node_config,
     )
+
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -228,21 +232,25 @@ def test_execute_answer_with_empty_outputs():
         conversation_variables=[],
     )
 
+    node_config = {
+        "id": "answer",
+        "data": {
+            "title": "No outputs",
+            "type": "answer",
+            "answer": "Simple answer",
+            "outputs": [],
+        },
+    }
+
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "answer",
-            "data": {
-                "title": "No outputs",
-                "type": "answer",
-                "answer": "Simple answer",
-                "outputs": [],
-            },
-        },
+        config=node_config,
     )
+
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()
