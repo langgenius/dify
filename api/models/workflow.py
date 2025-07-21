@@ -1340,12 +1340,12 @@ class WorkflowSuspension(Base):
         default=sa.null,
     )
 
-    # `continuation_node_id` specifies the next node to execute when the workflow resumes.
+    # `next_node_id` specifies the next node to execute when the workflow resumes.
     #
     # Although this information is embedded within the `state` field, it is extracted
     # into a separate field to facilitate debugging and data analysis.
-    continuation_node_id: Mapped[str] = mapped_column(
-        sa.String(length=255),
+    next_node_id: Mapped[str] = mapped_column(
+        __name_pos=sa.String(length=255),
         nullable=False,
     )
 

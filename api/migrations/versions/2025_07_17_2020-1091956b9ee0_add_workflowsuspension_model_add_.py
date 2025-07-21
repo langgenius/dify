@@ -28,7 +28,7 @@ def upgrade():
         sa.Column('workflow_id', models.types.StringUUID(), nullable=False),
         sa.Column('workflow_run_id', models.types.StringUUID(), nullable=False),
         sa.Column('resumed_at', sa.DateTime(), nullable=True),
-        sa.Column('continuation_node_id', sa.String(length=255), nullable=False),
+        sa.Column('next_node_id', sa.String(length=255), nullable=False),
         sa.Column('state_version', sa.String(length=20),  nullable=False),
         sa.Column('state', sa.Text(), nullable=False),
         sa.Column('inputs', sa.Text(), nullable=True),

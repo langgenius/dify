@@ -19,7 +19,7 @@ class WorkflowSuspension(BaseModel):
 
     workflow_id: str
 
-    continuation_node_id: str
+    next_node_id: str
 
     state: str
 
