@@ -15,6 +15,7 @@ type Props = {
   editorKey: string
   onChange: (text: string) => void
   generatorType: GeneratorType
+  isShowCurrentBlock: boolean
 }
 
 const InstructionEditorInWorkflow: FC<Props> = ({
@@ -23,6 +24,7 @@ const InstructionEditorInWorkflow: FC<Props> = ({
   editorKey,
   onChange,
   generatorType,
+  isShowCurrentBlock,
 }) => {
   const workflowStore = useWorkflowStore()
 
@@ -49,6 +51,7 @@ const InstructionEditorInWorkflow: FC<Props> = ({
       availableVars={availableVars}
       availableNodes={availableNodes}
       getVarType={getVarType}
+      isShowCurrentBlock={isShowCurrentBlock}
     />
   )
 }

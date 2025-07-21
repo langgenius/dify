@@ -20,6 +20,7 @@ type Props = {
     nodeId: string,
     valueSelector: ValueSelector,
   }) => Type
+  isShowCurrentBlock: boolean
 }
 
 const i18nPrefix = 'appDebug.generate'
@@ -32,6 +33,7 @@ const InstructionEditor: FC<Props> = ({
   availableVars,
   availableNodes,
   getVarType = () => Type.string,
+  isShowCurrentBlock,
 }) => {
   const { t } = useTranslation()
   const isBasicMode = !!getVarType
@@ -79,7 +81,7 @@ const InstructionEditor: FC<Props> = ({
           }, {} as any),
         }}
         currentBlock={{
-          show: true,
+          show: isShowCurrentBlock,
           generatorType,
         }}
         errorMessageBlock={{

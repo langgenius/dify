@@ -225,6 +225,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 onChange={setInstruction}
                 nodeId={nodeId}
                 generatorType={GeneratorType.code}
+                isShowCurrentBlock={!!currentCode}
               />
             </div>
             <IdeaOutput

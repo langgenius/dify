@@ -336,6 +336,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   onChange={setInstruction}
                   availableVars={[]}
                   availableNodes={[]}
+                  isShowCurrentBlock={!!currentPrompt}
                 />
               ) : (
                 <InstructionEditorInWorkflow
@@ -344,6 +345,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   value={instruction}
                   onChange={setInstruction}
                   nodeId={nodeId || ''}
+                  isShowCurrentBlock={!!currentPrompt}
                 />
               )}
             </div>
