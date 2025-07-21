@@ -247,14 +247,14 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         {isLoading && renderLoading}
         {!isLoading && !current && renderNoData}
         {(!isLoading && current) && (
-          <div className='h-full w-0 grow p-6 pb-0'>
+          <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
             <Result
               current={current!}
               currentVersionIndex={currentVersionIndex || 0}
               setCurrentVersionIndex={setCurrentVersionIndex}
               versions={versions || []}
               onApply={showConfirmOverwrite}
-              generatorType={GeneratorType.prompt}
+              generatorType={GeneratorType.code}
             />
           </div>
         )}

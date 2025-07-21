@@ -364,7 +364,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         </div>
 
         {(!isLoading && current) && (
-          <div className='h-full w-0 grow p-6 pb-0'>
+          <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
             <Result
               current={current!}
               currentVersionIndex={currentVersionIndex || 0}

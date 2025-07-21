@@ -10,6 +10,7 @@ import type { GenRes } from '@/service/debug'
 import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
+import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 
 type Props = {
   current: GenRes
@@ -32,8 +33,8 @@ const Result: FC<Props> = ({
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
-    <div>
-      <div className='mb-3  flex items-center justify-between'>
+    <div className='flex h-full flex-col'>
+      <div className='mb-3 flex  shrink-0 items-center justify-between'>
         <div>
           <div className='shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
           <VersionSelector
@@ -56,10 +57,24 @@ const Result: FC<Props> = ({
       </div>
       {
         current?.message && (
-          <PromptToast message={current.message} className='mt-4' />
+          <PromptToast message={current.message} className='mt-4 shrink-0' />
         )
       }
-      <div className='mt-3'>{current?.modified}</div>
+      <div className='mt-3 grow'>
+        {isGeneratorPrompt ? (
+          <div>
+            {current?.modified}
+          </div>
+        ) : (
+          <CodeEditor
+            editorWrapperClassName='h-full'
+            className='bg-transparent pt-0'
+            value={current?.modified}
+            readOnly
+            hideTopMenu
+          />
+        )}
+      </div>
     </div>
   )
 }
