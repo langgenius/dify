@@ -134,7 +134,7 @@ class DatasourceAuth(Resource):
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
+        return {"result": "success"}, 200
 
     @setup_required
     @login_required
@@ -149,8 +149,8 @@ class DatasourceAuth(Resource):
         )
         return {"result": datasources}, 200
 
-class DatasourceAuthDeleteApi(Resource):
 
+class DatasourceAuthDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -172,8 +172,8 @@ class DatasourceAuthDeleteApi(Resource):
         )
         return {"result": "success"}, 200
 
-class DatasourceAuthUpdateApi(Resource):
 
+class DatasourceAuthUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -186,19 +186,15 @@ class DatasourceAuthUpdateApi(Resource):
         args = parser.parse_args()
         if not current_user.is_editor:
             raise Forbidden()
-        try:
-            datasource_provider_service = DatasourceProviderService()
-            datasource_provider_service.update_datasource_credentials(
-                tenant_id=current_user.current_tenant_id,
-                auth_id=args["credential_id"],
-                provider=datasource_provider_id.provider_name,
-                plugin_id=datasource_provider_id.plugin_id,
-                credentials=args.get("credentials", {}),
-                name=args.get("name", None),
-            )
-        except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
-
+        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service.update_datasource_credentials(
+            tenant_id=current_user.current_tenant_id,
+            auth_id=args["credential_id"],
+            provider=datasource_provider_id.provider_name,
+            plugin_id=datasource_provider_id.plugin_id,
+            credentials=args.get("credentials", {}),
+            name=args.get("name", None),
+        )
         return {"result": "success"}, 201
 
 
@@ -223,7 +219,7 @@ class DatasourceAuthOauthCustomClient(Resource):
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("enabled", type=bool, required=False, nullable=True, location="json")
+        parser.add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -231,7 +227,7 @@ class DatasourceAuthOauthCustomClient(Resource):
             tenant_id=current_user.current_tenant_id,
             datasource_provider_id=datasource_provider_id,
             client_params=args.get("client_params", {}),
-            enabled=args.get("enabled", False),
+            enabled=args.get("enable_oauth_custom_client", False),
         )
         return {"result": "success"}, 200
 
@@ -246,6 +242,7 @@ class DatasourceAuthOauthCustomClient(Resource):
             datasource_provider_id=datasource_provider_id,
         )
         return {"result": "success"}, 200
+
 
 class DatasourceAuthDefaultApi(Resource):
     @setup_required
@@ -265,6 +262,7 @@ class DatasourceAuthDefaultApi(Resource):
             credential_id=args["id"],
         )
         return {"result": "success"}, 200
+
 
 class DatasourceUpdateProviderNameApi(Resource):
     @setup_required
