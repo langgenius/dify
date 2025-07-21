@@ -39,7 +39,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
-import DeprecationNotice from './deprecation-notice'
+import DeprecationNotice from '../base/deprecation-notice'
 
 const i18nPrefix = 'plugin.action'
 
