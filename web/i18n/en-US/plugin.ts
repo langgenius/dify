@@ -29,6 +29,7 @@ const translation = {
   searchTools: 'Search tools...',
   installPlugin: 'Install plugin',
   installFrom: 'INSTALL FROM',
+  deprecated: 'Deprecated',
   list: {
     noInstalled: 'No plugins installed',
     notFound: 'No plugins found',
@@ -99,6 +100,10 @@ const translation = {
     configureApp: 'Configure App',
     configureModel: 'Configure model',
     configureTool: 'Configure tool',
+    deprecation: {
+      fullMessage: 'This plugin has been deprecated due to {{deprecatedReason}}, please use <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> instead.',
+      onlyReason: 'This plugin has been deprecated due to {{deprecatedReason}}.',
+    },
   },
   install: '{{num}} installs',
   installAction: 'Install',

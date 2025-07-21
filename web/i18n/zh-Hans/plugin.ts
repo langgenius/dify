@@ -29,6 +29,7 @@ const translation = {
   searchTools: '搜索工具...',
   installPlugin: '安装插件',
   installFrom: '安装源',
+  deprecated: '已弃用',
   list: {
     noInstalled: '无已安装的插件',
     notFound: '未找到插件',
@@ -99,6 +100,10 @@ const translation = {
     configureApp: '应用设置',
     configureModel: '模型设置',
     configureTool: '工具设置',
+    deprecation: {
+      fullMessage: '此插件已被弃用，原因是{{deprecatedReason}}，请使用 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> 替代。',
+      onlyReason: '此插件已被弃用，原因是{{deprecatedReason}}。',
+    },
   },
   install: '{{num}} 次安装',
   installAction: '安装',
