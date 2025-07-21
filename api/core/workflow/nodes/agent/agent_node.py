@@ -486,7 +486,7 @@ class AgentNode(BaseNode):
 
         text = ""
         files: list[File] = []
-        json: list[dict] = []
+        json_list: list[dict] = []
 
         agent_logs: list[AgentLogEvent] = []
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
@@ -564,7 +564,7 @@ class AgentNode(BaseNode):
                         if key in WorkflowNodeExecutionMetadataKey.__members__.values()
                     }
                 if message.message.json_object is not None:
-                    json.append(message.message.json_object)
+                    json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
@@ -676,8 +676,8 @@ class AgentNode(BaseNode):
                     }
                 )
         # Step 2: normalize JSON into {"data": [...]}.change json to list[dict]
-        if json:
-            json_output.extend(json)
+        if json_list:
+            json_output.extend(json_list)
         else:
             json_output.append({"data": []})
 
