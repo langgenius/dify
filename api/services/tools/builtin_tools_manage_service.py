@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     __MAX_BUILTIN_TOOL_PROVIDER_COUNT__ = 100
+    __DEFAULT_EXPIRES_AT__ = 2147483647
 
     @staticmethod
     def delete_custom_oauth_client_params(tenant_id: str, provider: str):
@@ -213,6 +214,7 @@ class BuiltinToolManageService:
         provider: str,
         credentials: dict,
         name: str | None = None,
+        expires_at: int | None = None,
     ):
         """
         add builtin tool provider
@@ -269,6 +271,9 @@ class BuiltinToolManageService:
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
                         credential_type=api_type.value,
                         name=name,
+                        expires_at=expires_at
+                        if expires_at is not None
+                        else BuiltinToolManageService.__DEFAULT_EXPIRES_AT__,
                     )
 
                     session.add(db_provider)

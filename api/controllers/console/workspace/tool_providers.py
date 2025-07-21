@@ -759,6 +759,7 @@ class ToolOAuthCallback(Resource):
             provider=provider,
             credentials=dict(credentials),
             api_type=CredentialType.OAUTH2,
+            expires_at=credentials.get("expires_at"),
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
