@@ -27,7 +27,6 @@ def http_request(url, timeout, headers={}):
         return res.code, body
     except HTTPError as e:
         if e.code == 304:
-            logger.warning("http_request error,code is 304, maybe you should check secret")
             return 304, None
         logger.warning("http_request error,code is %d, msg is %s", e.code, e.msg)
         raise e
