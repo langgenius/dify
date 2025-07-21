@@ -409,7 +409,7 @@ class DatasourceProviderService:
                 )
                 if credential_valid:
                     provider_credential_secret_variables = self.extract_secret_variables(
-                        tenant_id=tenant_id, provider_id=f"{provider_id}", credential_type=CredentialType.API_KEY.value
+                        tenant_id=tenant_id, provider_id=f"{provider_id}", credential_type="api_key"
                     )
                     for key, value in credentials.items():
                         if key in provider_credential_secret_variables:
