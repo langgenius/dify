@@ -791,6 +791,32 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    SMTP_AUTH_TYPE: str = Field(
+        description="SMTP authentication type ('basic' or 'oauth2')",
+        default="basic",
+    )
+
+    # Microsoft OAuth 2.0 configuration for SMTP
+    MICROSOFT_OAUTH2_CLIENT_ID: Optional[str] = Field(
+        description="Microsoft OAuth 2.0 client ID for SMTP authentication",
+        default=None,
+    )
+
+    MICROSOFT_OAUTH2_CLIENT_SECRET: Optional[str] = Field(
+        description="Microsoft OAuth 2.0 client secret for SMTP authentication",
+        default=None,
+    )
+
+    MICROSOFT_OAUTH2_TENANT_ID: str = Field(
+        description="Microsoft OAuth 2.0 tenant ID (use 'common' for multi-tenant)",
+        default="common",
+    )
+
+    MICROSOFT_OAUTH2_ACCESS_TOKEN: Optional[str] = Field(
+        description="Microsoft OAuth 2.0 access token for SMTP authentication",
+        default=None,
+    )
+
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
