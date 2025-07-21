@@ -252,7 +252,7 @@ class ToolManager:
             decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(builtin_provider.credentials)
 
             # check if the credentials is expired
-            if builtin_provider.expires_at != -1 and builtin_provider.expires_at < int(time.time()):
+            if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
                 # TODO: circular import
                 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
