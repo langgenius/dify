@@ -8,7 +8,6 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_database import db
-from extensions.ext_socketio import sio
 from libs.passport import PassportService
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
@@ -112,40 +111,6 @@ def unauthorized_handler():
         status=401,
         content_type="application/json",
     )
-
-
-@sio.on('connect')
-def socket_connect(sid, environ, auth):
-    """
-    WebSocket connect event, do authentication here.
-    """
-    token = None
-    if auth and isinstance(auth, dict):
-        token = auth.get('token')
-    if not token:
-        return False
-
-    try:
-        decoded = PassportService().verify(token)
-        user_id = decoded.get("user_id")
-        if not user_id:
-            return False
-
-        with sio.app.app_context():
-            user = AccountService.load_logged_in_account(account_id=user_id)
-            if not user:
-                return False
-
-            sio.save_session(sid, {
-                'user_id': user.id,
-                'username': user.name,
-                'avatar': user.avatar
-            })
-
-            return True
-
-    except Exception:
-        return False
 
 
 def init_app(app: DifyApp):

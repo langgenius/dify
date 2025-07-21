@@ -39,11 +39,10 @@ else:
 
 if __name__ == "__main__":
     from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
 
     host = os.environ.get('HOST', '0.0.0.0')
     port = int(os.environ.get('PORT', 5001))
 
     print(f"Starting server on {host}:{port}")
-    server = pywsgi.WSGIServer((host, port), socketio_app, handler_class=WebSocketHandler)
+    server = pywsgi.WSGIServer((host, port), socketio_app)
     server.serve_forever()

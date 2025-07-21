@@ -25,6 +25,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
+from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -788,6 +789,32 @@ class DraftWorkflowNodeLastRunApi(Resource):
             raise NotFound("last run not found")
         return node_exec
 
+class WorkflowOnlineUsersApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("workflow_ids", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        workflow_ids = [id.strip() for id in args["workflow_ids"].split(",")]
+
+        results = {}
+        for workflow_id in workflow_ids:
+            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    users.append(json.loads(user_info_json))
+                except Exception:
+                    continue
+            results[workflow_id] = users
+
+        return {"data": results}
+
 
 api.add_resource(
     DraftWorkflowApi,
@@ -857,3 +884,4 @@ api.add_resource(
     DraftWorkflowNodeLastRunApi,
     "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
 )
+api.add_resource(WorkflowOnlineUsersApi, "/apps/workflows/online-users")

@@ -1,14 +1,44 @@
 import json
 import time
 
-from flask_restful import Resource, marshal_with, reqparse
-
-from controllers.console import api
-from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import sio
-from fields.online_user_fields import online_user_list_fields
-from libs.login import login_required
+from libs.passport import PassportService
+from services.account_service import AccountService
+
+
+@sio.on('connect')
+def socket_connect(sid, environ, auth):
+    """
+    WebSocket connect event, do authentication here.
+    """
+    token = None
+    if auth and isinstance(auth, dict):
+        token = auth.get('token')
+    if not token:
+        return False
+
+    try:
+        decoded = PassportService().verify(token)
+        user_id = decoded.get("user_id")
+        if not user_id:
+            return False
+
+        with sio.app.app_context():
+            user = AccountService.load_logged_in_account(account_id=user_id)
+            if not user:
+                return False
+
+            sio.save_session(sid, {
+                'user_id': user.id,
+                'username': user.name,
+                'avatar': user.avatar
+            })
+
+            return True
+
+    except Exception:
+        return False
 
 
 @sio.on("user_connect")
@@ -82,36 +112,6 @@ def broadcast_online_users(workflow_id):
         {"workflow_id": workflow_id, "users": users},
         room=workflow_id
     )
-
-
-class OnlineUserApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(online_user_list_fields)
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("workflow_ids", type=str, required=True, location="args")
-        args = parser.parse_args()
-
-        workflow_ids = [id.strip() for id in args["workflow_ids"].split(",")]
-
-        results = {}
-        for workflow_id in workflow_ids:
-            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
-
-            users = []
-            for _, user_info_json in users_json.items():
-                try:
-                    users.append(json.loads(user_info_json))
-                except Exception:
-                    continue
-            results[workflow_id] = users
-
-        return {"data": results}
-
-
-api.add_resource(OnlineUserApi, "/online-users")
 
 
 @sio.on("collaboration_event")
