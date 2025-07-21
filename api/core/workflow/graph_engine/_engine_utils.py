@@ -1,7 +1,7 @@
 import time
 
 
-def get_timestamp() -> float:
+def get_current_timestamp() -> float:
     """Retrieve a timestamp as a float point numer representing the number of seconds
     since the Unix epoch.
 
