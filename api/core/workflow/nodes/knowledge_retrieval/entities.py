@@ -118,7 +118,7 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
     single_retrieval_config: Optional[SingleRetrievalConfig] = None
     metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
-    metadata_model_config: ModelConfig
+    metadata_model_config: Optional[ModelConfig] = None
     metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
 

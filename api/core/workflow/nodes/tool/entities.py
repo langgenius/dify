@@ -59,6 +59,10 @@ class ToolNodeData(BaseNodeData, ToolEntity):
             return typ
 
     tool_parameters: dict[str, ToolInput]
+    # The version of the tool parameter.
+    # If this value is None, it indicates this is a previous version
+    # and requires using the legacy parameter parsing rules.
+    tool_node_version: str | None = None
 
     @field_validator("tool_parameters", mode="before")
     @classmethod

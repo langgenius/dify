@@ -2,7 +2,7 @@ const translation = {
   category: {
     extensions: '拡張機能',
     all: 'すべて',
-    tools: '道具',
+    tools: 'ツール',
     bundles: 'バンドル',
     agents: 'エージェント戦略',
     models: 'モデル',
@@ -11,7 +11,7 @@ const translation = {
     agent: 'エージェント戦略',
     model: 'モデル',
     bundle: 'バンドル',
-    tool: '道具',
+    tool: 'ツール',
     extension: '拡張',
   },
   list: {
@@ -60,7 +60,7 @@ const translation = {
       uninstalledTitle: 'ツールがインストールされていません',
       empty: 'ツールを追加するには「+」ボタンをクリックしてください。複数のツールを追加できます。',
       paramsTip1: 'LLM 推論パラメータを制御します。',
-      toolLabel: '道具',
+      toolLabel: 'ツール',
       unsupportedTitle: 'サポートされていないアクション',
       toolSetting: 'ツール設定',
       unsupportedMCPTool: '現在選択されているエージェント戦略プラグインのバージョンはMCPツールをサポートしていません。',

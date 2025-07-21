@@ -5,9 +5,9 @@ import * as Sentry from '@sentry/react'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
-const SentryInit = ({
+const SentryInitializer = ({
   children,
-}: { children: React.ReactNode }) => {
+}: { children: React.ReactElement }) => {
   useEffect(() => {
     const SENTRY_DSN = document?.body?.getAttribute('data-public-sentry-dsn')
     if (!isDevelopment && SENTRY_DSN) {
@@ -26,4 +26,4 @@ const SentryInit = ({
   return children
 }
 
-export default SentryInit
+export default SentryInitializer

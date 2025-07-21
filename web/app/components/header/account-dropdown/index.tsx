@@ -45,7 +45,7 @@ export default function AppSelector() {
 
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
@@ -180,8 +180,8 @@ export default function AppSelector() {
                               <RiInformation2Line className='size-4 shrink-0 text-text-tertiary' />
                               <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.about')}</div>
                               <div className='flex shrink-0 items-center'>
-                                <div className='system-xs-regular mr-2 text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
-                                <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                                <div className='system-xs-regular mr-2 text-text-tertiary'>{langGeniusVersionInfo.current_version}</div>
+                                <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                               </div>
                             </div>
                           </MenuItem>
@@ -217,7 +217,7 @@ export default function AppSelector() {
         }
       </Menu>
       {
-        aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langeniusVersionInfo={langeniusVersionInfo} />
+        aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />
       }
     </div >
   )
