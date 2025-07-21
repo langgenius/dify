@@ -111,7 +111,7 @@ class DatasourceProviderService:
             )
 
     def get_tenant_oauth_client(
-        self, tenant_id: str, datasource_provider_id: DatasourceProviderID
+        self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
     ) -> dict[str, Any] | None:
         """
         get tenant oauth client
@@ -128,7 +128,10 @@ class DatasourceProviderService:
             )
             if tenant_oauth_client_params:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+                if mask:
+                    return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                else:
+                    return encrypter.decrypt(tenant_oauth_client_params.client_params)
             return None
 
     def get_oauth_encrypter(
@@ -416,8 +419,7 @@ class DatasourceProviderService:
                     "author": datasource.declaration.identity.author,
                     "credentials_list": credentials,
                     "credential_schema": [
-                        credential.model_dump()
-                        for credential in datasource.declaration.credentials_schema
+                        credential.model_dump() for credential in datasource.declaration.credentials_schema
                     ],
                     "oauth_schema": {
                         "client_schema": [
@@ -428,7 +430,9 @@ class DatasourceProviderService:
                             credential_schema.model_dump()
                             for credential_schema in datasource.declaration.oauth_schema.credentials_schema
                         ],
-                        "oauth_custom_client_params": self.get_tenant_oauth_client(tenant_id, datasource_provider_id),
+                        "oauth_custom_client_params": self.get_tenant_oauth_client(
+                            tenant_id, datasource_provider_id, mask=True
+                        ),
                         "is_oauth_custom_client_enabled": self.is_tenant_oauth_params_enabled(
                             tenant_id, datasource_provider_id
                         ),
