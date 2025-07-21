@@ -1,9 +1,12 @@
 import datetime
 import logging
+import tempfile
 import time
 import uuid
+from pathlib import Path
 
 import click
+import pandas as pd
 from celery import shared_task  # type: ignore
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,7 +15,9 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from libs import helper
+from models.model import UploadFile
 from models.dataset import Dataset, Document, DocumentSegment
 from services.vector_service import VectorService
 
@@ -20,7 +25,7 @@ from services.vector_service import VectorService
 @shared_task(queue="dataset")
 def batch_create_segment_to_index_task(
     job_id: str,
-    content: list,
+    upload_file_id: str,
     dataset_id: str,
     document_id: str,
     tenant_id: str,
@@ -29,13 +34,13 @@ def batch_create_segment_to_index_task(
     """
     Async batch create segment to index
     :param job_id:
-    :param content:
+    :param upload_file_id:
     :param dataset_id:
     :param document_id:
     :param tenant_id:
     :param user_id:
 
-    Usage: batch_create_segment_to_index_task.delay(job_id, content, dataset_id, document_id, tenant_id, user_id)
+    Usage: batch_create_segment_to_index_task.delay(job_id, upload_file_id, dataset_id, document_id, tenant_id, user_id)
     """
     logging.info(click.style("Start batch create segment jobId: {}".format(job_id), fg="green"))
     start_at = time.perf_counter()
@@ -58,6 +63,29 @@ def batch_create_segment_to_index_task(
                 or dataset_document.indexing_status != "completed"
             ):
                 raise ValueError("Document is not available.")
+
+            upload_file = session.get(UploadFile, upload_file_id)
+            if not upload_file:
+                raise ValueError("UploadFile not found.")
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                suffix = Path(upload_file.key).suffix
+                # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
+                file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
+                storage.download(upload_file.key, file_path)
+
+                # Skip the first row
+                df = pd.read_csv(file_path)
+                content = []
+                for index, row in df.iterrows():
+                    if dataset_document.doc_form == "qa_model":
+                        data = {"content": row.iloc[0], "answer": row.iloc[1]}
+                    else:
+                        data = {"content": row.iloc[0]}
+                    content.append(data)
+                if len(content) == 0:
+                    raise ValueError("The CSV file is empty.")
+
             document_segments = []
             embedding_model = None
             if dataset.indexing_technique == "high_quality":

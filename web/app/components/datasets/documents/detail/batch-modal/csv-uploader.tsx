@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -10,10 +10,17 @@ import cn from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import type { FileItem } from '@/models/datasets'
+import { upload } from '@/service/base'
+import useSWR from 'swr'
+import { fetchFileUploadConfig } from '@/service/common'
+import SimplePieChart from '@/app/components/base/simple-pie-chart'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
 
 export type Props = {
-  file: File | undefined
-  updateFile: (file?: File) => void
+  file: FileItem | undefined
+  updateFile: (file?: FileItem) => void
 }
 
 const CSVUploader: FC<Props> = ({
@@ -26,6 +33,68 @@ const CSVUploader: FC<Props> = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
+    file_size_limit: 15,
+  }, [fileUploadConfigResponse])
+
+  const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
+    fileItem.progress = 0
+
+    const formData = new FormData()
+    formData.append('file', fileItem.file)
+    const onProgress = (e: ProgressEvent) => {
+      if (e.lengthComputable) {
+        const progress = Math.floor(e.loaded / e.total * 100)
+        updateFile({
+          ...fileItem,
+          progress,
+        })
+      }
+    }
+
+    return upload({
+      xhr: new XMLHttpRequest(),
+      data: formData,
+      onprogress: onProgress,
+    }, false, undefined, '?source=datasets')
+      .then((res: File) => {
+        const completeFile = {
+          fileID: fileItem.fileID,
+          file: res,
+          progress: 100,
+        }
+        updateFile(completeFile)
+        return Promise.resolve({ ...completeFile })
+      })
+      .catch((e) => {
+        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorFile = {
+          ...fileItem,
+          progress: -2,
+        }
+        updateFile(errorFile)
+        return Promise.resolve({ ...errorFile })
+      })
+      .finally()
+  }, [notify, t, updateFile])
+
+  const uploadFile = useCallback(async (fileItem: FileItem) => {
+    await fileUpload(fileItem)
+  }, [fileUpload])
+
+  const initialUpload = useCallback((file?: File) => {
+    if (!file)
+      return false
+
+    const newFile: FileItem = {
+      fileID: `file0-${Date.now()}`,
+      file,
+      progress: -1,
+    }
+    updateFile(newFile)
+    uploadFile(newFile)
+  }, [updateFile, uploadFile])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -52,7 +121,7 @@ const CSVUploader: FC<Props> = ({
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
       return
     }
-    updateFile(files[0])
+    initialUpload(files[0])
   }
   const selectHandle = () => {
     if (fileUploader.current)
@@ -63,10 +132,42 @@ const CSVUploader: FC<Props> = ({
       fileUploader.current.value = ''
     updateFile()
   }
+
+  const getFileType = (currentFile: File) => {
+    if (!currentFile)
+      return ''
+
+    const arr = currentFile.name.split('.')
+    return arr[arr.length - 1]
+  }
+
+  const isValid = useCallback((file?: File) => {
+    if (!file)
+      return false
+
+    const { size } = file
+    const ext = `.${getFileType(file)}`
+    const isValidType = ext.toLowerCase() === '.csv'
+    if (!isValidType)
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
+
+    const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
+    if (!isValidSize)
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
+
+    return isValidType && isValidSize
+  }, [fileUploadConfig, notify, t])
+
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFile = e.target.files?.[0]
-    updateFile(currentFile)
+    if (!isValid(currentFile))
+       return
+
+    initialUpload(currentFile)
   }
+
+  const { theme } = useTheme()
+  const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -108,10 +209,16 @@ const CSVUploader: FC<Props> = ({
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-6 text-sm font-normal', 'hover:border-divider-subtle hover:bg-components-panel-on-panel-item-bg-hover')}>
             <CSVIcon className="shrink-0" />
             <div className='ml-2 flex w-0 grow'>
-              <span className='max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary'>{file.name.replace(/.csv$/, '')}</span>
+              <span className='max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary'>{file.file.name.replace(/.csv$/, '')}</span>
               <span className='shrink-0 text-text-secondary'>.csv</span>
             </div>
             <div className='hidden items-center group-hover:flex'>
+              {(file.progress < 100 && file.progress >= 0) && (
+                <>
+                  <SimplePieChart percentage={file.progress} stroke={chartColor} fill={chartColor} animationDuration={0}/>
+                  <div className='mx-2 h-4 w-px bg-text-secondary'/>
+                </>
+              )}
               <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
               <div className='mx-2 h-4 w-px bg-text-secondary' />
               <div className='cursor-pointer p-2' onClick={removeFile}>
