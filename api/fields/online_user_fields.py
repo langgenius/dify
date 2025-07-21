@@ -9,7 +9,7 @@ online_user_partial_fields = {
 
 workflow_online_users_fields = {
     "workflow_id": fields.String,
-    "users": fields.List(fields.Nested(online_user_partial_fields))
+    "users": fields.List(fields.Nested(online_user_partial_fields)),
 }
 
 online_user_list_fields = {

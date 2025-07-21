@@ -34,6 +34,7 @@ def create_app() -> tuple[any, DifyApp]:
     import socketio
 
     from extensions.ext_socketio import sio
+
     sio.app = app
     socketio_app = socketio.WSGIApp(sio, app)
 

@@ -7,14 +7,14 @@ from libs.passport import PassportService
 from services.account_service import AccountService
 
 
-@sio.on('connect')
+@sio.on("connect")
 def socket_connect(sid, environ, auth):
     """
     WebSocket connect event, do authentication here.
     """
     token = None
     if auth and isinstance(auth, dict):
-        token = auth.get('token')
+        token = auth.get("token")
     if not token:
         return False
 
@@ -29,11 +29,7 @@ def socket_connect(sid, environ, auth):
             if not user:
                 return False
 
-            sio.save_session(sid, {
-                'user_id': user.id,
-                'username': user.name,
-                'avatar': user.avatar
-            })
+            sio.save_session(sid, {"user_id": user.id, "username": user.name, "avatar": user.avatar})
 
             return True
 
@@ -52,7 +48,7 @@ def handle_user_connect(sid, data):
         return {"msg": "workflow_id is required"}, 400
 
     session = sio.get_session(sid)
-    user_id = session.get('user_id')
+    user_id = session.get("user_id")
 
     if not user_id:
         return {"msg": "unauthorized"}, 401
@@ -66,8 +62,8 @@ def handle_user_connect(sid, data):
 
     user_info = {
         "user_id": user_id,
-        "username": session.get('username', 'Unknown'),
-        "avatar": session.get('avatar', None),
+        "username": session.get("username", "Unknown"),
+        "avatar": session.get("avatar", None),
         "sid": sid,
     }
 
@@ -107,11 +103,7 @@ def broadcast_online_users(workflow_id):
             users.append(json.loads(user_info_json))
         except Exception:
             continue
-    sio.emit(
-        "online_users",
-        {"workflow_id": workflow_id, "users": users},
-        room=workflow_id
-    )
+    sio.emit("online_users", {"workflow_id": workflow_id, "users": users}, room=workflow_id)
 
 
 @sio.on("collaboration_event")
@@ -140,14 +132,9 @@ def handle_collaboration_event(sid, data):
 
     sio.emit(
         "collaboration_update",
-        {
-            "type": event_type,
-            "userId": user_id,
-            "data": event_data,
-            "timestamp": timestamp
-        },
+        {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
         room=workflow_id,
-        skip_sid=sid
+        skip_sid=sid,
     )
 
     return {"msg": "event_broadcasted"}

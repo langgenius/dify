@@ -789,6 +789,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
             raise NotFound("last run not found")
         return node_exec
 
+
 class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
