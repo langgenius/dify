@@ -1682,7 +1682,7 @@ class MessageAgentThought(Base):
     message_unit_price = mapped_column(db.Numeric, nullable=True)
     message_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     message_files = mapped_column(db.Text, nullable=True)
-    answer = mapped_column(db.Text, nullable=True)
+    answer = db.Column(db.Text, nullable=True)
     answer_token = mapped_column(db.Integer, nullable=True)
     answer_unit_price = mapped_column(db.Numeric, nullable=True)
     answer_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
