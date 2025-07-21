@@ -1,7 +1,6 @@
 import json
 import logging
 from argparse import ArgumentTypeError
-from datetime import UTC, datetime
 from typing import cast
 
 from flask import request
@@ -50,6 +49,7 @@ from fields.document_fields import (
     document_status_fields,
     document_with_segments_fields,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
@@ -752,7 +752,7 @@ class DocumentProcessingApi(DocumentResource):
                 raise InvalidActionError("Document not in indexing state.")
 
             document.paused_by = current_user.id
-            document.paused_at = datetime.now(UTC).replace(tzinfo=None)
+            document.paused_at = naive_utc_now()
             document.is_paused = True
             db.session.commit()
 
@@ -832,7 +832,7 @@ class DocumentMetadataApi(DocumentResource):
                     document.doc_metadata[key] = value
 
         document.doc_type = doc_type
-        document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        document.updated_at = naive_utc_now()
         db.session.commit()
 
         return {"result": "success", "message": "Document metadata updated."}, 200

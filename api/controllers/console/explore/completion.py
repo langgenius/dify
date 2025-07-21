@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 from flask_login import current_user
 from flask_restful import reqparse
@@ -27,6 +26,7 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -51,7 +51,7 @@ class CompletionApi(InstalledAppResource):
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
 
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+        installed_app.last_used_at = naive_utc_now()
         db.session.commit()
 
         try:
@@ -111,7 +111,7 @@ class ChatApi(InstalledAppResource):
 
         args["auto_generate_name"] = False
 
-        installed_app.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+        installed_app.last_used_at = naive_utc_now()
         db.session.commit()
 
         try:

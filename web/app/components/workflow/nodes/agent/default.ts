@@ -13,7 +13,7 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<AgentNodeType> = {
   metaData,
   defaultValue: {
-    version: '2',
+    tool_node_version: '2',
   },
   checkValid(payload, t, moreDataForCheckValid: {
     strategyProvider?: StrategyPluginDetail,
@@ -58,27 +58,29 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
           const userSettings = toolValue.settings
           const reasoningConfig = toolValue.parameters
           const version = payload.version
+          const toolNodeVersion = payload.tool_node_version
+          const mergeVersion = version || toolNodeVersion
           schemas.forEach((schema: any) => {
             if (schema?.required) {
-              if (schema.form === 'form' && !version && !userSettings[schema.name]?.value) {
+              if (schema.form === 'form' && !mergeVersion && !userSettings[schema.name]?.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'form' && version && !userSettings[schema.name]?.value.value) {
+              if (schema.form === 'form' && mergeVersion && !userSettings[schema.name]?.value.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'llm' && !version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
+              if (schema.form === 'llm' && !mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),
                 }
               }
-              if (schema.form === 'llm' && version && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
+              if (schema.form === 'llm' && mergeVersion && reasoningConfig[schema.name].auto === 0 && !reasoningConfig[schema.name]?.value.value) {
                 return {
                   isValid: false,
                   errorMessage: t('workflow.errorMsg.toolParameterRequired', { field: renderI18nObject(param.label, language), param: renderI18nObject(schema.label, language) }),

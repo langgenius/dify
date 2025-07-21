@@ -13,7 +13,6 @@ import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
-import { basePath } from '@/utils/var'
 import AppIcon from '@/app/components/base/app-icon'
 
 export type ISelectDataSetProps = {
@@ -113,7 +112,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           }}
         >
           <span className='text-text-tertiary'>{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href={`${basePath}/datasets/create`} className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <Link href='/datasets/create' className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
         </div>
       )}
 

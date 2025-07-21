@@ -16,7 +16,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   defaultValue: {
     tool_parameters: {},
     tool_configurations: {},
-    version: '2',
+    tool_node_version: '2',
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid

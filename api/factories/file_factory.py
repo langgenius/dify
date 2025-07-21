@@ -149,9 +149,7 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -200,9 +198,7 @@ def _build_from_remote_url(
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
         file_type = (
-            FileType(specified_type)
-            if specified_type and specified_type != FileType.CUSTOM.value
-            else detected_file_type
+            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
         )
 
         return File(
@@ -287,9 +283,7 @@ def _build_from_tool_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),

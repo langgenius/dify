@@ -1,7 +1,7 @@
 import React from 'react'
 import type { ReactNode } from 'react'
 import Header from './header'
-import SwrInitor from '@/app/components/swr-initor'
+import SwrInitor from '@/app/components/swr-initializer'
 import { AppContextProvider } from '@/context/app-context'
 import GA, { GaType } from '@/app/components/base/ga'
 import HeaderWrapper from '@/app/components/header/header-wrapper'

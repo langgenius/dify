@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
@@ -11,7 +11,7 @@ import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
@@ -65,11 +65,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
-  const mutateApps = useContextSelector(
-    AppsContext,
-    state => state.mutateApps,
-  )
-
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
@@ -83,7 +78,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       notify({ type: 'success', message: t('app.appDeleted') })
       if (onRefresh)
         onRefresh()
-      mutateApps()
       onPlanInfoChanged()
     }
     catch (e: any) {
@@ -93,7 +87,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
     }
     setShowConfirmDelete(false)
-  }, [app.id, mutateApps, notify, onPlanInfoChanged, onRefresh, t])
+  }, [app.id, notify, onPlanInfoChanged, onRefresh, t])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -122,12 +116,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
       if (onRefresh)
         onRefresh()
-      mutateApps()
     }
     catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
-  }, [app.id, mutateApps, notify, onRefresh, t])
+  }, [app.id, notify, onRefresh, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -147,7 +140,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)
         onRefresh()
-      mutateApps()
       onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
@@ -195,16 +187,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const onSwitch = () => {
     if (onRefresh)
       onRefresh()
-    mutateApps()
     setShowSwitchModal(false)
   }
 
   const onUpdateAccessControl = useCallback(() => {
     if (onRefresh)
       onRefresh()
-    mutateApps()
     setShowAccessControl(false)
-  }, [onRefresh, mutateApps, setShowAccessControl])
+  }, [onRefresh, setShowAccessControl])
 
   const Operations = (props: HtmlContentProps) => {
     const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({ appId: app?.id, enabled: (!!props?.open && systemFeatures.webapp_auth.enabled) })
@@ -325,7 +315,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
     })
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.updated_at, app.created_at])
 
   return (
