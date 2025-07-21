@@ -16,7 +16,7 @@ class Mail:
     def is_inited(self) -> bool:
         return self._client is not None
 
-    def init_app(self, app: Flask):
+    def init_app(self, _: Flask):
         mail_type = dify_config.MAIL_TYPE
         if not mail_type:
             logger.warning("MAIL_TYPE is not set")
@@ -40,20 +40,36 @@ class Mail:
                 resend.api_key = api_key
                 self._client = resend.Emails
             case "smtp":
-                from libs.smtp import SMTPClient
+                from libs.mail import SMTPClient
 
                 if not dify_config.SMTP_SERVER or not dify_config.SMTP_PORT:
                     raise ValueError("SMTP_SERVER and SMTP_PORT are required for smtp mail type")
                 if not dify_config.SMTP_USE_TLS and dify_config.SMTP_OPPORTUNISTIC_TLS:
                     raise ValueError("SMTP_OPPORTUNISTIC_TLS is not supported without enabling SMTP_USE_TLS")
+
+                # Validate OAuth 2.0 configuration if auth_type is oauth2
+                oauth_access_token = None
+
+                if dify_config.SMTP_AUTH_TYPE == "oauth2":
+                    oauth_access_token = dify_config.MICROSOFT_OAUTH2_ACCESS_TOKEN
+                    if not oauth_access_token:
+                        # Try to get token using client credentials flow
+                        if dify_config.MICROSOFT_OAUTH2_CLIENT_ID and dify_config.MICROSOFT_OAUTH2_CLIENT_SECRET:
+                            oauth_access_token = self._get_oauth_token()
+
+                        if not oauth_access_token:
+                            raise ValueError("OAuth 2.0 access token is required for oauth2 auth_type")
+
                 self._client = SMTPClient(
                     server=dify_config.SMTP_SERVER,
                     port=dify_config.SMTP_PORT,
                     username=dify_config.SMTP_USERNAME or "",
                     password=dify_config.SMTP_PASSWORD or "",
-                    _from=dify_config.MAIL_DEFAULT_SEND_FROM or "",
+                    from_addr=dify_config.MAIL_DEFAULT_SEND_FROM or "",
                     use_tls=dify_config.SMTP_USE_TLS,
                     opportunistic_tls=dify_config.SMTP_OPPORTUNISTIC_TLS,
+                    oauth_access_token=oauth_access_token,
+                    auth_type=dify_config.SMTP_AUTH_TYPE,
                 )
             case "sendgrid":
                 from libs.sendgrid import SendGridClient
