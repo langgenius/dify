@@ -416,53 +416,17 @@ class DatasourceProviderService:
                     "author": datasource.declaration.identity.author,
                     "credentials_list": credentials,
                     "credential_schema": [
-                        {
-                            "type": credential.type.value,
-                            "name": credential.name,
-                            "required": credential.required,
-                            "default": credential.default,
-                            "options": [
-                                {
-                                    "value": option.value,
-                                    "label": option.label.model_dump(),
-                                }
-                                for option in credential.options or []
-                            ],
-                        }
+                        credential.model_dump()
                         for credential in datasource.declaration.credentials_schema
                     ],
                     "oauth_schema": {
                         "client_schema": [
-                            {
-                                "type": client_schema.type.value,
-                                "name": client_schema.name,
-                                "required": client_schema.required,
-                                "default": client_schema.default,
-                                "options": [
-                                    {
-                                        "value": option.value,
-                                        "label": option.label.model_dump(),
-                                    }
-                                    for option in client_schema.options or []
-                                ],
-                            }
-                            for client_schema in datasource.declaration.oauth_schema.client_schema or []
+                            client_schema.model_dump()
+                            for client_schema in datasource.declaration.oauth_schema.client_schema
                         ],
                         "credentials_schema": [
-                            {
-                                "type": credential.type.value,
-                                "name": credential.name,
-                                "required": credential.required,
-                                "default": credential.default,
-                                "options": [
-                                    {
-                                        "value": option.value,
-                                        "label": option.label.model_dump(),
-                                    }
-                                    for option in credential.options or []
-                                ],
-                            }
-                            for credential in datasource.declaration.oauth_schema.credentials_schema or []
+                            credential_schema.model_dump()
+                            for credential_schema in datasource.declaration.oauth_schema.credentials_schema
                         ],
                         "oauth_custom_client_params": self.get_tenant_oauth_client(tenant_id, datasource_provider_id),
                         "is_oauth_custom_client_enabled": self.is_tenant_oauth_params_enabled(

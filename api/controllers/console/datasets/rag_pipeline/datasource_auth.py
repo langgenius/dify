@@ -203,7 +203,7 @@ class DatasourceAuthListApi(Resource):
         datasources = datasource_provider_service.get_all_datasource_credentials(
             tenant_id=current_user.current_tenant_id
         )
-        return {"result": datasources}, 200
+        return {"result": jsonable_encoder(datasources)}, 200
 
 class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
