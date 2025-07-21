@@ -32,9 +32,6 @@ class BaseNode:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
-        self.workflow_type = graph_init_params.workflow_type
-        self.workflow_id = graph_init_params.workflow_id
-        self.graph_config = graph_init_params.graph_config
         self.user_id = graph_init_params.user_id
         self.user_from = graph_init_params.user_from
         self.invoke_from = graph_init_params.invoke_from
@@ -43,6 +40,7 @@ class BaseNode:
         self.graph_runtime_state = graph_runtime_state
         self.previous_node_id = previous_node_id
         self.thread_pool_id = thread_pool_id
+        self._init_params = graph_init_params
 
         node_id = config.get("id")
         if not node_id:

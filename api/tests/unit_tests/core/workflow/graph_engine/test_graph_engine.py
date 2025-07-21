@@ -178,6 +178,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
     )
+    init_params = GraphInitParams(
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.WORKFLOW,
@@ -187,10 +188,13 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        graph=graph,
-        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
+    )
+    graph_engine = GraphEngine(
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        graph_init_params=init_params,
     )
 
     def llm_generator(self):
@@ -307,6 +311,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
     )
+    graph_init_params = GraphInitParams(
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,
@@ -316,10 +321,13 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        graph=graph,
-        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
+    )
+    graph_engine = GraphEngine(
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        graph_init_params=graph_init_params,
     )
 
     # print("")
@@ -489,6 +497,7 @@ def test_run_branch(mock_close, mock_remove):
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
     )
+    graph_init_params = GraphInitParams(
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,
@@ -498,10 +507,13 @@ def test_run_branch(mock_close, mock_remove):
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        graph=graph,
-        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
+    )
+    graph_engine = GraphEngine(
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        graph_init_params=graph_init_params,
     )
 
     # print("")
@@ -829,6 +841,7 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
     graph_runtime_state = GraphRuntimeState(
         variable_pool=variable_pool,
     )
+    graph_init_params = GraphInitParams(
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,
@@ -838,10 +851,13 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        graph=graph,
-        graph_runtime_state=graph_runtime_state,
         max_execution_steps=500,
         max_execution_time=1200,
+    )
+    graph_engine = GraphEngine(
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        graph_init_params=graph_init_params,
     )
 
     def qc_generator(self):

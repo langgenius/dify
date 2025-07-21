@@ -71,7 +71,7 @@ class WorkflowEntry:
         # init workflow run state
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool)
 
-        self.graph_engine = GraphEngine(
+        graph_init_params = GraphInitParams(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_type=workflow_type,
@@ -80,11 +80,14 @@ class WorkflowEntry:
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            graph=graph,
             graph_config=graph_config,
-            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+        )
+        self.graph_engine = GraphEngine(
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            graph_init_params=graph_init_params,
             thread_pool_id=thread_pool_id,
         )
 

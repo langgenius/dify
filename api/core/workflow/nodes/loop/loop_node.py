@@ -1,11 +1,9 @@
 import json
 import logging
-import time
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from configs import dify_config
 from core.variables import (
     IntegerSegment,
     Segment,
@@ -91,7 +89,7 @@ class LoopNode(BaseNode):
             raise ValueError(f"field start_node_id in loop {self.node_id} not found")
 
         # Initialize graph
-        loop_graph = Graph.init(graph_config=self.graph_config, root_node_id=self._node_data.start_node_id)
+        loop_graph = Graph.init(graph_config=self._init_params.graph_config, root_node_id=self._node_data.start_node_id)
         if not loop_graph:
             raise ValueError("loop graph not found")
 
@@ -127,19 +125,9 @@ class LoopNode(BaseNode):
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool)
 
         graph_engine = GraphEngine(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
-            workflow_type=self.workflow_type,
-            workflow_id=self.workflow_id,
-            user_id=self.user_id,
-            user_from=self.user_from,
-            invoke_from=self.invoke_from,
-            call_depth=self.workflow_call_depth,
             graph=loop_graph,
-            graph_config=self.graph_config,
+            graph_init_params=self._init_params,
             graph_runtime_state=graph_runtime_state,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             thread_pool_id=self.thread_pool_id,
         )
 

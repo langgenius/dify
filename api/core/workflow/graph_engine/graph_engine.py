@@ -3,7 +3,7 @@ import logging
 import queue
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
 from datetime import UTC, datetime
@@ -91,19 +91,9 @@ class GraphEngine:
 
     def __init__(
         self,
-        tenant_id: str,
-        app_id: str,
-        workflow_type: WorkflowType,
-        workflow_id: str,
-        user_id: str,
-        user_from: UserFrom,
-        invoke_from: InvokeFrom,
-        call_depth: int,
         graph: Graph,
-        graph_config: Mapping[str, Any],
+        graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
-        max_execution_steps: int,
-        max_execution_time: int,
         thread_pool_id: Optional[str] = None,
     ) -> None:
         thread_pool_max_submit_count = dify_config.MAX_SUBMIT_COUNT
@@ -126,17 +116,7 @@ class GraphEngine:
             GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id] = self.thread_pool
 
         self.graph = graph
-        self.init_params = GraphInitParams(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_type=workflow_type,
-            workflow_id=workflow_id,
-            graph_config=graph_config,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
-        )
+        self.init_params = graph_init_params
 
         self.graph_runtime_state = graph_runtime_state
 
