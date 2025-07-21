@@ -11,6 +11,7 @@ import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 type Props = {
   nodeId: string
   value: string
+  editorKey: string
   onChange: (text: string) => void
   generatorType: GeneratorType
 }
@@ -18,6 +19,7 @@ type Props = {
 const InstructionEditorInWorkflow: FC<Props> = ({
   nodeId,
   value,
+  editorKey,
   onChange,
   generatorType,
 }) => {
@@ -37,6 +39,7 @@ const InstructionEditorInWorkflow: FC<Props> = ({
     <InstructionEditor
       value={value}
       onChange={onChange}
+      editorKey={editorKey}
       generatorType={generatorType}
       availableVars={availableVars}
       availableNodes={availableNodes}

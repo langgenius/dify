@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 
 type Props = {
+  editorKey: string
   value: string
   onChange: (text: string) => void
   generatorType: GeneratorType
@@ -24,6 +25,7 @@ type Props = {
 const i18nPrefix = 'appDebug.generate'
 
 const InstructionEditor: FC<Props> = ({
+  editorKey,
   generatorType,
   value,
   onChange,
@@ -50,7 +52,7 @@ const InstructionEditor: FC<Props> = ({
     <div>
       <PromptEditor
         wrapperClassName='border !border-components-input-bg-normal bg-components-input-bg-normal hover:!border-components-input-bg-hover rounded-[10px] px-4 pt-3'
-        // key={controlPromptEditorRerenderKey}
+        key={editorKey}
         placeholder={placeholder}
         placeholderClassName='px-4 pt-3'
         className={cn('min-h-[240px] ')}

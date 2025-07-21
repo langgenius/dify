@@ -134,10 +134,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const [instruction, setInstruction] = useState<string>('')
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
+  const [editorKey, setEditorKey] = useState(`${flowId}-0`)
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
       const template = t(`appDebug.generate.template.${key}.instruction`)
       setInstruction(template)
+      setEditorKey(`${flowId}-${Date.now()}`)
     }
   }, [t])
   const isValid = () => {
@@ -318,6 +320,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.generate.instruction')}</div>
               {isBasicMode ? (
                 <InstructionEditorInBasic
+                  editorKey={editorKey}
                   generatorType={GeneratorType.prompt}
                   value={instruction}
                   onChange={setInstruction}
@@ -326,6 +329,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 />
               ) : (
                 <InstructionEditorInWorkflow
+                  editorKey={editorKey}
                   generatorType={GeneratorType.prompt}
                   value={instruction}
                   onChange={setInstruction}

@@ -75,7 +75,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const storageKey = `${flowId}-${nodeId}}`
+  const storageKey = `${flowId}-${nodeId}`
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })
