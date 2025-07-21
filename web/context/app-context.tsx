@@ -4,17 +4,13 @@ import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 're
 import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
-import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
 import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
-import type { App } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { noop } from 'lodash-es'
 
 export type AppContextValue = {
-  apps: App[]
-  mutateApps: VoidFunction
   userProfile: UserProfileResponse
   mutateUserProfile: VoidFunction
   currentWorkspace: ICurrentWorkspace
@@ -23,7 +19,7 @@ export type AppContextValue = {
   isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   mutateCurrentWorkspace: VoidFunction
-  pageContainerRef: React.RefObject<HTMLDivElement>
+  pageContainerRef: React.RefObject<HTMLDivElement | null>
   langeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
@@ -50,8 +46,6 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 }
 
 const AppContext = createContext<AppContextValue>({
-  apps: [],
-  mutateApps: noop,
   userProfile: {
     id: '',
     name: '',
@@ -83,8 +77,6 @@ export type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const pageContainerRef = useRef<HTMLDivElement>(null)
-
-  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
@@ -115,13 +107,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
 
-  if (!appList || !userProfile)
+  if (!userProfile)
     return <Loading type='app' />
 
   return (
     <AppContext.Provider value={{
-      apps: appList.data,
-      mutateApps,
       userProfile,
       mutateUserProfile,
       pageContainerRef,
