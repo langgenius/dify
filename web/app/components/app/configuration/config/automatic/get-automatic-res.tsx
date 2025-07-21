@@ -40,6 +40,7 @@ import Result from './result'
 import useGenData from './use-gen-data'
 import IdeaOutput from './idea-output'
 import ResPlaceholder from './res-placeholder'
+import { useGenerateRuleTemplate } from '@/service/use-apps'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
@@ -142,6 +143,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       setEditorKey(`${flowId}-${Date.now()}`)
     }
   }, [t])
+
+  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt)
+  useEffect(() => {
+    if (!instruction && instructionTemplate) {
+      setInstruction(instructionTemplate.data)
+      setEditorKey(`${flowId}-${Date.now()}`)
+    }
+  }, [instructionTemplate])
+
   const isValid = () => {
     if (instruction.trim() === '') {
       Toast.notify({

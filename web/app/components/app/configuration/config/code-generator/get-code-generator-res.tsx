@@ -24,6 +24,7 @@ import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 import useGenData from '../automatic/use-gen-data'
 import Result from '../automatic/result'
 import ResPlaceholder from '../automatic/res-placeholder'
+import { useGenerateRuleTemplate } from '@/service/use-apps'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
@@ -79,6 +80,14 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })
+  const [editorKey, setEditorKey] = useState(`${flowId}-0`)
+  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.code)
+  useEffect(() => {
+    if (!instruction && instructionTemplate) {
+      setInstruction(instructionTemplate.data)
+      setEditorKey(`${flowId}-${Date.now()}`)
+    }
+  }, [instructionTemplate])
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -211,6 +220,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
             <div className='text-[0px]'>
               <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.codegen.instruction')}</div>
               <InstructionEditor
+                editorKey={editorKey}
                 value={instruction}
                 onChange={setInstruction}
                 nodeId={nodeId}
