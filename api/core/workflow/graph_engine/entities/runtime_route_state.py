@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -92,9 +92,11 @@ class RuntimeRouteState(BaseModel):
 
     # If `previous_node_id` is not `None`, then the correspond node has state in the dict
     # `node_state_mapping`.
-    previous_node_state_id: Optional[str] = Field(None, description="The state of last executed node.")
+    previous_node_state_id: Optional[str] = Field(default=None, description="The state of last executed node.")
 
-    _state_by_id: dict[str, RouteNodeState]
+    # `_state_by_id` serves as a mapping from the unique identifier (`id`) of each `RouteNodeState`
+    # instance to the corresponding `RouteNodeState` object itself.
+    _state_by_id: dict[str, RouteNodeState] = PrivateAttr(default={})
 
     def model_post_init(self, context: Any) -> None:
         super().model_post_init(context)

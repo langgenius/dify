@@ -1,4 +1,3 @@
-import time
 import uuid
 from unittest.mock import MagicMock, Mock
 
@@ -106,7 +105,9 @@ def test_execute_if_else_result_true():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(
+            variable_pool=pool,
+        ),
         config=node_config,
     )
 
@@ -192,7 +193,9 @@ def test_execute_if_else_result_false():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(
+            variable_pool=pool,
+        ),
         config=node_config,
     )
 

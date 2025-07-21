@@ -175,8 +175,9 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
         user_inputs={"query": "hi"},
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    graph_engine = GraphEngine(
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+    )
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.WORKFLOW,
@@ -303,8 +304,9 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         user_inputs={},
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    graph_engine = GraphEngine(
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+    )
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,
@@ -484,8 +486,9 @@ def test_run_branch(mock_close, mock_remove):
         user_inputs={"uid": "takato"},
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    graph_engine = GraphEngine(
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+    )
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,
@@ -823,8 +826,9 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
         user_inputs={"query": "hi"},
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    graph_engine = GraphEngine(
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+    )
         tenant_id="111",
         app_id="222",
         workflow_type=WorkflowType.CHAT,

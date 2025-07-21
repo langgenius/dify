@@ -1,4 +1,3 @@
-import time
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -175,7 +174,9 @@ class ContinueOnErrorTestHelper:
             ),
             user_inputs=user_inputs or {"uid": "takato"},
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+        )
 
         return GraphEngine(
             tenant_id="111",
