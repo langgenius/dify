@@ -298,7 +298,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
   >
     {icon}
     <div className='system-sm-semibold mb-0.5 mt-2 text-text-secondary'>{title}</div>
-    <div className='system-xs-regular text-text-tertiary'>{description}</div>
+    <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={description}>{description}</div>
   </div>
 }
 
