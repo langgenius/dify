@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
@@ -199,10 +199,10 @@ class WorkflowEntry:
                 "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
                 workflow.id,
                 node_instance.id,
-                node_instance.node_type,
+                node_instance.type_,
                 node_instance.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node_instance, err_msg=str(e))
         return node_instance, generator
 
     @classmethod
@@ -307,10 +307,10 @@ class WorkflowEntry:
             logger.exception(
                 "error while running node_instance, node_id=%s, type=%s, version=%s",
                 node_instance.id,
-                node_instance.node_type,
+                node_instance.type_,
                 node_instance.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node_instance, err_msg=str(e))
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
