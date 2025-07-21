@@ -52,15 +52,15 @@ class Dataset(Base):
     description = mapped_column(db.Text, nullable=True)
     provider: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'only_me'::character varying"))
-    data_source_type: Mapped[str] = mapped_column(db.String(255))
+    data_source_type = mapped_column(db.String(255))
     indexing_technique: Mapped[Optional[str]] = mapped_column(db.String(255))
     index_struct = mapped_column(db.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model: Mapped[str] = mapped_column(db.String(255))
-    embedding_model_provider: Mapped[str] = mapped_column(db.String(255))
+    embedding_model: Mapped[Optional[str]] = mapped_column(db.String(255))
+    embedding_model_provider: Mapped[Optional[str]] = mapped_column(db.String(255))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -660,8 +660,8 @@ class DocumentSegment(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content: Mapped[str]
-    answer: Mapped[Optional[str]]
+    content = mapped_column(db.Text, nullable=False)
+    answer = mapped_column(db.Text, nullable=True)
     word_count: Mapped[int]
     tokens: Mapped[int]
 

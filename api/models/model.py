@@ -79,9 +79,9 @@ class App(Base):
     name: Mapped[str] = mapped_column(db.String(255))
     description: Mapped[str] = mapped_column(db.Text, server_default=db.text("''::character varying"))
     mode: Mapped[str] = mapped_column(db.String(255))
-    icon_type: Mapped[str] = mapped_column(db.String(255))  # image, emoji
-    icon: Mapped[str] = mapped_column(db.String(255))
-    icon_background: Mapped[str] = mapped_column(db.String(255))
+    icon_type: Mapped[Optional[str]] = mapped_column(db.String(255))  # image, emoji
+    icon: Mapped[Optional[str]] = mapped_column(db.String(255))
+    icon_background: Mapped[Optional[str]] = mapped_column(db.String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'normal'::character varying"))
@@ -907,7 +907,7 @@ class Message(Base):
     message_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = mapped_column(db.Numeric(10, 4), nullable=False)
     message_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
-    answer: Mapped[str] = mapped_column(db.Text, nullable=False)
+    answer = mapped_column(db.Text, nullable=False)
     answer_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = mapped_column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
@@ -925,7 +925,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    workflow_run_id: Mapped[str] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
 
     @property
     def inputs(self):
@@ -1326,8 +1326,8 @@ class MessageAnnotation(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, db.ForeignKey("conversations.id"))
     message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    question: Mapped[str] = mapped_column(db.Text, nullable=False)
-    content: Mapped[str] = mapped_column(db.Text, nullable=False)
+    question: Mapped[Optional[str]] = mapped_column(db.Text)
+    content = mapped_column(db.Text, nullable=False)
     hit_count = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     account_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
