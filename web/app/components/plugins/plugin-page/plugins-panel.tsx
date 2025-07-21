@@ -36,6 +36,9 @@ const PluginsPanel = () => {
       ...plugin,
       latest_version: installedLatestVersion?.versions[plugin.plugin_id]?.version ?? '',
       latest_unique_identifier: installedLatestVersion?.versions[plugin.plugin_id]?.unique_identifier ?? '',
+      status: installedLatestVersion?.versions[plugin.plugin_id]?.status ?? 'active',
+      deprecated_reason: installedLatestVersion?.versions[plugin.plugin_id]?.deprecated_reason ?? '',
+      alternative_plugin_id: installedLatestVersion?.versions[plugin.plugin_id]?.alternative_plugin_id ?? '',
     })) || []
   }, [pluginList, installedLatestVersion])
 
@@ -66,7 +69,8 @@ const PluginsPanel = () => {
           onFilterChange={handleFilterChange}
         />
       </div>
-      {isPluginListLoading ? <Loading type='app' /> : (filteredList?.length ?? 0) > 0 ? (
+      {isPluginListLoading && <Loading type='app' />}
+      {!isPluginListLoading && (filteredList?.length ?? 0) > 0 ? (
         <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
           <div className='w-full'>
             <List pluginList={filteredList || []} />

@@ -39,6 +39,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
+import DeprecationNotice from './deprecation-notice'
 
 const i18nPrefix = 'plugin.action'
 
@@ -70,6 +71,9 @@ const DetailHeader = ({
     latest_version,
     meta,
     plugin_id,
+    status,
+    deprecated_reason,
+    alternative_plugin_id,
   } = detail
   const { author, category, name, label, description, icon, verified, tool } = detail.declaration
   const isTool = category === PluginType.tool
@@ -272,6 +276,12 @@ const DetailHeader = ({
           </ActionButton>
         </div>
       </div>
+      <DeprecationNotice
+        status={status}
+        deprecatedReason={deprecated_reason}
+        alternativePluginId={alternative_plugin_id}
+        className='mb-2 mt-1'
+      />
       <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
         category === PluginType.tool && (
