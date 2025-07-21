@@ -127,13 +127,13 @@ class DatasourceNode(BaseNode):
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
                     datasource_provider_service = DatasourceProviderService()
-                    credentials = datasource_provider_service.get_real_datasource_credentials(
+                    credentials = datasource_provider_service.get_default_credentials(
                         tenant_id=self.tenant_id,
                         provider=node_data.provider_name,
                         plugin_id=node_data.plugin_id,
                     )
                     if credentials:
-                        datasource_runtime.runtime.credentials = credentials[0].get("credentials")
+                        datasource_runtime.runtime.credentials = credentials
                     online_document_result: Generator[DatasourceMessage, None, None] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=self.user_id,
@@ -159,7 +159,7 @@ class DatasourceNode(BaseNode):
                         plugin_id=node_data.plugin_id,
                     )
                     if credentials:
-                        datasource_runtime.runtime.credentials = credentials[0].get("credentials")
+                        datasource_runtime.runtime.credentials = credentials
                     online_drive_result: Generator[DatasourceMessage, None, None] = (
                         datasource_runtime.online_drive_download_file(
                             user_id=self.user_id,

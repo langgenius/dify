@@ -205,6 +205,7 @@ class DatasourceAuthListApi(Resource):
         )
         return {"result": jsonable_encoder(datasources)}, 200
 
+
 class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
     @login_required
@@ -226,6 +227,48 @@ class DatasourceAuthOauthCustomClient(Resource):
             enabled=args.get("enabled", False),
         )
         return {"result": "success"}, 200
+
+
+class DatasourceAuthDefaultApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider_id: str):
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        datasource_provider_id = DatasourceProviderID(provider_id)
+        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service.set_default_datasource_provider(
+            tenant_id=current_user.current_tenant_id,
+            datasource_provider_id=datasource_provider_id,
+            credential_id=args["credential_id"],
+        )
+        return {"result": "success"}, 200
+
+class DatasourceUpdateProviderNameApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider_id: str):
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        datasource_provider_id = DatasourceProviderID(provider_id)
+        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service.update_datasource_provider_name(
+            tenant_id=current_user.current_tenant_id,
+            datasource_provider_id=datasource_provider_id,
+            name=args["name"],
+            credential_id=args["credential_id"],
+        )
+        return {"result": "success"}, 200
+
 
 api.add_resource(
     DatasourcePluginOAuthAuthorizationUrl,
@@ -253,4 +296,14 @@ api.add_resource(
 api.add_resource(
     DatasourceAuthOauthCustomClient,
     "/auth/plugin/datasource/<path:provider_id>/custom-client",
+)
+
+api.add_resource(
+    DatasourceAuthDefaultApi,
+    "/auth/plugin/datasource/<path:provider_id>/default",
+)
+
+api.add_resource(
+    DatasourceUpdateProviderNameApi,
+    "/auth/plugin/datasource/<path:provider_id>/update-name",
 )
