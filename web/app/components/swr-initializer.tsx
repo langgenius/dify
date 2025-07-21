@@ -10,12 +10,12 @@ import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from '@/app/education-apply/constants'
 
-type SwrInitorProps = {
+type SwrInitializerProps = {
   children: ReactNode
 }
-const SwrInitor = ({
+const SwrInitializer = ({
   children,
-}: SwrInitorProps) => {
+}: SwrInitializerProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
@@ -86,4 +86,4 @@ const SwrInitor = ({
     : null
 }
 
-export default SwrInitor
+export default SwrInitializer
