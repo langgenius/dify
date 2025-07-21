@@ -8,6 +8,7 @@ from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.graph_engine.command_source import CommandParams, CommandTypes, ContinueCommand, SuspendCommand
 from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
     GraphRunFailedEvent,
@@ -23,8 +24,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
-from core.workflow.graph_engine.execution_decision import DecisionParams
-from core.workflow.graph_engine.graph_engine import ExecutionDecision, GraphEngine
+from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
@@ -1065,19 +1065,19 @@ def test_suspend_and_resume():
 
     _IF_ELSE_NODE_ID = "1753041730748"
 
-    def exec_decision_hook(params: DecisionParams) -> ExecutionDecision:
+    def command_source(params: CommandParams) -> CommandTypes:
         # requires the engine to suspend before the execution
         # of If-Else node.
-        if params.next_node_instance.node_id == _IF_ELSE_NODE_ID:
-            return ExecutionDecision.SUSPEND
+        if params.next_node.node_id == _IF_ELSE_NODE_ID:
+            return SuspendCommand()
         else:
-            return ExecutionDecision.CONTINUE
+            return ContinueCommand()
 
     graph_engine = GraphEngine(
         graph=graph,
         graph_runtime_state=graph_runtime_state,
         graph_init_params=graph_init_params,
-        execution_decision_hook=exec_decision_hook,
+        command_source=command_source,
     )
     events = list(graph_engine.run())
     last_event = events[-1]

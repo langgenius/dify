@@ -57,7 +57,7 @@ from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
 from models.workflow import WorkflowType
 
-from .execution_decision import DecisionParams, ExecutionDecision, ExecutionDecisionHook
+from .command_source import Command, CommandParams, CommandSource, ContinueCommand, StopCommand, SuspendCommand
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +89,8 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
 
-def _default_hook(params: DecisionParams) -> ExecutionDecision:
-    return ExecutionDecision.CONTINUE
+def _default_source(params: CommandParams) -> Command:
+    return ContinueCommand()
 
 
 class GraphEngine:
@@ -102,7 +102,7 @@ class GraphEngine:
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
         thread_pool_id: Optional[str] = None,
-        execution_decision_hook: ExecutionDecisionHook = _default_hook,
+        command_source: CommandSource = _default_source,
     ) -> None:
         """Create a graph from the given state.
 
@@ -132,7 +132,7 @@ class GraphEngine:
 
         self.graph_runtime_state = graph_runtime_state
 
-        self._exec_decision_hook = execution_decision_hook
+        self._command_source = command_source
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event
@@ -279,15 +279,15 @@ class GraphEngine:
             #
             # Note: Suspension is not allowed while the graph engine is running in parallel mode.
             if in_parallel_id is None:
-                hook_result = self._exec_decision_hook(DecisionParams(next_node_instance=node))
-                if hook_result == ExecutionDecision.SUSPEND:
+                command = self._command_source(CommandParams(next_node=node))
+                if isinstance(command, SuspendCommand):
                     self.graph_runtime_state.record_suspend_state(next_node_id)
                     yield GraphRunSuspendedEvent(next_node_id=next_node_id)
                     return
-                elif hook_result == ExecutionDecision.STOP:
+                elif isinstance(command, StopCommand):
                     # TODO: STOP the execution of worklow.
                     return
-                elif hook_result == ExecutionDecision.CONTINUE:
+                elif isinstance(command, ContinueCommand):
                     pass
                 else:
                     raise AssertionError("unreachable statement.")
@@ -955,7 +955,7 @@ class GraphEngine:
         cls,
         state: str,
         graph: Graph,
-        execution_decision_hook: ExecutionDecisionHook = _default_hook,
+        command_source: CommandSource = _default_source,
     ) -> "GraphEngine":
         """`resume` continues a suspended execution."""
         state_ = _GraphEngineState.model_validate_json(state)
@@ -963,7 +963,7 @@ class GraphEngine:
             graph=graph,
             graph_init_params=state_.init_params,
             graph_runtime_state=state_.graph_runtime_state,
-            execution_decision_hook=execution_decision_hook,
+            command_source=command_source,
         )
 
 
