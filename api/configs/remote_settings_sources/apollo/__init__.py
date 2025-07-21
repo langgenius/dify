@@ -35,18 +35,32 @@ class ApolloSettingsSourceInfo(BaseSettings):
         default=None,
     )
 
+    APOLLO_NAMESPACES: Optional[str] = Field(
+        description="apollo namespaces",
+        default=None,
+    )
+
+    APOLLO_HOT_UPDATE: Optional[bool] = Field(
+        description="apollo hot update",
+        default=False,
+    )
 
 class ApolloSettingsSource(RemoteSettingsSource):
-    def __init__(self, configs: Mapping[str, Any]):
+    def __init__(self, configs: Mapping[str, Any], change_listener=None):
+        configs = {k:configs[k] for k in ApolloSettingsSourceInfo.model_fields if k in configs}
+        config = ApolloSettingsSourceInfo.model_validate(configs)
+        self.namespaces = (config.APOLLO_NAMESPACES or config.APOLLO_NAMESPACE or '').strip().split(",")
         self.client = ApolloClient(
-            app_id=configs["APOLLO_APP_ID"],
-            cluster=configs["APOLLO_CLUSTER"],
-            config_url=configs["APOLLO_CONFIG_URL"],
-            start_hot_update=False,
-            _notification_map={configs["APOLLO_NAMESPACE"]: -1},
+            app_id=config.APOLLO_APP_ID,
+            cluster=config.APOLLO_CLUSTER,
+            config_url=config.APOLLO_CONFIG_URL,
+            start_hot_update=config.APOLLO_HOT_UPDATE,
+            _notification_map=dict.fromkeys(self.namespaces, -1),
+            change_listener=change_listener,
         )
-        self.namespace = configs["APOLLO_NAMESPACE"]
-        self.remote_configs = self.client.get_all_dicts(self.namespace)
+        self.remote_configs = {}
+        for ns in self.namespaces:
+            self.remote_configs.update(self.client.get_all_dicts(ns))
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         if not isinstance(self.remote_configs, dict):
