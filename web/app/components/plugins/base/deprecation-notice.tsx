@@ -3,14 +3,16 @@ import type { FC } from 'react'
 import Link from 'next/link'
 import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
-import { Trans, useTranslation } from 'react-i18next'
+import { Trans } from 'react-i18next'
 import { snakeCase2CamelCase } from '@/utils/format'
+import { useMixedTranslation } from '../marketplace/hooks'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
   deprecatedReason: string
   alternativePluginId: string
-  urlPrefix: string
+  alternativePluginURL: string
+  locale?: string
   className?: string
   innerWrapperClassName?: string
   iconWrapperClassName?: string
@@ -23,13 +25,14 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
   deprecatedReason,
   alternativePluginId,
-  urlPrefix,
+  alternativePluginURL,
+  locale,
   className,
   innerWrapperClassName,
   iconWrapperClassName,
   textClassName,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason) return ''
@@ -57,7 +60,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                 components={{
                   CustomLink: (
                     <Link
-                      href={`${urlPrefix}/plugins/${alternativePluginId}`}
+                      href={alternativePluginURL}
                       target='_blank'
                       rel='noopener noreferrer'
                       className='underline'

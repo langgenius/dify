@@ -29,11 +29,11 @@ import Toast from '@/app/components/base/toast'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
-import { useGetLanguage } from '@/context/i18n'
+import { useGetLanguage, useI18N } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
@@ -57,6 +57,7 @@ const DetailHeader = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useGetLanguage()
+  const { locale: currentLocale } = useI18N()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
@@ -102,7 +103,7 @@ const DetailHeader = ({
     if (isFromGitHub)
       return `https://github.com/${meta!.repo}`
     if (isFromMarketplace)
-      return getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })
+      return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: currentLocale, theme })
     return ''
   }, [author, isFromGitHub, isFromMarketplace, meta, name, theme])
 
@@ -276,13 +277,15 @@ const DetailHeader = ({
           </ActionButton>
         </div>
       </div>
-      <DeprecationNotice
-        status={status}
-        deprecatedReason={deprecated_reason}
-        alternativePluginId={alternative_plugin_id}
-        urlPrefix={MARKETPLACE_URL_PREFIX}
-        className='mt-3'
-      />
+      {isFromMarketplace && (
+        <DeprecationNotice
+          status={status}
+          deprecatedReason={deprecated_reason}
+          alternativePluginId={alternative_plugin_id}
+          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, { language: currentLocale, theme })}
+          className='mt-3'
+        />
+      )}
       <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
         category === PluginType.tool && (
