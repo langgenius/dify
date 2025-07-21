@@ -62,13 +62,13 @@ const PluginItem: FC<Props> = ({
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
 
-  const { langeniusVersionInfo } = useAppContext()
+  const { langGeniusVersionInfo } = useAppContext()
 
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langeniusVersionInfo.current_version)
+    if (!langGeniusVersionInfo.current_version)
       return true
-    return gte(langeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
-  }, [declarationMeta.minimum_dify_version, langeniusVersionInfo.current_version])
+    return gte(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+  }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
 
   const handleDelete = () => {
     refreshPluginList({ category } as any)

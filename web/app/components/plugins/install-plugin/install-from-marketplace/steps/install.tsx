@@ -59,7 +59,6 @@ const Installed: FC<Props> = ({
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInstalled])
 
   const handleCancel = () => {
@@ -120,12 +119,12 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const { langeniusVersionInfo } = useAppContext()
+  const { langGeniusVersionInfo } = useAppContext()
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langeniusVersionInfo.current_version) return true
-    return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
-  }, [langeniusVersionInfo.current_version, pluginDeclaration])
+    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    return gte(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
+  }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 
   const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
   return (
