@@ -59,8 +59,8 @@ class Dataset(Base):
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model: Mapped[Optional[str]] = mapped_column(db.String(255))
-    embedding_model_provider: Mapped[Optional[str]] = mapped_column(db.String(255))
+    embedding_model = db.Column(db.String(255), nullable=True) # TODO: mapped_column
+    embedding_model_provider = db.Column(db.String(255), nullable=True) # TODO: mapped_column
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
