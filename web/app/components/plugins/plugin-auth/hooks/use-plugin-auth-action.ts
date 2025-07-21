@@ -37,6 +37,7 @@ export const usePluginAuthAction = (
     doingActionRef.current = doing
     setDoingAction(doing)
   }, [])
+  const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current)
       return
@@ -54,12 +55,12 @@ export const usePluginAuthAction = (
       onUpdate?.()
       setDeleteCredentialId(null)
       pendingOperationCredentialId.current = null
+      setEditValues(null)
     }
     finally {
       handleSetDoingAction(false)
     }
   }, [deletePluginCredential, onUpdate, notify, t, handleSetDoingAction])
-  const [editValues, setEditValues] = useState<Record<string, any> | null>(null)
   const handleEdit = useCallback((id: string, values: Record<string, any>) => {
     pendingOperationCredentialId.current = id
     setEditValues(values)

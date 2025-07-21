@@ -86,6 +86,7 @@ const Item = ({
       <Operator
         credentialItem={credentialItem}
         onAction={onAction}
+        onRename={() => setRenaming(true)}
       />
     </div>
   )
