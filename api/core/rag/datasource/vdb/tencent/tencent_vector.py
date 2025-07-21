@@ -206,9 +206,21 @@ class TencentVector(BaseVector):
     def delete_by_ids(self, ids: list[str]) -> None:
         if not ids:
             return
-        self._client.delete(
-            database_name=self._client_config.database, collection_name=self.collection_name, document_ids=ids
-        )
+        
+        total_count = len(ids)
+        batch_size = self._client_config.max_upsert_batch_size
+        batch = math.ceil(total_count / batch_size)
+        
+        for j in range(batch):
+            start_idx = j * batch_size
+            end_idx = min(total_count, (j + 1) * batch_size)
+            batch_ids = ids[start_idx:end_idx]
+            
+            self._client.delete(
+                database_name=self._client_config.database, 
+                collection_name=self.collection_name, 
+                document_ids=batch_ids
+            )
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         self._client.delete(
