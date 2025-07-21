@@ -1068,15 +1068,6 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def dissolve_tenant(tenant: Tenant, operator: Account) -> None:
-        """Dissolve tenant"""
-        TenantService.check_member_permission(tenant, operator, None, "remove")
-
-        db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
-        db.session.delete(tenant)
-        db.session.commit()
-
-    @staticmethod
     def get_custom_config(tenant_id: str) -> dict:
         tenant = db.get_or_404(Tenant, tenant_id)
 
