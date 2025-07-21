@@ -70,20 +70,24 @@ const PluginsPanel = () => {
         />
       </div>
       {isPluginListLoading && <Loading type='app' />}
-      {!isPluginListLoading && (filteredList?.length ?? 0) > 0 ? (
-        <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
-          <div className='w-full'>
-            <List pluginList={filteredList || []} />
-          </div>
-          {!isLastPage && !isFetching && (
-            <Button onClick={loadNextPage}>
-              {t('workflow.common.loadMore')}
-            </Button>
+      {!isPluginListLoading && (
+        <>
+          {(filteredList?.length ?? 0) > 0 ? (
+            <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
+              <div className='w-full'>
+                <List pluginList={filteredList || []} />
+              </div>
+              {!isLastPage && !isFetching && (
+                <Button onClick={loadNextPage}>
+                  {t('workflow.common.loadMore')}
+                </Button>
+              )}
+              {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
+            </div>
+          ) : (
+            <Empty />
           )}
-          {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
-        </div>
-      ) : (
-        <Empty />
+        </>
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}
