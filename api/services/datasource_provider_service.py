@@ -10,7 +10,6 @@ from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import CredentialType
