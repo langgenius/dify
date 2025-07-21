@@ -187,6 +187,9 @@ class PluginOAuthCredentialsResponse(BaseModel):
     )
     expires_at: int | None = Field(description="The expires at time of the credentials. UTC timestamp.")
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
+    expires_at: int = Field(
+        default=-1, description="The timestamp of the credentials expires at, -1 means never expires."
+    )
 
 
 class PluginListResponse(BaseModel):

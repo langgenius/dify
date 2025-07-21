@@ -213,8 +213,8 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credentials: dict,
+        expires_at: int = -1,
         name: str | None = None,
-        expires_at: int | None = None,
     ):
         """
         add builtin tool provider
