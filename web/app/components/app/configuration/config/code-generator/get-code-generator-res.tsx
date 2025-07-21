@@ -1,12 +1,10 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
-import cn from 'classnames'
 import useBoolean from 'ahooks/lib/useBoolean'
 import { useTranslation } from 'react-i18next'
-import ConfigPrompt from '../../config-prompt'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
-import { generateRuleCode } from '@/service/debug'
-import type { CodeGenRes } from '@/service/debug'
+import { generateRule } from '@/service/debug'
+import type { GenRes } from '@/service/debug'
 import type { ModelModeType } from '@/types/app'
 import type { AppType, CompletionParams, Model } from '@/types/app'
 import Modal from '@/app/components/base/modal'
@@ -23,21 +21,26 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import IdeaOutput from '../automatic/idea-output'
 import { GeneratorType } from '../automatic/types'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
+import useGenData from '../automatic/use-gen-data'
+import Result from '../automatic/result'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
-  // flowId: string
+  flowId: string
   nodeId: string
+  currentCode?: string
   mode: AppType
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
-  onFinished: (res: CodeGenRes) => void
+  onFinished: (res: GenRes) => void
 }
 
 export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   {
+    flowId,
     nodeId,
+    currentCode,
     mode,
     isShow,
     codeLanguages,
@@ -71,7 +74,19 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [ideaOutput, setIdeaOutput] = useState<string>('Write comment in Janpanese')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const [res, setRes] = useState<CodeGenRes | null>(null)
+  const storageKey = `${flowId}-${nodeId}}`
+  const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
+    storageKey,
+  })
+
+  // useEffect(() => {
+  //   if (!versions?.length) {
+  //     addVersion({
+  //       modified: `def main(num1: float, num2: float) -> dict:
+  //   return {'result': num1 + num2}`,
+  //     })
+  //   }
+  // }, [])
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -106,7 +121,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
   }, [model, setModel])
 
-  const isInLLMNode = true
   const onGenerate = async () => {
     if (!isValid())
       return
@@ -114,25 +128,35 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       return
     setLoadingTrue()
     try {
-      const { error, ...res } = await generateRuleCode({
+      const { error, ...res } = await generateRule({
+        flow_id: flowId,
+        node_id: nodeId,
+        current: currentCode,
         instruction,
         model_config: model,
-        no_variable: !!isInLLMNode,
-        code_language: languageMap[codeLanguages] || 'javascript',
+        idea_output: ideaOutput,
+        language: languageMap[codeLanguages] || 'javascript',
       })
-      setRes(res)
+
       if (error) {
         Toast.notify({
           type: 'error',
           message: error,
         })
       }
+ else {
+        addVersion(res)
+      }
     }
     finally {
       setLoadingFalse()
     }
   }
-  const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
+
+  const [isShowConfirmOverwrite, {
+    setTrue: showConfirmOverwrite,
+    setFalse: hideShowConfirmOverwrite,
+  }] = useBoolean(false)
 
   useEffect(() => {
     if (defaultModel) {
@@ -179,11 +203,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       isShow={isShow}
       onClose={onClose}
       className='min-w-[1140px] !p-0'
-      closable
     >
       <div className='relative flex h-[680px] flex-wrap'>
-        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-8'>
-          <div className='mb-8'>
+        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
+          <div className='mb-4'>
             <div className={'text-lg font-bold leading-[28px] text-text-primary'}>{t('appDebug.codegen.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.codegen.description')}</div>
           </div>
@@ -203,13 +226,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className='text-[0px]'>
-              <div className='mb-2 text-sm font-medium leading-5 text-text-primary'>{t('appDebug.codegen.instruction')}</div>
-              {/* <Textarea
-                className="h-[200px] resize-none"
-                placeholder={t('appDebug.codegen.instructionPlaceholder') || ''}
-                value={instruction}
-                onChange={e => setInstruction(e.target.value)}
-              /> */}
+              <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.codegen.instruction')}</div>
               <InstructionEditor
                 value={instruction}
                 onChange={setInstruction}
@@ -237,61 +254,30 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
         </div>
         {isLoading && renderLoading}
-        {!isLoading && !res && renderNoData}
-        {(!isLoading && res) && (
-          <div className='h-full w-0 grow p-6 pb-0'>
-            <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.codegen.resTitle')}</div>
-            <div className={cn('max-h-[555px] overflow-y-auto', !isInLLMNode && 'pb-2')}>
-              <ConfigPrompt
-                mode={mode}
-                promptTemplate={res?.code || ''}
-                promptVariables={[]}
-                readonly
-                noTitle={isInLLMNode}
-                gradientBorder
-                editorHeight={isInLLMNode ? 524 : 0}
-                noResize={isInLLMNode}
-              />
-              {!isInLLMNode && (
-                <>
-                  {res?.code && (
-                    <div className='mt-4'>
-                      <h3 className='mb-2 text-sm font-medium text-text-primary'>{t('appDebug.codegen.generatedCode')}</h3>
-                      <pre className='overflow-x-auto rounded-lg bg-gray-50 p-4'>
-                        <code className={`language-${res.language}`}>
-                          {res.code}
-                        </code>
-                      </pre>
-                    </div>
-                  )}
-                  {res?.error && (
-                    <div className='mt-4 rounded-lg bg-red-50 p-4'>
-                      <p className='text-sm text-red-600'>{res.error}</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className='flex justify-end bg-background-default py-4'>
-              <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='ml-2' onClick={() => {
-                setShowConfirmOverwrite(true)
-              }}>{t('appDebug.codegen.apply')}</Button>
-            </div>
-          </div>
-        )}
+        {!isLoading && !current && renderNoData}
+        {/* {(!isLoading && res) && ( */}
+        <div className='h-full w-0 grow p-6 pb-0'>
+          <Result
+            current={current!}
+            currentVersionIndex={currentVersionIndex || 0}
+            setCurrentVersionIndex={setCurrentVersionIndex}
+            versions={versions || []}
+            onApply={showConfirmOverwrite}
+            generatorType={GeneratorType.prompt}
+          />
+        </div>
+        {/* )} */}
       </div>
-      {showConfirmOverwrite && (
+      {isShowConfirmOverwrite && (
         <Confirm
           title={t('appDebug.codegen.overwriteConfirmTitle')}
           content={t('appDebug.codegen.overwriteConfirmMessage')}
-          isShow={showConfirmOverwrite}
+          isShow
           onConfirm={() => {
-            setShowConfirmOverwrite(false)
-            onFinished(res!)
+            hideShowConfirmOverwrite()
+            onFinished(current!)
           }}
-          onCancel={() => setShowConfirmOverwrite(false)}
+          onCancel={hideShowConfirmOverwrite}
         />
       )}
     </Modal>

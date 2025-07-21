@@ -94,6 +94,7 @@ const Base: FC<Props> = ({
                 <CodeGeneratorButton
                   onGenerated={onGenerated}
                   codeLanguages={codeLanguages}
+                  currentCode={value}
                   nodeId={nodeId!}
                 />
               </div>

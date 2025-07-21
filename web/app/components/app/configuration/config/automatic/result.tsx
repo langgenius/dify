@@ -55,8 +55,8 @@ const Result: FC<Props> = ({
         </div>
       </div>
       {
-        isGeneratorPrompt && (
-          <PromptToast className='mt-4' />
+        current?.message && (
+          <PromptToast message={current.message} className='mt-4' />
         )
       }
       <div className='mt-3'>{current?.modified}</div>

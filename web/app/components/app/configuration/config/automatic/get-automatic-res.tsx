@@ -229,17 +229,19 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     setLoadingTrue()
     try {
       let apiRes: GenRes
+      let hasError = false
       if (isBasicMode && !currentPrompt) {
         const { error, ...res } = await generateBasicAppFistTimeRule({
           instruction,
           model_config: model,
-          no_varieable: false,
+          no_variable: false,
         })
         apiRes = {
           ...res,
           modified: res.prompt,
         } as GenRes
         if (error) {
+          hasError = true
           Toast.notify({
             type: 'error',
             message: error,
@@ -257,13 +259,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         })
         apiRes = res
         if (error) {
+          hasError = true
           Toast.notify({
             type: 'error',
             message: error,
           })
         }
       }
-      addVersion(apiRes)
+      if (!hasError)
+        addVersion(apiRes)
     }
     finally {
       setLoadingFalse()

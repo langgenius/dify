@@ -33,7 +33,6 @@ const InstructionEditorInWorkflow: FC<Props> = ({
   })
   const getVarType = useWorkflowVariableType()
 
-  console.log(availableVars)
   return (
     <InstructionEditor
       value={value}

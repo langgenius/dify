@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import type {
   EditorState,
 } from 'lexical'
@@ -85,7 +85,7 @@ export type PromptEditorProps = {
   compact?: boolean
   wrapperClassName?: string
   className?: string
-  placeholder?: string | JSX.Element
+  placeholder?: string | React.JSX.Element
   placeholderClassName?: string
   style?: React.CSSProperties
   value?: string
