@@ -71,22 +71,13 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const [instruction, setInstruction] = useState<string>('')
-  const [ideaOutput, setIdeaOutput] = useState<string>('Write comment in Janpanese')
+  const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
   const storageKey = `${flowId}-${nodeId}}`
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })
-
-  // useEffect(() => {
-  //   if (!versions?.length) {
-  //     addVersion({
-  //       modified: `def main(num1: float, num2: float) -> dict:
-  //   return {'result': num1 + num2}`,
-  //     })
-  //   }
-  // }, [])
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -144,7 +135,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           message: error,
         })
       }
- else {
+      else {
         addVersion(res)
       }
     }
@@ -247,7 +238,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='h-4 w-4 ' />
+                <Generator className='h-4 w-4' />
                 <span className='text-xs font-semibold '>{t('appDebug.codegen.generate')}</span>
               </Button>
             </div>
@@ -255,18 +246,18 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         </div>
         {isLoading && renderLoading}
         {!isLoading && !current && renderNoData}
-        {/* {(!isLoading && res) && ( */}
-        <div className='h-full w-0 grow p-6 pb-0'>
-          <Result
-            current={current!}
-            currentVersionIndex={currentVersionIndex || 0}
-            setCurrentVersionIndex={setCurrentVersionIndex}
-            versions={versions || []}
-            onApply={showConfirmOverwrite}
-            generatorType={GeneratorType.prompt}
-          />
-        </div>
-        {/* )} */}
+        {(!isLoading && current) && (
+          <div className='h-full w-0 grow p-6 pb-0'>
+            <Result
+              current={current!}
+              currentVersionIndex={currentVersionIndex || 0}
+              setCurrentVersionIndex={setCurrentVersionIndex}
+              versions={versions || []}
+              onApply={showConfirmOverwrite}
+              generatorType={GeneratorType.prompt}
+            />
+          </div>
+        )}
       </div>
       {isShowConfirmOverwrite && (
         <Confirm

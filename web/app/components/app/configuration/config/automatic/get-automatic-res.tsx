@@ -131,8 +131,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instruction, setInstruction] = useState<string>('The travel plan to Anshun of Guizhou Province in China') // TODO: test value
-  const [ideaOutput, setIdeaOutput] = useState<string>('use json format to output the result. Content in result uses Chinese. Format: {"summary: "summary content", "result": "result content"}')
+  const [instruction, setInstruction] = useState<string>('')
+  const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
@@ -157,14 +157,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenData({
     storageKey,
   })
-
-  // useEffect(() => {
-  //   // if (!versions.length) {
-  //   addVersion({
-  //     modified: 'ddd',
-  //   })
-  //   // }
-  // }, [])
 
   useEffect(() => {
     if (defaultModel) {
@@ -364,15 +356,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='h-4 w-4 text-white' />
+                <Generator className='h-4 w-4' />
                 <span className='text-xs font-semibold'>{t('appDebug.generate.generate')}</span>
               </Button>
             </div>
           </div>
         </div>
 
-        {/* {(!isLoading && res) && ( */}
-        {
+        {(!isLoading && current) && (
           <div className='h-full w-0 grow p-6 pb-0'>
             <Result
               current={current!}
@@ -383,7 +374,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               generatorType={GeneratorType.prompt}
             />
           </div>
-        }
+        )}
         {isLoading && renderLoading}
         {isShowAutoPromptResPlaceholder() && !renderNoData}
         {isShowConfirmOverwrite && (
