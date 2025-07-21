@@ -16,9 +16,7 @@ from controllers.console.wraps import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.oauth import OAuthHandler
-from extensions.ext_database import db
 from libs.login import login_required
-from models.oauth import DatasourceOauthParamConfig
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
@@ -36,8 +34,9 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         provider_name = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
-        oauth_config = (
-            db.session.query(DatasourceOauthParamConfig).filter_by(provider=provider_name, plugin_id=plugin_id).first()
+        oauth_config = DatasourceProviderService().get_oauth_client(
+            tenant_id=tenant_id,
+            datasource_provider_id=datasource_provider_id,
         )
         if not oauth_config:
             raise ValueError(f"No OAuth Client Config for {provider_id}")
@@ -47,15 +46,13 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
-        oauth_client_params = oauth_config.system_credentials
-
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
             user_id=user.id,
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=oauth_config,
         )
         response = make_response(jsonable_encoder(authorization_url_response))
         response.set_cookie(
