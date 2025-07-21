@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import type { GeneratorType } from './types'
-import type { Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import InstructionEditor from './instruction-editor'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type Props = {
   nodeId: string
@@ -23,9 +24,13 @@ const InstructionEditorInWorkflow: FC<Props> = ({
   onChange,
   generatorType,
 }) => {
-  const filterVar = useCallback((payload: Var) => {
-    return payload.type !== VarType.file && payload.type !== VarType.arrayFile
-  }, [])
+  const workflowStore = useWorkflowStore()
+
+  const filterVar = useCallback((payload: Var, selector: ValueSelector) => {
+    const { nodesWithInspectVars } = workflowStore.getState()
+    const nodeId = selector?.[0]
+    return !!nodesWithInspectVars.find(node => node.nodeId === nodeId) && payload.type !== VarType.file && payload.type !== VarType.arrayFile
+  }, [workflowStore])
   const {
     availableVars,
     availableNodes,
