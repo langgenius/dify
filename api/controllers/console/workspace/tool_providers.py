@@ -712,6 +712,7 @@ class ToolPluginOAuthApi(Resource):
             context_id,
             httponly=True,
             samesite="Lax",
+            secure=dify_config.DEPLOY_ENV != "development",
             max_age=OAuthProxyService.__MAX_AGE__,
         )
         return response
