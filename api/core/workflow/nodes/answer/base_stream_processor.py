@@ -6,14 +6,16 @@ from typing import Optional
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.runtime_route_state import RuntimeRouteState
 
 logger = logging.getLogger(__name__)
 
 
 class StreamProcessor(ABC):
-    def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
+    def __init__(self, graph: Graph, variable_pool: VariablePool, node_run_state: RuntimeRouteState) -> None:
         self.graph = graph
         self.variable_pool = variable_pool
+        self.node_run_state = node_run_state
         self.rest_node_ids = graph.node_ids.copy()
 
     @abstractmethod
@@ -68,9 +70,14 @@ class StreamProcessor(ABC):
                     ):
                         continue
                     unreachable_first_node_ids.append(edge.target_node_id)
-            unreachable_first_node_ids = list(set(unreachable_first_node_ids) - set(reachable_node_ids))
-            for node_id in unreachable_first_node_ids:
-                self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
+
+            # Instead of recursively removing the entire unreachable branch,
+            # which can cause issues with complex join points,
+            # we will only remove the immediate first node of the unreachable branch.
+            # This prevents the removal logic from incorrectly pruning shared paths downstream.
+            for node_id in list(set(unreachable_first_node_ids) - set(reachable_node_ids)):
+                if node_id in self.rest_node_ids:
+                    self.rest_node_ids.remove(node_id)
 
     def _fetch_node_ids_in_reachable_branch(self, node_id: str, branch_identify: Optional[str] = None) -> list[str]:
         if node_id not in self.rest_node_ids:

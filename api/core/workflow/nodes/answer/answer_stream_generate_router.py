@@ -90,6 +90,9 @@ class AnswerStreamGeneratorRouter:
         :return:
         """
         node_data = AnswerNodeData(**config.get("data", {}))
+        # Trim whitespace from the answer template to prevent parsing issues with leading/trailing spaces.
+        if node_data.answer:
+            node_data.answer = node_data.answer.strip()
         return cls.extract_generate_route_from_node_data(node_data)
 
     @classmethod
@@ -145,6 +148,13 @@ class AnswerStreamGeneratorRouter:
         :return:
         """
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
+
+        # If the current node has more than one incoming edge, it's a join point.
+        # We should add it as a dependency and stop tracing up further.
+        if len(reverse_edges) > 1:
+            answer_dependencies[answer_node_id].append(current_node_id)
+            return
+
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
             if source_node_id not in node_id_config_mapping:
