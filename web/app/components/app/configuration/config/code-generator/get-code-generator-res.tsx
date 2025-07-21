@@ -23,6 +23,7 @@ import { GeneratorType } from '../automatic/types'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 import useGenData from '../automatic/use-gen-data'
 import Result from '../automatic/result'
+import ResPlaceholder from '../automatic/res-placeholder'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
@@ -179,15 +180,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className='text-[13px] text-text-tertiary'>{t('appDebug.codegen.loading')}</div>
     </div>
   )
-  const renderNoData = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
-      <Generator className='h-14 w-14 text-text-tertiary' />
-      <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
-        <div>{t('appDebug.codegen.noDataLine1')}</div>
-        <div>{t('appDebug.codegen.noDataLine2')}</div>
-      </div>
-    </div>
-  )
 
   return (
     <Modal
@@ -245,7 +237,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
         </div>
         {isLoading && renderLoading}
-        {!isLoading && !current && renderNoData}
+        {!isLoading && !current && <ResPlaceholder />}
         {(!isLoading && current) && (
           <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
             <Result

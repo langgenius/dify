@@ -36,10 +36,10 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
 import InstructionEditorInBasic from './instruction-editor'
 import { GeneratorType } from './types'
-import Link from 'next/link'
 import Result from './result'
 import useGenData from './use-gen-data'
 import IdeaOutput from './idea-output'
+import ResPlaceholder from './res-placeholder'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
@@ -180,16 +180,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
       <Loading />
       <div className='text-[13px] text-text-tertiary'>{t('appDebug.generate.loading')}</div>
-    </div>
-  )
-
-  const renderNoData = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
-      <Generator className='size-8 text-text-quaternary' />
-      <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
-        <div>{t('appDebug.generate.newNoDataLine1')}</div>
-        <Link className='text-text-accent' href='//todo' target='_blank'>{t('appDebug.generate.newNoDataLine2')}</Link>
-      </div>
     </div>
   )
 
@@ -376,7 +366,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
         )}
         {isLoading && renderLoading}
-        {isShowAutoPromptResPlaceholder() && !renderNoData}
+        {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
         {isShowConfirmOverwrite && (
           <Confirm
             title={t('appDebug.generate.overwriteTitle')}
