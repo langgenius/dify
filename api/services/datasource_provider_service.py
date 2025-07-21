@@ -45,8 +45,6 @@ class DatasourceProviderService:
         datasource_provider = provider_controller.fetch_datasource_provider(
             tenant_id=tenant_id, provider_id=str(datasource_provider_id)
         )
-        if not datasource_provider.declaration.oauth_schema:
-            raise ValueError("Datasource provider oauth schema not found")
         with Session(db.engine) as session:
             tenant_oauth_client_params = (
                 session.query(DatasourceOauthTenantParamConfig)
@@ -69,12 +67,7 @@ class DatasourceProviderService:
                 session.add(tenant_oauth_client_params)
 
             if client_params is not None:
-                client_schema = datasource_provider.declaration.oauth_schema.client_schema
-                encrypter, _ = create_provider_encrypter(
-                    tenant_id=tenant_id,
-                    config=[x.to_basic_provider_config() for x in client_schema],
-                    cache=NoOpProviderCredentialCache(),
-                )
+                encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
                 original_params = (
                     encrypter.decrypt(tenant_oauth_client_params.client_params) if tenant_oauth_client_params else {}
                 )
