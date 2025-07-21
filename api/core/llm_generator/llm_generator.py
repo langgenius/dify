@@ -504,7 +504,7 @@ class LLMGenerator:
         tenant_id: str,
         model_config: dict,
         last_run: dict | None,
-        current: str,
+        current: str | None,
         error_message: str | None,
         instruction: str,
         node_type: str,
@@ -517,7 +517,7 @@ class LLMGenerator:
         if LAST_RUN in injected_instruction:
             injected_instruction = injected_instruction.replace(LAST_RUN, json.dumps(last_run))
         if CURRENT in injected_instruction:
-            injected_instruction = injected_instruction.replace(CURRENT, current)
+            injected_instruction = injected_instruction.replace(CURRENT, current or "null")
         if ERROR_MESSAGE in injected_instruction:
             injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
         model_instance = ModelManager().get_model_instance(
