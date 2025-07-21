@@ -94,6 +94,7 @@ export const useGetPluginCredentialSchema = (
   url: string,
 ) => {
   return useQuery({
+    enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-schema', url],
     queryFn: () => get<FormSchema[]>(url),
   })
@@ -119,6 +120,7 @@ export const useGetPluginOAuthClientSchema = (
   url: string,
 ) => {
   return useQuery({
+    enabled: !!url,
     queryKey: [NAME_SPACE, 'oauth-client-schema', url],
     queryFn: () => get<{
       schema: FormSchema[]

@@ -32,6 +32,7 @@ import type {
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { ToolCredential } from '@/app/components/tools/types'
 import type { IconInfo } from '@/models/datasets'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
 
@@ -178,6 +179,10 @@ export const useDataSourceList = (enabled: boolean, onSuccess?: (v: DataSourceIt
     },
     retry: false,
   })
+}
+
+export const useInvalidDataSourceList = () => {
+  return useInvalid([NAME_SPACE, 'datasource'])
 }
 
 export const publishedPipelineInfoQueryKeyPrefix = [NAME_SPACE, 'published-pipeline']

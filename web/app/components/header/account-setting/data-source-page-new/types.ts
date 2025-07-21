@@ -1,6 +1,12 @@
+import type {
+  FormSchema,
+  TypeWithI18N,
+} from '@/app/components/base/form/types'
+import type { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+
 export type DataSourceCredential = {
   credential: Record<string, any>
-  type: string
+  type: CredentialTypeEnum
   name: string
   id: string
 }
@@ -9,14 +15,18 @@ export type DataSourceAuth = {
   provider: string
   plugin_id: string
   plugin_unique_identifier: string
-  icon: any
+  icon: string
   name: string
-  label: any
-  description: any
-  credential_schema?: any[]
+  label: TypeWithI18N
+  description: TypeWithI18N
+  credential_schema?: FormSchema[]
   oauth_schema?: {
-    client_schema?: any[]
-    credentials_schema?: any[]
+    client_schema?: FormSchema[]
+    credentials_schema?: FormSchema[]
+    is_oauth_custom_client_enabled?: boolean
+    is_system_oauth_params_exists?: boolean
+    oauth_custom_client_params?: Record<string, any>
+    redirect_uri?: string
   }
   credentials_list: DataSourceCredential[]
 }

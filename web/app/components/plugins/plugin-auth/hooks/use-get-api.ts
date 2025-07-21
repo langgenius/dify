@@ -24,6 +24,22 @@ export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayl
     }
   }
 
+  if (category === AuthCategory.datasource) {
+    return {
+      getCredentialInfo: '',
+      setDefaultCredential: `/auth/plugin/datasource/${provider}/default`,
+      getCredentials: `/auth/plugin/datasource/${provider}`,
+      addCredential: `/auth/plugin/datasource/${provider}`,
+      updateCredential: `/auth/plugin/datasource/${provider}/update`,
+      deleteCredential: `/auth/plugin/datasource/${provider}/delete`,
+      getCredentialSchema: () => '',
+      getOauthUrl: `/oauth/plugin/${provider}/datasource/get-authorization-url`,
+      getOauthClientSchema: '',
+      setCustomOauthClient: `/auth/plugin/datasource/${provider}/custom-client`,
+      deleteCustomOAuthClient: `/auth/plugin/datasource/${provider}/custom-client`,
+    }
+  }
+
   return {
     getCredentialInfo: '',
     setDefaultCredential: '',

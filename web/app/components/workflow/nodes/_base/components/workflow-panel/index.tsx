@@ -62,11 +62,15 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { FlowType } from '@/types/common'
 import {
+  AuthorizedInDataSourceNode,
   AuthorizedInNode,
   PluginAuth,
+  PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+import { useModalContext } from '@/context/modal-context'
 
 type BasePanelProps = {
   children: ReactNode
@@ -240,6 +244,11 @@ const BasePanel: FC<BasePanelProps> = ({
   const showPluginAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currCollection?.allow_delete
   }, [currCollection, data.type])
+  const dataSourceList = useStore(s => s.dataSourceList)
+  const currentDataSource = useMemo(() => {
+    if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
+      return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
+  }, [dataSourceList, data.plugin_id, data.type, data.provider_type])
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
       id,
@@ -248,6 +257,10 @@ const BasePanel: FC<BasePanelProps> = ({
       },
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
+  const { setShowAccountSettingModal } = useModalContext()
+  const handleJumpToDataSourcePage = useCallback(() => {
+    setShowAccountSettingModal({ payload: 'data-source' })
+  }, [setShowAccountSettingModal])
 
   if (logParams.showSpecialResultPanel) {
     return (
@@ -413,7 +426,26 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !showPluginAuth && (
+            !!currentDataSource && (
+              <PluginAuthInDataSourceNode
+                onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                isAuthorized={currentDataSource.is_authorized}
+              >
+                <div className='flex items-center justify-between pl-4 pr-3'>
+                  <Tab
+                    value={tabType}
+                    onChange={setTabType}
+                  />
+                  <AuthorizedInDataSourceNode
+                    onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                    authorizationsNum={3}
+                  />
+                </div>
+              </PluginAuthInDataSourceNode>
+            )
+          }
+          {
+            !showPluginAuth && !currentDataSource && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
