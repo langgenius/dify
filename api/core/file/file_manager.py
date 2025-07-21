@@ -47,21 +47,21 @@ def to_prompt_message_content(
 ) -> PromptMessageContentUnionTypes:
     """
     Convert a file to prompt message content.
-    
+
     This function converts files to their appropriate prompt message content types.
-    For supported file types (IMAGE, AUDIO, VIDEO, DOCUMENT), it creates the 
+    For supported file types (IMAGE, AUDIO, VIDEO, DOCUMENT), it creates the
     corresponding message content with proper encoding/URL.
-    
-    For unsupported file types, instead of raising an error, it returns a 
+
+    For unsupported file types, instead of raising an error, it returns a
     TextPromptMessageContent with a descriptive message about the file.
-    
+
     Args:
         f: The file to convert
         image_detail_config: Optional detail configuration for image files
-        
+
     Returns:
         PromptMessageContentUnionTypes: The appropriate message content type
-        
+
     Raises:
         ValueError: If file extension or mime_type is missing
     """
@@ -80,9 +80,7 @@ def to_prompt_message_content(
     # Check if file type is supported
     if f.type not in prompt_class_map:
         # For unsupported file types, return a text description
-        return TextPromptMessageContent(
-            data=f"[Unsupported file type: {f.filename} ({f.type.value})]"
-        )
+        return TextPromptMessageContent(data=f"[Unsupported file type: {f.filename} ({f.type.value})]")
 
     # Process supported file types
     params = {
