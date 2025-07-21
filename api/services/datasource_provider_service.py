@@ -91,7 +91,7 @@ class DatasourceProviderService:
                 .count()
                 > 0
             ):
-                raise ValueError("name is already exists")
+                raise ValueError("Authorization name is already exists")
 
             target_provider.name = name
             session.commit()
@@ -353,7 +353,6 @@ class DatasourceProviderService:
                 )
                 for key, value in credentials.items():
                     if key in provider_credential_secret_variables:
-                        # if send [__HIDDEN__] in secret input, it will be same as original value
                         credentials[key] = encrypter.encrypt_token(tenant_id, value)
 
                 datasource_provider = DatasourceProvider(
@@ -395,7 +394,12 @@ class DatasourceProviderService:
                 )
 
                 # check name is exist
-                if session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, name=db_provider_name).count() > 0:
+                if (
+                    session.query(DatasourceProvider)
+                    .filter_by(tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name, name=db_provider_name)
+                    .count()
+                    > 0
+                ):
                     raise ValueError("Authorization name is already exists")
 
                 try:
@@ -631,36 +635,43 @@ class DatasourceProviderService:
                     .count()
                     > 0
                 ):
-                    raise ValueError("name is already exists")
+                    raise ValueError("Authorization name is already exists")
                 datasource_provider.name = name
 
             # update credentials
             if credentials:
+                secret_variables = self.extract_secret_variables(
+                        tenant_id=tenant_id,
+                        provider_id=f"{plugin_id}/{provider}",
+                        credential_type=CredentialType.of(datasource_provider.auth_type),
+                    )
+                original_credentials = {
+                    key: value if key not in secret_variables else encrypter.decrypt_token(tenant_id, value)
+                    for key, value in datasource_provider.encrypted_credentials.items()
+                }
+                new_credentials = {
+                    key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
+                    for key, value in credentials.items()
+                }
                 try:
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
                         provider=provider,
                         plugin_id=plugin_id,
-                        credentials=credentials,
+                        credentials=new_credentials,
                     )
                 except Exception as e:
                     raise ValueError(f"Failed to validate credentials: {str(e)}")
 
-                original_credentials = datasource_provider.encrypted_credentials
-                for key, value in credentials.items():
-                    if key in self.extract_secret_variables(
-                        tenant_id=tenant_id,
-                        provider_id=f"{plugin_id}/{provider}",
-                        credential_type=CredentialType.of(datasource_provider.auth_type),
-                    ):
-                        if value == HIDDEN_VALUE and key in original_credentials:
-                            original_value = encrypter.encrypt_token(tenant_id, original_credentials[key])
-                            credentials[key] = encrypter.encrypt_token(tenant_id, original_value)
-                        else:
-                            credentials[key] = encrypter.encrypt_token(tenant_id, value)
+                encrypted_credentials = {}
+                for key, value in new_credentials.items():
+                    if key in secret_variables:
+                        encrypted_credentials[key] = encrypter.encrypt_token(tenant_id, value)
+                    else:
+                        encrypted_credentials[key] = value
 
-                datasource_provider.encrypted_credentials = credentials
+                datasource_provider.encrypted_credentials = encrypted_credentials
             session.commit()
 
     def remove_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str) -> None:
