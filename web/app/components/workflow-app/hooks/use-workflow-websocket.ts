@@ -24,16 +24,35 @@ export function useCollaborativeCursors(appId: string) {
     const socket = connectOnlineUserWebSocket(appId)
     socketRef.current = socket
 
-    // Listen for other users' cursor updates
-    socket.on('users_mouse_positions', (positions: Record<string, Cursor>) => {
-      setCursors(positions)
+    // Listen for collaboration updates from other users
+    socket.on('collaboration_update', (update: {
+      type: string
+      userId: string
+      data: any
+      timestamp: number
+    }) => {
+      if (update.type === 'mouseMove') {
+        setCursors(prev => ({
+          ...prev,
+          [update.userId]: {
+            x: update.data.x,
+            y: update.data.y,
+            userId: update.userId,
+          },
+        }))
+      }
+      // if (update.type === 'openPanel') { ... }
     })
 
-    // Mouse move handler with throttle (e.g. 30ms)
+    // Mouse move handler with throttle 300ms
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now()
-      if (now - lastSent.current > 30) {
-        socket.emit('mouse_move', { x: e.clientX, y: e.clientY })
+      if (now - lastSent.current > 300) {
+        socket.emit('collaboration_event', {
+          type: 'mouseMove',
+          data: { x: e.clientX, y: e.clientY },
+          timestamp: now,
+        })
         lastSent.current = now
       }
     }
@@ -41,7 +60,7 @@ export function useCollaborativeCursors(appId: string) {
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
-      socket.off('users_mouse_positions')
+      socket.off('collaboration_update')
       disconnectOnlineUserWebSocket()
     }
   }, [appId])

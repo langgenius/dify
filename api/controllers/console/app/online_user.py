@@ -1,4 +1,5 @@
 import json
+import time
 
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse
@@ -106,3 +107,43 @@ class OnlineUserApi(Resource):
         return {"data": results}
 
 api.add_resource(OnlineUserApi, "/online-users")
+
+
+@ext_socketio.on("collaboration_event")
+def handle_collaboration_event(data):
+    """
+    Handle general collaboration events, include:
+    1. mouseMove
+    2. openPanel
+    
+    """
+    sid = request.sid
+    mapping = redis_client.get(f"ws_sid_map:{sid}")
+    
+    if not mapping:
+        return {"msg": "unauthorized"}, 401
+        
+    mapping_data = json.loads(mapping)
+    workflow_id = mapping_data["workflow_id"]
+    user_id = mapping_data["user_id"]
+    
+    event_type = data.get("type")
+    event_data = data.get("data")
+    timestamp = data.get("timestamp", int(time.time()))
+    
+    if not event_type or not event_data:
+        return {"msg": "invalid event data"}, 400
+    
+    ext_socketio.emit(
+        "collaboration_update",
+        {
+            "type": event_type,
+            "userId": user_id,
+            "data": event_data,
+            "timestamp": timestamp
+        },
+        room=workflow_id,
+        skip_sid=sid
+    )
+    
+    return {"msg": "event_broadcasted"}
