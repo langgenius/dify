@@ -39,6 +39,15 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
     return snakeCase2CamelCase(deprecatedReason)
   }, [deprecatedReason])
 
+  // Check if the deprecatedReasonKey exists in i18n
+  const hasValidDeprecatedReason = useMemo(() => {
+    if (!deprecatedReason || !deprecatedReasonKey) return false
+
+    // Define valid reason keys that exist in i18n
+    const validReasonKeys = ['businessAdjustments', 'ownershipTransferred', 'noMaintainer']
+    return validReasonKeys.includes(deprecatedReasonKey)
+  }, [deprecatedReason, deprecatedReasonKey])
+
   if (status !== 'deleted')
     return null
 
@@ -54,7 +63,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
         </div>
         <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {
-            deprecatedReason && alternativePluginId && (
+            hasValidDeprecatedReason && alternativePluginId && (
               <Trans
                 i18nKey={`${i18nPrefix}.fullMessage`}
                 components={{
@@ -75,14 +84,14 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
             )
           }
           {
-            deprecatedReason && !alternativePluginId && (
+            hasValidDeprecatedReason && !alternativePluginId && (
               <span>
                 {t(`${i18nPrefix}.onlyReason`, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`) })}
               </span>
             )
           }
           {
-            !deprecatedReason && (
+            !hasValidDeprecatedReason && (
               <span>{t(`${i18nPrefix}.noReason`)}</span>
             )
           }
