@@ -166,8 +166,6 @@ const Editor: FC<Props> = ({
                   className='ml-[5px]'
                   onGenerated={onGenerated}
                   modelConfig={modelConfig}
-                  nodesOutputVars={nodesOutputVars}
-                  availableNodes={availableNodes}
                   currentPrompt={value}
                 />
               )}

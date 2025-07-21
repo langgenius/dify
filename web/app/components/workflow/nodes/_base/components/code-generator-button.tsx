@@ -11,12 +11,14 @@ import type { CodeGenRes } from '@/service/debug'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
 
 type Props = {
+  nodeId: string
   className?: string
   onGenerated?: (prompt: string) => void
   codeLanguages: CodeLanguage
 }
 
 const CodeGenerateBtn: FC<Props> = ({
+  nodeId,
   className,
   codeLanguages,
   onGenerated,
@@ -40,6 +42,7 @@ const CodeGenerateBtn: FC<Props> = ({
           codeLanguages={codeLanguages}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
+          nodeId={nodeId}
         />
       )}
     </div>

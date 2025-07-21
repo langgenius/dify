@@ -356,7 +356,7 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('var-search-input-wrapper mx-2 mb-1 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('var-search-input-wrapper mx-2 mb-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 className='var-search-input'
                 showLeftIcon
@@ -406,7 +406,7 @@ const VarReferenceVars: FC<Props> = ({
                     zIndex={zIndex}
                   />
                 ))}
-                {item.isFlat && !filteredVars[i + 1]?.isFlat && (
+                {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
                   <div className='relative mt-[14px] flex  items-center space-x-1'>
                     <div className='h-0 w-3 shrink-0 border border-divider-subtle'></div>
                     <div className='system-2xs-semibold-uppercase text-text-tertiary'>{t('workflow.debug.lastOutput')}</div>

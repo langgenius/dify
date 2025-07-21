@@ -4,32 +4,36 @@ import React from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import type { GeneratorType } from './types'
 import cn from '@/utils/classnames'
-import { useStore } from '@/app/components/workflow/store'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import { useTranslation } from 'react-i18next'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 
 type Props = {
   value: string
   onChange: (text: string) => void
-  nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
   generatorType: GeneratorType
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
+  getVarType?: (params: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => Type
 }
 
 const i18nPrefix = 'appDebug.generate'
 
 const InstructionEditor: FC<Props> = ({
   generatorType,
-  nodesOutputVars = [],
-  availableNodes = [],
   value,
   onChange,
+  availableVars,
+  availableNodes,
+  getVarType = () => Type.string,
 }) => {
   const { t } = useTranslation()
-  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
-  const getVarType = useWorkflowVariableType()
+  const isBasicMode = !!getVarType
+  // const [controlPromptEditorRerenderKey] =
   const isCode = generatorType === 'code'
   const placeholder = (
     <div className='system-sm-regular  text-text-placeholder'>
@@ -46,14 +50,14 @@ const InstructionEditor: FC<Props> = ({
     <div>
       <PromptEditor
         wrapperClassName='border !border-components-input-bg-normal bg-components-input-bg-normal hover:!border-components-input-bg-hover rounded-[10px] px-4 pt-3'
-        key={controlPromptEditorRerenderKey}
+        // key={controlPromptEditorRerenderKey}
         placeholder={placeholder}
         placeholderClassName='px-4 pt-3'
         className={cn('min-h-[240px] ')}
         value={value}
         workflowVariableBlock={{
           show: true,
-          variables: nodesOutputVars,
+          variables: availableVars,
           getVarType,
           workflowNodesMap: availableNodes.reduce((acc, node) => {
             acc[node.id] = {

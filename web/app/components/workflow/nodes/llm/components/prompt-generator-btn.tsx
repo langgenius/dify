@@ -8,8 +8,7 @@ import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { AppType } from '@/types/app'
 import type { GenRes } from '@/service/debug'
-import type { ModelConfig, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import type { ModelConfig } from '@/app/components/workflow/types'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
@@ -17,8 +16,6 @@ type Props = {
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
   nodeId: string
-  nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
   currentPrompt?: string
 }
 
@@ -26,8 +23,6 @@ const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
   nodeId,
-  nodesOutputVars,
-  availableNodes,
   currentPrompt,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -49,9 +44,6 @@ const PromptGeneratorBtn: FC<Props> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
-          generatorType={GeneratorType.prompt}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
           flowId={configsMap?.flowId || ''}
           nodeId={nodeId}
           currentPrompt={currentPrompt}

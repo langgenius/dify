@@ -14,11 +14,9 @@ import {
   RiTranslate,
   RiUser2Line,
 } from '@remixicon/react'
-import cn from 'classnames'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { generateBasicAppFistTimeRule, generateRule } from '@/service/debug'
 import type { CompletionParams, Model } from '@/types/app'
@@ -35,13 +33,13 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelModeType } from '@/types/app'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import InstructionEditor from './instruction-editor'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import type { GeneratorType } from './types'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
+import InstructionEditorInBasic from './instruction-editor'
+import { GeneratorType } from './types'
 import Link from 'next/link'
 import Result from './result'
 import useGenData from './use-gen-data'
+import IdeaOutput from './idea-output'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
@@ -49,9 +47,6 @@ export type IGetAutomaticResProps = {
   isShow: boolean
   onClose: () => void
   onFinished: (res: GenRes) => void
-  nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
-  generatorType: GeneratorType
   flowId?: string
   nodeId?: string
   currentPrompt?: string
@@ -78,9 +73,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   mode,
   isShow,
   onClose,
-  nodesOutputVars,
-  availableNodes,
-  generatorType,
   flowId,
   nodeId,
   currentPrompt,
@@ -141,9 +133,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const [instruction, setInstruction] = useState<string>('The travel plan to Anshun of Guizhou Province in China') // TODO: test value
   const [ideaOutput, setIdeaOutput] = useState<string>('use json format to output the result. Content in result uses Chinese. Format: {"summary: "summary content", "result": "result content"}')
-  const [isFoldIdeaOutput, {
-    toggle: toggleFoldIdeaOutput,
-  }] = useBoolean(true)
 
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
@@ -341,32 +330,27 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='mt-4'>
             <div>
               <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.generate.instruction')}</div>
-              <InstructionEditor
-                value={instruction}
-                onChange={setInstruction}
-                nodesOutputVars={nodesOutputVars}
-                availableNodes={availableNodes}
-                generatorType={generatorType}
-              />
-            </div>
-            <div className='mt-4 text-[0px]'>
-              <div
-                className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
-                onClick={toggleFoldIdeaOutput}
-              >
-                <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.ideaOutput`)}</div>
-                <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
-                <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
-              </div>
-              {!isFoldIdeaOutput && (
-                <Textarea
-                  className="h-[80px]"
-                  placeholder={t(`${i18nPrefix}.ideaOutputPlaceholder`)}
-                  value={ideaOutput}
-                  onChange={e => setIdeaOutput(e.target.value)}
+              {isBasicMode ? (
+                <InstructionEditorInBasic
+                  generatorType={GeneratorType.prompt}
+                  value={instruction}
+                  onChange={setInstruction}
+                  availableVars={[]}
+                  availableNodes={[]}
+                />
+              ) : (
+                <InstructionEditorInWorkflow
+                  generatorType={GeneratorType.prompt}
+                  value={instruction}
+                  onChange={setInstruction}
+                  nodeId={nodeId || ''}
                 />
               )}
             </div>
+            <IdeaOutput
+              value={ideaOutput}
+              onChange={setIdeaOutput}
+            />
 
             <div className='mt-7 flex justify-end space-x-2'>
               <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
@@ -377,7 +361,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 disabled={isLoading}
               >
                 <Generator className='h-4 w-4 text-white' />
-                <span className='text-xs font-semibold text-white'>{t('appDebug.generate.generate')}</span>
+                <span className='text-xs font-semibold'>{t('appDebug.generate.generate')}</span>
               </Button>
             </div>
           </div>
@@ -392,7 +376,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               setCurrentVersionIndex={setCurrentVersionIndex}
               versions={versions || []}
               onApply={showConfirmOverwrite}
-              generatorType={generatorType}
+              generatorType={GeneratorType.prompt}
             />
           </div>
         }

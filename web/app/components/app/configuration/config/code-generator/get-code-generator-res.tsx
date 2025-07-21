@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import cn from 'classnames'
 import useBoolean from 'ahooks/lib/useBoolean'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +10,6 @@ import type { CodeGenRes } from '@/service/debug'
 import type { ModelModeType } from '@/types/app'
 import type { AppType, CompletionParams, Model } from '@/types/app'
 import Modal from '@/app/components/base/modal'
-import Textarea from '@/app/components/base/textarea'
 import Button from '@/app/components/base/button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Toast from '@/app/components/base/toast'
@@ -21,8 +20,14 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import IdeaOutput from '../automatic/idea-output'
+import { GeneratorType } from '../automatic/types'
+import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 
+const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
+  // flowId: string
+  nodeId: string
   mode: AppType
   isShow: boolean
   codeLanguages: CodeLanguage
@@ -32,6 +37,7 @@ export type IGetCodeGeneratorResProps = {
 
 export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   {
+    nodeId,
     mode,
     isShow,
     codeLanguages,
@@ -61,9 +67,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
-  const [instruction, setInstruction] = React.useState<string>('')
+  const [instruction, setInstruction] = useState<string>('')
+  const [ideaOutput, setIdeaOutput] = useState<string>('Write comment in Janpanese')
+
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const [res, setRes] = React.useState<CodeGenRes | null>(null)
+  const [res, setRes] = useState<CodeGenRes | null>(null)
+
   const isValid = () => {
     if (instruction.trim() === '') {
       Toast.notify({
@@ -195,23 +204,34 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <div>
             <div className='text-[0px]'>
               <div className='mb-2 text-sm font-medium leading-5 text-text-primary'>{t('appDebug.codegen.instruction')}</div>
-              <Textarea
+              {/* <Textarea
                 className="h-[200px] resize-none"
                 placeholder={t('appDebug.codegen.instructionPlaceholder') || ''}
                 value={instruction}
                 onChange={e => setInstruction(e.target.value)}
+              /> */}
+              <InstructionEditor
+                value={instruction}
+                onChange={setInstruction}
+                nodeId={nodeId}
+                generatorType={GeneratorType.code}
               />
             </div>
+            <IdeaOutput
+              value={ideaOutput}
+              onChange={setIdeaOutput}
+            />
 
-            <div className='mt-5 flex justify-end'>
+            <div className='mt-7 flex justify-end space-x-2'>
+              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
               <Button
                 className='flex space-x-1'
                 variant='primary'
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='h-4 w-4 text-white' />
-                <span className='text-xs font-semibold text-white'>{t('appDebug.codegen.generate')}</span>
+                <Generator className='h-4 w-4 ' />
+                <span className='text-xs font-semibold '>{t('appDebug.codegen.generate')}</span>
               </Button>
             </div>
           </div>
