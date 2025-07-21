@@ -81,12 +81,13 @@ class DatasourceOAuthCallback(Resource):
 
         user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
         datasource_provider_id = DatasourceProviderID(provider_id)
-        provider_name = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
-        plugin_oauth_config = (
-            db.session.query(DatasourceOauthParamConfig).filter_by(provider=provider_name, plugin_id=plugin_id).first()
+        datasource_provider_service = DatasourceProviderService()
+        oauth_client_params = datasource_provider_service.get_oauth_client(
+            tenant_id=tenant_id,
+            datasource_provider_id=datasource_provider_id,
         )
-        if not plugin_oauth_config:
+        if not oauth_client_params:
             raise NotFound()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
@@ -96,10 +97,9 @@ class DatasourceOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=datasource_provider_id.provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=plugin_oauth_config.system_credentials,
+            system_credentials=oauth_client_params,
             request=request,
         )
-        datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.add_datasource_oauth_provider(
             tenant_id=tenant_id,
             provider_id=datasource_provider_id,
@@ -205,8 +205,28 @@ class DatasourceAuthListApi(Resource):
         )
         return {"result": datasources}, 200
 
+class DatasourceAuthOauthCustomClient(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider_id: str):
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("enabled", type=bool, required=False, nullable=True, location="json")
+        args = parser.parse_args()
+        datasource_provider_id = DatasourceProviderID(provider_id)
+        datasource_provider_service = DatasourceProviderService()
 
-# Import Rag Pipeline
+        datasource_provider_service.setup_oauth_custom_client_params(
+            tenant_id=current_user.current_tenant_id,
+            datasource_provider_id=datasource_provider_id,
+            client_params=args.get("client_params", {}),
+            enabled=args.get("enabled", False),
+        )
+        return {"result": "success"}, 200
+
 api.add_resource(
     DatasourcePluginOAuthAuthorizationUrl,
     "/oauth/plugin/<path:provider_id>/datasource/get-authorization-url",
@@ -228,4 +248,9 @@ api.add_resource(
 api.add_resource(
     DatasourceAuthListApi,
     "/auth/plugin/datasource/list",
+)
+
+api.add_resource(
+    DatasourceAuthOauthCustomClient,
+    "/auth/plugin/datasource/<path:provider_id>/custom-client",
 )
