@@ -43,6 +43,10 @@ class GraphRunPartialSucceededEvent(BaseGraphEvent):
     outputs: Optional[dict[str, Any]] = None
 
 
+class GraphRunSuspendedEvent(BaseGraphEvent):
+    next_node_id: str = Field(..., description="the next node id to execute while resumed.")
+
+
 ###########################################
 # Node Events
 ###########################################
