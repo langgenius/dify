@@ -427,11 +427,11 @@ class DatasourceProviderService:
         )
         credential_form_schemas = []
         if credential_type == "api_key":
-            credential_form_schemas = datasource_provider.declaration.credentials_schema
+            credential_form_schemas = list(datasource_provider.declaration.credentials_schema)
         elif credential_type == "oauth2":
             if not datasource_provider.declaration.oauth_schema:
                 raise ValueError("Datasource provider oauth schema not found")
-            credential_form_schemas = datasource_provider.declaration.oauth_schema.credentials_schema
+            credential_form_schemas = list(datasource_provider.declaration.oauth_schema.credentials_schema)
         else:
             raise ValueError(f"Invalid credential type: {credential_type}")
 
