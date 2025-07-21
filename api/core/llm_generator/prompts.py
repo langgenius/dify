@@ -409,3 +409,11 @@ Both your input and output should be in JSON format.
 
 Your output must strictly follow the schema format, do not output any content outside of the JSON body.
 """  # noqa: E501
+
+INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """
+The output of this prompt is not as expected. You should edit the prompt according to the IDEAL OUTPUT.
+"""  # noqa: E501
+
+INSTRUCTION_GENERATE_TEMPLATE_CODE = """
+Please fix the errors in the error message.
+"""  # noqa: E501

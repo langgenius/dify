@@ -191,8 +191,27 @@ class InstructionGenerateApi(Resource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
 
+class InstructionGenerationTemplateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self) -> dict:
+        parser = reqparse.RequestParser()
+        parser.add_argument("type", type=str, required=True, default=False, location="json")
+        args = parser.parse_args()
+        match args["type"]:
+            case "prompt":
+                from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_PROMPT
+                return { "data": INSTRUCTION_GENERATE_TEMPLATE_PROMPT }
+            case "code":
+                from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_CODE
+                return { "data": INSTRUCTION_GENERATE_TEMPLATE_CODE }
+            case _:
+                raise ValueError(f"Invalid type: {args['type']}")
+
 
 api.add_resource(RuleGenerateApi, "/rule-generate")
 api.add_resource(RuleCodeGenerateApi, "/rule-code-generate")
 api.add_resource(RuleStructuredOutputGenerateApi, "/rule-structured-output-generate")
 api.add_resource(InstructionGenerateApi, "/instruction-generate")
+api.add_resource(InstructionGenerationTemplateApi, "/instruction-generate/template")
