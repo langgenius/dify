@@ -26,14 +26,21 @@ def create_flask_app_with_configs() -> DifyApp:
     return dify_app
 
 
-def create_app() -> DifyApp:
+def create_app() -> tuple[any, DifyApp]:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
+
+    import socketio
+
+    from extensions.ext_socketio import sio
+    sio.app = app
+    socketio_app = socketio.WSGIApp(sio, app)
+
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logging.info(f"Finished create_app ({round((end_time - start_time) * 1000, 2)} ms)")
-    return app
+    return socketio_app, app
 
 
 def initialize_extensions(app: DifyApp):
@@ -57,7 +64,6 @@ def initialize_extensions(app: DifyApp):
         ext_request_logging,
         ext_sentry,
         ext_set_secretkey,
-        ext_socketio,
         ext_storage,
         ext_timezone,
         ext_warnings,
@@ -86,7 +92,6 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_otel,
         ext_request_logging,
-        ext_socketio,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

@@ -33,10 +33,17 @@ else:
         psycogreen.gevent.patch_psycopg()
 
     from app_factory import create_app
-    from extensions.ext_socketio import ext_socketio
 
-    app = create_app()
+    socketio_app, app = create_app()
     celery = app.extensions["celery"]
 
 if __name__ == "__main__":
-    ext_socketio.run(app, host="0.0.0.0", port=5001, debug=True)
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', 5001))
+
+    print(f"Starting server on {host}:{port}")
+    server = pywsgi.WSGIServer((host, port), socketio_app, handler_class=WebSocketHandler)
+    server.serve_forever()
