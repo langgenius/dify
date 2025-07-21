@@ -17,8 +17,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
-from models.model import UploadFile
 from models.dataset import Dataset, Document, DocumentSegment
+from models.model import UploadFile
 from services.vector_service import VectorService
 
 

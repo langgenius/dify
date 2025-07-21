@@ -1,6 +1,5 @@
 import uuid
 
-import pandas as pd
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, reqparse
@@ -14,8 +13,6 @@ from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     InvalidActionError,
-    NoFileUploadedError,
-    TooManyFilesError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
