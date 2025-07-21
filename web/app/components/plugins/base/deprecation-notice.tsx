@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import type { FC } from 'react'
 import Link from 'next/link'
 import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
 import { Trans, useTranslation } from 'react-i18next'
+import { snakeCase2CamelCase } from '@/utils/format'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
@@ -15,6 +16,8 @@ type DeprecationNoticeProps = {
   iconWrapperClassName?: string
   textClassName?: string
 }
+
+const i18nPrefix = 'plugin.detailPanel.deprecation'
 
 const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
@@ -28,7 +31,12 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (status !== 'deleted' || !deprecatedReason)
+  const deprecatedReasonKey = useMemo(() => {
+    if (!deprecatedReason) return ''
+    return snakeCase2CamelCase(deprecatedReason)
+  }, [deprecatedReason])
+
+  if (status !== 'deleted')
     return null
 
   return (
@@ -43,9 +51,9 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
         </div>
         <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {
-            alternativePluginId ? (
+            deprecatedReason && alternativePluginId && (
               <Trans
-                i18nKey={'plugin.detailPanel.deprecation.fullMessage'}
+                i18nKey={`${i18nPrefix}.fullMessage`}
                 components={{
                   CustomLink: (
                     <Link
@@ -57,14 +65,22 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason,
+                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`),
                   alternativePluginId,
                 }}
               />
-            ) : (
+            )
+          }
+          {
+            deprecatedReason && !alternativePluginId && (
               <span>
-                {t('plugin.detailPanel.deprecation.onlyReason', { deprecatedReason })}
+                {t(`${i18nPrefix}.onlyReason`, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`) })}
               </span>
+            )
+          }
+          {
+            !deprecatedReason && (
+              <span>{t(`${i18nPrefix}.noReason`)}</span>
             )
           }
         </div>

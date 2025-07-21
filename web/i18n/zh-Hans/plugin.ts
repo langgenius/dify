@@ -101,8 +101,14 @@ const translation = {
     configureModel: '模型设置',
     configureTool: '工具设置',
     deprecation: {
-      fullMessage: '此插件已被弃用，原因是{{deprecatedReason}}，请使用 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> 替代。',
-      onlyReason: '此插件已被弃用，原因是{{deprecatedReason}}。',
+      fullMessage: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。请使用<CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>替代。',
+      onlyReason: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。',
+      noReason: '此插件已被弃用，将不再发布新版本。',
+      reason: {
+        businessAdjustments: '业务调整',
+        ownershipTransferred: '所有权转移',
+        noMaintainer: '无人维护',
+      },
     },
   },
   install: '{{num}} 次安装',
