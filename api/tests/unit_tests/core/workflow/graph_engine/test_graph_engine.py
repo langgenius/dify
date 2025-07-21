@@ -1,10 +1,10 @@
-import time
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -13,15 +13,18 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunFailedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    GraphRunSuspendedEvent,
     NodeRunFailedEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
-from core.workflow.graph_engine.graph_engine import GraphEngine
+from core.workflow.graph_engine.execution_decision import DecisionParams
+from core.workflow.graph_engine.graph_engine import ExecutionDecision, GraphEngine
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
@@ -904,3 +907,203 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                         assert item.outputs is not None
                         answer = item.outputs["answer"]
                         assert all(rc not in answer for rc in wrong_content)
+
+
+def test_suspend_and_resume():
+    graph_config = {
+        "edges": [
+            {
+                "data": {"isInLoop": False, "sourceType": "start", "targetType": "if-else"},
+                "id": "1753041723554-source-1753041730748-target",
+                "source": "1753041723554",
+                "sourceHandle": "source",
+                "target": "1753041730748",
+                "targetHandle": "target",
+                "type": "custom",
+                "zIndex": 0,
+            },
+            {
+                "data": {"isInLoop": False, "sourceType": "if-else", "targetType": "answer"},
+                "id": "1753041730748-true-answer-target",
+                "source": "1753041730748",
+                "sourceHandle": "true",
+                "target": "answer",
+                "targetHandle": "target",
+                "type": "custom",
+                "zIndex": 0,
+            },
+            {
+                "data": {
+                    "isInIteration": False,
+                    "isInLoop": False,
+                    "sourceType": "if-else",
+                    "targetType": "answer",
+                },
+                "id": "1753041730748-false-1753041952799-target",
+                "source": "1753041730748",
+                "sourceHandle": "false",
+                "target": "1753041952799",
+                "targetHandle": "target",
+                "type": "custom",
+                "zIndex": 0,
+            },
+        ],
+        "nodes": [
+            {
+                "data": {"desc": "", "selected": False, "title": "Start", "type": "start", "variables": []},
+                "height": 54,
+                "id": "1753041723554",
+                "position": {"x": 32, "y": 282},
+                "positionAbsolute": {"x": 32, "y": 282},
+                "selected": False,
+                "sourcePosition": "right",
+                "targetPosition": "left",
+                "type": "custom",
+                "width": 244,
+            },
+            {
+                "data": {
+                    "cases": [
+                        {
+                            "case_id": "true",
+                            "conditions": [
+                                {
+                                    "comparison_operator": "contains",
+                                    "id": "5db4103a-7e62-4e71-a0a6-c45ac11c0b3d",
+                                    "value": "a",
+                                    "varType": "string",
+                                    "variable_selector": ["sys", "query"],
+                                }
+                            ],
+                            "id": "true",
+                            "logical_operator": "and",
+                        }
+                    ],
+                    "desc": "",
+                    "selected": False,
+                    "title": "IF/ELSE",
+                    "type": "if-else",
+                },
+                "height": 126,
+                "id": "1753041730748",
+                "position": {"x": 368, "y": 282},
+                "positionAbsolute": {"x": 368, "y": 282},
+                "selected": False,
+                "sourcePosition": "right",
+                "targetPosition": "left",
+                "type": "custom",
+                "width": 244,
+            },
+            {
+                "data": {
+                    "answer": "A",
+                    "desc": "",
+                    "selected": False,
+                    "title": "Answer A",
+                    "type": "answer",
+                    "variables": [],
+                },
+                "height": 102,
+                "id": "answer",
+                "position": {"x": 746, "y": 282},
+                "positionAbsolute": {"x": 746, "y": 282},
+                "selected": False,
+                "sourcePosition": "right",
+                "targetPosition": "left",
+                "type": "custom",
+                "width": 244,
+            },
+            {
+                "data": {
+                    "answer": "Else",
+                    "desc": "",
+                    "selected": False,
+                    "title": "Answer Else",
+                    "type": "answer",
+                    "variables": [],
+                },
+                "height": 102,
+                "id": "1753041952799",
+                "position": {"x": 746, "y": 426},
+                "positionAbsolute": {"x": 746, "y": 426},
+                "selected": True,
+                "sourcePosition": "right",
+                "targetPosition": "left",
+                "type": "custom",
+                "width": 244,
+            },
+        ],
+        "viewport": {"x": -420, "y": -76.5, "zoom": 1},
+    }
+    graph = Graph.init(graph_config)
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(
+            user_id="aaa",
+            files=[],
+            query="hello",
+            conversation_id="abababa",
+        ),
+        user_inputs={"uid": "takato"},
+    )
+
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+    )
+    graph_init_params = GraphInitParams(
+        tenant_id="111",
+        app_id="222",
+        workflow_type=WorkflowType.CHAT,
+        workflow_id="333",
+        graph_config=graph_config,
+        user_id="444",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        max_execution_steps=500,
+        max_execution_time=1200,
+    )
+
+    _IF_ELSE_NODE_ID = "1753041730748"
+
+    def exec_decision_hook(params: DecisionParams) -> ExecutionDecision:
+        # requires the engine to suspend before the execution
+        # of If-Else node.
+        if params.next_node_instance.node_id == _IF_ELSE_NODE_ID:
+            return ExecutionDecision.SUSPEND
+        else:
+            return ExecutionDecision.CONTINUE
+
+    graph_engine = GraphEngine(
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        graph_init_params=graph_init_params,
+        execution_decision_hook=exec_decision_hook,
+    )
+    events = list(graph_engine.run())
+    last_event = events[-1]
+    assert isinstance(last_event, GraphRunSuspendedEvent)
+    assert last_event.next_node_id == _IF_ELSE_NODE_ID
+    state = graph_engine.save()
+    assert state != ""
+
+    engine2 = GraphEngine.resume(
+        state=state,
+        graph=graph,
+    )
+    events = list(engine2.run())
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+    node_run_succeeded_events = [i for i in events if isinstance(i, NodeRunSucceededEvent)]
+    assert node_run_succeeded_events
+    start_events = [i for i in node_run_succeeded_events if i.node_id == "1753041723554"]
+    assert not start_events
+    ifelse_succeeded_events = [i for i in node_run_succeeded_events if i.node_id == _IF_ELSE_NODE_ID]
+    assert ifelse_succeeded_events
+    answer_else_events = [i for i in node_run_succeeded_events if i.node_id == "1753041952799"]
+    assert answer_else_events
+    assert answer_else_events[0].route_node_state.node_run_result.outputs == {
+        "answer": "Else",
+        "files": ArrayFileSegment(value=[]),
+    }
+
+    answer_a_events = [i for i in node_run_succeeded_events if i.node_id == "answer"]
+    assert not answer_a_events
