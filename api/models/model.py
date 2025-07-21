@@ -907,7 +907,7 @@ class Message(Base):
     message_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = mapped_column(db.Numeric(10, 4), nullable=False)
     message_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
-    answer = db.Column(db.Text, nullable=False)
+    answer: Mapped[str] = db.Column(db.Text, nullable=False)  # TODO make it mapped_column
     answer_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = mapped_column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
