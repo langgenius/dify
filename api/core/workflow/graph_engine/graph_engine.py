@@ -57,7 +57,14 @@ from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
 from models.workflow import WorkflowType
 
-from .command_source import Command, CommandParams, CommandSource, ContinueCommand, StopCommand, SuspendCommand
+from .command_source import (
+    CommandParams,
+    CommandSource,
+    CommandTypes,
+    ContinueCommand,
+    StopCommand,
+    SuspendCommand,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +96,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
 
-def _default_source(params: CommandParams) -> Command:
+def _default_source(_: CommandParams) -> CommandTypes:
     return ContinueCommand()
 
 

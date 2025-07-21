@@ -21,7 +21,9 @@ class _CommandTag(StrEnum):
     CONTINUE = "continue"
 
 
-class Command(BaseModel, abc.ABC):
+# Note: Avoid using the `_Command` class directly.
+# Instead, use `CommandTypes` for type annotations.
+class _Command(BaseModel, abc.ABC):
     model_config = ConfigDict(frozen=True)
 
     tag: _CommandTag
@@ -35,21 +37,21 @@ class Command(BaseModel, abc.ABC):
 
 
 @final
-class StopCommand(Command):
+class StopCommand(_Command):
     tag: _CommandTag = _CommandTag.STOP
 
 
 @final
-class SuspendCommand(Command):
+class SuspendCommand(_Command):
     tag: _CommandTag = _CommandTag.SUSPEND
 
 
 @final
-class ContinueCommand(Command):
+class ContinueCommand(_Command):
     tag: _CommandTag = _CommandTag.CONTINUE
 
 
-def _get_command_tag(command: Command):
+def _get_command_tag(command: _Command):
     return command.tag
 
 
