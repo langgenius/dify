@@ -84,8 +84,8 @@ const translation = {
     advancedShortDescription: 'Flux de lucru îmbunătățit pentru conversații multi-tur',
     advancedUserDescription: 'Flux de lucru cu funcții suplimentare de memorie și interfață de chatbot.',
     noTemplateFoundTip: 'Încercați să căutați folosind cuvinte cheie diferite.',
-    foundResults: '{{număr}} Rezultatele',
-    foundResult: '{{număr}} Rezultat',
+    foundResults: '{{count}} Rezultatele',
+    foundResult: '{{count}} Rezultat',
     noIdeaTip: 'Nicio idee? Consultați șabloanele noastre',
     noAppsFound: 'Nu s-au găsit aplicații',
     workflowShortDescription: 'Flux agentic pentru automatizări inteligente',
@@ -174,6 +174,7 @@ const translation = {
     },
     aliyun: {
       description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
+      title: 'Monitorizarea Cloud',
     },
   },
   answerIcon: {
@@ -258,6 +259,8 @@ const translation = {
   },
   accessControl: 'Controlul Accesului la Aplicația Web',
   noAccessPermission: 'Nici o permisiune pentru a accesa aplicația web',
+  maxActiveRequestsPlaceholder: 'Introduceți 0 pentru nelimitat',
+  maxActiveRequests: 'Maxime cereri simultane',
 }
 
 export default translation

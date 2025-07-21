@@ -1,4 +1,3 @@
-import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -6,18 +5,6 @@ from pydantic import BaseModel
 
 from core.file.models import File
 from core.variables import Segment
-
-
-class WorkflowRuntimeTypeEncoder(json.JSONEncoder):
-    def default(self, o: Any):
-        if isinstance(o, Segment):
-            return o.value
-        elif isinstance(o, File):
-            return o.to_dict()
-        elif isinstance(o, BaseModel):
-            return o.model_dump(mode="json")
-        else:
-            return super().default(o)
 
 
 class WorkflowRuntimeTypeConverter:

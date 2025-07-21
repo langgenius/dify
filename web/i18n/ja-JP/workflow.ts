@@ -113,6 +113,7 @@ const translation = {
     addFailureBranch: '失敗ブランチを追加',
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
+    tagBound: 'このタグを使用しているアプリの数',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -232,6 +233,8 @@ const translation = {
     'noResult': '該当なし',
     'plugin': 'プラグイン',
     'agent': 'エージェント戦略',
+    'addAll': 'すべてを追加する',
+    'allAdded': 'すべて追加されました',
   },
   blocks: {
     'start': '開始',
@@ -369,7 +372,10 @@ const translation = {
         ms: 'ミリ秒',
         retries: '再試行回数：{{num}}',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '入力値',
+        variable: '変数を使用する',
+      },
     },
     start: {
       required: '必須',
@@ -677,6 +683,9 @@ const translation = {
         json: 'ツールで生成された JSON',
       },
       authorize: '認証する',
+      settings: '設定',
+      insertPlaceholder1: 'タイプするか押してください',
+      insertPlaceholder2: '変数を挿入する',
     },
     questionClassifiers: {
       model: 'モデル',
@@ -878,7 +887,7 @@ const translation = {
       modelNotSelected: 'モデルが選択されていません',
       toolNotAuthorizedTooltip: '{{tool}} 認可されていません',
       toolNotInstallTooltip: '{{tool}}はインストールされていません',
-      tools: '道具',
+      tools: 'ツール',
       learnMore: 'もっと学ぶ',
       configureModel: 'モデルを設定する',
       model: 'モデル',
@@ -893,6 +902,8 @@ const translation = {
       unsupportedStrategy: 'サポートされていない戦略',
       pluginNotFoundDesc: 'このプラグインは GitHub からインストールされています。再インストールするにはプラグインに移動してください。',
       strategyNotFoundDesc: 'インストールされたプラグインのバージョンは、この戦略を提供していません。',
+      parameterSchema: 'パラメータスキーマ',
+      clickToViewParameterSchema: 'パラメータースキーマを見るにはクリックしてください',
     },
   },
   tracing: {

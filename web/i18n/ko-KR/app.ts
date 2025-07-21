@@ -90,12 +90,12 @@ const translation = {
     noTemplateFound: '템플릿을 찾을 수 없습니다.',
     completionShortDescription: '텍스트 생성 작업을 위한 AI 도우미',
     learnMore: '더 알아보세요',
-    foundResults: '{{개수}} 결과',
+    foundResults: '{{count}} 결과',
     agentShortDescription:
       '추론 및 자율적인 도구 사용 기능이 있는 지능형 에이전트',
     advancedShortDescription: '다중 대화를 위해 강화된 워크플로우',
     noAppsFound: '앱을 찾을 수 없습니다.',
-    foundResult: '{{개수}} 결과',
+    foundResult: '{{count}} 결과',
     completionUserDescription:
       '간단한 구성으로 텍스트 생성 작업을 위한 AI 도우미를 빠르게 구축합니다.',
     chatbotUserDescription:
@@ -192,7 +192,10 @@ const translation = {
       description:
         'Weave 는 LLM 애플리케이션을 평가하고 테스트하며 모니터링하기 위한 오픈 소스 플랫폼입니다.',
     },
-    aliyun: {},
+    aliyun: {
+      title: '클라우드 모니터',
+      description: '알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.',
+    },
   },
   answerIcon: {
     description:
@@ -281,6 +284,8 @@ const translation = {
   },
   accessControl: '웹 애플리케이션 접근 제어',
   noAccessPermission: '웹 앱에 대한 접근 권한이 없습니다.',
+  maxActiveRequests: '동시 최대 요청 수',
+  maxActiveRequestsPlaceholder: '무제한 사용을 원하시면 0을 입력하세요.',
 }
 
 export default translation

@@ -363,6 +363,7 @@ const translation = {
     edited: 'แก้ไข',
     addChunk: 'เพิ่มก้อน',
     editedAt: 'แก้ไขที่',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     childChunks_other: 'ก้อนเด็ก',
     editChildChunk: 'แก้ไข Child Chunk',
     parentChunk: 'ผู้ปกครอง-ก้อน',

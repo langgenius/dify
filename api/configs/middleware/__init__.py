@@ -85,6 +85,11 @@ class VectorStoreConfig(BaseSettings):
         default=False,
     )
 
+    VECTOR_INDEX_NAME_PREFIX: Optional[str] = Field(
+        description="Prefix used to create collection name in vector database",
+        default="Vector_index",
+    )
+
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
@@ -211,7 +216,7 @@ class DatabaseConfig(BaseSettings):
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
         description="Backend for Celery task results. Options: 'database', 'redis'.",
-        default="database",
+        default="redis",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(

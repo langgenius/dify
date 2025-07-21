@@ -23,8 +23,8 @@ import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/to
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
@@ -173,7 +173,6 @@ const Editor: FC<Props> = ({
                         <a className='text-text-accent' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
                       </div>
                     }
-                    needsDelay
                   >
                     <div className={cn(editionType === EditionType.jinja2 && 'border-components-button-ghost-bg-hover bg-components-button-ghost-bg-hover', 'flex h-[22px] items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-components-button-ghost-bg-hover')}>
                       <Jinja className='h-3 w-6 text-text-quaternary' />
@@ -205,12 +204,12 @@ const Editor: FC<Props> = ({
                 {!isCopied
                   ? (
                     <ActionButton onClick={handleCopy}>
-                      <Clipboard className='h-4 w-4' />
+                      <Copy className='h-4 w-4' />
                     </ActionButton>
                   )
                   : (
                     <ActionButton>
-                      <ClipboardCheck className='h-4 w-4' />
+                      <CopyCheck className='h-4 w-4' />
                     </ActionButton>
                   )
                 }

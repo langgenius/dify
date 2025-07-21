@@ -255,7 +255,7 @@ class Dataset(Base):
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
-        return f"Vector_index_{normalized_dataset_id}_Node"
+        return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_{normalized_dataset_id}_Node"
 
 
 class DatasetProcessRule(Base):

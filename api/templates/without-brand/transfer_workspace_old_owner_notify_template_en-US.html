@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 16pt;
+      color: #101828;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 504px;
+      height: 394px;
+      margin: 40px auto;
+      padding: 0 48px;
+      background-color: #fcfcfd;
+      border-radius: 16px;
+      border: 1px solid #ffffff;
+      box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
+    }
+
+    .header {
+      padding-top: 36px;
+      padding-bottom: 24px;
+    }
+
+    .header img {
+      max-width: 63px;
+      height: auto;
+    }
+
+    .title {
+      margin: 0;
+      padding-top: 8px;
+      padding-bottom: 16px;
+      color: #101828;
+      font-size: 24px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 120%; /* 28.8px */
+    }
+
+    .description {
+      color: #354052;
+      font-size: 14px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px; /* 142.857% */
+      letter-spacing: -0.07px;
+    }
+
+    .content1 {
+      margin: 0;
+      padding-top: 16px;
+      padding-bottom: 12px;
+    }
+
+    .content2 {
+      margin: 0;
+    }
+
+    .content3 {
+      margin: 0;
+      padding-top: 12px;
+      padding-bottom: 16px;
+    }
+
+    .code-content {
+      margin-bottom: 8px;
+      padding: 16px 32px;
+      text-align: center;
+      border-radius: 16px;
+      background-color: #f2f4f7;
+    }
+
+    .code {
+      color: #101828;
+      font-family: Inter;
+      font-size: 30px;
+      font-style: normal;
+      font-weight: 700;
+      line-height: 36px;
+    }
+
+    .tips {
+      margin: 0;
+      padding-top: 12px;
+      padding-bottom: 16px;
+      color: #354052;
+      font-size: 14px;
+      font-family: Inter;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 20px; /* 142.857% */
+      letter-spacing: -0.07px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header"></div>
+    <p class="title">Workspace ownership has been transferred</p>
+    <div class="description">
+      <p class="content1">You have successfully transferred ownership of the workspace "{{WorkspaceName}}" to {{NewOwnerEmail}}.</p>
+      <p class="content2">You no longer have owner privileges for this workspace. Your access level has been changed to Admin.</p>
+      <p class="content3">If you did not initiate this transfer or have concerns about this change, please contact support@dify.ai immediately.</p>
+    </div>
+  </div>
+</body>
+
+</html>
+

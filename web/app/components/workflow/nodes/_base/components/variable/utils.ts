@@ -646,7 +646,7 @@ const getIterationItemType = ({
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
-      return VarType.any
+      return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
     default:

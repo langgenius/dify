@@ -2,8 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -15,10 +14,10 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
+from core.variables.variables import VariableUnion
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType
@@ -28,10 +27,12 @@ from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
+from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -231,7 +232,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+            workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
@@ -267,7 +268,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=Workflow.version_from_datetime(datetime.now(UTC).replace(tzinfo=None)),
+            version=Workflow.version_from_datetime(naive_utc_now()),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
@@ -369,7 +370,7 @@ class WorkflowService:
 
         else:
             variable_pool = VariablePool(
-                system_variables={},
+                system_variables=SystemVariable.empty(),
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -464,10 +465,10 @@ class WorkflowService:
         node_id: str,
     ) -> WorkflowNodeExecution:
         try:
-            node_instance, generator = invoke_node_fn()
+            node, node_events = invoke_node_fn()
 
             node_run_result: NodeRunResult | None = None
-            for event in generator:
+            for event in node_events:
                 if isinstance(event, RunCompletedEvent):
                     node_run_result = event.run_result
 
@@ -478,18 +479,18 @@ class WorkflowService:
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.continue_on_error:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                    "metadata": {"error_strategy": node.error_strategy},
                 }
-                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
                         **node_error_args,
                         outputs={
-                            **node_instance.node_data.default_value_dict,
+                            **node.default_value_dict,
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
                         },
@@ -508,10 +509,10 @@ class WorkflowService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e.node_instance
+            node = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
 
         # Create a NodeExecution domain model
         node_execution = WorkflowNodeExecution(
@@ -519,11 +520,11 @@ class WorkflowService:
             workflow_id="",  # This is a single-step execution, so no workflow ID
             index=1,
             node_id=node_id,
-            node_type=node_instance.node_type,
-            title=node_instance.node_data.title,
+            node_type=node.type_,
+            title=node.title,
             elapsed_time=time.perf_counter() - start_at,
-            created_at=datetime.now(UTC).replace(tzinfo=None),
-            finished_at=datetime.now(UTC).replace(tzinfo=None),
+            created_at=naive_utc_now(),
+            finished_at=naive_utc_now(),
         )
 
         if run_succeeded and node_run_result:
@@ -620,7 +621,7 @@ class WorkflowService:
                 setattr(workflow, field, value)
 
         workflow.updated_by = account_id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         return workflow
 
@@ -685,36 +686,30 @@ def _setup_variable_pool(
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
-        # Create a variable pool.
-        system_inputs: dict[SystemVariableKey, Any] = {
-            # From inputs:
-            SystemVariableKey.FILES: files,
-            SystemVariableKey.USER_ID: user_id,
-            # From workflow model
-            SystemVariableKey.APP_ID: workflow.app_id,
-            SystemVariableKey.WORKFLOW_ID: workflow.id,
-            # Randomly generated.
-            SystemVariableKey.WORKFLOW_EXECUTION_ID: str(uuid.uuid4()),
-        }
+        system_variable = SystemVariable(
+            user_id=user_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            files=files or [],
+            workflow_execution_id=str(uuid.uuid4()),
+        )
 
         # Only add chatflow-specific variables for non-workflow types
         if workflow.type != WorkflowType.WORKFLOW.value:
-            system_inputs.update(
-                {
-                    SystemVariableKey.QUERY: query,
-                    SystemVariableKey.CONVERSATION_ID: conversation_id,
-                    SystemVariableKey.DIALOGUE_COUNT: 0,
-                }
-            )
+            system_variable.query = query
+            system_variable.conversation_id = conversation_id
+            system_variable.dialogue_count = 0
     else:
-        system_inputs = {}
+        system_variable = SystemVariable.empty()
 
     # init variable pool
     variable_pool = VariablePool(
-        system_variables=system_inputs,
+        system_variables=system_variable,
         user_inputs=user_inputs,
         environment_variables=workflow.environment_variables,
-        conversation_variables=conversation_variables,
+        # Based on the definition of `VariableUnion`,
+        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+        conversation_variables=cast(list[VariableUnion], conversation_variables),  #
     )
 
     return variable_pool
