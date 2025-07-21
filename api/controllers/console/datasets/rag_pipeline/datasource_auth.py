@@ -16,6 +16,7 @@ from controllers.console.wraps import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.oauth import OAuthHandler
+from libs.helper import StrLen
 from libs.login import login_required
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
@@ -116,7 +117,9 @@ class DatasourceAuth(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json", default=None)
+        parser.add_argument(
+            "name", type=StrLen(max_length=100), required=False, nullable=True, location="json", default=None
+        )
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
@@ -178,7 +181,7 @@ class DatasourceAuthUpdateApi(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         if not current_user.is_editor:
@@ -269,7 +272,7 @@ class DatasourceUpdateProviderNameApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
