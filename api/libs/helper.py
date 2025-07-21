@@ -181,6 +181,26 @@ def timezone(timezone_string):
 
 
 def generate_string(n):
+    """
+    Generates a cryptographically secure random string of the specified length.
+
+    This function uses a cryptographically secure pseudorandom number generator (CSPRNG)
+    to create a string composed of ASCII letters (both uppercase and lowercase) and digits.
+
+    Each character in the generated string provides approximately 5.95 bits of entropy
+    (log2(62)). To ensure a minimum of 128 bits of entropy for security purposes, the
+    length of the string (`n`) should be at least 22 characters.
+
+    Args:
+        n (int): The length of the random string to generate. For secure usage,
+                 `n` should be 22 or greater.
+
+    Returns:
+        str: A random string of length `n` composed of ASCII letters and digits.
+
+    Note:
+        This function is suitable for generating credentials or other secure tokens.
+    """
     letters_digits = string.ascii_letters + string.digits
     result = ""
     for i in range(n):
