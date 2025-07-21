@@ -149,33 +149,40 @@ class DatasourceAuth(Resource):
         )
         return {"result": datasources}, 200
 
+class DatasourceAuthDeleteApi(Resource):
 
-class DatasourceAuthUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, provider_id: str, auth_id: str):
+    def post(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
         if not current_user.is_editor:
             raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
             tenant_id=current_user.current_tenant_id,
-            auth_id=auth_id,
+            auth_id=args["credential_id"],
             provider=provider_name,
             plugin_id=plugin_id,
         )
         return {"result": "success"}, 200
 
+class DatasourceAuthUpdateApi(Resource):
+
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, provider_id: str, auth_id: str):
+    def post(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         if not current_user.is_editor:
             raise Forbidden()
@@ -183,10 +190,11 @@ class DatasourceAuthUpdateDeleteApi(Resource):
             datasource_provider_service = DatasourceProviderService()
             datasource_provider_service.update_datasource_credentials(
                 tenant_id=current_user.current_tenant_id,
-                auth_id=auth_id,
+                auth_id=args["credential_id"],
                 provider=datasource_provider_id.provider_name,
                 plugin_id=datasource_provider_id.plugin_id,
-                credentials=args["credentials"],
+                credentials=args.get("credentials", {}),
+                name=args.get("name", None),
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
@@ -228,6 +236,17 @@ class DatasourceAuthOauthCustomClient(Resource):
         )
         return {"result": "success"}, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, provider_id: str):
+        datasource_provider_id = DatasourceProviderID(provider_id)
+        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service.remove_oauth_custom_client_params(
+            tenant_id=current_user.current_tenant_id,
+            datasource_provider_id=datasource_provider_id,
+        )
+        return {"result": "success"}, 200
 
 class DatasourceAuthDefaultApi(Resource):
     @setup_required
@@ -237,14 +256,14 @@ class DatasourceAuthDefaultApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.set_default_datasource_provider(
             tenant_id=current_user.current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            credential_id=args["credential_id"],
+            credential_id=args["id"],
         )
         return {"result": "success"}, 200
 
@@ -284,8 +303,13 @@ api.add_resource(
 )
 
 api.add_resource(
-    DatasourceAuthUpdateDeleteApi,
-    "/auth/plugin/datasource/<path:provider_id>/<string:auth_id>",
+    DatasourceAuthUpdateApi,
+    "/auth/plugin/datasource/<path:provider_id>/update",
+)
+
+api.add_resource(
+    DatasourceAuthDeleteApi,
+    "/auth/plugin/datasource/<path:provider_id>/delete",
 )
 
 api.add_resource(
