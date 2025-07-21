@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Optional, Union
 from uuid import uuid4
 
@@ -71,7 +71,7 @@ class WorkflowCycleManager:
             workflow_version=self._workflow_info.version,
             graph=self._workflow_info.graph_data,
             inputs=inputs,
-            started_at=datetime.now(UTC).replace(tzinfo=None),
+            started_at=naive_utc_now(),
         )
 
         return self._save_and_cache_workflow_execution(execution)
@@ -356,7 +356,7 @@ class WorkflowCycleManager:
         created_at: Optional[datetime] = None,
     ) -> WorkflowNodeExecution:
         """Create a node execution from an event."""
-        now = datetime.now(UTC).replace(tzinfo=None)
+        now = naive_utc_now()
         created_at = created_at or now
 
         metadata = {
@@ -403,7 +403,7 @@ class WorkflowCycleManager:
         handle_special_values: bool = False,
     ) -> None:
         """Update node execution with completion data."""
-        finished_at = datetime.now(UTC).replace(tzinfo=None)
+        finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         # Process data

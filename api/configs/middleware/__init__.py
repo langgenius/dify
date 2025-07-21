@@ -85,6 +85,11 @@ class VectorStoreConfig(BaseSettings):
         default=False,
     )
 
+    VECTOR_INDEX_NAME_PREFIX: Optional[str] = Field(
+        description="Prefix used to create collection name in vector database",
+        default="Vector_index",
+    )
+
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
