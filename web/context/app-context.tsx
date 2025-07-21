@@ -4,7 +4,6 @@ import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 're
 import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
-import Loading from '@/app/components/base/loading'
 import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
@@ -24,6 +23,15 @@ export type AppContextValue = {
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
 }
+
+const userProfilePlaceholder = {
+    id: '',
+    name: '',
+    email: '',
+    avatar: '',
+    avatar_url: '',
+    is_password_set: false,
+  }
 
 const initialLangeniusVersionInfo = {
   current_env: '',
@@ -46,14 +54,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 }
 
 const AppContext = createContext<AppContextValue>({
-  userProfile: {
-    id: '',
-    name: '',
-    email: '',
-    avatar: '',
-    avatar_url: '',
-    is_password_set: false,
-  },
+  userProfile: userProfilePlaceholder,
   currentWorkspace: initialWorkspaceInfo,
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
@@ -80,7 +81,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
-  const [userProfile, setUserProfile] = useState<UserProfileResponse>()
+  const [userProfile, setUserProfile] = useState<UserProfileResponse>(userProfilePlaceholder)
   const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
   const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
   const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
@@ -106,9 +107,6 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     if (currentWorkspaceResponse)
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
-
-  if (!userProfile)
-    return <Loading type='app' />
 
   return (
     <AppContext.Provider value={{
