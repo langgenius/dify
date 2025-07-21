@@ -24,7 +24,6 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.workflow.entities.variable_pool import VariablePool
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 if TYPE_CHECKING:
@@ -254,6 +253,9 @@ class ToolManager:
 
             # check if the credentials is expired
             if builtin_provider.expires_at != -1 and builtin_provider.expires_at < int(time.time()):
+                # TODO: circular import
+                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
                 # refresh the credentials
                 tool_provider = ToolProviderID(provider_id)
                 provider_name = tool_provider.provider_name
