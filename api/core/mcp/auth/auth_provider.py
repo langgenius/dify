@@ -8,7 +8,7 @@ from core.mcp.types import (
     OAuthTokens,
 )
 from models.tools import MCPToolProvider
-from services.tools.mcp_tools_mange_service import MCPToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 
 LATEST_PROTOCOL_VERSION = "1.0"
 
