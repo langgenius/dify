@@ -72,7 +72,7 @@ class AnswerNode(BaseNode):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
-        output_variables = self.node_data.outputs
+        output_variables = self._node_data.outputs
 
         outputs = {}
         for variable_selector in output_variables:

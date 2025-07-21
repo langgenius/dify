@@ -68,6 +68,7 @@ def test_execute_answer():
             "title": "123",
             "type": "answer",
             "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+            "outputs": [],
         },
     }
 
