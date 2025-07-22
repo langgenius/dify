@@ -238,6 +238,8 @@ const translation = {
     authRemoved: 'Auth removed',
     clientInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
     oauthClient: 'OAuth Client',
+    connectedWorkspace: 'Connected Workspace',
+    emptyAuth: 'Please configure authentication',
   },
 }
 
