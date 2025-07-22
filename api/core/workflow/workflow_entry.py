@@ -274,6 +274,7 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
+        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping
