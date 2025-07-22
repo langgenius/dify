@@ -7,6 +7,12 @@ if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   flask upgrade-db
 fi
 
+# Pure migration mode
+if [[ "${MODE}" == "migration" ]]; then
+  echo "Migration completed, exiting normally"
+  exit 0
+fi
+
 if [[ "${MODE}" == "worker" ]]; then
 
   # Get the number of available CPU cores
