@@ -3,13 +3,12 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import click
-from flask import render_template
 from redis import Redis
 
 import app
 from configs import dify_config
 from extensions.ext_database import db
-from extensions.ext_mail import mail
+from libs.email_i18n import EmailType, get_email_i18n_service
 
 # Create a dedicated Redis connection (using the same configuration as Celery)
 celery_broker_url = dify_config.CELERY_BROKER_URL
@@ -39,18 +38,20 @@ def queue_monitor_task():
             alter_emails = dify_config.QUEUE_MONITOR_ALERT_EMAILS
             if alter_emails:
                 to_list = alter_emails.split(",")
+                email_service = get_email_i18n_service()
                 for to in to_list:
                     try:
                         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        html_content = render_template(
-                            "queue_monitor_alert_email_template_en-US.html",
-                            queue_name=queue_name,
-                            queue_length=queue_length,
-                            threshold=threshold,
-                            alert_time=current_time,
-                        )
-                        mail.send(
-                            to=to, subject="Alert: Dataset Queue pending tasks exceeded the limit", html=html_content
+                        email_service.send_email(
+                            email_type=EmailType.QUEUE_MONITOR_ALERT,
+                            language_code="en-US",
+                            to=to,
+                            template_context={
+                                "queue_name": queue_name,
+                                "queue_length": queue_length,
+                                "threshold": threshold,
+                                "alert_time": current_time,
+                            },
                         )
                     except Exception as e:
                         logging.exception(click.style("Exception occurred during sending email", fg="red"))
