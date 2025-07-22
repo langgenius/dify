@@ -23,6 +23,16 @@ class StreamProcessor(ABC):
         raise NotImplementedError
 
     def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent) -> None:
+        """
+        Prunes unreachable branches from the `rest_node_ids` list after a branch node has executed.
+
+        This method implements a conservative, non-recursive pruning strategy to prevent a critical bug
+        where the pruning process would incorrectly "spread" across join points (nodes with multiple inputs)
+        and erroneously remove shared downstream nodes that should have been preserved.
+
+        By only removing the immediate first node of each determined unreachable branch, we ensure that
+        the integrity of shared paths in complex graph topologies is maintained.
+        """
         finished_node_id = event.route_node_state.node_id
         if finished_node_id not in self.rest_node_ids:
             return

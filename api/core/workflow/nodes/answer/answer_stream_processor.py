@@ -76,8 +76,24 @@ class AnswerStreamProcessor(StreamProcessor):
 
     def _is_dynamic_dependencies_met(self, start_node_id: str) -> bool:
         """
-        Check if all dynamic dependencies are met for a given node by traversing backwards.
-        This method is based on the runtime state of the graph.
+        Performs a dynamic, runtime dependency check by traversing backwards from a given start_node_id.
+
+        This method is the core of the new streaming architecture. Instead of relying on a pre-calculated,
+        static dependency map, it validates the actual execution path at the moment a stream event is received.
+        It queries the runtime state of the graph ('the logbook') to ensure that a valid, uninterrupted,
+        and logically sound path exists from the start_node_id all the way back to the graph's entry point.
+
+        The traversal logic handles:
+        - Basic node completion states (SUCCEEDED, FAILED, RUNNING).
+        - Complex branch nodes (If/Else), by checking which branch was actually taken during the run.
+          Paths from branches that were not taken are considered irrelevant ("parallel universes") and ignored.
+
+        This approach correctly handles complex topologies with join points (nodes with multiple inputs),
+        ensuring that streaming is only permitted when the true, logical dependency chain for the *current run*
+        has been successfully completed.
+
+        :param start_node_id: The node ID from which to begin the backward traversal (e.g., the LLM node).
+        :return: True if all dependencies on the active path are met, False otherwise.
         """
         # Use a queue for BFS and a set to track visited nodes to prevent cycles
         queue = [start_node_id]
@@ -144,10 +160,7 @@ class AnswerStreamProcessor(StreamProcessor):
             # all depends on answer node id not in rest node ids
             if event.route_node_state.node_id != answer_node_id and (
                 answer_node_id not in self.rest_node_ids
-                or not all(
-                    dep_id not in self.rest_node_ids
-                    for dep_id in self.generate_routes.answer_dependencies.get(answer_node_id, [])
-                )
+                or not self._is_dynamic_dependencies_met(answer_node_id) # Using dynamic check for final output as well
             ):
                 continue
 
@@ -216,7 +229,7 @@ class AnswerStreamProcessor(StreamProcessor):
             if answer_node_id not in self.rest_node_ids:
                 continue
 
-            # New dynamic dependency check
+            # New dynamic dependency check, replacing the old static dependency list.
             source_node_id_for_check = event.from_variable_selector[0]
             all_deps_finished = self._is_dynamic_dependencies_met(start_node_id=source_node_id_for_check)
 
