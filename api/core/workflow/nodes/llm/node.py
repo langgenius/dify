@@ -565,7 +565,7 @@ class LLMNode(BaseNode):
                     retriever_resources=original_retriever_resource, context=context_str.strip()
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict):
+    def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]

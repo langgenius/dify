@@ -462,7 +462,7 @@ class KnowledgeRetrievalNode(BaseNode):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
                                 ).value[0]
-                                if expected_value.value_type == "number":  # type: ignore
+                                if expected_value.value_type in {"number", "integer", "float"}:  # type: ignore
                                     expected_value = expected_value.value  # type: ignore
                                 elif expected_value.value_type == "string":  # type: ignore
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
