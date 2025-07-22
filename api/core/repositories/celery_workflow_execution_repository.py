@@ -125,7 +125,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             logger.debug(f"Queued async save for workflow execution: {execution.id_}")
 
         except Exception as e:
-            logger.exception(f"Failed to queue save operation for execution {execution.id_}: {e}")
+            logger.exception(f"Failed to queue save operation for execution {execution.id_}")
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
@@ -150,7 +150,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
                 # Remove completed task
                 del self._pending_saves[execution_id]
             except Exception as e:
-                logger.exception(f"Failed to wait for save operation {execution_id}: {e}")
+                logger.exception(f"Failed to wait for save operation {execution_id}")
 
     def get_pending_save_count(self) -> int:
         """

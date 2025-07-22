@@ -77,7 +77,7 @@ def save_workflow_execution_task(
             return True
 
     except Exception as e:
-        logger.exception(f"Failed to save workflow execution {execution_data.get('id_', 'unknown')}: {e}")
+        logger.exception(f"Failed to save workflow execution {execution_data.get('id_', 'unknown')}")
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 

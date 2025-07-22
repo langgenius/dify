@@ -86,7 +86,7 @@ def save_workflow_node_execution_task(
             return True
 
     except Exception as e:
-        logger.exception(f"Failed to save workflow node execution {execution_data.get('id', 'unknown')}: {e}")
+        logger.exception(f"Failed to save workflow node execution {execution_data.get('id', 'unknown')}")
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
@@ -145,7 +145,7 @@ def get_workflow_node_executions_by_workflow_run_task(
             return result
 
     except Exception as e:
-        logger.exception(f"Failed to get workflow node executions for run {workflow_run_id}: {e}")
+        logger.exception(f"Failed to get workflow node executions for run {workflow_run_id}")
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 

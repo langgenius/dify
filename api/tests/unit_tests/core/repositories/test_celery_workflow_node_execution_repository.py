@@ -118,9 +118,10 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_init_without_tenant_id_raises_error(self, mock_session_factory):
         """Test that initialization fails without tenant_id."""
-        user = Mock()
+        # Create a mock Account with no tenant_id
+        user = Mock(spec=Account)
         user.current_tenant_id = None
-        user.tenant_id = None
+        user.id = str(uuid4())
 
         with pytest.raises(ValueError, match="User must have a tenant_id"):
             CeleryWorkflowNodeExecutionRepository(
