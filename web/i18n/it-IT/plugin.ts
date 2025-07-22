@@ -84,6 +84,16 @@ const translation = {
     endpointDeleteTip: 'Rimuovi punto finale',
     endpointsEmpty: 'Fare clic sul pulsante \'+\' per aggiungere un punto finale',
     actionNum: '{{num}} {{azione}} INCLUSO',
+    deprecation: {
+      reason: {
+        noMaintainer: 'nessun manutentore',
+        ownershipTransferred: 'proprietà trasferita',
+        businessAdjustments: 'adeguamenti aziendali',
+      },
+      onlyReason: 'Questo plugin è stato deprecato a causa di {{deprecatedReason}} e non verrà più aggiornato.',
+      fullMessage: 'Questo plugin è stato deprecato a causa di {{deprecatedReason}} e non verrà più aggiornato. Si prega di utilizzare <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> invece.',
+      noReason: 'Questo plugin è stato deprecato e non sarà più aggiornato.',
+    },
   },
   debugInfo: {
     title: 'Debug',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuth: 'Configurazione dell\'autorizzazione della chiave API',
     clientInfo: 'Poiché non sono stati trovati segreti client di sistema per questo fornitore di strumenti, è necessario configurarlo manualmente. Per redirect_uri, si prega di utilizzare',
   },
+  deprecated: 'Deprecato',
 }
 
 export default translation

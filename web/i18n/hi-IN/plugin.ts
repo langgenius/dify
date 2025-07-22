@@ -84,6 +84,16 @@ const translation = {
     endpointModalTitle: 'एंडपॉइंट सेटअप करें',
     strategyNum: '{{num}} {{रणनीति}} शामिल',
     endpointsTip: 'यह प्लगइन एंडपॉइंट्स के माध्यम से विशिष्ट कार्यक्षमताएँ प्रदान करता है, और आप वर्तमान कार्यक्षेत्र के लिए कई एंडपॉइंट सेट कॉन्फ़िगर कर सकते हैं।',
+    deprecation: {
+      reason: {
+        noMaintainer: 'कोई देखभाल करने वाला नहीं',
+        ownershipTransferred: 'स्वामित्व स्थानांतरित किया गया',
+        businessAdjustments: 'व्यवसाय समायोजन',
+      },
+      noReason: 'यह प्लगइन अप्रचलित हो गया है और इसे अब अपडेट नहीं किया जाएगा।',
+      onlyReason: 'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है और इसे अब अपडेट नहीं किया जाएगा।',
+      fullMessage: 'इस प्लगइन को {{deprecatedReason}} के कारण अमान्य कर दिया गया है, और इसे अब अपडेट नहीं किया जाएगा। कृपया इसके बजाय <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> का उपयोग करें।',
+    },
   },
   debugInfo: {
     viewDocs: 'दस्तावेज़ देखें',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'क्रेडेंशियल्स कॉन्फ़िगर करने के बाद, कार्यक्षेत्र के सभी सदस्यों को एप्लिकेशन को व्यवस्थित करते समय इस उपकरण का उपयोग करने की अनुमति होती है।',
     clientInfo: 'चूंकि इस टूल प्रदाता के लिए कोई सिस्टम क्लाइंट रहस्य नहीं पाए गए हैं, इसलिए इसे मैन्युअल रूप से सेटअप करना आवश्यक है, कृपया redirect_uri का उपयोग करें',
   },
+  deprecated: 'अनुशंसित नहीं',
 }
 
 export default translation

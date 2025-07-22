@@ -84,6 +84,16 @@ const translation = {
     configureTool: 'Ferramenta de configuração',
     endpointsDocLink: 'Veja o documento',
     endpointModalTitle: 'Ponto de extremidade de configuração',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'ajustes de negócios',
+        ownershipTransferred: 'propriedade transferida',
+        noMaintainer: 'sem mantenedor',
+      },
+      onlyReason: 'Este plugin foi descontinuado devido a {{deprecatedReason}} e não será mais atualizado.',
+      noReason: 'Este plugin foi descontinuado e não será mais atualizado.',
+      fullMessage: 'Este plugin foi descontinuado devido a {{deprecatedReason}}, e não receberá mais atualizações. Por favor, use <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> em vez disso.',
+    },
   },
   debugInfo: {
     title: 'Depuração',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'Após configurar as credenciais, todos os membros dentro do espaço de trabalho podem usar esta ferramenta ao orquestrar aplicações.',
     clientInfo: 'Como não foram encontrados segredos de cliente do sistema para este provedor de ferramentas, é necessário configurá-lo manualmente. Para redirect_uri, use',
   },
+  deprecated: 'Obsoleto',
 }
 
 export default translation

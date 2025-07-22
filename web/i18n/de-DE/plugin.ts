@@ -84,6 +84,16 @@ const translation = {
     endpointDeleteTip: 'Endpunkt entfernen',
     serviceOk: 'Service in Ordnung',
     switchVersion: 'Version wechseln',
+    deprecation: {
+      reason: {
+        noMaintainer: 'kein Wartender',
+        ownershipTransferred: 'Eigentum übertragen',
+        businessAdjustments: 'Geschäftsanpassungen',
+      },
+      onlyReason: 'Dieses Plugin wurde aufgrund von {{deprecatedReason}} abgelehnt und wird nicht länger aktualisiert.',
+      fullMessage: 'Dieses Plugin wurde aufgrund von {{deprecatedReason}} eingestellt und wird nicht mehr aktualisiert. Bitte verwenden Sie stattdessen <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+      noReason: 'Dieses Plugin wurde eingestellt und wird nicht mehr aktualisiert.',
+    },
   },
   debugInfo: {
     title: 'Debuggen',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'Nachdem die Anmeldeinformationen konfiguriert wurden, können alle Mitglieder des Arbeitsbereichs dieses Tool beim Orchestrieren von Anwendungen verwenden.',
     authRemoved: 'Die Authentifizierung wurde entfernt.',
   },
+  deprecated: 'Abgelehnt',
 }
 
 export default translation
