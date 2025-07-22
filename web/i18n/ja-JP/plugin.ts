@@ -84,6 +84,16 @@ const translation = {
     actionNum: '{{num}} {{action}} が含まれています',
     endpointsDocLink: 'ドキュメントを表示する',
     switchVersion: 'バージョンの切り替え',
+    deprecation: {
+      fullMessage: 'このプラグインは{{deprecatedReason}}のため非推奨となり、新しいバージョンはリリースされません。代わりに<CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>をご利用ください。',
+      onlyReason: 'このプラグインは{{deprecatedReason}}のため非推奨となり、新しいバージョンはリリースされません。',
+      noReason: 'このプラグインは廃止されており、今後更新されることはありません。',
+      reason: {
+        businessAdjustments: '事業調整',
+        ownershipTransferred: '所有権移転',
+        noMaintainer: 'メンテナーの不足',
+      },
+    },
   },
   debugInfo: {
     title: 'デバッグ',
@@ -198,6 +208,7 @@ const translation = {
   install: '{{num}} インストール',
   installAction: 'インストール',
   installFrom: 'インストール元',
+  deprecated: '非推奨',
   searchPlugins: '検索プラグイン',
   search: '検索',
   endpointsEnabled: '{{num}} セットのエンドポイントが有効になりました',
