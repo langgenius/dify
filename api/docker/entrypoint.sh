@@ -5,12 +5,11 @@ set -e
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
   flask upgrade-db
-fi
-
-# Pure migration mode
-if [[ "${MODE}" == "migration" ]]; then
+  # Pure migration mode
+  if [[ "${MODE}" == "migration" ]]; then
   echo "Migration completed, exiting normally"
   exit 0
+  fi
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
