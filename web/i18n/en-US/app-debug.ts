@@ -302,6 +302,9 @@ const translation = {
         instruction: 'Use advanced copyediting techniques to improve your writings',
       },
     },
+    press: 'Press',
+    to: 'to ',
+    insertContext: 'insert context',
   },
   resetConfig: {
     title: 'Confirm reset?',

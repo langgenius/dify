@@ -8,6 +8,8 @@ import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workfl
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type Props = {
   editorKey: string
@@ -38,6 +40,8 @@ const InstructionEditor: FC<Props> = ({
   isShowLastRunBlock,
 }) => {
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
+
   const isBasicMode = !!getVarType
   // const [controlPromptEditorRerenderKey] =
   const isCode = generatorType === 'code'
@@ -52,14 +56,19 @@ const InstructionEditor: FC<Props> = ({
     </div>
   )
 
+  const handleInsertVariable = () => {
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey } as any)
+  }
+
   return (
-    <div>
+    <div className='relative'>
       <PromptEditor
         wrapperClassName='border !border-components-input-bg-normal bg-components-input-bg-normal hover:!border-components-input-bg-hover rounded-[10px] px-4 pt-3'
         key={editorKey}
+        instanceId={editorKey}
         placeholder={placeholder}
         placeholderClassName='px-4 pt-3'
-        className={cn('min-h-[240px] ')}
+        className={cn('min-h-[240px] pb-8')}
         value={value}
         workflowVariableBlock={{
           show: true,
@@ -96,6 +105,12 @@ const InstructionEditor: FC<Props> = ({
         editable
         isSupportFileVar={false}
       />
+      <div className='system-xs-regular absolute bottom-0 left-3 flex h-8 items-center space-x-0.5 text-components-input-text-placeholder'>
+        <span>{t('appDebug.generate.press')}</span>
+        <span className='system-kbd flex h-4 w-3.5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray text-text-placeholder'>/</span>
+        <span>{t('appDebug.generate.to')}</span>
+        <span onClick={handleInsertVariable} className='!ml-1 cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary'>{t('appDebug.generate.insertContext')}</span>
+      </div>
     </div>
   )
 }

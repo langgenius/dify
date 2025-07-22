@@ -301,6 +301,9 @@ const translation = {
         instruction: '用地道的编辑技巧改进我的文章',
       },
     },
+    press: '输入',
+    to: '来',
+    insertContext: '插入上下文',
   },
   resetConfig: {
     title: '确认重置？',
