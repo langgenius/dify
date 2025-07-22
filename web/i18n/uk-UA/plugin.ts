@@ -84,6 +84,16 @@ const translation = {
     endpointModalDesc: 'Після налаштування можна використовувати функції, що надаються плагіном через кінцеві точки API.',
     configureTool: 'Інструмент налаштування',
     serviceOk: 'Сервіс працює',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'право власності передано',
+        businessAdjustments: 'бізнесові корективи',
+        noMaintainer: 'немає супроводжувача',
+      },
+      noReason: 'Цей плагін було застаріло, і він більше не буде оновлюватися.',
+      onlyReason: 'Цей плагін було знято з підтримки через {{deprecatedReason}} і більше не буде оновлюватися.',
+      fullMessage: 'Цей плагін був застарілий через {{deprecatedReason}}, і більше не буде оновлюватися. Будь ласка, використовуйте <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> замість цього.',
+    },
   },
   debugInfo: {
     title: 'Налагодження',
@@ -237,6 +247,7 @@ const translation = {
     clientInfo: 'Оскільки не знайдено жодних секретів клієнта системи для цього постачальника інструментів, потрібно налаштувати його вручну; для redirect_uri, будь ласка, використовуйте',
     useApiAuthDesc: 'Після налаштування облікових даних усі учасники робочого простору можуть використовувати цей інструмент під час оркестрації додатків.',
   },
+  deprecated: 'Застарілий',
 }
 
 export default translation

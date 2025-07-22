@@ -84,6 +84,16 @@ const translation = {
     endpointsDocLink: 'Ver el documento',
     endpointsEmpty: 'Haga clic en el botón \'+\' para agregar un punto de conexión',
     configureApp: 'Configurar la aplicación',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'propiedad transferida',
+        noMaintainer: 'sin mantenedor',
+        businessAdjustments: 'ajustes comerciales',
+      },
+      noReason: 'Este complemento ha sido descontinuado y ya no se actualizará.',
+      onlyReason: 'Este complemento ha sido desaprobado debido a {{deprecatedReason}} y ya no se actualizará.',
+      fullMessage: 'Este complemento ha sido descontinuado debido a {{deprecatedReason}}, y ya no será actualizado. Por favor, utilice <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> en su lugar.',
+    },
   },
   debugInfo: {
     title: 'Depuración',
@@ -235,7 +245,9 @@ const translation = {
     saveOnly: 'Guardar solo',
     clientInfo: 'Como no se encontraron secretos de cliente del sistema para este proveedor de herramientas, se requiere configurarlo manualmente. Para redirect_uri, por favor utiliza',
     oauthClientSettings: 'Configuración del cliente OAuth',
+    default: 'Predeterminado',
   },
+  deprecated: 'Obsoleto',
 }
 
 export default translation

@@ -84,6 +84,16 @@ const translation = {
     endpointDeleteContent: 'Czy chcesz usunąć {{name}}?',
     endpointsTip: 'Ta wtyczka zapewnia określone funkcje za pośrednictwem punktów końcowych i można skonfigurować wiele zestawów punktów końcowych dla bieżącego obszaru roboczego.',
     modelNum: '{{liczba}} MODELE W ZESTAWIE',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'dostosowania biznesowe',
+        ownershipTransferred: 'własność przekazana',
+        noMaintainer: 'brak opiekuna',
+      },
+      onlyReason: 'Ten plugin został wycofany z użycia z powodu {{deprecatedReason}} i nie będzie już aktualizowany.',
+      noReason: 'Ten wtyczka została przestarzała i nie będzie dłużej aktualizowana.',
+      fullMessage: 'Ten plugin został wycofany z użycia z powodu {{deprecatedReason}} i nie będzie już aktualizowany. Proszę użyć zamiast tego <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+    },
   },
   debugInfo: {
     viewDocs: 'Wyświetlanie dokumentów',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą korzystać z tego narzędzia podczas orkiestracji aplikacji.',
     clientInfo: 'Ponieważ nie znaleziono tajemnic klientów systemu dla tego dostawcy narzędzi, wymagane jest ręczne skonfigurowanie, dla redirect_uri proszę użyć',
   },
+  deprecated: 'Nieaktualny',
 }
 
 export default translation
