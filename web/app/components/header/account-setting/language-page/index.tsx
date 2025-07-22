@@ -32,7 +32,7 @@ export default function LanguagePage() {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
 
-      await setLocaleOnClient(item.value.toString())
+      setLocaleOnClient(item.value.toString())
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })

@@ -36,8 +36,8 @@ const Header = () => {
         <Select
           value={locale}
           items={languages.filter(item => item.supported)}
-          onChange={async (value) => {
-            await setLocaleOnClient(value as Locale)
+          onChange={(value) => {
+            setLocaleOnClient(value as Locale)
           }}
         />
         <Divider type='vertical' className='mx-0 ml-2 h-4' />
