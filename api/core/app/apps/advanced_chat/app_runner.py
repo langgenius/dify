@@ -31,7 +31,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models import Workflow
 from models.enums import UserFrom
-from models.model import App, Conversation, Message, MessageAnnotation
+from models.model import App, Conversation, EndUser, Message, MessageAnnotation
 from models.workflow import ConversationVariable, WorkflowType
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if not app_record:
             raise ValueError("App not found")
 
-        workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
-        if not workflow:
+        if not self._workflow:
             raise ValueError("Workflow not initialized")
 
         user_id: str | None = None
