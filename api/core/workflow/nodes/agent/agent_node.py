@@ -309,7 +309,7 @@ class AgentNode(BaseNode):
                             }
                         )
                     value = tool_value
-                if parameter.type == "model-selector":
+                if parameter.type == AgentStrategyParameter.AgentStrategyParameterType.MODEL_SELECTOR:
                     value = cast(dict[str, Any], value)
                     model_instance, model_schema = self._fetch_model(value)
                     # memory config
