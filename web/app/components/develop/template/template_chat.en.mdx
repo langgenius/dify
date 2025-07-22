@@ -74,6 +74,12 @@ Chat applications support session persistence, allowing previous chat history to
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
+      <Property name='trace_id' type='string' key='trace_id'>
+        (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
+        - Header: via HTTP Header <code>X-Trace-Id</code>, highest priority.<br/>
+        - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
+        - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
+      </Property>
     </Properties>
 
     ### Response
