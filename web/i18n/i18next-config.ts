@@ -58,8 +58,19 @@ i18n.use(initReactI18next)
   .init({
     lng: undefined,
     fallbackLng: 'en-US',
-    resources,
+    resources: {
+      'en-US': loadLangResources('en-US'),
+    },
   })
 
-export const changeLanguage = i18n.changeLanguage
+export const changeLanguage = async (lng?: string) => {
+  const resolvedLng = lng ?? 'en-US'
+  const resources = {
+    [resolvedLng]: loadLangResources(resolvedLng),
+  }
+  if (!i18n.hasResourceBundle(resolvedLng, 'translation'))
+    i18n.addResourceBundle(resolvedLng, 'translation', resources[resolvedLng].translation, true, true)
+  await i18n.changeLanguage(resolvedLng)
+}
+
 export default i18n
