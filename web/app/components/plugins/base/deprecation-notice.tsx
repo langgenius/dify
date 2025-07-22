@@ -65,6 +65,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && alternativePluginId && (
               <Trans
+                t={t}
                 i18nKey={`${i18nPrefix}.fullMessage`}
                 components={{
                   CustomLink: (
