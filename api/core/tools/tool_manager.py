@@ -259,8 +259,8 @@ class ToolManager:
                 # refresh the credentials
                 tool_provider = ToolProviderID(provider_id)
                 provider_name = tool_provider.provider_name
-                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_name}/tool/callback"
-                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_name)
+                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
                 oauth_handler = OAuthHandler()
                 # refresh the credentials
                 refreshed_credentials = oauth_handler.refresh_credentials(
