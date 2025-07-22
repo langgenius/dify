@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTheme } from 'next-themes'
 import {
   RiArrowRightUpLine,
@@ -55,6 +55,8 @@ const PluginItem: FC<Props> = ({
     endpoints_active,
     meta,
     plugin_id,
+    status,
+    deprecated_reason,
   } = plugin
   const { category, author, name, label, description, icon, verified, meta: declarationMeta } = plugin.declaration
 
@@ -70,9 +72,14 @@ const PluginItem: FC<Props> = ({
     return gte(langGeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
   }, [declarationMeta.minimum_dify_version, langGeniusVersionInfo.current_version])
 
-  const handleDelete = () => {
+  const isDeprecated = useMemo(() => {
+    return status === 'deleted' && !!deprecated_reason
+  }, [status, deprecated_reason])
+
+  const handleDelete = useCallback(() => {
     refreshPluginList({ category } as any)
-  }
+  }, [category, refreshPluginList])
+
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
@@ -81,7 +88,7 @@ const PluginItem: FC<Props> = ({
   return (
     <div
       className={cn(
-        'rounded-xl border-[1.5px] border-background-section-burn p-1',
+        'relative overflow-hidden rounded-xl border-[1.5px] border-background-section-burn p-1',
         currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
@@ -91,10 +98,10 @@ const PluginItem: FC<Props> = ({
         setCurrentPluginID(plugin.plugin_id)
       }}
     >
-      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
+      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative z-10 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
         <CornerMark text={categoriesMap[category].label} />
         {/* Header */}
-        <div className="flex">
+        <div className='flex'>
           <div className='flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border-[1px] border-components-panel-border-subtle'>
             <img
               className='h-full w-full'
@@ -102,13 +109,13 @@ const PluginItem: FC<Props> = ({
               alt={`plugin-${plugin_unique_identifier}-logo`}
             />
           </div>
-          <div className="ml-3 w-0 grow">
-            <div className="flex h-5 items-center">
+          <div className='ml-3 w-0 grow'>
+            <div className='flex h-5 items-center'>
               <Title title={title} />
-              {verified && <RiVerifiedBadgeLine className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />}
+              {verified && <RiVerifiedBadgeLine className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' />}
               {!isDifyVersionCompatible && <Tooltip popupContent={
                 t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
-              }><RiErrorWarningLine color='red' className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" /></Tooltip>}
+              }><RiErrorWarningLine color='red' className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' /></Tooltip>}
               <Badge className='ml-1 shrink-0'
                 text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
                 hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_version && plugin.latest_version !== plugin.version}
@@ -135,10 +142,11 @@ const PluginItem: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className='mb-1 mt-1.5 flex h-4 items-center justify-between px-4'>
-        <div className='flex items-center'>
+      <div className='mb-1 mt-1.5 flex h-4 items-center gap-x-2 px-4'>
+        {/* Organization & Name */}
+        <div className='flex grow items-center overflow-hidden'>
           <OrgInfo
-            className="mt-0.5"
+            className='mt-0.5'
             orgName={orgName}
             packageName={name}
             packageNameClassName='w-auto max-w-[150px]'
@@ -146,15 +154,20 @@ const PluginItem: FC<Props> = ({
           {category === PluginType.extension && (
             <>
               <div className='system-xs-regular mx-2 text-text-quaternary'>·</div>
-              <div className='system-xs-regular flex space-x-1 text-text-tertiary'>
-                <RiLoginCircleLine className='h-4 w-4' />
-                <span>{t('plugin.endpointsEnabled', { num: endpoints_active })}</span>
+              <div className='system-xs-regular flex space-x-1 overflow-hidden text-text-tertiary'>
+                <RiLoginCircleLine className='h-4 w-4 shrink-0' />
+                <span
+                  className='truncate'
+                  title={t('plugin.endpointsEnabled', { num: endpoints_active })}
+                >
+                  {t('plugin.endpointsEnabled', { num: endpoints_active })}
+                </span>
               </div>
             </>
           )}
         </div>
-
-        <div className='flex items-center'>
+        {/* Source */}
+        <div className='flex shrink-0 items-center'>
           {source === PluginSource.github
             && <>
               <a href={`https://github.com/${meta!.repo}`} target='_blank' className='flex items-center gap-1'>
@@ -192,7 +205,20 @@ const PluginItem: FC<Props> = ({
             </>
           }
         </div>
+        {/* Deprecated */}
+        {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+          <div className='system-2xs-medium-uppercase flex shrink-0 items-center gap-x-2'>
+            <span className='text-text-tertiary'>·</span>
+            <span className='text-text-warning'>
+              {t('plugin.deprecated')}
+            </span>
+          </div>
+        )}
       </div>
+      {/* BG Effect for Deprecated Plugin */}
+      {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+        <div className='absolute bottom-[-71px] right-[-45px] z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]' />
+      )}
     </div>
   )
 }
