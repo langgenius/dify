@@ -520,7 +520,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if app is None:
                     raise ValueError("App not found")
 
-            # chatbot app
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
