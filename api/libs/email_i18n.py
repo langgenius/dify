@@ -30,6 +30,9 @@ class EmailType(Enum):
     OWNER_TRANSFER_NEW_NOTIFY = "owner_transfer_new_notify"
     ACCOUNT_DELETION_SUCCESS = "account_deletion_success"
     ACCOUNT_DELETION_VERIFICATION = "account_deletion_verification"
+    ENTERPRISE_CUSTOM = "enterprise_custom"
+    QUEUE_MONITOR_ALERT = "queue_monitor_alert"
+    DOCUMENT_CLEAN_NOTIFY = "document_clean_notify"
 
 
 class EmailLanguage(Enum):
@@ -215,6 +218,30 @@ class EmailI18nService:
             },
         )
 
+    def send_raw_email(
+        self,
+        to: str | list[str],
+        subject: str,
+        html_content: str,
+    ) -> None:
+        """
+        Send a raw email directly without template processing.
+
+        This method is provided for backward compatibility with legacy email
+        sending that uses pre-rendered HTML content (e.g., enterprise emails
+        with custom templates).
+
+        Args:
+            to: Recipient email address(es)
+            subject: Email subject
+            html_content: Pre-rendered HTML content
+        """
+        if isinstance(to, list):
+            for recipient in to:
+                self._sender.send_email(to=recipient, subject=subject, html_content=html_content)
+        else:
+            self._sender.send_email(to=to, subject=subject, html_content=html_content)
+
     def _render_email_content(
         self,
         email_type: EmailType,
@@ -375,6 +402,30 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="Dify.AI 账户删除和验证",
                 template_path="delete_account_code_email_template_zh-CN.html",
                 branded_template_path="delete_account_code_email_template_zh-CN.html",
+            ),
+        },
+        EmailType.QUEUE_MONITOR_ALERT: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="Alert: Dataset Queue pending tasks exceeded the limit",
+                template_path="queue_monitor_alert_email_template_en-US.html",
+                branded_template_path="queue_monitor_alert_email_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="警报：数据集队列待处理任务超过限制",
+                template_path="queue_monitor_alert_email_template_zh-CN.html",
+                branded_template_path="queue_monitor_alert_email_template_zh-CN.html",
+            ),
+        },
+        EmailType.DOCUMENT_CLEAN_NOTIFY: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="Dify Knowledge base auto disable notification",
+                template_path="clean_document_job_mail_template-US.html",
+                branded_template_path="clean_document_job_mail_template-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="Dify 知识库自动禁用通知",
+                template_path="clean_document_job_mail_template_zh-CN.html",
+                branded_template_path="clean_document_job_mail_template_zh-CN.html",
             ),
         },
     }
