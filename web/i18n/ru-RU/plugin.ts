@@ -84,6 +84,16 @@ const translation = {
     endpointsEmpty: 'Нажмите кнопку «+», чтобы добавить конечную точку',
     switchVersion: 'Версия для переключателя',
     endpointsDocLink: 'Посмотреть документ',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'бизнес-правки',
+        ownershipTransferred: 'передача права собственности',
+        noMaintainer: 'нет сопровождающего',
+      },
+      noReason: 'Этот плагин был устаревшим и больше не будет обновляться.',
+      onlyReason: 'Этот плагин был устаревшим из-за {{deprecatedReason}} и больше не будет обновляться.',
+      fullMessage: 'Этот плагин больше не поддерживается по причине {{deprecatedReason}} и больше не будет обновляться. Пожалуйста, используйте <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> вместо этого.',
+    },
   },
   debugInfo: {
     title: 'Отладка',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'После настройки учетных данных все члены рабочей области могут использовать этот инструмент при оркестрации приложений.',
     clientInfo: 'Поскольку не найдены секреты клиентской системы для этого поставщика инструментов, необходимо настроить его вручную, для redirect_uri, пожалуйста, используйте',
   },
+  deprecated: 'Устаревший',
 }
 
 export default translation
