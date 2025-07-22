@@ -61,6 +61,7 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   const {
+    appId,
     modelConfig,
     dataSets,
     setModelConfig,
@@ -272,6 +273,7 @@ const Prompt: FC<ISimplePromptInput> = ({
 
       {showAutomatic && (
         <GetAutomaticResModal
+          flowId={appId}
           mode={mode as AppType}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}

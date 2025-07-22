@@ -13,6 +13,7 @@ import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
+import cn from '@/utils/classnames'
 
 type Props = {
   isBasicMode?: boolean
@@ -66,7 +67,7 @@ const Result: FC<Props> = ({
           <PromptToast message={current.message} className='mt-4 shrink-0' />
         )
       }
-      <div className='mt-3 grow'>
+      <div className={cn('mt-3 grow', isGeneratorPrompt && 'overflow-y-auto')}>
         {isGeneratorPrompt ? (
           isBasicMode ? (
             <PromptRes
