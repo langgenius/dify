@@ -2,7 +2,9 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, Union
 from urllib.parse import urlparse
+
 from sqlalchemy import select
+
 from extensions.ext_database import db
 from models.model import Message
 
