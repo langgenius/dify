@@ -3,7 +3,7 @@ from typing import Any
 
 import requests
 from flask_login import current_user
-
+from sqlalchemy import select, and_
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.source import DataSourceOauthBinding
@@ -61,17 +61,17 @@ class NotionOAuth(OAuthDataSource):
             "total": len(pages),
         }
         # save data source binding
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
+        data_source_binding = db.session.scalars(
+            select(DataSourceOauthBinding)
             .filter(
-                db.and_(
+                and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.access_token == access_token,
                 )
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
@@ -101,17 +101,17 @@ class NotionOAuth(OAuthDataSource):
             "total": len(pages),
         }
         # save data source binding
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
+        data_source_binding = db.session.scalars(
+            select(DataSourceOauthBinding)
             .filter(
-                db.and_(
+                and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.access_token == access_token,
                 )
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
@@ -129,18 +129,18 @@ class NotionOAuth(OAuthDataSource):
 
     def sync_data_source(self, binding_id: str):
         # save data source binding
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
+        data_source_binding = db.session.scalars(
+            select(DataSourceOauthBinding)
             .filter(
-                db.and_(
+                and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.id == binding_id,
                     DataSourceOauthBinding.disabled == False,
                 )
             )
-            .first()
-        )
+            .limit(1)
+        ).first()
         if data_source_binding:
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)

@@ -12,7 +12,7 @@ from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, Optional, cast
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -189,11 +189,11 @@ class Dataset(Base):
         )
         if not external_knowledge_binding:
             return None
-        external_knowledge_api = (
-            db.session.query(ExternalKnowledgeApis)
+        external_knowledge_api = db.session.scalars(
+            select(ExternalKnowledgeApis)
             .filter(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
-            .first()
-        )
+            .limit(1)
+        ).first()
         if not external_knowledge_api:
             return None
         return {
@@ -687,27 +687,27 @@ class DocumentSegment(Base):
 
     @property
     def dataset(self):
-        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).first()
+        return db.session.scalars(select(Dataset).filter(Dataset.id == self.dataset_id).limit(1)).first()
 
     @property
     def document(self):
-        return db.session.query(Document).filter(Document.id == self.document_id).first()
+        return db.session.scalars(select(Document).filter(Document.id == self.document_id).limit(1)).first()
 
     @property
     def previous_segment(self):
-        return (
-            db.session.query(DocumentSegment)
+        return db.session.scalars(
+            select(DocumentSegment)
             .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
     @property
     def next_segment(self):
-        return (
-            db.session.query(DocumentSegment)
+        return db.session.scalars(
+            select(DocumentSegment)
             .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
-            .first()
-        )
+            .limit(1)
+        ).first()
 
     @property
     def child_chunks(self):

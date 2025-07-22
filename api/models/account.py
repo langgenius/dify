@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional, cast
 
 from flask_login import UserMixin  # type: ignore
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Mapped, mapped_column, reconstructor
 
 from models.base import Base
@@ -119,7 +119,9 @@ class Account(UserMixin, Base):
 
     @current_tenant.setter
     def current_tenant(self, tenant: "Tenant"):
-        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        ta = db.session.scalars(
+            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).limit(1)
+        ).first()
         if ta:
             self.role = TenantAccountRole(ta.role)
             self._current_tenant = tenant
