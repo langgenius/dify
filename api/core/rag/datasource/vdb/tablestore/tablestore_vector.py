@@ -248,7 +248,7 @@ class TableStoreVector(BaseVector):
             limit=1000,
             get_total_count=False,
         )
-        rows = []
+        rows: list[str] = []
         next_token = None
         while True:
             if next_token is not None:
@@ -264,7 +264,7 @@ class TableStoreVector(BaseVector):
             )
 
             if search_response is not None:
-                rows.extend(row[0][0][1] for row in search_response.rows)
+                rows.extend([row[0][0][1] for row in search_response.rows])
 
             if search_response is None or search_response.next_token == b"":
                 break
@@ -274,7 +274,7 @@ class TableStoreVector(BaseVector):
         return rows
 
     def _search_by_vector(
-        self, query_vector: list[float], document_ids_filter: list[str], top_k: int, score_threshold: float
+        self, query_vector: list[float], document_ids_filter: list[str] | None, top_k: int, score_threshold: float
     ) -> list[Document]:
         knn_vector_query = tablestore.KnnVectorQuery(
             field_name=Field.VECTOR.value,
@@ -308,7 +308,7 @@ class TableStoreVector(BaseVector):
         documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
-    def _search_by_full_text(self, query: str, document_ids_filter: list[str], top_k: int) -> list[Document]:
+    def _search_by_full_text(self, query: str, document_ids_filter: list[str] | None, top_k: int) -> list[Document]:
         bool_query = tablestore.BoolQuery()
         bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY.value))
 
