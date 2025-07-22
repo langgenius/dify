@@ -30,14 +30,14 @@ const IdeaOutput: FC<Props> = ({
         className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
         onClick={toggleFoldIdeaOutput}
       >
-        <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.ideaOutput`)}</div>
+        <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.idealOutput`)}</div>
         <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
         <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
       </div>
       {!isFoldIdeaOutput && (
         <Textarea
           className="h-[80px]"
-          placeholder={t(`${i18nPrefix}.ideaOutputPlaceholder`)}
+          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`)}
           value={value}
           onChange={e => onChange(e.target.value)}
         />
