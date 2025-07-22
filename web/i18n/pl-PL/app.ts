@@ -80,7 +80,7 @@ const translation = {
     appCreateDSLErrorPart1: 'Wykryto istotną różnicę w wersjach DSL. Wymuszenie importu może spowodować nieprawidłowe działanie aplikacji.',
     noTemplateFoundTip: 'Spróbuj wyszukać za pomocą różnych słów kluczowych.',
     noAppsFound: 'Nie znaleziono aplikacji',
-    foundResults: '{{liczba}} Wyniki',
+    foundResults: '{{count}} Wyniki',
     noTemplateFound: 'Nie znaleziono szablonów',
     chatbotUserDescription: 'Szybko zbuduj chatbota opartego na LLM z prostą konfiguracją. Możesz przełączyć się na Chatflow później.',
     optional: 'Fakultatywny',
@@ -91,7 +91,7 @@ const translation = {
     completionShortDescription: 'Asystent AI do zadań generowania tekstu',
     noIdeaTip: 'Nie masz pomysłów? Sprawdź nasze szablony',
     forAdvanced: 'DLA ZAAWANSOWANYCH UŻYTKOWNIKÓW',
-    foundResult: '{{liczba}} Wynik',
+    foundResult: '{{count}} Wynik',
     advancedShortDescription: 'Przepływ ulepszony dla wieloturowych czatów',
     learnMore: 'Dowiedz się więcej',
     chatbotShortDescription: 'Chatbot oparty na LLM z prostą konfiguracją',
@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Inteligentny agent zdolny do iteracyjnego wnioskowania i autonomicznego wykorzystania narzędzi do osiągania celów zadań.',
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
+    dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',
@@ -142,6 +143,14 @@ const translation = {
       notConfigured: 'Skonfiguruj dostawcę, aby włączyć śledzenie',
       moreProvider: 'Więcej dostawców',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Obserwowalność LLM klasy korporacyjnej, ocena online i offline, monitorowanie i eksperymentowanie — oparta na OpenTelemetry. Zaprojektowana specjalnie dla aplikacji opartych na LLM i agentach.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Otwarta i oparta na OpenTelemetry platforma do obserwowalności, oceny, inżynierii promptów i eksperymentowania dla Twoich przepływów pracy i agentów LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Kompleksowa platforma deweloperska dla każdego etapu cyklu życia aplikacji opartej na LLM.',
@@ -169,6 +178,10 @@ const translation = {
     weave: {
       title: 'Tkaj',
       description: 'Weave to platforma open-source do oceny, testowania i monitorowania aplikacji LLM.',
+    },
+    aliyun: {
+      title: 'Monitor Chmury',
+      description: 'W pełni zarządzana i wolna od konserwacji platforma obserwowalności oferowana przez Alibaba Cloud umożliwia gotowe monitorowanie, śledzenie i oceny aplikacji Dify.',
     },
   },
   answerIcon: {
@@ -253,6 +266,8 @@ const translation = {
   },
   accessControl: 'Kontrola dostępu do aplikacji internetowej',
   noAccessPermission: 'Brak uprawnień do dostępu do aplikacji internetowej',
+  maxActiveRequests: 'Maksymalne równoczesne żądania',
+  maxActiveRequestsPlaceholder: 'Wprowadź 0, aby uzyskać nielimitowane',
 }
 
 export default translation

@@ -25,6 +25,11 @@ from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as Var
 
 LATEST_VERSION = "latest"
 
+# NOTE(QuantumGhost): This should be in sync with subclasses of BaseNode.
+# Specifically, if you have introduced new node types, you should add them here.
+#
+# TODO(QuantumGhost): This could be automated with either metaclass or `__init_subclass__`
+# hook. Try to avoid duplication of node information.
 NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.START: {
         LATEST_VERSION: StartNode,
@@ -68,6 +73,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.TOOL: {
         LATEST_VERSION: ToolNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
+        "2": ToolNode,
         "1": ToolNode,
     },
     NodeType.VARIABLE_AGGREGATOR: {
@@ -117,6 +126,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.AGENT: {
         LATEST_VERSION: AgentNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
+        "2": AgentNode,
         "1": AgentNode,
     },
 }

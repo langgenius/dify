@@ -9,6 +9,7 @@ from typing import Any, Optional, Union, cast
 from flask import Flask, current_app
 from sqlalchemy import Float, and_, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -496,6 +497,8 @@ class DatasetRetrieval:
                     all_documents = self.calculate_keyword_score(query, all_documents, top_k)
                 elif index_type == "high_quality":
                     all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+                else:
+                    all_documents = all_documents[:top_k] if top_k else all_documents
 
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
@@ -596,7 +599,8 @@ class DatasetRetrieval:
         metadata_condition: Optional[MetadataCondition] = None,
     ):
         with flask_app.app_context():
-            dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+            with Session(db.engine) as session:
+                dataset = session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
             if not dataset:
                 return []
@@ -1008,6 +1012,9 @@ class DatasetRetrieval:
     def _process_metadata_filter_func(
         self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
     ):
+        if value is None:
+            return
+
         key = f"{metadata_name}_{sequence}"
         key_value = f"{metadata_name}_{sequence}_value"
         match condition:
@@ -1130,7 +1137,7 @@ class DatasetRetrieval:
     def _get_prompt_template(
         self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list, query: str
     ):
-        model_mode = ModelMode.value_of(mode)
+        model_mode = ModelMode(mode)
         input_text = query
 
         prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]

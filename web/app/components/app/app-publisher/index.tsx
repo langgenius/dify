@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -48,6 +49,7 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+dayjs.extend(relativeTime)
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -116,6 +118,7 @@ const AppPublisher = ({
     }
   }, [appAccessSubjects, appDetail])
   const language = useGetLanguage()
+
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
@@ -180,8 +183,7 @@ const AppPublisher = ({
     if (publishDisabled || published)
       return
     handlePublish()
-  },
-    { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   return (
     <>
@@ -314,10 +316,10 @@ const AppPublisher = ({
                   {!isAppAccessSet && <p className='system-xs-regular mt-1 text-text-warning'>{t('app.publishApp.notSetDesc')}</p>}
                 </div>}
                 <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
-                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
                       className='flex-1'
-                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail?.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                       link={appURL}
                       icon={<RiPlayCircleLine className='h-4 w-4' />}
                     >
@@ -326,10 +328,10 @@ const AppPublisher = ({
                   </Tooltip>
                   {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                     ? (
-                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                         <SuggestedAction
                           className='flex-1'
-                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                           link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                           icon={<RiPlayList2Line className='h-4 w-4' />}
                         >

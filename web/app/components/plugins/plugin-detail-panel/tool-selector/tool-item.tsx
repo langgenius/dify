@@ -17,17 +17,19 @@ import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import cn from '@/utils/classnames'
+import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 
 type Props = {
   icon?: any
   providerName?: string
+  isMCPTool?: boolean
+  providerShowName?: string
   toolLabel?: string
   showSwitch?: boolean
   switchValue?: boolean
   onSwitchChange?: (value: boolean) => void
   onDelete?: () => void
   noAuth?: boolean
-  onAuth?: () => void
   isError?: boolean
   errorTip?: any
   uninstalled?: boolean
@@ -35,11 +37,15 @@ type Props = {
   onInstall?: () => void
   versionMismatch?: boolean
   open: boolean
+  authRemoved?: boolean
+  canChooseMCPTool?: boolean,
 }
 
 const ToolItem = ({
   open,
   icon,
+  isMCPTool,
+  providerShowName,
   providerName,
   toolLabel,
   showSwitch,
@@ -47,18 +53,20 @@ const ToolItem = ({
   onSwitchChange,
   onDelete,
   noAuth,
-  onAuth,
   uninstalled,
   installInfo,
   onInstall,
   isError,
   errorTip,
   versionMismatch,
+  authRemoved,
+  canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
-  const providerNameText = providerName?.split('/').pop()
+  const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
+  const isShowCanNotChooseMCPTip = isMCPTool && !canChooseMCPTool
 
   return (
     <div className={cn(
@@ -67,7 +75,7 @@ const ToolItem = ({
       isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
     )}>
       {icon && (
-        <div className={cn('shrink-0', isTransparent && 'opacity-50')}>
+        <div className={cn('shrink-0', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
           {typeof icon === 'string' && <div className='h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge bg-cover bg-center' style={{ backgroundImage: `url(${icon})` }} />}
           {typeof icon !== 'string' && <AppIcon className='h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge' size='xs' icon={icon?.content} background={icon?.background} />}
         </div>
@@ -75,18 +83,19 @@ const ToolItem = ({
       {!icon && (
         <div className={cn(
           'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+          isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30',
         )}>
           <div className='flex h-5 w-5 items-center justify-center opacity-35'>
             <Group className='text-text-tertiary' />
           </div>
         </div>
       )}
-      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50')}>
+      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
         <div className='system-2xs-medium-uppercase text-text-tertiary'>{providerNameText}</div>
         <div className='system-xs-medium text-text-secondary'>{toolLabel}</div>
       </div>
       <div className='hidden items-center gap-1 group-hover:flex'>
-        {!noAuth && !isError && !uninstalled && !versionMismatch && (
+        {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
             <RiEqualizer2Line className='h-4 w-4' />
           </ActionButton>
@@ -103,7 +112,7 @@ const ToolItem = ({
           <RiDeleteBinLine className='h-4 w-4' />
         </div>
       </div>
-      {!isError && !uninstalled && !noAuth && !versionMismatch && showSwitch && (
+      {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
         <div className='mr-1' onClick={e => e.stopPropagation()}>
           <Switch
             size='md'
@@ -112,10 +121,19 @@ const ToolItem = ({
           />
         </div>
       )}
+      {isShowCanNotChooseMCPTip && (
+        <McpToolNotSupportTooltip />
+      )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
-        <Button variant='secondary' size='small' onClick={onAuth}>
+        <Button variant='secondary' size='small'>
           {t('tools.notAuthorized')}
           <Indicator className='ml-2' color='orange' />
+        </Button>
+      )}
+      {!isError && !uninstalled && !versionMismatch && authRemoved && (
+        <Button variant='secondary' size='small'>
+          {t('plugin.auth.authRemoved')}
+          <Indicator className='ml-2' color='red' />
         </Button>
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (
@@ -149,7 +167,6 @@ const ToolItem = ({
       {isError && (
         <Tooltip
           popupContent={errorTip}
-          needsDelay
         >
           <div>
             <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />

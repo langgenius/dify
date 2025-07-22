@@ -139,6 +139,7 @@ class EndStreamProcessor(StreamProcessor):
                         route_node_state=event.route_node_state,
                         parallel_id=event.parallel_id,
                         parallel_start_node_id=event.parallel_start_node_id,
+                        node_version=event.node_version,
                     )
 
                 self.route_position[end_node_id] += 1

@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'ต้องเพิ่มโหนดคำตอบ',
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
+    tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -129,6 +130,8 @@ const translation = {
       value: 'ค่า',
       valuePlaceholder: 'ค่า env',
       secretTip: 'ใช้เพื่อกําหนดข้อมูลหรือข้อมูลที่ละเอียดอ่อน โดยมีการตั้งค่า DSL ที่กําหนดค่าไว้เพื่อป้องกันการรั่วไหล',
+      description: 'คำอธิบาย',
+      descriptionPlaceholder: 'อธิบายตัวแปร',
     },
     export: {
       title: 'ส่งออกตัวแปรสภาพแวดล้อม Secret หรือไม่',
@@ -232,6 +235,8 @@ const translation = {
     'plugin': 'ปลั๊กอิน',
     'searchBlock': 'ค้นหาโหนด',
     'blocks': 'โหนด',
+    'allAdded': 'ทั้งหมดที่เพิ่มเข้ามา',
+    'addAll': 'เพิ่มทั้งหมด',
   },
   blocks: {
     'start': 'เริ่ม',
@@ -303,6 +308,8 @@ const translation = {
     addNextStep: 'เพิ่มขั้นตอนถัดไปในกระบวนการทำงานนี้',
     changeBlock: 'เปลี่ยนโหนด',
     selectNextStep: 'เลือกขั้นตอนถัดไป',
+    minimize: 'ออกจากโหมดเต็มหน้าจอ',
+    maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
   },
   nodes: {
     common: {
@@ -359,6 +366,10 @@ const translation = {
         times: 'ครั้ง',
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
+      },
+      typeSwitch: {
+        input: 'ค่าป้อนข้อมูล',
+        variable: 'ใช้ตัวแปร',
       },
     },
     start: {
@@ -535,6 +546,10 @@ const translation = {
         title: 'นําเข้าจาก cURL',
         placeholder: 'วางสตริง cURL ที่นี่',
       },
+      verifySSL: {
+        title: 'ตรวจสอบใบรับรอง SSL',
+        warningTooltip: 'การปิดการตรวจสอบ SSL ไม่แนะนำให้ใช้ในสภาพแวดล้อมการผลิต ควรใช้เฉพาะในระหว่างการพัฒนาหรือการทดสอบเท่านั้น เนื่องจากจะทำให้การเชื่อมต่อมีความเสี่ยงต่อภัยคุกคามด้านความปลอดภัย เช่น การโจมตีแบบ Man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'ตัวแปรอินพุต',
@@ -542,6 +557,7 @@ const translation = {
       advancedDependencies: 'การพึ่งพาขั้นสูง',
       advancedDependenciesTip: 'เพิ่มการพึ่งพาที่โหลดไว้ล่วงหน้าซึ่งใช้เวลามากขึ้นในการใช้หรือไม่ใช่ค่าเริ่มต้นในตัวที่นี่',
       searchDependencies: 'การพึ่งพาการค้นหา',
+      syncFunctionSignature: 'ซิงก์ลายเซ็นฟังก์ชันให้ตรงกับโค้ด',
     },
     templateTransform: {
       inputVars: 'ตัวแปรอินพุต',
@@ -660,12 +676,16 @@ const translation = {
         json: 'เครื่องมือสร้าง JSON',
       },
       authorize: 'อนุญาต',
+      insertPlaceholder2: 'แทรกตัวแปร',
+      insertPlaceholder1: 'พิมพ์หรือลงทะเบียน',
+      settings: 'การตั้งค่า',
     },
     questionClassifiers: {
       model: 'แบบ',
       inputVars: 'ตัวแปรอินพุต',
       outputVars: {
         className: 'ชื่อคลาส',
+        usage: 'ข้อมูลการใช้งานรุ่น',
       },
       class: 'ประเภท',
       classNamePlaceholder: 'เขียนชื่อชั้นเรียนของคุณ',
@@ -679,6 +699,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'ตัวแปรอินพุต',
+      outputVars: {
+        isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
+        errorReason: 'สาเหตุข้อผิดพลาด',
+        usage: 'ข้อมูลการใช้งานรุ่น',
+      },
       extractParameters: 'แยกพารามิเตอร์',
       importFromTool: 'นําเข้าจากเครื่องมือ',
       addExtractParameter: 'เพิ่มพารามิเตอร์การแยกข้อมูล',
@@ -698,8 +723,6 @@ const translation = {
       advancedSetting: 'การตั้งค่าขั้นสูง',
       reasoningMode: 'โหมดการให้เหตุผล',
       reasoningModeTip: 'คุณสามารถเลือกโหมดการให้เหตุผลที่เหมาะสมตามความสามารถของโมเดลในการตอบสนองต่อคําแนะนําสําหรับการเรียกใช้ฟังก์ชันหรือข้อความแจ้ง',
-      isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
-      errorReason: 'สาเหตุข้อผิดพลาด',
     },
     iteration: {
       deleteTitle: 'ลบโหนดการทําซ้ํา?',
@@ -840,6 +863,8 @@ const translation = {
       tools: 'เครื่อง มือ',
       modelNotSelected: 'ไม่ได้เลือกรุ่น',
       linkToPlugin: 'ลิงก์ไปยังปลั๊กอิน',
+      parameterSchema: 'แบบจำลองพารามิเตอร์',
+      clickToViewParameterSchema: 'คลิกเพื่อดูโครงร่างพารามิเตอร์',
     },
     loop: {
       ErrorMethod: {
@@ -915,6 +940,35 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'ทำงานโหนดนี้',
+      description: 'ผลลัพธ์จากการวิ่งครั้งล่าสุดจะแสดงที่นี่',
+    },
+    variableInspect: {
+      trigger: {
+        stop: 'หยุดวิ่ง',
+        normal: 'ตรวจสอบตัวแปร',
+        cached: 'ดูตัวแปรที่ถูกเก็บไว้ในแคช',
+        clear: 'ชัดเจน',
+        running: 'สถานะการทำงานของการเก็บข้อมูลชั่วคราว',
+      },
+      systemNode: 'ระบบ',
+      view: 'ดูบันทึก',
+      chatNode: 'การสนทนา',
+      clearAll: 'รีเซ็ตทั้งหมด',
+      envNode: 'สิ่งแวดล้อม',
+      emptyLink: 'เรียนรู้เพิ่มเติม',
+      edited: 'แก้ไขแล้ว',
+      reset: 'รีเซ็ตกลับไปยังค่าครั้งล่าสุด',
+      title: 'ตรวจสอบตัวแปร',
+      resetConversationVar: 'รีเซ็ตตัวแปรการสนทนาไปยังค่าตั้งต้น',
+      emptyTip: 'หลังจากก้าวผ่านโหนดบนผืนผ้าใบหรือเรียกใช้โหนดทีละขั้นตอน คุณสามารถดูค่าปัจจุบันของตัวแปรโหนดใน Variable Inspect ได้',
+      clearNode: 'ล้างตัวแปรที่เก็บไว้ในแคช',
+    },
+    settingsTab: 'การตั้งค่า',
+    lastRunTab: 'รอบสุดท้าย',
   },
 }
 

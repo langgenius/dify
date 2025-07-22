@@ -201,6 +201,7 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 - [Helm Chart par @magicsong](https://github.com/magicsong/ai-charts)
 - [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Fichier YAML par @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 NOUVEAU ! Fichiers YAML (compatible avec Dify v1.6.0) par @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Utilisation de Terraform pour le déploiement
 
@@ -218,6 +219,15 @@ Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
 
 ##### AWS 
 - [AWS CDK par @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
+#### Alibaba Cloud
+
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+
+Déployez Dify en un clic sur Alibaba Cloud avec [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
 
 ## Contribuer
 

@@ -31,10 +31,9 @@ export const useTabs = () => {
   ]
 }
 
-export const useToolTabs = () => {
+export const useToolTabs = (isHideMCPTools?: boolean) => {
   const { t } = useTranslation()
-
-  return [
+  const tabs = [
     {
       key: ToolTypeEnum.All,
       name: t('workflow.tabs.allTool'),
@@ -52,4 +51,12 @@ export const useToolTabs = () => {
       name: t('workflow.tabs.workflowTool'),
     },
   ]
+  if(!isHideMCPTools) {
+    tabs.push({
+      key: ToolTypeEnum.MCP,
+      name: 'MCP',
+    })
+  }
+
+  return tabs
 }

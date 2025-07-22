@@ -113,6 +113,7 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
+    tagBound: 'Number of apps using this tag',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -127,6 +128,8 @@ const translation = {
       value: 'Value',
       valuePlaceholder: 'env value',
       secretTip: 'Used to define sensitive information or data, with DSL settings configured for leak prevention.',
+      description: 'Description',
+      descriptionPlaceholder: 'Describe the variable',
     },
     export: {
       title: 'Export Secret environment variables?',
@@ -229,6 +232,8 @@ const translation = {
     'utilities': 'Utilities',
     'noResult': 'No match found',
     'agent': 'Agent Strategy',
+    'allAdded': 'All added',
+    'addAll': 'Add all',
   },
   blocks: {
     'start': 'Start',
@@ -307,6 +312,8 @@ const translation = {
     organizeBlocks: 'Organize nodes',
     change: 'Change',
     optional: '(optional)',
+    maximize: 'Maximize Canvas',
+    minimize: 'Exit Full Screen',
   },
   nodes: {
     common: {
@@ -363,6 +370,10 @@ const translation = {
         times: 'times',
         ms: 'ms',
         retries: '{{num}} Retries',
+      },
+      typeSwitch: {
+        input: 'Input value',
+        variable: 'Use variable',
       },
     },
     start: {
@@ -540,6 +551,10 @@ const translation = {
         title: 'Import from cURL',
         placeholder: 'Paste cURL string here',
       },
+      verifySSL: {
+        title: 'Verify SSL Certificate',
+        warningTooltip: 'Disabling SSL verification is not recommended for production environments. This should only be used in development or testing, as it makes the connection vulnerable to security threats like man-in-the-middle attacks.',
+      },
     },
     code: {
       inputVars: 'Input Variables',
@@ -547,6 +562,7 @@ const translation = {
       advancedDependencies: 'Advanced Dependencies',
       advancedDependenciesTip: 'Add some preloaded dependencies that take more time to consume or are not default built-in here',
       searchDependencies: 'Search Dependencies',
+      syncFunctionSignature: 'Sync function signature to code',
     },
     templateTransform: {
       inputVars: 'Input Variables',
@@ -653,6 +669,9 @@ const translation = {
     tool: {
       authorize: 'Authorize',
       inputVars: 'Input Variables',
+      settings: 'Settings',
+      insertPlaceholder1: 'Type or press',
+      insertPlaceholder2: 'insert variable',
       outputVars: {
         text: 'tool generated content',
         files: {
@@ -670,6 +689,7 @@ const translation = {
       inputVars: 'Input Variables',
       outputVars: {
         className: 'Class Name',
+        usage: 'Model Usage Information',
       },
       class: 'Class',
       classNamePlaceholder: 'Write your class name',
@@ -683,6 +703,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Input Variable',
+      outputVars: {
+        isSuccess: 'Is Success.On success the value is 1, on failure the value is 0.',
+        errorReason: 'Error Reason',
+        usage: 'Model Usage Information',
+      },
       extractParameters: 'Extract Parameters',
       importFromTool: 'Import from tools',
       addExtractParameter: 'Add Extract Parameter',
@@ -702,8 +727,6 @@ const translation = {
       advancedSetting: 'Advanced Setting',
       reasoningMode: 'Reasoning Mode',
       reasoningModeTip: 'You can choose the appropriate reasoning mode based on the model\'s ability to respond to instructions for function calling or prompts.',
-      isSuccess: 'Is Success.On success the value is 1, on failure the value is 0.',
-      errorReason: 'Error Reason',
     },
     iteration: {
       deleteTitle: 'Delete Iteration Node?',
@@ -876,6 +899,8 @@ const translation = {
         install: 'Install',
         cancel: 'Cancel',
       },
+      clickToViewParameterSchema: 'Click to view parameter schema',
+      parameterSchema: 'Parameter Schema',
     },
   },
   tracing: {
@@ -911,6 +936,35 @@ const translation = {
       deleteFailure: 'Failed to delete version',
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
+    },
+  },
+  debug: {
+    settingsTab: 'Settings',
+    lastRunTab: 'Last Run',
+    noData: {
+      description: 'The results of the last run will be displayed here',
+      runThisNode: 'Run this node',
+    },
+    variableInspect: {
+      title: 'Variable Inspect',
+      emptyTip: 'After stepping through a node on the canvas or running a node step by step, you can view the current value of the node variable in Variable Inspect',
+      emptyLink: 'Learn more',
+      clearAll: 'Reset all',
+      clearNode: 'Clear cached variable',
+      resetConversationVar: 'Reset conversation variable to default value',
+      view: 'View log',
+      edited: 'Edited',
+      reset: 'Reset to last run value',
+      trigger: {
+        normal: 'Variable Inspect',
+        running: 'Caching running status',
+        stop: 'Stop run',
+        cached: 'View cached variables',
+        clear: 'Clear',
+      },
+      envNode: 'Environment',
+      chatNode: 'Conversation',
+      systemNode: 'System',
     },
   },
 }

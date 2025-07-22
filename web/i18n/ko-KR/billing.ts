@@ -9,7 +9,7 @@ const translation = {
   buyPermissionDeniedTip: '구독하려면 엔터프라이즈 관리자에게 문의하세요',
   plansCommon: {
     title: '당신에게 맞는 요금제를 선택하세요',
-    yearlyTip: '연간 구독 시 2 개월 무료!',
+    yearlyTip: '연간 구독 시 2개월 무료!',
     mostPopular: '가장 인기 있는',
     planRange: {
       monthly: '월간',
@@ -20,21 +20,25 @@ const translation = {
     save: '절약 ',
     free: '무료',
     currentPlan: '현재 요금제',
-    contractSales: '영업에 문의하기',
+    contractSales: '영업팀에 문의하기',
     contractOwner: '팀 관리자에게 문의하기',
     startForFree: '무료로 시작하기',
     getStartedWith: '시작하기 ',
-    contactSales: '영업에 문의하기',
-    talkToSales: '영업과 상담하기',
+    contactSales: '영업팀에 문의하기',
+    talkToSales: '영업팀과 상담하기',
     modelProviders: '모델 제공자',
     teamMembers: '팀 멤버',
     buildApps: '앱 만들기',
     vectorSpace: '벡터 공간',
-    vectorSpaceBillingTooltip: '1MB 당 약 120 만 글자의 벡터화된 데이터를 저장할 수 있습니다 (OpenAI Embeddings 을 기반으로 추정되며 모델에 따라 다릅니다).',
-    vectorSpaceTooltip: '벡터 공간은 LLM 이 데이터를 이해하는 데 필요한 장기 기억 시스템입니다.',
+    vectorSpaceBillingTooltip:
+      '1MB 당 약 120 만 글자의 벡터화된 데이터를 저장할 수 있습니다 (OpenAI Embeddings 을 기반으로 추정되며 모델에 따라 다릅니다).',
+    vectorSpaceTooltip:
+      '벡터 공간은 LLM 이 데이터를 이해하는 데 필요한 장기 기억 시스템입니다.',
     documentProcessingPriority: '문서 처리 우선순위',
-    documentProcessingPriorityTip: '더 높은 문서 처리 우선순위를 원하시면 요금제를 업그레이드하세요.',
-    documentProcessingPriorityUpgrade: '더 높은 정확성과 빠른 속도로 데이터를 처리합니다.',
+    documentProcessingPriorityTip:
+      '더 높은 문서 처리 우선순위를 원하시면 요금제를 업그레이드하세요.',
+    documentProcessingPriorityUpgrade:
+      '더 높은 정확성과 빠른 속도로 데이터를 처리합니다.',
     priority: {
       'standard': '표준',
       'priority': '우선',
@@ -60,31 +64,35 @@ const translation = {
       workflow: '워크플로우',
       llmLoadingBalancing: 'LLM 로드 밸런싱',
       bulkUpload: '문서 대량 업로드',
-      llmLoadingBalancingTooltip: '모델에 여러 API 키를 추가하여 API 속도 제한을 효과적으로 우회할 수 있습니다.',
+      llmLoadingBalancingTooltip:
+        '모델에 여러 API 키를 추가하여 API 속도 제한을 효과적으로 우회할 수 있습니다.',
     },
     comingSoon: '곧 출시 예정',
     member: '멤버',
     memberAfter: '멤버',
     messageRequest: {
       title: '메시지 크레딧',
-      tooltip: 'GPT 제외 다양한 요금제에서의 메시지 호출 쿼터 (gpt4 제외). 제한을 초과하는 메시지는 OpenAI API 키를 사용합니다.',
+      tooltip:
+        'GPT 제외 다양한 요금제에서의 메시지 호출 쿼터 (gpt4 제외). 제한을 초과하는 메시지는 OpenAI API 키를 사용합니다.',
       titlePerMonth: '{{count,number}} 메시지/월',
     },
     annotatedResponse: {
       title: '주석 응답 쿼터',
-      tooltip: '수동으로 편집 및 응답 주석 달기로 앱의 사용자 정의 가능한 고품질 질의응답 기능을 제공합니다 (채팅 앱에만 해당).',
+      tooltip:
+        '수동으로 편집 및 응답 주석 달기로 앱의 사용자 정의 가능한 고품질 질의응답 기능을 제공합니다 (채팅 앱에만 해당).',
     },
-    ragAPIRequestTooltip: 'Dify 의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
+    ragAPIRequestTooltip:
+      'Dify 의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
     receiptInfo: '팀 소유자 및 팀 관리자만 구독 및 청구 정보를 볼 수 있습니다',
     annotationQuota: 'Annotation Quota(주석 할당량)',
     documentsUploadQuota: '문서 업로드 할당량',
-    freeTrialTipPrefix: '가입하고 받으세요',
+    freeTrialTipPrefix: '요금제에 가입하고 ',
     comparePlanAndFeatures: '계획 및 기능 비교',
     documents: '{{count,number}} 지식 문서',
     apiRateLimit: 'API 요금 한도',
     cloud: '클라우드 서비스',
     unlimitedApiRate: 'API 호출 속도 제한 없음',
-    freeTrialTip: '200 회의 OpenAI 호출에 대한 무료 체험.',
+    freeTrialTip: '200 회의 OpenAI 호출 무료 체험을 받으세요. ',
     annualBilling: '연간 청구',
     getStarted: '시작하기',
     apiRateLimitUnit: '{{count,number}}/일',
@@ -94,10 +102,13 @@ const translation = {
     teamMember_other: '{{count,number}} 팀원',
     teamMember_one: '{{count,number}} 팀원',
     priceTip: '작업 공간당/',
-    apiRateLimitTooltip: 'Dify API 를 통한 모든 요청에는 API 요금 한도가 적용되며, 여기에는 텍스트 생성, 채팅 대화, 워크플로 실행 및 문서 처리가 포함됩니다.',
+    apiRateLimitTooltip:
+      'Dify API 를 통한 모든 요청에는 API 요금 한도가 적용되며, 여기에는 텍스트 생성, 채팅 대화, 워크플로 실행 및 문서 처리가 포함됩니다.',
     documentsRequestQuota: '{{count,number}}/분 지식 요청 비율 제한',
-    documentsTooltip: '지식 데이터 소스에서 가져올 수 있는 문서 수에 대한 쿼터.',
-    documentsRequestQuotaTooltip: '지식 기반 내에서 작업 공간이 분당 수행할 수 있는 총 작업 수를 지정합니다. 여기에는 데이터 세트 생성, 삭제, 업데이트, 문서 업로드, 수정, 보관 및 지식 기반 쿼리가 포함됩니다. 이 지표는 지식 기반 요청의 성능을 평가하는 데 사용됩니다. 예를 들어, 샌드박스 사용자가 1 분 이내에 10 회의 연속 히트 테스트를 수행하면, 해당 작업 공간은 다음 1 분 동안 데이터 세트 생성, 삭제, 업데이트 및 문서 업로드 또는 수정과 같은 작업을 수행하는 것이 일시적으로 제한됩니다.',
+    documentsTooltip:
+      '지식 데이터 소스에서 가져올 수 있는 문서 수에 대한 쿼터.',
+    documentsRequestQuotaTooltip:
+      '지식 기반 내에서 작업 공간이 분당 수행할 수 있는 총 작업 수를 지정합니다. 여기에는 데이터 세트 생성, 삭제, 업데이트, 문서 업로드, 수정, 보관 및 지식 기반 쿼리가 포함됩니다. 이 지표는 지식 기반 요청의 성능을 평가하는 데 사용됩니다. 예를 들어, 샌드박스 사용자가 1 분 이내에 10 회의 연속 히트 테스트를 수행하면, 해당 작업 공간은 다음 1 분 동안 데이터 세트 생성, 삭제, 업데이트 및 문서 업로드 또는 수정과 같은 작업을 수행하는 것이 일시적으로 제한됩니다.',
   },
   plans: {
     sandbox: {
@@ -108,9 +119,10 @@ const translation = {
     },
     professional: {
       name: '프로페셔널',
-      description: '개인 및 소규모 팀을 위해 더 많은 파워를 저렴한 가격에 제공합니다.',
+      description:
+        '개인 및 소규모 팀을 위해 더 많은 파워를 저렴한 가격에 제공합니다.',
       includesTitle: '무료 플랜에 추가로 포함된 항목:',
-      for: '독립 개발자/소규모 팀을 위한',
+      for: '1인 개발자/소규모 팀을 위한',
     },
     team: {
       name: '팀',
@@ -120,7 +132,8 @@ const translation = {
     },
     enterprise: {
       name: '엔터프라이즈',
-      description: '대규모 미션 크리티컬 시스템을 위한 완전한 기능과 지원을 제공합니다.',
+      description:
+        '대규모 미션 크리티컬 시스템을 위한 완전한 기능과 지원을 제공합니다.',
       includesTitle: '팀 플랜에 추가로 포함된 항목:',
       features: {
         2: '독점 기업 기능',
@@ -178,7 +191,8 @@ const translation = {
     contactUs: '문의하기',
     fullTip1: '업그레이드하여 더 많은 앱을 만들기',
     fullTip2: '계획 한도에 도달했습니다.',
-    fullTip2des: '비활성 애플리케이션을 정리하여 사용량을 줄이거나 저희에게 문의하는 것이 좋습니다.',
+    fullTip2des:
+      '비활성 애플리케이션을 정리하여 사용량을 줄이거나 저희에게 문의하는 것이 좋습니다.',
     fullTip1des: '이 계획에서 앱을 구축할 수 있는 한계에 도달했습니다.',
   },
   annotatedResponse: {
@@ -192,7 +206,8 @@ const translation = {
     teamMembers: '팀원들',
     buildApps: '앱 만들기',
     documentsUploadQuota: '문서 업로드 한도',
-    vectorSpaceTooltip: '고품질 색인 모드를 사용하는 문서는 지식 데이터 저장소 자원을 소모합니다. 지식 데이터 저장소가 한도에 도달하면 새 문서를 업로드할 수 없습니다.',
+    vectorSpaceTooltip:
+      '고품질 색인 모드를 사용하는 문서는 지식 데이터 저장소 자원을 소모합니다. 지식 데이터 저장소가 한도에 도달하면 새 문서를 업로드할 수 없습니다.',
   },
   teamMembers: '팀원들',
 }

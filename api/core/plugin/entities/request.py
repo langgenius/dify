@@ -27,15 +27,30 @@ from core.workflow.nodes.question_classifier.entities import (
 )
 
 
+class InvokeCredentials(BaseModel):
+    tool_credentials: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map of tool provider to credential id, used to store the credential id for the tool provider.",
+    )
+
+
+class PluginInvokeContext(BaseModel):
+    credentials: Optional[InvokeCredentials] = Field(
+        default_factory=InvokeCredentials,
+        description="Credentials context for the plugin invocation or backward invocation.",
+    )
+
+
 class RequestInvokeTool(BaseModel):
     """
     Request to invoke a tool
     """
 
-    tool_type: Literal["builtin", "workflow", "api"]
+    tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
     tool_parameters: dict
+    credential_id: Optional[str] = None
 
 
 class BaseRequestInvokeModel(BaseModel):
@@ -80,6 +95,16 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
                 v[i] = PromptMessage(**v[i])
 
         return v
+
+
+class RequestInvokeLLMWithStructuredOutput(RequestInvokeLLM):
+    """
+    Request to invoke LLM with structured output
+    """
+
+    structured_output_schema: dict[str, Any] = Field(
+        default_factory=dict, description="The schema of the structured output in JSON schema format"
+    )
 
 
 class RequestInvokeTextEmbedding(BaseRequestInvokeModel):

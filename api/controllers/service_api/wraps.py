@@ -1,6 +1,6 @@
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -11,13 +11,14 @@ from flask_restful import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.dataset import RateLimitLog
+from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -256,7 +257,7 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    current_time = datetime.now(UTC).replace(tzinfo=None)
+    current_time = naive_utc_now()
     cutoff_time = current_time - timedelta(minutes=1)
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
@@ -317,3 +318,11 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
 
 class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
+
+    def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
+
+        if not dataset:
+            raise NotFound("Dataset not found.")
+
+        return dataset

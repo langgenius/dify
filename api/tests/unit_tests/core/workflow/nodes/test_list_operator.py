@@ -33,16 +33,19 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData(**config)
+    node_config = {
+        "id": "test_node_id",
+        "data": node_data.model_dump(),
+    }
     node = ListOperatorNode(
         id="test_node_id",
-        config={
-            "id": "test_node_id",
-            "data": node_data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=MagicMock(),
         graph=MagicMock(),
         graph_runtime_state=MagicMock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node
@@ -115,7 +118,7 @@ def test_filter_files_by_type(list_operator_node):
         },
     ]
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    for expected_file, result_file in zip(expected_files, result.outputs["result"]):
+    for expected_file, result_file in zip(expected_files, result.outputs["result"].value):
         assert expected_file["filename"] == result_file.filename
         assert expected_file["type"] == result_file.type
         assert expected_file["tenant_id"] == result_file.tenant_id

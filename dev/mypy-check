@@ -7,4 +7,4 @@ cd "$SCRIPT_DIR/.."
 
 # run mypy checks
 uv run --directory api --dev --with pip \
-  python -m mypy --install-types --non-interactive ./
+  python -m mypy --install-types --non-interactive --exclude venv ./

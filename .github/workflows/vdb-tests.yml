@@ -84,10 +84,14 @@ jobs:
             elasticsearch
             oceanbase
 
-      - name: Check VDB Ready (TiDB, Oceanbase)
+      - name: setup test config
         run: |
-          uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
-          uv run --project api python api/tests/integration_tests/vdb/oceanbase/check_oceanbase_ready.py
+          echo $(pwd)
+          ls -lah .
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
+
+      - name: Check VDB Ready (TiDB)
+        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: uv run --project api bash dev/pytest/pytest_vdb.sh

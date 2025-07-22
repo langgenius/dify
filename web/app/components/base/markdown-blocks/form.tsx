@@ -28,6 +28,7 @@ enum SUPPORTED_TYPES {
   DATETIME = 'datetime',
   CHECKBOX = 'checkbox',
   SELECT = 'select',
+  HIDDEN = 'hidden',
 }
 const MarkdownForm = ({ node }: any) => {
   const { onSend } = useChatContext()
@@ -37,8 +38,12 @@ const MarkdownForm = ({ node }: any) => {
   useEffect(() => {
     const initialValues: { [key: string]: any } = {}
     node.children.forEach((child: any) => {
-      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName))
-        initialValues[child.properties.name] = child.properties.value
+      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName)) {
+        initialValues[child.properties.name]
+          = (child.tagName === SUPPORTED_TAGS.INPUT && child.properties.type === SUPPORTED_TYPES.HIDDEN)
+            ? (child.properties.value || '')
+            : child.properties.value
+      }
     })
     setFormValues(initialValues)
   }, [node.children])
@@ -176,6 +181,17 @@ const MarkdownForm = ({ node }: any) => {
                     [child.properties.name]: item.value,
                   }))
                 }}
+              />
+            )
+          }
+
+          if (child.properties.type === SUPPORTED_TYPES.HIDDEN) {
+            return (
+              <input
+                key={index}
+                type="hidden"
+                name={child.properties.name}
+                value={formValues[child.properties.name] || child.properties.value || ''}
               />
             )
           }

@@ -103,7 +103,6 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
         - `workflow_id` (string) ID of related workflow
-        - `sequence_number` (int) Self-increasing serial number, self-increasing in the App, starting from 1
         - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `event: node_started` node execution started
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -241,7 +240,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -334,7 +333,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='Get Workflow Run Detail'
   name='#get-workflow-run-detail'
@@ -343,7 +342,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   <Col>
     Retrieve the current execution results of a workflow task based on the workflow execution ID.
     ### Path
-    - `workflow_id` (string) Workflow ID, can be obtained from the streaming chunk return
+    - `workflow_run_id` (string) Workflow run ID, can be obtained from the streaming chunk return
     ### Response
     - `id` (string) ID of workflow execution
     - `workflow_id` (string) ID of related workflow
@@ -359,9 +358,9 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
@@ -533,6 +532,12 @@ Workflow applications offers non-session support and is ideal for translation, a
       <Property name='limit' type='int' key='limit'>
           How many chat history messages to return in one request, default is 20.
       </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+          Created by which endUser, for example, `abc-123`.
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          Created by which email account, for example, lizb@test.com.
+      </Property>
     </Properties>
 
     ### Response
@@ -685,11 +690,30 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) Whether it is enabled
-        - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+      - `document` (object) Document settings  
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Document number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `image` (object) Image settings  
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Image number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `audio` (object) Audio settings  
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Audio number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `video` (object) Video settings  
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Video number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `custom` (object) Custom settings  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Custom number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one. 
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)

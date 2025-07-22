@@ -46,6 +46,7 @@ type ItemProps = {
   isSupportFileVar?: boolean
   isException?: boolean
   isLoopVar?: boolean
+  zIndex?: number
 }
 
 const objVarTypes = [VarType.object, VarType.file]
@@ -60,6 +61,7 @@ const Item: FC<ItemProps> = ({
   isSupportFileVar,
   isException,
   isLoopVar,
+  zIndex,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -116,7 +118,6 @@ const Item: FC<ItemProps> = ({
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -171,7 +172,7 @@ const Item: FC<ItemProps> = ({
         </div >
       </PortalToFollowElemTrigger >
       <PortalToFollowElemContent style={{
-        zIndex: 100,
+        zIndex: zIndex || 100,
       }}>
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
@@ -217,11 +218,9 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   const isHovering = isItemHovering || isChildrenHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   useEffect(() => {
     onHovering && onHovering(isItemHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isItemHovering])
   // absolute top-[-2px]
   return (
@@ -260,6 +259,7 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  zIndex?: number
   autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
@@ -272,6 +272,7 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  zIndex,
   autoFocus = true,
 }) => {
   const { t } = useTranslation()
@@ -357,6 +358,7 @@ const VarReferenceVars: FC<Props> = ({
                     isSupportFileVar={isSupportFileVar}
                     isException={v.isException}
                     isLoopVar={item.isLoop}
+                    zIndex={zIndex}
                   />
                 ))}
               </div>))

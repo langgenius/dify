@@ -211,10 +211,6 @@ class DatasetApi(Resource):
         else:
             data["embedding_available"] = True
 
-        if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
-            data.update({"partial_member_list": part_users_list})
-
         return data, 200
 
     @setup_required
@@ -686,6 +682,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [
@@ -733,6 +730,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.TENCENT
                 | VectorType.HUAWEI_CLOUD
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [

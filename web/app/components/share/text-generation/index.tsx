@@ -7,16 +7,14 @@ import {
   RiErrorWarningFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
-import { checkOrSetAccessToken, removeAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
-import AppUnavailable from '../../base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
+import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
@@ -39,10 +37,10 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
-import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useWebAppStore } from '@/context/web-app-context'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -83,17 +81,6 @@ const TextGeneration: FC<IMainProps> = ({
   const mode = searchParams.get('mode') || 'create'
   const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
 
-  const router = useRouter()
-  const pathname = usePathname()
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    if (params.has('mode')) {
-      params.delete('mode')
-      router.replace(`${pathname}?${params.toString()}`)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
@@ -111,30 +98,19 @@ const TextGeneration: FC<IMainProps> = ({
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
 
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({
-    appId,
-    isInstalledApp,
-    enabled: systemFeatures.webapp_auth.enabled,
-  })
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
-    appId,
-    isInstalledApp,
-    enabled: systemFeatures.webapp_auth.enabled,
-  })
-
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-  const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
+  const fetchSavedMessage = useCallback(async () => {
+    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
     setSavedMessages(res.data)
-  }
+  }, [isInstalledApp, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await saveMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
+    await removeMessage(messageId, isInstalledApp, appId)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -383,34 +359,14 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }
 
-  const fetchInitData = async () => {
-    if (!isInstalledApp)
-      await checkOrSetAccessToken()
-
-    return Promise.all([
-      isInstalledApp
-        ? {
-          app_id: installedAppInfo?.id,
-          site: {
-            title: installedAppInfo?.app.name,
-            prompt_public: false,
-            copyright: '',
-            icon: installedAppInfo?.app.icon,
-            icon_background: installedAppInfo?.app.icon_background,
-          },
-          plan: 'basic',
-        }
-        : fetchAppInfo(),
-      fetchAppParams(isInstalledApp, installedAppInfo?.id),
-      !isWorkflow
-        ? fetchSavedMessage()
-        : {},
-    ])
-  }
-
+  const appData = useWebAppStore(s => s.appInfo)
+  const appParams = useWebAppStore(s => s.appParams)
+  const accessMode = useWebAppStore(s => s.webAppAccessMode)
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await fetchInitData()
+      if (!appData || !appParams)
+        return
+      !isWorkflow && fetchSavedMessage()
       const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
@@ -421,11 +377,11 @@ const TextGeneration: FC<IMainProps> = ({
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
-      })
+      } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for future
@@ -434,7 +390,7 @@ const TextGeneration: FC<IMainProps> = ({
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
     })()
-  }, [])
+  }, [appData, appParams, fetchSavedMessage, isWorkflow])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useDocumentTitle(siteInfo?.title || t('share.generation.title'))
@@ -536,32 +492,12 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  const getSigninUrl = useCallback(() => {
-    const params = new URLSearchParams(searchParams)
-    params.delete('message')
-    params.set('redirect_url', pathname)
-    return `/webapp-signin?${params.toString()}`
-  }, [searchParams, pathname])
-
-  const backToHome = useCallback(() => {
-    removeAccessToken()
-    const url = getSigninUrl()
-    router.replace(url)
-  }, [getSigninUrl, router])
-
-  if (!appId || !siteInfo || !promptConfig || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission))) {
+  if (!appId || !siteInfo || !promptConfig) {
     return (
       <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
-  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
-    </div>
-  }
-
   return (
     <div className={cn(
       'bg-background-default-burn',
@@ -586,7 +522,7 @@ const TextGeneration: FC<IMainProps> = ({
               imageUrl={siteInfo.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown hideLogout={isInstalledApp || appAccessMode?.accessMode === AccessMode.PUBLIC} data={siteInfo} />
+            <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
             <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>

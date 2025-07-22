@@ -84,8 +84,8 @@ const translation = {
     advancedShortDescription: 'Flux de lucru îmbunătățit pentru conversații multi-tur',
     advancedUserDescription: 'Flux de lucru cu funcții suplimentare de memorie și interfață de chatbot.',
     noTemplateFoundTip: 'Încercați să căutați folosind cuvinte cheie diferite.',
-    foundResults: '{{număr}} Rezultatele',
-    foundResult: '{{număr}} Rezultat',
+    foundResults: '{{count}} Rezultatele',
+    foundResult: '{{count}} Rezultat',
     noIdeaTip: 'Nicio idee? Consultați șabloanele noastre',
     noAppsFound: 'Nu s-au găsit aplicații',
     workflowShortDescription: 'Flux agentic pentru automatizări inteligente',
@@ -93,6 +93,7 @@ const translation = {
     noTemplateFound: 'Nu s-au găsit șabloane',
     forAdvanced: 'PENTRU UTILIZATORII AVANSAȚI',
     chooseAppType: 'Alegeți un tip de aplicație',
+    dropDSLToCreateApp: 'Trageți fișierul DSL aici pentru a crea aplicația',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: 'Configurați furnizorul pentru a activa urmărirea',
       moreProvider: 'Mai mulți furnizori',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilitate LLM de nivel enterprise, evaluare online și offline, monitorizare și experimentare—alimentată de OpenTelemetry. Proiectată special pentru aplicații bazate pe LLM și agenți.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Platformă open-source și bazată pe OpenTelemetry pentru observabilitate, evaluare, inginerie de prompturi și experimentare pentru fluxurile de lucru și agenții LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'O platformă de dezvoltare all-in-one pentru fiecare etapă a ciclului de viață al aplicației bazate pe LLM.',
@@ -162,6 +171,10 @@ const translation = {
     weave: {
       title: 'Împletește',
       description: 'Weave este o platformă open-source pentru evaluarea, testarea și monitorizarea aplicațiilor LLM.',
+    },
+    aliyun: {
+      description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
+      title: 'Monitorizarea Cloud',
     },
   },
   answerIcon: {
@@ -246,6 +259,8 @@ const translation = {
   },
   accessControl: 'Controlul Accesului la Aplicația Web',
   noAccessPermission: 'Nici o permisiune pentru a accesa aplicația web',
+  maxActiveRequestsPlaceholder: 'Introduceți 0 pentru nelimitat',
+  maxActiveRequests: 'Maxime cereri simultane',
 }
 
 export default translation

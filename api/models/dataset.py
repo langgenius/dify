@@ -140,7 +140,7 @@ class Dataset(Base):
     def word_count(self):
         return (
             db.session.query(Document)
-            .with_entities(func.coalesce(func.sum(Document.word_count)))
+            .with_entities(func.coalesce(func.sum(Document.word_count), 0))
             .filter(Document.dataset_id == self.id)
             .scalar()
         )
@@ -255,7 +255,7 @@ class Dataset(Base):
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
-        return f"Vector_index_{normalized_dataset_id}_Node"
+        return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_{normalized_dataset_id}_Node"
 
 
 class DatasetProcessRule(Base):
@@ -448,7 +448,7 @@ class Document(Base):
     def hit_count(self):
         return (
             db.session.query(DocumentSegment)
-            .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count)))
+            .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count), 0))
             .filter(DocumentSegment.document_id == self.id)
             .scalar()
         )

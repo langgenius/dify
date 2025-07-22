@@ -1,19 +1,21 @@
 import { useStrategyProviderDetail } from '@/service/use-strategy'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
-import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { AgentNodeType } from './types'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
+import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export type StrategyStatus = {
   plugin: {
@@ -86,17 +88,27 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   })
   const formData = useMemo(() => {
     const paramNameList = (currentStrategy?.parameters || []).map(item => item.name)
-    return Object.fromEntries(
+    const res = Object.fromEntries(
       Object.entries(inputs.agent_parameters || {}).filter(([name]) => paramNameList.includes(name)).map(([key, value]) => {
         return [key, value.value]
       }),
     )
+    return res
   }, [inputs.agent_parameters, currentStrategy?.parameters])
+
+  const getParamVarType = useCallback((paramName: string) => {
+    const isVariable = currentStrategy?.parameters.some(
+      param => param.name === paramName && param.type === FormTypeEnum.any,
+    )
+    if (isVariable) return VarType.variable
+    return VarType.constant
+  }, [currentStrategy?.parameters])
+
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
-        type: VarType.constant,
+        type: getParamVarType(key),
         value: val,
       }
     })
@@ -105,6 +117,41 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       agent_parameters: res,
     })
   }
+
+  const formattingToolData = (data: any) => {
+    const settingValues = generateAgentToolValue(data.settings, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form !== 'llm') as any))
+    const paramValues = generateAgentToolValue(data.parameters, toolParametersToFormSchemas(data.schemas.filter((param: { form: string }) => param.form === 'llm') as any), true)
+    const res = produce(data, (draft: any) => {
+      draft.settings = settingValues
+      draft.parameters = paramValues
+    })
+    return res
+  }
+
+  const formattingLegacyData = () => {
+    if (inputs.version || inputs.tool_node_version)
+      return inputs
+    const newData = produce(inputs, (draft) => {
+      const schemas = currentStrategy?.parameters || []
+      Object.keys(draft.agent_parameters || {}).forEach((key) => {
+        const targetSchema = schemas.find(schema => schema.name === key)
+        if (targetSchema?.type === FormTypeEnum.toolSelector)
+          draft.agent_parameters![key].value = formattingToolData(draft.agent_parameters![key].value)
+        if (targetSchema?.type === FormTypeEnum.multiToolSelector)
+          draft.agent_parameters![key].value = draft.agent_parameters![key].value.map((tool: any) => formattingToolData(tool))
+      })
+      draft.tool_node_version = '2'
+    })
+    return newData
+  }
+
+  // formatting legacy data
+  useEffect(() => {
+    if (!currentStrategy)
+      return
+    const newData = formattingLegacyData()
+    setInputs(newData)
+  }, [currentStrategy])
 
   // vars
 
@@ -131,35 +178,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   })
 
   // single run
-  const {
-    isShowSingleRun,
-    showSingleRun,
-    hideSingleRun,
-    toVarInputs,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-    getInputVars,
-  } = useOneStepRun<AgentNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-  })
-  const allVarStrArr = (() => {
-    const arr = currentStrategy?.parameters.filter(item => item.type === 'string').map((item) => {
-      return formData[item.name]
-    }) || []
-
-    return arr
-  })()
-  const varInputs = (() => {
-    const vars = getInputVars(allVarStrArr)
-
-    return vars
-  })()
 
   const outputSchema = useMemo(() => {
     const res: any[] = []
@@ -199,21 +217,10 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     pluginDetail: pluginDetail.data?.plugins.at(0),
     availableVars,
     availableNodesWithParent,
-
-    isShowSingleRun,
-    showSingleRun,
-    hideSingleRun,
-    toVarInputs,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-    varInputs,
     outputSchema,
     handleMemoryChange,
     isChatMode,
+    canChooseMCPTool: isSupportMCP(inputs.meta?.version),
   }
 }
 

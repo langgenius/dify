@@ -104,7 +104,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `data` (object) 詳細
         - `id` (string) ワークフロー実行の一意の ID
         - `workflow_id` (string) 関連するワークフローの ID
-        - `sequence_number` (int) 自己増加シリアル番号、アプリ内で自己増加し、1 から始まります
         - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
     - `event: node_started` ノード実行開始
       - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
@@ -242,7 +241,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### ストリーミングモード
     <CodeGroup title="応答">
     ```streaming {{ title: '応答' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -335,7 +334,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='ワークフロー実行詳細を取得'
   name='#get-workflow-run-detail'
@@ -344,7 +343,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     ワークフロー実行 ID に基づいて、ワークフロータスクの現在の実行結果を取得します。
     ### パス
-    - `workflow_id` (string) ワークフローID、ストリーミングチャンクの返り値から取得可能
+    - `workflow_run_id` (string) ワークフロー実行ID、ストリーミングチャンクの返り値から取得可能
     ### 応答
     - `id` (string) ワークフロー実行の ID
     - `workflow_id` (string) 関連するワークフローの ID
@@ -360,9 +359,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
     ### リクエスト例
-    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_run_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
@@ -534,6 +533,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='limit' type='int' key='limit'>
           1回のリクエストで返すチャット履歴メッセージの数、デフォルトは20。
       </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+           どのendUserによって作成されたか、例えば、`abc-123`。
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          どのメールアカウントによって作成されたか、例えば、lizb@test.com。
+      </Property>
     </Properties>
 
     ### 応答
@@ -686,11 +691,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `default` (string) デフォルト値
         - `options` (array[string]) オプション値
     - `file_upload` (object) ファイルアップロード設定
-      - `image` (object) 画像設定
-        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 有効かどうか
-        - `number_limits` (int) 画像数の制限、デフォルトは3
-        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+      - `document` (object) ドキュメント設定  
+        現在サポートされているドキュメントタイプ：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) ドキュメント数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `image` (object) 画像設定  
+        現在サポートされている画像タイプ：`png`, `jpg`, `jpeg`, `webp`, `gif`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) 画像数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `audio` (object) オーディオ設定  
+        現在サポートされているオーディオタイプ：`mp3`, `m4a`, `wav`, `webm`, `amr`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) オーディオ数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `video` (object) ビデオ設定  
+        現在サポートされているビデオタイプ：`mp4`, `mov`, `mpeg`, `mpga`。
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) ビデオ数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `custom` (object) カスタム設定  
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) カスタム数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
     - `system_parameters` (object) システムパラメータ
       - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
       - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）

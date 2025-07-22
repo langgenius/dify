@@ -54,9 +54,9 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         const field = param.name
         const value = inputs.agent_parameters?.[field]?.value
         if (value) {
-          (value as unknown as any[]).forEach((item) => {
+          (value as unknown as any[]).forEach((item, idx) => {
             tools.push({
-              id: `${param.name}-${i}`,
+              id: `${param.name}-${idx}`,
               providerName: item.provider_name,
             })
           })
@@ -104,7 +104,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
-        {tools.map(tool => <ToolIcon {...tool} key={tool.id} />)}
+        {tools.map((tool, i) => <ToolIcon {...tool} key={tool.id + i} />)}
       </div>
     </Group>}
   </div>

@@ -74,12 +74,12 @@ const translation = {
     appCreateDSLErrorPart2: 'क्या आप जारी रखना चाहते हैं?',
     learnMore: 'और जानो',
     forBeginners: 'नए उपयोगकर्ताओं के लिए बुनियादी ऐप प्रकार',
-    foundResults: '{{गिनती}} परिणाम',
+    foundResults: '{{count}} परिणाम',
     forAdvanced: 'उन्नत उपयोगकर्ताओं के लिए',
     agentUserDescription: 'पुनरावृत्त तर्क और स्वायत्त उपकरण में सक्षम एक बुद्धिमान एजेंट कार्य लक्ष्यों को प्राप्त करने के लिए उपयोग करता है।',
     optional: 'वैकल्पिक',
     chatbotShortDescription: 'सरल सेटअप के साथ एलएलएम-आधारित चैटबॉट',
-    foundResult: '{{गिनती}} परिणाम',
+    foundResult: '{{count}} परिणाम',
     completionUserDescription: 'सरल कॉन्फ़िगरेशन के साथ पाठ निर्माण कार्यों के लिए त्वरित रूप से AI सहायक बनाएं।',
     noIdeaTip: 'कोई विचार नहीं? हमारे टेम्प्लेट देखें',
     noTemplateFound: 'कोई टेम्पलेट नहीं मिला',
@@ -93,6 +93,7 @@ const translation = {
     advancedShortDescription: 'बहु-चरण वार्तालाप के लिए उन्नत वर्कफ़्लो',
     noTemplateFoundTip: 'विभिन्न कीवर्ड का उपयोग करके खोजने का प्रयास करें।',
     workflowUserDescription: 'ड्रैग-एंड-ड्रॉप सरलता के साथ स्वायत्त AI वर्कफ़्लो का दृश्य निर्माण करें।',
+    dropDSLToCreateApp: 'यहाँ DSL फ़ाइल ड्रॉप करें ताकि ऐप बनाया जा सके',
   },
   editApp: 'जानकारी संपादित करें',
   editAppTitle: 'ऐप जानकारी संपादित करें',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: 'ट्रेसिंग सक्षम करने के लिए प्रदाता कॉन्फ़िगर करें',
       moreProvider: 'अधिक प्रदाता',
     },
+    arize: {
+      title: 'Arize',
+      description: 'एंटरप्राइज-स्तरीय LLM ऑब्ज़र्वेबिलिटी, ऑनलाइन और ऑफ़लाइन मूल्यांकन, मॉनिटरिंग और प्रयोग — OpenTelemetry द्वारा समर्थित। LLM और एजेंट-आधारित अनुप्रयोगों के लिए विशेष रूप से तैयार किया गया।',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'आपके LLM वर्कफ़्लोज़ और एजेंट्स के लिए ओपन-सोर्स और OpenTelemetry-आधारित ऑब्ज़र्वेबिलिटी, मूल्यांकन, प्रॉम्प्ट इंजीनियरिंग और प्रयोग का प्लेटफ़ॉर्म।',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'LLM-संचालित एप्लिकेशन जीवनचक्र के प्रत्येक चरण के लिए एक ऑल-इन-वन डेवलपर प्लेटफ़ॉर्म।',
@@ -162,6 +171,10 @@ const translation = {
     weave: {
       title: 'बुनना',
       description: 'वीव एक ओपन-सोर्स प्लेटफ़ॉर्म है जो LLM अनुप्रयोगों का मूल्यांकन, परीक्षण और निगरानी करने के लिए है।',
+    },
+    aliyun: {
+      title: 'क्लाउड मॉनिटर',
+      description: 'अलीबाबा क्लाउड द्वारा प्रदान की गई पूरी तरह से प्रबंधित और रखरखाव-मुक्त अवलोकन प्लेटफ़ॉर्म, Dify अनुप्रयोगों की स्वचालित निगरानी, ट्रेसिंग और मूल्यांकन का सक्षम बनाता है।',
     },
   },
   answerIcon: {
@@ -246,6 +259,8 @@ const translation = {
   },
   accessControl: 'वेब एप्लिकेशन पहुँच नियंत्रण',
   noAccessPermission: 'वेब एप्लिकेशन तक पहुँचने की अनुमति नहीं है',
+  maxActiveRequests: 'अधिकतम समवर्ती अनुरोध',
+  maxActiveRequestsPlaceholder: 'असीमित के लिए 0 दर्ज करें',
 }
 
 export default translation
