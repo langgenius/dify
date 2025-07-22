@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
 import {
   RiDeleteBinLine,
@@ -15,7 +15,7 @@ import AppIcon from '../base/app-icon'
 import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -73,11 +73,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
-  const mutateApps = useContextSelector(
-    AppsContext,
-    state => state.mutateApps,
-  )
-
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -106,12 +101,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.editDone'),
       })
       setAppDetail(app)
-      mutateApps()
     }
     catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
-  }, [appDetail, mutateApps, notify, setAppDetail, t])
+  }, [appDetail, notify, setAppDetail, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -131,7 +125,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      mutateApps()
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
@@ -186,7 +179,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     try {
       await deleteApp(appDetail.id)
       notify({ type: 'success', message: t('app.appDeleted') })
-      mutateApps()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -198,7 +190,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
