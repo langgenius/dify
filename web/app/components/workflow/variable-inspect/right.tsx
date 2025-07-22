@@ -128,12 +128,12 @@ const Right = ({
           if (draft?.prompt_template) {
             if (Array.isArray(draft.prompt_template))
               draft.prompt_template[0].text = res.modified
-             else
+            else
               draft.prompt_template.text = res.modified
           }
           break
 
-        //  Agent is a plugin, may has many instructions
+        //  Agent is a plugin, may has many instructions, can not locate which one to update
         // case BlockEnum.Agent:
         //   if (draft?.agent_parameters?.instruction) {
         //     draft.agent_parameters.instruction.value = res.modified
@@ -145,7 +145,11 @@ const Right = ({
       }
     })
     setInputs(newInputs)
-    eventEmitter?.emit({ type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER, instanceId: `${nodeId}-chat-workflow-llm-prompt-editor` } as any)
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      instanceId: `${nodeId}-chat-workflow-llm-prompt-editor`,
+      payload: res.modified,
+    } as any)
     handleHidePromptGenerator()
   }, [setInputs, blockType, nodeId, node?.data, handleHidePromptGenerator])
   return (
