@@ -77,23 +77,18 @@ def init_app(app: DifyApp) -> Celery:
     beat_schedule = {
         "clean_embedding_cache_task": {
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
-            "schedule": timedelta(days=day),
+            "schedule": crontab(minute='0', hour='2', day_of_month=f'*/{day}'),
+            "options": {"queue": "housekeeping"},
         },
         "clean_unused_datasets_task": {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
-            "schedule": timedelta(days=day),
-        },
-        "create_tidb_serverless_task": {
-            "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
-            "schedule": crontab(minute="0", hour="*"),
-        },
-        "update_tidb_serverless_status_task": {
-            "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
-            "schedule": timedelta(minutes=10),
+            "schedule": crontab(minute='0', hour='3', day_of_month=f'*/{day}'),
+            "options": {"queue": "housekeeping"},
         },
         "clean_messages": {
             "task": "schedule.clean_messages.clean_messages",
-            "schedule": timedelta(days=day),
+            "schedule": crontab(minute='0', hour='4', day_of_month=f'*/{day}'),
+            "options": {"queue": "housekeeping"},
         },
         # every Monday
         "mail_clean_document_notify_task": {
@@ -107,6 +102,17 @@ def init_app(app: DifyApp) -> Celery:
             ),
         },
     }
+
+    if dify_config.CREATE_TIDB_SERVICE_JOB_ENABLED:
+        beat_schedule["create_tidb_serverless_task"] = {
+            "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
+            "schedule": crontab(minute="0", hour="*"),
+        }
+        beat_schedule["update_tidb_serverless_status_task"] = {
+            "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
+            "schedule": timedelta(minutes=10),
+        }
+
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
