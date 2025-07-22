@@ -305,6 +305,7 @@ const translation = {
     press: 'Press',
     to: 'to ',
     insertContext: 'insert context',
+    optimizePromptTooltip: 'Optimize in Prompt Generator',
   },
   resetConfig: {
     title: 'Confirm reset?',

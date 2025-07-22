@@ -304,6 +304,7 @@ const translation = {
     press: '输入',
     to: '来',
     insertContext: '插入上下文',
+    optimizePromptTooltip: '在提示词生成器中优化',
   },
   resetConfig: {
     title: '确认重置？',
