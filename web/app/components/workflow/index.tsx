@@ -57,6 +57,8 @@ import CustomLoopStartNode from './nodes/loop-start'
 import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
+import CustomDataSourceEmptyNode from './nodes/data-source-empty'
+import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import CustomEdge from './custom-edge'
@@ -94,6 +96,7 @@ const nodeTypes = {
   [CUSTOM_SIMPLE_NODE]: CustomSimpleNode,
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
   [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
+  [CUSTOM_DATA_SOURCE_EMPTY_NODE]: CustomDataSourceEmptyNode,
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
@@ -190,7 +193,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -282,7 +284,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   useEffect(() => {
     fetchInspectVars()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const store = useStoreApi()

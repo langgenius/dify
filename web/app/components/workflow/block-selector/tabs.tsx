@@ -28,6 +28,7 @@ export type TabsProps = {
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
+  noTools?: boolean
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -41,6 +42,7 @@ const Tabs: FC<TabsProps> = ({
   tabs = [],
   filterElem,
   noBlocks,
+  noTools,
 }) => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
@@ -96,7 +98,7 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {
-        activeTab === TabsEnum.Tools && (
+        activeTab === TabsEnum.Tools && !noTools && (
           <AllTools
             searchText={searchText}
             onSelect={onSelect}

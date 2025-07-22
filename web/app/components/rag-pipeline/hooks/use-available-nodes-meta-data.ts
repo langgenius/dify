@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'
+import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-empty/default'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 
@@ -29,6 +30,13 @@ export const useAvailableNodesMetaData = () => {
       metaData: {
         ...knowledgeBaseDefault.metaData,
         isRequired: true,
+        isUndeletable: true,
+      },
+    },
+    {
+      ...dataSourceEmptyDefault,
+      metaData: {
+        ...dataSourceEmptyDefault.metaData,
         isUndeletable: true,
       },
     },

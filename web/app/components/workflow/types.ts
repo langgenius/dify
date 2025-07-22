@@ -47,6 +47,7 @@ export enum BlockEnum {
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
   DataSource = 'datasource',
+  DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
 }
 
@@ -84,6 +85,7 @@ export type CommonNodeType<T = {}> = {
   _waitingRun?: boolean
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
+  noteBySystem?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean

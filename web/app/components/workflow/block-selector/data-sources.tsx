@@ -2,6 +2,9 @@ import {
   useCallback,
   useRef,
 } from 'react'
+import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { BlockEnum } from '../types'
 import type {
   OnSelectBlock,
@@ -12,6 +15,8 @@ import Tools from './tools'
 import { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type AllToolsProps = {
   className?: string
@@ -28,6 +33,7 @@ const DataSources = ({
   onSelect,
   dataSources,
 }: AllToolsProps) => {
+  const { t } = useTranslation()
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
@@ -40,6 +46,7 @@ const DataSources = ({
       title: toolDefaultValue?.title,
     })
   }, [onSelect])
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <div className={cn(className)}>
@@ -56,6 +63,18 @@ const DataSources = ({
           hasSearchText={!!searchText}
           canNotSelectMultiple
         />
+        {
+          enable_marketplace && (
+            <Link
+              className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+              href={getMarketplaceUrl('')}
+              target='_blank'
+            >
+              <span>{t('plugin.findMoreInMarketplace')}</span>
+              <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+            </Link>
+          )
+        }
       </div>
     </div>
   )

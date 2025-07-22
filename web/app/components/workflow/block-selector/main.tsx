@@ -50,6 +50,7 @@ export type NodeSelectorProps = {
   blocks?: NodeDefault[]
   dataSources?: ToolWithProvider[]
   noBlocks?: boolean
+  noTools?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -68,6 +69,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   blocks = [],
   dataSources = [],
   noBlocks = false,
+  noTools = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -98,7 +100,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     activeTab,
     setActiveTab,
     tabs,
-  } = useTabs(!blocks.length, !dataSources.length)
+  } = useTabs(noBlocks, !dataSources.length, noTools)
 
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)
@@ -165,6 +167,17 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     onClear={() => setSearchText('')}
                   />
                 )}
+                {activeTab === TabsEnum.Sources && (
+                  <Input
+                    showLeftIcon
+                    showClearIcon
+                    autoFocus
+                    value={searchText}
+                    placeholder={searchPlaceholder}
+                    onChange={e => setSearchText(e.target.value)}
+                    onClear={() => setSearchText('')}
+                  />
+                )}
                 {activeTab === TabsEnum.Tools && (
                   <SearchBox
                     search={searchText}
@@ -184,6 +197,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
             dataSources={dataSources}
+            noTools={noTools}
           />
         </div>
       </PortalToFollowElemContent>

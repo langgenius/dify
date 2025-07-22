@@ -913,6 +913,7 @@ const translation = {
     dataSource: {
       supportedFileFormats: 'Supported file formats',
       supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+      add: 'Add data source',
     },
     knowledgeBase: {
       chunkStructure: 'Chunk Structure',

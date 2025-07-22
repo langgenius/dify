@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '../base/button'
+import Button from '@/app/components/base/button'
 import PipelineScreenShot from './screenshot'
-import Confirm from '../base/confirm'
+import Confirm from '@/app/components/base/confirm'
 import { useConvertDatasetToPipeline } from '@/service/use-pipeline'
 import { useParams } from 'next/navigation'
 import { useInvalid } from '@/service/use-base'
 import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
-import Toast from '../base/toast'
+import Toast from '@/app/components/base/toast'
 
 const Conversion = () => {
   const { t } = useTranslation()

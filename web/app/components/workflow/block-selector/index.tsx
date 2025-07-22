@@ -30,6 +30,9 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
       if (block.metaData.type === BlockEnum.LoopStart)
         return false
 
+      if (block.metaData.type === BlockEnum.DataSourceEmpty)
+        return false
+
       return true
     })
   }, [availableNodesMetaData?.nodes])

@@ -8,7 +8,7 @@ import {
   ToolTypeEnum,
 } from './types'
 
-export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
+export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boolean) => {
   const { t } = useTranslation()
   const tabs = useMemo(() => {
     return [
@@ -32,18 +32,27 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
             },
           ]
       ),
-      {
-        key: TabsEnum.Tools,
-        name: t('workflow.tabs.tools'),
-      },
+      ...(
+        noTools
+          ? []
+          : [
+            {
+              key: TabsEnum.Tools,
+              name: t('workflow.tabs.tools'),
+            },
+          ]
+      ),
     ]
-  }, [t, noBlocks, noSources])
+  }, [t, noBlocks, noSources, noTools])
   const initialTab = useMemo(() => {
     if (noBlocks)
-      return noSources ? TabsEnum.Tools : TabsEnum.Sources
+      return noTools ? TabsEnum.Sources : TabsEnum.Tools
+
+    if (noTools)
+      return noBlocks ? TabsEnum.Sources : TabsEnum.Blocks
 
     return TabsEnum.Blocks
-  }, [noBlocks, noSources])
+  }, [noBlocks, noSources, noTools])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   return {
