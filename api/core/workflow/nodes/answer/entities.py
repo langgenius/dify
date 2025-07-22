@@ -13,7 +13,7 @@ class AnswerNodeData(BaseNodeData):
     """
 
     answer: str = Field(..., description="answer template string")
-    outputs: list[VariableSelector]
+    outputs: list[VariableSelector] = Field(default_factory=list, description="list of variable selectors")
 
 
 class GenerateRouteChunk(BaseModel):
