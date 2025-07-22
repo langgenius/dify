@@ -2,71 +2,59 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import { LanguagesSupported } from '@/i18n/language'
-
-const requireSilent = (lang: string) => {
+const requireSilent = async (lang: string) => {
   let res
   try {
-    res = require(`./${lang}/education`).default
+    res = (await import(`./${lang}/education`)).default
   }
   catch {
-    res = require('./en-US/education').default
+    res = (await import('./en-US/education')).default
   }
 
   return res
 }
 
-const loadLangResources = (lang: string) => ({
+export const loadLangResources = async (lang: string) => ({
   translation: {
-    common: require(`./${lang}/common`).default,
-    layout: require(`./${lang}/layout`).default,
-    login: require(`./${lang}/login`).default,
-    register: require(`./${lang}/register`).default,
-    app: require(`./${lang}/app`).default,
-    appOverview: require(`./${lang}/app-overview`).default,
-    appDebug: require(`./${lang}/app-debug`).default,
-    appApi: require(`./${lang}/app-api`).default,
-    appLog: require(`./${lang}/app-log`).default,
-    appAnnotation: require(`./${lang}/app-annotation`).default,
-    share: require(`./${lang}/share-app`).default,
-    dataset: require(`./${lang}/dataset`).default,
-    datasetDocuments: require(`./${lang}/dataset-documents`).default,
-    datasetHitTesting: require(`./${lang}/dataset-hit-testing`).default,
-    datasetSettings: require(`./${lang}/dataset-settings`).default,
-    datasetCreation: require(`./${lang}/dataset-creation`).default,
-    explore: require(`./${lang}/explore`).default,
-    billing: require(`./${lang}/billing`).default,
-    custom: require(`./${lang}/custom`).default,
-    tools: require(`./${lang}/tools`).default,
-    workflow: require(`./${lang}/workflow`).default,
-    runLog: require(`./${lang}/run-log`).default,
-    plugin: require(`./${lang}/plugin`).default,
-    pluginTags: require(`./${lang}/plugin-tags`).default,
-    time: require(`./${lang}/time`).default,
-    education: requireSilent(lang),
+    common: (await import(`./${lang}/common`)).default,
+    layout: (await import(`./${lang}/layout`)).default,
+    login: (await import(`./${lang}/login`)).default,
+    register: (await import(`./${lang}/register`)).default,
+    app: (await import(`./${lang}/app`)).default,
+    appOverview: (await import(`./${lang}/app-overview`)).default,
+    appDebug: (await import(`./${lang}/app-debug`)).default,
+    appApi: (await import(`./${lang}/app-api`)).default,
+    appLog: (await import(`./${lang}/app-log`)).default,
+    appAnnotation: (await import(`./${lang}/app-annotation`)).default,
+    share: (await import(`./${lang}/share-app`)).default,
+    dataset: (await import(`./${lang}/dataset`)).default,
+    datasetDocuments: (await import(`./${lang}/dataset-documents`)).default,
+    datasetHitTesting: (await import(`./${lang}/dataset-hit-testing`)).default,
+    datasetSettings: (await import(`./${lang}/dataset-settings`)).default,
+    datasetCreation: (await import(`./${lang}/dataset-creation`)).default,
+    explore: (await import(`./${lang}/explore`)).default,
+    billing: (await import(`./${lang}/billing`)).default,
+    custom: (await import(`./${lang}/custom`)).default,
+    tools: (await import(`./${lang}/tools`)).default,
+    workflow: (await import(`./${lang}/workflow`)).default,
+    runLog: (await import(`./${lang}/run-log`)).default,
+    plugin: (await import(`./${lang}/plugin`)).default,
+    pluginTags: (await import(`./${lang}/plugin-tags`)).default,
+    time: (await import(`./${lang}/time`)).default,
+    education: (await requireSilent(lang)).default,
   },
 })
-
-type Resource = Record<string, ReturnType<typeof loadLangResources>>
-// Automatically generate the resources object
-export const resources = LanguagesSupported.reduce<Resource>((acc, lang) => {
-  acc[lang] = loadLangResources(lang)
-  return acc
-}, {})
 
 i18n.use(initReactI18next)
   .init({
     lng: undefined,
     fallbackLng: 'en-US',
-    resources: {
-      'en-US': loadLangResources('en-US'),
-    },
   })
 
 export const changeLanguage = async (lng?: string) => {
   const resolvedLng = lng ?? 'en-US'
   const resources = {
-    [resolvedLng]: loadLangResources(resolvedLng),
+    [resolvedLng]: await loadLangResources(resolvedLng),
   }
   if (!i18n.hasResourceBundle(resolvedLng, 'translation'))
     i18n.addResourceBundle(resolvedLng, 'translation', resources[resolvedLng].translation, true, true)
