@@ -2,6 +2,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -17,6 +19,7 @@ import {
   useWorkflowStartRun,
 } from '../hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 import { useCollaborativeCursors } from '../hooks'
 import { connectOnlineUserWebSocket } from '@/service/demo/online-user'
 import type { OnlineUser } from '@/service/demo/online-user'
@@ -30,6 +33,12 @@ const WorkflowMain = ({
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const lastEmitTimeRef = useRef<number>(0)
+  const lastPositionRef = useRef<{ x: number; y: number } | null>(null)
+
+  // WebSocket connection for collaboration
+  const { emit } = useWebSocketStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -52,6 +61,48 @@ const WorkflowMain = ({
     }
   }, [featuresStore, workflowStore])
 
+  // Handle mouse movement for collaboration with throttling (1 second)
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    if (!containerRef.current) return
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+
+    // Only emit if mouse is within the container
+    if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
+      const now = Date.now()
+      const timeSinceLastEmit = now - lastEmitTimeRef.current
+
+      // Throttle to 1 second (1000ms)
+      if (timeSinceLastEmit >= 1000) {
+        lastEmitTimeRef.current = now
+        lastPositionRef.current = { x, y }
+
+        emit('mouseMove', {
+          x,
+          y,
+        })
+      }
+ else {
+        // Update position for potential future emit
+        lastPositionRef.current = { x, y }
+      }
+    }
+  }, [emit])
+
+  // Add mouse move event listener
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.addEventListener('mousemove', handleMouseMove)
+
+    return () => {
+      container.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [handleMouseMove])
+
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -71,30 +122,22 @@ const WorkflowMain = ({
   } = useWorkflowStartRun()
 
   const { cursors, myUserId } = useCollaborativeCursors(appId)
+  const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUser>>({})
 
-  // Add online users logging
   useEffect(() => {
     if (!appId) return
-
-    // Connect to WebSocket for online users
     const socket = connectOnlineUserWebSocket(appId)
 
-    // Handle online users update
     const handleOnlineUsersUpdate = (data: { users: OnlineUser[] }) => {
-      data.users.forEach((user) => {
-        console.log(`👤 User: ${user.username} (ID: ${user.user_id})`)
-      })
+      const usersMap = data.users.reduce((acc, user) => {
+        acc[user.user_id] = user
+        return acc
+      }, {} as Record<string, OnlineUser>)
+      setOnlineUsers(usersMap)
     }
-
-    // Add event listeners
     socket.on('online_users', handleOnlineUsersUpdate)
-
-    // Log initial connection
-    console.log('🔌 Connecting to online users WebSocket for app:', appId)
-
-    // Cleanup function
+    // clean up
     return () => {
-      console.log(' Cleaning up online users WebSocket listeners')
       socket.off('online_users', handleOnlineUsersUpdate)
     }
   }, [appId])
@@ -182,7 +225,10 @@ const WorkflowMain = ({
   ])
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div
+      ref={containerRef}
+      style={{ position: 'relative', width: '100%', height: '100%' }}
+    >
       <WorkflowWithInnerContext
         nodes={nodes}
         edges={edges}
@@ -198,6 +244,20 @@ const WorkflowMain = ({
         if (userId === myUserId)
           return null
 
+        const userInfo = onlineUsers[userId]
+        const userName = userInfo?.username || `User ${userId.slice(-4)}`
+
+        const getUserColor = (id: string) => {
+          const colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16']
+          const hash = id.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0)
+            return a & a
+          }, 0)
+          return colors[Math.abs(hash) % colors.length]
+        }
+
+        const userColor = getUserColor(userId)
+
         return (
           <div
             key={userId}
@@ -205,26 +265,51 @@ const WorkflowMain = ({
               position: 'absolute',
               left: cursor.x,
               top: cursor.y,
-              pointerEvents: 'none', // Important: allows clicking through the cursor
-              zIndex: 9999, // Ensure cursors are on top of other elements
-              transition: 'left 0.1s linear, top 0.1s linear', // Optional: for smoother movement
+              pointerEvents: 'none',
+              zIndex: 10000,
+              transform: 'translate(-2px, -2px)',
+              transition: 'left 0.15s ease-out, top 0.15s ease-out',
             }}
           >
-            {/* You can replace this with your own cursor SVG or component */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5.5 3.75L10.5 18.25L12.5 11.25L19.5 9.25L5.5 3.75Z" fill={cursor.color || 'black'} stroke="white" strokeWidth="1.5" strokeLinejoin="round"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+              }}
+            >
+              <path
+                d="M3 3L16 8L9 10L7 17L3 3Z"
+                fill={userColor}
+                stroke="white"
+                strokeWidth="1"
+                strokeLinejoin="round"
+              />
             </svg>
-            <span style={{
-              backgroundColor: cursor.color || 'black',
-              color: 'white',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-              marginLeft: '4px',
-            }}>
-              {cursor.name || userId}
-            </span>
+
+            <div
+              style={{
+                position: 'absolute',
+                left: '18px',
+                top: '-2px',
+                backgroundColor: userColor,
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                maxWidth: '120px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {userName}
+            </div>
           </div>
         )
       })}

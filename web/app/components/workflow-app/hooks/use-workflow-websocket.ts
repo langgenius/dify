@@ -1,69 +1,48 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
-
-import { connectOnlineUserWebSocket, disconnectOnlineUserWebSocket } from '@/service/demo/online-user'
-
-type Cursor = {
-  x: number
-  y: number
-  userId: string
-  name?: string
-  color?: string
-}
+import { useEffect, useState } from 'react'
+import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 
 export function useCollaborativeCursors(appId: string) {
-  const [cursors, setCursors] = useState<Record<string, Cursor>>({})
-  const socketRef = useRef<ReturnType<typeof connectOnlineUserWebSocket> | null>(null)
-  const lastSent = useRef<number>(0)
+  const { on, connect, disconnect } = useWebSocketStore()
+  const [cursors, setCursors] = useState<Record<string, any>>({})
+  const [myUserId, setMyUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Connect websocket
-    const socket = connectOnlineUserWebSocket(appId)
-    socketRef.current = socket
+    if (!appId) return
+    connect(appId)
 
-    // Listen for collaboration updates from other users
-    socket.on('collaboration_update', (update: {
-      type: string
-      userId: string
-      data: any
-      timestamp: number
-    }) => {
-      if (update.type === 'mouseMove') {
+    return () => {
+      disconnect()
+    }
+  }, [appId, connect, disconnect])
+
+  useEffect(() => {
+    const unsubscribe = on('mouseMove', (update) => {
+      const userId = update.userId || update.user_id
+      const data = update.data || update
+
+      if (userId && data) {
         setCursors(prev => ({
           ...prev,
-          [update.userId]: {
-            x: update.data.x,
-            y: update.data.y,
-            userId: update.userId,
+          [userId]: {
+            x: data.x,
+            y: data.y,
+            userId,
           },
         }))
       }
-      // if (update.type === 'openPanel') { ... }
     })
 
-    // Mouse move handler with throttle 300ms
-    const handleMouseMove = (e: MouseEvent) => {
-      const now = Date.now()
-      if (now - lastSent.current > 300) {
-        socket.emit('collaboration_event', {
-          type: 'mouseMove',
-          data: { x: e.clientX, y: e.clientY },
-          timestamp: now,
-        })
-        lastSent.current = now
-      }
-    }
-    window.addEventListener('mousemove', handleMouseMove)
+    return unsubscribe
+  }, [on])
 
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      socket.off('collaboration_update')
-      disconnectOnlineUserWebSocket()
-    }
-  }, [appId])
+  useEffect(() => {
+    const unsubscribe = on('connected', (data) => {
+      if (data.userId || data.user_id)
+        setMyUserId(data.userId || data.user_id)
+    })
 
-  return cursors
+    return unsubscribe
+  }, [on])
+
+  return { cursors, myUserId }
 }
