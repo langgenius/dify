@@ -27,7 +27,7 @@ export const useAppDetail = (appID: string) => {
   })
 }
 
-export const useGenerateRuleTemplate = (type: GeneratorType) => {
+export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'generate-rule-template', type],
     queryFn: () => post<{ data: string }>('instruction-generate/template', {
@@ -35,6 +35,7 @@ export const useGenerateRuleTemplate = (type: GeneratorType) => {
         type,
       },
     }),
+    enabled: !disabled,
     retry: 0,
   })
 }

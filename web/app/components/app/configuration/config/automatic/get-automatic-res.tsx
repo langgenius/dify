@@ -144,7 +144,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }, [t])
 
-  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt)
+  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt, isBasicMode)
   useEffect(() => {
     if (!instruction && instructionTemplate) {
       setInstruction(instructionTemplate.data)
@@ -337,6 +337,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   availableVars={[]}
                   availableNodes={[]}
                   isShowCurrentBlock={!!currentPrompt}
+                  isShowLastRunBlock={false}
                 />
               ) : (
                 <InstructionEditorInWorkflow

@@ -21,6 +21,7 @@ type Props = {
     valueSelector: ValueSelector,
   }) => Type
   isShowCurrentBlock: boolean
+  isShowLastRunBlock: boolean
 }
 
 const i18nPrefix = 'appDebug.generate'
@@ -34,6 +35,7 @@ const InstructionEditor: FC<Props> = ({
   availableNodes,
   getVarType = () => Type.string,
   isShowCurrentBlock,
+  isShowLastRunBlock,
 }) => {
   const { t } = useTranslation()
   const isBasicMode = !!getVarType
@@ -88,7 +90,7 @@ const InstructionEditor: FC<Props> = ({
           show: isCode,
         }}
         lastRunBlock={{
-          show: true,
+          show: isShowLastRunBlock,
         }}
         onChange={onChange}
         editable

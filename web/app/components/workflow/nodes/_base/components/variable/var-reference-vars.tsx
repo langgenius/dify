@@ -416,7 +416,7 @@ const VarReferenceVars: FC<Props> = ({
               </div>))
           }
         </div>
-        : <div className='pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
+        : <div className='mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
     </>
   )
 }

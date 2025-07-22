@@ -276,6 +276,7 @@ const Prompt: FC<ISimplePromptInput> = ({
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
+          currentPrompt={promptTemplate}
           isBasicMode
         />
       )}
