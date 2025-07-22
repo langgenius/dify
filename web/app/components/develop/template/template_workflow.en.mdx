@@ -66,6 +66,12 @@ Workflow applications offers non-session support and is ideal for translation, a
         Should be uniquely defined by the developer within the application.
         <br/>
         <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
