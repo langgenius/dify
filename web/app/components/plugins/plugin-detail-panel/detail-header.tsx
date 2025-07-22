@@ -29,7 +29,7 @@ import Toast from '@/app/components/base/toast'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
-import { useGetLanguage } from '@/context/i18n'
+import { useGetLanguage, useI18N } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
@@ -39,6 +39,7 @@ import { getMarketplaceUrl } from '@/utils/var'
 import { PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
+import DeprecationNotice from '../base/deprecation-notice'
 
 const i18nPrefix = 'plugin.action'
 
@@ -56,6 +57,7 @@ const DetailHeader = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useGetLanguage()
+  const { locale: currentLocale } = useI18N()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
@@ -70,6 +72,9 @@ const DetailHeader = ({
     latest_version,
     meta,
     plugin_id,
+    status,
+    deprecated_reason,
+    alternative_plugin_id,
   } = detail
   const { author, category, name, label, description, icon, verified, tool } = detail.declaration
   const isTool = category === PluginType.tool
@@ -98,7 +103,7 @@ const DetailHeader = ({
     if (isFromGitHub)
       return `https://github.com/${meta!.repo}`
     if (isFromMarketplace)
-      return getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })
+      return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: currentLocale, theme })
     return ''
   }, [author, isFromGitHub, isFromMarketplace, meta, name, theme])
 
@@ -272,6 +277,15 @@ const DetailHeader = ({
           </ActionButton>
         </div>
       </div>
+      {isFromMarketplace && (
+        <DeprecationNotice
+          status={status}
+          deprecatedReason={deprecated_reason}
+          alternativePluginId={alternative_plugin_id}
+          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, { language: currentLocale, theme })}
+          className='mt-3'
+        />
+      )}
       <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
         category === PluginType.tool && (

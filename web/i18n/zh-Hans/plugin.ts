@@ -31,6 +31,7 @@ const translation = {
   searchTools: '搜索工具...',
   installPlugin: '安装插件',
   installFrom: '安装源',
+  deprecated: '已弃用',
   list: {
     noInstalled: '无已安装的插件',
     notFound: '未找到插件',
@@ -101,6 +102,16 @@ const translation = {
     configureApp: '应用设置',
     configureModel: '模型设置',
     configureTool: '工具设置',
+    deprecation: {
+      fullMessage: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。请使用<CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>替代。',
+      onlyReason: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。',
+      noReason: '此插件已被弃用，将不再发布新版本。',
+      reason: {
+        businessAdjustments: '业务调整',
+        ownershipTransferred: '所有权转移',
+        noMaintainer: '无人维护',
+      },
+    },
   },
   install: '{{num}} 次安装',
   installAction: '安装',
