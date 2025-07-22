@@ -77,11 +77,11 @@ def init_app(app: DifyApp) -> Celery:
     beat_schedule = {
         "clean_embedding_cache_task": {
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
-            "schedule": crontab(minute='0', hour='2', day_of_month=f'*/{day}'),
+            "schedule": crontab(minute="0", hour="2", day_of_month=f"*/{day}"),
         },
         "clean_unused_datasets_task": {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
-            "schedule": crontab(minute='0', hour='3', day_of_month=f'*/{day}'),
+            "schedule": crontab(minute="0", hour="3", day_of_month=f"*/{day}"),
         },
         "create_tidb_serverless_task": {
             "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
@@ -93,7 +93,7 @@ def init_app(app: DifyApp) -> Celery:
         },
         "clean_messages": {
             "task": "schedule.clean_messages.clean_messages",
-            "schedule": crontab(minute='0', hour='4', day_of_month=f'*/{day}'),
+            "schedule": crontab(minute="0", hour="4", day_of_month=f"*/{day}"),
         },
         # every Monday
         "mail_clean_document_notify_task": {
