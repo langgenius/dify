@@ -9,9 +9,9 @@ from core.rag.datasource.vdb.tablestore.tablestore_vector import (
 )
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
-    setup_mock_redis,
     get_example_document,
     get_example_text,
+    setup_mock_redis,
 )
 
 
