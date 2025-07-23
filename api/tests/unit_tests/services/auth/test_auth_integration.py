@@ -63,10 +63,10 @@ class TestAuthIntegration:
         tenant1_binding = self._create_mock_binding(self.tenant_id_1, AuthType.FIRECRAWL, self.firecrawl_credentials)
         tenant2_binding = self._create_mock_binding(self.tenant_id_2, AuthType.JINA, self.jina_credentials)
 
-        mock_session.query.return_value.filter.return_value.all.return_value = [tenant1_binding]
+        mock_session.query.return_value.where.return_value.all.return_value = [tenant1_binding]
         result1 = ApiKeyAuthService.get_provider_auth_list(self.tenant_id_1)
 
-        mock_session.query.return_value.filter.return_value.all.return_value = [tenant2_binding]
+        mock_session.query.return_value.where.return_value.all.return_value = [tenant2_binding]
         result2 = ApiKeyAuthService.get_provider_auth_list(self.tenant_id_2)
 
         assert len(result1) == 1
@@ -77,7 +77,7 @@ class TestAuthIntegration:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_cross_tenant_access_prevention(self, mock_session):
         """Test prevention of cross-tenant credential access"""
-        mock_session.query.return_value.filter.return_value.first.return_value = None
+        mock_session.query.return_value.where.return_value.first.return_value = None
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id_2, self.category, AuthType.FIRECRAWL)
 

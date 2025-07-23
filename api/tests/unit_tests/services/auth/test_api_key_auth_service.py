@@ -52,9 +52,9 @@ class TestApiKeyAuthService:
 
         ApiKeyAuthService.get_provider_auth_list(self.tenant_id)
 
-        # Verify filter conditions include disabled.is_(False)
-        filter_call = mock_session.query.return_value.filter.call_args[0]
-        assert len(filter_call) == 2  # tenant_id and disabled filter conditions
+        # Verify where conditions include disabled.is_(False)
+        where_call = mock_session.query.return_value.where.call_args[0]
+        assert len(where_call) == 2  # tenant_id and disabled filter conditions
 
     @patch("services.auth.api_key_auth_service.db.session")
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
@@ -162,9 +162,9 @@ class TestApiKeyAuthService:
 
         ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
-        # Verify filter conditions are correct
-        filter_call = mock_session.query.return_value.filter.call_args[0]
-        assert len(filter_call) == 4  # tenant_id, category, provider, disabled
+        # Verify where conditions are correct
+        where_call = mock_session.query.return_value.where.call_args[0]
+        assert len(where_call) == 4  # tenant_id, category, provider, disabled
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_json_parsing(self, mock_session):
@@ -212,9 +212,9 @@ class TestApiKeyAuthService:
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
 
-        # Verify filter conditions include tenant_id and binding_id
-        filter_call = mock_session.query.return_value.filter.call_args[0]
-        assert len(filter_call) == 2
+        # Verify where conditions include tenant_id and binding_id
+        where_call = mock_session.query.return_value.where.call_args[0]
+        assert len(where_call) == 2
 
     def test_validate_api_key_auth_args_success(self):
         """Test API key auth args validation - success scenario"""

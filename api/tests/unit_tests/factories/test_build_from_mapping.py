@@ -54,12 +54,7 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with (
-        patch("factories.file_factory.db.session.query") as mock_query,
-        patch("factories.file_factory.db.session.scalar") as mock_query1,
-    ):
-        mock_query.return_value.where.return_value.first.return_value = mock
-        mock_query1.return_value.where.return_value.first.return_value = mock
+    with patch("factories.file_factory.db.session.scalar", return_value=mock):
         yield mock
 
 
@@ -157,8 +152,7 @@ def test_build_from_remote_url(mock_http_head):
 
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
-    with patch("factories.file_factory.db.session.query") as mock_query:
-        mock_query.return_value.where.return_value.first.return_value = None
+    with patch("factories.file_factory.db.session.scalar", return_value=None):
         mapping = tool_file_mapping()
         with pytest.raises(ValueError, match=f"ToolFile {TEST_TOOL_FILE_ID} not found"):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)

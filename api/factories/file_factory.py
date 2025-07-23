@@ -273,7 +273,7 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=tool_file.mimetype)
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     specified_type = mapping.get("type")
 
