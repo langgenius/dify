@@ -1,11 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import I18NContext from '@/context/i18n'
 import type { Locale } from '@/i18n'
 import { setLocaleOnClient } from '@/i18n'
-import Loading from './base/loading'
 
 export type II18nProps = {
   locale: Locale
@@ -15,16 +14,9 @@ const I18n: FC<II18nProps> = ({
   locale,
   children,
 }) => {
-  const [loading, setLoading] = useState(true)
-
   useEffect(() => {
-    setLocaleOnClient(locale, false).then(() => {
-      setLoading(false)
-    })
+    setLocaleOnClient(locale, false)
   }, [locale])
-
-  if (loading)
-    return <div className='flex h-screen w-screen items-center justify-center'><Loading type='app' /></div>
 
   return (
     <I18NContext.Provider value={{
