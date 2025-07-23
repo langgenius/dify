@@ -304,12 +304,13 @@ class TableStoreVector(BaseVector):
                 metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
 
                 vector = json.loads(vector_str) if vector_str else None
-                metadata = json.loads(metadata_str) if metadata_str else None
+                metadata = json.loads(metadata_str) if metadata_str else {}
+
                 metadata["score"] = search_hit.score
 
                 documents.append(
                     Document(
-                        page_content=ots_column_map.get(Field.CONTENT_KEY.value),
+                        page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
                         vector=vector,
                         metadata=metadata,
                     )
@@ -345,11 +346,11 @@ class TableStoreVector(BaseVector):
             vector_str = ots_column_map.get(Field.VECTOR.value)
             metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
             vector = json.loads(vector_str) if vector_str else None
-            metadata = json.loads(metadata_str) if metadata_str else None
+            metadata = json.loads(metadata_str) if metadata_str else {}
 
             documents.append(
                 Document(
-                    page_content=ots_column_map.get(Field.CONTENT_KEY.value),
+                    page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
                     vector=vector,
                     metadata=metadata,
                 )
