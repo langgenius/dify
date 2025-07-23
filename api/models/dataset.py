@@ -189,11 +189,11 @@ class Dataset(Base):
         )
         if not external_knowledge_binding:
             return None
-        external_knowledge_api = db.session.scalars(
-            select(ExternalKnowledgeApis)
-            .where(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
-            .limit(1)
-        ).first()
+        external_knowledge_api = db.session.scalar(
+            select(ExternalKnowledgeApis).where(
+                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id
+            )
+        )
         if not external_knowledge_api:
             return None
         return {
@@ -687,27 +687,27 @@ class DocumentSegment(Base):
 
     @property
     def dataset(self):
-        return db.session.scalars(select(Dataset).where(Dataset.id == self.dataset_id).limit(1)).first()
+        return db.session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
 
     @property
     def document(self):
-        return db.session.scalars(select(Document).where(Document.id == self.document_id).limit(1)).first()
+        return db.session.scalar(select(Document).where(Document.id == self.document_id))
 
     @property
     def previous_segment(self):
-        return db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1)
-            .limit(1)
-        ).first()
+        return db.session.scalar(
+            select(DocumentSegment).where(
+                DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1
+            )
+        )
 
     @property
     def next_segment(self):
-        return db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
-            .limit(1)
-        ).first()
+        return db.session.scalar(
+            select(DocumentSegment).where(
+                DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
+            )
+        )
 
     @property
     def child_chunks(self):

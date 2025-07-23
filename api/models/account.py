@@ -119,9 +119,7 @@ class Account(UserMixin, Base):
 
     @current_tenant.setter
     def current_tenant(self, tenant: "Tenant"):
-        ta = db.session.scalars(
-            select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).limit(1)
-        ).first()
+        ta = db.session.scalar(select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).limit(1))
         if ta:
             self.role = TenantAccountRole(ta.role)
             self._current_tenant = tenant
