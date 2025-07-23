@@ -43,7 +43,7 @@ class PassportResource(Resource):
                 raise WebAppAuthRequiredError()
 
         # get site from db and check if it is normal
-        site = db.session.scalar(select(Site).filter(Site.code == app_code, Site.status == "normal"))
+        site = db.session.scalar(select(Site).where(Site.code == app_code, Site.status == "normal"))
         if not site:
             raise NotFound()
         # get app from db and check if it is normal and enable_site
