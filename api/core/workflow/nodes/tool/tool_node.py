@@ -317,7 +317,7 @@ class ToolNode(BaseNode):
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
                 assert isinstance(message.meta, dict)
-                assert "file" in message.meta and isinstance(message.meta["file"], File)
+                assert "file" in message.meta and isinstance(message.meta["file"], File)  # noqa: PT018
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)

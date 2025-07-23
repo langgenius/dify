@@ -41,6 +41,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
     except Exception:
         logging.exception("Send change email mail to {} failed".format(to))
 
+
 @shared_task(queue="mail")
 def send_change_mail_completed_notification_task(language: str, to: str) -> None:
     """
@@ -70,7 +71,10 @@ def send_change_mail_completed_notification_task(language: str, to: str) -> None
 
         end_at = time.perf_counter()
         logging.info(
-            click.style("Send change email completed mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
+            click.style(
+                "Send change email completed mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                fg="green",
+            )
         )
     except Exception:
         logging.exception("Send change email completed mail to {} failed".format(to))
