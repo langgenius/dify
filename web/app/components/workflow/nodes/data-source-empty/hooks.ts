@@ -38,7 +38,10 @@ export const useReplaceDataSourceNode = (id: string) => {
     const newNodes = produce(nodes, (draft) => {
       draft[emptyNodeIndex] = newNode
     })
-    setNodes(newNodes)
+    const newNodesWithoutTempNodes = produce(newNodes, (draft) => {
+      return draft.filter(node => !node.data._isTempNode)
+    })
+    setNodes(newNodesWithoutTempNodes)
   }, [])
 
   return {

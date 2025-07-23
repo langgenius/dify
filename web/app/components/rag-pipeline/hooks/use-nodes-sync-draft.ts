@@ -10,7 +10,6 @@ import {
 import { API_PREFIX } from '@/config'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from '.'
-import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from '@/app/components/workflow/nodes/data-source-empty/constants'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -25,7 +24,7 @@ export const useNodesSyncDraft = () => {
       transform,
     } = store.getState()
     const nodesOriginal = getNodes()
-    const nodes = nodesOriginal.filter(node => node.type !== CUSTOM_DATA_SOURCE_EMPTY_NODE)
+    const nodes = nodesOriginal.filter(node => !node.data._isTempNode)
     const [x, y, zoom] = transform
     const {
       pipelineId,
