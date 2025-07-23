@@ -14,6 +14,7 @@ import cn from '@/utils/classnames'
 import ToolItem from './tool-item'
 import Loading from '@/app/components/base/loading'
 import NoDataPlaceholder from './no-data-placeholder'
+import { PluginSource } from '../../types'
 
 type Props = {
   trigger: React.ReactNode
@@ -70,8 +71,9 @@ const ToolPicker: FC<Props> = ({
   const filteredList = useMemo(() => {
     const list = data ? data.plugins : []
     return list.filter((plugin) => {
+      const isFromMarketPlace = plugin.source === PluginSource.marketplace
       return (
-        (pluginType === PLUGIN_TYPE_SEARCH_MAP.all || plugin.declaration.category === pluginType)
+        isFromMarketPlace && (pluginType === PLUGIN_TYPE_SEARCH_MAP.all || plugin.declaration.category === pluginType)
         && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
         && (query === '' || plugin.plugin_id.toLowerCase().includes(query.toLowerCase()))
       )
@@ -111,54 +113,54 @@ const ToolPicker: FC<Props> = ({
 
   return (
     <PortalToFollowElem
-        placement='top'
-        offset={0}
-        open={isShow}
-        onOpenChange={onShowChange}
+      placement='top'
+      offset={0}
+      open={isShow}
+      onOpenChange={onShowChange}
+    >
+      <PortalToFollowElemTrigger
+        onClick={toggleShowPopup}
       >
-        <PortalToFollowElemTrigger
-          onClick={toggleShowPopup}
-        >
-          {trigger}
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
-          <div className={cn('relative min-h-20 w-[436px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
-            <div className='p-2 pb-1'>
-              <SearchBox
-                search={query}
-                onSearchChange={setQuery}
-                tags={tags}
-                onTagsChange={setTags}
-                size='small'
-                placeholder={t('plugin.searchTools')!}
-                inputClassName='w-full'
-              />
-            </div>
-            <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
-              <div className='flex h-8 items-center space-x-1'>
-                {
-                  tabs.map(tab => (
-                    <div
-                      className={cn(
-                        'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
-                        'text-xs font-medium text-text-secondary',
-                        pluginType === tab.key && 'bg-state-base-hover-alt',
-                      )}
-                      key={tab.key}
-                      onClick={() => setPluginType(tab.key)}
-                    >
-                      {tab.name}
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
-            {!isLoading && filteredList.length > 0 && listContent}
-            {!isLoading && filteredList.length === 0 && noData}
-            {isLoading && loadingContent}
+        {trigger}
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className='z-[1000]'>
+        <div className={cn('relative min-h-20 w-[436px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+          <div className='p-2 pb-1'>
+            <SearchBox
+              search={query}
+              onSearchChange={setQuery}
+              tags={tags}
+              onTagsChange={setTags}
+              size='small'
+              placeholder={t('plugin.searchTools')!}
+              inputClassName='w-full'
+            />
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+          <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
+            <div className='flex h-8 items-center space-x-1'>
+              {
+                tabs.map(tab => (
+                  <div
+                    className={cn(
+                      'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
+                      'text-xs font-medium text-text-secondary',
+                      pluginType === tab.key && 'bg-state-base-hover-alt',
+                    )}
+                    key={tab.key}
+                    onClick={() => setPluginType(tab.key)}
+                  >
+                    {tab.name}
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+          {!isLoading && filteredList.length > 0 && listContent}
+          {!isLoading && filteredList.length === 0 && noData}
+          {isLoading && loadingContent}
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 
