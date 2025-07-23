@@ -1,16 +1,19 @@
 import json
 import logging
 import mimetypes
-from collections.abc import Generator
+import time
+from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
+from pydantic import TypeAdapter
 from yarl import URL
 
 import contexts
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.plugin import ToolProviderID
+from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -244,12 +247,47 @@ class ToolManager:
                     tenant_id=tenant_id, provider=provider_id, credential_id=builtin_provider.id
                 ),
             )
+
+            # decrypt the credentials
+            decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(builtin_provider.credentials)
+
+            # check if the credentials is expired
+            if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
+                # TODO: circular import
+                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+                # refresh the credentials
+                tool_provider = ToolProviderID(provider_id)
+                provider_name = tool_provider.provider_name
+                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+                oauth_handler = OAuthHandler()
+                # refresh the credentials
+                refreshed_credentials = oauth_handler.refresh_credentials(
+                    tenant_id=tenant_id,
+                    user_id=builtin_provider.user_id,
+                    plugin_id=tool_provider.plugin_id,
+                    provider=provider_name,
+                    redirect_uri=redirect_uri,
+                    system_credentials=system_credentials or {},
+                    credentials=decrypted_credentials,
+                )
+                # update the credentials
+                builtin_provider.encrypted_credentials = (
+                    TypeAdapter(dict[str, Any])
+                    .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
+                    .decode("utf-8")
+                )
+                builtin_provider.expires_at = refreshed_credentials.expires_at
+                db.session.commit()
+                decrypted_credentials = refreshed_credentials.credentials
+
             return cast(
                 BuiltinTool,
                 builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
-                        credentials=encrypter.decrypt(builtin_provider.credentials),
+                        credentials=dict(decrypted_credentials),
                         credential_type=CredentialType.of(builtin_provider.credential_type),
                         runtime_parameters={},
                         invoke_from=invoke_from,
