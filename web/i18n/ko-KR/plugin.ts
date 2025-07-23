@@ -84,6 +84,16 @@ const translation = {
     endpoints: '끝점',
     serviceOk: '서비스 정상',
     endpointDisableTip: '엔드포인트 비활성화',
+    deprecation: {
+      reason: {
+        ownershipTransferred: '소유권 이전',
+        businessAdjustments: '사업 조정',
+        noMaintainer: '유지보수자 없음',
+      },
+      noReason: '이 플러그인은 더 이상 지원되지 않으며 업데이트되지 않을 것입니다.',
+      onlyReason: '이 플러그인은 {{deprecatedReason}}로 인해 사용 중단되었으며 더 이상 업데이트되지 않습니다.',
+      fullMessage: '이 플러그인은 {{deprecatedReason}}로 인해 사용 중단되었으며 더 이상 업데이트되지 않습니다. 대신 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>를 사용하십시오.',
+    },
   },
   debugInfo: {
     title: '디버깅',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: '자격증명을 구성한 후에는 작업 공간 내의 모든 구성원이 애플리케이션을 조정할 때 이 도구를 사용할 수 있습니다.',
     clientInfo: '이 도구 공급자에 대한 시스템 클라이언트 비밀이 발견되지 않았으므로 수동으로 설정해야 하며, redirect_uri는 다음을 사용하십시오.',
   },
+  deprecated: '사용 중단됨',
 }
 
 export default translation

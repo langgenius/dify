@@ -3,14 +3,20 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from flask import render_template
 
 from extensions.ext_mail import mail
+from libs.email_i18n import EmailType, get_email_i18n_service
 
 
 @shared_task(queue="mail")
-def send_deletion_success_task(to):
-    """Send email to user regarding account deletion."""
+def send_deletion_success_task(to: str, language: str = "en-US") -> None:
+    """
+    Send account deletion success email with internationalization support.
+
+    Args:
+        to: Recipient email address
+        language: Language code for email localization
+    """
     if not mail.is_inited():
         return
 
@@ -18,12 +24,16 @@ def send_deletion_success_task(to):
     start_at = time.perf_counter()
 
     try:
-        html_content = render_template(
-            "delete_account_success_template_en-US.html",
+        email_service = get_email_i18n_service()
+        email_service.send_email(
+            email_type=EmailType.ACCOUNT_DELETION_SUCCESS,
+            language_code=language,
             to=to,
-            email=to,
+            template_context={
+                "to": to,
+                "email": to,
+            },
         )
-        mail.send(to=to, subject="Your Dify.AI Account Has Been Successfully Deleted", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
@@ -36,12 +46,14 @@ def send_deletion_success_task(to):
 
 
 @shared_task(queue="mail")
-def send_account_deletion_verification_code(to, code):
-    """Send email to user regarding account deletion verification code.
+def send_account_deletion_verification_code(to: str, code: str, language: str = "en-US") -> None:
+    """
+    Send account deletion verification code email with internationalization support.
 
     Args:
-        to (str): Recipient email address
-        code (str): Verification code
+        to: Recipient email address
+        code: Verification code
+        language: Language code for email localization
     """
     if not mail.is_inited():
         return
@@ -50,8 +62,16 @@ def send_account_deletion_verification_code(to, code):
     start_at = time.perf_counter()
 
     try:
-        html_content = render_template("delete_account_code_email_template_en-US.html", to=to, code=code)
-        mail.send(to=to, subject="Dify.AI Account Deletion and Verification", html=html_content)
+        email_service = get_email_i18n_service()
+        email_service.send_email(
+            email_type=EmailType.ACCOUNT_DELETION_VERIFICATION,
+            language_code=language,
+            to=to,
+            template_context={
+                "to": to,
+                "code": code,
+            },
+        )
 
         end_at = time.perf_counter()
         logging.info(

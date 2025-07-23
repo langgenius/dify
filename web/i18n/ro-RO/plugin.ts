@@ -84,6 +84,16 @@ const translation = {
     endpointModalDesc: 'Odată configurate, pot fi utilizate funcțiile furnizate de plugin prin intermediul punctelor finale API.',
     modelNum: '{{num}} MODELE INCLUSE',
     configureModel: 'Configurarea modelului',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'ajustări de afaceri',
+        noMaintainer: 'fără întreținător',
+        ownershipTransferred: 'proprietatea transferată',
+      },
+      noReason: 'Acest plugin a fost declarat învechit și nu va mai fi actualizat.',
+      onlyReason: 'Acest plugin a fost depreciat din cauza {{deprecatedReason}} și nu va mai fi actualizat.',
+      fullMessage: 'Acest plugin a fost declarat învechit din cauza {{deprecatedReason}}, și nu va mai fi actualizat. Vă rugăm să folosiți în schimb <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+    },
   },
   debugInfo: {
     viewDocs: 'Vizualizați documentele',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'După configurarea acreditivelor, toți membrii din spațiul de lucru pot folosi acest instrument atunci când orchestran aplicații.',
     clientInfo: 'Deoarece nu s-au găsit secretele clientului sistemului pentru acest furnizor de instrumente, este necesară configurarea manuală; pentru redirect_uri, vă rugăm să folosiți',
   },
+  deprecated: 'Încetat de a mai fi utilizat',
 }
 
 export default translation

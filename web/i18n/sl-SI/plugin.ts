@@ -87,6 +87,16 @@ const translation = {
     endpointsTip: 'Ta vtičnik zagotavlja specifične funkcionalnosti preko končnih točk, prav tako pa lahko konfigurirate več nizov končnih točk za trenutno delovno okolje.',
     endpointModalDesc: 'Ko je konfiguriran, se lahko uporabljajo funkcije, ki jih vtičnik zagotavlja prek API končnih točk.',
     endpointsEmpty: 'Kliknite gumb \' \' za dodajanje končne točke',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'poslovne prilagoditve',
+        noMaintainer: 'brez vzdrževalca',
+        ownershipTransferred: 'lastništvo preneseno',
+      },
+      onlyReason: 'Ta vtičnik je bil opuščen zaradi {{deprecatedReason}} in ne bo več posodobljen.',
+      noReason: 'Ta vtičnik je bil ukinjen in ne bo več posodabljan.',
+      fullMessage: 'Ta vtičnik je bil ukinjen zaradi {{deprecatedReason}}, in ne bo več posodobljen. Namesto tega uporabite <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+    },
   },
   debugInfo: {
     viewDocs: 'Oglejte si dokumente',
@@ -237,6 +247,7 @@ const translation = {
     clientInfo: 'Ker za tega ponudnika orodij niso bili najdeni klientski skrivnosti sistema, je potrebna ročna nastavitev, za redirect_uri prosimo uporabite',
     useApiAuthDesc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo to orodje pri orkestraciji aplikacij.',
   },
+  deprecated: 'Zastaran',
 }
 
 export default translation

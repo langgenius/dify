@@ -84,6 +84,16 @@ const translation = {
     endpointModalTitle: 'Configurer le point de terminaison',
     serviceOk: 'Service OK',
     endpointModalDesc: 'Une fois configuré, les fonctionnalités fournies par le plugin via les points de terminaison de l’API peuvent être utilisées.',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'propriété transférée',
+        businessAdjustments: 'ajustements commerciaux',
+        noMaintainer: 'aucun mainteneur',
+      },
+      noReason: 'Ce plugin a été abandonné et ne sera plus mis à jour.',
+      onlyReason: 'Ce plugin a été déprécié en raison de {{deprecatedReason}} et ne sera plus mis à jour.',
+      fullMessage: 'Ce plugin a été déprécié en raison de {{deprecatedReason}}, et ne sera plus mis à jour. Veuillez utiliser <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> à la place.',
+    },
   },
   debugInfo: {
     title: 'Débogage',
@@ -237,6 +247,7 @@ const translation = {
     authorization: 'Autorisation',
     useApi: 'Utilisez la clé API',
   },
+  deprecated: 'Obsolète',
 }
 
 export default translation

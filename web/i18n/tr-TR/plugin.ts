@@ -84,6 +84,16 @@ const translation = {
     modelNum: '{{sayı}} DAHİL OLAN MODELLER',
     endpointDisableTip: 'Uç Noktayı Devre Dışı Bırak',
     serviceOk: 'Servis Tamam',
+    deprecation: {
+      reason: {
+        noMaintainer: 'bakımcı yok',
+        ownershipTransferred: 'mülkiyet devredildi',
+        businessAdjustments: 'iş ayarlamaları',
+      },
+      noReason: 'Bu eklenti kullanımdan kaldırıldı ve artık güncellenmeyecek.',
+      onlyReason: 'Bu eklenti {{deprecatedReason}} nedeniyle kullanımdan kaldırılmıştır ve artık güncellenmeyecektir.',
+      fullMessage: 'Bu eklenti {{deprecatedReason}} nedeniyle kullanım dışı bırakılmıştır ve artık güncellenmeyecek. Lütfen bunun yerine <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>\'i kullanın.',
+    },
   },
   debugInfo: {
     title: 'Hata ayıklama',
@@ -237,6 +247,7 @@ const translation = {
     saveAndAuth: 'Kaydet ve Yetkilendir',
     clientInfo: 'Bu araç sağlayıcı için sistem istemci gizlilikleri bulunmadığından, manuel olarak ayar yapılması gerekmektedir. redirect_uri için lütfen şu adresi kullanın',
   },
+  deprecated: 'Kaldırılmış',
 }
 
 export default translation
