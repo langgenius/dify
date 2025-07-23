@@ -133,9 +133,8 @@ class AppGenerateService:
         """
         Get the maximum number of active requests allowed for an app.
 
-        If the app has a custom max_active_requests setting, it will be used
-        unless the global APP_MAX_ACTIVE_REQUESTS config is non-zero, in which
-        case the minimum of the two values is returned to enforce the global limit.
+        Returns the smaller value between app's custom limit and global config limit.
+        A value of 0 means infinite (no limit).
 
         Args:
             app_model: The App model instance
@@ -143,10 +142,12 @@ class AppGenerateService:
         Returns:
             The maximum number of active requests allowed
         """
-        max_active_requests = app_model.max_active_requests or dify_config.APP_MAX_ACTIVE_REQUESTS
-        if dify_config.APP_MAX_ACTIVE_REQUESTS != 0:
-            return min(max_active_requests, dify_config.APP_MAX_ACTIVE_REQUESTS)
-        return max_active_requests
+        app_limit = app_model.max_active_requests or 0
+        config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
+
+        # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
+        limits = [limit for limit in [app_limit, config_limit] if limit > 0]
+        return min(limits) if limits else 0
 
     @classmethod
     def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
