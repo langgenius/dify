@@ -127,7 +127,12 @@ class NotionOAuth(OAuthDataSource):
     def sync_data_source(self, binding_id: str):
         # save data source binding
         data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).filter(
+            select(DataSourceOauthBinding).where(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "notion",
+                DataSourceOauthBinding.id == binding_id,
+                DataSourceOauthBinding.disabled == False,
+            )
                 and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
