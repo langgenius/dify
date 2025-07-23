@@ -9,13 +9,15 @@ import { noop } from 'lodash-es'
 type II18NContext = {
   locale: Locale
   i18n: Record<string, any>
-  setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => void
+  setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => Promise<void>
 }
 
 const I18NContext = createContext<II18NContext>({
   locale: 'en-US',
   i18n: {},
-  setLocaleOnClient: noop,
+  setLocaleOnClient: async (_lang: Locale, _reloadPage?: boolean) => {
+    noop()
+  },
 })
 
 export const useI18N = () => useContext(I18NContext)
