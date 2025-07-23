@@ -186,10 +186,10 @@ class ListOperatorNode(BaseNode):
             raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
         value -= 1
         if len(variable.value) > int(value):
-            result = variable.value[value]
+            result = [variable.value[value]]
         else:
-            result = None
-        return variable.model_copy(update={"value": [result]})
+            result = []
+        return variable.model_copy(update={"value": result})
 
 
 def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
