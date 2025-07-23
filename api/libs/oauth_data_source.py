@@ -63,12 +63,10 @@ class NotionOAuth(OAuthDataSource):
         }
         # save data source binding
         data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).filter(
-                and_(
-                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.access_token == access_token,
-                )
+            select(DataSourceOauthBinding).where(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "notion",
+                DataSourceOauthBinding.access_token == access_token,
             )
         )
         if data_source_binding:
@@ -101,12 +99,10 @@ class NotionOAuth(OAuthDataSource):
         }
         # save data source binding
         data_source_binding = db.session.scalar(
-            select(DataSourceOauthBinding).filter(
-                and_(
-                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.access_token == access_token,
-                )
+            select(DataSourceOauthBinding).where(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "notion",
+                DataSourceOauthBinding.access_token == access_token,
             )
         )
         if data_source_binding:
@@ -133,14 +129,8 @@ class NotionOAuth(OAuthDataSource):
                 DataSourceOauthBinding.id == binding_id,
                 DataSourceOauthBinding.disabled == False,
             )
-                and_(
-                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.id == binding_id,
-                    DataSourceOauthBinding.disabled == False,
-                )
-            )
         )
+
         if data_source_binding:
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)
