@@ -188,7 +188,7 @@ class ListOperatorNode(BaseNode):
         if len(variable.value) > int(value):
             result = variable.value[value]
         else:
-            result = {}
+            result = None
         return variable.model_copy(update={"value": [result]})
 
 
