@@ -443,7 +443,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
         if dataset.collection_binding_id:
             dataset_collection_binding = (
                 db.session.query(DatasetCollectionBinding)
-                .filter(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
                 .one_or_none()
             )
             if dataset_collection_binding:

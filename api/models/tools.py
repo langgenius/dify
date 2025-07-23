@@ -153,11 +153,11 @@ class ApiToolProvider(Base):
     def user(self) -> Account | None:
         if not self.user_id:
             return None
-        return db.session.query(Account).filter(Account.id == self.user_id).first()
+        return db.session.query(Account).where(Account.id == self.user_id).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
 
 class ToolLabelBinding(Base):
@@ -223,11 +223,11 @@ class WorkflowToolProvider(Base):
 
     @property
     def user(self) -> Account | None:
-        return db.session.query(Account).filter(Account.id == self.user_id).first()
+        return db.session.query(Account).where(Account.id == self.user_id).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
     def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
@@ -235,7 +235,7 @@ class WorkflowToolProvider(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.query(App).filter(App.id == self.app_id).first()
+        return db.session.query(App).where(App.id == self.app_id).first()
 
 
 class MCPToolProvider(Base):
@@ -280,11 +280,11 @@ class MCPToolProvider(Base):
     )
 
     def load_user(self) -> Account | None:
-        return db.session.query(Account).filter(Account.id == self.user_id).first()
+        return db.session.query(Account).where(Account.id == self.user_id).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
     def credentials(self) -> dict:

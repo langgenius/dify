@@ -21,7 +21,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
     logging.info(click.style("Recover document: {}".format(document_id), fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
         logging.info(click.style("Document not found: {}".format(document_id), fg="red"))

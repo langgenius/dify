@@ -19,16 +19,14 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     logging.info(click.style("Start delete app annotations index: {}".format(app_id), fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
-    annotations_count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).count()
+    app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    annotations_count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id).count()
     if not app:
         logging.info(click.style("App not found: {}".format(app_id), fg="red"))
         db.session.close()
         return
 
-    app_annotation_setting = (
-        db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-    )
+    app_annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
 
     if not app_annotation_setting:
         logging.info(click.style("App annotation setting not found: {}".format(app_id), fg="red"))

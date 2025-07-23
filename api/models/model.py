@@ -113,13 +113,13 @@ class App(Base):
 
     @property
     def site(self):
-        site = db.session.query(Site).filter(Site.app_id == self.id).first()
+        site = db.session.query(Site).where(Site.app_id == self.id).first()
         return site
 
     @property
     def app_model_config(self):
         if self.app_model_config_id:
-            return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
+            return db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
 
         return None
 
@@ -128,7 +128,7 @@ class App(Base):
         if self.workflow_id:
             from .workflow import Workflow
 
-            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+            return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
         return None
 
@@ -138,7 +138,7 @@ class App(Base):
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
     @property
@@ -282,7 +282,7 @@ class App(Base):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
@@ -296,7 +296,7 @@ class App(Base):
     @property
     def author_name(self):
         if self.created_by:
-            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            account = db.session.query(Account).where(Account.id == self.created_by).first()
             if account:
                 return account.name
 
@@ -338,7 +338,7 @@ class AppModelConfig(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
@@ -372,7 +372,7 @@ class AppModelConfig(Base):
     @property
     def annotation_reply_dict(self) -> dict:
         annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == self.app_id).first()
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).first()
         )
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
@@ -577,7 +577,7 @@ class RecommendedApp(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
 
@@ -601,12 +601,12 @@ class InstalledApp(Base):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
+        app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+        tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
 
@@ -714,7 +714,7 @@ class Conversation(Base):
                     model_config["configs"] = override_model_configs
             else:
                 app_model_config = (
-                    db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
+                    db.session.query(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).first()
                 )
                 if app_model_config:
                     model_config = app_model_config.to_dict()
@@ -737,21 +737,21 @@ class Conversation(Base):
 
     @property
     def annotated(self):
-        return db.session.query(MessageAnnotation).filter(MessageAnnotation.conversation_id == self.id).count() > 0
+        return db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).count() > 0
 
     @property
     def annotation(self):
-        return db.session.query(MessageAnnotation).filter(MessageAnnotation.conversation_id == self.id).first()
+        return db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).first()
 
     @property
     def message_count(self):
-        return db.session.query(Message).filter(Message.conversation_id == self.id).count()
+        return db.session.query(Message).where(Message.conversation_id == self.id).count()
 
     @property
     def user_feedback_stats(self):
         like = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "user",
                 MessageFeedback.rating == "like",
@@ -761,7 +761,7 @@ class Conversation(Base):
 
         dislike = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "user",
                 MessageFeedback.rating == "dislike",
@@ -775,7 +775,7 @@ class Conversation(Base):
     def admin_feedback_stats(self):
         like = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "admin",
                 MessageFeedback.rating == "like",
@@ -785,7 +785,7 @@ class Conversation(Base):
 
         dislike = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "admin",
                 MessageFeedback.rating == "dislike",
@@ -797,7 +797,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
+        messages = db.session.query(Message).where(Message.conversation_id == self.id).all()
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -824,19 +824,19 @@ class Conversation(Base):
     def first_message(self):
         return (
             db.session.query(Message)
-            .filter(Message.conversation_id == self.id)
+            .where(Message.conversation_id == self.id)
             .order_by(Message.created_at.asc())
             .first()
         )
 
     @property
     def app(self):
-        return db.session.query(App).filter(App.id == self.app_id).first()
+        return db.session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):
         if self.from_end_user_id:
-            end_user = db.session.query(EndUser).filter(EndUser.id == self.from_end_user_id).first()
+            end_user = db.session.query(EndUser).where(EndUser.id == self.from_end_user_id).first()
             if end_user:
                 return end_user.session_id
 
@@ -845,7 +845,7 @@ class Conversation(Base):
     @property
     def from_account_name(self):
         if self.from_account_id:
-            account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
+            account = db.session.query(Account).where(Account.id == self.from_account_id).first()
             if account:
                 return account.name
 
@@ -1040,7 +1040,7 @@ class Message(Base):
     def user_feedback(self):
         feedback = (
             db.session.query(MessageFeedback)
-            .filter(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
             .first()
         )
         return feedback
@@ -1049,30 +1049,30 @@ class Message(Base):
     def admin_feedback(self):
         feedback = (
             db.session.query(MessageFeedback)
-            .filter(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
             .first()
         )
         return feedback
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.query(MessageFeedback).filter(MessageFeedback.message_id == self.id).all()
+        feedbacks = db.session.query(MessageFeedback).where(MessageFeedback.message_id == self.id).all()
         return feedbacks
 
     @property
     def annotation(self):
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id == self.id).first()
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == self.id).first()
         return annotation
 
     @property
     def annotation_hit_history(self):
         annotation_history = (
-            db.session.query(AppAnnotationHitHistory).filter(AppAnnotationHitHistory.message_id == self.id).first()
+            db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).first()
         )
         if annotation_history:
             annotation = (
                 db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.id == annotation_history.annotation_id)
+                .where(MessageAnnotation.id == annotation_history.annotation_id)
                 .first()
             )
             return annotation
@@ -1080,11 +1080,9 @@ class Message(Base):
 
     @property
     def app_model_config(self):
-        conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
+        conversation = db.session.query(Conversation).where(Conversation.id == self.conversation_id).first()
         if conversation:
-            return (
-                db.session.query(AppModelConfig).filter(AppModelConfig.id == conversation.app_model_config_id).first()
-            )
+            return db.session.query(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).first()
 
         return None
 
@@ -1100,7 +1098,7 @@ class Message(Base):
     def agent_thoughts(self):
         return (
             db.session.query(MessageAgentThought)
-            .filter(MessageAgentThought.message_id == self.id)
+            .where(MessageAgentThought.message_id == self.id)
             .order_by(MessageAgentThought.position.asc())
             .all()
         )
@@ -1113,8 +1111,8 @@ class Message(Base):
     def message_files(self):
         from factories import file_factory
 
-        message_files = db.session.query(MessageFile).filter(MessageFile.message_id == self.id).all()
-        current_app = db.session.query(App).filter(App.id == self.app_id).first()
+        message_files = db.session.query(MessageFile).where(MessageFile.message_id == self.id).all()
+        current_app = db.session.query(App).where(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
@@ -1178,7 +1176,7 @@ class Message(Base):
         if self.workflow_run_id:
             from .workflow import WorkflowRun
 
-            return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
+            return db.session.query(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).first()
 
         return None
 
@@ -1253,7 +1251,7 @@ class MessageFeedback(Base):
 
     @property
     def from_account(self):
-        account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
+        account = db.session.query(Account).where(Account.id == self.from_account_id).first()
         return account
 
     def to_dict(self):
@@ -1335,12 +1333,12 @@ class MessageAnnotation(Base):
 
     @property
     def account(self):
-        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
         return account
 
     @property
     def annotation_create_account(self):
-        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
         return account
 
 
@@ -1371,14 +1369,14 @@ class AppAnnotationHitHistory(Base):
         account = (
             db.session.query(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
-            .filter(MessageAnnotation.id == self.annotation_id)
+            .where(MessageAnnotation.id == self.annotation_id)
             .first()
         )
         return account
 
     @property
     def annotation_create_account(self):
-        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        account = db.session.query(Account).where(Account.id == self.account_id).first()
         return account
 
 
@@ -1404,7 +1402,7 @@ class AppAnnotationSetting(Base):
 
         collection_binding_detail = (
             db.session.query(DatasetCollectionBinding)
-            .filter(DatasetCollectionBinding.id == self.collection_binding_id)
+            .where(DatasetCollectionBinding.id == self.collection_binding_id)
             .first()
         )
         return collection_binding_detail
@@ -1470,7 +1468,7 @@ class AppMCPServer(Base):
     def generate_server_code(n):
         while True:
             result = generate_string(n)
-            while db.session.query(AppMCPServer).filter(AppMCPServer.server_code == result).count() > 0:
+            while db.session.query(AppMCPServer).where(AppMCPServer.server_code == result).count() > 0:
                 result = generate_string(n)
 
             return result
@@ -1527,7 +1525,7 @@ class Site(Base):
     def generate_code(n):
         while True:
             result = generate_string(n)
-            while db.session.query(Site).filter(Site.code == result).count() > 0:
+            while db.session.query(Site).where(Site.code == result).count() > 0:
                 result = generate_string(n)
 
             return result
@@ -1558,7 +1556,7 @@ class ApiToken(Base):
     def generate_api_key(prefix, n):
         while True:
             result = prefix + generate_string(n)
-            if db.session.query(ApiToken).filter(ApiToken.token == result).count() > 0:
+            if db.session.query(ApiToken).where(ApiToken.token == result).count() > 0:
                 continue
             return result
 

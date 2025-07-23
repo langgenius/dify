@@ -248,7 +248,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         """
         message = (
             db.session.query(Message)
-            .filter(
+            .where(
                 Message.id == message_id,
                 Message.app_id == app_model.id,
                 Message.from_source == ("api" if isinstance(user, EndUser) else "console"),

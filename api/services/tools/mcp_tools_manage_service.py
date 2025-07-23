@@ -31,7 +31,7 @@ class MCPToolManageService:
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
         res = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
+            .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
             .first()
         )
         if not res:
@@ -42,7 +42,7 @@ class MCPToolManageService:
     def get_mcp_provider_by_server_identifier(server_identifier: str, tenant_id: str) -> MCPToolProvider:
         res = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier)
+            .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier)
             .first()
         )
         if not res:
@@ -63,7 +63,7 @@ class MCPToolManageService:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
             db.session.query(MCPToolProvider)
-            .filter(
+            .where(
                 MCPToolProvider.tenant_id == tenant_id,
                 or_(
                     MCPToolProvider.name == name,
@@ -100,7 +100,7 @@ class MCPToolManageService:
     def retrieve_mcp_tools(tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
         mcp_providers = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id)
+            .where(MCPToolProvider.tenant_id == tenant_id)
             .order_by(MCPToolProvider.name)
             .all()
         )

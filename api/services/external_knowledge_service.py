@@ -30,11 +30,11 @@ class ExternalDatasetService:
     ) -> tuple[list[ExternalKnowledgeApis], int | None]:
         query = (
             select(ExternalKnowledgeApis)
-            .filter(ExternalKnowledgeApis.tenant_id == tenant_id)
+            .where(ExternalKnowledgeApis.tenant_id == tenant_id)
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
-            query = query.filter(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
+            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
 
         external_knowledge_apis = db.paginate(
             select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
