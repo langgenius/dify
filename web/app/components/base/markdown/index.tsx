@@ -28,8 +28,15 @@ import {
  * Further refactoring candidates (custom block components not fitting general categories)
  * are noted in their respective files if applicable.
  */
+export type MarkdownProps = {
+  content: string
+  className?: string
+  customDisallowedElements?: string[]
+  customComponents?: Record<string, React.ComponentType<any>>
+}
 
-export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
+export const Markdown = (props: MarkdownProps) => {
+  const { customComponents = {} } = props
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
@@ -78,6 +85,7 @@ export function Markdown(props: { content: string; className?: string; customDis
           form: MarkdownForm,
           script: ScriptBlock as any,
           details: ThinkBlock,
+          ...customComponents,
         }}
       >
         {/* Markdown detect has problem. */}

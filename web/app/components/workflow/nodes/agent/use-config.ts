@@ -129,7 +129,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   }
 
   const formattingLegacyData = () => {
-    if (inputs.version)
+    if (inputs.version || inputs.tool_node_version)
       return inputs
     const newData = produce(inputs, (draft) => {
       const schemas = currentStrategy?.parameters || []
@@ -140,7 +140,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
         if (targetSchema?.type === FormTypeEnum.multiToolSelector)
           draft.agent_parameters![key].value = draft.agent_parameters![key].value.map((tool: any) => formattingToolData(tool))
       })
-      draft.version = '2'
+      draft.tool_node_version = '2'
     })
     return newData
   }

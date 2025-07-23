@@ -497,6 +497,7 @@ const translation = {
           automatic: {
             subTitle: 'Genera automaticamente condizioni di filtraggio dei metadati in base alla query dell\'utente',
             desc: 'Genera automaticamente condizioni di filtraggio dei metadati basate sulla variabile di query',
+            title: 'Automatico',
           },
           manual: {
             title: 'Manuale',
@@ -611,6 +612,7 @@ const translation = {
         'exists': 'Esiste',
         'not exists': 'non esiste',
         'after': 'dopo',
+        'before': 'prima',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',

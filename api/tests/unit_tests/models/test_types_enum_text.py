@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import insert
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import VARCHAR
 
 from models.types import EnumText
@@ -32,22 +32,26 @@ class _EnumWithLongValue(StrEnum):
 class _User(_Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = sa.Column(sa.Integer, primary_key=True)
-    name: Mapped[str] = sa.Column(sa.String(length=255), nullable=False)
-    user_type: Mapped[_UserType] = sa.Column(EnumText(enum_class=_UserType), nullable=False, default=_UserType.normal)
-    user_type_nullable: Mapped[_UserType | None] = sa.Column(EnumText(enum_class=_UserType), nullable=True)
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(sa.String(length=255), nullable=False)
+    user_type: Mapped[_UserType] = mapped_column(
+        EnumText(enum_class=_UserType), nullable=False, default=_UserType.normal
+    )
+    user_type_nullable: Mapped[_UserType | None] = mapped_column(EnumText(enum_class=_UserType), nullable=True)
 
 
 class _ColumnTest(_Base):
     __tablename__ = "column_test"
 
-    id: Mapped[int] = sa.Column(sa.Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True)
 
-    user_type: Mapped[_UserType] = sa.Column(EnumText(enum_class=_UserType), nullable=False, default=_UserType.normal)
-    explicit_length: Mapped[_UserType | None] = sa.Column(
+    user_type: Mapped[_UserType] = mapped_column(
+        EnumText(enum_class=_UserType), nullable=False, default=_UserType.normal
+    )
+    explicit_length: Mapped[_UserType | None] = mapped_column(
         EnumText(_UserType, length=50), nullable=True, default=_UserType.normal
     )
-    long_value: Mapped[_EnumWithLongValue] = sa.Column(EnumText(enum_class=_EnumWithLongValue), nullable=False)
+    long_value: Mapped[_EnumWithLongValue] = mapped_column(EnumText(enum_class=_EnumWithLongValue), nullable=False)
 
 
 _T = TypeVar("_T")

@@ -17,6 +17,7 @@ from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
@@ -28,6 +29,7 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
 from models.model import DifySetup
@@ -135,8 +137,8 @@ class AccountService:
             available_ta.current = True
             db.session.commit()
 
-        if datetime.now(UTC).replace(tzinfo=None) - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = datetime.now(UTC).replace(tzinfo=None)
+        if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
+            account.last_active_at = naive_utc_now()
             db.session.commit()
 
         return cast(Account, account)
@@ -180,7 +182,7 @@ class AccountService:
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
 
         db.session.commit()
 
@@ -318,7 +320,7 @@ class AccountService:
                 # If it exists, update the record
                 account_integrate.open_id = open_id
                 account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                account_integrate.updated_at = naive_utc_now()
             else:
                 # If it does not exist, create a new record
                 account_integrate = AccountIntegrate(
@@ -353,7 +355,7 @@ class AccountService:
     @staticmethod
     def update_login_info(account: Account, *, ip_address: str) -> None:
         """Update last login time and ip"""
-        account.last_login_at = datetime.now(UTC).replace(tzinfo=None)
+        account.last_login_at = naive_utc_now()
         account.last_login_ip = ip_address
         db.session.add(account)
         db.session.commit()
@@ -827,6 +829,17 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
+        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+            tenant_id=tenant.id,
+            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            upgrade_time_of_day=0,
+            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            exclude_plugins=[],
+            include_plugins=[],
+        )
+        db.session.add(plugin_upgrade_strategy)
+        db.session.commit()
+
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
         return tenant
@@ -997,7 +1010,7 @@ class TenantService:
             .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .first()
         )
-        return join.role if join else None
+        return TenantAccountRole(join.role) if join else None
 
     @staticmethod
     def get_tenant_count() -> int:
@@ -1067,15 +1080,6 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def dissolve_tenant(tenant: Tenant, operator: Account) -> None:
-        """Dissolve tenant"""
-        if not TenantService.check_member_permission(tenant, operator, operator, "remove"):
-            raise NoPermissionError("No permission to dissolve tenant.")
-        db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
-        db.session.delete(tenant)
-        db.session.commit()
-
-    @staticmethod
     def get_custom_config(tenant_id: str) -> dict:
         tenant = db.get_or_404(Tenant, tenant_id)
 
@@ -1117,7 +1121,7 @@ class RegisterService:
             )
 
             account.last_login_ip = ip_address
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
@@ -1158,7 +1162,7 @@ class RegisterService:
                 is_setup=is_setup,
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
 
             if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)

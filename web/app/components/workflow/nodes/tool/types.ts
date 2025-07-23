@@ -23,4 +23,5 @@ export type ToolNodeType = CommonNodeType & {
   output_schema: Record<string, any>
   paramSchemas?: Record<string, any>[]
   version?: string
+  tool_node_version?: string
 }
