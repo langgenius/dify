@@ -10,9 +10,6 @@ class SuggestedQuestionsAfterAnswerOutputParser:
         return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
     def parse(self, text: str) -> Any:
-        if not isinstance(text, str):
-            # Optionally log a warning here
-            return []
         action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)
         if action_match is not None:
             json_obj = json.loads(action_match.group(0).strip())
