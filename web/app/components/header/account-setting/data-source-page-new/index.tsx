@@ -23,7 +23,7 @@ const DataSourcePage = () => {
       {
         enable_marketplace && (
           <InstallFromMarketplace
-            providers={[]}
+            providers={data?.result || []}
             searchText={''}
           />
         )

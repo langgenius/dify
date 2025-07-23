@@ -39,9 +39,17 @@ export const useChunkStructure = () => {
   }
   const QuestionAnswerOption: Option = {
     id: ChunkStructureEnum.question_answer,
-    icon: <QuestionAndAnswer className='h-[18px] w-[18px] text-text-tertiary' />,
+    icon: (isActive: boolean) => (
+      <QuestionAndAnswer
+        className={cn(
+          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-teal-teal-600',
+          isActive && 'text-util-colors-teal-teal-600',
+        )}
+      />
+    ),
     title: 'Question-Answer',
     description: t('datasetCreation.stepTwo.qaTip'),
+    effectColor: 'teal',
   }
 
   const optionMap: Record<ChunkStructureEnum, Option> = {

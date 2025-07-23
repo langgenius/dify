@@ -32,7 +32,7 @@ const Card = ({
     icon,
     label,
     author,
-    provider,
+    name,
     credentials_list,
     credential_schema,
   } = item
@@ -98,8 +98,8 @@ const Card = ({
           </div>
           <div className='system-xs-regular flex h-4 items-center text-text-tertiary'>
             {author}
-            <div className='text-text-quaternary'>/</div>
-            {provider}
+            <div className='mx-0.5 text-text-quaternary'>/</div>
+            {name}
           </div>
         </div>
         <Configure

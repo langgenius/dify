@@ -39,7 +39,7 @@ export const useConfig = (id: string) => {
     const { indexing_technique } = nodeData?.data
     handleNodeDataUpdate({
       chunk_structure: chunkStructure,
-      indexing_technique: chunkStructure === ChunkStructureEnum.parent_child ? IndexMethodEnum.QUALIFIED : indexing_technique,
+      indexing_technique: (chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) ? IndexMethodEnum.QUALIFIED : indexing_technique,
     })
   }, [handleNodeDataUpdate, getNodeData])
 
