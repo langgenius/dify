@@ -8,8 +8,6 @@ import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 
 export const processNodesWithoutDataSource = (nodes: Node[]) => {
-  if (!nodes || nodes.length === 0) return []
-
   let leftNode
   let hasNoteBySystem
   for (let i = 0; i < nodes.length; i++) {
@@ -17,16 +15,13 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
     if (node.type === CUSTOM_NOTE_NODE && node.data.noteBySystem)
       hasNoteBySystem = true
 
-    if (node.type !== CUSTOM_NODE)
-      continue
-
     if (node.data.type === BlockEnum.DataSource)
       return nodes
 
-    if (!leftNode)
+    if (node.type === CUSTOM_NODE && !leftNode)
       leftNode = node
 
-    if (node.position.x < leftNode.position.x)
+    if (node.type === CUSTOM_NODE && leftNode && node.position.x < leftNode.position.x)
       leftNode = node
   }
 

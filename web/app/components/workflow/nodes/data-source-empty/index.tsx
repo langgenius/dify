@@ -10,7 +10,7 @@ import Button from '@/app/components/base/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { useReplaceDataSourceNode } from './hooks'
 
-const DataSourceEmptyNode = ({ id }: NodeProps) => {
+const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()
   const { handleReplaceNode } = useReplaceDataSourceNode(id)
 
@@ -32,6 +32,10 @@ const DataSourceEmptyNode = ({ id }: NodeProps) => {
         'relative flex rounded-2xl border',
         'border-transparent',
       )}
+      style={{
+        width: data.width,
+        height: data.height,
+      }}
     >
       <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
         <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>

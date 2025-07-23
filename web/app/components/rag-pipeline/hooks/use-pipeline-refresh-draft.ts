@@ -3,6 +3,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
+import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {
   const workflowStore = useWorkflowStore()
@@ -18,7 +19,10 @@ export const usePipelineRefreshDraft = () => {
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
+      handleUpdateWorkflowCanvas({
+        ...response.graph,
+        nodes: processNodesWithoutDataSource(response.graph.nodes),
+      } as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
         acc[env.id] = env.value

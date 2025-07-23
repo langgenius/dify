@@ -14,7 +14,6 @@ import RagPipelineMain from './components/rag-pipeline-main'
 import { usePipelineInit } from './hooks'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Conversion from './components/conversion'
-import type { Node } from '@/app/components/workflow/types'
 import { processNodesWithoutDataSource } from './utils'
 
 const RagPipeline = () => {
@@ -23,11 +22,10 @@ const RagPipeline = () => {
     isLoading,
   } = usePipelineInit()
   const nodesData = useMemo(() => {
-    let result: Node[] = []
     if (data)
-      result = initialNodes(data.graph.nodes, data.graph.edges)
+      return processNodesWithoutDataSource(initialNodes(data.graph.nodes, data.graph.edges))
 
-    return processNodesWithoutDataSource(result)
+    return []
   }, [data])
   const edgesData = useMemo(() => {
     if (data)

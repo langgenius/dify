@@ -15,7 +15,10 @@ export const usePipelineTemplate = () => {
       type: knowledgeBaseDefault.metaData.type,
       title: t(`workflow.blocks.${knowledgeBaseDefault.metaData.type}`),
     },
-    position: START_INITIAL_POSITION,
+    position: {
+      x: START_INITIAL_POSITION.x + 500,
+      y: START_INITIAL_POSITION.y,
+    },
   })
 
   return {
