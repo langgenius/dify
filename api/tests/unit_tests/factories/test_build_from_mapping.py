@@ -54,8 +54,12 @@ def mock_tool_file():
     mock.mimetype = "application/pdf"
     mock.original_url = "http://example.com/tool.pdf"
     mock.size = 2048
-    with patch("factories.file_factory.db.session.query") as mock_query:
+    with (
+        patch("factories.file_factory.db.session.query") as mock_query,
+        patch("factories.file_factory.db.session.scalar") as mock_query1,
+    ):
         mock_query.return_value.filter.return_value.first.return_value = mock
+        mock_query1.return_value.filter.return_value.first.return_value = mock
         yield mock
 
 

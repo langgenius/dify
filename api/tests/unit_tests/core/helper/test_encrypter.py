@@ -45,6 +45,7 @@ class TestEncryptToken:
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
         mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_data"
 
         result = encrypt_token("tenant-123", "test_token")

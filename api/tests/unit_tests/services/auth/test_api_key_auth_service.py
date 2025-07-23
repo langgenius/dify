@@ -139,6 +139,7 @@ class TestApiKeyAuthService:
         mock_binding = Mock()
         mock_binding.credentials = json.dumps(self.mock_credentials)
         mock_session.query.return_value.filter.return_value.first.return_value = mock_binding
+        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
