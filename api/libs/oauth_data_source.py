@@ -3,7 +3,7 @@ from typing import Any
 
 import requests
 from flask_login import current_user
-from sqlalchemy import and_, select
+from sqlalchemy import select
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
