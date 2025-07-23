@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
+    tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Valor',
       valuePlaceholder: 'valor de env',
       secretTip: 'Se utiliza para definir información o datos sensibles, con configuraciones DSL configuradas para prevenir fugas.',
+      description: 'Descripción',
+      descriptionPlaceholder: 'Describa la variable',
     },
     export: {
       title: '¿Exportar variables de entorno secretas?',
@@ -232,6 +235,8 @@ const translation = {
     'plugin': 'Plugin',
     'searchBlock': 'Buscar nodo',
     'blocks': 'Nodos',
+    'addAll': 'Agregar todo',
+    'allAdded': 'Todo añadido',
   },
   blocks: {
     'start': 'Inicio',
@@ -362,6 +367,10 @@ const translation = {
         retries: '{{num}} Reintentos',
         retry: 'Reintentar',
       },
+      typeSwitch: {
+        input: 'Valor de entrada',
+        variable: 'Usa la variable',
+      },
     },
     start: {
       required: 'requerido',
@@ -466,10 +475,12 @@ const translation = {
         options: {
           disabled: {
             subTitle: 'No habilitar el filtrado de metadatos',
+            title: 'Deshabilitado',
           },
           automatic: {
             subTitle: 'Generar automáticamente condiciones de filtrado de metadatos basadas en la consulta del usuario',
             desc: 'Generar automáticamente condiciones de filtrado de metadatos basadas en la variable de consulta',
+            title: 'Automático',
           },
           manual: {
             title: 'Manual',
@@ -535,6 +546,10 @@ const translation = {
         title: 'Importar desde cURL',
         placeholder: 'Pegar la cadena cURL aquí',
       },
+      verifySSL: {
+        title: 'Verificar el certificado SSL',
+        warningTooltip: 'Deshabilitar la verificación SSL no se recomienda para entornos de producción. Esto solo debe utilizarse en desarrollo o pruebas, ya que hace que la conexión sea vulnerable a amenazas de seguridad como ataques de intermediario.',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',
@@ -542,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dependencias avanzadas',
       advancedDependenciesTip: 'Agrega algunas dependencias precargadas que consumen más tiempo o no son incorporadas por defecto aquí',
       searchDependencies: 'Buscar dependencias',
+      syncFunctionSignature: 'Sincronizar la firma de la función con el código',
     },
     templateTransform: {
       inputVars: 'Variables de entrada',
@@ -661,12 +677,16 @@ const translation = {
         json: 'JSON generado por la herramienta',
       },
       authorize: 'autorizar',
+      insertPlaceholder2: 'insertar variable',
+      settings: 'Ajustes',
+      insertPlaceholder1: 'Escribe o presiona',
     },
     questionClassifiers: {
       model: 'modelo',
       inputVars: 'Variables de entrada',
       outputVars: {
         className: 'Nombre de la clase',
+        usage: 'Información de uso del modelo',
       },
       class: 'Clase',
       classNamePlaceholder: 'Escribe el nombre de tu clase',
@@ -680,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variable de entrada',
+      outputVars: {
+        isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
+        errorReason: 'Motivo del error',
+        usage: 'Información de uso del modelo',
+      },
       extractParameters: 'Extraer parámetros',
       importFromTool: 'Importar desde herramientas',
       addExtractParameter: 'Agregar parámetro de extracción',
@@ -699,8 +724,6 @@ const translation = {
       advancedSetting: 'Configuración avanzada',
       reasoningMode: 'Modo de razonamiento',
       reasoningModeTip: 'Puede elegir el modo de razonamiento apropiado basado en la capacidad del modelo para responder a instrucciones para llamadas de funciones o indicaciones.',
-      isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
-      errorReason: 'Motivo del error',
     },
     iteration: {
       deleteTitle: '¿Eliminar nodo de iteración?',
@@ -844,6 +867,8 @@ const translation = {
       strategyNotFoundDescAndSwitchVersion: 'La versión del plugin instalado no proporciona esta estrategia. Haga clic para cambiar de versión.',
       toolNotAuthorizedTooltip: '{{herramienta}} No autorizado',
       modelNotSelected: 'Modelo no seleccionado',
+      clickToViewParameterSchema: 'Haga clic para ver el esquema de parámetros',
+      parameterSchema: 'Esquema de Parámetros',
     },
     loop: {
       ErrorMethod: {
@@ -875,6 +900,7 @@ const translation = {
       error_other: '{{count}} Errores',
       loopVariables: 'Variables de bucle',
       variableName: 'Nombre de Variable',
+      input: 'Entrada',
     },
   },
   tracing: {
@@ -893,6 +919,7 @@ const translation = {
       onlyShowNamedVersions: 'Solo muestra versiones nombradas',
       empty: 'No se encontró un historial de versiones coincidente.',
       reset: 'Restablecer filtro',
+      all: 'Todo',
     },
     editField: {
       titleLengthLimit: 'El título no puede exceder {{limit}} caracteres',
@@ -916,6 +943,7 @@ const translation = {
     deletionTip: 'La eliminación es irreversible, por favor confirma.',
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
+    latest: 'Último',
   },
   debug: {
     noData: {
@@ -928,6 +956,7 @@ const translation = {
         stop: 'Detén la carrera',
         normal: 'Inspeccionar Variable',
         cached: 'Ver variables en caché',
+        clear: 'Claro',
       },
       envNode: 'Medio ambiente',
       chatNode: 'Conversación',
@@ -940,6 +969,7 @@ const translation = {
       resetConversationVar: 'Restablecer la variable de conversación al valor predeterminado',
       clearNode: 'Limpiar variable en caché',
       emptyTip: 'Después de recorrer un nodo en el lienzo o ejecutar un nodo paso a paso, puedes ver el valor actual de la variable del nodo en Inspección de Variables.',
+      edited: 'Editado',
     },
     lastRunTab: 'Última ejecución',
     settingsTab: 'Ajustes',

@@ -26,6 +26,7 @@ from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -214,9 +215,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
+        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None  # type: ignore
+        dataset.embedding_model = embedding_model.model if embedding_model else None  # type: ignore
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None  # type: ignore
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -428,7 +429,7 @@ class DatasetService:
 
         # Add metadata fields
         filtered_data["updated_by"] = user.id
-        filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        filtered_data["updated_at"] = naive_utc_now()
         # update Retrieval model
         filtered_data["retrieval_model"] = data["retrieval_model"]
 
@@ -994,7 +995,7 @@ class DocumentService:
         # update document to be paused
         document.is_paused = True
         document.paused_by = current_user.id
-        document.paused_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.paused_at = naive_utc_now()
 
         db.session.add(document)
         db.session.commit()
@@ -1539,8 +1540,10 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # update document segment
-        update_params = {DocumentSegment.status: "re_segment"}
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(update_params)
+
+        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
+            {DocumentSegment.status: "re_segment"}
+        )  # type: ignore
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)
@@ -2225,7 +2228,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content

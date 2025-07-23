@@ -21,7 +21,7 @@ def encrypt_token(tenant_id: str, token: str):
     return base64.b64encode(encrypted_token).decode()
 
 
-def decrypt_token(tenant_id: str, token: str):
+def decrypt_token(tenant_id: str, token: str) -> str:
     return rsa.decrypt(base64.b64decode(token), tenant_id)
 
 

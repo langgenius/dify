@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
+    tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Giá trị',
       valuePlaceholder: 'giá trị môi trường',
       secretTip: 'Được sử dụng để xác định thông tin hoặc dữ liệu nhạy cảm, với cài đặt DSL được cấu hình để ngăn chặn rò rỉ.',
+      description: 'Mô tả',
+      descriptionPlaceholder: 'Mô tả biến',
     },
     export: {
       title: 'Xuất biến môi trường bí mật?',
@@ -232,6 +235,8 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Nút',
     'searchBlock': 'Tìm kiếm nút',
+    'allAdded': 'Tất cả đã được thêm vào',
+    'addAll': 'Thêm tất cả',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -361,6 +366,10 @@ const translation = {
         retryOnFailure: 'Thử lại khi không thành công',
         times: 'lần',
         ms: 'Ms',
+      },
+      typeSwitch: {
+        input: 'Giá trị đầu vào',
+        variable: 'Sử dụng biến',
       },
     },
     start: {
@@ -537,6 +546,10 @@ const translation = {
         title: 'Nhập từ cURL',
         placeholder: 'Dán chuỗi cURL vào đây',
       },
+      verifySSL: {
+        title: 'Xác thực chứng chỉ SSL',
+        warningTooltip: 'Việc vô hiệu hóa xác minh SSL không được khuyến khích cho các môi trường sản xuất. Điều này chỉ nên được sử dụng trong phát triển hoặc thử nghiệm, vì nó làm cho kết nối dễ bị tổn thương trước các mối đe dọa an ninh như cuộc tấn công man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Biến đầu vào',
@@ -544,6 +557,7 @@ const translation = {
       advancedDependencies: 'Phụ thuộc nâng cao',
       advancedDependenciesTip: 'Thêm một số phụ thuộc được tải trước mà tốn nhiều thời gian hoặc không phải là mặc định tại đây',
       searchDependencies: 'Tìm kiếm phụ thuộc',
+      syncFunctionSignature: 'Đồng bộ chữ ký hàm với mã',
     },
     templateTransform: {
       inputVars: 'Biến đầu vào',
@@ -663,12 +677,16 @@ const translation = {
         json: 'JSON được tạo bởi công cụ',
       },
       authorize: 'Ủy quyền',
+      settings: 'Cài đặt',
+      insertPlaceholder2: 'Chèn biến vào',
+      insertPlaceholder1: 'Gõ hoặc nhấn',
     },
     questionClassifiers: {
       model: 'mô hình',
       inputVars: 'Biến đầu vào',
       outputVars: {
         className: 'Tên lớp',
+        usage: 'Thông tin sử dụng mô hình',
       },
       class: 'Lớp',
       classNamePlaceholder: 'Viết tên lớp của bạn',
@@ -682,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Biến đầu vào',
+      outputVars: {
+        isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
+        errorReason: 'Lý do lỗi',
+        usage: 'Thông tin sử dụng mô hình',
+      },
       extractParameters: 'Trích xuất tham số',
       importFromTool: 'Nhập từ công cụ',
       addExtractParameter: 'Thêm tham số trích xuất',
@@ -701,8 +724,6 @@ const translation = {
       advancedSetting: 'Cài đặt nâng cao',
       reasoningMode: 'Chế độ suy luận',
       reasoningModeTip: 'Bạn có thể chọn chế độ suy luận phù hợp dựa trên khả năng của mô hình để phản hồi các hướng dẫn về việc gọi hàm hoặc prompt.',
-      isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
-      errorReason: 'Lý do lỗi',
     },
     iteration: {
       deleteTitle: 'Xóa nút lặp?',
@@ -843,6 +864,8 @@ const translation = {
       notAuthorized: 'Không được ủy quyền',
       strategyNotFoundDesc: 'Phiên bản plugin đã cài đặt không cung cấp chiến lược này.',
       toolbox: 'hộp công cụ',
+      clickToViewParameterSchema: 'Nhấp để xem sơ đồ tham số',
+      parameterSchema: 'Sơ đồ Tham số',
     },
     loop: {
       ErrorMethod: {

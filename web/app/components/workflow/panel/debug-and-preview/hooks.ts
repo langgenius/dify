@@ -8,7 +8,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { uniqBy } from 'lodash-es'
-import { useWorkflowRun } from '../../hooks'
+import {
+  useSetWorkflowVarsWithValue,
+  useWorkflowRun,
+} from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import { useWorkflowStore } from '../../store'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
@@ -32,7 +35,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useParams } from 'next/navigation'
-import useSetWorkflowVarsWithValue from '@/app/components/workflow-app/hooks/use-fetch-workflow-inspect-vars'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -90,7 +92,7 @@ export const useChat = (
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         }
       }
       else {
@@ -99,7 +101,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         })
       }
     }
@@ -499,7 +501,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled, fetchInspectVars, invalidAllLastRun])
 
   return {
     conversationId: conversationId.current,

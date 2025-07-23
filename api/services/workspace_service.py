@@ -31,7 +31,7 @@ class WorkspaceService:
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
-        can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo
+        can_replace_logo = FeatureService.get_features(tenant.id).can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL

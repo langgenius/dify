@@ -136,6 +136,14 @@ const translation = {
       notConfigured: '配置提供商以啟用追蹤',
       moreProvider: '更多提供商',
     },
+    arize: {
+      title: 'Arize',
+      description: '企業級LLM可觀測性、線上與離線評估、監控和實驗平台，基於OpenTelemetry構建，專為LLM和代理驅動的應用程式設計。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: '開源且基於OpenTelemetry的可觀測性、評估、提示工程和實驗平台，適用於您的LLM工作流程和代理。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: '一個全方位的開發者平台，用於 LLM 驅動的應用程式生命週期的每個步驟。',
@@ -162,6 +170,10 @@ const translation = {
     weave: {
       title: '編織',
       description: 'Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。',
+    },
+    aliyun: {
+      title: '雲端監控',
+      description: '阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。',
     },
   },
   answerIcon: {
@@ -246,6 +258,8 @@ const translation = {
   },
   accessControl: '網頁應用程式存取控制',
   noAccessPermission: '沒有權限訪問網絡應用程式',
+  maxActiveRequestsPlaceholder: '輸入 0 以表示無限',
+  maxActiveRequests: '同時最大請求數',
 }
 
 export default translation

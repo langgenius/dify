@@ -79,8 +79,8 @@ const translation = {
     advancedShortDescription: 'Potek dela izboljšan za večkratne pogovore',
     noAppsFound: 'Ni bilo najdenih aplikacij',
     agentShortDescription: 'Inteligentni agent z razmišljanjem in avtonomno uporabo orodij',
-    foundResult: '{{štetje}} Rezultat',
-    foundResults: '{{štetje}} Rezultati',
+    foundResult: '{{count}} Rezultat',
+    foundResults: '{{count}} Rezultati',
     noTemplateFoundTip: 'Poskusite iskati z različnimi ključnimi besedami.',
     optional: 'Neobvezno',
     forBeginners: 'Bolj osnovne vrste aplikacij',
@@ -146,6 +146,14 @@ const translation = {
       notConfigured: 'Konfigurirajte ponudnika za omogočanje sledenja',
       moreProvider: 'Več ponudnikov',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Podjetniško opazovanje LLM, spletno in nespletno vrednotenje, nadzorovanje in eksperimentiranje — s podporo OpenTelemetry. Namenjeno aplikacijam, ki temeljijo na LLM in agentih.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Odprtokodna in na OpenTelemetry osnovana platforma za opazovanje, vrednotenje, inženiring pozivov ter eksperimentiranje za vaše LLM poteke dela in agente.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Vse-v-enem razvijalska platforma za vsak korak življenjskega cikla aplikacije, ki jo poganja LLM.',
@@ -172,6 +180,10 @@ const translation = {
     weave: {
       title: 'Tkanje',
       description: 'Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.',
+    },
+    aliyun: {
+      title: 'Oblačni nadzor',
+      description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
     },
   },
   mermaid: {
@@ -247,6 +259,8 @@ const translation = {
   },
   accessControl: 'Nadzor dostopa do spletne aplikacije',
   noAccessPermission: 'Brez dovoljenja za dostop do spletne aplikacije',
+  maxActiveRequestsPlaceholder: 'Vnesite 0 za neomejeno',
+  maxActiveRequests: 'Maksimalno število hkratnih zahtevkov',
 }
 
 export default translation

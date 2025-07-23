@@ -136,6 +136,14 @@ const translation = {
       notConfigured: 'Configurar proveedor para habilitar el rastreo',
       moreProvider: 'Más proveedores',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilidad de LLM de nivel empresarial, evaluación en línea y fuera de línea, monitoreo y experimentación—impulsada por OpenTelemetry. Diseñada específicamente para aplicaciones impulsadas por LLM y agentes.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Plataforma de observabilidad, evaluación, ingeniería de prompts y experimentación de código abierto basada en OpenTelemetry para sus flujos de trabajo y agentes de LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Una plataforma de desarrollo todo en uno para cada paso del ciclo de vida de la aplicación impulsada por LLM.',
@@ -163,6 +171,10 @@ const translation = {
     weave: {
       description: 'Weave es una plataforma de código abierto para evaluar, probar y monitorear aplicaciones de LLM.',
       title: 'Tejer',
+    },
+    aliyun: {
+      title: 'Monitor de Nubes',
+      description: 'La plataforma de observabilidad totalmente gestionada y sin mantenimiento proporcionada por Alibaba Cloud, permite la monitorización, trazado y evaluación de aplicaciones Dify de manera inmediata.',
     },
   },
   answerIcon: {
@@ -247,6 +259,8 @@ const translation = {
   },
   accessControl: 'Control de Acceso a la Aplicación Web',
   noAccessPermission: 'No se permite el acceso a la aplicación web',
+  maxActiveRequestsPlaceholder: 'Introduce 0 para ilimitado',
+  maxActiveRequests: 'Máximas solicitudes concurrentes',
 }
 
 export default translation

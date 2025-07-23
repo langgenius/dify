@@ -145,6 +145,14 @@ const translation = {
       notConfigured: 'Configura il provider per abilitare il tracciamento',
       moreProvider: 'Altri Provider',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Osservabilità LLM di livello aziendale, valutazione online e offline, monitoraggio e sperimentazione—alimentata da OpenTelemetry. Progettata appositamente per applicazioni basate su LLM e agenti.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Piattaforma open-source basata su OpenTelemetry per osservabilità, valutazione, ingegneria dei prompt e sperimentazione per i tuoi flussi di lavoro e agenti LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description:
@@ -175,6 +183,10 @@ const translation = {
     weave: {
       title: 'Intrecciare',
       description: 'Weave è una piattaforma open-source per valutare, testare e monitorare le applicazioni LLM.',
+    },
+    aliyun: {
+      title: 'Monitoraggio Cloud',
+      description: 'La piattaforma di osservabilità completamente gestita e senza manutenzione fornita da Alibaba Cloud consente il monitoraggio, il tracciamento e la valutazione delle applicazioni Dify fin da subito.',
     },
   },
   answerIcon: {
@@ -220,6 +232,7 @@ const translation = {
     structuredTip: 'Le Uscite Strutturate sono una funzione che garantisce che il modello generi sempre risposte che aderiscano al tuo Schema JSON fornito.',
     notConfiguredTip: 'L\'output strutturato non è stato ancora configurato.',
     modelNotSupportedTip: 'Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.',
+    required: 'Necessario',
   },
   accessItemsDescription: {
     anyone: 'Chiunque può accedere all\'app web',
@@ -258,6 +271,8 @@ const translation = {
   },
   accessControl: 'Controllo di accesso all\'app web',
   noAccessPermission: 'Nessun permesso per accedere all\'app web',
+  maxActiveRequestsPlaceholder: 'Inserisci 0 per illimitato',
+  maxActiveRequests: 'Massimo numero di richieste concorrenti',
 }
 
 export default translation

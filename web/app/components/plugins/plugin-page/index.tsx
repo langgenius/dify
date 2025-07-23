@@ -117,7 +117,6 @@ const PluginPage = ({
         showInstallFromMarketplace()
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId, bundleInfo])
 
   const {
@@ -136,7 +135,7 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { enable_marketplace, branding } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
   const isExploringMarketplace = useMemo(() => {
@@ -225,7 +224,7 @@ const PluginPage = ({
               )
             }
             {
-              canSetPermissions && !branding.enabled && (
+              canSetPermissions && (
                 <Tooltip
                   popupContent={t('plugin.privilege.title')}
                 >

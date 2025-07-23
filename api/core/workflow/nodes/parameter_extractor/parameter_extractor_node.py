@@ -29,8 +29,9 @@ from core.variables.types import SegmentType
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.llm import ModelConfig, llm_utils
 from core.workflow.utils import variable_template_parser
 from factories.variable_factory import build_segment_with_type
@@ -91,9 +92,30 @@ class ParameterExtractorNode(BaseNode):
     Parameter Extractor Node.
     """
 
-    # FIXME: figure out why here is different from super class
-    _node_data_cls = ParameterExtractorNodeData  # type: ignore
     _node_type = NodeType.PARAMETER_EXTRACTOR
+
+    _node_data: ParameterExtractorNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
+        self._node_data = ParameterExtractorNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> Optional[str]:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
 
     _model_instance: Optional[ModelInstance] = None
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
@@ -119,7 +141,7 @@ class ParameterExtractorNode(BaseNode):
         """
         Run the node.
         """
-        node_data = cast(ParameterExtractorNodeData, self.node_data)
+        node_data = cast(ParameterExtractorNodeData, self._node_data)
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 
@@ -253,7 +275,12 @@ class ParameterExtractorNode(BaseNode):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs={"__is_success": 1 if not error else 0, "__reason": error, **result},
+            outputs={
+                "__is_success": 1 if not error else 0,
+                "__reason": error,
+                "__usage": jsonable_encoder(usage),
+                **result,
+            },
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                 WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
@@ -393,7 +420,7 @@ class ParameterExtractorNode(BaseNode):
         """
         Generate prompt engineering prompt.
         """
-        model_mode = ModelMode.value_of(data.model.mode)
+        model_mode = ModelMode(data.model.mode)
 
         if model_mode == ModelMode.COMPLETION:
             return self._generate_prompt_engineering_completion_prompt(
@@ -689,7 +716,7 @@ class ParameterExtractorNode(BaseNode):
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
     ) -> list[ChatModelMessage]:
-        model_mode = ModelMode.value_of(node_data.model.mode)
+        model_mode = ModelMode(node_data.model.mode)
         input_text = query
         memory_str = ""
         instruction = variable_pool.convert_template(node_data.instruction or "").text
@@ -716,7 +743,7 @@ class ParameterExtractorNode(BaseNode):
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
     ):
-        model_mode = ModelMode.value_of(node_data.model.mode)
+        model_mode = ModelMode(node_data.model.mode)
         input_text = query
         memory_str = ""
         instruction = variable_pool.convert_template(node_data.instruction or "").text
@@ -822,19 +849,15 @@ class ParameterExtractorNode(BaseNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ParameterExtractorNodeData,  # type: ignore
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
+        # Create typed NodeData from dict
+        typed_node_data = ParameterExtractorNodeData.model_validate(node_data)
 
-        if node_data.instruction:
-            selectors = variable_template_parser.extract_selectors_from_template(node_data.instruction)
+        variable_mapping: dict[str, Sequence[str]] = {"query": typed_node_data.query}
+
+        if typed_node_data.instruction:
+            selectors = variable_template_parser.extract_selectors_from_template(typed_node_data.instruction)
             for selector in selectors:
                 variable_mapping[selector.variable] = selector.value_selector
 

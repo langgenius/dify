@@ -83,7 +83,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
-              - <code>chunk_overlap</code> 隣接するチャンク間の重複を定義 (オプション)
+              - <code>chunk_overlap</code> 隣接するチャンク間の重なりを定義 (オプション)
       </Property>
       <PropertyInstruction>ナレッジベースにパラメータが設定されていない場合、最初のアップロードには以下のパラメータを提供する必要があります。提供されない場合、デフォルトパラメータが使用されます。</PropertyInstruction>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
@@ -218,7 +218,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
-              - <code>chunk_overlap</code> 隣接するチャンク間の重複を定義 (オプション)
+              - <code>chunk_overlap</code> 隣接するチャンク間の重なりを定義 (オプション)
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         アップロードする必要があるファイル。
@@ -555,7 +555,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
-              - <code>chunk_overlap</code> 隣接するチャンク間の重複を定義 (オプション)
+              - <code>chunk_overlap</code> 隣接するチャンク間の重なりを定義 (オプション)
       </Property>
     </Properties>
   </Col>
@@ -657,7 +657,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
-              - <code>chunk_overlap</code> 隣接するチャンク間の重複を定義 (オプション)
+              - <code>chunk_overlap</code> 隣接するチャンク間の重なりを定義 (オプション)
       </Property>
     </Properties>
   </Col>

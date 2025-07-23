@@ -77,10 +77,10 @@ const translation = {
     appCreateDSLErrorPart1: 'تفاوت قابل توجهی در نسخه های DSL مشاهده شده است. اجبار به واردات ممکن است باعث اختلال در عملکرد برنامه شود.',
     appCreateDSLWarning: 'احتیاط: تفاوت نسخه DSL ممکن است بر ویژگی های خاصی تأثیر بگذارد',
     completionShortDescription: 'دستیار هوش مصنوعی برای تسک های تولید متن',
-    foundResult: '{{تعداد}} نتیجه',
+    foundResult: '{{count}} نتیجه',
     chatbotUserDescription: 'به سرعت یک چت بات مبتنی بر LLM با پیکربندی ساده بسازید. بعدا می توانید به Chatflow بروید.',
     chooseAppType: 'انتخاب نوع برنامه',
-    foundResults: '{{تعداد}} نتیجه',
+    foundResults: '{{count}} نتیجه',
     noIdeaTip: 'ایده ای ندارید؟ قالب های ما را بررسی کنید',
     forBeginners: 'انواع برنامه‌های پایه‌تر',
     noAppsFound: 'هیچ برنامه ای یافت نشد',
@@ -140,6 +140,14 @@ const translation = {
       notConfigured: 'برای فعال‌سازی ردیابی ارائه‌دهنده را پیکربندی کنید',
       moreProvider: 'ارائه‌دهندگان بیشتر',
     },
+    arize: {
+      title: 'Arize',
+      description: 'قابلیت مشاهده LLM در سطح سازمانی، ارزیابی آنلاین و آفلاین، نظارت و آزمایش — با پشتیبانی از OpenTelemetry. طراحی‌شده مخصوص برنامه‌های مبتنی بر LLM و عامل‌ها.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'پلتفرم متن‌باز و مبتنی بر OpenTelemetry برای مشاهده‌پذیری، ارزیابی، مهندسی پرامپت و آزمایش برای جریان‌های کاری و عامل‌های LLM شما.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'یک پلتفرم همه‌کاره برای هر مرحله از چرخه عمر برنامه‌های مبتنی بر LLM.',
@@ -167,6 +175,10 @@ const translation = {
     weave: {
       title: 'بافندگی',
       description: 'ویو یک پلتفرم متن باز برای ارزیابی، آزمایش و نظارت بر برنامه‌های LLM است.',
+    },
+    aliyun: {
+      title: 'نظارت بر ابر',
+      description: 'پلتفرم مشاهده‌پذیری کاملاً مدیریت‌شده و بدون نیاز به نگهداری که توسط Alibaba Cloud ارائه شده، امکان نظارت، ردیابی و ارزیابی برنامه‌های Dify را به‌صورت آماده و با تنظیمات اولیه فراهم می‌کند.',
     },
   },
   answerIcon: {
@@ -247,6 +259,8 @@ const translation = {
   },
   accessControl: 'کنترل دسترسی به وب اپلیکیشن',
   noAccessPermission: 'دسترسی به برنامه وب مجاز نیست',
+  maxActiveRequests: 'بیشترین درخواست‌های همزمان',
+  maxActiveRequestsPlaceholder: 'برای نامحدود، 0 را وارد کنید',
 }
 
 export default translation

@@ -9,13 +9,15 @@ import {
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useConfigVision from '../../hooks/use-config-vision'
-import type { QuestionClassifierNodeType } from './types'
+import type { QuestionClassifierNodeType, Topic } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { useUpdateNodeInternals } from 'reactflow'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
+  const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
@@ -86,7 +88,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
@@ -108,7 +109,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
         query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleClassesChange = useCallback((newClasses: any) => {
@@ -166,6 +166,17 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     return varPayload.type === VarType.string
   }, [])
 
+  const handleSortTopic = useCallback((newTopics: (Topic & { id: string })[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.classes = newTopics.filter(Boolean).map(item => ({
+        id: item.id,
+        name: item.name,
+      }))
+    })
+    setInputs(newInputs)
+    updateNodeInternals(id)
+  }, [id, inputs, setInputs, updateNodeInternals])
+
   return {
     readOnly,
     inputs,
@@ -185,6 +196,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
+    handleSortTopic,
   }
 }
 

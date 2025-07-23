@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Knoten hinzufügen',
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
+    tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Wert',
       valuePlaceholder: 'Umgebungswert',
       secretTip: 'Wird verwendet, um sensible Informationen oder Daten zu definieren, wobei DSL-Einstellungen zur Verhinderung von Lecks konfiguriert sind.',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Beschreiben Sie die Variable',
     },
     export: {
       title: 'Geheime Umgebungsvariablen exportieren?',
@@ -232,6 +235,8 @@ const translation = {
     'agent': 'Agenten-Strategie',
     'searchBlock': 'Suchknoten',
     'blocks': 'Knoten',
+    'allAdded': 'Alle hinzugefügt',
+    'addAll': 'Alles hinzufügen',
   },
   blocks: {
     'start': 'Start',
@@ -361,6 +366,10 @@ const translation = {
         times: 'mal',
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
+      },
+      typeSwitch: {
+        input: 'Eingabewert',
+        variable: 'Verwende die Variable',
       },
     },
     start: {
@@ -537,6 +546,10 @@ const translation = {
         title: 'Importieren von cURL',
         placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
       },
+      verifySSL: {
+        title: 'SSL-Zertifikat überprüfen',
+        warningTooltip: 'Das Deaktivieren der SSL-Überprüfung wird für Produktionsumgebungen nicht empfohlen. Dies sollte nur in der Entwicklung oder im Test verwendet werden, da es die Verbindung anfällig für Sicherheitsbedrohungen wie Man-in-the-Middle-Angriffe macht.',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -544,6 +557,7 @@ const translation = {
       advancedDependencies: 'Erweiterte Abhängigkeiten',
       advancedDependenciesTip: 'Fügen Sie hier einige vorinstallierte Abhängigkeiten hinzu, die mehr Zeit in Anspruch nehmen oder nicht standardmäßig eingebaut sind',
       searchDependencies: 'Abhängigkeiten suchen',
+      syncFunctionSignature: 'Synchronisiere die Funktionssignatur mit dem Code',
     },
     templateTransform: {
       inputVars: 'Eingabevariablen',
@@ -663,12 +677,16 @@ const translation = {
         json: 'von einem Tool generiertes JSON',
       },
       authorize: 'Autorisieren',
+      insertPlaceholder2: 'Fügen Sie die Variable ein.',
+      insertPlaceholder1: 'Tippen oder drücken',
+      settings: 'Einstellungen',
     },
     questionClassifiers: {
       model: 'Modell',
       inputVars: 'Eingabevariablen',
       outputVars: {
         className: 'Klassennamen',
+        usage: 'Nutzungsinformationen des Modells',
       },
       class: 'Klasse',
       classNamePlaceholder: 'Geben Sie Ihren Klassennamen ein',
@@ -682,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Eingabevariable',
+      outputVars: {
+        isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
+        errorReason: 'Fehlergrund',
+        usage: 'Nutzungsinformationen des Modells',
+      },
       extractParameters: 'Parameter extrahieren',
       importFromTool: 'Aus Tools importieren',
       addExtractParameter: 'Extraktionsparameter hinzufügen',
@@ -701,8 +724,6 @@ const translation = {
       advancedSetting: 'Erweiterte Einstellung',
       reasoningMode: 'Schlussfolgerungsmodus',
       reasoningModeTip: 'Sie können den entsprechenden Schlussfolgerungsmodus basierend auf der Fähigkeit des Modells wählen, auf Anweisungen zur Funktionsaufruf- oder Eingabeaufforderungen zu reagieren.',
-      isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
-      errorReason: 'Fehlergrund',
     },
     iteration: {
       deleteTitle: 'Iterationsknoten löschen?',
@@ -843,6 +864,8 @@ const translation = {
       learnMore: 'Weitere Informationen',
       configureModel: 'Modell konfigurieren',
       linkToPlugin: 'Link zu Plugins',
+      parameterSchema: 'Parameter-Schema',
+      clickToViewParameterSchema: 'Klicken Sie hier, um das Parameterschema anzuzeigen.',
     },
     loop: {
       ErrorMethod: {

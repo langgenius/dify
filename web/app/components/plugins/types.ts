@@ -118,6 +118,9 @@ export type PluginDetail = {
   latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
+  status: 'active' | 'deleted'
+  deprecated_reason: string
+  alternative_plugin_id: string
 }
 
 export type PluginInfoFromMarketPlace = {
@@ -343,6 +346,9 @@ export type InstalledLatestVersionResponse = {
     [plugin_id: string]: {
       unique_identifier: string
       version: string
+      status: 'active' | 'deleted'
+      deprecated_reason: string
+      alternative_plugin_id: string
     } | null
   }
 }
@@ -462,9 +468,14 @@ export type StrategyDeclaration = {
   strategies: StrategyDetail[]
 }
 
+export type PluginMeta = {
+  version: string // the version of dify sdk
+}
+
 export type StrategyPluginDetail = {
   provider: string
   plugin_unique_identifier: string
   plugin_id: string
   declaration: StrategyDeclaration
+  meta: PluginMeta
 }

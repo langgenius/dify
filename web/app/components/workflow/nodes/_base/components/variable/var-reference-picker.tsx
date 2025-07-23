@@ -138,7 +138,6 @@ const VarReferencePicker: FC<Props> = ({
   useEffect(() => {
     if (triggerRef.current)
       setTriggerWidth(triggerRef.current.clientWidth)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerRef.current])
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
@@ -149,7 +148,6 @@ const VarReferencePicker: FC<Props> = ({
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   const hasValue = !isConstant && value.length > 0
 
@@ -528,6 +526,7 @@ const VarReferencePicker: FC<Props> = ({
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
+              zIndex={zIndex}
             />
           )}
         </PortalToFollowElemContent>

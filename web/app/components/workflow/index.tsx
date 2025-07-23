@@ -42,6 +42,7 @@ import {
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
+  useSetWorkflowVarsWithValue,
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
@@ -78,11 +79,14 @@ import {
 } from './constants'
 import { WorkflowHistoryProvider } from './workflow-history-store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
-import useSetWorkflowVarsWithValue from '../workflow-app/hooks/use-fetch-workflow-inspect-vars'
+import dynamic from 'next/dynamic'
+
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -186,7 +190,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -234,6 +237,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
     handleFetchAllTools('workflow')
+    handleFetchAllTools('mcp')
   }, [handleFetchAllTools])
 
   const {
@@ -277,7 +281,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   useEffect(() => {
     fetchInspectVars()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const store = useStoreApi()
@@ -392,8 +395,8 @@ export const WorkflowWithInnerContext = memo(({
   )
 })
 
-type WorkflowWithDefaultContextProps =
-  Pick<WorkflowProps, 'edges' | 'nodes'>
+type WorkflowWithDefaultContextProps
+  = Pick<WorkflowProps, 'edges' | 'nodes'>
   & {
     children: React.ReactNode
   }

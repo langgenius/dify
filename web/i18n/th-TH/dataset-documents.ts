@@ -29,6 +29,8 @@ const translation = {
       delete: 'ลบ',
       enableWarning: 'ไม่สามารถเปิดใช้งานไฟล์ที่เก็บถาวรได้',
       sync: 'ซิงค์',
+      pause: 'หยุด',
+      resume: 'ดำเนิน',
     },
     index: {
       enable: 'เปิด',
@@ -361,6 +363,7 @@ const translation = {
     edited: 'แก้ไข',
     addChunk: 'เพิ่มก้อน',
     editedAt: 'แก้ไขที่',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     childChunks_other: 'ก้อนเด็ก',
     editChildChunk: 'แก้ไข Child Chunk',
     parentChunk: 'ผู้ปกครอง-ก้อน',

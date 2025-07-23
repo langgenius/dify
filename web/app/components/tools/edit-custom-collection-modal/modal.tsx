@@ -184,6 +184,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         onClose={onHide}
         closable
         className='!h-[calc(100vh-16px)] !max-w-[630px] !p-0'
+        wrapperClassName='z-[1000]'
       >
         <div className='flex h-full flex-col'>
           <div className='ml-6 mt-6 text-base font-semibold text-text-primary'>

@@ -38,11 +38,11 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     readOnly,
     outputSchema,
     handleMemoryChange,
+    canChooseMCPTool,
   } = useConfig(props.id, props.data)
   const { t } = useTranslation()
 
   const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
-
   return <div className='my-2'>
     <Field
     required
@@ -56,6 +56,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           agent_strategy_label: inputs.agent_strategy_label!,
           agent_output_schema: inputs.output_schema,
           plugin_unique_identifier: inputs.plugin_unique_identifier!,
+          meta: inputs.meta,
         } : undefined}
         onStrategyChange={(strategy) => {
           setInputs({
@@ -65,6 +66,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
             plugin_unique_identifier: strategy!.plugin_unique_identifier,
+            meta: strategy?.meta,
           })
           resetEditor(Date.now())
         }}
@@ -74,6 +76,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         nodeOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         nodeId={props.id}
+        canChooseMCPTool={canChooseMCPTool}
       />
     </Field>
     <div className='px-4 py-2'>

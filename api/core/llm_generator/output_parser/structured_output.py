@@ -23,6 +23,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
+    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
 
@@ -170,10 +171,15 @@ def invoke_llm_with_structured_output(
             system_fingerprint: Optional[str] = None
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
+                    prompt_messages = event.prompt_messages
+                    system_fingerprint = event.system_fingerprint
+
                     if isinstance(event.delta.message.content, str):
                         result_text += event.delta.message.content
-                        prompt_messages = event.prompt_messages
-                        system_fingerprint = event.system_fingerprint
+                    elif isinstance(event.delta.message.content, list):
+                        for item in event.delta.message.content:
+                            if isinstance(item, TextPromptMessageContent):
+                                result_text += item.data
 
                 yield LLMResultChunkWithStructuredOutput(
                     model=model_schema.model,

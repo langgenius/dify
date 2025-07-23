@@ -62,7 +62,6 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           <Tooltip
             position='right'
             noDecoration
-            needsDelay
             popupContent={
               <LinkedAppsPanel
                 relatedApps={relatedApps.data}
@@ -77,7 +76,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </Tooltip>
         )}
 
-        {isMobile && <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
+        {isMobile && <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 !px-0')}>
           {relatedAppsTotal || '--'}
           <PaperClipIcon className='h-4 w-4 text-text-secondary' />
         </div>}
@@ -87,7 +86,6 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
       <Tooltip
         position='right'
         noDecoration
-        needsDelay
         popupContent={
           <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
             <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>

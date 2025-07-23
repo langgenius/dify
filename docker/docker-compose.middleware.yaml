@@ -1,3 +1,4 @@
+name: dify-test
 services:
   # The postgres database.
   db:
@@ -71,7 +72,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.1.2-local
+    image: langgenius/dify-plugin-daemon:0.1.3-local
     restart: always
     env_file:
       - ./middleware.env
@@ -158,33 +159,21 @@ services:
       - ssrf_proxy_network
       - default
 
-  # The Weaviate vector store.
-  weaviate:
-    image: semitechnologies/weaviate:1.19.0
+  qdrant:
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - ""
-      - weaviate
+      - qdrant
     restart: always
     volumes:
-      # Mount the Weaviate data directory to the container.
-      - ${WEAVIATE_HOST_VOLUME:-./volumes/weaviate}:/var/lib/weaviate
+      - ./volumes/qdrant:/qdrant/storage
     env_file:
       - ./middleware.env
     environment:
-      # The Weaviate configurations
-      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
-      PERSISTENCE_DATA_PATH: ${WEAVIATE_PERSISTENCE_DATA_PATH:-/var/lib/weaviate}
-      QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
-      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-none}
-      CLUSTER_HOSTNAME: ${WEAVIATE_CLUSTER_HOSTNAME:-node1}
-      AUTHENTICATION_APIKEY_ENABLED: ${WEAVIATE_AUTHENTICATION_APIKEY_ENABLED:-true}
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
-      AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
-      AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
-      AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
     ports:
-      - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
+      - "6333:6333"
+      - "6334:6334"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

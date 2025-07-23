@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Adicionar Nó',
     needEndNode: 'O nó de Fim deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
+    tagBound: 'Número de aplicativos usando esta tag',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Valor',
       valuePlaceholder: 'valor da env',
       secretTip: 'Usado para definir informações ou dados sensíveis, com configurações DSL configuradas para prevenção de vazamentos.',
+      description: 'Descrição',
+      descriptionPlaceholder: 'Descreva a variável',
     },
     export: {
       title: 'Exportar variáveis de ambiente secretas?',
@@ -232,6 +235,8 @@ const translation = {
     'agent': 'Estratégia do agente',
     'blocks': 'Nodos',
     'searchBlock': 'Nó de busca',
+    'addAll': 'Adicionar tudo',
+    'allAdded': 'Todos adicionados',
   },
   blocks: {
     'start': 'Iniciar',
@@ -361,6 +366,10 @@ const translation = {
         times: 'vezes',
         ms: 'ms',
         retries: '{{num}} Tentativas',
+      },
+      typeSwitch: {
+        variable: 'Use variável',
+        input: 'Valor de entrada',
       },
     },
     start: {
@@ -537,6 +546,10 @@ const translation = {
         placeholder: 'Cole a string cURL aqui',
         title: 'Importar do cURL',
       },
+      verifySSL: {
+        title: 'Verificar o certificado SSL',
+        warningTooltip: 'Desabilitar a verificação SSL não é recomendado para ambientes de produção. Isso deve ser usado apenas em desenvolvimento ou teste, pois torna a conexão vulnerável a ameaças de segurança, como ataques man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -544,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dependências avançadas',
       advancedDependenciesTip: 'Adicione algumas dependências pré-carregadas que levam mais tempo para consumir ou não são padrão aqui',
       searchDependencies: 'Buscar dependências',
+      syncFunctionSignature: 'Sincronizar a assinatura da função com o código',
     },
     templateTransform: {
       inputVars: 'Variáveis de entrada',
@@ -663,12 +677,16 @@ const translation = {
         json: 'JSON gerado por ferramenta',
       },
       authorize: 'Autorizar',
+      insertPlaceholder2: 'inserir variável',
+      insertPlaceholder1: 'Digite ou pressione',
+      settings: 'Configurações',
     },
     questionClassifiers: {
       model: 'modelo',
       inputVars: 'Variáveis de entrada',
       outputVars: {
         className: 'Nome da classe',
+        usage: 'Informações de uso do modelo',
       },
       class: 'Classe',
       classNamePlaceholder: 'Escreva o nome da sua classe',
@@ -682,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variável de entrada',
+      outputVars: {
+        isSuccess: 'É sucesso. Em caso de sucesso, o valor é 1, em caso de falha, o valor é 0.',
+        errorReason: 'Motivo do erro',
+        usage: 'Informações de uso do modelo',
+      },
       extractParameters: 'Extrair parâmetros',
       importFromTool: 'Importar das ferramentas',
       addExtractParameter: 'Adicionar parâmetro de extração',
@@ -701,8 +724,6 @@ const translation = {
       advancedSetting: 'Configuração avançada',
       reasoningMode: 'Modo de raciocínio',
       reasoningModeTip: 'Você pode escolher o modo de raciocínio apropriado com base na capacidade do modelo de responder a instruções para chamadas de função ou prompts.',
-      isSuccess: 'É sucesso. Em caso de sucesso, o valor é 1, em caso de falha, o valor é 0.',
-      errorReason: 'Motivo do erro',
     },
     iteration: {
       deleteTitle: 'Excluir nó de iteração?',
@@ -843,6 +864,8 @@ const translation = {
       tools: 'Ferramentas',
       toolNotAuthorizedTooltip: '{{ferramenta}} Não autorizado',
       toolbox: 'caixa de ferramentas',
+      parameterSchema: 'Esquema de Parâmetro',
+      clickToViewParameterSchema: 'Clique para ver o esquema de parâmetros',
     },
     loop: {
       ErrorMethod: {

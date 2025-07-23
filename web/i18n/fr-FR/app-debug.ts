@@ -317,6 +317,7 @@ const translation = {
     writeOpener: 'Écrire l\'introduction',
     placeholder: 'Rédigez votre message d\'ouverture ici, vous pouvez utiliser des variables, essayez de taper {{variable}}.',
     openingQuestion: 'Questions d\'ouverture',
+    openingQuestionPlaceholder: 'Vous pouvez utiliser des variables, essayez de taper {{variable}}.',
     noDataPlaceHolder:
       'Commencer la conversation avec l\'utilisateur peut aider l\'IA à établir une connexion plus proche avec eux dans les applications conversationnelles.',
     varTip: 'Vous pouvez utiliser des variables, essayez de taper {{variable}}',

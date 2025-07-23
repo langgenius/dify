@@ -32,10 +32,10 @@ export default function SocialAuth(props: SocialAuthProps) {
             <span className={
               classNames(
                 style.githubIcon,
-                'w-5 h-5 mr-2',
+                'mr-2 h-5 w-5',
               )
             } />
-            <span className="truncate">{t('login.withGitHub')}</span>
+            <span className="truncate leading-normal">{t('login.withGitHub')}</span>
           </>
         </Button>
       </a>
@@ -50,10 +50,10 @@ export default function SocialAuth(props: SocialAuthProps) {
             <span className={
               classNames(
                 style.googleIcon,
-                'w-5 h-5 mr-2',
+                'mr-2 h-5 w-5',
               )
             } />
-            <span className="truncate">{t('login.withGoogle')}</span>
+            <span className="truncate leading-normal">{t('login.withGoogle')}</span>
           </>
         </Button>
       </a>

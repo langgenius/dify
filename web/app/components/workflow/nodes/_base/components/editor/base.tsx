@@ -9,8 +9,8 @@ import Wrap from './wrap'
 import cn from '@/utils/classnames'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -76,7 +76,7 @@ const Base: FC<Props> = ({
 
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
-      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
+      <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', !isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
         <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
           <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
           <div className='flex items-center' onClick={(e) => {
@@ -92,10 +92,10 @@ const Base: FC<Props> = ({
             <ActionButton className='ml-1' onClick={handleCopy}>
               {!isCopied
                 ? (
-                  <Clipboard className='h-4 w-4 cursor-pointer' />
+                  <Copy className='h-4 w-4 cursor-pointer' />
                 )
                 : (
-                  <ClipboardCheck className='h-4 w-4' />
+                  <CopyCheck className='h-4 w-4' />
                 )
               }
             </ActionButton>

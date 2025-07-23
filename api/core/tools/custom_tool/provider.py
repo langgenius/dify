@@ -39,19 +39,22 @@ class ApiToolProviderController(ToolProviderController):
                 type=ProviderConfig.Type.SELECT,
                 options=[
                     ProviderConfig.Option(value="none", label=I18nObject(en_US="None", zh_Hans="无")),
-                    ProviderConfig.Option(value="api_key", label=I18nObject(en_US="api_key", zh_Hans="api_key")),
+                    ProviderConfig.Option(value="api_key_header", label=I18nObject(en_US="Header", zh_Hans="请求头")),
+                    ProviderConfig.Option(
+                        value="api_key_query", label=I18nObject(en_US="Query Param", zh_Hans="查询参数")
+                    ),
                 ],
                 default="none",
                 help=I18nObject(en_US="The auth type of the api provider", zh_Hans="api provider 的认证类型"),
             )
         ]
-        if auth_type == ApiProviderAuthType.API_KEY:
+        if auth_type == ApiProviderAuthType.API_KEY_HEADER:
             credentials_schema = [
                 *credentials_schema,
                 ProviderConfig(
                     name="api_key_header",
                     required=False,
-                    default="api_key",
+                    default="Authorization",
                     type=ProviderConfig.Type.TEXT_INPUT,
                     help=I18nObject(en_US="The header name of the api key", zh_Hans="携带 api key 的 header 名称"),
                 ),
@@ -72,6 +75,25 @@ class ApiToolProviderController(ToolProviderController):
                         ProviderConfig.Option(value="bearer", label=I18nObject(en_US="Bearer", zh_Hans="Bearer")),
                         ProviderConfig.Option(value="custom", label=I18nObject(en_US="Custom", zh_Hans="Custom")),
                     ],
+                ),
+            ]
+        elif auth_type == ApiProviderAuthType.API_KEY_QUERY:
+            credentials_schema = [
+                *credentials_schema,
+                ProviderConfig(
+                    name="api_key_query_param",
+                    required=False,
+                    default="key",
+                    type=ProviderConfig.Type.TEXT_INPUT,
+                    help=I18nObject(
+                        en_US="The query parameter name of the api key", zh_Hans="携带 api key 的查询参数名称"
+                    ),
+                ),
+                ProviderConfig(
+                    name="api_key_value",
+                    required=True,
+                    type=ProviderConfig.Type.SECRET_INPUT,
+                    help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
             ]
         elif auth_type == ApiProviderAuthType.NONE:

@@ -28,6 +28,8 @@ const translation = {
       delete: 'Xóa',
       enableWarning: 'Tệp đã lưu trữ không thể được kích hoạt',
       sync: 'Đồng bộ',
+      pause: 'Tạm dừng',
+      resume: 'Tiếp tục',
     },
     index: {
       enable: 'Kích hoạt',
@@ -367,6 +369,7 @@ const translation = {
     expandChunks: 'Mở rộng các đoạn',
     chunks_other: 'KHỐI',
     editedAt: 'Chỉnh sửa tại',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     addAnother: 'Thêm một cái khác',
     regenerationConfirmTitle: 'Bạn có muốn tái tạo các chunk con không?',
     searchResults_one: 'KẾT QUẢ',

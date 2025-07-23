@@ -119,6 +119,7 @@ const translation = {
     needEndNode: 'Deve essere aggiunto il nodo finale',
     addBlock: 'Aggiungi nodo',
     needAnswerNode: 'Deve essere aggiunto il nodo di risposta',
+    tagBound: 'Numero di app che utilizzano questo tag',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -133,6 +134,8 @@ const translation = {
       value: 'Valore',
       valuePlaceholder: 'valore env',
       secretTip: 'Utilizzato per definire informazioni o dati sensibili, con impostazioni DSL configurate per la prevenzione delle fughe.',
+      description: 'Descrizione',
+      descriptionPlaceholder: 'Descrivi la variabile',
     },
     export: {
       title: 'Esportare variabili d\'ambiente segrete?',
@@ -237,6 +240,8 @@ const translation = {
     'plugin': 'Plugin',
     'searchBlock': 'Cerca nodo',
     'blocks': 'Nodi',
+    'allAdded': 'Tutto aggiunto',
+    'addAll': 'Aggiungi tutto',
   },
   blocks: {
     'start': 'Inizio',
@@ -377,6 +382,10 @@ const translation = {
         retryFailed: 'Nuovo tentativo non riuscito',
         ms: 'ms',
       },
+      typeSwitch: {
+        input: 'Valore di input',
+        variable: 'Usa la variabile',
+      },
     },
     start: {
       required: 'richiesto',
@@ -488,6 +497,7 @@ const translation = {
           automatic: {
             subTitle: 'Genera automaticamente condizioni di filtraggio dei metadati in base alla query dell\'utente',
             desc: 'Genera automaticamente condizioni di filtraggio dei metadati basate sulla variabile di query',
+            title: 'Automatico',
           },
           manual: {
             title: 'Manuale',
@@ -553,6 +563,10 @@ const translation = {
         placeholder: 'Incolla qui la stringa cURL',
         title: 'Importazione da cURL',
       },
+      verifySSL: {
+        title: 'Verifica il certificato SSL',
+        warningTooltip: 'Disabilitare la verifica SSL non è raccomandato per gli ambienti di produzione. Questo dovrebbe essere utilizzato solo in sviluppo o test, poiché rende la connessione vulnerabile a minacce alla sicurezza come gli attacchi man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -561,6 +575,7 @@ const translation = {
       advancedDependenciesTip:
         'Aggiungi alcune dipendenze precaricate che richiedono più tempo per essere consumate o che non sono predefinite qui',
       searchDependencies: 'Cerca Dipendenze',
+      syncFunctionSignature: 'Sincronizza la firma della funzione con il codice',
     },
     templateTransform: {
       inputVars: 'Variabili di Input',
@@ -597,6 +612,7 @@ const translation = {
         'exists': 'Esiste',
         'not exists': 'non esiste',
         'after': 'dopo',
+        'before': 'prima',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',
@@ -682,12 +698,16 @@ const translation = {
         json: 'json generato dallo strumento',
       },
       authorize: 'Autorizza',
+      insertPlaceholder1: 'Digita o premi',
+      insertPlaceholder2: 'inserisci variabile',
+      settings: 'Impostazioni',
     },
     questionClassifiers: {
       model: 'modello',
       inputVars: 'Variabili di Input',
       outputVars: {
         className: 'Nome Classe',
+        usage: 'Informazioni sull\'utilizzo del modello',
       },
       class: 'Classe',
       classNamePlaceholder: 'Scrivi il nome della tua classe',
@@ -702,6 +722,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variabile di Input',
+      outputVars: {
+        isSuccess: 'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
+        errorReason: 'Motivo dell\'errore',
+        usage: 'Informazioni sull\'utilizzo del modello',
+      },
       extractParameters: 'Estrai Parametri',
       importFromTool: 'Importa dagli strumenti',
       addExtractParameter: 'Aggiungi Parametro Estratto',
@@ -724,9 +749,6 @@ const translation = {
       reasoningMode: 'Modalità di ragionamento',
       reasoningModeTip:
         'Puoi scegliere la modalità di ragionamento appropriata in base alla capacità del modello di rispondere alle istruzioni per la chiamata delle funzioni o i prompt.',
-      isSuccess:
-        'È successo. In caso di successo il valore è 1, in caso di fallimento il valore è 0.',
-      errorReason: 'Motivo dell\'errore',
     },
     iteration: {
       deleteTitle: 'Eliminare Nodo Iterazione?',
@@ -868,6 +890,8 @@ const translation = {
       strategyNotFoundDescAndSwitchVersion: 'La versione del plugin installata non fornisce questa strategia. Fare clic per cambiare versione.',
       pluginNotInstalled: 'Questo plugin non è installato',
       pluginNotFoundDesc: 'Questo plugin viene installato da GitHub. Vai su Plugin per reinstallare',
+      parameterSchema: 'Schema dei parametri',
+      clickToViewParameterSchema: 'Clicca per visualizzare lo schema dei parametri',
     },
     loop: {
       ErrorMethod: {

@@ -32,6 +32,7 @@ import {
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
+import CopyID from '../tool/components/copy-id'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -45,10 +46,13 @@ import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '../../block-selector/types'
 
 type BaseNodeProps = {
   children: ReactElement
-} & NodeProps
+  id: NodeProps['id']
+  data: NodeProps['data']
+}
 
 const BaseNode: FC<BaseNodeProps> = ({
   id,
@@ -319,6 +323,11 @@ const BaseNode: FC<BaseNodeProps> = ({
             </div>
           )
         }
+        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
+          <div className='px-3 pb-2'>
+            <CopyID content={data.provider_id || ''} />
+          </div>
+        )}
       </div>
     </div>
   )

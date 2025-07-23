@@ -68,13 +68,18 @@ def _create_pagination_parser():
     return parser
 
 
+def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
+    value_type = workflow_draft_var.value_type
+    return value_type.exposed_type().value
+
+
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "id": fields.String,
     "type": fields.String(attribute=lambda model: model.get_variable_type()),
     "name": fields.String,
     "description": fields.String,
     "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
+    "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
@@ -90,7 +95,7 @@ _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
     "name": fields.String,
     "description": fields.String,
     "selector": fields.List(fields.String, attribute=lambda model: model.get_selector()),
-    "value_type": fields.String,
+    "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
 }
@@ -396,7 +401,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.value,
+                    "value_type": v.value_type.exposed_type().value,
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,

@@ -118,6 +118,7 @@ const translation = {
     needAnswerNode: 'उत्तर नोड जोड़ा जाना चाहिए',
     addBlock: 'नोड जोड़ें',
     needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
+    tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -132,6 +133,8 @@ const translation = {
       value: 'मान',
       valuePlaceholder: 'पर्यावरण मान',
       secretTip: 'संवेदनशील जानकारी या डेटा को परिभाषित करने के लिए उपयोग किया जाता है, DSL सेटिंग्स लीक रोकथाम के लिए कॉन्फ़िगर की गई हैं।',
+      description: 'विवरण',
+      descriptionPlaceholder: 'चर का वर्णन करें',
     },
     export: {
       title: 'गुप्त पर्यावरण चर निर्यात करें?',
@@ -235,6 +238,8 @@ const translation = {
     'agent': 'एजेंट रणनीति',
     'searchBlock': 'खोज नोड',
     'blocks': 'नोड्स',
+    'addAll': 'सभी जोड़ें',
+    'allAdded': 'सभी जोड़े गए',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -373,6 +378,10 @@ const translation = {
         retrySuccessful: 'पुनः प्रयास सफल',
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
+      },
+      typeSwitch: {
+        input: 'इनपुट मान',
+        variable: 'चर का प्रयोग करें',
       },
     },
     start: {
@@ -550,6 +559,10 @@ const translation = {
         placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
         title: 'cURL से आयात करें',
       },
+      verifySSL: {
+        title: 'SSL प्रमाणपत्र की पुष्टि करें',
+        warningTooltip: 'SSL सत्यापन को अक्षम करना उत्पादन वातावरण के लिए अनुशंसित नहीं है। इसका उपयोग केवल विकास या परीक्षण में किया जाना चाहिए, क्योंकि यह कनेक्शन को मिडल-मैन हमलों जैसे सुरक्षा खतरों के लिए कमजोर बना देता है।',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -558,6 +571,7 @@ const translation = {
       advancedDependenciesTip:
         'कुछ प्रीलोडेड निर्भरताएँ जोड़ें जिनका उपयोग करने में अधिक समय लगता है या जो डिफ़ॉल्ट निर्मित में नहीं हैं',
       searchDependencies: 'निर्भरताएँ खोजें',
+      syncFunctionSignature: 'कोड के साथ फ़ंक्शन हस्ताक्षर को सिंक करें',
     },
     templateTransform: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -679,12 +693,16 @@ const translation = {
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
       authorize: 'अधिकृत करें',
+      insertPlaceholder1: 'टाइप करें या दबाएँ',
+      settings: 'सेटिंग्स',
+      insertPlaceholder2: 'वेरिएबल डालें',
     },
     questionClassifiers: {
       model: 'मॉडल',
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         className: 'क्लास नाम',
+        usage: 'मॉडल उपयोग जानकारी',
       },
       class: 'क्लास',
       classNamePlaceholder: 'अपना क्लास नाम लिखें',
@@ -699,6 +717,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'इनपुट वेरिएबल',
+      outputVars: {
+        isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
+        errorReason: 'त्रुटि का कारण',
+        usage: 'मॉडल उपयोग जानकारी',
+      },
       extractParameters: 'पैरामीटर्स निकालें',
       importFromTool: 'उपकरणों से आयात करें',
       addExtractParameter: 'एक्सट्रेक्ट पैरामीटर जोड़ें',
@@ -721,8 +744,6 @@ const translation = {
       reasoningMode: 'रीज़निंग मोड',
       reasoningModeTip:
         'फ़ंक्शन कॉलिंग या प्रॉम्प्ट्स के लिए निर्देशों का जवाब देने की मॉडल की क्षमता के आधार पर उपयुक्त रीज़निंग मोड चुन सकते हैं।',
-      isSuccess: 'सफलता है। सफलता पर मान 1 है, असफलता पर मान 0 है।',
-      errorReason: 'त्रुटि का कारण',
     },
     iteration: {
       deleteTitle: 'इटरेशन नोड हटाएं?',
@@ -863,6 +884,8 @@ const translation = {
       maxIterations: 'अधिकतम पुनरावृत्तियाँ',
       strategyNotSet: 'एजेंटिक रणनीति सेट नहीं की गई',
       strategyNotFoundDescAndSwitchVersion: 'स्थापित प्लगइन संस्करण इस रणनीति को प्रदान नहीं करता है। संस्करण बदलने के लिए क्लिक करें।',
+      parameterSchema: 'पैरामीटर स्कीमा',
+      clickToViewParameterSchema: 'पैरामीटर स्कीमा देखने के लिए क्लिक करें',
     },
     loop: {
       ErrorMethod: {

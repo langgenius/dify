@@ -29,6 +29,8 @@ const translation = {
       delete: 'Elimina',
       enableWarning: 'Il file archiviato non può essere abilitato',
       sync: 'Sincronizza',
+      resume: 'Riassumere',
+      pause: 'Pausa',
     },
     index: {
       enable: 'Abilita',
@@ -378,6 +380,7 @@ const translation = {
     regenerationConfirmTitle: 'Si desidera rigenerare i blocchi figlio?',
     chunks_other: 'BLOCCHI',
     editedAt: 'A cura di',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     collapseChunks: 'Comprimi blocchi',
     clearFilter: 'Cancella filtro',
     chunks_one: 'PEZZO',

@@ -474,6 +474,7 @@ const Configuration: FC = () => {
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -692,7 +693,6 @@ const Configuration: FC = () => {
         setHasFetchedDetail(true)
       })
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
@@ -920,6 +920,7 @@ const Configuration: FC = () => {
       setVisionConfig: handleSetVisionConfig,
       isAllowVideoUpload,
       isShowDocumentConfig,
+      isShowAudioConfig,
       rerankSettingModalOpen,
       setRerankSettingModalOpen,
     }}

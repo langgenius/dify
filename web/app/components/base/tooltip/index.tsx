@@ -33,7 +33,7 @@ const Tooltip: FC<TooltipProps> = ({
   noDecoration,
   offset,
   asChild = true,
-  needsDelay = false,
+  needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -68,7 +68,7 @@ const Tooltip: FC<TooltipProps> = ({
       setTimeout(() => {
         if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
           setOpen(false)
-      }, 500)
+      }, 300)
     }
     else {
       setOpen(false)
@@ -101,7 +101,7 @@ const Tooltip: FC<TooltipProps> = ({
       >
         {popupContent && (<div
           className={cn(
-            !noDecoration && 'system-xs-regular relative break-words rounded-md bg-components-panel-bg px-3 py-2 text-text-tertiary shadow-lg',
+            !noDecoration && 'system-xs-regular relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

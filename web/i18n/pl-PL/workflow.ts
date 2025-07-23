@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Dodaj węzeł',
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
+    tagBound: 'Liczba aplikacji korzystających z tego tagu',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Wartość',
       valuePlaceholder: 'wartość środowiska',
       secretTip: 'Używane do definiowania wrażliwych informacji lub danych, z ustawieniami DSL skonfigurowanymi do zapobiegania wyciekom.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisz zmienną',
     },
     export: {
       title: 'Eksportować tajne zmienne środowiskowe?',
@@ -232,6 +235,8 @@ const translation = {
     'plugin': 'Wtyczka',
     'searchBlock': 'Wyszukaj węzeł',
     'blocks': 'Węzły',
+    'addAll': 'Dodaj wszystko',
+    'allAdded': 'Wszystko dodane',
   },
   blocks: {
     'start': 'Start',
@@ -361,6 +366,10 @@ const translation = {
         retryOnFailure: 'Ponawianie próby w przypadku niepowodzenia',
         retryFailedTimes: '{{times}} ponawianie prób nie powiodło się',
         ms: 'Ms',
+      },
+      typeSwitch: {
+        variable: 'Użyj zmiennej',
+        input: 'Wartość wejściowa',
       },
     },
     start: {
@@ -537,6 +546,10 @@ const translation = {
         placeholder: 'Wklej tutaj ciąg cURL',
         title: 'Importowanie z cURL',
       },
+      verifySSL: {
+        title: 'Zweryfikuj certyfikat SSL',
+        warningTooltip: 'Wyłączenie weryfikacji SSL nie jest zalecane w środowiskach produkcyjnych. Powinno to być używane tylko w rozwoju lub testowaniu, ponieważ naraża połączenie na zagrożenia bezpieczeństwa, takie jak ataki typu man-in-the-middle.',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -544,6 +557,7 @@ const translation = {
       advancedDependencies: 'Zaawansowane zależności',
       advancedDependenciesTip: 'Dodaj niektóre preładowane zależności, które zajmują więcej czasu lub nie są domyślnie wbudowane',
       searchDependencies: 'Wyszukaj zależności',
+      syncFunctionSignature: 'Zsynchronizuj sygnaturę funkcji z kodem',
     },
     templateTransform: {
       inputVars: 'Zmienne wejściowe',
@@ -663,12 +677,16 @@ const translation = {
         json: 'JSON wygenerowany przez narzędzien',
       },
       authorize: 'Autoryzuj',
+      insertPlaceholder2: 'wstaw zmienną',
+      settings: 'Ustawienia',
+      insertPlaceholder1: 'Wpisz lub naciśnij',
     },
     questionClassifiers: {
       model: 'model',
       inputVars: 'Zmienne wejściowe',
       outputVars: {
         className: 'Nazwa klasy',
+        usage: 'Informacje o użyciu modelu',
       },
       class: 'Klasa',
       classNamePlaceholder: 'Napisz nazwę swojej klasy',
@@ -682,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Zmienna wejściowa',
+      outputVars: {
+        isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
+        errorReason: 'Powód błędu',
+        usage: 'Informacje o użyciu modelu',
+      },
       extractParameters: 'Wyodrębnij parametry',
       importFromTool: 'Importuj z narzędzi',
       addExtractParameter: 'Dodaj parametr wyodrębniania',
@@ -701,8 +724,6 @@ const translation = {
       advancedSetting: 'Zaawansowane ustawienia',
       reasoningMode: 'Tryb wnioskowania',
       reasoningModeTip: 'Możesz wybrać odpowiedni tryb wnioskowania w zależności od zdolności modelu do reagowania na instrukcje dotyczące wywoływania funkcji lub zapytań.',
-      isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
-      errorReason: 'Powód błędu',
     },
     iteration: {
       deleteTitle: 'Usunąć węzeł iteracji?',
@@ -843,6 +864,8 @@ const translation = {
       learnMore: 'Dowiedz się więcej',
       strategyNotSet: 'Nie ustawiono strategii agentalnej',
       model: 'model',
+      parameterSchema: 'Schemat parametrów',
+      clickToViewParameterSchema: 'Kliknij, aby zobaczyć schemat parametrów',
     },
     loop: {
       ErrorMethod: {
