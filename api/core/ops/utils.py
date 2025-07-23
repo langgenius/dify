@@ -22,7 +22,7 @@ def filter_none_values(data: dict):
 
 
 def get_message_data(message_id: str):
-    return db.session.scalars(select(Message).filter(Message.id == message_id).limit(1)).first()
+    return db.session.scalar(select(Message).filter(Message.id == message_id))
 
 
 @contextmanager

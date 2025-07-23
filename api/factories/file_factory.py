@@ -261,14 +261,12 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    tool_file = db.session.scalars(
-        select(ToolFile)
-        .filter(
+    tool_file = db.session.scalar(
+        select(ToolFile).filter(
             ToolFile.id == mapping.get("tool_file_id"),
             ToolFile.tenant_id == tenant_id,
         )
-        .limit(1)
-    ).first()
+    )
 
     if tool_file is None:
         raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")

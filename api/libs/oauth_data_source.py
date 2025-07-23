@@ -62,17 +62,15 @@ class NotionOAuth(OAuthDataSource):
             "total": len(pages),
         }
         # save data source binding
-        data_source_binding = db.session.scalars(
-            select(DataSourceOauthBinding)
-            .filter(
+        data_source_binding = db.session.scalar(
+            select(DataSourceOauthBinding).filter(
                 and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.access_token == access_token,
                 )
             )
-            .limit(1)
-        ).first()
+        )
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
@@ -102,17 +100,15 @@ class NotionOAuth(OAuthDataSource):
             "total": len(pages),
         }
         # save data source binding
-        data_source_binding = db.session.scalars(
-            select(DataSourceOauthBinding)
-            .filter(
+        data_source_binding = db.session.scalar(
+            select(DataSourceOauthBinding).filter(
                 and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
                     DataSourceOauthBinding.access_token == access_token,
                 )
             )
-            .limit(1)
-        ).first()
+        )
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
@@ -130,9 +126,8 @@ class NotionOAuth(OAuthDataSource):
 
     def sync_data_source(self, binding_id: str):
         # save data source binding
-        data_source_binding = db.session.scalars(
-            select(DataSourceOauthBinding)
-            .filter(
+        data_source_binding = db.session.scalar(
+            select(DataSourceOauthBinding).filter(
                 and_(
                     DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceOauthBinding.provider == "notion",
@@ -140,8 +135,7 @@ class NotionOAuth(OAuthDataSource):
                     DataSourceOauthBinding.disabled == False,
                 )
             )
-            .limit(1)
-        ).first()
+        )
         if data_source_binding:
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)
