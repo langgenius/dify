@@ -248,6 +248,55 @@ const translation = {
     useApiAuthDesc: '認証情報を設定した後、ワークスペース内のすべてのメンバーは、アプリケーションをオーケストレーションする際にこのツールを使用できます。',
     clientInfo: 'このツールプロバイダーにシステムクライアントシークレットが見つからないため、手動で設定する必要があります。redirect_uriには、次を使用してください。',
   },
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: '無効',
+        description: 'プラグインは自動更新されません',
+      },
+      fixOnly: {
+        name: '修正のみ',
+        selectedDescription: 'パッチバージョンのみの自動更新',
+      },
+      latest: {
+        name: '最新',
+        selectedDescription: '常に最新バージョンに更新してください',
+        description: '常に最新バージョンに更新してください',
+      },
+    },
+    upgradeMode: {
+      partial: '選択されたもののみ',
+      exclude: '選択したものを除外する',
+      all: 'すべてを更新する',
+    },
+    upgradeModePlaceholder: {
+      exclude: '選択されたプラグインは自動更新されません',
+      partial: '選択されたプラグインのみが自動更新されます。現在選択されているプラグインはないため、プラグインは自動更新されません。',
+    },
+    operation: {
+      clearAll: 'すべてクリア',
+      select: 'プラグインを選択する',
+    },
+    pluginDowngradeWarning: {
+      title: 'プラグインのダウングレード',
+      downgrade: 'とにかくダウングレードする',
+      exclude: '自動更新から除外する',
+      description: 'このプラグインは現在、自動更新が有効です。バージョンをダウングレードすると、次回の自動更新中に変更が上書きされる可能性があります。',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'プラグインがインストールされていません',
+      noFound: 'プラグインが見つかりませんでした',
+    },
+    updateTimeTitle: '更新時刻',
+    automaticUpdates: '自動更新',
+    updateTime: '更新時刻',
+    updateSettings: '設定を更新する',
+    nextUpdateTime: '次の自動更新: {{time}}',
+    excludeUpdate: '以下の{{num}}プラグインは自動更新されません',
+    changeTimezone: 'タイムゾーンを変更するには、<setTimezone>設定</setTimezone>に移動してください。',
+    specifyPluginsToUpdate: '更新するプラグインを指定してください',
+    partialUPdate: '以下の{{num}}プラグインのみが自動更新されます',
+  },
 }
 
 export default translation
