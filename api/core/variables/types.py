@@ -27,12 +27,14 @@ class SegmentType(StrEnum):
     SECRET = "secret"
 
     FILE = "file"
+    BOOLEAN = "boolean"
 
     ARRAY_ANY = "array[any]"
     ARRAY_STRING = "array[string]"
     ARRAY_NUMBER = "array[number]"
     ARRAY_OBJECT = "array[object]"
     ARRAY_FILE = "array[file]"
+    ARRAY_BOOLEAN = "array[boolean]"
 
     NONE = "none"
 
@@ -76,12 +78,18 @@ class SegmentType(StrEnum):
                     return SegmentType.ARRAY_FILE
                 case SegmentType.NONE:
                     return SegmentType.ARRAY_ANY
+                case SegmentType.BOOLEAN:
+                    return SegmentType.ARRAY_BOOLEAN
                 case _:
                     # This should be unreachable.
                     raise ValueError(f"not supported value {value}")
         if value is None:
             return SegmentType.NONE
-        elif isinstance(value, int) and not isinstance(value, bool):
+        # Important: The check for `bool` must precede the check for `int`,
+        # as `bool` is a subclass of `int` in Python's type hierarchy.
+        elif isinstance(value, bool):
+            return SegmentType.BOOLEAN
+        elif isinstance(value, int):
             return SegmentType.INTEGER
         elif isinstance(value, float):
             return SegmentType.FLOAT
@@ -126,6 +134,10 @@ class SegmentType(StrEnum):
         """
         if self.is_array_type():
             return self._validate_array(value, array_validation)
+        # Important: The check for `bool` must precede the check for `int`,
+        # as `bool` is a subclass of `int` in Python's type hierarchy.
+        elif self == SegmentType.BOOLEAN:
+            return isinstance(value, bool)
         elif self == SegmentType.NUMBER:
             return isinstance(value, (int, float))
         elif self == SegmentType.STRING:
@@ -140,6 +152,27 @@ class SegmentType(StrEnum):
             return value is None
         else:
             raise AssertionError("this statement should be unreachable.")
+
+    @staticmethod
+    def cast_value(value: Any, type_: "SegmentType") -> Any:
+        # Cast Python's `bool` type to `int` when the runtime type requires
+        # an integer or number.
+        #
+        # This ensures compatibility with existing workflows that may use `bool` as
+        # `int`, since in Python's type system, `bool` is a subtype of `int`.
+        #
+        # This function exists solely to maintain compatibility with existing workflows.
+        # It should not be used to compromise the integrity of the runtime type system.
+        # No additional casting rules should be introduced to this function.
+
+        if type_ in (
+            SegmentType.INTEGER,
+            SegmentType.NUMBER,
+        ) and isinstance(value, bool):
+            return int(value)
+        if type_ == SegmentType.ARRAY_NUMBER and all(isinstance(i, bool) for i in value):
+            return [int(i) for i in value]
+        return value
 
     def exposed_type(self) -> "SegmentType":
         """Returns the type exposed to the frontend.
@@ -157,6 +190,7 @@ _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {
     SegmentType.ARRAY_NUMBER: SegmentType.NUMBER,
     SegmentType.ARRAY_OBJECT: SegmentType.OBJECT,
     SegmentType.ARRAY_FILE: SegmentType.FILE,
+    SegmentType.ARRAY_BOOLEAN: SegmentType.BOOLEAN,
 }
 
 _ARRAY_TYPES = frozenset(

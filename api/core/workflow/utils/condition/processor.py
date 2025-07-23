@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
@@ -77,7 +77,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: str | Sequence[str] | None,
+    expected: Union[str, Sequence[str], None],
 ) -> bool:
     match operator:
         case "contains":
@@ -130,7 +130,7 @@ def _assert_contains(*, value: Any, expected: Any) -> bool:
     if not value:
         return False
 
-    if not isinstance(value, str | list):
+    if not isinstance(value, (str, list)):
         raise ValueError("Invalid actual value type: string or array")
 
     if expected not in value:
@@ -142,7 +142,7 @@ def _assert_not_contains(*, value: Any, expected: Any) -> bool:
     if not value:
         return True
 
-    if not isinstance(value, str | list):
+    if not isinstance(value, (str, list)):
         raise ValueError("Invalid actual value type: string or array")
 
     if expected in value:
@@ -178,8 +178,8 @@ def _assert_is(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+    if not isinstance(value, (str, bool)):
+        raise ValueError("Invalid actual value type: string or boolean")
 
     if value != expected:
         return False
@@ -190,8 +190,8 @@ def _assert_is_not(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, str):
-        raise ValueError("Invalid actual value type: string")
+    if not isinstance(value, (str, bool)):
+        raise ValueError("Invalid actual value type: string or boolean")
 
     if value == expected:
         return False
@@ -214,10 +214,13 @@ def _assert_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
-        raise ValueError("Invalid actual value type: number")
+    if not isinstance(value, (int, float, bool)):
+        raise ValueError("Invalid actual value type: number or boolean")
 
-    if isinstance(value, int):
+    # Handle boolean comparison
+    if isinstance(value, bool):
+        expected = bool(expected)
+    elif isinstance(value, int):
         expected = int(expected)
     else:
         expected = float(expected)
@@ -231,10 +234,13 @@ def _assert_not_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
-        raise ValueError("Invalid actual value type: number")
+    if not isinstance(value, (int, float, bool)):
+        raise ValueError("Invalid actual value type: number or boolean")
 
-    if isinstance(value, int):
+    # Handle boolean comparison
+    if isinstance(value, bool):
+        expected = bool(expected)
+    elif isinstance(value, int):
         expected = int(expected)
     else:
         expected = float(expected)
@@ -248,7 +254,7 @@ def _assert_greater_than(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -265,7 +271,7 @@ def _assert_less_than(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -282,7 +288,7 @@ def _assert_greater_than_or_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
@@ -299,7 +305,7 @@ def _assert_less_than_or_equal(*, value: Any, expected: Any) -> bool:
     if value is None:
         return False
 
-    if not isinstance(value, int | float):
+    if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
     if isinstance(value, int):
