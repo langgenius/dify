@@ -537,7 +537,7 @@ class DatasourceProviderService:
                     "plugin_id": datasource.plugin_id,
                     "plugin_unique_identifier": datasource.plugin_unique_identifier,
                     "icon": datasource.declaration.identity.icon,
-                    "name": datasource.declaration.identity.name,
+                    "name": datasource.plugin_id.split("/")[-1],
                     "label": datasource.declaration.identity.label.model_dump(),
                     "description": datasource.declaration.identity.description.model_dump(),
                     "author": datasource.declaration.identity.author,
