@@ -130,9 +130,22 @@ class AppGenerateService:
 
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
-        max_active_requests = app_model.max_active_requests
-        if max_active_requests is None:
-            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
+        """
+        Get the maximum number of active requests allowed for an app.
+
+        If the app has a custom max_active_requests setting, it will be used
+        unless the global APP_MAX_ACTIVE_REQUESTS config is non-zero, in which
+        case the minimum of the two values is returned to enforce the global limit.
+
+        Args:
+            app_model: The App model instance
+
+        Returns:
+            The maximum number of active requests allowed
+        """
+        max_active_requests = app_model.max_active_requests or dify_config.APP_MAX_ACTIVE_REQUESTS
+        if dify_config.APP_MAX_ACTIVE_REQUESTS != 0:
+            return min(max_active_requests, dify_config.APP_MAX_ACTIVE_REQUESTS)
         return max_active_requests
 
     @classmethod
