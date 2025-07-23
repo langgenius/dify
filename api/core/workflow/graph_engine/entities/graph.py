@@ -640,7 +640,7 @@ class Graph(BaseModel):
             return False
 
         parallel_start_node_ids: dict[str, list[str]] = {}
-        for branch_node_id in routes_node_ids.items():
+        for branch_node_id in routes_node_ids:
             if branch_node_id in reverse_edge_mapping:
                 for graph_edge in reverse_edge_mapping[branch_node_id]:
                     if graph_edge.source_node_id not in parallel_start_node_ids:
