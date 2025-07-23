@@ -13,7 +13,7 @@ import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/ma
 
 export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
   const exclude = useMemo(() => {
-    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
+    return providers.map(provider => provider.plugin_id)
   }, [providers])
   const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
 

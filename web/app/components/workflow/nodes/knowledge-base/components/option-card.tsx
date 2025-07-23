@@ -11,6 +11,7 @@ import {
   OptionCardEffectBlueLight,
   OptionCardEffectOrange,
   OptionCardEffectPurple,
+  OptionCardEffectTeal,
 } from '@/app/components/base/icons/src/public/knowledge'
 import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
 
@@ -19,6 +20,7 @@ const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   'blue-light': <OptionCardEffectBlueLight />,
   'orange': <OptionCardEffectOrange />,
   'purple': <OptionCardEffectPurple />,
+  'teal': <OptionCardEffectTeal />,
 }
 type OptionCardProps<T> = {
   id?: T
@@ -139,6 +141,6 @@ const OptionCard = memo(({
       }
     </div>
   )
-}) as <T>(props: OptionCardProps<T>) => JSX.Element
+}) as <T>(props: OptionCardProps<T>) => React.ReactElement
 
 export default OptionCard

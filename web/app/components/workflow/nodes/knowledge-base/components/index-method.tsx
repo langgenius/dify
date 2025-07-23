@@ -74,7 +74,7 @@ const IndexMethod = ({
           effectColor='orange'
         ></OptionCard>
         {
-          chunkStructure !== ChunkStructureEnum.parent_child && (
+          chunkStructure === ChunkStructureEnum.general && (
             <OptionCard
               id={IndexMethodEnum.ECONOMICAL}
               selectedId={indexMethod}

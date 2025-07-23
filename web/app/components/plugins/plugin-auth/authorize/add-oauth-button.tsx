@@ -100,7 +100,7 @@ const AddOAuthButton = ({
             {
               redirect_uri && (
                 <div className='system-sm-medium flex w-full py-0.5'>
-                  <div className='w-0 grow break-words'>{redirect_uri}</div>
+                  <div className='w-0 grow break-words break-all'>{redirect_uri}</div>
                   <ActionButton
                     className='shrink-0'
                     onClick={() => {
