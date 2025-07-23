@@ -296,12 +296,21 @@ class TableStoreVector(BaseVector):
         documents = []
         for search_hit in search_response.search_hits:
             if search_hit.score > score_threshold:
-                metadata = json.loads(search_hit.row[1][0][1])
+                ots_column_map = {}
+                for col in search_hit.row[1]:
+                    ots_column_map[col[0]] = col[1]
+
+                vector_str = ots_column_map.get(Field.VECTOR.value)
+                metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+
+                vector = json.loads(vector_str) if vector_str else None
+                metadata = json.loads(metadata_str) if metadata_str else None
                 metadata["score"] = search_hit.score
+
                 documents.append(
                     Document(
-                        page_content=search_hit.row[1][2][1],
-                        vector=json.loads(search_hit.row[1][3][1]),
+                        page_content=ots_column_map.get(Field.CONTENT_KEY.value),
+                        vector=vector,
                         metadata=metadata,
                     )
                 )
@@ -329,11 +338,20 @@ class TableStoreVector(BaseVector):
 
         documents = []
         for search_hit in search_response.search_hits:
+            ots_column_map = {}
+            for col in search_hit.row[1]:
+                ots_column_map[col[0]] = col[1]
+
+            vector_str = ots_column_map.get(Field.VECTOR.value)
+            metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+            vector = json.loads(vector_str) if vector_str else None
+            metadata = json.loads(metadata_str) if metadata_str else None
+
             documents.append(
                 Document(
-                    page_content=search_hit.row[1][2][1],
-                    vector=json.loads(search_hit.row[1][3][1]),
-                    metadata=json.loads(search_hit.row[1][0][1]),
+                    page_content=ots_column_map.get(Field.CONTENT_KEY.value),
+                    vector=vector,
+                    metadata=metadata,
                 )
             )
         return documents
