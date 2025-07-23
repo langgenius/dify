@@ -294,7 +294,7 @@ class RetrievalService:
             dataset_documents = {
                 doc.id: doc
                 for doc in db.session.query(DatasetDocument)
-                .filter(DatasetDocument.id.in_(document_ids))
+                .where(DatasetDocument.id.in_(document_ids))
                 .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
                 .all()
             }
@@ -326,7 +326,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",
@@ -381,7 +381,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",

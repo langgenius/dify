@@ -36,7 +36,7 @@ def clean_messages():
             # Main query with join and filter
             messages = (
                 db.session.query(Message)
-                .filter(Message.created_at < plan_sandbox_clean_message_day)
+                .where(Message.created_at < plan_sandbox_clean_message_day)
                 .order_by(Message.created_at.desc())
                 .limit(100)
                 .all()

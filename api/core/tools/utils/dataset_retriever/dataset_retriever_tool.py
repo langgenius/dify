@@ -190,7 +190,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                             document = (
                                 db.session.query(DatasetDocument)  # type: ignore
-                                .filter(
+                                .where(
                                     DatasetDocument.id == segment.document_id,
                                     DatasetDocument.enabled == True,
                                     DatasetDocument.archived == False,

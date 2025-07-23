@@ -45,7 +45,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
 
     segments = (
         db.session.query(DocumentSegment)
-        .filter(
+        .where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,

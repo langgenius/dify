@@ -34,7 +34,7 @@ class InstalledAppsListApi(Resource):
         if app_id:
             installed_apps = (
                 db.session.query(InstalledApp)
-                .filter(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
+                .where(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
                 .all()
             )
         else:
@@ -109,7 +109,7 @@ class InstalledAppsListApi(Resource):
 
         installed_app = (
             db.session.query(InstalledApp)
-            .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
+            .where(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
             .first()
         )
 

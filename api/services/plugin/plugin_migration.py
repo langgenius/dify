@@ -101,7 +101,7 @@ class PluginMigration:
                 for test_interval in test_intervals:
                     tenant_count = (
                         session.query(Tenant.id)
-                        .filter(Tenant.created_at.between(current_time, current_time + test_interval))
+                        .where(Tenant.created_at.between(current_time, current_time + test_interval))
                         .count()
                     )
                     if tenant_count <= 100:
@@ -126,7 +126,7 @@ class PluginMigration:
 
                 rs = (
                     session.query(Tenant.id)
-                    .filter(Tenant.created_at.between(current_time, batch_end))
+                    .where(Tenant.created_at.between(current_time, batch_end))
                     .order_by(Tenant.created_at)
                 )
 

@@ -22,7 +22,7 @@ def handle(sender, **kwargs):
 
         document = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.id == document_id,
                 Document.dataset_id == dataset_id,
             )

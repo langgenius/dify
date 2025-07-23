@@ -121,7 +121,7 @@ class CompletionConversationDetailApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -181,7 +181,7 @@ class ChatConversationApi(Resource):
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .filter(
+                .where(
                     or_(
                         Message.query.ilike(keyword_filter),
                         Message.answer.ilike(keyword_filter),
@@ -286,7 +286,7 @@ class ChatConversationDetailApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -308,7 +308,7 @@ api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversati
 def _get_conversation(app_model, conversation_id):
     conversation = (
         db.session.query(Conversation)
-        .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
         .first()
     )
 

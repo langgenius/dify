@@ -406,7 +406,7 @@ class DocumentListApi(DatasetApiResource):
 
         if search:
             search = f"%{search}%"
-            query = query.filter(Document.name.like(search))
+            query = query.where(Document.name.like(search))
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
@@ -441,7 +441,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         for document in documents:
             completed_segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
                     DocumentSegment.status != "re_segment",
@@ -450,7 +450,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
             # Create a dictionary with document attributes and additional fields

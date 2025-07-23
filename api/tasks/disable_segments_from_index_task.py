@@ -44,7 +44,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
     segments = (
         db.session.query(DocumentSegment)
-        .filter(
+        .where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,

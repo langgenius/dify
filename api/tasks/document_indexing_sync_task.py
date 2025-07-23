@@ -46,7 +46,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_edited_time = data_source_info["last_edited_time"]
         data_source_binding = (
             db.session.query(DataSourceOauthBinding)
-            .filter(
+            .where(
                 db.and_(
                     DataSourceOauthBinding.tenant_id == document.tenant_id,
                     DataSourceOauthBinding.provider == "notion",

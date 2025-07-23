@@ -71,7 +71,7 @@ def get_user_tenant(view: Optional[Callable] = None):
             try:
                 tenant_model = (
                     db.session.query(Tenant)
-                    .filter(
+                    .where(
                         Tenant.id == tenant_id,
                     )
                     .first()

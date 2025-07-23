@@ -40,9 +40,9 @@ def load_user_from_request(request_from_flask_login):
             if workspace_id:
                 tenant_account_join = (
                     db.session.query(Tenant, TenantAccountJoin)
-                    .filter(Tenant.id == workspace_id)
-                    .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                    .filter(TenantAccountJoin.role == "owner")
+                    .where(Tenant.id == workspace_id)
+                    .where(TenantAccountJoin.tenant_id == Tenant.id)
+                    .where(TenantAccountJoin.role == "owner")
                     .one_or_none()
                 )
                 if tenant_account_join:
@@ -83,7 +83,7 @@ def load_user_from_request(request_from_flask_login):
             raise NotFound("App MCP server not found.")
         end_user = (
             db.session.query(EndUser)
-            .filter(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
+            .where(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
             .first()
         )
         if not end_user:

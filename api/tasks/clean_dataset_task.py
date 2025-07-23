@@ -102,7 +102,7 @@ def clean_dataset_task(
                                 file_id = data_source_info["upload_file_id"]
                                 file = (
                                     db.session.query(UploadFile)
-                                    .filter(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
+                                    .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
                                     .first()
                                 )
                                 if not file:

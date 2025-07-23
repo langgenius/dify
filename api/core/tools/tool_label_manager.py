@@ -57,7 +57,7 @@ class ToolLabelManager:
 
         labels = (
             db.session.query(ToolLabelBinding.label_name)
-            .filter(
+            .where(
                 ToolLabelBinding.tool_id == provider_id,
                 ToolLabelBinding.tool_type == controller.provider_type.value,
             )

@@ -99,7 +99,7 @@ class BaseAgentRunner(AppRunner):
         # get how many agent thoughts have been created
         self.agent_thought_count = (
             db.session.query(MessageAgentThought)
-            .filter(
+            .where(
                 MessageAgentThought.message_id == self.message.id,
             )
             .count()

@@ -328,7 +328,7 @@ class WorkflowDraftVariableService:
     def delete_workflow_variables(self, app_id: str):
         (
             self._session.query(WorkflowDraftVariable)
-            .filter(WorkflowDraftVariable.app_id == app_id)
+            .where(WorkflowDraftVariable.app_id == app_id)
             .delete(synchronize_session=False)
         )
 
@@ -379,7 +379,7 @@ class WorkflowDraftVariableService:
         if conv_id is not None:
             conversation = (
                 self._session.query(Conversation)
-                .filter(
+                .where(
                     Conversation.id == conv_id,
                     Conversation.app_id == workflow.app_id,
                 )

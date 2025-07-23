@@ -137,9 +137,9 @@ class Account(UserMixin, Base):
             tuple[Tenant, TenantAccountJoin],
             (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == tenant_id)
-                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.account_id == self.id)
+                .where(Tenant.id == tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == self.id)
                 .one_or_none()
             ),
         )
@@ -163,7 +163,7 @@ class Account(UserMixin, Base):
     def get_by_openid(cls, provider: str, open_id: str):
         account_integrate = (
             db.session.query(AccountIntegrate)
-            .filter(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
+            .where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
             .one_or_none()
         )
         if account_integrate:
@@ -213,7 +213,7 @@ class Tenant(Base):
     def get_accounts(self) -> list[Account]:
         return (
             db.session.query(Account)
-            .filter(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
+            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
             .all()
         )
 

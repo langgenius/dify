@@ -16,10 +16,10 @@ class TagService:
         query = (
             db.session.query(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
+            .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
         if keyword:
-            query = query.filter(db.and_(Tag.name.ilike(f"%{keyword}%")))
+            query = query.where(db.and_(Tag.name.ilike(f"%{keyword}%")))
         query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
         results: list = query.order_by(Tag.created_at.desc()).all()
         return results
@@ -28,7 +28,7 @@ class TagService:
     def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> list:
         tags = (
             db.session.query(Tag)
-            .filter(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+            .where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
             .all()
         )
         if not tags:
@@ -36,7 +36,7 @@ class TagService:
         tag_ids = [tag.id for tag in tags]
         tag_bindings = (
             db.session.query(TagBinding.target_id)
-            .filter(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
+            .where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
             .all()
         )
         if not tag_bindings:
@@ -50,7 +50,7 @@ class TagService:
             return []
         tags = (
             db.session.query(Tag)
-            .filter(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+            .where(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
             .all()
         )
         if not tags:
@@ -62,7 +62,7 @@ class TagService:
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == target_id,
                 TagBinding.tenant_id == current_tenant_id,
                 Tag.tenant_id == current_tenant_id,
@@ -125,7 +125,7 @@ class TagService:
         for tag_id in args["tag_ids"]:
             tag_binding = (
                 db.session.query(TagBinding)
-                .filter(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
+                .where(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
                 .first()
             )
             if tag_binding:
@@ -146,7 +146,7 @@ class TagService:
         # delete tag binding
         tag_bindings = (
             db.session.query(TagBinding)
-            .filter(TagBinding.target_id == args["target_id"], TagBinding.tag_id == (args["tag_id"]))
+            .where(TagBinding.target_id == args["target_id"], TagBinding.tag_id == (args["tag_id"]))
             .first()
         )
         if tag_bindings:
@@ -158,7 +158,7 @@ class TagService:
         if type == "knowledge":
             dataset = (
                 db.session.query(Dataset)
-                .filter(Dataset.tenant_id == current_user.current_tenant_id, Dataset.id == target_id)
+                .where(Dataset.tenant_id == current_user.current_tenant_id, Dataset.id == target_id)
                 .first()
             )
             if not dataset:
@@ -166,7 +166,7 @@ class TagService:
         elif type == "app":
             app = (
                 db.session.query(App)
-                .filter(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
+                .where(App.tenant_id == current_user.current_tenant_id, App.id == target_id)
                 .first()
             )
             if not app:

@@ -68,7 +68,7 @@ class AccountInitApi(Resource):
             # check invitation code
             invitation_code = (
                 db.session.query(InvitationCode)
-                .filter(
+                .where(
                     InvitationCode.code == args["invitation_code"],
                     InvitationCode.status == "unused",
                 )

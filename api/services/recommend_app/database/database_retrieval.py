@@ -33,14 +33,14 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         recommended_apps = (
             db.session.query(RecommendedApp)
-            .filter(RecommendedApp.is_listed == True, RecommendedApp.language == language)
+            .where(RecommendedApp.is_listed == True, RecommendedApp.language == language)
             .all()
         )
 
         if len(recommended_apps) == 0:
             recommended_apps = (
                 db.session.query(RecommendedApp)
-                .filter(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
+                .where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
                 .all()
             )
 
@@ -83,7 +83,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         # is in public recommended list
         recommended_app = (
             db.session.query(RecommendedApp)
-            .filter(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
+            .where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
             .first()
         )
 

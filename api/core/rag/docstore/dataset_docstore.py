@@ -63,7 +63,7 @@ class DatasetDocumentStore:
     def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
-            .filter(DocumentSegment.document_id == self._document_id)
+            .where(DocumentSegment.document_id == self._document_id)
             .scalar()
         )
 
@@ -230,7 +230,7 @@ class DatasetDocumentStore:
     def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
         document_segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
+            .where(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
             .first()
         )
 

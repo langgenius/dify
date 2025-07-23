@@ -282,7 +282,7 @@ class App(Base):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
@@ -751,7 +751,7 @@ class Conversation(Base):
     def user_feedback_stats(self):
         like = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "user",
                 MessageFeedback.rating == "like",
@@ -761,7 +761,7 @@ class Conversation(Base):
 
         dislike = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "user",
                 MessageFeedback.rating == "dislike",
@@ -775,7 +775,7 @@ class Conversation(Base):
     def admin_feedback_stats(self):
         like = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "admin",
                 MessageFeedback.rating == "like",
@@ -785,7 +785,7 @@ class Conversation(Base):
 
         dislike = (
             db.session.query(MessageFeedback)
-            .filter(
+            .where(
                 MessageFeedback.conversation_id == self.id,
                 MessageFeedback.from_source == "admin",
                 MessageFeedback.rating == "dislike",
@@ -824,7 +824,7 @@ class Conversation(Base):
     def first_message(self):
         return (
             db.session.query(Message)
-            .filter(Message.conversation_id == self.id)
+            .where(Message.conversation_id == self.id)
             .order_by(Message.created_at.asc())
             .first()
         )
@@ -1040,7 +1040,7 @@ class Message(Base):
     def user_feedback(self):
         feedback = (
             db.session.query(MessageFeedback)
-            .filter(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
             .first()
         )
         return feedback
@@ -1049,7 +1049,7 @@ class Message(Base):
     def admin_feedback(self):
         feedback = (
             db.session.query(MessageFeedback)
-            .filter(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
+            .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
             .first()
         )
         return feedback
@@ -1072,7 +1072,7 @@ class Message(Base):
         if annotation_history:
             annotation = (
                 db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.id == annotation_history.annotation_id)
+                .where(MessageAnnotation.id == annotation_history.annotation_id)
                 .first()
             )
             return annotation
@@ -1082,9 +1082,7 @@ class Message(Base):
     def app_model_config(self):
         conversation = db.session.query(Conversation).where(Conversation.id == self.conversation_id).first()
         if conversation:
-            return (
-                db.session.query(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).first()
-            )
+            return db.session.query(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).first()
 
         return None
 
@@ -1100,7 +1098,7 @@ class Message(Base):
     def agent_thoughts(self):
         return (
             db.session.query(MessageAgentThought)
-            .filter(MessageAgentThought.message_id == self.id)
+            .where(MessageAgentThought.message_id == self.id)
             .order_by(MessageAgentThought.position.asc())
             .all()
         )
@@ -1371,7 +1369,7 @@ class AppAnnotationHitHistory(Base):
         account = (
             db.session.query(Account)
             .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
-            .filter(MessageAnnotation.id == self.annotation_id)
+            .where(MessageAnnotation.id == self.annotation_id)
             .first()
         )
         return account
@@ -1404,7 +1402,7 @@ class AppAnnotationSetting(Base):
 
         collection_binding_detail = (
             db.session.query(DatasetCollectionBinding)
-            .filter(DatasetCollectionBinding.id == self.collection_binding_id)
+            .where(DatasetCollectionBinding.id == self.collection_binding_id)
             .first()
         )
         return collection_binding_detail

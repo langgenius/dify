@@ -30,7 +30,7 @@ class DataSourceApi(Resource):
         # get workspace data source integrates
         data_source_integrates = (
             db.session.query(DataSourceOauthBinding)
-            .filter(
+            .where(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )

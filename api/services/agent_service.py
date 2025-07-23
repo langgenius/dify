@@ -25,7 +25,7 @@ class AgentService:
 
         conversation: Conversation | None = (
             db.session.query(Conversation)
-            .filter(
+            .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
             )
@@ -37,7 +37,7 @@ class AgentService:
 
         message: Optional[Message] = (
             db.session.query(Message)
-            .filter(
+            .where(
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
             )
@@ -55,9 +55,7 @@ class AgentService:
                 db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
             )
         else:
-            executor = (
-                db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
-            )
+            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
 
         if executor:
             executor = executor.name

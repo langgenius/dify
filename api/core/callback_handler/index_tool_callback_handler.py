@@ -59,7 +59,7 @@ class DatasetIndexToolCallbackHandler:
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = (
                         db.session.query(ChildChunk)
-                        .filter(
+                        .where(
                             ChildChunk.index_node_id == document.metadata["doc_id"],
                             ChildChunk.dataset_id == dataset_document.dataset_id,
                             ChildChunk.document_id == dataset_document.id,
@@ -69,7 +69,7 @@ class DatasetIndexToolCallbackHandler:
                     if child_chunk:
                         segment = (
                             db.session.query(DocumentSegment)
-                            .filter(DocumentSegment.id == child_chunk.segment_id)
+                            .where(DocumentSegment.id == child_chunk.segment_id)
                             .update(
                                 {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
                             )
@@ -80,7 +80,7 @@ class DatasetIndexToolCallbackHandler:
                     )
 
                     if "dataset_id" in document.metadata:
-                        query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                        query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                     # add hit count to document segment
                     query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)

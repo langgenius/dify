@@ -59,7 +59,7 @@ class IndexingRunner:
                 # get the process rule
                 processing_rule = (
                     db.session.query(DatasetProcessRule)
-                    .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
                 if not processing_rule:
@@ -124,7 +124,7 @@ class IndexingRunner:
             # get the process rule
             processing_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
             if not processing_rule:
@@ -212,7 +212,7 @@ class IndexingRunner:
             # get the process rule
             processing_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
 

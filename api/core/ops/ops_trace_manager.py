@@ -218,7 +218,7 @@ class OpsTraceManager:
         """
         trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -304,7 +304,7 @@ class OpsTraceManager:
         if conversation_data.app_model_config_id:
             app_model_config = (
                 db.session.query(AppModelConfig)
-                .filter(AppModelConfig.id == conversation_data.app_model_config_id)
+                .where(AppModelConfig.id == conversation_data.app_model_config_id)
                 .first()
             )
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:

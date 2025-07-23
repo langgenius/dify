@@ -119,7 +119,7 @@ class ApiToolManageService:
         # check if the provider exists
         provider = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
@@ -210,7 +210,7 @@ class ApiToolManageService:
         """
         provider: ApiToolProvider | None = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
@@ -257,7 +257,7 @@ class ApiToolManageService:
         # check if the provider exists
         provider = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == original_provider,
             )
@@ -326,7 +326,7 @@ class ApiToolManageService:
         """
         provider = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )
@@ -376,7 +376,7 @@ class ApiToolManageService:
 
         db_provider = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
             )

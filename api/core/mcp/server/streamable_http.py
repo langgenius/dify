@@ -192,7 +192,7 @@ class MCPServerStreamableHTTPRequestHandler:
     def retrieve_end_user(self):
         return (
             db.session.query(EndUser)
-            .filter(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
+            .where(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
             .first()
         )
 

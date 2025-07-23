@@ -228,7 +228,7 @@ class KnowledgeRetrievalNode(BaseNode):
         # Subquery: Count the number of available documents for each dataset
         subquery = (
             db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
-            .filter(
+            .where(
                 Document.indexing_status == "completed",
                 Document.enabled == True,
                 Document.archived == False,
@@ -242,8 +242,8 @@ class KnowledgeRetrievalNode(BaseNode):
         results = (
             db.session.query(Dataset)
             .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
-            .filter(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
-            .filter((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
+            .where(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
+            .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
             .all()
         )
 
@@ -370,7 +370,7 @@ class KnowledgeRetrievalNode(BaseNode):
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
                     document = (
                         db.session.query(Document)
-                        .filter(
+                        .where(
                             Document.id == segment.document_id,
                             Document.enabled == True,
                             Document.archived == False,
@@ -493,9 +493,9 @@ class KnowledgeRetrievalNode(BaseNode):
                 node_data.metadata_filtering_conditions
                 and node_data.metadata_filtering_conditions.logical_operator == "and"
             ):  # type: ignore
-                document_query = document_query.filter(and_(*filters))
+                document_query = document_query.where(and_(*filters))
             else:
-                document_query = document_query.filter(or_(*filters))
+                document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore

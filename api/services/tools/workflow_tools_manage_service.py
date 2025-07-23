@@ -43,7 +43,7 @@ class WorkflowToolManageService:
         # check if the name is unique
         existing_workflow_tool_provider = (
             db.session.query(WorkflowToolProvider)
-            .filter(
+            .where(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 # name or app_id
                 or_(WorkflowToolProvider.name == name, WorkflowToolProvider.app_id == workflow_app_id),
@@ -123,7 +123,7 @@ class WorkflowToolManageService:
         # check if the name is unique
         existing_workflow_tool_provider = (
             db.session.query(WorkflowToolProvider)
-            .filter(
+            .where(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 WorkflowToolProvider.name == name,
                 WorkflowToolProvider.id != workflow_tool_id,
@@ -136,7 +136,7 @@ class WorkflowToolManageService:
 
         workflow_tool_provider: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
         )
 
@@ -243,7 +243,7 @@ class WorkflowToolManageService:
         """
         db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
         )
         return cls._get_workflow_tool(tenant_id, db_tool)
@@ -259,7 +259,7 @@ class WorkflowToolManageService:
         """
         db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
+            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
             .first()
         )
         return cls._get_workflow_tool(tenant_id, db_tool)
@@ -318,7 +318,7 @@ class WorkflowToolManageService:
         """
         db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
+            .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
         )
 

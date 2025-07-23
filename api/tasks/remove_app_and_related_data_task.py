@@ -142,9 +142,9 @@ def _delete_recommended_apps(tenant_id: str, app_id: str):
 
 def _delete_app_annotation_data(tenant_id: str, app_id: str):
     def del_annotation_hit_history(annotation_hit_history_id: str):
-        db.session.query(AppAnnotationHitHistory).where(
-            AppAnnotationHitHistory.id == annotation_hit_history_id
-        ).delete(synchronize_session=False)
+        db.session.query(AppAnnotationHitHistory).where(AppAnnotationHitHistory.id == annotation_hit_history_id).delete(
+            synchronize_session=False
+        )
 
     _delete_records(
         """select id from app_annotation_hit_histories where app_id=:app_id limit 1000""",

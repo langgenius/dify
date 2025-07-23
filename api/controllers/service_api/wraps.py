@@ -62,10 +62,10 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == api_token.tenant_id)
-                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.role.in_(["owner"]))
-                .filter(Tenant.status == TenantStatus.NORMAL)
+                .where(Tenant.id == api_token.tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.role.in_(["owner"]))
+                .where(Tenant.status == TenantStatus.NORMAL)
                 .one_or_none()
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
@@ -213,10 +213,10 @@ def validate_dataset_token(view=None):
             api_token = validate_and_get_api_token("dataset")
             tenant_account_join = (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == api_token.tenant_id)
-                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.role.in_(["owner"]))
-                .filter(Tenant.status == TenantStatus.NORMAL)
+                .where(Tenant.id == api_token.tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.role.in_(["owner"]))
+                .where(Tenant.status == TenantStatus.NORMAL)
                 .one_or_none()
             )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
@@ -293,7 +293,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
 
     end_user = (
         db.session.query(EndUser)
-        .filter(
+        .where(
             EndUser.tenant_id == app_model.tenant_id,
             EndUser.app_id == app_model.id,
             EndUser.session_id == user_id,

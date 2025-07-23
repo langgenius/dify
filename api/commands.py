@@ -172,7 +172,7 @@ def migrate_annotation_vector_database():
             per_page = 50
             apps = (
                 db.session.query(App)
-                .filter(App.status == "normal")
+                .where(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .limit(per_page)
                 .offset((page - 1) * per_page)
@@ -202,7 +202,7 @@ def migrate_annotation_vector_database():
                 # get dataset_collection_binding info
                 dataset_collection_binding = (
                     db.session.query(DatasetCollectionBinding)
-                    .filter(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                    .where(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
                     .first()
                 )
                 if not dataset_collection_binding:
@@ -332,7 +332,7 @@ def migrate_knowledge_vector_database():
                     if dataset.collection_binding_id:
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
-                            .filter(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                            .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
                             .one_or_none()
                         )
                         if dataset_collection_binding:
@@ -367,7 +367,7 @@ def migrate_knowledge_vector_database():
 
                 dataset_documents = (
                     db.session.query(DatasetDocument)
-                    .filter(
+                    .where(
                         DatasetDocument.dataset_id == dataset.id,
                         DatasetDocument.indexing_status == "completed",
                         DatasetDocument.enabled == True,
@@ -381,7 +381,7 @@ def migrate_knowledge_vector_database():
                 for dataset_document in dataset_documents:
                     segments = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.document_id == dataset_document.id,
                             DocumentSegment.status == "completed",
                             DocumentSegment.enabled == True,
@@ -560,7 +560,7 @@ def old_metadata_migration():
         try:
             stmt = (
                 select(DatasetDocument)
-                .filter(DatasetDocument.doc_metadata.is_not(None))
+                .where(DatasetDocument.doc_metadata.is_not(None))
                 .order_by(DatasetDocument.created_at.desc())
             )
             documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
@@ -578,7 +578,7 @@ def old_metadata_migration():
                     else:
                         dataset_metadata = (
                             db.session.query(DatasetMetadata)
-                            .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
+                            .where(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
                             .first()
                         )
                         if not dataset_metadata:
@@ -602,7 +602,7 @@ def old_metadata_migration():
                         else:
                             dataset_metadata_binding = (
                                 db.session.query(DatasetMetadataBinding)  # type: ignore
-                                .filter(
+                                .where(
                                     DatasetMetadataBinding.dataset_id == document.dataset_id,
                                     DatasetMetadataBinding.document_id == document.id,
                                     DatasetMetadataBinding.metadata_id == dataset_metadata.id,

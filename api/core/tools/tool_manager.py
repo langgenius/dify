@@ -198,7 +198,7 @@ class ToolManager:
                     try:
                         builtin_provider = (
                             db.session.query(BuiltinToolProvider)
-                            .filter(
+                            .where(
                                 BuiltinToolProvider.tenant_id == tenant_id,
                                 BuiltinToolProvider.id == credential_id,
                             )
@@ -216,7 +216,7 @@ class ToolManager:
                     # use the default provider
                     builtin_provider = (
                         db.session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             (BuiltinToolProvider.provider == str(provider_id_entity))
                             | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
@@ -229,7 +229,7 @@ class ToolManager:
             else:
                 builtin_provider = (
                     db.session.query(BuiltinToolProvider)
-                    .filter(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
+                    .where(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
                     .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                     .first()
                 )
@@ -316,7 +316,7 @@ class ToolManager:
         elif provider_type == ToolProviderType.WORKFLOW:
             workflow_provider = (
                 db.session.query(WorkflowToolProvider)
-                .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
                 .first()
             )
 
@@ -731,7 +731,7 @@ class ToolManager:
         """
         provider: ApiToolProvider | None = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.id == provider_id,
                 ApiToolProvider.tenant_id == tenant_id,
             )
@@ -768,7 +768,7 @@ class ToolManager:
         """
         provider: MCPToolProvider | None = (
             db.session.query(MCPToolProvider)
-            .filter(
+            .where(
                 MCPToolProvider.server_identifier == provider_id,
                 MCPToolProvider.tenant_id == tenant_id,
             )
@@ -793,7 +793,7 @@ class ToolManager:
         provider_name = provider
         provider_obj: ApiToolProvider | None = (
             db.session.query(ApiToolProvider)
-            .filter(
+            .where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider,
             )
@@ -885,7 +885,7 @@ class ToolManager:
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
-                .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
                 .first()
             )
 
@@ -902,7 +902,7 @@ class ToolManager:
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
-                .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
+                .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
                 .first()
             )
 
@@ -919,7 +919,7 @@ class ToolManager:
         try:
             mcp_provider: MCPToolProvider | None = (
                 db.session.query(MCPToolProvider)
-                .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
+                .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
                 .first()
             )
 

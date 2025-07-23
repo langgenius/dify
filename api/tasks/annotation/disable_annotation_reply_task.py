@@ -26,9 +26,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         db.session.close()
         return
 
-    app_annotation_setting = (
-        db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
-    )
+    app_annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
 
     if not app_annotation_setting:
         logging.info(click.style("App annotation setting not found: {}".format(app_id), fg="red"))

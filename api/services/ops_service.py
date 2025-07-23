@@ -17,7 +17,7 @@ class OpsService:
         """
         trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -148,7 +148,7 @@ class OpsService:
         # check if trace config already exists
         trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -190,7 +190,7 @@ class OpsService:
         # check if trace config already exists
         current_trace_config = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -227,7 +227,7 @@ class OpsService:
         """
         trace_config = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 

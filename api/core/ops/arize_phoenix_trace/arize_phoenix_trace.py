@@ -703,7 +703,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.process_data,
                 WorkflowNodeExecutionModel.execution_metadata,
             )
-            .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
             .all()
         )
         return workflow_nodes

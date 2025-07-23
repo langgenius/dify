@@ -118,7 +118,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 child_node_ids = (
                     db.session.query(ChildChunk.index_node_id)
                     .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
-                    .filter(
+                    .where(
                         DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(node_ids),
                         ChildChunk.dataset_id == dataset.id,

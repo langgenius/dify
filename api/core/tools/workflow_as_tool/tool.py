@@ -142,7 +142,7 @@ class WorkflowTool(Tool):
         if not version:
             workflow = (
                 db.session.query(Workflow)
-                .filter(Workflow.app_id == app_id, Workflow.version != "draft")
+                .where(Workflow.app_id == app_id, Workflow.version != "draft")
                 .order_by(Workflow.created_at.desc())
                 .first()
             )

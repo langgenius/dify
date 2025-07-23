@@ -95,7 +95,7 @@ class Dataset(Base):
     def latest_process_rule(self):
         return (
             db.session.query(DatasetProcessRule)
-            .filter(DatasetProcessRule.dataset_id == self.id)
+            .where(DatasetProcessRule.dataset_id == self.id)
             .order_by(DatasetProcessRule.created_at.desc())
             .first()
         )
@@ -104,7 +104,7 @@ class Dataset(Base):
     def app_count(self):
         return (
             db.session.query(func.count(AppDatasetJoin.id))
-            .filter(AppDatasetJoin.dataset_id == self.id, App.id == AppDatasetJoin.app_id)
+            .where(AppDatasetJoin.dataset_id == self.id, App.id == AppDatasetJoin.app_id)
             .scalar()
         )
 
@@ -116,7 +116,7 @@ class Dataset(Base):
     def available_document_count(self):
         return (
             db.session.query(func.count(Document.id))
-            .filter(
+            .where(
                 Document.dataset_id == self.id,
                 Document.indexing_status == "completed",
                 Document.enabled == True,
@@ -129,7 +129,7 @@ class Dataset(Base):
     def available_segment_count(self):
         return (
             db.session.query(func.count(DocumentSegment.id))
-            .filter(
+            .where(
                 DocumentSegment.dataset_id == self.id,
                 DocumentSegment.status == "completed",
                 DocumentSegment.enabled == True,
@@ -142,7 +142,7 @@ class Dataset(Base):
         return (
             db.session.query(Document)
             .with_entities(func.coalesce(func.sum(Document.word_count), 0))
-            .filter(Document.dataset_id == self.id)
+            .where(Document.dataset_id == self.id)
             .scalar()
         )
 
@@ -169,7 +169,7 @@ class Dataset(Base):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
@@ -191,7 +191,7 @@ class Dataset(Base):
             return None
         external_knowledge_api = db.session.scalars(
             select(ExternalKnowledgeApis)
-            .filter(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
+            .where(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
             .limit(1)
         ).first()
         if not external_knowledge_api:
@@ -408,7 +408,7 @@ class Document(Base):
                 data_source_info_dict = json.loads(self.data_source_info)
                 file_detail = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.id == data_source_info_dict["upload_file_id"])
+                    .where(UploadFile.id == data_source_info_dict["upload_file_id"])
                     .one_or_none()
                 )
                 if file_detail:
@@ -452,7 +452,7 @@ class Document(Base):
         return (
             db.session.query(DocumentSegment)
             .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count), 0))
-            .filter(DocumentSegment.document_id == self.id)
+            .where(DocumentSegment.document_id == self.id)
             .scalar()
         )
 
@@ -475,7 +475,7 @@ class Document(Base):
             document_metadatas = (
                 db.session.query(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
-                .filter(
+                .where(
                     DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
                 )
                 .all()
@@ -697,7 +697,7 @@ class DocumentSegment(Base):
     def previous_segment(self):
         return db.session.scalars(
             select(DocumentSegment)
-            .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1)
+            .where(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1)
             .limit(1)
         ).first()
 
@@ -705,7 +705,7 @@ class DocumentSegment(Base):
     def next_segment(self):
         return db.session.scalars(
             select(DocumentSegment)
-            .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
+            .where(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
             .limit(1)
         ).first()
 
@@ -717,7 +717,7 @@ class DocumentSegment(Base):
             if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
                 child_chunks = (
                     db.session.query(ChildChunk)
-                    .filter(ChildChunk.segment_id == self.id)
+                    .where(ChildChunk.segment_id == self.id)
                     .order_by(ChildChunk.position.asc())
                     .all()
                 )
@@ -734,7 +734,7 @@ class DocumentSegment(Base):
             if rules.parent_mode:
                 child_chunks = (
                     db.session.query(ChildChunk)
-                    .filter(ChildChunk.segment_id == self.id)
+                    .where(ChildChunk.segment_id == self.id)
                     .order_by(ChildChunk.position.asc())
                     .all()
                 )
@@ -1044,7 +1044,7 @@ class ExternalKnowledgeApis(Base):
     def dataset_bindings(self):
         external_knowledge_bindings = (
             db.session.query(ExternalKnowledgeBindings)
-            .filter(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+            .where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
             .all()
         )
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]

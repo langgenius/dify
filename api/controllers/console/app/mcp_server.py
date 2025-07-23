@@ -104,8 +104,8 @@ class AppMCPServerRefreshController(Resource):
             raise NotFound()
         server = (
             db.session.query(AppMCPServer)
-            .filter(AppMCPServer.id == server_id)
-            .filter(AppMCPServer.tenant_id == current_user.current_tenant_id)
+            .where(AppMCPServer.id == server_id)
+            .where(AppMCPServer.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not server:

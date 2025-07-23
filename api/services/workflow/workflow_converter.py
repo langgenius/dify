@@ -620,7 +620,7 @@ class WorkflowConverter:
         """
         api_based_extension = (
             db.session.query(APIBasedExtension)
-            .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
+            .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .first()
         )
 
