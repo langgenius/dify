@@ -21,7 +21,6 @@ import {
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 import { useCollaborativeCursors } from '../hooks'
-import { connectOnlineUserWebSocket } from '@/service/demo/online-user'
 import type { OnlineUser } from '@/service/demo/online-user'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
@@ -37,8 +36,7 @@ const WorkflowMain = ({
   const lastEmitTimeRef = useRef<number>(0)
   const lastPositionRef = useRef<{ x: number; y: number } | null>(null)
 
-  // WebSocket connection for collaboration
-  const { emit } = useWebSocketStore()
+  const { emit, getSocket } = useWebSocketStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -61,7 +59,6 @@ const WorkflowMain = ({
     }
   }, [featuresStore, workflowStore])
 
-  // Handle mouse movement for collaboration with throttling (1 second)
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!containerRef.current) return
 
@@ -74,8 +71,7 @@ const WorkflowMain = ({
       const now = Date.now()
       const timeSinceLastEmit = now - lastEmitTimeRef.current
 
-      // Throttle to 1 second (1000ms)
-      if (timeSinceLastEmit >= 1000) {
+      if (timeSinceLastEmit >= 300) {
         lastEmitTimeRef.current = now
         lastPositionRef.current = { x, y }
 
@@ -84,7 +80,7 @@ const WorkflowMain = ({
           y,
         })
       }
- else {
+      else {
         // Update position for potential future emit
         lastPositionRef.current = { x, y }
       }
@@ -126,7 +122,7 @@ const WorkflowMain = ({
 
   useEffect(() => {
     if (!appId) return
-    const socket = connectOnlineUserWebSocket(appId)
+    const socket = getSocket(appId)
 
     const handleOnlineUsersUpdate = (data: { users: OnlineUser[] }) => {
       const usersMap = data.users.reduce((acc, user) => {
@@ -227,7 +223,7 @@ const WorkflowMain = ({
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', width: '100%', height: '100%' }}
+      className="relative h-full w-full"
     >
       <WorkflowWithInnerContext
         nodes={nodes}
@@ -261,14 +257,10 @@ const WorkflowMain = ({
         return (
           <div
             key={userId}
+            className="pointer-events-none absolute z-[10000] -translate-x-0.5 -translate-y-0.5 transition-all duration-150 ease-out"
             style={{
-              position: 'absolute',
               left: cursor.x,
               top: cursor.y,
-              pointerEvents: 'none',
-              zIndex: 10000,
-              transform: 'translate(-2px, -2px)',
-              transition: 'left 0.15s ease-out, top 0.15s ease-out',
             }}
           >
             <svg
@@ -277,9 +269,7 @@ const WorkflowMain = ({
               viewBox="0 0 20 20"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              style={{
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-              }}
+              className="drop-shadow-md"
             >
               <path
                 d="M3 3L16 8L9 10L7 17L3 3Z"
@@ -291,21 +281,9 @@ const WorkflowMain = ({
             </svg>
 
             <div
+              className="absolute -top-0.5 left-[18px] max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm"
               style={{
-                position: 'absolute',
-                left: '18px',
-                top: '-2px',
                 backgroundColor: userColor,
-                color: 'white',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '500',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                maxWidth: '120px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
               }}
             >
               {userName}

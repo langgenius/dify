@@ -34,10 +34,6 @@ export function connectOnlineUserWebSocket(appId: string): Socket {
     console.log('WebSocket disconnected')
   })
 
-  socket.on('online_users', (data) => {
-    console.log('Online users:', data)
-  })
-
   socket.on('connect_error', (err) => {
     console.error('WebSocket connection error:', err)
   })

@@ -1,63 +1,55 @@
 import { create } from 'zustand'
-import { connectOnlineUserWebSocket, disconnectOnlineUserWebSocket } from '@/service/demo/online-user'
+import { connectOnlineUserWebSocket } from '@/service/demo/online-user'
 
 type WebSocketInstance = ReturnType<typeof connectOnlineUserWebSocket>
 
 type WebSocketStore = {
   socket: WebSocketInstance | null
-  isConnected: boolean
   listeners: Map<string, Set<(data: any) => void>>
 
-  // Actions
-  connect: (appId: string) => void
-  disconnect: () => void
+  isConnected: () => boolean
+  getSocket: (appId: string) => WebSocketInstance
   emit: (eventType: string, data: any) => void
   on: (eventType: string, handler: (data: any) => void) => () => void
 }
 
 export const useWebSocketStore = create<WebSocketStore>((set, get) => ({
   socket: null,
-  isConnected: false,
   listeners: new Map(),
 
-  connect: (appId: string) => {
-    const socket = connectOnlineUserWebSocket(appId)
-
-    socket.on('collaboration_update', (update: {
-      type: string
-      userId: string
-      data: any
-      timestamp: number
-    }) => {
-      const { listeners } = get()
-      const eventListeners = listeners.get(update.type)
-      if (eventListeners) {
-        eventListeners.forEach((handler) => {
-          try {
-            handler(update)
-          }
- catch (error) {
-            console.error(`Error in collaboration event handler for ${update.type}:`, error)
-          }
-        })
-      }
-    })
-
-    set({ socket, isConnected: true })
+  isConnected: () => {
+    const { socket } = get()
+    return socket?.connected || false
   },
 
-  disconnect: () => {
-    const { socket } = get()
-    if (socket) {
-      socket.off('collaboration_update')
-      disconnectOnlineUserWebSocket()
+  getSocket: (appId: string) => {
+    let { socket } = get()
+    if (!socket) {
+      socket = connectOnlineUserWebSocket(appId)
+
+      socket.on('collaboration_update', (update) => {
+        const { listeners } = get()
+        const eventListeners = listeners.get(update.type)
+        if (eventListeners) {
+          eventListeners.forEach((handler) => {
+            try {
+              handler(update)
+            }
+ catch (error) {
+              console.error(`Error in collaboration event handler for ${update.type}:`, error)
+            }
+          })
+        }
+      })
+
+      set({ socket })
     }
-    set({ socket: null, isConnected: false, listeners: new Map() })
+    return socket
   },
 
   emit: (eventType: string, data: any) => {
-    const { socket, isConnected } = get()
-    if (socket && isConnected) {
+    const { socket } = get()
+    if (socket?.connected) {
       socket.emit('collaboration_event', {
         type: eventType,
         data,
