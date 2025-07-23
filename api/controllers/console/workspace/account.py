@@ -494,6 +494,10 @@ class ChangeEmailResetApi(Resource):
 
         updated_account = AccountService.update_account(current_user, email=args["new_email"])
 
+        AccountService.send_change_email_completed_notify_email(
+            email=args["new_email"],
+        )
+
         return updated_account
 
 
