@@ -27,6 +27,7 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
 
   if (leftNode) {
     const { newNode } = generateNewNode({
+      id: 'data-source-empty',
       type: CUSTOM_DATA_SOURCE_EMPTY_NODE,
       data: {
         title: '',
@@ -42,6 +43,7 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
     let newNoteNode
     if (!hasNoteBySystem) {
       newNoteNode = generateNewNode({
+        id: 'note',
         type: CUSTOM_NOTE_NODE,
         data: {
           title: '',
