@@ -616,7 +616,7 @@ class ToolManager:
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
         ids = [row.id for row in db.session.execute(db.text(sql), {"tenant_id": tenant_id}).all()]
-        return db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.id.in_(ids)).all()
+        return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod
     def list_providers_from_api(
@@ -664,7 +664,7 @@ class ToolManager:
             # get db api providers
             if "api" in filters:
                 db_api_providers: list[ApiToolProvider] = (
-                    db.session.query(ApiToolProvider).filter(ApiToolProvider.tenant_id == tenant_id).all()
+                    db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all()
                 )
 
                 api_provider_controllers: list[dict[str, Any]] = [
@@ -687,7 +687,7 @@ class ToolManager:
             if "workflow" in filters:
                 # get workflow providers
                 workflow_providers: list[WorkflowToolProvider] = (
-                    db.session.query(WorkflowToolProvider).filter(WorkflowToolProvider.tenant_id == tenant_id).all()
+                    db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
                 )
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []

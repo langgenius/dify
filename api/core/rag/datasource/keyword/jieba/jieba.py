@@ -93,7 +93,7 @@ class Jieba(BaseKeyword):
 
         documents = []
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).filter(
+            segment_query = db.session.query(DocumentSegment).where(
                 DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
             )
             if document_ids_filter:

@@ -259,7 +259,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param conversation_id: conversation id
         :return: conversation
         """
-        conversation = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -272,7 +272,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        message = db.session.query(Message).filter(Message.id == message_id).first()
+        message = db.session.query(Message).where(Message.id == message_id).first()
 
         if message is None:
             raise MessageNotExistsError("Message not exists")

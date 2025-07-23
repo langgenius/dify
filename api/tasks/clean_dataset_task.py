@@ -53,8 +53,8 @@ def clean_dataset_task(
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
         )
-        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
-        segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
+        documents = db.session.query(Document).where(Document.dataset_id == dataset_id).all()
+        segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
 
         if documents is None or len(documents) == 0:
             logging.info(click.style("No documents found for dataset: {}".format(dataset_id), fg="green"))
@@ -72,7 +72,7 @@ def clean_dataset_task(
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
                     if image_file is None:
                         continue
                     try:
@@ -85,12 +85,12 @@ def clean_dataset_task(
                     db.session.delete(image_file)
                 db.session.delete(segment)
 
-        db.session.query(DatasetProcessRule).filter(DatasetProcessRule.dataset_id == dataset_id).delete()
-        db.session.query(DatasetQuery).filter(DatasetQuery.dataset_id == dataset_id).delete()
-        db.session.query(AppDatasetJoin).filter(AppDatasetJoin.dataset_id == dataset_id).delete()
+        db.session.query(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id).delete()
+        db.session.query(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id).delete()
+        db.session.query(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset_id).delete()
         # delete dataset metadata
-        db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == dataset_id).delete()
-        db.session.query(DatasetMetadataBinding).filter(DatasetMetadataBinding.dataset_id == dataset_id).delete()
+        db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id).delete()
+        db.session.query(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id).delete()
         # delete files
         if documents:
             for document in documents:

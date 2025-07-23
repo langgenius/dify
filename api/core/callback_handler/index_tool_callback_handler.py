@@ -49,7 +49,7 @@ class DatasetIndexToolCallbackHandler:
         for document in documents:
             if document.metadata is not None:
                 document_id = document.metadata["document_id"]
-                dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+                dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
                 if not dataset_document:
                     _logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s",
@@ -75,7 +75,7 @@ class DatasetIndexToolCallbackHandler:
                             )
                         )
                 else:
-                    query = db.session.query(DocumentSegment).filter(
+                    query = db.session.query(DocumentSegment).where(
                         DocumentSegment.index_node_id == document.metadata["doc_id"]
                     )
 

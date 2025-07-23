@@ -26,7 +26,7 @@ class SavedMessage(Base):
 
     @property
     def message(self):
-        return db.session.query(Message).filter(Message.id == self.message_id).first()
+        return db.session.query(Message).where(Message.id == self.message_id).first()
 
 
 class PinnedConversation(Base):

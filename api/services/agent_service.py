@@ -52,11 +52,11 @@ class AgentService:
         if conversation.from_end_user_id:
             # only select name field
             executor = (
-                db.session.query(EndUser, EndUser.name).filter(EndUser.id == conversation.from_end_user_id).first()
+                db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
             )
         else:
             executor = (
-                db.session.query(Account, Account.name).filter(Account.id == conversation.from_account_id).first()
+                db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
             )
 
         if executor:

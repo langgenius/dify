@@ -49,7 +49,7 @@ class CompletionConversationApi(Resource):
         query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
 
         if args["keyword"]:
-            query = query.join(Message, Message.conversation_id == Conversation.id).filter(
+            query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
                     Message.query.ilike("%{}%".format(args["keyword"])),
                     Message.answer.ilike("%{}%".format(args["keyword"])),

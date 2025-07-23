@@ -114,12 +114,12 @@ class TestEnumText:
             session.commit()
 
         with Session(engine) as session:
-            user = session.query(_User).filter(_User.id == admin_user_id).first()
+            user = session.query(_User).where(_User.id == admin_user_id).first()
             assert user.user_type == _UserType.admin
             assert user.user_type_nullable is None
 
         with Session(engine) as session:
-            user = session.query(_User).filter(_User.id == normal_user_id).first()
+            user = session.query(_User).where(_User.id == normal_user_id).first()
             assert user.user_type == _UserType.normal
             assert user.user_type_nullable == _UserType.normal
 
@@ -188,4 +188,4 @@ class TestEnumText:
 
         with pytest.raises(ValueError) as exc:
             with Session(engine) as session:
-                _user = session.query(_User).filter(_User.id == 1).first()
+                _user = session.query(_User).where(_User.id == 1).first()

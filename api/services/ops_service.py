@@ -25,7 +25,7 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -156,7 +156,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -198,7 +198,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id

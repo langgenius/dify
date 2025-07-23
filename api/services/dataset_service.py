@@ -80,7 +80,7 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
             # get permitted dataset ids
@@ -158,7 +158,7 @@ class DatasetService:
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
-        stmt = select(Dataset).filter(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+        stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
@@ -843,7 +843,7 @@ class DocumentService:
     def get_document(dataset_id: str, document_id: Optional[str] = None) -> Optional[Document]:
         if document_id:
             document = (
-                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             return document
         else:
@@ -851,7 +851,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Optional[Document]:
-        document = db.session.query(Document).filter(Document.id == document_id).first()
+        document = db.session.query(Document).where(Document.id == document_id).first()
 
         return document
 
@@ -922,7 +922,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_file_detail(file_id: str):
-        file_detail = db.session.query(UploadFile).filter(UploadFile.id == file_id).one_or_none()
+        file_detail = db.session.query(UploadFile).where(UploadFile.id == file_id).one_or_none()
         return file_detail
 
     @staticmethod
@@ -950,7 +950,7 @@ class DocumentService:
 
     @staticmethod
     def delete_documents(dataset: Dataset, document_ids: list[str]):
-        documents = db.session.query(Document).filter(Document.id.in_(document_ids)).all()
+        documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
             for document in documents
@@ -2043,7 +2043,7 @@ class SegmentService:
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
             return segment
 
     @classmethod
@@ -2295,7 +2295,7 @@ class SegmentService:
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()
-        new_segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
+        new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
         return new_segment
 
     @classmethod
@@ -2332,7 +2332,7 @@ class SegmentService:
         index_node_ids = [index_node_id[0] for index_node_id in index_node_ids]
 
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
-        db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).delete()
+        db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
         db.session.commit()
 
     @classmethod
@@ -2594,7 +2594,7 @@ class SegmentService:
         limit: int = 20,
     ):
         """Get segments for a document with optional filtering."""
-        query = select(DocumentSegment).filter(
+        query = select(DocumentSegment).where(
             DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
         )
 
@@ -2615,7 +2615,7 @@ class SegmentService:
     ) -> tuple[DocumentSegment, Document]:
         """Update a segment by its ID with validation and checks."""
         # check dataset
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -2735,7 +2735,7 @@ class DatasetPermissionService:
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
-            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
@@ -2771,7 +2771,7 @@ class DatasetPermissionService:
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
         try:
-            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
             db.session.commit()
         except Exception as e:
             db.session.rollback()

@@ -167,7 +167,7 @@ class Account(UserMixin, Base):
             .one_or_none()
         )
         if account_integrate:
-            return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
+            return db.session.query(Account).where(Account.id == account_integrate.account_id).one_or_none()
         return None
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']

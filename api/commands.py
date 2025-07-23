@@ -50,7 +50,7 @@ def reset_password(email, new_password, password_confirm):
         click.echo(click.style("Passwords do not match.", fg="red"))
         return
 
-    account = db.session.query(Account).filter(Account.email == email).one_or_none()
+    account = db.session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
         click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
@@ -89,7 +89,7 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style("New emails do not match.", fg="red"))
         return
 
-    account = db.session.query(Account).filter(Account.email == email).one_or_none()
+    account = db.session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
         click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
@@ -136,8 +136,8 @@ def reset_encrypt_key_pair():
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        db.session.query(Provider).filter(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).filter(ProviderModel.tenant_id == tenant.id).delete()
+        db.session.query(Provider).where(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
+        db.session.query(ProviderModel).where(ProviderModel.tenant_id == tenant.id).delete()
         db.session.commit()
 
         click.echo(
@@ -192,7 +192,7 @@ def migrate_annotation_vector_database():
             try:
                 click.echo("Creating app annotation index: {}".format(app.id))
                 app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app.id).first()
+                    db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                 )
 
                 if not app_annotation_setting:
@@ -208,7 +208,7 @@ def migrate_annotation_vector_database():
                 if not dataset_collection_binding:
                     click.echo("App annotation collection binding not found: {}".format(app.id))
                     continue
-                annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app.id).all()
+                annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -305,7 +305,7 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             stmt = (
-                select(Dataset).filter(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
+                select(Dataset).where(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
@@ -468,7 +468,7 @@ def convert_to_agent_apps():
                 app_id = str(i.id)
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
-                    app = db.session.query(App).filter(App.id == app_id).first()
+                    app = db.session.query(App).where(App.id == app_id).first()
                     if app is not None:
                         apps.append(app)
 
@@ -483,7 +483,7 @@ def convert_to_agent_apps():
                 db.session.commit()
 
                 # update conversation mode to agent
-                db.session.query(Conversation).filter(Conversation.app_id == app.id).update(
+                db.session.query(Conversation).where(Conversation.app_id == app.id).update(
                     {Conversation.mode: AppMode.AGENT_CHAT.value}
                 )
 
@@ -717,7 +717,7 @@ where sites.id is null limit 1000"""
                     continue
 
                 try:
-                    app = db.session.query(App).filter(App.id == app_id).first()
+                    app = db.session.query(App).where(App.id == app_id).first()
                     if not app:
                         print(f"App {app_id} not found")
                         continue

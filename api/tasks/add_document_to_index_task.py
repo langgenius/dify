@@ -25,7 +25,7 @@ def add_document_to_index_task(dataset_document_id: str):
     logging.info(click.style("Start add document to index: {}".format(dataset_document_id), fg="green"))
     start_at = time.perf_counter()
 
-    dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document_id).first()
+    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
     if not dataset_document:
         logging.info(click.style("Document not found: {}".format(dataset_document_id), fg="red"))
         db.session.close()
@@ -86,12 +86,12 @@ def add_document_to_index_task(dataset_document_id: str):
         index_processor.load(dataset, documents)
 
         # delete auto disable log
-        db.session.query(DatasetAutoDisableLog).filter(
+        db.session.query(DatasetAutoDisableLog).where(
             DatasetAutoDisableLog.document_id == dataset_document.id
         ).delete()
 
         # update segment to enable
-        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == dataset_document.id).update(
+        db.session.query(DocumentSegment).where(DocumentSegment.document_id == dataset_document.id).update(
             {
                 DocumentSegment.enabled: True,
                 DocumentSegment.disabled_at: None,

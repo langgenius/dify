@@ -46,7 +46,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
             if dataset_documents:
                 dataset_documents_ids = [doc.id for doc in dataset_documents]
-                db.session.query(DatasetDocument).filter(DatasetDocument.id.in_(dataset_documents_ids)).update(
+                db.session.query(DatasetDocument).where(DatasetDocument.id.in_(dataset_documents_ids)).update(
                     {"indexing_status": "indexing"}, synchronize_session=False
                 )
                 db.session.commit()
@@ -76,12 +76,12 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                 documents.append(document)
                             # save vector index
                             index_processor.load(dataset, documents, with_keywords=False)
-                        db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document.id).update(
+                        db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "completed"}, synchronize_session=False
                         )
                         db.session.commit()
                     except Exception as e:
-                        db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document.id).update(
+                        db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "error", "error": str(e)}, synchronize_session=False
                         )
                         db.session.commit()
@@ -100,7 +100,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
             if dataset_documents:
                 # update document status
                 dataset_documents_ids = [doc.id for doc in dataset_documents]
-                db.session.query(DatasetDocument).filter(DatasetDocument.id.in_(dataset_documents_ids)).update(
+                db.session.query(DatasetDocument).where(DatasetDocument.id.in_(dataset_documents_ids)).update(
                     {"indexing_status": "indexing"}, synchronize_session=False
                 )
                 db.session.commit()
@@ -148,12 +148,12 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                 documents.append(document)
                             # save vector index
                             index_processor.load(dataset, documents, with_keywords=False)
-                        db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document.id).update(
+                        db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "completed"}, synchronize_session=False
                         )
                         db.session.commit()
                     except Exception as e:
-                        db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document.id).update(
+                        db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "error", "error": str(e)}, synchronize_session=False
                         )
                         db.session.commit()

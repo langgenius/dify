@@ -336,7 +336,7 @@ class BaseAgentRunner(AppRunner):
         Save agent thought
         """
         updated_agent_thought = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+            db.session.query(MessageAgentThought).where(MessageAgentThought.id == agent_thought.id).first()
         )
         if not updated_agent_thought:
             raise ValueError("agent thought not found")
@@ -496,7 +496,7 @@ class BaseAgentRunner(AppRunner):
         return result
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+        files = db.session.query(MessageFile).where(MessageFile.message_id == message.id).all()
         if not files:
             return UserPromptMessage(content=message.query)
         if message.app_model_config:

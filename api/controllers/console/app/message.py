@@ -167,7 +167,7 @@ class MessageAnnotationCountApi(Resource):
     @account_initialization_required
     @get_app_model
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 
         return {"count": count}
 
@@ -214,7 +214,7 @@ class MessageApi(Resource):
     def get(self, app_model, message_id):
         message_id = str(message_id)
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")

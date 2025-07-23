@@ -24,7 +24,7 @@ class ClearFreePlanTenantExpiredLogs:
     @classmethod
     def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
         with flask_app.app_context():
-            apps = db.session.query(App).filter(App.tenant_id == tenant_id).all()
+            apps = db.session.query(App).where(App.tenant_id == tenant_id).all()
             app_ids = [app.id for app in apps]
             while True:
                 with Session(db.engine).no_autoflush as session:
@@ -54,7 +54,7 @@ class ClearFreePlanTenantExpiredLogs:
                     message_ids = [message.id for message in messages]
 
                     # delete messages
-                    session.query(Message).filter(
+                    session.query(Message).where(
                         Message.id.in_(message_ids),
                     ).delete(synchronize_session=False)
 
@@ -93,7 +93,7 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
                     conversation_ids = [conversation.id for conversation in conversations]
-                    session.query(Conversation).filter(
+                    session.query(Conversation).where(
                         Conversation.id.in_(conversation_ids),
                     ).delete(synchronize_session=False)
                     session.commit()

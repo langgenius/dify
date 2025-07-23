@@ -92,7 +92,7 @@ class TagService:
     def update_tags(args: dict, tag_id: str) -> Tag:
         if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
             raise ValueError("Tag name already exists")
-        tag = db.session.query(Tag).filter(Tag.id == tag_id).first()
+        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
             raise NotFound("Tag not found")
         tag.name = args["name"]
@@ -101,17 +101,17 @@ class TagService:
 
     @staticmethod
     def get_tag_binding_count(tag_id: str) -> int:
-        count = db.session.query(TagBinding).filter(TagBinding.tag_id == tag_id).count()
+        count = db.session.query(TagBinding).where(TagBinding.tag_id == tag_id).count()
         return count
 
     @staticmethod
     def delete_tag(tag_id: str):
-        tag = db.session.query(Tag).filter(Tag.id == tag_id).first()
+        tag = db.session.query(Tag).where(Tag.id == tag_id).first()
         if not tag:
             raise NotFound("Tag not found")
         db.session.delete(tag)
         # delete tag binding
-        tag_bindings = db.session.query(TagBinding).filter(TagBinding.tag_id == tag_id).all()
+        tag_bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag_id).all()
         if tag_bindings:
             for tag_binding in tag_bindings:
                 db.session.delete(tag_binding)

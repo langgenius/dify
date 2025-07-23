@@ -262,7 +262,7 @@ def _build_from_tool_file(
     strict_type_validation: bool = False,
 ) -> File:
     tool_file = db.session.scalar(
-        select(ToolFile).filter(
+        select(ToolFile).where(
             ToolFile.id == mapping.get("tool_file_id"),
             ToolFile.tenant_id == tenant_id,
         )

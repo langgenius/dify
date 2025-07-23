@@ -24,7 +24,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     documents = []
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
         logging.info(click.style("Dataset is not found: {}".format(dataset_id), fg="yellow"))
         db.session.close()
@@ -48,7 +48,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     except Exception as e:
         for document_id in document_ids:
             document = (
-                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             if document:
                 document.indexing_status = "error"
@@ -63,7 +63,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
         logging.info(click.style("Start process document: {}".format(document_id), fg="green"))
 
         document = (
-            db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
         )
 
         if document:
