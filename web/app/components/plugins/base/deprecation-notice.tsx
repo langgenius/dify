@@ -4,8 +4,8 @@ import Link from 'next/link'
 import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
 import { Trans } from 'react-i18next'
-import { snakeCase2CamelCase } from '@/utils/format'
 import { useMixedTranslation } from '../marketplace/hooks'
+import { camelCase } from 'lodash-es'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
@@ -36,7 +36,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason) return ''
-    return snakeCase2CamelCase(deprecatedReason)
+    return camelCase(deprecatedReason)
   }, [deprecatedReason])
 
   // Check if the deprecatedReasonKey exists in i18n

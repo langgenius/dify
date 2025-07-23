@@ -93,6 +93,7 @@ class BuiltinToolProvider(Base):
     credential_type: Mapped[str] = mapped_column(
         db.String(32), nullable=False, server_default=db.text("'api-key'::character varying")
     )
+    expires_at: Mapped[int] = mapped_column(db.BigInteger, nullable=False, server_default=db.text("-1"))
 
     @property
     def credentials(self) -> dict:

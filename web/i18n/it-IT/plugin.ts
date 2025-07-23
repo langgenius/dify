@@ -248,6 +248,55 @@ const translation = {
     clientInfo: 'Poiché non sono stati trovati segreti client di sistema per questo fornitore di strumenti, è necessario configurarlo manualmente. Per redirect_uri, si prega di utilizzare',
   },
   deprecated: 'Deprecato',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Disabile',
+        description: 'I plugin non si aggiorneranno automaticamente',
+      },
+      fixOnly: {
+        name: 'Ripara solo',
+        selectedDescription: 'Aggiornamento automatico solo per versioni patch',
+      },
+      latest: {
+        selectedDescription: 'Aggiorna sempre all\'ultima versione',
+        description: 'Aggiorna sempre all\'ultima versione',
+        name: 'Ultimo',
+      },
+    },
+    upgradeMode: {
+      exclude: 'Escludi selezionato',
+      all: 'Aggiorna tutto',
+      partial: 'Solo selezionati',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'I plugin selezionati non verranno aggiornati automaticamente',
+      partial: 'Solo i plugin selezionati si aggiorneranno automaticamente. Attualmente non ci sono plugin selezionati, quindi nessun plugin si aggiornerà automaticamente.',
+    },
+    operation: {
+      clearAll: 'Cancella tutto',
+      select: 'Seleziona i plugin',
+    },
+    pluginDowngradeWarning: {
+      title: 'Downgrade del plugin',
+      downgrade: 'Comunque esegui il downgrade',
+      exclude: 'Escludi dall\'aggiornamento automatico',
+      description: 'L\'aggiornamento automatico è attualmente abilitato per questo plugin. Il downgrade della versione potrebbe causare la sovrascrittura delle tue modifiche durante il prossimo aggiornamento automatico.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'Nessun plugin trovato',
+      noInstalled: 'Nessun plugin installato',
+    },
+    specifyPluginsToUpdate: 'Specifica i plugin da aggiornare',
+    updateTime: 'Tempo di aggiornamento',
+    automaticUpdates: 'Aggiornamenti automatici',
+    updateSettings: 'Aggiorna impostazioni',
+    nextUpdateTime: 'Prossimo aggiornamento automatico: {{time}}',
+    partialUPdate: 'Solo i seguenti {{num}} plugin si aggiorneranno automaticamente',
+    changeTimezone: 'Per cambiare il fuso orario, vai su <setTimezone>Impostazioni</setTimezone>',
+    excludeUpdate: 'I seguenti {{num}} plugin non si aggiorneranno automaticamente',
+    updateTimeTitle: 'Tempo di aggiornamento',
+  },
 }
 
 export default translation

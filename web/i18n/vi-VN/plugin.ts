@@ -248,6 +248,55 @@ const translation = {
     clientInfo: 'Vì không tìm thấy bí mật khách hàng hệ thống cho nhà cung cấp công cụ này, cần thiết lập thủ công, đối với redirect_uri, vui lòng sử dụng',
   },
   deprecated: 'Đã bị ngưng sử dụng',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Khuyết tật',
+        description: 'Các plugin sẽ không tự động cập nhật',
+      },
+      fixOnly: {
+        name: 'Chỉ sửa chữa',
+        selectedDescription: 'Tự động cập nhật chỉ cho các phiên bản bản vá',
+      },
+      latest: {
+        name: 'Mới nhất',
+        description: 'Luôn cập nhật lên phiên bản mới nhất',
+        selectedDescription: 'Luôn cập nhật lên phiên bản mới nhất',
+      },
+    },
+    upgradeMode: {
+      partial: 'Chỉ được chọn',
+      exclude: 'Loại trừ đã chọn',
+      all: 'Cập nhật tất cả',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Các plugin được chọn sẽ không tự động cập nhật',
+      partial: 'Chỉ những plugin được chọn mới tự động cập nhật. Hiện tại không có plugin nào được chọn, vì vậy sẽ không có plugin nào tự động cập nhật.',
+    },
+    operation: {
+      clearAll: 'Xóa tất cả',
+      select: 'Chọn plugin',
+    },
+    pluginDowngradeWarning: {
+      exclude: 'Loại trừ khỏi cập nhật tự động',
+      downgrade: 'Giảm cấp vẫn vậy',
+      description: 'Chức năng tự động cập nhật hiện đang được bật cho plugin này. Việc hạ cấp phiên bản có thể khiến các thay đổi của bạn bị ghi đè trong lần cập nhật tự động tiếp theo.',
+      title: 'Hạ cấp Plugin',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Không có plugin nào được cài đặt',
+      noFound: 'Không tìm thấy plugin nào',
+    },
+    updateTimeTitle: 'Thời gian cập nhật',
+    updateTime: 'Thời gian cập nhật',
+    automaticUpdates: 'Cập nhật tự động',
+    nextUpdateTime: 'Cập nhật tự động tiếp theo: {{time}}',
+    specifyPluginsToUpdate: 'Chỉ định các plugin để cập nhật',
+    excludeUpdate: 'Các plugin {{num}} sau đây sẽ không tự động cập nhật',
+    updateSettings: 'Cập nhật cài đặt',
+    partialUPdate: 'Chỉ có {{num}} plugin sau đây sẽ tự động cập nhật',
+    changeTimezone: 'Để thay đổi múi giờ, hãy vào <setTimezone>Cài đặt</setTimezone>',
+  },
 }
 
 export default translation

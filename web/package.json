@@ -46,7 +46,7 @@
     "@eslint/compat": "^1.2.4",
     "@floating-ui/react": "^0.26.25",
     "@formatjs/intl-localematcher": "^0.5.6",
-    "@headlessui/react": "^2.2.0",
+    "@headlessui/react": "2.2.1",
     "@heroicons/react": "^2.0.16",
     "@hookform/resolvers": "^3.9.0",
     "@lexical/code": "^0.30.0",

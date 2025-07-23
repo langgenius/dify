@@ -248,6 +248,55 @@ const translation = {
     authRemoved: 'Die Authentifizierung wurde entfernt.',
   },
   deprecated: 'Abgelehnt',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Plugins werden nicht automatisch aktualisiert',
+        name: 'Behindert',
+      },
+      fixOnly: {
+        name: 'Nur fixieren',
+        selectedDescription: 'Auto-Update nur für Patch-Versionen',
+      },
+      latest: {
+        description: 'Immer auf die neueste Version aktualisieren',
+        selectedDescription: 'Immer auf die neueste Version aktualisieren',
+        name: 'Neueste',
+      },
+    },
+    upgradeMode: {
+      exclude: 'Ausgewählte ausschließen',
+      partial: 'Nur ausgewählt',
+      all: 'Alle aktualisieren',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Ausgewählte Plugins werden nicht automatisch aktualisiert',
+      partial: 'Nur ausgewählte Plugins werden automatisch aktualisiert. Derzeit sind keine Plugins ausgewählt, daher werden keine Plugins automatisch aktualisiert.',
+    },
+    operation: {
+      clearAll: 'Alles löschen',
+      select: 'Plugins auswählen',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'Trotzdem downgraden',
+      title: 'Plugin Downgrade',
+      exclude: 'Von der automatischen Aktualisierung ausschließen',
+      description: 'Die automatische Aktualisierung ist derzeit für dieses Plugin aktiviert. Ein Downgrade der Version kann dazu führen, dass Ihre Änderungen während des nächsten automatischen Updates überschrieben werden.',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Keine Plugins installiert',
+      noFound: 'Keine Plugins gefunden.',
+    },
+    automaticUpdates: 'Automatische Updates',
+    updateTimeTitle: 'Aktualisierungszeit',
+    updateTime: 'Aktualisierungszeit',
+    excludeUpdate: 'Die folgenden {{num}} Plugins werden nicht automatisch aktualisiert.',
+    changeTimezone: 'Um die Zeitzone zu ändern, gehen Sie zu <setTimezone> Einstellungen </setTimezone>',
+    nextUpdateTime: 'Nächstes automatisches Update: {{time}}',
+    partialUPdate: 'Nur die folgenden {{num}} Plugins werden automatisch aktualisiert',
+    specifyPluginsToUpdate: 'Geben Sie die zu aktualisierenden Plugins an',
+    updateSettings: 'Einstellungen aktualisieren',
+  },
 }
 
 export default translation

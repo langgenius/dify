@@ -248,6 +248,55 @@ const translation = {
     useApiAuthDesc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo to orodje pri orkestraciji aplikacij.',
   },
   deprecated: 'Zastaran',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Onemogočeno',
+        description: 'Vtičniki se ne bodo samodejno posodobili',
+      },
+      fixOnly: {
+        name: 'Popravi samo',
+        selectedDescription: 'Samodejno posodabljanje samo za različice popravkov',
+      },
+      latest: {
+        selectedDescription: 'Vedno posodobite na najnovejšo različico',
+        name: 'Najnovejši',
+        description: 'Vedno posodobite na najnovejšo različico',
+      },
+    },
+    upgradeMode: {
+      partial: 'Samo izbrano',
+      exclude: 'Izključi izbrano',
+      all: 'Posodobi vse',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Izbrani vtičniki se ne bodo samodejno posodabljali.',
+      partial: 'Samo izbrani vtičniki se bodo samodejno posodabljali. Trenutno ni izbranih nobenih vtičnikov, zato se nobeni vtičniki ne bodo samodejno posodobili.',
+    },
+    operation: {
+      select: 'Izberi vtičnike',
+      clearAll: 'Počisti vse',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'Kljub temu narediti nižjo različico',
+      exclude: 'Izključi iz samodejnega posodabljanja',
+      title: 'Zmanjšanje različice vtičnika',
+      description: 'Samodejno posodabljanje je trenutno omogočeno za ta vtičnik. Zmanjšanje različice lahko povzroči, da bodo vaše spremembe prepisane med naslednjim samodejnim posodabljanjem.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'Nobeni vtičniki niso bili najdeni',
+      noInstalled: 'Nobenih vtičnikov ni nameščenih',
+    },
+    updateTimeTitle: 'Čas posodobitve',
+    specifyPluginsToUpdate: 'Določite vtičnike za posodobitev',
+    updateTime: 'Čas posodobitve',
+    nextUpdateTime: 'Naslednje samodejno posodabljanje: {{time}}',
+    automaticUpdates: 'Samodejna posodobitev',
+    excludeUpdate: 'Naslednjih {{num}} razširitev ne bo samodejno posodobljenih',
+    changeTimezone: 'Za spremembo časovnega pasu pojdite v <setTimezone>Nastavitve</setTimezone>',
+    partialUPdate: 'Samo naslednjih {{num}} vtičnikov se bo samodejno posodabljalo.',
+    updateSettings: 'Posodobi nastavitve',
+  },
 }
 
 export default translation
