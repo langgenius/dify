@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Optional
 
-from celery import shared_task
+from celery import shared_task  # type: ignore[import-untyped]
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 

@@ -8,7 +8,7 @@ providing improved performance by offloading database operations to background w
 import logging
 from typing import Optional, Union
 
-from celery.result import AsyncResult
+from celery.result import AsyncResult  # type: ignore[import-untyped]
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -39,6 +39,15 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
     - Automatic retry and error handling through Celery
     - Configurable timeouts for async operations
     """
+
+    _session_factory: sessionmaker
+    _tenant_id: str
+    _app_id: Optional[str]
+    _triggered_from: Optional[WorkflowRunTriggeredFrom]
+    _creator_user_id: str
+    _creator_user_role: CreatorUserRole
+    _async_timeout: int
+    _pending_saves: dict[str, AsyncResult]
 
     def __init__(
         self,
@@ -72,7 +81,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id
+        self._tenant_id = tenant_id  # type: ignore[assignment]  # We've already checked tenant_id is not None
 
         # Store app context
         self._app_id = app_id
