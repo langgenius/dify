@@ -129,7 +129,7 @@ class AppGenerateService:
                 rate_limit.exit(request_id)
 
     @staticmethod
-    def _get_max_active_requests(app_model: App) -> int:
+    def _get_max_active_requests(app: App) -> int:
         """
         Get the maximum number of active requests allowed for an app.
 
@@ -137,12 +137,12 @@ class AppGenerateService:
         A value of 0 means infinite (no limit).
 
         Args:
-            app_model: The App model instance
+            app: The App model instance
 
         Returns:
             The maximum number of active requests allowed
         """
-        app_limit = app_model.max_active_requests or 0
+        app_limit = app.max_active_requests or 0
         config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
 
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
