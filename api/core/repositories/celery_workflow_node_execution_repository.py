@@ -9,7 +9,7 @@ import logging
 from collections.abc import Sequence
 from typing import Optional, Union
 
-from celery.result import AsyncResult
+from celery.result import AsyncResult  # type: ignore[import-untyped]
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -46,6 +46,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     - Batch operations for improved efficiency
     """
 
+    _session_factory: sessionmaker
+    _tenant_id: str
+    _app_id: Optional[str]
+    _triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom]
+    _creator_user_id: str
+    _creator_user_role: CreatorUserRole
+    _async_timeout: int
+    _pending_saves: dict[str, AsyncResult]
+    _workflow_execution_mapping: dict[str, str]
+
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
@@ -78,7 +88,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id
+        self._tenant_id = tenant_id  # type: ignore[assignment]  # We've already checked tenant_id is not None
 
         # Store app context
         self._app_id = app_id
@@ -132,7 +142,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             self._pending_saves[execution.id] = task_result
             
             # Cache the workflow_execution_id mapping for efficient workflow-specific waiting
-            self._workflow_execution_mapping[execution.id] = execution.workflow_execution_id
+            if execution.workflow_execution_id:
+                self._workflow_execution_mapping[execution.id] = execution.workflow_execution_id
 
             logger.debug(f"Queued async save for workflow node execution: {execution.id}")
 
