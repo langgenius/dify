@@ -319,7 +319,7 @@ class TableStoreVector(BaseVector):
         return documents
 
     def _search_by_full_text(self, query: str, document_ids_filter: list[str] | None, top_k: int) -> list[Document]:
-        bool_query = tablestore.BoolQuery()
+        bool_query = tablestore.BoolQuery(must_queries=[], filter_queries=[], should_queries=[], must_not_queries=[])
         bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY.value))
 
         if document_ids_filter:
