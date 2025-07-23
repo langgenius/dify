@@ -38,7 +38,7 @@ const NAMESPACES = [
   'plugin',
   'register',
   'run-log',
-  'share-app',
+  'share',
   'time',
   'tools',
   'workflow',
