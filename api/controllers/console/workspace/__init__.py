@@ -21,7 +21,7 @@ def plugin_permission_required(
             with Session(db.engine) as session:
                 permission = (
                     session.query(TenantPluginPermission)
-                    .filter(
+                    .where(
                         TenantPluginPermission.tenant_id == tenant_id,
                     )
                     .first()

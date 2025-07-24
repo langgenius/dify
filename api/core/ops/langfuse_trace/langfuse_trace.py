@@ -244,7 +244,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 user_id = end_user_data.session_id

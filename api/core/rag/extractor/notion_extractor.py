@@ -366,7 +366,7 @@ class NotionExtractor(BaseExtractor):
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
         data_source_binding = (
             db.session.query(DataSourceOauthBinding)
-            .filter(
+            .where(
                 db.and_(
                     DataSourceOauthBinding.tenant_id == tenant_id,
                     DataSourceOauthBinding.provider == "notion",

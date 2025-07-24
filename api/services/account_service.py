@@ -54,7 +54,10 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
-from tasks.mail_change_mail_task import send_change_mail_task
+from tasks.mail_change_mail_task import (
+    send_change_mail_completed_notification_task,
+    send_change_mail_task,
+)
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_owner_transfer_task import (
@@ -462,6 +465,22 @@ class AccountService:
         return token
 
     @classmethod
+    def send_change_email_completed_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_change_mail_completed_notification_task.delay(
+            language=language,
+            to=account_email,
+        )
+
+    @classmethod
     def send_owner_transfer_email(
         cls,
         account: Optional[Account] = None,
@@ -643,7 +662,7 @@ class AccountService:
                 )
             )
 
-        account = db.session.query(Account).filter(Account.email == email).first()
+        account = db.session.query(Account).where(Account.email == email).first()
         if not account:
             return None
 
@@ -651,6 +670,12 @@ class AccountService:
             raise Unauthorized("Account is banned.")
 
         return account
+
+    @classmethod
+    def is_account_in_freeze(cls, email: str) -> bool:
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            return True
+        return False
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -900,7 +925,7 @@ class TenantService:
         return (
             db.session.query(Tenant)
             .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
-            .filter(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
+            .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
             .all()
         )
 
@@ -929,7 +954,7 @@ class TenantService:
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
             .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
-            .filter(
+            .where(
                 TenantAccountJoin.account_id == account.id,
                 TenantAccountJoin.tenant_id == tenant_id,
                 Tenant.status == TenantStatus.NORMAL,
@@ -940,7 +965,7 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            db.session.query(TenantAccountJoin).filter(
+            db.session.query(TenantAccountJoin).where(
                 TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id
             ).update({"current": False})
             tenant_account_join.current = True
@@ -955,7 +980,7 @@ class TenantService:
             db.session.query(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(TenantAccountJoin.tenant_id == tenant.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id)
         )
 
         # Initialize an empty list to store the updated accounts
@@ -974,8 +999,8 @@ class TenantService:
             db.session.query(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(TenantAccountJoin.tenant_id == tenant.id)
-            .filter(TenantAccountJoin.role == "dataset_operator")
+            .where(TenantAccountJoin.tenant_id == tenant.id)
+            .where(TenantAccountJoin.role == "dataset_operator")
         )
 
         # Initialize an empty list to store the updated accounts
@@ -995,9 +1020,7 @@ class TenantService:
 
         return (
             db.session.query(TenantAccountJoin)
-            .filter(
-                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles])
-            )
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles]))
             .first()
             is not None
         )
@@ -1007,7 +1030,7 @@ class TenantService:
         """Get the role of the current account for a given tenant"""
         join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .first()
         )
         return TenantAccountRole(join.role) if join else None
@@ -1274,7 +1297,7 @@ class RegisterService:
 
         tenant = (
             db.session.query(Tenant)
-            .filter(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
+            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
             .first()
         )
 
@@ -1284,7 +1307,7 @@ class RegisterService:
         tenant_account = (
             db.session.query(Account, TenantAccountJoin.role)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
+            .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
             .first()
         )
 

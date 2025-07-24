@@ -154,7 +154,7 @@ class BuiltinToolManageService:
             # get if the provider exists
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -404,7 +404,7 @@ class BuiltinToolManageService:
         with Session(db.engine) as session:
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -613,7 +613,7 @@ class BuiltinToolManageService:
                 if provider_id_entity.organization != "langgenius":
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             BuiltinToolProvider.provider == full_provider_name,
                         )
@@ -626,7 +626,7 @@ class BuiltinToolManageService:
                 else:
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             (BuiltinToolProvider.provider == provider_name)
                             | (BuiltinToolProvider.provider == full_provider_name),
@@ -647,7 +647,7 @@ class BuiltinToolManageService:
                 # it's an old provider without organization
                 return (
                     session.query(BuiltinToolProvider)
-                    .filter(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
+                    .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                     .order_by(
                         BuiltinToolProvider.is_default.desc(),  # default=True first
                         BuiltinToolProvider.created_at.asc(),  # oldest first

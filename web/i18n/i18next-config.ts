@@ -50,24 +50,35 @@ export const loadLangResources = async (lang: string) => {
     acc[camelCase(NAMESPACES[index])] = mod
     return acc
   }, {} as Record<string, any>)
+  return resources
+}
+
+const getFallbackTranslation = () => {
+  const resources = NAMESPACES.reduce((acc, ns, index) => {
+    acc[camelCase(NAMESPACES[index])] = require(`./en-US/${ns}`).default
+    return acc
+  }, {} as Record<string, any>)
   return {
     translation: resources,
   }
 }
 
-i18n.use(initReactI18next)
-  .init({
-    lng: undefined,
-    fallbackLng: 'en-US',
-  })
+if (!i18n.isInitialized) {
+  i18n.use(initReactI18next)
+    .init({
+      lng: undefined,
+      fallbackLng: 'en-US',
+      resources: {
+        'en-US': getFallbackTranslation(),
+      },
+    })
+}
 
 export const changeLanguage = async (lng?: string) => {
   const resolvedLng = lng ?? 'en-US'
-  const resources = {
-    [resolvedLng]: await loadLangResources(resolvedLng),
-  }
+  const resource = await loadLangResources(resolvedLng)
   if (!i18n.hasResourceBundle(resolvedLng, 'translation'))
-    i18n.addResourceBundle(resolvedLng, 'translation', resources[resolvedLng].translation, true, true)
+    i18n.addResourceBundle(resolvedLng, 'translation', resource, true, true)
   await i18n.changeLanguage(resolvedLng)
 }
 
