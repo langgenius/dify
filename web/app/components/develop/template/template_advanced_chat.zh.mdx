@@ -78,6 +78,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
+      <Property name='trace_id' type='string' key='trace_id'>
+      （选填）链路追踪ID。适用于与业务系统已有的trace组件打通，实现端到端分布式追踪等场景。如果未指定，系统会自动生成<code>trace_id</code>。支持以下三种方式传递，具体优先级依次为：<br/>
+        - Header：通过 HTTP Header <code>X-Trace-Id</code> 传递，优先级最高。<br/>
+        - Query 参数：通过 URL 查询参数 <code>trace_id</code> 传递。<br/>
+        - Request Body：通过请求体字段 <code>trace_id</code> 传递（即本字段）。<br/>
+      </Property>
     </Properties>
 
     ### Response
@@ -1229,11 +1235,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `default` (string) 默认值
         - `options` (array[string]) 选项值
     - `file_upload` (object) 文件上传配置
-      - `image` (object) 图片设置
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 是否开启
-        - `number_limits` (int) 图片数量限制，默认 3
-        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+      - `document` (object) 文档设置  
+        当前仅支持文档类型：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 文档数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `image` (object) 图片设置  
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 图片数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `audio` (object) 音频设置  
+        当前仅支持音频类型：`mp3`, `m4a`, `wav`, `webm`, `amr`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 音频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `video` (object) 视频设置  
+        当前仅支持视频类型：`mp4`, `mov`, `mpeg`, `mpga`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 视频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `custom` (object) 自定义设置  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 自定义数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
     - `system_parameters` (object) 系统参数
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)

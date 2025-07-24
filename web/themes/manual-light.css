@@ -63,4 +63,5 @@ html[data-theme="light"] {
     --color-premium-badge-border-highlight-color: #fffffff2;
     --color-price-enterprise-background: linear-gradient(180deg, rgba(185, 211, 234, 0.00) 0%, rgba(180, 209, 234, 0.92) 100%);
     --color-grid-mask-background: linear-gradient(0deg, #FFF 0%, rgba(217, 217, 217, 0.10) 62.25%, rgba(217, 217, 217, 0.10) 100%);
+    --color-background-gradient-bg-fill-chat-bubble-bg-3: #e1effe;
 }

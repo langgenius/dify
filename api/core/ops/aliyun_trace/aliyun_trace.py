@@ -101,7 +101,8 @@ class AliyunDataTrace(BaseTraceInstance):
             raise ValueError(f"Aliyun get run url failed: {str(e)}")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = convert_to_trace_id(trace_info.workflow_run_id)
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or convert_to_trace_id(trace_info.workflow_run_id)
         workflow_span_id = convert_to_span_id(trace_info.workflow_run_id, "workflow")
         self.add_workflow_span(trace_id, workflow_span_id, trace_info)
 
@@ -119,7 +120,7 @@ class AliyunDataTrace(BaseTraceInstance):
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 user_id = end_user_data.session_id
@@ -243,14 +244,14 @@ class AliyunDataTrace(BaseTraceInstance):
             if not app_id:
                 raise ValueError("No app_id found in trace_info metadata")
 
-            app = session.query(App).filter(App.id == app_id).first()
+            app = session.query(App).where(App.id == app_id).first()
             if not app:
                 raise ValueError(f"App with id {app_id} not found")
 
             if not app.created_by:
                 raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
 
-            service_account = session.query(Account).filter(Account.id == app.created_by).first()
+            service_account = session.query(Account).where(Account.id == app.created_by).first()
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
             current_tenant = (
@@ -284,7 +285,8 @@ class AliyunDataTrace(BaseTraceInstance):
             else:
                 node_span = self.build_workflow_task_span(trace_id, workflow_span_id, trace_info, node_execution)
             return node_span
-        except Exception:
+        except Exception as e:
+            logging.debug(f"Error occurred in build_workflow_node_span: {e}", exc_info=True)
             return None
 
     def get_workflow_node_status(self, node_execution: WorkflowNodeExecution) -> Status:
@@ -306,7 +308,7 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
             end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
             attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                 GEN_AI_SPAN_KIND: GenAISpanKind.TASK.value,
                 GEN_AI_FRAMEWORK: "dify",
                 INPUT_VALUE: json.dumps(node_execution.inputs, ensure_ascii=False),
@@ -381,7 +383,7 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(node_execution.created_at),
             end_time=convert_datetime_to_nanoseconds(node_execution.finished_at),
             attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: "dify",
                 GEN_AI_MODEL_NAME: process_data.get("model_name", ""),
@@ -415,7 +417,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
                 end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
                 attributes={
-                    GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+                    GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                     GEN_AI_USER_ID: str(user_id),
                     GEN_AI_SPAN_KIND: GenAISpanKind.CHAIN.value,
                     GEN_AI_FRAMEWORK: "dify",

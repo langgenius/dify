@@ -178,7 +178,7 @@ class ApiToolProviderController(ToolProviderController):
         # get tenant api providers
         db_providers: list[ApiToolProvider] = (
             db.session.query(ApiToolProvider)
-            .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
             .all()
         )
 

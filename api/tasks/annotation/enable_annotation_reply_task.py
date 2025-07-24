@@ -30,14 +30,14 @@ def enable_annotation_reply_task(
     logging.info(click.style("Start add app annotation to index: {}".format(app_id), fg="green"))
     start_at = time.perf_counter()
     # get app info
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+    app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
     if not app:
         logging.info(click.style("App not found: {}".format(app_id), fg="red"))
         db.session.close()
         return
 
-    annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
+    annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_id).all()
     enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
     enable_app_annotation_job_key = "enable_app_annotation_job_{}".format(str(job_id))
 
@@ -46,9 +46,7 @@ def enable_annotation_reply_task(
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
             embedding_provider_name, embedding_model_name, "annotation"
         )
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
+        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             if dataset_collection_binding.id != annotation_setting.collection_binding_id:
                 old_dataset_collection_binding = (

@@ -356,6 +356,7 @@ const translation = {
     chunks_other: 'تکه',
     characters_one: 'شخصیت',
     editedAt: 'ویرایش شده در',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     parentChunks_other: 'تکه های والدین',
     editChunk: 'ویرایش تکه',
     collapseChunks: 'جمع کردن تکه ها',

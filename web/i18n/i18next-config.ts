@@ -1,65 +1,74 @@
 'use client'
 import i18n from 'i18next'
+import { camelCase } from 'lodash-es'
 import { initReactI18next } from 'react-i18next'
 
-import { LanguagesSupported } from '@/i18n/language'
-
-const requireSilent = (lang: string) => {
+const requireSilent = async (lang: string, namespace: string) => {
   let res
   try {
-    res = require(`./${lang}/education`).default
+    res = (await import(`./${lang}/${namespace}`)).default
   }
   catch {
-    res = require('./en-US/education').default
+    res = (await import(`./en-US/${namespace}`)).default
   }
 
   return res
 }
 
-const loadLangResources = (lang: string) => ({
-  translation: {
-    common: require(`./${lang}/common`).default,
-    layout: require(`./${lang}/layout`).default,
-    login: require(`./${lang}/login`).default,
-    register: require(`./${lang}/register`).default,
-    app: require(`./${lang}/app`).default,
-    appOverview: require(`./${lang}/app-overview`).default,
-    appDebug: require(`./${lang}/app-debug`).default,
-    appApi: require(`./${lang}/app-api`).default,
-    appLog: require(`./${lang}/app-log`).default,
-    appAnnotation: require(`./${lang}/app-annotation`).default,
-    share: require(`./${lang}/share-app`).default,
-    dataset: require(`./${lang}/dataset`).default,
-    datasetDocuments: require(`./${lang}/dataset-documents`).default,
-    datasetHitTesting: require(`./${lang}/dataset-hit-testing`).default,
-    datasetSettings: require(`./${lang}/dataset-settings`).default,
-    datasetCreation: require(`./${lang}/dataset-creation`).default,
-    explore: require(`./${lang}/explore`).default,
-    billing: require(`./${lang}/billing`).default,
-    custom: require(`./${lang}/custom`).default,
-    tools: require(`./${lang}/tools`).default,
-    workflow: require(`./${lang}/workflow`).default,
-    runLog: require(`./${lang}/run-log`).default,
-    plugin: require(`./${lang}/plugin`).default,
-    pluginTags: require(`./${lang}/plugin-tags`).default,
-    time: require(`./${lang}/time`).default,
-    education: requireSilent(lang),
-  },
-})
+const NAMESPACES = [
+  'app-annotation',
+  'app-api',
+  'app-debug',
+  'app-log',
+  'app-overview',
+  'app',
+  'billing',
+  'common',
+  'custom',
+  'dataset-creation',
+  'dataset-documents',
+  'dataset-hit-testing',
+  'dataset-settings',
+  'dataset',
+  'education',
+  'explore',
+  'layout',
+  'login',
+  'plugin-tags',
+  'plugin',
+  'register',
+  'run-log',
+  'share',
+  'time',
+  'tools',
+  'workflow',
+]
 
-type Resource = Record<string, ReturnType<typeof loadLangResources>>
-// Automatically generate the resources object
-export const resources = LanguagesSupported.reduce<Resource>((acc, lang) => {
-  acc[lang] = loadLangResources(lang)
-  return acc
-}, {})
+export const loadLangResources = async (lang: string) => {
+  const modules = await Promise.all(NAMESPACES.map(ns => requireSilent(lang, ns)))
+  const resources = modules.reduce((acc, mod, index) => {
+    acc[camelCase(NAMESPACES[index])] = mod
+    return acc
+  }, {} as Record<string, any>)
+  return {
+    translation: resources,
+  }
+}
 
 i18n.use(initReactI18next)
   .init({
     lng: undefined,
     fallbackLng: 'en-US',
-    resources,
   })
 
-export const changeLanguage = i18n.changeLanguage
+export const changeLanguage = async (lng?: string) => {
+  const resolvedLng = lng ?? 'en-US'
+  const resources = {
+    [resolvedLng]: await loadLangResources(resolvedLng),
+  }
+  if (!i18n.hasResourceBundle(resolvedLng, 'translation'))
+    i18n.addResourceBundle(resolvedLng, 'translation', resources[resolvedLng].translation, true, true)
+  await i18n.changeLanguage(resolvedLng)
+}
+
 export default i18n

@@ -78,7 +78,7 @@ const translation = {
     optional: 'Wahlfrei',
     noTemplateFound: 'Keine Vorlagen gefunden',
     workflowUserDescription: 'Autonome KI-Arbeitsabläufe visuell per Drag-and-Drop erstellen.',
-    foundResults: '{{Anzahl}} Befund',
+    foundResults: '{{count}} Befund',
     chatbotShortDescription: 'LLM-basierter Chatbot mit einfacher Einrichtung',
     completionUserDescription: 'Erstellen Sie schnell einen KI-Assistenten für Textgenerierungsaufgaben mit einfacher Konfiguration.',
     noAppsFound: 'Keine Apps gefunden',
@@ -92,7 +92,7 @@ const translation = {
     noTemplateFoundTip: 'Versuchen Sie, mit verschiedenen Schlüsselwörtern zu suchen.',
     advancedUserDescription: 'Workflow mit Speicherfunktionen und Chatbot-Oberfläche.',
     chatbotUserDescription: 'Erstellen Sie schnell einen LLM-basierten Chatbot mit einfacher Konfiguration. Sie können später zu Chatflow wechseln.',
-    foundResult: '{{Anzahl}} Ergebnis',
+    foundResult: '{{count}} Ergebnis',
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
     dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
@@ -174,7 +174,10 @@ const translation = {
       title: 'Weben',
       description: 'Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Cloud-Monitor',
+      description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
@@ -263,6 +266,8 @@ const translation = {
   },
   accessControl: 'Zugriffskontrolle für Webanwendungen',
   noAccessPermission: 'Keine Berechtigung zum Zugriff auf die Webanwendung',
+  maxActiveRequests: 'Maximale gleichzeitige Anfragen',
+  maxActiveRequestsPlaceholder: 'Geben Sie 0 für unbegrenzt ein',
 }
 
 export default translation
