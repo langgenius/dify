@@ -103,7 +103,7 @@ class ModelLoadBalancingService:
         # Get load balancing configurations
         load_balancing_configs = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -219,7 +219,7 @@ class ModelLoadBalancingService:
         # Get load balancing configurations
         load_balancing_model_config = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -307,7 +307,7 @@ class ModelLoadBalancingService:
 
         current_load_balancing_configs = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -457,7 +457,7 @@ class ModelLoadBalancingService:
             # Get load balancing config
             load_balancing_model_config = (
                 db.session.query(LoadBalancingModelConfig)
-                .filter(
+                .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
                     LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),

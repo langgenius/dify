@@ -115,6 +115,7 @@ const translation = {
     needEndNode: 'Le nœud de fin doit être ajouté',
     needAnswerNode: 'Le nœud de réponse doit être ajouté.',
     addBlock: 'Ajouter un nœud',
+    tagBound: 'Nombre d\'applications utilisant cette étiquette',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -234,6 +235,8 @@ const translation = {
     'agent': 'Stratégie d’agent',
     'blocks': 'Nœuds',
     'searchBlock': 'Nœud de recherche',
+    'addAll': 'Ajouter tout',
+    'allAdded': 'Tout ajouté',
   },
   blocks: {
     'start': 'Début',
@@ -364,7 +367,10 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Tentatives',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Valeur d\'entrée',
+        variable: 'Utilisez une variable',
+      },
     },
     start: {
       required: 'requis',
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dépendances avancées',
       advancedDependenciesTip: 'Ajoutez quelques dépendances préchargées qui prennent plus de temps à consommer ou ne sont pas par défaut ici',
       searchDependencies: 'Rechercher des dépendances',
+      syncFunctionSignature: 'Synchroniser la signature de fonction avec le code',
     },
     templateTransform: {
       inputVars: 'Variables de saisie',
@@ -670,6 +677,9 @@ const translation = {
         json: 'JSON généré par un outil',
       },
       authorize: 'Autoriser',
+      insertPlaceholder2: 'insérer une variable',
+      settings: 'Paramètres',
+      insertPlaceholder1: 'Tapez ou appuyez',
     },
     questionClassifiers: {
       model: 'modèle',
@@ -854,6 +864,8 @@ const translation = {
       pluginNotInstalledDesc: 'Ce plugin est installé à partir de GitHub. Veuillez aller dans Plugins pour réinstaller',
       maxIterations: 'Nombre maximal d’itérations',
       toolNotAuthorizedTooltip: '{{outil}} Non autorisé',
+      clickToViewParameterSchema: 'Cliquez pour voir le schéma des paramètres',
+      parameterSchema: 'Schéma de Paramètres',
     },
     loop: {
       ErrorMethod: {

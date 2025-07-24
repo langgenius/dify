@@ -22,7 +22,7 @@ def remove_document_from_index_task(document_id: str):
     logging.info(click.style("Start remove document segments from index: {}".format(document_id), fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(Document.id == document_id).first()
+    document = db.session.query(Document).where(Document.id == document_id).first()
     if not document:
         logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
         db.session.close()
@@ -43,7 +43,7 @@ def remove_document_from_index_task(document_id: str):
 
         index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).all()
+        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
             try:
@@ -51,7 +51,7 @@ def remove_document_from_index_task(document_id: str):
             except Exception:
                 logging.exception(f"clean dataset {dataset.id} from index failed")
         # update segment to disable
-        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).update(
+        db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).update(
             {
                 DocumentSegment.enabled: False,
                 DocumentSegment.disabled_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),

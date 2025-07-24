@@ -109,6 +109,7 @@ const translation = {
     noLoginMethod: 'Authentifizierungsmethode ist nicht für die Webanwendung konfiguriert',
     noLoginMethodTip: 'Bitte kontaktieren Sie den Systemadministrator, um eine Authentifizierungsmethode hinzuzufügen.',
     disabled: 'Die Webanmeldeauthentifizierung ist deaktiviert. Bitte kontaktieren Sie den Systemadministrator, um sie zu aktivieren. Sie können versuchen, die App direkt zu verwenden.',
+    login: 'Anmelden',
   },
 }
 

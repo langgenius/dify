@@ -119,6 +119,7 @@ const translation = {
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
+    tagBound: '이 태그를 사용하는 앱 수',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -243,6 +244,8 @@ const translation = {
     'agent': '에이전트 전략',
     'blocks': '노드',
     'searchBlock': '검색 노드',
+    'allAdded': '모두 추가됨',
+    'addAll': '모두 추가',
   },
   blocks: {
     'start': '시작',
@@ -388,7 +391,10 @@ const translation = {
         ms: '미에스',
         retries: '{{숫자}} 재시도',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '입력 값',
+        variable: '변수를 사용하세요',
+      },
     },
     start: {
       required: '필수',
@@ -580,6 +586,7 @@ const translation = {
       advancedDependenciesTip:
         '더 많은 시간이 소요되거나 기본으로 내장되지 않은 일부 미리 로드된 종속성을 여기에 추가하세요',
       searchDependencies: '종속성 검색',
+      syncFunctionSignature: '코드에 함수 시그니처 동기화하기',
     },
     templateTransform: {
       inputVars: '입력 변수',
@@ -702,6 +709,9 @@ const translation = {
         json: '도구로 생성된 JSON',
       },
       authorize: '권한 부여',
+      insertPlaceholder1: '타이프하거나 누르세요',
+      settings: '설정',
+      insertPlaceholder2: '변수를 삽입하다',
     },
     questionClassifiers: {
       model: '모델',
@@ -902,6 +912,8 @@ const translation = {
       modelNotSelected: '모델이 선택되지 않음',
       toolbox: '도구',
       linkToPlugin: '플러그인에 대한 링크',
+      parameterSchema: '파라미터 스키마',
+      clickToViewParameterSchema: '매개변수 스키마 보려면 클릭하세요.',
     },
     loop: {
       ErrorMethod: {

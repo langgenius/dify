@@ -80,6 +80,12 @@ Chat applications support session persistence, allowing previous chat history to
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
+      <Property name='trace_id' type='string' key='trace_id'>
+        (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
+        - Header: via HTTP Header <code>X-Trace-Id</code>, highest priority.<br/>
+        - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
+        - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
+      </Property>
     </Properties>
 
     ### Response
@@ -1197,11 +1203,30 @@ Chat applications support session persistence, allowing previous chat history to
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) Whether it is enabled
-        - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+      - `document` (object) Document settings  
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Document number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `image` (object) Image settings  
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Image number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `audio` (object) Audio settings  
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Audio number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `video` (object) Video settings  
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Video number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `custom` (object) Custom settings  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Custom number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)

@@ -56,7 +56,7 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        app = db.session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
+        app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
 
@@ -74,7 +74,7 @@ class InsertExploreAppListApi(Resource):
 
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"])
+                select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"])
             ).scalar_one_or_none()
 
             if not recommended_app:
@@ -117,21 +117,21 @@ class InsertExploreAppApi(Resource):
     def delete(self, app_id):
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).filter(RecommendedApp.app_id == str(app_id))
+                select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
 
         if not recommended_app:
             return {"result": "success"}, 204
 
         with Session(db.engine) as session:
-            app = session.execute(select(App).filter(App.id == recommended_app.app_id)).scalar_one_or_none()
+            app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False
 
         with Session(db.engine) as session:
             installed_apps = session.execute(
-                select(InstalledApp).filter(
+                select(InstalledApp).where(
                     InstalledApp.app_id == recommended_app.app_id,
                     InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
                 )
