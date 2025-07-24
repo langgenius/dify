@@ -111,5 +111,5 @@ def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert "oops" in result.error
-    assert "Failed to transform tool message:" in result.error
+    assert "Failed to invoke tool" in result.error
     assert result.error_type == "ToolInvokeError"
