@@ -42,7 +42,7 @@ def send_deletion_success_task(to: str, language: str = "en-US") -> None:
             )
         )
     except Exception:
-        logging.exception("Send account deletion success email to {} failed".format(to))
+        logging.exception("Send account deletion success email to %s failed", to)
 
 
 @shared_task(queue="mail")
@@ -83,4 +83,4 @@ def send_account_deletion_verification_code(to: str, code: str, language: str = 
             )
         )
     except Exception:
-        logging.exception("Send account deletion verification code email to {} failed".format(to))
+        logging.exception("Send account deletion verification code email to %s failed", to)

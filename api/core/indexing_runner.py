@@ -91,7 +91,7 @@ class IndexingRunner:
                 dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning("Document deleted, document id: {}".format(dataset_document.id))
+                logging.warning("Document deleted, document id: %s", dataset_document.id)
             except Exception as e:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = "error"

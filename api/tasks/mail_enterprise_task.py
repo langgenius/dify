@@ -29,4 +29,4 @@ def send_enterprise_email_task(to: list[str], subject: str, body: str, substitut
             click.style("Send enterprise mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
         )
     except Exception:
-        logging.exception("Send enterprise mail to {} failed".format(to))
+        logging.exception("Send enterprise mail to %s failed", to)

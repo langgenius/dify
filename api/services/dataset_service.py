@@ -1175,7 +1175,8 @@ class DocumentService:
                         )
                     else:
                         logging.warning(
-                            "Invalid process rule mode: %s, can not find dataset process rule", process_rule.mode
+                            "Invalid process rule mode: %s, can not find dataset process rule",
+                            process_rule.mode,
                         )
                         return
                     db.session.add(dataset_process_rule)

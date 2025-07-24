@@ -39,4 +39,4 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
             click.style("Send change email mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
         )
     except Exception:
-        logging.exception("Send change email mail to {} failed".format(to))
+        logging.exception("Send change email mail to %s failed", to)

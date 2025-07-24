@@ -43,4 +43,4 @@ def send_reset_password_mail_task(language: str, to: str, code: str) -> None:
             )
         )
     except Exception:
-        logging.exception("Send password reset mail to {} failed".format(to))
+        logging.exception("Send password reset mail to %s failed", to)

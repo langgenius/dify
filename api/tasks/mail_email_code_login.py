@@ -43,4 +43,4 @@ def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
             )
         )
     except Exception:
-        logging.exception("Send email code login mail to {} failed".format(to))
+        logging.exception("Send email code login mail to %s failed", to)

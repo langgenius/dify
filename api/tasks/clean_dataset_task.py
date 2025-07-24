@@ -80,7 +80,8 @@ def clean_dataset_task(
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)

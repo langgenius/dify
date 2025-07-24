@@ -46,7 +46,7 @@ def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspac
             )
         )
     except Exception:
-        logging.exception("owner transfer confirm email mail to {} failed".format(to))
+        logging.exception("owner transfer confirm email mail to %s failed", to)
 
 
 @shared_task(queue="mail")
@@ -87,7 +87,7 @@ def send_old_owner_transfer_notify_email_task(language: str, to: str, workspace:
             )
         )
     except Exception:
-        logging.exception("old owner transfer notify email mail to {} failed".format(to))
+        logging.exception("old owner transfer notify email mail to %s failed", to)
 
 
 @shared_task(queue="mail")
@@ -126,4 +126,4 @@ def send_new_owner_transfer_notify_email_task(language: str, to: str, workspace:
             )
         )
     except Exception:
-        logging.exception("new owner transfer notify email mail to {} failed".format(to))
+        logging.exception("new owner transfer notify email mail to %s failed", to)

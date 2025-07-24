@@ -51,4 +51,4 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
             )
         )
     except Exception:
-        logging.exception("Send invite member mail to {} failed".format(to))
+        logging.exception("Send invite member mail to %s failed", to)
