@@ -340,7 +340,7 @@ class Document(Base):
 
     # indexing
     tokens: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
-    indexing_latency = mapped_column(db.Float, nullable=True)
+    indexing_latency: Mapped[Optional[float]] = mapped_column(db.Float, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # pause
