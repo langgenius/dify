@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
-
+from sqlalchemy.types import String
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Segment, SegmentType, Variable
@@ -127,8 +127,8 @@ class Workflow(Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    version: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
@@ -503,18 +503,18 @@ class WorkflowRun(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
 
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    type: Mapped[str] = mapped_column(db.String(255))
-    triggered_from: Mapped[str] = mapped_column(db.String(255))
-    version: Mapped[str] = mapped_column(db.String(255))
+    type: Mapped[str] = mapped_column(String(255))
+    triggered_from: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[Optional[str]] = mapped_column(db.Text)
     inputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    status: Mapped[str] = mapped_column(db.String(255))  # running, succeeded, failed, stopped, partial-succeeded
+    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time: Mapped[float] = mapped_column(db.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
-    created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
+    created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
@@ -711,23 +711,23 @@ class WorkflowNodeExecutionModel(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
-    triggered_from: Mapped[str] = mapped_column(db.String(255))
+    triggered_from: Mapped[str] = mapped_column(String(255))
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     index: Mapped[int] = mapped_column(db.Integer)
-    predecessor_node_id: Mapped[Optional[str]] = mapped_column(db.String(255))
-    node_execution_id: Mapped[Optional[str]] = mapped_column(db.String(255))
-    node_id: Mapped[str] = mapped_column(db.String(255))
-    node_type: Mapped[str] = mapped_column(db.String(255))
-    title: Mapped[str] = mapped_column(db.String(255))
+    predecessor_node_id: Mapped[Optional[str]] = mapped_column(String(255))
+    node_execution_id: Mapped[Optional[str]] = mapped_column(String(255))
+    node_id: Mapped[str] = mapped_column(String(255))
+    node_type: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(255))
     inputs: Mapped[Optional[str]] = mapped_column(db.Text)
     process_data: Mapped[Optional[str]] = mapped_column(db.Text)
     outputs: Mapped[Optional[str]] = mapped_column(db.Text)
-    status: Mapped[str] = mapped_column(db.String(255))
+    status: Mapped[str] = mapped_column(String(255))
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time: Mapped[float] = mapped_column(db.Float, server_default=db.text("0"))
     execution_metadata: Mapped[Optional[str]] = mapped_column(db.Text)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
-    created_by_role: Mapped[str] = mapped_column(db.String(255))
+    created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
 
@@ -846,8 +846,8 @@ class WorkflowAppLog(Base):
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID)
-    created_from: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    created_by_role: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    created_from: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 

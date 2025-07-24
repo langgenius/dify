@@ -2,6 +2,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
+from sqlalchemy.types import String
 
 from .engine import db
 from .model import Message
@@ -19,7 +20,7 @@ class SavedMessage(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     message_id = mapped_column(StringUUID, nullable=False)
     created_by_role = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'end_user'::character varying")
+        String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -40,7 +41,7 @@ class PinnedConversation(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'end_user'::character varying")
+        String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())

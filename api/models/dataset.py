@@ -15,7 +15,7 @@ from typing import Any, Optional, cast
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-
+from sqlalchemy.types import String
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -48,19 +48,19 @@ class Dataset(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
-    name: Mapped[str] = mapped_column(db.String(255))
+    name: Mapped[str] = mapped_column(String(255))
     description = mapped_column(db.Text, nullable=True)
-    provider: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'vendor'::character varying"))
-    permission: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'only_me'::character varying"))
-    data_source_type = mapped_column(db.String(255))
-    indexing_technique: Mapped[Optional[str]] = mapped_column(db.String(255))
+    provider: Mapped[str] = mapped_column(String(255), server_default=db.text("'vendor'::character varying"))
+    permission: Mapped[str] = mapped_column(String(255), server_default=db.text("'only_me'::character varying"))
+    data_source_type = mapped_column(String(255))
+    indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
     index_struct = mapped_column(db.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = db.Column(db.String(255), nullable=True)  # TODO: mapped_column
-    embedding_model_provider = db.Column(db.String(255), nullable=True)  # TODO: mapped_column
+    embedding_model = db.Column(String(255), nullable=True)  # TODO: mapped_column
+    embedding_model_provider = db.Column(String(255), nullable=True)  # TODO: mapped_column
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -268,7 +268,7 @@ class DatasetProcessRule(Base):
 
     id = mapped_column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
-    mode = mapped_column(db.String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
+    mode = mapped_column(String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
     rules = mapped_column(db.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -314,12 +314,12 @@ class Document(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
     position = mapped_column(db.Integer, nullable=False)
-    data_source_type = mapped_column(db.String(255), nullable=False)
+    data_source_type = mapped_column(String(255), nullable=False)
     data_source_info = mapped_column(db.Text, nullable=True)
     dataset_process_rule_id = mapped_column(StringUUID, nullable=True)
-    batch = mapped_column(db.String(255), nullable=False)
-    name = mapped_column(db.String(255), nullable=False)
-    created_from = mapped_column(db.String(255), nullable=False)
+    batch = mapped_column(String(255), nullable=False)
+    name = mapped_column(String(255), nullable=False)
+    created_from = mapped_column(String(255), nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_api_request_id = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -353,21 +353,19 @@ class Document(Base):
     stopped_at = mapped_column(db.DateTime, nullable=True)
 
     # basic fields
-    indexing_status = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'waiting'::character varying")
-    )
+    indexing_status = mapped_column(String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
     enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at = mapped_column(db.DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    archived_reason = mapped_column(db.String(255), nullable=True)
+    archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
     archived_at = mapped_column(db.DateTime, nullable=True)
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    doc_type = mapped_column(db.String(40), nullable=True)
+    doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
-    doc_form = mapped_column(db.String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
-    doc_language = mapped_column(db.String(255), nullable=True)
+    doc_form = mapped_column(String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
+    doc_language = mapped_column(String(255), nullable=True)
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -667,15 +665,15 @@ class DocumentSegment(Base):
 
     # indexing fields
     keywords = mapped_column(db.JSON, nullable=True)
-    index_node_id = mapped_column(db.String(255), nullable=True)
-    index_node_hash = mapped_column(db.String(255), nullable=True)
+    index_node_id = mapped_column(String(255), nullable=True)
+    index_node_hash = mapped_column(String(255), nullable=True)
 
     # basic fields
     hit_count = mapped_column(db.Integer, nullable=False, default=0)
     enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at = mapped_column(db.DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
-    status: Mapped[str] = mapped_column(db.String(255), server_default=db.text("'waiting'::character varying"))
+    status: Mapped[str] = mapped_column(String(255), server_default=db.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -812,9 +810,9 @@ class ChildChunk(Base):
     content = mapped_column(db.Text, nullable=False)
     word_count = mapped_column(db.Integer, nullable=False)
     # indexing fields
-    index_node_id = mapped_column(db.String(255), nullable=True)
-    index_node_hash = mapped_column(db.String(255), nullable=True)
-    type = mapped_column(db.String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
+    index_node_id = mapped_column(String(255), nullable=True)
+    index_node_hash = mapped_column(String(255), nullable=True)
+    type = mapped_column(String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -863,9 +861,9 @@ class DatasetQuery(Base):
     id = mapped_column(StringUUID, primary_key=True, nullable=False, server_default=db.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
     content = mapped_column(db.Text, nullable=False)
-    source = mapped_column(db.String(255), nullable=False)
+    source = mapped_column(String(255), nullable=False)
     source_app_id = mapped_column(StringUUID, nullable=True)
-    created_by_role = mapped_column(db.String, nullable=False)
+    created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
@@ -881,7 +879,7 @@ class DatasetKeywordTable(Base):
     dataset_id = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table = mapped_column(db.Text, nullable=False)
     data_source_type = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'database'::character varying")
+        String(255), nullable=False, server_default=db.text("'database'::character varying")
     )
 
     @property
@@ -925,12 +923,12 @@ class Embedding(Base):
 
     id = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     model_name = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying")
+        String(255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying")
     )
-    hash = mapped_column(db.String(64), nullable=False)
+    hash = mapped_column(String(64), nullable=False)
     embedding = mapped_column(db.LargeBinary, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    provider_name = mapped_column(db.String(255), nullable=False, server_default=db.text("''::character varying"))
+    provider_name = mapped_column(String(255), nullable=False, server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
@@ -947,10 +945,10 @@ class DatasetCollectionBinding(Base):
     )
 
     id = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
-    provider_name = mapped_column(db.String(255), nullable=False)
-    model_name = mapped_column(db.String(255), nullable=False)
-    type = mapped_column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
-    collection_name = mapped_column(db.String(64), nullable=False)
+    provider_name = mapped_column(String(255), nullable=False)
+    model_name = mapped_column(String(255), nullable=False)
+    type = mapped_column(String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
+    collection_name = mapped_column(String(64), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -965,12 +963,12 @@ class TidbAuthBinding(Base):
     )
     id = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=True)
-    cluster_id = mapped_column(db.String(255), nullable=False)
-    cluster_name = mapped_column(db.String(255), nullable=False)
+    cluster_id = mapped_column(String(255), nullable=False)
+    cluster_name = mapped_column(String(255), nullable=False)
     active = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    status = mapped_column(db.String(255), nullable=False, server_default=db.text("CREATING"))
-    account = mapped_column(db.String(255), nullable=False)
-    password = mapped_column(db.String(255), nullable=False)
+    status = mapped_column(String(255), nullable=False, server_default=db.text("CREATING"))
+    account = mapped_column(String(255), nullable=False)
+    password = mapped_column(String(255), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -982,7 +980,7 @@ class Whitelist(Base):
     )
     id = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=True)
-    category = mapped_column(db.String(255), nullable=False)
+    category = mapped_column(String(255), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -1012,8 +1010,8 @@ class ExternalKnowledgeApis(Base):
     )
 
     id = mapped_column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
-    name = mapped_column(db.String(255), nullable=False)
-    description = mapped_column(db.String(255), nullable=False)
+    name = mapped_column(String(255), nullable=False)
+    description = mapped_column(String(255), nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
     settings = mapped_column(db.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
@@ -1104,8 +1102,8 @@ class RateLimitLog(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    subscription_plan = mapped_column(db.String(255), nullable=False)
-    operation = mapped_column(db.String(255), nullable=False)
+    subscription_plan = mapped_column(String(255), nullable=False)
+    operation = mapped_column(String(255), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
@@ -1120,8 +1118,8 @@ class DatasetMetadata(Base):
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
-    type = mapped_column(db.String(255), nullable=False)
-    name = mapped_column(db.String(255), nullable=False)
+    type = mapped_column(String(255), nullable=False)
+    name = mapped_column(String(255), nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     created_by = mapped_column(StringUUID, nullable=False)

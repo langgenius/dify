@@ -2,7 +2,7 @@ import enum
 
 from sqlalchemy import func
 from sqlalchemy.orm import mapped_column
-
+from sqlalchemy.types import String, Text, DateTime
 from .base import Base
 from .engine import db
 from .types import StringUUID
@@ -24,7 +24,7 @@ class APIBasedExtension(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    name = mapped_column(db.String(255), nullable=False)
-    api_endpoint = mapped_column(db.String(255), nullable=False)
-    api_key = mapped_column(db.Text, nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    name = mapped_column(String(255), nullable=False)
+    api_endpoint = mapped_column(String(255), nullable=False)
+    api_key = mapped_column(Text, nullable=False)
+    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

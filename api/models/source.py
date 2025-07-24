@@ -3,7 +3,7 @@ import json
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
-
+from sqlalchemy.types import String
 from models.base import Base
 
 from .engine import db
@@ -20,8 +20,8 @@ class DataSourceOauthBinding(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    access_token = mapped_column(db.String(255), nullable=False)
-    provider = mapped_column(db.String(255), nullable=False)
+    access_token = mapped_column(String(255), nullable=False)
+    provider = mapped_column(String(255), nullable=False)
     source_info = mapped_column(JSONB, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -38,8 +38,8 @@ class DataSourceApiKeyAuthBinding(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    category = mapped_column(db.String(255), nullable=False)
-    provider = mapped_column(db.String(255), nullable=False)
+    category = mapped_column(String(255), nullable=False)
+    provider = mapped_column(String(255), nullable=False)
     credentials = mapped_column(db.Text, nullable=True)  # JSON
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
