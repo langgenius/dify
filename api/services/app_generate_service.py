@@ -129,11 +129,25 @@ class AppGenerateService:
                 rate_limit.exit(request_id)
 
     @staticmethod
-    def _get_max_active_requests(app_model: App) -> int:
-        max_active_requests = app_model.max_active_requests
-        if max_active_requests is None:
-            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
-        return max_active_requests
+    def _get_max_active_requests(app: App) -> int:
+        """
+        Get the maximum number of active requests allowed for an app.
+
+        Returns the smaller value between app's custom limit and global config limit.
+        A value of 0 means infinite (no limit).
+
+        Args:
+            app: The App model instance
+
+        Returns:
+            The maximum number of active requests allowed
+        """
+        app_limit = app.max_active_requests or 0
+        config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
+
+        # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
+        limits = [limit for limit in [app_limit, config_limit] if limit > 0]
+        return min(limits) if limits else 0
 
     @classmethod
     def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):

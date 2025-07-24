@@ -114,7 +114,8 @@ class LLMGenerator:
                 ),
             )
 
-            questions = output_parser.parse(cast(str, response.message.content))
+            text_content = response.message.get_text_content()
+            questions = output_parser.parse(text_content) if text_content else []
         except InvokeError:
             questions = []
         except Exception:

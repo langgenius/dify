@@ -25,7 +25,7 @@ class WorkspaceService:
         # Get role of user
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
         assert tenant_account_join is not None, "TenantAccountJoin not found"

@@ -262,13 +262,11 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    tool_file = (
-        db.session.query(ToolFile)
-        .filter(
+    tool_file = db.session.scalar(
+        select(ToolFile).where(
             ToolFile.id == mapping.get("tool_file_id"),
             ToolFile.tenant_id == tenant_id,
         )
-        .first()
     )
 
     if tool_file is None:
@@ -276,7 +274,7 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=tool_file.mimetype)
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     specified_type = mapping.get("type")
 

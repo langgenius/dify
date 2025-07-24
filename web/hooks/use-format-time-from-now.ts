@@ -2,6 +2,8 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useCallback } from 'react'
 import { useI18N } from '@/context/i18n'
+import 'dayjs/locale/zh-cn'
+
 dayjs.extend(relativeTime)
 
 export const useFormatTimeFromNow = () => {

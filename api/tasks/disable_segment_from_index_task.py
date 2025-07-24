@@ -21,7 +21,7 @@ def disable_segment_from_index_task(segment_id: str):
     logging.info(click.style("Start disable segment from index: {}".format(segment_id), fg="green"))
     start_at = time.perf_counter()
 
-    segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
+    segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
     if not segment:
         logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
         db.session.close()
