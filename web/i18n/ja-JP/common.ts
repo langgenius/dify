@@ -249,6 +249,7 @@ const translation = {
       emailLabel: '新しいメール',
       emailPlaceholder: '新しいメールを入力してください',
       existingEmail: 'このメールアドレスのユーザーは既に存在します',
+      unAvailableEmail: 'このメールアドレスは現在使用できません。',
       sendVerifyCode: '確認コードを送信',
       continue: '続行',
       changeTo: '{{email}} に変更',
