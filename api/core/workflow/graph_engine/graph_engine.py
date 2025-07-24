@@ -377,7 +377,7 @@ class GraphEngine:
 
                         edge = cast(GraphEdge, sub_edge_mappings[0])
                         if edge.run_condition is None:
-                            logger.warning(f"Edge {edge.target_node_id} run condition is None")
+                            logger.warning("Edge %s run condition is None", edge.target_node_id)
                             continue
 
                         result = ConditionManager.get_condition_handler(
@@ -848,7 +848,7 @@ class GraphEngine:
                 )
                 return
             except Exception as e:
-                logger.exception(f"Node {node.title} run failed")
+                logger.exception("Node %s run failed", node.title)
                 raise e
 
     def _append_variables_recursively(self, node_id: str, variable_key_list: list[str], variable_value: VariableValue):

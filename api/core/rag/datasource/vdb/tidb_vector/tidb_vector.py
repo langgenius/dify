@@ -192,7 +192,7 @@ class TiDBVector(BaseVector):
         query_vector_str = ", ".join(format(x) for x in query_vector)
         query_vector_str = "[" + query_vector_str + "]"
         logger.debug(
-            f"_collection_name: {self._collection_name}, score_threshold: {score_threshold}, distance: {distance}"
+            "_collection_name: %s, score_threshold: %s, distance: %s", self._collection_name, score_threshold, distance
         )
 
         docs = []

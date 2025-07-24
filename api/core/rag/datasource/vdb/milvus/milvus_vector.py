@@ -103,7 +103,7 @@ class MilvusVector(BaseVector):
             # For standard Milvus installations, check version number
             return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
         except Exception as e:
-            logger.warning(f"Failed to check Milvus version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
     def get_type(self) -> str:

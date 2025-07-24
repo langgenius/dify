@@ -605,8 +605,9 @@ class DatasetService:
         except ProviderTokenNotInitError:
             # If we can't get the embedding model, preserve existing settings
             logging.warning(
-                f"Failed to initialize embedding model {data['embedding_model_provider']}/{data['embedding_model']}, "
-                f"preserving existing settings"
+                "Failed to initialize embedding model %s/%s, preserving existing settings",
+                data["embedding_model_provider"],
+                data["embedding_model"],
             )
             if dataset.embedding_model_provider and dataset.embedding_model:
                 filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
@@ -649,11 +650,11 @@ class DatasetService:
     @staticmethod
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
-            logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+            logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
-                logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
@@ -662,7 +663,7 @@ class DatasetService:
                         db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
                     )
                     if not user_permission:
-                        logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                        logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
@@ -1174,7 +1175,7 @@ class DocumentService:
                         )
                     else:
                         logging.warning(
-                            f"Invalid process rule mode: {process_rule.mode}, can not find dataset process rule"
+                            "Invalid process rule mode: %s, can not find dataset process rule", process_rule.mode
                         )
                         return
                     db.session.add(dataset_process_rule)
@@ -1862,7 +1863,7 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error executing async task for document {update_info['document'].id}")
+                    logging.exception("Error executing async task for document %s", update_info["document"].id)
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
                 try:
@@ -1873,7 +1874,7 @@ class DocumentService:
                         redis_client.setex(indexing_cache_key, 600, 1)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error setting cache for document {update_info['document'].id}")
+                    logging.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error

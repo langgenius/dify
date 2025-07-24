@@ -49,7 +49,7 @@ def remove_document_from_index_task(document_id: str):
             try:
                 index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
             except Exception:
-                logging.exception(f"clean dataset {dataset.id} from index failed")
+                logging.exception("clean dataset %s from index failed", dataset.id)
         # update segment to disable
         db.session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).update(
             {

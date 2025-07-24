@@ -76,7 +76,7 @@ class ApolloClient:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
                 if not body:
-                    logger.error(f"get_json_from_net load configs failed, body is {body}")
+                    logger.error("get_json_from_net load configs failed, body is %s", body)
                     return None
                 data = json.loads(body)
                 data = data["configurations"]
@@ -222,7 +222,7 @@ class ApolloClient:
                 return
             if http_code == 200:
                 if not body:
-                    logger.error(f"_long_poll load configs failed,body is {body}")
+                    logger.error("_long_poll load configs failed,body is %s", body)
                     return
                 data = json.loads(body)
                 for entry in data:
@@ -278,7 +278,7 @@ class ApolloClient:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
                 if not body:
-                    logger.error(f"_do_heart_beat load configs failed,body is {body}")
+                    logger.error("_do_heart_beat load configs failed,body is %s", body)
                     return None
                 data = json.loads(body)
                 if self.last_release_key == data["releaseKey"]:

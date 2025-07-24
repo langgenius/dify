@@ -194,7 +194,7 @@ class WorkflowTool(Tool):
 
                             files.append(file_dict)
                     except Exception:
-                        logger.exception(f"Failed to transform file {file}")
+                        logger.exception("Failed to transform file %s", file)
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 

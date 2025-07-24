@@ -55,7 +55,7 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
         # Compare versions
         return latest > current
     except version.InvalidVersion:
-        logging.warning(f"Invalid version format: latest={latest_version}, current={current_version}")
+        logging.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
         return False
 
 

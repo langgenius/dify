@@ -735,7 +735,7 @@ where sites.id is null limit 1000"""
                 except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
-                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
+                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:

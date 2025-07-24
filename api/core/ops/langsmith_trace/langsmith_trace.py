@@ -504,7 +504,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug(f"LangSmith API check failed: {str(e)}")
+            logger.debug("LangSmith API check failed: %s", str(e))
             raise ValueError(f"LangSmith API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -523,5 +523,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            logger.debug("LangSmith get run url failed: %s", str(e))
             raise ValueError(f"LangSmith get run url failed: {str(e)}")

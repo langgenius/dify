@@ -206,7 +206,7 @@ class ToolManager:
                         )
                     except Exception as e:
                         builtin_provider = None
-                        logger.info(f"Error getting builtin provider {credential_id}:{e}", exc_info=True)
+                        logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
                     # if the provider has been deleted, raise an error
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
@@ -569,7 +569,7 @@ class ToolManager:
                     yield provider
 
                 except Exception:
-                    logger.exception(f"load builtin provider {provider_path}")
+                    logger.exception("load builtin provider %s", provider_path)
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True

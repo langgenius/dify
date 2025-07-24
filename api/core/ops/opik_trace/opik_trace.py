@@ -453,12 +453,12 @@ class OpikDataTrace(BaseTraceInstance):
             self.opik_client.auth_check()
             return True
         except Exception as e:
-            logger.info(f"Opik API check failed: {str(e)}", exc_info=True)
+            logger.info("Opik API check failed: %s", str(e), exc_info=True)
             raise ValueError(f"Opik API check failed: {str(e)}")
 
     def get_project_url(self):
         try:
             return self.opik_client.get_project_url(project_name=self.project)
         except Exception as e:
-            logger.info(f"Opik get run url failed: {str(e)}", exc_info=True)
+            logger.info("Opik get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"Opik get run url failed: {str(e)}")

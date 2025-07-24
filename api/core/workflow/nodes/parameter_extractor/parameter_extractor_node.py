@@ -670,7 +670,7 @@ class ParameterExtractorNode(BaseNode):
                         return cast(dict, json.loads(json_str))
                     except Exception:
                         pass
-        logger.info(f"extra error: {result}")
+        logger.info("extra error: %s", result)
         return None
 
     def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
@@ -690,7 +690,7 @@ class ParameterExtractorNode(BaseNode):
                         return cast(dict, json.loads(json_str))
                     except Exception:
                         pass
-        logger.info(f"extra error: {result}")
+        logger.info("extra error: %s", result)
         return None
 
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:

@@ -329,9 +329,9 @@ class AccountService:
                 db.session.add(account_integrate)
 
             db.session.commit()
-            logging.info(f"Account {account.id} linked {provider} account {open_id}.")
+            logging.info("Account %s linked %s account %s.", account.id, provider, open_id)
         except Exception as e:
-            logging.exception(f"Failed to link {provider} account {open_id} to Account {account.id}")
+            logging.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
             raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
@@ -881,7 +881,7 @@ class TenantService:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER.value:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
-                logging.error(f"Tenant {tenant.id} has already an owner.")
+                logging.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
@@ -1133,7 +1133,7 @@ class RegisterService:
             db.session.query(Tenant).delete()
             db.session.commit()
 
-            logging.exception(f"Setup account failed, email: {email}, name: {name}")
+            logging.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
 
     @classmethod

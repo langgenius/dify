@@ -178,19 +178,19 @@ class Vector:
     def create(self, texts: Optional[list] = None, **kwargs):
         if texts:
             start = time.time()
-            logger.info(f"start embedding {len(texts)} texts {start}")
+            logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
             total_batches = len(texts) + batch_size - 1
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
-                logger.info(f"Processing batch {i // batch_size + 1}/{total_batches} ({len(batch)} texts)")
+                logger.info("Processing batch %s/%s (%s texts)", i // batch_size + 1, total_batches, len(batch))
                 batch_embeddings = self._embeddings.embed_documents([document.page_content for document in batch])
                 logger.info(
-                    f"Embedding batch {i // batch_size + 1}/{total_batches} took {time.time() - batch_start:.3f}s"
+                    "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
-            logger.info(f"Embedding {len(texts)} texts took {time.time() - start:.3f}s")
+            logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):

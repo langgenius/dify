@@ -75,7 +75,7 @@ class MCPClient:
             self.connect_server(client_factory, method_name)
         else:
             try:
-                logger.debug(f"Not supported method {method_name} found in URL path, trying default 'mcp' method.")
+                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
             except MCPConnectionError:
                 logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
