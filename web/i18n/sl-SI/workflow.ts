@@ -113,6 +113,7 @@ const translation = {
     autoSaved: 'Samodejno shranjeno',
     configure: 'Konfiguriraj',
     inRunMode: 'V načinu izvajanja',
+    tagBound: 'Število aplikacij, ki uporabljajo to oznako',
   },
   env: {
     modal: {
@@ -124,6 +125,8 @@ const translation = {
       type: 'Tip',
       editTitle: 'Uredi okoljsko spremenljivko',
       secretTip: 'Uporablja se za opredelitev občutljivih informacij ali podatkov, s konfiguriranimi nastavitvami DSL za preprečevanje puščanja.',
+      description: 'Opis',
+      descriptionPlaceholder: 'Opisujte spremenljivko',
     },
     export: {
       export: 'Izvozi DSL z skrivnimi vrednostmi',
@@ -143,6 +146,7 @@ const translation = {
       objectKey: 'Ključ',
       valuePlaceholder: 'Privzeta vrednost, pustite prazno, da je ne nastavite',
       description: 'Opis',
+      descriptionPlaceholder: 'Opisujte spremenljivko',
       type: 'Tip',
       value: 'Privzeta vrednost',
       name: 'Ime',
@@ -153,7 +157,6 @@ const translation = {
       objectType: 'Tip',
       oneByOne: 'Dodaj eno po eno',
       objectValue: 'Privzeta vrednost',
-      descriptionPlaceholder: 'Opisujte spremenljivko',
     },
     updatedAt: 'Posodobljeno ob',
     docLink: 'Obiščite našo dokumentacijo, da se naučite več.',
@@ -229,6 +232,8 @@ const translation = {
     'blocks': 'Vozlišča',
     'question-understand': 'Vprašanje Razumevanje',
     'agent': 'Agentska strategija',
+    'addAll': 'Dodaj vse',
+    'allAdded': 'Vse dodano',
   },
   blocks: {
     'iteration': 'Iteracija',
@@ -364,6 +369,10 @@ const translation = {
       },
       insertVarTip: 'Vstavite spremenljivko',
       outputVars: 'Izhodne spremenljivke',
+      typeSwitch: {
+        variable: 'Uporabi spremenljivko',
+        input: 'Vhodna vrednost',
+      },
     },
     start: {
       outputVars: {
@@ -539,6 +548,10 @@ const translation = {
       value: 'Vrednost',
       params: 'Parametri',
       insertVarPlaceholder: 'vnesite \'/\' za vstavljanje spremenljivke',
+      verifySSL: {
+        title: 'Preverite SSL certifikat',
+        warningTooltip: 'Onemogočanje preverjanja SSL ni priporočljivo za proizvodna okolja. To bi se moralo uporabljati le pri razvoju ali testiranju, saj povezavo izpostavi varnostnim grožnjam, kot so napadi človek-v-sredini.',
+      },
     },
     code: {
       searchDependencies: 'Išči odvisnosti',
@@ -546,6 +559,7 @@ const translation = {
       outputVars: 'Izhodne spremenljivke',
       inputVars: 'Vhodne spremenljivke',
       advancedDependenciesTip: 'Dodajte nekaj vnaprej naloženih odvisnosti, ki potrebujejo več časa za obdelavo ali niso privzete vgrajene.',
+      syncFunctionSignature: 'Sinhronizirajte podpis funkcije s kodo',
     },
     templateTransform: {
       outputVars: {
@@ -663,10 +677,14 @@ const translation = {
       },
       inputVars: 'Vhodne spremenljivke',
       authorize: 'Pooblasti',
+      insertPlaceholder2: 'vstavite spremenljivko',
+      insertPlaceholder1: 'Vnesite ali pritisnite',
+      settings: 'Nastavitve',
     },
     questionClassifiers: {
       outputVars: {
         className: 'Ime razreda',
+        usage: 'Informacije o uporabi modela',
       },
       instruction: 'Navodilo',
       addClass: 'Dodaj razred',
@@ -692,16 +710,19 @@ const translation = {
         requiredContent: 'Zahtevano se uporablja le kot referenca za sklepanje modela in ne kot obvezno validacijo izhodnih parametrov.',
       },
       extractParameters: 'Izvleči parametre',
-      errorReason: 'Razlog za napako',
       instruction: 'Navodilo',
       instructionTip: 'Vnesite dodatna navodila, da pomagate izvleku parametrov razumeti, kako izvleči parametre.',
       reasoningMode: 'Način razmišljanja',
-      isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
       importFromTool: 'Uvoz iz orodij',
       advancedSetting: 'Napredno nastavitev',
       addExtractParameter: 'Dodaj parameter za ekstrakcijo',
       extractParametersNotSet: 'Parameterji za ekstrakcijo niso nastavljeni',
       inputVar: 'Vhodna spremenljivka',
+      outputVars: {
+        isSuccess: 'Ali je uspeh. Na uspehu je vrednost 1, na neuspehu je vrednost 0.',
+        errorReason: 'Razlog za napako',
+        usage: 'Informacije o uporabi modela',
+      },
       reasoningModeTip: 'Lahko izberete ustrezen način razmišljanja glede na sposobnost modela, da se odzove na navodila za klic funkcij ali pozive.',
     },
     iteration: {
@@ -875,6 +896,8 @@ const translation = {
       toolNotAuthorizedTooltip: '{{tool}} Ni pooblaščen',
       strategyNotFoundDescAndSwitchVersion: 'Nameščena različica vtičnika ne podpira te strategije. Kliknite za preklop na drugo različico.',
       pluginNotInstalledDesc: 'Ta vtičnik je nameščen iz GitHuba. Prosimo, da greste v vtičnike in ga ponovo namestite.',
+      parameterSchema: 'Parametrska shema',
+      clickToViewParameterSchema: 'Kliknite za prikaz sheme parametrov',
     },
   },
   tracing: {

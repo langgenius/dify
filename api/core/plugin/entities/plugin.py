@@ -72,12 +72,14 @@ class PluginDeclaration(BaseModel):
 
     class Meta(BaseModel):
         minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        version: Optional[str] = Field(default=None)
 
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     description: I18nObject
     icon: str
+    icon_dark: Optional[str] = Field(default=None)
     label: I18nObject
     category: PluginCategory
     created_at: datetime.datetime
@@ -131,17 +133,6 @@ class PluginEntity(PluginInstallation):
         if self.declaration.tool:
             self.declaration.tool.plugin_id = self.plugin_id
         return self
-
-
-class GithubPackage(BaseModel):
-    repo: str
-    version: str
-    package: str
-
-
-class GithubVersion(BaseModel):
-    repo: str
-    version: str
 
 
 class GenericProviderID:

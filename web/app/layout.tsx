@@ -1,10 +1,10 @@
 import RoutePrefixHandle from './routePrefixHandle'
 import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
-import BrowserInitor from './components/browser-initor'
-import SentryInitor from './components/sentry-initor'
+import BrowserInitializer from './components/browser-initializer'
+import SentryInitializer from './components/sentry-initializer'
 import { getLocaleOnServer } from '@/i18n/server'
-import { TanstackQueryIniter } from '@/context/query-client'
+import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
 import './styles/globals.css'
 import './styles/markdown.scss'
@@ -44,6 +44,7 @@ const LocaleLayout = async ({
     [DatasetAttr.DATA_PUBLIC_LOOP_NODE_MAX_COUNT]: process.env.NEXT_PUBLIC_LOOP_NODE_MAX_COUNT,
     [DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM]: process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM,
     [DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH]: process.env.NEXT_PUBLIC_MAX_TREE_DEPTH,
+    [DatasetAttr.DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME]: process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME,
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER,
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL,
     [DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL]: process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
@@ -61,9 +62,9 @@ const LocaleLayout = async ({
         className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <BrowserInitor>
-          <SentryInitor>
-            <TanstackQueryIniter>
+        <BrowserInitializer>
+          <SentryInitializer>
+            <TanstackQueryInitializer>
               <ThemeProvider
                 attribute='data-theme'
                 defaultTheme='system'
@@ -76,9 +77,9 @@ const LocaleLayout = async ({
                   </GlobalPublicStoreProvider>
                 </I18nServer>
               </ThemeProvider>
-            </TanstackQueryIniter>
-          </SentryInitor>
-        </BrowserInitor>
+            </TanstackQueryInitializer>
+          </SentryInitializer>
+        </BrowserInitializer>
         <RoutePrefixHandle />
       </body>
     </html>

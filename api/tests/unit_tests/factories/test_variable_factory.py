@@ -14,9 +14,7 @@ from core.variables import (
     ArrayStringVariable,
     FloatVariable,
     IntegerVariable,
-    ObjectSegment,
     SecretVariable,
-    SegmentType,
     StringVariable,
 )
 from core.variables.exc import VariableError
@@ -418,8 +416,6 @@ def test_build_segment_file_array_with_different_file_types():
 
 @st.composite
 def _generate_file(draw) -> File:
-    file_id = draw(st.text(min_size=1, max_size=10))
-    tenant_id = draw(st.text(min_size=1, max_size=10))
     file_type, mime_type, extension = draw(
         st.sampled_from(
             [
@@ -509,8 +505,8 @@ def test_build_segment_type_for_scalar():
         size=1000,
     )
     cases = [
-        TestCase(0, SegmentType.NUMBER),
-        TestCase(0.0, SegmentType.NUMBER),
+        TestCase(0, SegmentType.INTEGER),
+        TestCase(0.0, SegmentType.FLOAT),
         TestCase("", SegmentType.STRING),
         TestCase(file, SegmentType.FILE),
     ]
@@ -535,14 +531,14 @@ class TestBuildSegmentWithType:
         result = build_segment_with_type(SegmentType.NUMBER, 42)
         assert isinstance(result, IntegerSegment)
         assert result.value == 42
-        assert result.value_type == SegmentType.NUMBER
+        assert result.value_type == SegmentType.INTEGER
 
     def test_number_type_float(self):
         """Test building a number segment with float value."""
         result = build_segment_with_type(SegmentType.NUMBER, 3.14)
         assert isinstance(result, FloatSegment)
         assert result.value == 3.14
-        assert result.value_type == SegmentType.NUMBER
+        assert result.value_type == SegmentType.FLOAT
 
     def test_object_type(self):
         """Test building an object segment with correct type."""
@@ -656,14 +652,14 @@ class TestBuildSegmentWithType:
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.STRING, None)
 
-        assert "Expected string, but got None" in str(exc_info.value)
+        assert "expected string, but got None" in str(exc_info.value)
 
     def test_type_mismatch_empty_list_to_non_array(self):
         """Test type mismatch when expecting non-array type but getting empty list."""
         with pytest.raises(TypeMismatchError) as exc_info:
             build_segment_with_type(SegmentType.STRING, [])
 
-        assert "Expected string, but got empty list" in str(exc_info.value)
+        assert "expected string, but got empty list" in str(exc_info.value)
 
     def test_type_mismatch_object_to_array(self):
         """Test type mismatch when expecting array but getting object."""
@@ -678,19 +674,19 @@ class TestBuildSegmentWithType:
         # Integer should work
         result_int = build_segment_with_type(SegmentType.NUMBER, 42)
         assert isinstance(result_int, IntegerSegment)
-        assert result_int.value_type == SegmentType.NUMBER
+        assert result_int.value_type == SegmentType.INTEGER
 
         # Float should work
         result_float = build_segment_with_type(SegmentType.NUMBER, 3.14)
         assert isinstance(result_float, FloatSegment)
-        assert result_float.value_type == SegmentType.NUMBER
+        assert result_float.value_type == SegmentType.FLOAT
 
     @pytest.mark.parametrize(
         ("segment_type", "value", "expected_class"),
         [
             (SegmentType.STRING, "test", StringSegment),
-            (SegmentType.NUMBER, 42, IntegerSegment),
-            (SegmentType.NUMBER, 3.14, FloatSegment),
+            (SegmentType.INTEGER, 42, IntegerSegment),
+            (SegmentType.FLOAT, 3.14, FloatSegment),
             (SegmentType.OBJECT, {}, ObjectSegment),
             (SegmentType.NONE, None, NoneSegment),
             (SegmentType.ARRAY_STRING, [], ArrayStringSegment),
@@ -861,5 +857,5 @@ class TestBuildSegmentValueErrors:
         # Verify they are processed as integers, not as errors
         assert true_segment.value == 1, "Test case 1 (boolean_true): Expected True to be processed as integer 1"
         assert false_segment.value == 0, "Test case 2 (boolean_false): Expected False to be processed as integer 0"
-        assert true_segment.value_type == SegmentType.NUMBER
-        assert false_segment.value_type == SegmentType.NUMBER
+        assert true_segment.value_type == SegmentType.INTEGER
+        assert false_segment.value_type == SegmentType.INTEGER

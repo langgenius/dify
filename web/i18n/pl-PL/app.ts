@@ -80,7 +80,7 @@ const translation = {
     appCreateDSLErrorPart1: 'Wykryto istotną różnicę w wersjach DSL. Wymuszenie importu może spowodować nieprawidłowe działanie aplikacji.',
     noTemplateFoundTip: 'Spróbuj wyszukać za pomocą różnych słów kluczowych.',
     noAppsFound: 'Nie znaleziono aplikacji',
-    foundResults: '{{liczba}} Wyniki',
+    foundResults: '{{count}} Wyniki',
     noTemplateFound: 'Nie znaleziono szablonów',
     chatbotUserDescription: 'Szybko zbuduj chatbota opartego na LLM z prostą konfiguracją. Możesz przełączyć się na Chatflow później.',
     optional: 'Fakultatywny',
@@ -91,7 +91,7 @@ const translation = {
     completionShortDescription: 'Asystent AI do zadań generowania tekstu',
     noIdeaTip: 'Nie masz pomysłów? Sprawdź nasze szablony',
     forAdvanced: 'DLA ZAAWANSOWANYCH UŻYTKOWNIKÓW',
-    foundResult: '{{liczba}} Wynik',
+    foundResult: '{{count}} Wynik',
     advancedShortDescription: 'Przepływ ulepszony dla wieloturowych czatów',
     learnMore: 'Dowiedz się więcej',
     chatbotShortDescription: 'Chatbot oparty na LLM z prostą konfiguracją',
@@ -179,6 +179,10 @@ const translation = {
       title: 'Tkaj',
       description: 'Weave to platforma open-source do oceny, testowania i monitorowania aplikacji LLM.',
     },
+    aliyun: {
+      title: 'Monitor Chmury',
+      description: 'W pełni zarządzana i wolna od konserwacji platforma obserwowalności oferowana przez Alibaba Cloud umożliwia gotowe monitorowanie, śledzenie i oceny aplikacji Dify.',
+    },
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',
@@ -262,6 +266,8 @@ const translation = {
   },
   accessControl: 'Kontrola dostępu do aplikacji internetowej',
   noAccessPermission: 'Brak uprawnień do dostępu do aplikacji internetowej',
+  maxActiveRequests: 'Maksymalne równoczesne żądania',
+  maxActiveRequestsPlaceholder: 'Wprowadź 0, aby uzyskać nielimitowane',
 }
 
 export default translation

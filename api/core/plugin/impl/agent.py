@@ -6,6 +6,7 @@ from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginAgentProviderEntity,
 )
+from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.base import BasePluginClient
 
 
@@ -83,6 +84,7 @@ class PluginAgentClient(BasePluginClient):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
+        context: Optional[PluginInvokeContext] = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         """
         Invoke the agent with the given tenant, user, plugin, provider, name and parameters.
@@ -99,6 +101,7 @@ class PluginAgentClient(BasePluginClient):
                 "conversation_id": conversation_id,
                 "app_id": app_id,
                 "message_id": message_id,
+                "context": context.model_dump() if context else {},
                 "data": {
                     "agent_strategy_provider": agent_provider_id.provider_name,
                     "agent_strategy": agent_strategy,

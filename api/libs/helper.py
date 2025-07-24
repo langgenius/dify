@@ -25,6 +25,31 @@ from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
     from models.account import Account
+    from models.model import EndUser
+
+
+def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+    """
+    Extract tenant_id from Account or EndUser object.
+
+    Args:
+        user: Account or EndUser object
+
+    Returns:
+        tenant_id string if available, None otherwise
+
+    Raises:
+        ValueError: If user is neither Account nor EndUser
+    """
+    from models.account import Account
+    from models.model import EndUser
+
+    if isinstance(user, Account):
+        return user.current_tenant_id
+    elif isinstance(user, EndUser):
+        return user.tenant_id
+    else:
+        raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
 def run(script):
@@ -117,25 +142,6 @@ class StrLen:
         if length > self.max_length:
             error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
                 arg=self.argument, val=value, length=self.max_length
-            )
-            raise ValueError(error)
-
-        return value
-
-
-class FloatRange:
-    """Restrict input to an float in a range (inclusive)"""
-
-    def __init__(self, low, high, argument="argument"):
-        self.low = low
-        self.high = high
-        self.argument = argument
-
-    def __call__(self, value):
-        value = _get_float(value)
-        if value < self.low or value > self.high:
-            error = "Invalid {arg}: {val}. {arg} must be within the range {lo} - {hi}".format(
-                arg=self.argument, val=value, lo=self.low, hi=self.high
             )
             raise ValueError(error)
 

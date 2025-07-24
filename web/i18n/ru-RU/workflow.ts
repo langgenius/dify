@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Добавить узел',
     needAnswerNode: 'В узел ответа необходимо добавить',
     needEndNode: 'Узел конца должен быть добавлен',
+    tagBound: 'Количество приложений, использующих этот тег',
   },
   env: {
     envPanelTitle: 'Переменные среды',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Значение',
       valuePlaceholder: 'Значение переменной среды',
       secretTip: 'Используется для определения конфиденциальной информации или данных, с настройками DSL, настроенными для предотвращения утечки.',
+      description: 'Описание',
+      descriptionPlaceholder: 'Опишите переменную',
     },
     export: {
       title: 'Экспортировать секретные переменные среды?',
@@ -232,6 +235,8 @@ const translation = {
     'agent': 'Агентская стратегия',
     'blocks': 'Узлы',
     'searchBlock': 'Поиск узла',
+    'addAll': 'Добавить всё',
+    'allAdded': 'Все добавлено',
   },
   blocks: {
     'start': 'Начало',
@@ -361,6 +366,10 @@ const translation = {
         ms: 'госпожа',
         retryFailedTimes: 'Повторные попытки {{times}} не увенчались успехом',
         retries: '{{число}} Повторных попыток',
+      },
+      typeSwitch: {
+        input: 'Входное значение',
+        variable: 'Используйте переменную',
       },
     },
     start: {
@@ -537,6 +546,10 @@ const translation = {
         placeholder: 'Вставьте сюда строку cURL',
         title: 'Импорт из cURL',
       },
+      verifySSL: {
+        title: 'Проверить SSL-сертификат',
+        warningTooltip: 'Отключение проверки SSL не рекомендуется для производственных сред. Это следует использовать только в разработке или тестировании, так как это делает соединение уязвимым для угроз безопасности, таких как атаки «человек посередине».',
+      },
     },
     code: {
       inputVars: 'Входные переменные',
@@ -544,6 +557,7 @@ const translation = {
       advancedDependencies: 'Расширенные зависимости',
       advancedDependenciesTip: 'Добавьте сюда некоторые предварительно загруженные зависимости, которые занимают больше времени для потребления или не являются встроенными по умолчанию',
       searchDependencies: 'Поиск зависимостей',
+      syncFunctionSignature: 'Синхронизировать сигнатуру функции с кодом',
     },
     templateTransform: {
       inputVars: 'Входные переменные',
@@ -663,12 +677,16 @@ const translation = {
         json: 'json, сгенерированный инструментом',
       },
       authorize: 'Авторизовать',
+      settings: 'Настройки',
+      insertPlaceholder2: 'вставьте переменную',
+      insertPlaceholder1: 'Наберите или нажмите',
     },
     questionClassifiers: {
       model: 'модель',
       inputVars: 'Входные переменные',
       outputVars: {
         className: 'Имя класса',
+        usage: 'Информация об использовании модели',
       },
       class: 'Класс',
       classNamePlaceholder: 'Введите имя вашего класса',
@@ -682,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Входная переменная',
+      outputVars: {
+        isSuccess: 'Успешно. В случае успеха значение равно 1, в случае сбоя - 0.',
+        errorReason: 'Причина ошибки',
+        usage: 'Информация об использовании модели',
+      },
       extractParameters: 'Извлечь параметры',
       importFromTool: 'Импортировать из инструментов',
       addExtractParameter: 'Добавить параметр для извлечения',
@@ -701,8 +724,6 @@ const translation = {
       advancedSetting: 'Расширенные настройки',
       reasoningMode: 'Режим рассуждения',
       reasoningModeTip: 'Вы можете выбрать соответствующий режим рассуждения, основываясь на способности модели реагировать на инструкции для вызова функций или подсказки.',
-      isSuccess: 'Успешно. В случае успеха значение равно 1, в случае сбоя - 0.',
-      errorReason: 'Причина ошибки',
     },
     iteration: {
       deleteTitle: 'Удалить узел итерации?',
@@ -843,6 +864,8 @@ const translation = {
       pluginNotFoundDesc: 'Этот плагин устанавливается с GitHub. Пожалуйста, перейдите в раздел Плагины для переустановки',
       configureModel: 'Сконфигурировать модель',
       maxIterations: 'Максимальное количество итераций',
+      parameterSchema: 'Схема параметров',
+      clickToViewParameterSchema: 'Нажмите, чтобы просмотреть схему параметров',
     },
     loop: {
       ErrorMethod: {

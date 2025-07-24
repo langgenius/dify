@@ -8,7 +8,12 @@ from flask_login import current_user
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderType,
+)
 from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
@@ -137,12 +142,12 @@ class WorkflowTool(Tool):
         if not version:
             workflow = (
                 db.session.query(Workflow)
-                .filter(Workflow.app_id == app_id, Workflow.version != "draft")
+                .where(Workflow.app_id == app_id, Workflow.version != "draft")
                 .order_by(Workflow.created_at.desc())
                 .first()
             )
         else:
-            workflow = db.session.query(Workflow).filter(Workflow.app_id == app_id, Workflow.version == version).first()
+            workflow = db.session.query(Workflow).where(Workflow.app_id == app_id, Workflow.version == version).first()
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -153,7 +158,7 @@ class WorkflowTool(Tool):
         """
         get the app by app id
         """
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             raise ValueError("app not found")
 

@@ -23,13 +23,13 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
     """
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
         logging.info(click.style("Dataset {} not found, pass.".format(dataset_id), fg="cyan"))
         db.session.close()
         return
 
-    dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
 
     if not dataset_document:
         logging.info(click.style("Document {} not found, pass.".format(document_id), fg="cyan"))
@@ -44,7 +44,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
     segments = (
         db.session.query(DocumentSegment)
-        .filter(
+        .where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,
@@ -64,7 +64,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         logging.info(click.style("Segments removed from index latency: {}".format(end_at - start_at), fg="green"))
     except Exception:
         # update segment error msg
-        db.session.query(DocumentSegment).filter(
+        db.session.query(DocumentSegment).where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,

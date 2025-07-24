@@ -28,12 +28,12 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
@@ -43,7 +43,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
                     if image_file is None:
                         continue
                     try:
@@ -58,7 +58,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
             db.session.commit()
         if file_id:
-            file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+            file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
             if file:
                 try:
                     storage.delete(file.key)
@@ -68,10 +68,11 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 db.session.commit()
 
         # delete dataset metadata binding
-        db.session.query(DatasetMetadataBinding).filter(
+        db.session.query(DatasetMetadataBinding).where(
             DatasetMetadataBinding.dataset_id == dataset_id,
             DatasetMetadataBinding.document_id == document_id,
         ).delete()
+        db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(

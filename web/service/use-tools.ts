@@ -1,9 +1,11 @@
-import { get, post } from './base'
+import { del, get, post, put } from './base'
 import type {
   Collection,
+  MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AppIconType } from '@/types/app'
 import { useInvalid } from './use-base'
 import {
   useMutation,
@@ -14,10 +16,11 @@ import {
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = () => {
+export const useAllToolProviders = (enabled = true) => {
   return useQuery<Collection[]>({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    enabled,
   })
 }
 
@@ -59,6 +62,191 @@ export const useAllWorkflowTools = () => {
 
 export const useInvalidateAllWorkflowTools = () => {
   return useInvalid(useAllWorkflowToolsKey)
+}
+
+const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
+export const useAllMCPTools = () => {
+  return useQuery<ToolWithProvider[]>({
+    queryKey: useAllMCPToolsKey,
+    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
+  })
+}
+
+export const useInvalidateAllMCPTools = () => {
+  return useInvalid(useAllMCPToolsKey)
+}
+
+export const useCreateMCP = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-mcp'],
+    mutationFn: (payload: {
+      name: string
+      server_url: string
+      icon_type: AppIconType
+      icon: string
+      icon_background?: string | null
+    }) => {
+      return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
+        body: {
+          ...payload,
+        },
+      })
+    },
+  })
+}
+
+export const useUpdateMCP = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-mcp'],
+    mutationFn: (payload: {
+      name: string
+      server_url: string
+      icon_type: AppIconType
+      icon: string
+      icon_background?: string | null
+      provider_id: string
+    }) => {
+      return put('workspaces/current/tool-provider/mcp', {
+        body: {
+          ...payload,
+        },
+      })
+    },
+    onSuccess,
+  })
+}
+
+export const useDeleteMCP = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete-mcp'],
+    mutationFn: (id: string) => {
+      return del('/workspaces/current/tool-provider/mcp', {
+        body: {
+          provider_id: id,
+        },
+      })
+    },
+    onSuccess,
+  })
+}
+
+export const useAuthorizeMCP = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'authorize-mcp'],
+    mutationFn: (payload: { provider_id: string; }) => {
+      return post<{ result?: string; authorization_url?: string }>('/workspaces/current/tool-provider/mcp/auth', {
+        body: payload,
+      })
+    },
+  })
+}
+
+export const useUpdateMCPAuthorizationToken = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
+    mutationFn: (payload: { provider_id: string; authorization_code: string }) => {
+      return get<MCPServerDetail>('/workspaces/current/tool-provider/mcp/token', {
+        params: {
+          ...payload,
+        },
+      })
+    },
+  })
+}
+
+export const useMCPTools = (providerID: string) => {
+  return useQuery({
+    enabled: !!providerID,
+    queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
+    queryFn: () => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
+  })
+}
+export const useInvalidateMCPTools = () => {
+  const queryClient = useQueryClient()
+  return (providerID: string) => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
+      })
+  }
+}
+
+export const useUpdateMCPTools = () => {
+  return useMutation({
+    mutationFn: (providerID: string) => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+  })
+}
+
+export const useMCPServerDetail = (appID: string) => {
+  return useQuery<MCPServerDetail>({
+    queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
+    queryFn: () => get<MCPServerDetail>(`/apps/${appID}/server`),
+  })
+}
+
+export const useInvalidateMCPServerDetail = () => {
+  const queryClient = useQueryClient()
+  return (appID: string) => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
+      })
+  }
+}
+
+export const useCreateMCPServer = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-mcp-server'],
+    mutationFn: (payload: {
+      appID: string
+      description?: string
+      parameters?: Record<string, string>
+    }) => {
+      const { appID, ...rest } = payload
+      return post(`apps/${appID}/server`, {
+        body: {
+          ...rest,
+        },
+      })
+    },
+  })
+}
+
+export const useUpdateMCPServer = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-mcp-server'],
+    mutationFn: (payload: {
+      appID: string
+      id: string
+      description?: string
+      status?: string
+      parameters?: Record<string, string>
+    }) => {
+      const { appID, ...rest } = payload
+      return put(`apps/${appID}/server`, {
+        body: {
+          ...rest,
+        },
+      })
+    },
+  })
+}
+
+export const useRefreshMCPServerCode = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
+    mutationFn: (appID: string) => {
+      return get<MCPServerDetail>(`apps/${appID}/server/refresh`)
+    },
+  })
 }
 
 export const useBuiltinProviderInfo = (providerName: string) => {

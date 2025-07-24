@@ -463,6 +463,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          description: env.description,
         }
       }) as Var[]
       break
@@ -473,7 +474,7 @@ const formatItem = (
         return {
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
-          des: chatVar.description,
+          description: chatVar.description,
         }
       }) as Var[]
       break
@@ -612,6 +613,7 @@ const getIterationItemType = ({
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
+  const isChatVar = isConversationVar(valueSelector)
 
   const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
 
@@ -621,7 +623,7 @@ const getIterationItemType = ({
   let arrayType: VarType = VarType.string
 
   let curr: any = targetVar.vars
-  if (isSystem) {
+  if (isSystem || isChatVar) {
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
@@ -645,7 +647,7 @@ const getIterationItemType = ({
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
-      return VarType.any
+      return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
     default:
@@ -949,9 +951,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.Answer: {
-      res = (data as AnswerNodeType).variables?.map((v) => {
-        return v.value_selector
-      })
+      res = matchNotSystemVars([(data as AnswerNodeType).answer])
       break
     }
     case BlockEnum.LLM: {
@@ -978,6 +978,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
       break
     }
     case BlockEnum.Code: {
@@ -997,6 +998,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
+
+      const classes = payload.classes.map(c => c.name)
+      res.push(...matchNotSystemVars(classes))
       break
     }
     case BlockEnum.HttpRequest: {

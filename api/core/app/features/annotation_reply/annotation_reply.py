@@ -26,7 +26,7 @@ class AnnotationReplyFeature:
         :return:
         """
         annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_record.id).first()
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id).first()
         )
 
         if not annotation_setting:

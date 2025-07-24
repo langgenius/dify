@@ -270,8 +270,11 @@ export const LOOP_NODE_MAX_COUNT = getNumberConfig(process.env.NEXT_PUBLIC_LOOP_
 export const MAX_ITERATIONS_NUM = getNumberConfig(process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM, DatasetAttr.DATA_PUBLIC_MAX_ITERATIONS_NUM, 99)
 export const MAX_TREE_DEPTH = getNumberConfig(process.env.NEXT_PUBLIC_MAX_TREE_DEPTH, DatasetAttr.DATA_PUBLIC_MAX_TREE_DEPTH, 50)
 
+export const ALLOW_UNSAFE_DATA_SCHEME = getBooleanConfig(process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME, DatasetAttr.DATA_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME, false)
 export const ENABLE_WEBSITE_JINAREADER = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER, true)
 export const ENABLE_WEBSITE_FIRECRAWL = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, true)
 export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, false)
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
+
+export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/

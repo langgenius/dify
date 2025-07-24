@@ -185,6 +185,10 @@ const translation = {
       title: '编织',
       description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
     },
+    aliyun: {
+      title: '云监控',
+      description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
+    },
   },
   appSelector: {
     label: '应用',
@@ -242,6 +246,9 @@ const translation = {
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web 应用',
+  maxActiveRequests: '最大活跃请求数',
+  maxActiveRequestsPlaceholder: '0 表示不限制',
+  maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',
 }
 
 export default translation

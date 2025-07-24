@@ -3,6 +3,8 @@ import logging
 import uuid
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
@@ -97,7 +99,7 @@ class BaseAgentRunner(AppRunner):
         # get how many agent thoughts have been created
         self.agent_thought_count = (
             db.session.query(MessageAgentThought)
-            .filter(
+            .where(
                 MessageAgentThought.message_id == self.message.id,
             )
             .count()
@@ -161,10 +163,14 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            message_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
+            message_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
 
             if len(enum) > 0:
                 message_tool.parameters["properties"][parameter.name]["enum"] = enum
@@ -254,10 +260,14 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            prompt_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
+            prompt_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
 
             if len(enum) > 0:
                 prompt_tool.parameters["properties"][parameter.name]["enum"] = enum
@@ -326,7 +336,7 @@ class BaseAgentRunner(AppRunner):
         Save agent thought
         """
         updated_agent_thought = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+            db.session.query(MessageAgentThought).where(MessageAgentThought.id == agent_thought.id).first()
         )
         if not updated_agent_thought:
             raise ValueError("agent thought not found")
@@ -409,12 +419,15 @@ class BaseAgentRunner(AppRunner):
             if isinstance(prompt_message, SystemPromptMessage):
                 result.append(prompt_message)
 
-        messages: list[Message] = (
-            db.session.query(Message)
-            .filter(
-                Message.conversation_id == self.message.conversation_id,
+        messages = (
+            (
+                db.session.execute(
+                    select(Message)
+                    .where(Message.conversation_id == self.message.conversation_id)
+                    .order_by(Message.created_at.desc())
+                )
             )
-            .order_by(Message.created_at.desc())
+            .scalars()
             .all()
         )
 
@@ -483,7 +496,7 @@ class BaseAgentRunner(AppRunner):
         return result
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+        files = db.session.query(MessageFile).where(MessageFile.message_id == message.id).all()
         if not files:
             return UserPromptMessage(content=message.query)
         if message.app_model_config:

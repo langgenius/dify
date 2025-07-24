@@ -21,7 +21,9 @@ def get_signed_file_url(upload_file_id: str) -> str:
 
 
 def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str, user_id: str) -> str:
-    url = f"{dify_config.FILES_URL}/files/upload/for-plugin"
+    # Plugin access should use internal URL for Docker network communication
+    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+    url = f"{base_url}/files/upload/for-plugin"
 
     if user_id is None:
         user_id = "DEFAULT-USER"

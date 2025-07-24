@@ -2,6 +2,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import type { Day } from '../types'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -77,4 +78,15 @@ export const getHourIn12Hour = (date: Dayjs) => {
 
 export const getDateWithTimezone = (props: { date?: Dayjs, timezone?: string }) => {
   return props.date ? dayjs.tz(props.date, props.timezone) : dayjs().tz(props.timezone)
+}
+
+// Asia/Shanghai -> UTC+8
+const DEFAULT_OFFSET_STR = 'UTC+0'
+export const convertTimezoneToOffsetStr = (timezone?: string) => {
+  if (!timezone)
+    return DEFAULT_OFFSET_STR
+  const tzItem = tz.find(item => item.value === timezone)
+  if(!tzItem)
+    return DEFAULT_OFFSET_STR
+  return `UTC${tzItem.name.charAt(0)}${tzItem.name.charAt(2)}`
 }

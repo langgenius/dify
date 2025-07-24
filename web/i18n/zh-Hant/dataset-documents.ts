@@ -28,6 +28,8 @@ const translation = {
       delete: '刪除',
       enableWarning: '歸檔的檔案無法啟用',
       sync: '同步',
+      resume: '恢復',
+      pause: '暫停',
     },
     index: {
       enable: '啟用中',
@@ -367,6 +369,7 @@ const translation = {
     expandChunks: '擴展塊',
     chunkAdded: '添加了 1 個數據塊',
     editedAt: '編輯於',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     regeneratingMessage: '這可能需要一些時間，請稍候...',
     editChunk: '編輯數據塊',
     regenerationSuccessMessage: '您可以關閉此視窗。',

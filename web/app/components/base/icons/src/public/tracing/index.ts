@@ -1,3 +1,5 @@
+export { default as AliyunIconBig } from './AliyunIconBig'
+export { default as AliyunIcon } from './AliyunIcon'
 export { default as ArizeIconBig } from './ArizeIconBig'
 export { default as ArizeIcon } from './ArizeIcon'
 export { default as LangfuseIconBig } from './LangfuseIconBig'

@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
-from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
@@ -127,7 +127,7 @@ class RetrievalService:
         external_retrieval_model: Optional[dict] = None,
         metadata_filtering_conditions: Optional[dict] = None,
     ):
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             return []
         metadata_condition = (
@@ -144,7 +144,8 @@ class RetrievalService:
 
     @classmethod
     def _get_dataset(cls, dataset_id: str) -> Optional[Dataset]:
-        return db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        with Session(db.engine) as session:
+            return session.query(Dataset).where(Dataset.id == dataset_id).first()
 
     @classmethod
     def keyword_search(
@@ -293,7 +294,7 @@ class RetrievalService:
             dataset_documents = {
                 doc.id: doc
                 for doc in db.session.query(DatasetDocument)
-                .filter(DatasetDocument.id.in_(document_ids))
+                .where(DatasetDocument.id.in_(document_ids))
                 .options(load_only(DatasetDocument.id, DatasetDocument.doc_form, DatasetDocument.dataset_id))
                 .all()
             }
@@ -317,7 +318,7 @@ class RetrievalService:
                     child_index_node_id = document.metadata.get("doc_id")
 
                     child_chunk = (
-                        db.session.query(ChildChunk).filter(ChildChunk.index_node_id == child_index_node_id).first()
+                        db.session.query(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id).first()
                     )
 
                     if not child_chunk:
@@ -325,7 +326,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",
@@ -380,7 +381,7 @@ class RetrievalService:
 
                     segment = (
                         db.session.query(DocumentSegment)
-                        .filter(
+                        .where(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",

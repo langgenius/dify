@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from packaging.version import Version
 from yarl import URL
 
 from configs.app_config import DifyConfig
@@ -39,6 +40,9 @@ def test_dify_config(monkeypatch):
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
 
     assert config.WORKFLOW_PARALLEL_DEPTH_LIMIT == 3
+
+    # values from pyproject.toml
+    assert Version(config.project.version) >= Version("1.0.0")
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
@@ -84,6 +88,7 @@ def test_flask_configs(monkeypatch):
         "pool_pre_ping": False,
         "pool_recycle": 3600,
         "pool_size": 30,
+        "pool_use_lifo": False,
     }
 
     assert config["CONSOLE_WEB_URL"] == "https://example.com"

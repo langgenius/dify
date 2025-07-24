@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
@@ -12,9 +12,12 @@ from sqlalchemy import orm
 from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.variables import utils as variable_utils
+from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from libs.datetime_utils import naive_utc_now
+from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
@@ -136,7 +139,7 @@ class Workflow(Base):
     updated_at: Mapped[datetime] = mapped_column(
         db.DateTime,
         nullable=False,
-        default=datetime.now(UTC).replace(tzinfo=None),
+        default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
@@ -177,7 +180,7 @@ class Workflow(Base):
         workflow.conversation_variables = conversation_variables or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
-        workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.created_at = naive_utc_now()
         workflow.updated_at = workflow.created_at
         return workflow
 
@@ -340,24 +343,19 @@ class Workflow(Base):
 
         return (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
+            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
             .count()
             > 0
         )
 
     @property
-    def environment_variables(self) -> Sequence[Variable]:
+    def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
         # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = "{}"
 
         # Get tenant_id from current_user (Account or EndUser)
-        if isinstance(current_user, Account):
-            # Account user
-            tenant_id = current_user.current_tenant_id
-        else:
-            # EndUser
-            tenant_id = current_user.tenant_id
+        tenant_id = extract_tenant_id(current_user)
 
         if not tenant_id:
             return []
@@ -371,11 +369,15 @@ class Workflow(Base):
         def decrypt_func(var):
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            else:
+            elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
                 return var
+            else:
+                raise AssertionError("this statement should be unreachable.")
 
-        results = list(map(decrypt_func, results))
-        return results
+        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = list(
+            map(decrypt_func, results)
+        )
+        return decrypted_results
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[Variable]):
@@ -384,12 +386,7 @@ class Workflow(Base):
             return
 
         # Get tenant_id from current_user (Account or EndUser)
-        if isinstance(current_user, Account):
-            # Account user
-            tenant_id = current_user.current_tenant_id
-        else:
-            # EndUser
-            tenant_id = current_user.tenant_id
+        tenant_id = extract_tenant_id(current_user)
 
         if not tenant_id:
             self._environment_variables = "{}"
@@ -552,12 +549,12 @@ class WorkflowRun(Base):
         from models.model import Message
 
         return (
-            db.session.query(Message).filter(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
+            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
         )
 
     @property
     def workflow(self):
-        return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+        return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
     def to_dict(self):
         return {
@@ -911,7 +908,7 @@ _EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
 
 
 def _naive_utc_datetime():
-    return datetime.now(UTC).replace(tzinfo=None)
+    return naive_utc_now()
 
 
 class WorkflowDraftVariable(Base):

@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
+    tagBound: 'Bu etiketi kullanan uygulama sayısı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Değer',
       valuePlaceholder: 'env değeri',
       secretTip: 'Hassas bilgileri veya verileri tanımlamak için kullanılır, bilgi sızıntısını önlemek için DSL ayarları yapılandırılmıştır.',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Değişkeni açıklayın',
     },
     export: {
       title: 'Gizli çevre değişkenleri dışa aktarılsın mı?',
@@ -232,6 +235,8 @@ const translation = {
     'plugin': 'Eklenti',
     'blocks': 'Düğümler',
     'searchBlock': 'Arama düğümü',
+    'allAdded': 'Hepsi eklendi',
+    'addAll': 'Hepsini ekle',
   },
   blocks: {
     'start': 'Başlat',
@@ -361,6 +366,10 @@ const translation = {
         retrySuccessful: 'Yeniden deneme başarılı',
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
+      },
+      typeSwitch: {
+        variable: 'Değişken kullan',
+        input: 'Girdi değeri',
       },
     },
     start: {
@@ -538,6 +547,10 @@ const translation = {
         placeholder: 'cURL dizesini buraya yapıştırın',
         title: 'cURL\'den içe aktar',
       },
+      verifySSL: {
+        title: 'SSL Sertifikasını Doğrula',
+        warningTooltip: 'SSL doğrulamasını devre dışı bırakmak, üretim ortamları için önerilmez. Bu yalnızca geliştirme veya test aşamalarında kullanılmalıdır, çünkü bağlantıyı adam ortada saldırıları gibi güvenlik tehditlerine karşı savunmasız hale getirir.',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -545,6 +558,7 @@ const translation = {
       advancedDependencies: 'Gelişmiş Bağımlılıklar',
       advancedDependenciesTip: 'Burada daha uzun sürede tüketilen veya varsayılan olarak yerleşik olmayan bazı ön yüklenmiş bağımlılıkları ekleyin',
       searchDependencies: 'Bağımlılıkları Ara',
+      syncFunctionSignature: 'Senkrone işlev imzasını koda eşitle',
     },
     templateTransform: {
       inputVars: 'Giriş Değişkenleri',
@@ -664,12 +678,16 @@ const translation = {
         json: 'araç tarafından oluşturulan json',
       },
       authorize: 'Yetkilendirmek',
+      settings: 'Ayarlar',
+      insertPlaceholder2: 'değişken ekle',
+      insertPlaceholder1: 'Yazın veya basın',
     },
     questionClassifiers: {
       model: 'model',
       inputVars: 'Giriş Değişkenleri',
       outputVars: {
         className: 'Sınıf Adı',
+        usage: 'Model Kullanım Bilgileri',
       },
       class: 'Sınıf',
       classNamePlaceholder: 'Sınıf adınızı yazın',
@@ -683,6 +701,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Giriş Değişkeni',
+      outputVars: {
+        isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
+        errorReason: 'Hata Nedeni',
+        usage: 'Model Kullanım Bilgileri',
+      },
       extractParameters: 'Parametreleri Çıkar',
       importFromTool: 'Araçlardan içe aktar',
       addExtractParameter: 'Çıkarma Parametresi Ekle',
@@ -702,8 +725,6 @@ const translation = {
       advancedSetting: 'Gelişmiş Ayarlar',
       reasoningMode: 'Akıl Yürütme Modu',
       reasoningModeTip: 'Modelin fonksiyon çağırma veya istemler için talimatlara yanıt verme yeteneğine bağlı olarak uygun akıl yürütme modunu seçebilirsiniz.',
-      isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
-      errorReason: 'Hata Nedeni',
     },
     iteration: {
       deleteTitle: 'Yineleme Düğümünü Sil?',
@@ -844,6 +865,8 @@ const translation = {
       strategyNotInstallTooltip: '{{strateji}} yüklü değil',
       toolNotAuthorizedTooltip: '{{araç}} Yetkili Değil',
       model: 'model',
+      parameterSchema: 'Parametre Şeması',
+      clickToViewParameterSchema: 'Parametre şemasını görüntülemek için tıklayın',
     },
     loop: {
       ErrorMethod: {

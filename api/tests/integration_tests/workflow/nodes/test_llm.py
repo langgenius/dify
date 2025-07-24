@@ -1,32 +1,24 @@
 import json
-import os
 import time
 import uuid
 from collections.abc import Generator
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 
 def init_llm_node(config: dict) -> LLMNode:
@@ -63,12 +55,14 @@ def init_llm_node(config: dict) -> LLMNode:
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather today?",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa",
+            app_id=app_id,
+            workflow_id=workflow_id,
+            files=[],
+            query="what's the weather today?",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -83,10 +77,14 @@ def init_llm_node(config: dict) -> LLMNode:
         config=config,
     )
 
+    # Initialize node data
+    if "data" in config:
+        node.init_node_data(config["data"])
+
     return node
 
 
-def test_execute_llm(flask_req_ctx):
+def test_execute_llm():
     node = init_llm_node(
         config={
             "id": "llm",
@@ -94,7 +92,7 @@ def test_execute_llm(flask_req_ctx):
                 "title": "123",
                 "type": "llm",
                 "model": {
-                    "provider": "langgenius/openai/openai",
+                    "provider": "openai",
                     "name": "gpt-3.5-turbo",
                     "mode": "chat",
                     "completion_params": {},
@@ -113,55 +111,62 @@ def test_execute_llm(flask_req_ctx):
         },
     )
 
-    credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
+    db.session.close = MagicMock()
 
-    # Create a proper LLM result with real entities
-    mock_usage = LLMUsage(
-        prompt_tokens=30,
-        prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal("1000"),
-        prompt_price=Decimal("0.00003"),
-        completion_tokens=20,
-        completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal("1000"),
-        completion_price=Decimal("0.00004"),
-        total_tokens=50,
-        total_price=Decimal("0.00007"),
-        currency="USD",
-        latency=0.5,
-    )
+    # Mock the _fetch_model_config to avoid database calls
+    def mock_fetch_model_config(**_kwargs):
+        from decimal import Decimal
+        from unittest.mock import MagicMock
 
-    mock_message = AssistantPromptMessage(content="This is a test response from the mocked LLM.")
+        from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from core.model_runtime.entities.message_entities import AssistantPromptMessage
 
-    mock_llm_result = LLMResult(
-        model="gpt-3.5-turbo",
-        prompt_messages=[],
-        message=mock_message,
-        usage=mock_usage,
-    )
+        # Create mock model instance
+        mock_model_instance = MagicMock()
+        mock_usage = LLMUsage(
+            prompt_tokens=30,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal(1000),
+            prompt_price=Decimal("0.00003"),
+            completion_tokens=20,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal(1000),
+            completion_price=Decimal("0.00004"),
+            total_tokens=50,
+            total_price=Decimal("0.00007"),
+            currency="USD",
+            latency=0.5,
+        )
+        mock_message = AssistantPromptMessage(content="Test response from mock")
+        mock_llm_result = LLMResult(
+            model="gpt-3.5-turbo",
+            prompt_messages=[],
+            message=mock_message,
+            usage=mock_usage,
+        )
+        mock_model_instance.invoke_llm.return_value = mock_llm_result
 
-    # Create a simple mock model instance that doesn't call real providers
-    mock_model_instance = MagicMock()
-    mock_model_instance.invoke_llm.return_value = mock_llm_result
+        # Create mock model config
+        mock_model_config = MagicMock()
+        mock_model_config.mode = "chat"
+        mock_model_config.provider = "openai"
+        mock_model_config.model = "gpt-3.5-turbo"
+        mock_model_config.parameters = {}
 
-    # Create a simple mock model config with required attributes
-    mock_model_config = MagicMock()
-    mock_model_config.mode = "chat"
-    mock_model_config.provider = "langgenius/openai/openai"
-    mock_model_config.model = "gpt-3.5-turbo"
-    mock_model_config.provider_model_bundle.configuration.tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
-
-    # Mock the _fetch_model_config method
-    def mock_fetch_model_config_func(_node_data_model):
         return mock_model_instance, mock_model_config
 
-    # Also mock ModelManager.get_model_instance to avoid database calls
-    def mock_get_model_instance(_self, **kwargs):
-        return mock_model_instance
+    # Mock fetch_prompt_messages to avoid database calls
+    def mock_fetch_prompt_messages_1(**_kwargs):
+        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+
+        return [
+            SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),
+            UserPromptMessage(content="what's the weather today?"),
+        ], []
 
     with (
-        patch.object(node, "_fetch_model_config", mock_fetch_model_config_func),
-        patch("core.model_manager.ModelManager.get_model_instance", mock_get_model_instance),
+        patch.object(LLMNode, "_fetch_model_config", mock_fetch_model_config),
+        patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1),
     ):
         # execute node
         result = node._run()
@@ -169,6 +174,9 @@ def test_execute_llm(flask_req_ctx):
 
         for item in result:
             if isinstance(item, RunCompletedEvent):
+                if item.run_result.status != WorkflowNodeExecutionStatus.SUCCEEDED:
+                    print(f"Error: {item.run_result.error}")
+                    print(f"Error type: {item.run_result.error_type}")
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
                 assert item.run_result.process_data is not None
                 assert item.run_result.outputs is not None
@@ -176,8 +184,7 @@ def test_execute_llm(flask_req_ctx):
                 assert item.run_result.outputs.get("usage", {})["total_tokens"] > 0
 
 
-@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_llm_with_jinja2(flask_req_ctx, setup_code_executor_mock):
+def test_execute_llm_with_jinja2():
     """
     Test execute LLM node with jinja2
     """
@@ -218,53 +225,60 @@ def test_execute_llm_with_jinja2(flask_req_ctx, setup_code_executor_mock):
     # Mock db.session.close()
     db.session.close = MagicMock()
 
-    # Create a proper LLM result with real entities
-    mock_usage = LLMUsage(
-        prompt_tokens=30,
-        prompt_unit_price=Decimal("0.001"),
-        prompt_price_unit=Decimal("1000"),
-        prompt_price=Decimal("0.00003"),
-        completion_tokens=20,
-        completion_unit_price=Decimal("0.002"),
-        completion_price_unit=Decimal("1000"),
-        completion_price=Decimal("0.00004"),
-        total_tokens=50,
-        total_price=Decimal("0.00007"),
-        currency="USD",
-        latency=0.5,
-    )
-
-    mock_message = AssistantPromptMessage(content="Test response: sunny weather and what's the weather today?")
-
-    mock_llm_result = LLMResult(
-        model="gpt-3.5-turbo",
-        prompt_messages=[],
-        message=mock_message,
-        usage=mock_usage,
-    )
-
-    # Create a simple mock model instance that doesn't call real providers
-    mock_model_instance = MagicMock()
-    mock_model_instance.invoke_llm.return_value = mock_llm_result
-
-    # Create a simple mock model config with required attributes
-    mock_model_config = MagicMock()
-    mock_model_config.mode = "chat"
-    mock_model_config.provider = "openai"
-    mock_model_config.model = "gpt-3.5-turbo"
-    mock_model_config.provider_model_bundle.configuration.tenant_id = "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
-
     # Mock the _fetch_model_config method
-    def mock_fetch_model_config_func(_node_data_model):
+    def mock_fetch_model_config(**_kwargs):
+        from decimal import Decimal
+        from unittest.mock import MagicMock
+
+        from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+        from core.model_runtime.entities.message_entities import AssistantPromptMessage
+
+        # Create mock model instance
+        mock_model_instance = MagicMock()
+        mock_usage = LLMUsage(
+            prompt_tokens=30,
+            prompt_unit_price=Decimal("0.001"),
+            prompt_price_unit=Decimal(1000),
+            prompt_price=Decimal("0.00003"),
+            completion_tokens=20,
+            completion_unit_price=Decimal("0.002"),
+            completion_price_unit=Decimal(1000),
+            completion_price=Decimal("0.00004"),
+            total_tokens=50,
+            total_price=Decimal("0.00007"),
+            currency="USD",
+            latency=0.5,
+        )
+        mock_message = AssistantPromptMessage(content="Test response: sunny weather and what's the weather today?")
+        mock_llm_result = LLMResult(
+            model="gpt-3.5-turbo",
+            prompt_messages=[],
+            message=mock_message,
+            usage=mock_usage,
+        )
+        mock_model_instance.invoke_llm.return_value = mock_llm_result
+
+        # Create mock model config
+        mock_model_config = MagicMock()
+        mock_model_config.mode = "chat"
+        mock_model_config.provider = "openai"
+        mock_model_config.model = "gpt-3.5-turbo"
+        mock_model_config.parameters = {}
+
         return mock_model_instance, mock_model_config
 
-    # Also mock ModelManager.get_model_instance to avoid database calls
-    def mock_get_model_instance(_self, **kwargs):
-        return mock_model_instance
+    # Mock fetch_prompt_messages to avoid database calls
+    def mock_fetch_prompt_messages_2(**_kwargs):
+        from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+
+        return [
+            SystemPromptMessage(content="you are a helpful assistant. today's weather is sunny."),
+            UserPromptMessage(content="what's the weather today?"),
+        ], []
 
     with (
-        patch.object(node, "_fetch_model_config", mock_fetch_model_config_func),
-        patch("core.model_manager.ModelManager.get_model_instance", mock_get_model_instance),
+        patch.object(LLMNode, "_fetch_model_config", mock_fetch_model_config),
+        patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2),
     ):
         # execute node
         result = node._run()

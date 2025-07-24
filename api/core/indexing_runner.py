@@ -59,7 +59,7 @@ class IndexingRunner:
                 # get the process rule
                 processing_rule = (
                     db.session.query(DatasetProcessRule)
-                    .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
                 if not processing_rule:
@@ -119,12 +119,12 @@ class IndexingRunner:
                 db.session.delete(document_segment)
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # delete child chunks
-                    db.session.query(ChildChunk).filter(ChildChunk.segment_id == document_segment.id).delete()
+                    db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
             # get the process rule
             processing_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
             if not processing_rule:
@@ -212,7 +212,7 @@ class IndexingRunner:
             # get the process rule
             processing_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
 
@@ -316,10 +316,11 @@ class IndexingRunner:
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+                    if image_file is None:
+                        continue
                     try:
-                        if image_file:
-                            storage.delete(image_file.key)
+                        storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
@@ -345,7 +346,7 @@ class IndexingRunner:
                 raise ValueError("no upload file found")
 
             file_detail = (
-                db.session.query(UploadFile).filter(UploadFile.id == data_source_info["upload_file_id"]).one_or_none()
+                db.session.query(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"]).one_or_none()
             )
 
             if file_detail:
@@ -598,7 +599,7 @@ class IndexingRunner:
             keyword.create(documents)
             if dataset.indexing_technique != "high_quality":
                 document_ids = [document.metadata["doc_id"] for document in documents]
-                db.session.query(DocumentSegment).filter(
+                db.session.query(DocumentSegment).where(
                     DocumentSegment.document_id == document_id,
                     DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
@@ -629,7 +630,7 @@ class IndexingRunner:
             index_processor.load(dataset, chunk_documents, with_keywords=False)
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
-            db.session.query(DocumentSegment).filter(
+            db.session.query(DocumentSegment).where(
                 DocumentSegment.document_id == dataset_document.id,
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
@@ -671,8 +672,7 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-
-        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)
+        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore
         db.session.commit()
 
     @staticmethod

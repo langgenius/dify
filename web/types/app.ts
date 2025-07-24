@@ -130,6 +130,7 @@ export type AgentTool = {
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
+  credential_id?: string
 }
 
 export type ToolItem = {
@@ -369,6 +370,7 @@ export type App = {
   }
   /** access control */
   access_mode: AccessMode
+  max_active_requests?: number | null
 }
 
 export type AppSSO = {
