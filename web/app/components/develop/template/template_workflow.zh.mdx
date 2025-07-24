@@ -60,7 +60,12 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       - `user` (string) Required
         用户标识，用于定义终端用户的身份，方便检索、统计。
         由开发者定义规则，需保证用户标识在应用内唯一。API 无法访问 WebApp 创建的会话。
-
+      - `files` (array[object]) 可选
+      - `trace_id` (string) Optional
+        链路追踪ID。适用于与业务系统已有的trace组件打通，实现端到端分布式追踪等场景。如果未指定，系统将自动生成 `trace_id`。支持以下三种方式传递，具体优先级依次为：
+        1. Header：推荐通过 HTTP Header `X-Trace-Id` 传递，优先级最高。
+        2. Query 参数：通过 URL 查询参数 `trace_id` 传递。
+        3. Request Body：通过请求体字段 `trace_id` 传递（即本字段）。
 
     ### Response
     当 `response_mode` 为 `blocking` 时，返回 CompletionResponse object。

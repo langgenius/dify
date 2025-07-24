@@ -30,7 +30,7 @@ class DataSourceApi(Resource):
         # get workspace data source integrates
         data_source_integrates = (
             db.session.query(DataSourceOauthBinding)
-            .filter(
+            .where(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )
@@ -171,7 +171,7 @@ class DataSourceNotionApi(Resource):
         page_id = str(page_id)
         with Session(db.engine) as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter(
+                select(DataSourceOauthBinding).where(
                     db.and_(
                         DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                         DataSourceOauthBinding.provider == "notion",

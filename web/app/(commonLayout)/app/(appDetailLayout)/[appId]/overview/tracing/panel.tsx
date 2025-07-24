@@ -83,27 +83,50 @@ const Panel: FC = () => {
   const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig)
 
   const fetchTracingConfig = async () => {
-    const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
-    if (!arizeHasNotConfig)
-      setArizeConfig(arizeConfig as ArizeConfig)
-    const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
-    if (!phoenixHasNotConfig)
-      setPhoenixConfig(phoenixConfig as PhoenixConfig)
-    const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    if (!langSmithHasNotConfig)
-      setLangSmithConfig(langSmithConfig as LangSmithConfig)
-    const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    if (!langFuseHasNotConfig)
-      setLangFuseConfig(langFuseConfig as LangFuseConfig)
-    const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
-    if (!OpikHasNotConfig)
-      setOpikConfig(opikConfig as OpikConfig)
-    const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
-    if (!weaveHasNotConfig)
-      setWeaveConfig(weaveConfig as WeaveConfig)
-    const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
-    if (!aliyunHasNotConfig)
-      setAliyunConfig(aliyunConfig as AliyunConfig)
+    const getArizeConfig = async () => {
+      const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
+      if (!arizeHasNotConfig)
+        setArizeConfig(arizeConfig as ArizeConfig)
+    }
+    const getPhoenixConfig = async () => {
+      const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
+      if (!phoenixHasNotConfig)
+        setPhoenixConfig(phoenixConfig as PhoenixConfig)
+    }
+    const getLangSmithConfig = async () => {
+      const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
+      if (!langSmithHasNotConfig)
+        setLangSmithConfig(langSmithConfig as LangSmithConfig)
+    }
+    const getLangFuseConfig = async () => {
+      const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
+      if (!langFuseHasNotConfig)
+        setLangFuseConfig(langFuseConfig as LangFuseConfig)
+    }
+    const getOpikConfig = async () => {
+      const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
+      if (!OpikHasNotConfig)
+        setOpikConfig(opikConfig as OpikConfig)
+    }
+    const getWeaveConfig = async () => {
+      const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
+      if (!weaveHasNotConfig)
+        setWeaveConfig(weaveConfig as WeaveConfig)
+    }
+    const getAliyunConfig = async () => {
+      const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
+      if (!aliyunHasNotConfig)
+        setAliyunConfig(aliyunConfig as AliyunConfig)
+    }
+    Promise.all([
+      getArizeConfig(),
+      getPhoenixConfig(),
+      getLangSmithConfig(),
+      getLangFuseConfig(),
+      getOpikConfig(),
+      getWeaveConfig(),
+      getAliyunConfig(),
+    ])
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
@@ -155,7 +178,6 @@ const Panel: FC = () => {
       await fetchTracingConfig()
       setLoaded()
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [controlShowPopup, setControlShowPopup] = useState<number>(0)

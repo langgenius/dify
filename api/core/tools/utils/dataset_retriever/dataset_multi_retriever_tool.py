@@ -87,7 +87,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
         segments = (
             db.session.query(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.dataset_id.in_(self.dataset_ids),
                 DocumentSegment.completed_at.isnot(None),
                 DocumentSegment.status == "completed",
@@ -114,7 +114,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                     document = (
                         db.session.query(Document)
-                        .filter(
+                        .where(
                             Document.id == segment.document_id,
                             Document.enabled == True,
                             Document.archived == False,
@@ -163,7 +163,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
     ):
         with flask_app.app_context():
             dataset = (
-                db.session.query(Dataset).filter(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id).first()
+                db.session.query(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id).first()
             )
 
             if not dataset:

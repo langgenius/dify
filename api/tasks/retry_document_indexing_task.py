@@ -25,7 +25,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
     documents: list[Document] = []
     start_at = time.perf_counter()
 
-    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
         logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
         db.session.close()
@@ -45,7 +45,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                     )
         except Exception as e:
             document = (
-                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             if document:
                 document.indexing_status = "error"
@@ -59,7 +59,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
         logging.info(click.style("Start retry document: {}".format(document_id), fg="green"))
         document = (
-            db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
         )
         if not document:
             logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
@@ -69,7 +69,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             # clean old data
             index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+            segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
             if segments:
                 index_node_ids = [segment.index_node_id for segment in segments]
                 # delete from vector index

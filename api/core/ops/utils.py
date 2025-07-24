@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import Optional, Union
 from urllib.parse import urlparse
 
+from sqlalchemy import select
+
 from extensions.ext_database import db
 from models.model import Message
 
@@ -20,7 +22,7 @@ def filter_none_values(data: dict):
 
 
 def get_message_data(message_id: str):
-    return db.session.query(Message).filter(Message.id == message_id).first()
+    return db.session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
