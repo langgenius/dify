@@ -485,14 +485,12 @@ class ChangeEmailResetApi(Resource):
 
         if not AccountService.check_email_unique(args["new_email"]):
             raise EmailAlreadyInUseError()
-            
+
         reset_data = AccountService.get_change_email_data(args["token"])
         if not reset_data:
             raise InvalidTokenError()
 
         AccountService.revoke_change_email_token(args["token"])
-
-
 
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
