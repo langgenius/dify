@@ -41,6 +41,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
     except Exception:
         logging.exception("Send change email mail to %s failed", to)
 
+
 @shared_task(queue="mail")
 def send_change_mail_completed_notification_task(language: str, to: str) -> None:
     """
