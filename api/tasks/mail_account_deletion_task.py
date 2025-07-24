@@ -37,9 +37,7 @@ def send_deletion_success_task(to: str, language: str = "en-US") -> None:
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                f"Send account deletion success email to {to}: latency: {end_at - start_at}", fg="green"
-            )
+            click.style(f"Send account deletion success email to {to}: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Send account deletion success email to %s failed", to)

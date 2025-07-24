@@ -85,9 +85,7 @@ def enable_segment_to_index_task(segment_id: str):
         index_processor.load(dataset, [document])
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("enable segment to index failed")
         segment.enabled = False

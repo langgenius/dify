@@ -57,9 +57,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"App annotations index deleted : {app_id} latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"App annotations index deleted : {app_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("Annotation batch deleted index failed")
         redis_client.setex(disable_app_annotation_job_key, 600, "error")

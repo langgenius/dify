@@ -109,9 +109,7 @@ def enable_annotation_reply_task(
         db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, "completed")
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"App annotations added to index: {app_id} latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"App annotations added to index: {app_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("Annotation batch created index failed")
         redis_client.setex(enable_app_annotation_job_key, 600, "error")

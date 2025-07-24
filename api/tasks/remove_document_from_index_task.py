@@ -63,9 +63,7 @@ def remove_document_from_index_task(document_id: str):
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                f"Document removed from index: {document.id} latency: {end_at - start_at}", fg="green"
-            )
+            click.style(f"Document removed from index: {document.id} latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("remove document from index failed")

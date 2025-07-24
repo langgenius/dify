@@ -108,9 +108,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 indexing_runner = IndexingRunner()
                 indexing_runner.run([document])
                 end_at = time.perf_counter()
-                logging.info(
-                    click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green")
-                )
+                logging.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
             except DocumentIsPausedError as ex:
                 logging.info(click.style(str(ex), fg="yellow"))
             except Exception:

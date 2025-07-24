@@ -252,9 +252,7 @@ def migrate_annotation_vector_database():
                 create_count += 1
             except Exception as e:
                 click.echo(
-                    click.style(
-                        f"Error creating app annotation index: {e.__class__.__name__} {str(e)}", fg="red"
-                    )
+                    click.style(f"Error creating app annotation index: {e.__class__.__name__} {str(e)}", fg="red")
                 )
                 continue
 
@@ -423,9 +421,7 @@ def migrate_knowledge_vector_database():
                 create_count += 1
             except Exception as e:
                 db.session.rollback()
-                click.echo(
-                    click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red")
-                )
+                click.echo(click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red"))
                 continue
 
     click.echo(

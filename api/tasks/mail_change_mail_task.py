@@ -35,9 +35,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
         )
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Send change email mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"Send change email mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
         logging.exception("Send change email mail to %s failed", to)
 

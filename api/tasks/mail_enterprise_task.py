@@ -25,8 +25,6 @@ def send_enterprise_email_task(to: list[str], subject: str, body: str, substitut
         email_service.send_raw_email(to=to, subject=subject, html_content=html_content)
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
         logging.exception("Send enterprise mail to %s failed", to)

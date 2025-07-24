@@ -101,9 +101,7 @@ def add_document_to_index_task(dataset_document_id: str):
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green"
-            )
+            click.style(f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green")
         )
     except Exception as e:
         logging.exception("add document to index failed")

@@ -65,9 +65,7 @@ class OpsService:
                     }
                 )
             except Exception:
-                new_decrypt_tracing_config.update(
-                    {"project_url": f"{decrypt_tracing_config.get('host')}/"}
-                )
+                new_decrypt_tracing_config.update({"project_url": f"{decrypt_tracing_config.get('host')}/"})
 
         if tracing_provider == "langsmith" and (
             "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")

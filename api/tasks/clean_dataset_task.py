@@ -116,9 +116,7 @@ def clean_dataset_task(
         db.session.commit()
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}", fg="green"
-            )
+            click.style(f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Cleaned dataset when dataset deleted failed")

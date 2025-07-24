@@ -49,8 +49,6 @@ class APIBasedExtensionRequestor:
             raise ValueError("request connection error")
 
         if response.status_code != 200:
-            raise ValueError(
-                f"request error, status_code: {response.status_code}, content: {response.text[:100]}"
-            )
+            raise ValueError(f"request error, status_code: {response.status_code}, content: {response.text[:100]}")
 
         return cast(dict, response.json())

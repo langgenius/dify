@@ -56,9 +56,7 @@ def disable_segment_from_index_task(segment_id: str):
         index_processor.clean(dataset, [segment.index_node_id])
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Segment removed from index: {segment.id} latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"Segment removed from index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception:
         logging.exception("remove segment from index failed")
         segment.enabled = True

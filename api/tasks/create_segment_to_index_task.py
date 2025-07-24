@@ -84,9 +84,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style(f"Segment created to index: {segment.id} latency: {end_at - start_at}", fg="green")
-        )
+        logging.info(click.style(f"Segment created to index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("create segment to index failed")
         segment.enabled = False

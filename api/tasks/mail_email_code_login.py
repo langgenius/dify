@@ -38,9 +38,7 @@ def send_email_code_login_mail_task(language: str, to: str, code: str) -> None:
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                f"Send email code login mail to {to} succeeded: latency: {end_at - start_at}", fg="green"
-            )
+            click.style(f"Send email code login mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Send email code login mail to %s failed", to)
