@@ -325,42 +325,42 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
-    processing_started_at = mapped_column(DateTime, nullable=True)
+    processing_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # parsing
     file_id = mapped_column(db.Text, nullable=True)
     word_count = mapped_column(db.Integer, nullable=True)
-    parsing_completed_at = mapped_column(DateTime, nullable=True)
+    parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # cleaning
-    cleaning_completed_at = mapped_column(DateTime, nullable=True)
+    cleaning_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # split
-    splitting_completed_at = mapped_column(DateTime, nullable=True)
+    splitting_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # indexing
     tokens = mapped_column(db.Integer, nullable=True)
     indexing_latency = mapped_column(db.Float, nullable=True)
-    completed_at = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # pause
     is_paused = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
     paused_by = mapped_column(StringUUID, nullable=True)
-    paused_at = mapped_column(DateTime, nullable=True)
+    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # error
     error = mapped_column(db.Text, nullable=True)
-    stopped_at = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # basic fields
     indexing_status = mapped_column(String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
     enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
-    disabled_at = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
-    archived_at = mapped_column(DateTime, nullable=True)
+    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
@@ -671,17 +671,17 @@ class DocumentSegment(Base):
     # basic fields
     hit_count = mapped_column(db.Integer, nullable=False, default=0)
     enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
-    disabled_at = mapped_column(DateTime, nullable=True)
+    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=db.text("'waiting'::character varying"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     error = mapped_column(db.Text, nullable=True)
-    stopped_at = mapped_column(DateTime, nullable=True)
+    stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -821,8 +821,8 @@ class ChildChunk(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
-    indexing_at = mapped_column(DateTime, nullable=True)
-    completed_at = mapped_column(DateTime, nullable=True)
+    indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     error = mapped_column(db.Text, nullable=True)
 
     @property
