@@ -1,9 +1,8 @@
 import json
 
-from sqlalchemy import func
+from sqlalchemy import func, String, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.types import String
 
 from models.base import Base
 
@@ -24,8 +23,8 @@ class DataSourceOauthBinding(Base):
     access_token = mapped_column(String(255), nullable=False)
     provider = mapped_column(String(255), nullable=False)
     source_info = mapped_column(JSONB, nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
 
 
@@ -42,8 +41,8 @@ class DataSourceApiKeyAuthBinding(Base):
     category = mapped_column(String(255), nullable=False)
     provider = mapped_column(String(255), nullable=False)
     credentials = mapped_column(db.Text, nullable=True)  # JSON
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
 
     def to_dict(self):

@@ -3,7 +3,7 @@ from typing import Optional
 
 from celery import states  # type: ignore
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.types import String
+from sqlalchemy import String, DateTime
 
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
@@ -21,7 +21,7 @@ class CeleryTask(Base):
     status = mapped_column(String(50), default=states.PENDING)
     result = mapped_column(db.PickleType, nullable=True)
     date_done = mapped_column(
-        db.DateTime,
+        DateTime,
         default=lambda: naive_utc_now(),
         onupdate=lambda: naive_utc_now(),
         nullable=True,
@@ -45,4 +45,4 @@ class CeleryTaskSet(Base):
     )
     taskset_id = mapped_column(String(155), unique=True)
     result = mapped_column(db.PickleType, nullable=True)
-    date_done: Mapped[Optional[datetime]] = mapped_column(db.DateTime, default=lambda: naive_utc_now(), nullable=True)
+    date_done: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: naive_utc_now(), nullable=True)

@@ -2,9 +2,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import func, text
+from sqlalchemy import func, text, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.types import String
 
 from .base import Base
 from .engine import db
@@ -63,7 +62,7 @@ class Provider(Base):
     )
     encrypted_config: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     is_valid: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("false"))
-    last_used: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    last_used: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     quota_type: Mapped[Optional[str]] = mapped_column(
         String(40), nullable=True, server_default=text("''::character varying")
@@ -71,8 +70,8 @@ class Provider(Base):
     quota_limit: Mapped[Optional[int]] = mapped_column(db.BigInteger, nullable=True)
     quota_used: Mapped[Optional[int]] = mapped_column(db.BigInteger, default=0)
 
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     def __repr__(self):
         return (
@@ -119,8 +118,8 @@ class ProviderModel(Base):
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     encrypted_config: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     is_valid: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TenantDefaultModel(Base):
@@ -135,8 +134,8 @@ class TenantDefaultModel(Base):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TenantPreferredModelProvider(Base):
@@ -150,8 +149,8 @@ class TenantPreferredModelProvider(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class ProviderOrder(Base):
@@ -174,11 +173,11 @@ class ProviderOrder(Base):
     payment_status: Mapped[str] = mapped_column(
         String(40), nullable=False, server_default=text("'wait_pay'::character varying")
     )
-    paid_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    pay_failed_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    refunded_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    pay_failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    refunded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class ProviderModelSetting(Base):
@@ -199,8 +198,8 @@ class ProviderModelSetting(Base):
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("true"))
     load_balancing_enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class LoadBalancingModelConfig(Base):
@@ -222,5 +221,5 @@ class LoadBalancingModelConfig(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
     enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

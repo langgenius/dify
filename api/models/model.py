@@ -19,7 +19,7 @@ from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from sqlalchemy.types import String
+from sqlalchemy import String
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS

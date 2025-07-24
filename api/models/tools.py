@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.types import String
+from sqlalchemy import String
 
 from core.file import helpers as file_helpers
 from core.helper import encrypter
@@ -84,10 +84,10 @@ class BuiltinToolProvider(Base):
     # credential of the tool provider
     encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     is_default: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     # credential type, e.g., "api-key", "oauth2"
@@ -135,8 +135,8 @@ class ApiToolProvider(Base):
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
-    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def schema_type(self) -> ApiProviderSchemaType:
@@ -216,10 +216,10 @@ class WorkflowToolProvider(Base):
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=True, server_default="")
 
     created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
 
     @property
@@ -274,10 +274,10 @@ class MCPToolProvider(Base):
     # tools
     tools: Mapped[str] = mapped_column(db.Text, nullable=False, default="[]")
     created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
 
     def load_user(self) -> Account | None:
@@ -375,8 +375,8 @@ class ToolModelInvoke(Base):
     provider_response_latency = mapped_column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = mapped_column(db.Numeric(10, 7))
     currency = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 @deprecated
@@ -403,8 +403,8 @@ class ToolConversationVariables(Base):
     # variables pool
     variables_str = mapped_column(db.Text, nullable=False)
 
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def variables(self) -> Any:
@@ -471,8 +471,8 @@ class DeprecatedPublishedAppTool(Base):
     tool_name = mapped_column(String(40), nullable=False)
     # author
     author = mapped_column(String(40), nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
     @property
     def description_i18n(self) -> I18nObject:
