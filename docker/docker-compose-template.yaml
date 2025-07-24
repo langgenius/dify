@@ -1,4 +1,9 @@
 x-shared-env: &shared-api-worker-env
+  # UTF-8 encoding settings
+  LANG: ${LANG:-en_US.UTF-8}
+  LC_ALL: ${LC_ALL:-en_US.UTF-8}
+  PYTHONIOENCODING: ${PYTHONIOENCODING:-utf-8}
+
 services:
   # API service
   api:
