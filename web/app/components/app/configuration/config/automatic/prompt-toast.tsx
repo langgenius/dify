@@ -8,26 +8,26 @@ type Props = {
   className?: string
 }
 const PromptToast = ({
-  // message,
+  message,
   className,
 }: Props) => {
   const [isHide, {
     setTrue: hide,
   }] = useBoolean(false)
-  const message = `
-# h1
-**strong text**  ~~strikethrough~~
+  //   const message = `
+  // # h1
+  // **strong text**  ~~strikethrough~~
 
-* list1
-* list2
+  // * list1
+  // * list2
 
-xxxx
+  // xxxx
 
-## h2
-\`\`\`python
-print('Hello, World!')
-\`\`\`
-  `
+  // ## h2
+  // \`\`\`python
+  // print('Hello, World!')
+  // \`\`\`
+  //   `
   if (isHide)
     return
   return (
