@@ -329,7 +329,7 @@ class Document(Base):
 
     # parsing
     file_id = mapped_column(db.Text, nullable=True)
-    word_count = mapped_column(db.Integer, nullable=True)
+    word_count: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # cleaning
@@ -339,7 +339,7 @@ class Document(Base):
     splitting_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # indexing
-    tokens = mapped_column(db.Integer, nullable=True)
+    tokens: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     indexing_latency = mapped_column(db.Float, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

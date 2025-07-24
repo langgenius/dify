@@ -31,7 +31,7 @@ class CeleryTask(Base):
     args = mapped_column(db.LargeBinary, nullable=True)
     kwargs = mapped_column(db.LargeBinary, nullable=True)
     worker = mapped_column(String(155), nullable=True)
-    retries = mapped_column(db.Integer, nullable=True)
+    retries: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
     queue = mapped_column(String(155), nullable=True)
 
 
