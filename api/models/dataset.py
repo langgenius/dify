@@ -522,7 +522,7 @@ class Document(Base):
                 "id": "built-in",
                 "name": BuiltInField.upload_date,
                 "type": "time",
-                "value": self.created_at.timestamp(),
+                "value": str(self.created_at.timestamp()),
             }
         )
         built_in_fields.append(
@@ -530,7 +530,7 @@ class Document(Base):
                 "id": "built-in",
                 "name": BuiltInField.last_update_date,
                 "type": "time",
-                "value": self.updated_at.timestamp(),
+                "value": str(self.updated_at.timestamp()),
             }
         )
         built_in_fields.append(
