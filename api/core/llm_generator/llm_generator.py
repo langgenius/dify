@@ -125,16 +125,13 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(
-        cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool, rule_config_max_tokens: int = 512
-    ) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
         error_step = ""
         rule_config = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
-        model_parameters = {"max_tokens": rule_config_max_tokens, "temperature": 0.01}
-
+        model_parameters = model_config.get("completion_params", {})
         if no_variable:
             prompt_template = PromptTemplateParser(WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE)
 
@@ -276,12 +273,7 @@ class LLMGenerator:
 
     @classmethod
     def generate_code(
-        cls,
-        tenant_id: str,
-        instruction: str,
-        model_config: dict,
-        code_language: str = "javascript",
-        max_tokens: int = 1000,
+        cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"
     ) -> dict:
         if code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
@@ -305,8 +297,7 @@ class LLMGenerator:
         )
 
         prompt_messages = [UserPromptMessage(content=prompt)]
-        model_parameters = {"max_tokens": max_tokens, "temperature": 0.01}
-
+        model_parameters = model_config.get("completion_params", {})
         try:
             response = cast(
                 LLMResult,
