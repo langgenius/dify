@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
+import ClearAllAnnotationsConfirmModal from './clear-all-annotations-confirm-modal'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -78,21 +79,18 @@ const HeaderOptions: FC<Props> = ({
   }, [controlUpdateList])
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
-
-  const handleClearAll = async () => {
-    const isConfirmed = await confirm({
-      message: t('appAnnotation.table.header.clearAllConfirm'),
-      type: 'danger',
-    })
-    if (isConfirmed){
-      try {
-        await clearAllAnnotations(appId)
-        onAdded()
-      } catch (_) {
-        console.error('Failed to clear annotations')
-      }
-    }
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const handleClearAll = () => {
+    setShowClearConfirm(true)
   }
+  const handleConfirmed = async () => {
+  setShowClearConfirm(false)
+  try {
+    await clearAllAnnotations(appId)
+    onAdded()
+  } catch (_) {
+  }
+}
   const Operations = () => {
     return (
       <div className="w-full py-1">
@@ -192,6 +190,15 @@ const HeaderOptions: FC<Props> = ({
             onCancel={() => setShowBulkImportModal(false)}
             onAdded={onAdded}
           />
+        )
+      }
+      {
+      showClearConfirm && (
+        <ClearAllAnnotationsConfirmModal
+          isShow={showClearConfirm}
+          onHide={() => setShowClearConfirm(false)}
+          onConfirm={handleConfirmed}
+        />
         )
       }
     </div>
