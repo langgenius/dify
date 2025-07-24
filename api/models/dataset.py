@@ -12,7 +12,7 @@ from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, Optional, cast
 
-from sqlalchemy import func, select, DateTime, String
+from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 

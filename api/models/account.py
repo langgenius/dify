@@ -4,9 +4,8 @@ from datetime import datetime
 from typing import Optional, cast
 
 from flask_login import UserMixin  # type: ignore
-from sqlalchemy import func, select
+from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column, reconstructor
-from sqlalchemy import String, DateTime
 
 from models.base import Base
 

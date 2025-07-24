@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import Optional
 
 from celery import states  # type: ignore
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, DateTime
 
 from libs.datetime_utils import naive_utc_now
 from models.base import Base

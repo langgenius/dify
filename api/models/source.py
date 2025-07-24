@@ -1,6 +1,6 @@
 import json
 
-from sqlalchemy import func, String, DateTime
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 
