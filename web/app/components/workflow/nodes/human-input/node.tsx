@@ -1,32 +1,38 @@
 import type { FC } from 'react'
 import React from 'react'
+import {
+  RiMailSendFill,
+  RiRobot2Fill,
+} from '@remixicon/react'
 import type { HumanInputNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-// import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import {
-  useIsChatMode,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
-// import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-// import { Line3 } from '@/app/components/base/icons/src/public/common'
-// import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-// import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-// import { BlockEnum } from '@/app/components/workflow/types'
-// import cn from 'classnames'
+import { DeliveryMethodType } from './types'
 
 const Node: FC<NodeProps<HumanInputNodeType>> = ({
-  id,
   data,
 }) => {
-  const { getBeforeNodesInSameBranch } = useWorkflow()
-  const availableNodes = getBeforeNodesInSameBranch(id)
-  const { getCurrentVariableType } = useWorkflowVariables()
-  const isChatMode = useIsChatMode()
+  const deliveryMethods = data.deliveryMethod || []
 
   return (
-    <div className='mb-1 space-y-0.5 px-3 py-1'>
-      TODO
+    <div className='space-y-0.5 py-1'>
+      <div className='system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary'>delivery method</div>
+      <div className='space-y-0.5 px-2.5'>
+        {deliveryMethods.map(method => (
+          <div key={method.type} className='flex items-center gap-1 rounded-[6px] bg-workflow-block-parma-bg p-1'>
+            {method.type === DeliveryMethodType.WebApp && (
+              <div className='rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5'>
+                <RiRobot2Fill className='h-3.5 w-3.5 text-text-primary-on-surface' />
+              </div>
+            )}
+            {method.type === DeliveryMethodType.Email && (
+              <div className='rounded-[4px] border border-divider-regular bg-components-icon-bg-blue-solid p-0.5'>
+                <RiMailSendFill className='h-3.5 w-3.5 text-text-primary-on-surface' />
+              </div>
+            )}
+            <span className='system-xs-regular capitalize text-text-secondary'>{method.type}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

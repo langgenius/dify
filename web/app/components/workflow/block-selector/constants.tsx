@@ -101,7 +101,7 @@ export const BLOCKS: Block[] = [
     title: 'Agent',
   },
   {
-    classification: BlockClassificationEnum.Default,
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.HumanInput,
     title: 'Human Input',
   },

@@ -1,10 +1,20 @@
 import type { NodeDefault } from '../../types'
 import type { HumanInputNodeType } from './types'
+import { DeliveryMethodType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const nodeDefault: NodeDefault<HumanInputNodeType> = {
   defaultValue: {
-    deliveryMethod: [],
+    deliveryMethod: [
+      {
+        type: DeliveryMethodType.WebApp,
+        enabled: true,
+      },
+      {
+        type: DeliveryMethodType.Email,
+        enabled: false,
+      },
+    ],
     userActions: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
