@@ -21,7 +21,7 @@ def clean_embedding_cache_task():
         try:
             embedding_ids = (
                 db.session.query(Embedding.id)
-                .filter(Embedding.created_at < thirty_days_ago)
+                .where(Embedding.created_at < thirty_days_ago)
                 .order_by(Embedding.created_at.desc())
                 .limit(100)
                 .all()

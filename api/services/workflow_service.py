@@ -89,7 +89,7 @@ class WorkflowService:
     def is_workflow_exist(self, app_model: App) -> bool:
         return (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
@@ -104,7 +104,7 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == "draft"
             )
             .first()
@@ -117,7 +117,7 @@ class WorkflowService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == workflow_id,
@@ -141,7 +141,7 @@ class WorkflowService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == app_model.workflow_id,
@@ -658,7 +658,7 @@ class WorkflowService:
         # Check if there's a tool provider using this specific workflow version
         tool_provider = (
             session.query(WorkflowToolProvider)
-            .filter(
+            .where(
                 WorkflowToolProvider.tenant_id == workflow.tenant_id,
                 WorkflowToolProvider.app_id == workflow.app_id,
                 WorkflowToolProvider.version == workflow.version,

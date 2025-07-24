@@ -31,7 +31,7 @@ class MCPToolManageService:
     def get_mcp_provider_by_provider_id(provider_id: str, tenant_id: str) -> MCPToolProvider:
         res = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
+            .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.id == provider_id)
             .first()
         )
         if not res:
@@ -42,7 +42,7 @@ class MCPToolManageService:
     def get_mcp_provider_by_server_identifier(server_identifier: str, tenant_id: str) -> MCPToolProvider:
         res = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier)
+            .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == server_identifier)
             .first()
         )
         if not res:
@@ -63,7 +63,7 @@ class MCPToolManageService:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
             db.session.query(MCPToolProvider)
-            .filter(
+            .where(
                 MCPToolProvider.tenant_id == tenant_id,
                 or_(
                     MCPToolProvider.name == name,
@@ -100,7 +100,7 @@ class MCPToolManageService:
     def retrieve_mcp_tools(tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
         mcp_providers = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id)
+            .where(MCPToolProvider.tenant_id == tenant_id)
             .order_by(MCPToolProvider.name)
             .all()
         )
@@ -112,19 +112,27 @@ class MCPToolManageService:
     @classmethod
     def list_mcp_tool_from_remote_server(cls, tenant_id: str, provider_id: str) -> ToolProviderApiEntity:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
+        server_url = mcp_provider.decrypted_server_url
+        authed = mcp_provider.authed
+
         try:
-            with MCPClient(
-                mcp_provider.decrypted_server_url, provider_id, tenant_id, authed=mcp_provider.authed, for_list=True
-            ) as mcp_client:
+            with MCPClient(server_url, provider_id, tenant_id, authed=authed, for_list=True) as mcp_client:
                 tools = mcp_client.list_tools()
         except MCPAuthError:
             raise ValueError("Please auth the tool first")
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
-        mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
-        mcp_provider.authed = True
-        mcp_provider.updated_at = datetime.now()
-        db.session.commit()
+
+        try:
+            mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
+            mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
+            mcp_provider.authed = True
+            mcp_provider.updated_at = datetime.now()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
         user = mcp_provider.load_user()
         return ToolProviderApiEntity(
             id=mcp_provider.id,
@@ -160,22 +168,35 @@ class MCPToolManageService:
         server_identifier: str,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
-        mcp_provider.updated_at = datetime.now()
-        mcp_provider.name = name
-        mcp_provider.icon = (
-            json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
-        )
-        mcp_provider.server_identifier = server_identifier
+
+        reconnect_result = None
+        encrypted_server_url = None
+        server_url_hash = None
 
         if UNCHANGED_SERVER_URL_PLACEHOLDER not in server_url:
             encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
-            mcp_provider.server_url = encrypted_server_url
             server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
 
             if server_url_hash != mcp_provider.server_url_hash:
-                cls._re_connect_mcp_provider(mcp_provider, provider_id, tenant_id)
-                mcp_provider.server_url_hash = server_url_hash
+                reconnect_result = cls._re_connect_mcp_provider(server_url, provider_id, tenant_id)
+
         try:
+            mcp_provider.updated_at = datetime.now()
+            mcp_provider.name = name
+            mcp_provider.icon = (
+                json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
+            )
+            mcp_provider.server_identifier = server_identifier
+
+            if encrypted_server_url is not None and server_url_hash is not None:
+                mcp_provider.server_url = encrypted_server_url
+                mcp_provider.server_url_hash = server_url_hash
+
+                if reconnect_result:
+                    mcp_provider.authed = reconnect_result["authed"]
+                    mcp_provider.tools = reconnect_result["tools"]
+                    mcp_provider.encrypted_credentials = reconnect_result["encrypted_credentials"]
+
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
@@ -186,6 +207,9 @@ class MCPToolManageService:
                 raise ValueError(f"MCP tool {server_url} already exists")
             if "unique_mcp_provider_server_identifier" in error_msg:
                 raise ValueError(f"MCP tool {server_identifier} already exists")
+            raise
+        except Exception:
+            db.session.rollback()
             raise
 
     @classmethod
@@ -207,23 +231,22 @@ class MCPToolManageService:
         db.session.commit()
 
     @classmethod
-    def _re_connect_mcp_provider(cls, mcp_provider: MCPToolProvider, provider_id: str, tenant_id: str):
-        """re-connect mcp provider"""
+    def _re_connect_mcp_provider(cls, server_url: str, provider_id: str, tenant_id: str):
         try:
             with MCPClient(
-                mcp_provider.decrypted_server_url,
+                server_url,
                 provider_id,
                 tenant_id,
                 authed=False,
                 for_list=True,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
-                mcp_provider.authed = True
-                mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
+                return {
+                    "authed": True,
+                    "tools": json.dumps([tool.model_dump() for tool in tools]),
+                    "encrypted_credentials": "{}",
+                }
         except MCPAuthError:
-            mcp_provider.authed = False
-            mcp_provider.tools = "[]"
+            return {"authed": False, "tools": "[]", "encrypted_credentials": "{}"}
         except MCPError as e:
             raise ValueError(f"Failed to re-connect MCP server: {e}") from e
-        # reset credentials
-        mcp_provider.encrypted_credentials = "{}"

@@ -12,7 +12,7 @@ from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, Optional, cast
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -68,7 +68,7 @@ class Dataset(Base):
     @property
     def dataset_keyword_table(self):
         dataset_keyword_table = (
-            db.session.query(DatasetKeywordTable).filter(DatasetKeywordTable.dataset_id == self.id).first()
+            db.session.query(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == self.id).first()
         )
         if dataset_keyword_table:
             return dataset_keyword_table
@@ -95,7 +95,7 @@ class Dataset(Base):
     def latest_process_rule(self):
         return (
             db.session.query(DatasetProcessRule)
-            .filter(DatasetProcessRule.dataset_id == self.id)
+            .where(DatasetProcessRule.dataset_id == self.id)
             .order_by(DatasetProcessRule.created_at.desc())
             .first()
         )
@@ -104,19 +104,19 @@ class Dataset(Base):
     def app_count(self):
         return (
             db.session.query(func.count(AppDatasetJoin.id))
-            .filter(AppDatasetJoin.dataset_id == self.id, App.id == AppDatasetJoin.app_id)
+            .where(AppDatasetJoin.dataset_id == self.id, App.id == AppDatasetJoin.app_id)
             .scalar()
         )
 
     @property
     def document_count(self):
-        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.id).scalar()
+        return db.session.query(func.count(Document.id)).where(Document.dataset_id == self.id).scalar()
 
     @property
     def available_document_count(self):
         return (
             db.session.query(func.count(Document.id))
-            .filter(
+            .where(
                 Document.dataset_id == self.id,
                 Document.indexing_status == "completed",
                 Document.enabled == True,
@@ -129,7 +129,7 @@ class Dataset(Base):
     def available_segment_count(self):
         return (
             db.session.query(func.count(DocumentSegment.id))
-            .filter(
+            .where(
                 DocumentSegment.dataset_id == self.id,
                 DocumentSegment.status == "completed",
                 DocumentSegment.enabled == True,
@@ -142,13 +142,13 @@ class Dataset(Base):
         return (
             db.session.query(Document)
             .with_entities(func.coalesce(func.sum(Document.word_count), 0))
-            .filter(Document.dataset_id == self.id)
+            .where(Document.dataset_id == self.id)
             .scalar()
         )
 
     @property
     def doc_form(self):
-        document = db.session.query(Document).filter(Document.dataset_id == self.id).first()
+        document = db.session.query(Document).where(Document.dataset_id == self.id).first()
         if document:
             return document.doc_form
         return None
@@ -169,7 +169,7 @@ class Dataset(Base):
         tags = (
             db.session.query(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
-            .filter(
+            .where(
                 TagBinding.target_id == self.id,
                 TagBinding.tenant_id == self.tenant_id,
                 Tag.tenant_id == self.tenant_id,
@@ -185,14 +185,14 @@ class Dataset(Base):
         if self.provider != "external":
             return None
         external_knowledge_binding = (
-            db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.dataset_id == self.id).first()
+            db.session.query(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == self.id).first()
         )
         if not external_knowledge_binding:
             return None
-        external_knowledge_api = (
-            db.session.query(ExternalKnowledgeApis)
-            .filter(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
-            .first()
+        external_knowledge_api = db.session.scalar(
+            select(ExternalKnowledgeApis).where(
+                ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id
+            )
         )
         if not external_knowledge_api:
             return None
@@ -205,7 +205,7 @@ class Dataset(Base):
 
     @property
     def doc_metadata(self):
-        dataset_metadatas = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id == self.id).all()
+        dataset_metadatas = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id).all()
 
         doc_metadata = [
             {
@@ -408,7 +408,7 @@ class Document(Base):
                 data_source_info_dict = json.loads(self.data_source_info)
                 file_detail = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.id == data_source_info_dict["upload_file_id"])
+                    .where(UploadFile.id == data_source_info_dict["upload_file_id"])
                     .one_or_none()
                 )
                 if file_detail:
@@ -441,24 +441,24 @@ class Document(Base):
 
     @property
     def dataset(self):
-        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).one_or_none()
+        return db.session.query(Dataset).where(Dataset.id == self.dataset_id).one_or_none()
 
     @property
     def segment_count(self):
-        return db.session.query(DocumentSegment).filter(DocumentSegment.document_id == self.id).count()
+        return db.session.query(DocumentSegment).where(DocumentSegment.document_id == self.id).count()
 
     @property
     def hit_count(self):
         return (
             db.session.query(DocumentSegment)
             .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count), 0))
-            .filter(DocumentSegment.document_id == self.id)
+            .where(DocumentSegment.document_id == self.id)
             .scalar()
         )
 
     @property
     def uploader(self):
-        user = db.session.query(Account).filter(Account.id == self.created_by).first()
+        user = db.session.query(Account).where(Account.id == self.created_by).first()
         return user.name if user else None
 
     @property
@@ -475,7 +475,7 @@ class Document(Base):
             document_metadatas = (
                 db.session.query(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
-                .filter(
+                .where(
                     DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
                 )
                 .all()
@@ -687,26 +687,26 @@ class DocumentSegment(Base):
 
     @property
     def dataset(self):
-        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).first()
+        return db.session.scalar(select(Dataset).where(Dataset.id == self.dataset_id))
 
     @property
     def document(self):
-        return db.session.query(Document).filter(Document.id == self.document_id).first()
+        return db.session.scalar(select(Document).where(Document.id == self.document_id))
 
     @property
     def previous_segment(self):
-        return (
-            db.session.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1)
-            .first()
+        return db.session.scalar(
+            select(DocumentSegment).where(
+                DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position - 1
+            )
         )
 
     @property
     def next_segment(self):
-        return (
-            db.session.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
-            .first()
+        return db.session.scalar(
+            select(DocumentSegment).where(
+                DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1
+            )
         )
 
     @property
@@ -717,7 +717,7 @@ class DocumentSegment(Base):
             if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
                 child_chunks = (
                     db.session.query(ChildChunk)
-                    .filter(ChildChunk.segment_id == self.id)
+                    .where(ChildChunk.segment_id == self.id)
                     .order_by(ChildChunk.position.asc())
                     .all()
                 )
@@ -734,7 +734,7 @@ class DocumentSegment(Base):
             if rules.parent_mode:
                 child_chunks = (
                     db.session.query(ChildChunk)
-                    .filter(ChildChunk.segment_id == self.id)
+                    .where(ChildChunk.segment_id == self.id)
                     .order_by(ChildChunk.position.asc())
                     .all()
                 )
@@ -825,15 +825,15 @@ class ChildChunk(Base):
 
     @property
     def dataset(self):
-        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).first()
+        return db.session.query(Dataset).where(Dataset.id == self.dataset_id).first()
 
     @property
     def document(self):
-        return db.session.query(Document).filter(Document.id == self.document_id).first()
+        return db.session.query(Document).where(Document.id == self.document_id).first()
 
     @property
     def segment(self):
-        return db.session.query(DocumentSegment).filter(DocumentSegment.id == self.segment_id).first()
+        return db.session.query(DocumentSegment).where(DocumentSegment.id == self.segment_id).first()
 
 
 class AppDatasetJoin(Base):
@@ -1044,11 +1044,11 @@ class ExternalKnowledgeApis(Base):
     def dataset_bindings(self):
         external_knowledge_bindings = (
             db.session.query(ExternalKnowledgeBindings)
-            .filter(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+            .where(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
             .all()
         )
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
-        datasets = db.session.query(Dataset).filter(Dataset.id.in_(dataset_ids)).all()
+        datasets = db.session.query(Dataset).where(Dataset.id.in_(dataset_ids)).all()
         dataset_bindings = []
         for dataset in datasets:
             dataset_bindings.append({"id": dataset.id, "name": dataset.name})

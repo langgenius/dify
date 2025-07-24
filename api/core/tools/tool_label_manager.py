@@ -29,7 +29,7 @@ class ToolLabelManager:
             raise ValueError("Unsupported tool type")
 
         # delete old labels
-        db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id == provider_id).delete()
+        db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id == provider_id).delete()
 
         # insert new labels
         for label in labels:
@@ -57,7 +57,7 @@ class ToolLabelManager:
 
         labels = (
             db.session.query(ToolLabelBinding.label_name)
-            .filter(
+            .where(
                 ToolLabelBinding.tool_id == provider_id,
                 ToolLabelBinding.tool_type == controller.provider_type.value,
             )
@@ -90,7 +90,7 @@ class ToolLabelManager:
             provider_ids.append(controller.provider_id)
 
         labels: list[ToolLabelBinding] = (
-            db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id.in_(provider_ids)).all()
+            db.session.query(ToolLabelBinding).where(ToolLabelBinding.tool_id.in_(provider_ids)).all()
         )
 
         tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}

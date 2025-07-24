@@ -81,7 +81,7 @@ def batch_create_segment_to_index_task(
             segment_hash = helper.generate_text_hash(content)  # type: ignore
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
-                .filter(DocumentSegment.document_id == dataset_document.id)
+                .where(DocumentSegment.document_id == dataset_document.id)
                 .scalar()
             )
             segment_document = DocumentSegment(

@@ -29,6 +29,7 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
+    TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
 from models.model import DifySetup
@@ -661,7 +662,7 @@ class AccountService:
                 )
             )
 
-        account = db.session.query(Account).filter(Account.email == email).first()
+        account = db.session.query(Account).where(Account.email == email).first()
         if not account:
             return None
 
@@ -847,6 +848,17 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
+        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+            tenant_id=tenant.id,
+            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            upgrade_time_of_day=0,
+            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            exclude_plugins=[],
+            include_plugins=[],
+        )
+        db.session.add(plugin_upgrade_strategy)
+        db.session.commit()
+
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
         return tenant
@@ -907,7 +919,7 @@ class TenantService:
         return (
             db.session.query(Tenant)
             .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
-            .filter(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
+            .where(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL)
             .all()
         )
 
@@ -936,7 +948,7 @@ class TenantService:
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
             .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
-            .filter(
+            .where(
                 TenantAccountJoin.account_id == account.id,
                 TenantAccountJoin.tenant_id == tenant_id,
                 Tenant.status == TenantStatus.NORMAL,
@@ -947,7 +959,7 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            db.session.query(TenantAccountJoin).filter(
+            db.session.query(TenantAccountJoin).where(
                 TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id
             ).update({"current": False})
             tenant_account_join.current = True
@@ -962,7 +974,7 @@ class TenantService:
             db.session.query(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(TenantAccountJoin.tenant_id == tenant.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id)
         )
 
         # Initialize an empty list to store the updated accounts
@@ -981,8 +993,8 @@ class TenantService:
             db.session.query(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(TenantAccountJoin.tenant_id == tenant.id)
-            .filter(TenantAccountJoin.role == "dataset_operator")
+            .where(TenantAccountJoin.tenant_id == tenant.id)
+            .where(TenantAccountJoin.role == "dataset_operator")
         )
 
         # Initialize an empty list to store the updated accounts
@@ -1002,9 +1014,7 @@ class TenantService:
 
         return (
             db.session.query(TenantAccountJoin)
-            .filter(
-                TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles])
-            )
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role.in_([role.value for role in roles]))
             .first()
             is not None
         )
@@ -1014,7 +1024,7 @@ class TenantService:
         """Get the role of the current account for a given tenant"""
         join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .first()
         )
         return TenantAccountRole(join.role) if join else None
@@ -1281,7 +1291,7 @@ class RegisterService:
 
         tenant = (
             db.session.query(Tenant)
-            .filter(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
+            .where(Tenant.id == invitation_data["workspace_id"], Tenant.status == "normal")
             .first()
         )
 
@@ -1291,7 +1301,7 @@ class RegisterService:
         tenant_account = (
             db.session.query(Account, TenantAccountJoin.role)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .filter(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
+            .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
             .first()
         )
 

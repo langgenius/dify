@@ -382,7 +382,7 @@ class AppService:
                 elif provider_type == "api":
                     try:
                         provider: Optional[ApiToolProvider] = (
-                            db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()
+                            db.session.query(ApiToolProvider).where(ApiToolProvider.id == provider_id).first()
                         )
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
@@ -399,7 +399,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.query(Site).filter(Site.app_id == app_id).first()
+        site = db.session.query(Site).where(Site.app_id == app_id).first()
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -411,7 +411,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        site = db.session.query(Site).where(Site.code == app_code).first()
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

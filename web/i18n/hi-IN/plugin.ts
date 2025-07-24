@@ -248,6 +248,55 @@ const translation = {
     clientInfo: 'चूंकि इस टूल प्रदाता के लिए कोई सिस्टम क्लाइंट रहस्य नहीं पाए गए हैं, इसलिए इसे मैन्युअल रूप से सेटअप करना आवश्यक है, कृपया redirect_uri का उपयोग करें',
   },
   deprecated: 'अनुशंसित नहीं',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'अक्षम',
+        description: 'प्लगइन्स स्वचालित रूप से अपडेट नहीं होंगे',
+      },
+      fixOnly: {
+        name: 'केवल ठीक करें',
+        selectedDescription: 'केवल पैच संस्करणों के लिए स्वचालित अपडेट',
+      },
+      latest: {
+        name: 'नवीनतम',
+        selectedDescription: 'हमेशा नवीनतम संस्करण पर अद्यतन करें',
+        description: 'हमेशा नवीनतम संस्करण पर अद्यतन करें',
+      },
+    },
+    upgradeMode: {
+      all: 'सभी अपडेट करें',
+      partial: 'केवल चयनित',
+      exclude: 'चुने हुए को बाहर करें',
+    },
+    upgradeModePlaceholder: {
+      partial: 'केवल चयनित प्लगइन्स स्वतः अपडेट होंगे। वर्तमान में कोई प्लगइन चयनित नहीं है, इसलिए कोई प्लगइन स्वतः अपडेट नहीं होगा।',
+      exclude: 'चुने हुए प्लगइन्स अपने आप अपडेट नहीं होंगे',
+    },
+    operation: {
+      clearAll: 'सभी हटाएं',
+      select: 'प्लगइन्स चुनें',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'फिर भी डाउनग्रेड करें',
+      title: 'प्लगइन डाउनग्रेड',
+      exclude: 'स्वतः अपडेट से बाहर करें',
+      description: 'इस प्लगइन के लिए ऑटो-अपडेट वर्तमान में सक्षम है। संस्करण को डाउनग्रेड करने से आपके परिवर्तनों को अगली स्वचालित अद्यतन के दौरान ओवरराइट किया जा सकता है।',
+    },
+    noPluginPlaceholder: {
+      noFound: 'कोई प्लगइन्स नहीं मिले',
+      noInstalled: 'कोई प्लगइन स्थापित नहीं है',
+    },
+    updateTimeTitle: 'अद्यतन समय',
+    updateSettings: 'सेटिंग्स अपडेट करें',
+    automaticUpdates: 'स्वचालित अपडेट',
+    partialUPdate: 'केवल निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट होंगे',
+    nextUpdateTime: 'अगली ऑटो-अपडेट: {{time}}',
+    updateTime: 'अद्यतन समय',
+    specifyPluginsToUpdate: 'अपडेट करने के लिए प्लगइन्स निर्दिष्ट करें',
+    changeTimezone: 'समय क्षेत्र बदलने के लिए, <setTimezone>सेटिंग्स</setTimezone> पर जाएं',
+    excludeUpdate: 'निम्नलिखित {{num}} प्लगइन्स स्वचालित रूप से अपडेट नहीं होंगे',
+  },
 }
 
 export default translation

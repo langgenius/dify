@@ -73,7 +73,7 @@ class APIBasedExtensionService:
                 db.session.query(APIBasedExtension)
                 .filter_by(tenant_id=extension_data.tenant_id)
                 .filter_by(name=extension_data.name)
-                .filter(APIBasedExtension.id != extension_data.id)
+                .where(APIBasedExtension.id != extension_data.id)
                 .first()
             )
 

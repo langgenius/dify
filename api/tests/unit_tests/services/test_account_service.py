@@ -708,9 +708,9 @@ class TestTenantService:
         with patch("services.account_service.db") as mock_db:
             # Mock the join query that returns the tenant_account_join
             mock_query = MagicMock()
-            mock_filter = MagicMock()
-            mock_filter.first.return_value = mock_tenant_join
-            mock_query.filter.return_value = mock_filter
+            mock_where = MagicMock()
+            mock_where.first.return_value = mock_tenant_join
+            mock_query.where.return_value = mock_where
             mock_query.join.return_value = mock_query
             mock_db.session.query.return_value = mock_query
 
@@ -1381,10 +1381,10 @@ class TestRegisterService:
 
             # Mock database queries - complex query mocking
             mock_query1 = MagicMock()
-            mock_query1.filter.return_value.first.return_value = mock_tenant
+            mock_query1.where.return_value.first.return_value = mock_tenant
 
             mock_query2 = MagicMock()
-            mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+            mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
 
             mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 
@@ -1449,7 +1449,7 @@ class TestRegisterService:
         mock_query1.filter.return_value.first.return_value = mock_tenant
 
         mock_query2 = MagicMock()
-        mock_query2.join.return_value.filter.return_value.first.return_value = None  # No account found
+        mock_query2.join.return_value.where.return_value.first.return_value = None  # No account found
 
         mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 
@@ -1482,7 +1482,7 @@ class TestRegisterService:
         mock_query1.filter.return_value.first.return_value = mock_tenant
 
         mock_query2 = MagicMock()
-        mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+        mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
 
         mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 

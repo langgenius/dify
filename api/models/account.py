@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional, cast
 
 from flask_login import UserMixin  # type: ignore
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Mapped, mapped_column, reconstructor
 
 from models.base import Base
@@ -119,7 +119,7 @@ class Account(UserMixin, Base):
 
     @current_tenant.setter
     def current_tenant(self, tenant: "Tenant"):
-        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        ta = db.session.scalar(select(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).limit(1))
         if ta:
             self.role = TenantAccountRole(ta.role)
             self._current_tenant = tenant
@@ -135,9 +135,9 @@ class Account(UserMixin, Base):
             tuple[Tenant, TenantAccountJoin],
             (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == tenant_id)
-                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.account_id == self.id)
+                .where(Tenant.id == tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == self.id)
                 .one_or_none()
             ),
         )
@@ -161,11 +161,11 @@ class Account(UserMixin, Base):
     def get_by_openid(cls, provider: str, open_id: str):
         account_integrate = (
             db.session.query(AccountIntegrate)
-            .filter(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
+            .where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
             .one_or_none()
         )
         if account_integrate:
-            return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
+            return db.session.query(Account).where(Account.id == account_integrate.account_id).one_or_none()
         return None
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
@@ -211,7 +211,7 @@ class Tenant(Base):
     def get_accounts(self) -> list[Account]:
         return (
             db.session.query(Account)
-            .filter(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
+            .where(Account.id == TenantAccountJoin.account_id, TenantAccountJoin.tenant_id == self.id)
             .all()
         )
 
@@ -297,6 +297,40 @@ class TenantPluginPermission(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID)
-    install_permission: Mapped[InstallPermission] = mapped_column(db.String(16), server_default="everyone")
-    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), server_default="noone")
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    install_permission: Mapped[InstallPermission] = mapped_column(
+        db.String(16), nullable=False, server_default="everyone"
+    )
+    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+
+
+class TenantPluginAutoUpgradeStrategy(Base):
+    class StrategySetting(enum.StrEnum):
+        DISABLED = "disabled"
+        FIX_ONLY = "fix_only"
+        LATEST = "latest"
+
+    class UpgradeMode(enum.StrEnum):
+        ALL = "all"
+        PARTIAL = "partial"
+        EXCLUDE = "exclude"
+
+    __tablename__ = "tenant_plugin_auto_upgrade_strategies"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tenant_plugin_auto_upgrade_strategy_pkey"),
+        db.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    strategy_setting: Mapped[StrategySetting] = mapped_column(db.String(16), nullable=False, server_default="fix_only")
+    upgrade_time_of_day: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0)  # seconds of the day
+    upgrade_mode: Mapped[UpgradeMode] = mapped_column(db.String(16), nullable=False, server_default="exclude")
+    exclude_plugins: Mapped[list[str]] = mapped_column(
+        db.ARRAY(db.String(255)), nullable=False
+    )  # plugin_id (author/name)
+    include_plugins: Mapped[list[str]] = mapped_column(
+        db.ARRAY(db.String(255)), nullable=False
+    )  # plugin_id (author/name)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

@@ -65,7 +65,7 @@ class WebConversationService:
             return
         pinned_conversation = (
             db.session.query(PinnedConversation)
-            .filter(
+            .where(
                 PinnedConversation.app_id == app_model.id,
                 PinnedConversation.conversation_id == conversation_id,
                 PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
@@ -97,7 +97,7 @@ class WebConversationService:
             return
         pinned_conversation = (
             db.session.query(PinnedConversation)
-            .filter(
+            .where(
                 PinnedConversation.app_id == app_model.id,
                 PinnedConversation.conversation_id == conversation_id,
                 PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),

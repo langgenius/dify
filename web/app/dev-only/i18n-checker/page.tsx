@@ -1,13 +1,19 @@
 'use client'
-import { resources } from '@/i18n/i18next-config'
-import { useEffect, useState } from 'react'
+import { loadLangResources } from '@/i18n/i18next-config'
+import { useCallback, useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
+import { LanguagesSupported } from '@/i18n/language'
 
 export default function I18nTest() {
   const [langs, setLangs] = useState<Lang[]>([])
 
+  const getLangs = useCallback(async () => {
+    const langs = await genLangs()
+    setLangs(langs)
+  }, [])
+
   useEffect(() => {
-    setLangs(genLangs())
+    getLangs()
   }, [])
 
   return (
@@ -107,9 +113,14 @@ export default function I18nTest() {
   )
 }
 
-function genLangs() {
+async function genLangs() {
   const langs_: Lang[] = []
   let en!: Lang
+
+  const resources: Record<string, any> = {}
+  // Initialize empty resource object
+  for (const lang of LanguagesSupported)
+    resources[lang] = await loadLangResources(lang)
 
   for (const [key, value] of Object.entries(resources)) {
     const keys = getNestedKeys(value.translation)
