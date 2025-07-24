@@ -42,6 +42,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  HumanInput = 'human-input',
 }
 
 export enum ControlMode {

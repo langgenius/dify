@@ -22,6 +22,7 @@ import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
 import LoopStartDefault from './nodes/loop-start/default'
 import LoopEndDefault from './nodes/loop-end/default'
+import HumanInputDefault from './nodes/human-input/default'
 
 type NodesExtraData = {
   author: string
@@ -242,6 +243,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
     checkValid: AgentDefault.checkValid,
   },
+  [BlockEnum.HumanInput]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: HumanInputDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: HumanInputDefault.getAvailableNextNodes,
+    checkValid: HumanInputDefault.checkValid,
+  },
 }
 
 export const NODES_INITIAL_DATA = {
@@ -400,6 +410,12 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...AgentDefault.defaultValue,
+  },
+  [BlockEnum.HumanInput]: {
+    type: BlockEnum.HumanInput,
+    title: '',
+    desc: '',
+    ...HumanInputDefault.defaultValue,
   },
 }
 export const MAX_ITERATION_PARALLEL_NUM = 10

@@ -258,6 +258,7 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'human-input': 'Human Input',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -280,6 +281,7 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'human-input': 'Ask for human to confirm before generating the next step',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -901,6 +903,11 @@ const translation = {
       },
       clickToViewParameterSchema: 'Click to view parameter schema',
       parameterSchema: 'Parameter Schema',
+    },
+    humanInput: {
+      deliveryMethod: 'delivery method',
+      formContent: 'form content',
+      userActions: 'user actions',
     },
   },
   tracing: {

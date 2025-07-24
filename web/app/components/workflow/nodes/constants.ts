@@ -20,6 +20,8 @@ import TemplateTransformNode from './template-transform/node'
 import TemplateTransformPanel from './template-transform/panel'
 import HttpNode from './http/node'
 import HttpPanel from './http/panel'
+import HumanInputNode from './human-input/node'
+import HumanInputPanel from './human-input/panel'
 import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
 import VariableAssignerNode from './variable-assigner/node'
@@ -61,6 +63,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: AgentNode,
+  [BlockEnum.HumanInput]: HumanInputNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -84,6 +87,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: AgentPanel,
+  [BlockEnum.HumanInput]: HumanInputPanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'
