@@ -2,7 +2,11 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
@@ -66,11 +70,8 @@ const HeaderOptions: FC<Props> = ({
   }
 
   useEffect(() => {
-  const fetchData = async () => {
-    await fetchList()
-  }
-  fetchData()
-}, [fetchList])
+    fetchList()
+  }, [])
   useEffect(() => {
     if (controlUpdateList)
       fetchList()
@@ -162,7 +163,7 @@ const HeaderOptions: FC<Props> = ({
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
-        htmlContent={<Operations/>}
+        htmlContent={<Operations />}
         position="br"
         trigger="click"
         btnElement={
