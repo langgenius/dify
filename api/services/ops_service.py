@@ -66,7 +66,7 @@ class OpsService:
                 )
             except Exception:
                 new_decrypt_tracing_config.update(
-                    {"project_url": "{host}/".format(host=decrypt_tracing_config.get("host"))}
+                    {"project_url": f"{decrypt_tracing_config.get('host')}/"}
                 )
 
         if tracing_provider == "langsmith" and (
@@ -139,7 +139,7 @@ class OpsService:
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         elif tracing_provider == "langfuse":
             project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
-            project_url = "{host}/project/{key}".format(host=tracing_config.get("host"), key=project_key)
+            project_url = f"{tracing_config.get('host')}/project/{project_key}"
         elif tracing_provider in ("langsmith", "opik"):
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         else:

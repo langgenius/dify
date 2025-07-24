@@ -22,7 +22,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start change email mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start change email mail to {to}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -36,7 +36,7 @@ def send_change_mail_task(language: str, to: str, code: str, phase: str) -> None
 
         end_at = time.perf_counter()
         logging.info(
-            click.style("Send change email mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
+            click.style(f"Send change email mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Send change email mail to %s failed", to)
@@ -54,7 +54,7 @@ def send_change_mail_completed_notification_task(language: str, to: str) -> None
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start change email completed notify mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start change email completed notify mail to {to}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -72,7 +72,7 @@ def send_change_mail_completed_notification_task(language: str, to: str) -> None
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Send change email completed mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                f"Send change email completed mail to {to} succeeded: latency: {end_at - start_at}",
                 fg="green",
             )
         )

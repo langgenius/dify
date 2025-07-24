@@ -21,7 +21,7 @@ def send_reset_password_mail_task(language: str, to: str, code: str) -> None:
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start password reset mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start password reset mail to {to}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -39,7 +39,7 @@ def send_reset_password_mail_task(language: str, to: str, code: str) -> None:
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Send password reset mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green"
+                f"Send password reset mail to {to} succeeded: latency: {end_at - start_at}", fg="green"
             )
         )
     except Exception:

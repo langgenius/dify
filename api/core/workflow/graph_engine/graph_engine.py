@@ -238,13 +238,13 @@ class GraphEngine:
         while True:
             # max steps reached
             if self.graph_runtime_state.node_run_steps > self.max_execution_steps:
-                raise GraphRunFailedError("Max steps {} reached.".format(self.max_execution_steps))
+                raise GraphRunFailedError(f"Max steps {self.max_execution_steps} reached.")
 
             # or max execution time reached
             if self._is_timed_out(
                 start_at=self.graph_runtime_state.start_at, max_execution_time=self.max_execution_time
             ):
-                raise GraphRunFailedError("Max execution time {}s reached.".format(self.max_execution_time))
+                raise GraphRunFailedError(f"Max execution time {self.max_execution_time}s reached.")
 
             # init route node state
             route_node_state = self.graph_runtime_state.node_run_state.create_node_state(node_id=next_node_id)

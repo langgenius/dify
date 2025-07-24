@@ -70,9 +70,9 @@ class RelytVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     def create_collection(self, dimension: int):
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"

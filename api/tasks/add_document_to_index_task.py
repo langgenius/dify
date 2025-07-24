@@ -22,19 +22,19 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
-    logging.info(click.style("Start add document to index: {}".format(dataset_document_id), fg="green"))
+    logging.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
     dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
     if not dataset_document:
-        logging.info(click.style("Document not found: {}".format(dataset_document_id), fg="red"))
+        logging.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
         db.session.close()
         return
 
     if dataset_document.indexing_status != "completed":
         return
 
-    indexing_cache_key = "document_{}_indexing".format(dataset_document.id)
+    indexing_cache_key = f"document_{dataset_document.id}_indexing"
 
     try:
         dataset = dataset_document.dataset
@@ -102,7 +102,7 @@ def add_document_to_index_task(dataset_document_id: str):
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Document added to index: {} latency: {}".format(dataset_document.id, end_at - start_at), fg="green"
+                f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green"
             )
         )
     except Exception as e:

@@ -207,7 +207,7 @@ class ApolloClient:
             # if the length is 0 it is returned directly
             if len(notifications) == 0:
                 return
-            url = "{}/notifications/v2".format(self.config_url)
+            url = f"{self.config_url}/notifications/v2"
             params = {
                 "appId": self.app_id,
                 "cluster": self.cluster,
@@ -273,7 +273,7 @@ class ApolloClient:
             time.sleep(60 * 10)  # 10 minutes
 
     def _do_heart_beat(self, namespace):
-        url = "{}/configs/{}/{}/{}?ip={}".format(self.config_url, self.app_id, self.cluster, namespace, self.ip)
+        url = f"{self.config_url}/configs/{self.app_id}/{self.cluster}/{namespace}?ip={self.ip}"
         try:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:

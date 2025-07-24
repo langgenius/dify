@@ -1282,7 +1282,7 @@ class RegisterService:
     def revoke_token(cls, workspace_id: str, email: str, token: str):
         if workspace_id and email:
             email_hash = sha256(email.encode()).hexdigest()
-            cache_key = "member_invite_token:{}, {}:{}".format(workspace_id, email_hash, token)
+            cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
             redis_client.delete(cache_key)
         else:
             redis_client.delete(cls._get_invitation_token_key(token))

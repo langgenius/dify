@@ -95,7 +95,7 @@ def email(email):
     if re.match(pattern, email) is not None:
         return email
 
-    error = "{email} is not a valid email.".format(email=email)
+    error = f"{email} is not a valid email."
     raise ValueError(error)
 
 
@@ -107,7 +107,7 @@ def uuid_value(value):
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
     except ValueError:
-        error = "{value} is not a valid uuid.".format(value=value)
+        error = f"{value} is not a valid uuid."
         raise ValueError(error)
 
 
@@ -126,7 +126,7 @@ def timestamp_value(timestamp):
             raise ValueError
         return int_timestamp
     except ValueError:
-        error = "{timestamp} is not a valid timestamp.".format(timestamp=timestamp)
+        error = f"{timestamp} is not a valid timestamp."
         raise ValueError(error)
 
 
@@ -169,14 +169,14 @@ def _get_float(value):
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValueError("{} is not a valid float".format(value))
+        raise ValueError(f"{value} is not a valid float")
 
 
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
 
-    error = "{timezone_string} is not a valid timezone.".format(timezone_string=timezone_string)
+    error = f"{timezone_string} is not a valid timezone."
     raise ValueError(error)
 
 

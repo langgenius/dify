@@ -289,9 +289,9 @@ class MilvusVector(BaseVector):
         """
         Create a new collection in Milvus with the specified schema and index parameters.
         """
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             # Grab the existing collection if it exists

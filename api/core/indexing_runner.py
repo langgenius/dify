@@ -84,7 +84,7 @@ class IndexingRunner:
                     documents=documents,
                 )
             except DocumentIsPausedError:
-                raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+                raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e.description)
@@ -147,7 +147,7 @@ class IndexingRunner:
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
         except DocumentIsPausedError:
-            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+            raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -222,7 +222,7 @@ class IndexingRunner:
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
         except DocumentIsPausedError:
-            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+            raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -649,7 +649,7 @@ class IndexingRunner:
 
     @staticmethod
     def _check_document_paused_status(document_id: str):
-        indexing_cache_key = "document_{}_is_paused".format(document_id)
+        indexing_cache_key = f"document_{document_id}_is_paused"
         result = redis_client.get(indexing_cache_key)
         if result:
             raise DocumentIsPausedError()

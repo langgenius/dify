@@ -69,7 +69,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Cleaned documents when documents deleted latency: {}".format(end_at - start_at),
+                f"Cleaned documents when documents deleted latency: {end_at - start_at}",
                 fg="green",
             )
         )

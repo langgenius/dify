@@ -1001,7 +1001,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # set document paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.setnx(indexing_cache_key, "True")
 
     @staticmethod
@@ -1016,7 +1016,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # delete paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.delete(indexing_cache_key)
         # trigger async task
         recover_document_indexing_task.delay(document.dataset_id, document.id)
@@ -1025,7 +1025,7 @@ class DocumentService:
     def retry_document(dataset_id: str, documents: list[Document]):
         for document in documents:
             # add retry flag
-            retry_indexing_cache_key = "document_{}_is_retried".format(document.id)
+            retry_indexing_cache_key = f"document_{document.id}_is_retried"
             cache_result = redis_client.get(retry_indexing_cache_key)
             if cache_result is not None:
                 raise ValueError("Document is being retried, please try again later")
@@ -1042,7 +1042,7 @@ class DocumentService:
     @staticmethod
     def sync_website_document(dataset_id: str, document: Document):
         # add sync flag
-        sync_indexing_cache_key = "document_{}_is_sync".format(document.id)
+        sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Document is being synced, please try again later")
@@ -1181,7 +1181,7 @@ class DocumentService:
                         return
                     db.session.add(dataset_process_rule)
                     db.session.commit()
-            lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
+            lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             with redis_client.lock(lock_name, timeout=600):
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
@@ -2003,7 +2003,7 @@ class SegmentService:
             )
             # calc embedding use tokens
             tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
-        lock_name = "add_segment_lock_document_id_{}".format(document.id)
+        lock_name = f"add_segment_lock_document_id_{document.id}"
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
@@ -2050,7 +2050,7 @@ class SegmentService:
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
-        lock_name = "multi_add_segment_lock_document_id_{}".format(document.id)
+        lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
             embedding_model = None
@@ -2132,7 +2132,7 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_indexing".format(segment.id)
+        indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
@@ -2302,7 +2302,7 @@ class SegmentService:
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_delete_indexing".format(segment.id)
+        indexing_cache_key = f"segment_{segment.id}_delete_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
@@ -2354,7 +2354,7 @@ class SegmentService:
                 return
             real_deal_segmment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
@@ -2381,7 +2381,7 @@ class SegmentService:
                 return
             real_deal_segmment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
@@ -2400,7 +2400,7 @@ class SegmentService:
     def create_child_chunk(
         cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
     ) -> ChildChunk:
-        lock_name = "add_child_lock_{}".format(segment.id)
+        lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)

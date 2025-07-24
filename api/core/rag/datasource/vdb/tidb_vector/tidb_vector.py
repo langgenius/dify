@@ -91,9 +91,9 @@ class TiDBVector(BaseVector):
 
     def _create_collection(self, dimension: int):
         logger.info("_create_collection, collection_name " + self._collection_name)
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             tidb_dist_func = self._get_distance_func()

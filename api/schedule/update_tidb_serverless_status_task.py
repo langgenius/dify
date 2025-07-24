@@ -30,7 +30,7 @@ def update_tidb_serverless_status_task():
 
     end_at = time.perf_counter()
     click.echo(
-        click.style("Update tidb serverless status task success latency: {}".format(end_at - start_at), fg="green")
+        click.style(f"Update tidb serverless status task success latency: {end_at - start_at}", fg="green")
     )
 
 
