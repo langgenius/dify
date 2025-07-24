@@ -58,6 +58,9 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       case VarType.arrayObject:
         itemVarType = VarType.object
         break
+      case VarType.arrayBoolean:
+        itemVarType = VarType.boolean
+        break
       default:
         itemVarType = varType
     }
@@ -95,7 +98,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
   const filterVar = useCallback((varPayload: Var) => {
     // Don't know the item struct of VarType.arrayObject, so not support it
-    return [VarType.arrayNumber, VarType.arrayString, VarType.arrayFile].includes(varPayload.type)
+    return [VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleFilterEnabledChange = useCallback((enabled: boolean) => {
