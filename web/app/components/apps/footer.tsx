@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { RiDiscordFill, RiGithubFill, RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiDiscordFill, RiGithubFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
 type CustomLinkProps = {
@@ -32,9 +32,8 @@ const Footer = () => {
     setIsVisible(false)
   }
 
-  if (!isVisible) {
+  if (!isVisible)
     return null
-  }
 
   return (
     <footer className='shrink-0 grow-0 px-12 py-2 relative'>
