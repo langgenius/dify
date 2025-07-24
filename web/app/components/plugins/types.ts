@@ -2,6 +2,7 @@ import type { CredentialFormSchemaBase } from '../header/account-setting/model-p
 import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 export enum PluginType {
   tool = 'tool',
   model = 'model',
@@ -168,6 +169,11 @@ export enum PermissionType {
 export type Permissions = {
   install_permission: PermissionType
   debug_permission: PermissionType
+}
+
+export type ReferenceSetting = {
+  permission: Permissions
+  auto_upgrade: AutoUpdateConfig
 }
 
 export type UpdateFromMarketPlacePayload = {

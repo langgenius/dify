@@ -248,6 +248,55 @@ const translation = {
     useApi: 'Utilisez la clé API',
   },
   deprecated: 'Obsolète',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Les plugins ne se mettront pas à jour automatiquement',
+        name: 'désactivé',
+      },
+      fixOnly: {
+        selectedDescription: 'Mise à jour automatique uniquement pour les versions de correctif',
+        name: 'Réparer seulement',
+      },
+      latest: {
+        name: 'Dernier',
+        selectedDescription: 'Mettez toujours à jour vers la dernière version',
+        description: 'Mettez toujours à jour vers la dernière version',
+      },
+    },
+    upgradeMode: {
+      exclude: 'Exclure sélectionné',
+      all: 'Mettre à jour tout',
+      partial: 'Seulement sélectionné',
+    },
+    upgradeModePlaceholder: {
+      partial: 'Seuls les plugins sélectionnés se mettront à jour automatiquement. Aucun plugin n\'est actuellement sélectionné, donc aucun plugin ne se mettra à jour automatiquement.',
+      exclude: 'Les plugins sélectionnés ne se mettront pas à jour automatiquement.',
+    },
+    operation: {
+      clearAll: 'Tout effacer',
+      select: 'Sélectionner des plugins',
+    },
+    pluginDowngradeWarning: {
+      title: 'Baisse de version du plugin',
+      exclude: 'Exclure de la mise à jour automatique',
+      downgrade: 'Dégradez de toute façon',
+      description: 'La mise à jour automatique est actuellement activée pour ce plugin. Le fait de rétrograder la version peut entraîner la perte de vos modifications lors de la prochaine mise à jour automatique.',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Aucun plugin installé',
+      noFound: 'Aucun plugin n\'a été trouvé',
+    },
+    updateTime: 'Temps de mise à jour',
+    specifyPluginsToUpdate: 'Spécifiez les plugins à mettre à jour',
+    updateTimeTitle: 'Temps de mise à jour',
+    changeTimezone: 'Pour changer de fuseau horaire, allez dans <setTimezone>Paramètres</setTimezone>',
+    automaticUpdates: 'Mises à jour automatiques',
+    updateSettings: 'Mettre à jour les paramètres',
+    excludeUpdate: 'Les {{num}} plugins suivants ne se mettront pas à jour automatiquement',
+    partialUPdate: 'Seuls les {{num}} plugins suivants se mettront à jour automatiquement',
+    nextUpdateTime: 'Prochaine mise à jour automatique : {{time}}',
+  },
 }
 
 export default translation
