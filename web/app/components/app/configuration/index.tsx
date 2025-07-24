@@ -60,7 +60,6 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { fetchCollectionList } from '@/service/tools'
 import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -521,7 +520,8 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
-      const collectionList = await fetchCollectionList()
+      // const collectionList = await fetchCollectionList()
+      const collectionList: any[] = [] // this api has problem in dev, so comment it for temporarily
       if (basePath) {
         collectionList.forEach((item) => {
           if (typeof item.icon == 'string' && !item.icon.includes(basePath))
@@ -693,7 +693,6 @@ const Configuration: FC = () => {
         setHasFetchedDetail(true)
       })
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
