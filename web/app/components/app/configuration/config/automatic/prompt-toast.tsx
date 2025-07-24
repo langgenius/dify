@@ -2,17 +2,32 @@ import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import React from 'react'
 import cn from '@/utils/classnames'
+import { Markdown } from '@/app/components/base/markdown'
 type Props = {
   message: string
   className?: string
 }
 const PromptToast = ({
-  message,
+  // message,
   className,
 }: Props) => {
   const [isHide, {
     setTrue: hide,
   }] = useBoolean(false)
+  const message = `
+# h1
+**strong text**  ~~strikethrough~~
+
+* list1
+* list2
+
+xxxx
+
+## h2
+\`\`\`python
+print('Hello, World!')
+\`\`\`
+  `
   if (isHide)
     return
   return (
@@ -22,7 +37,7 @@ const PromptToast = ({
       <div className='relative flex h-full w-full  justify-between'>
         <div className="flex h-full w-0 grow gap-1">
           <RiInformation2Fill className="mt-[3px] size-4 shrink-0 text-text-accent" />
-          <p className="w-0 grow text-sm text-gray-700">{message}</p>
+          <Markdown className="w-0 grow text-sm" content={message} />
         </div>
 
         <div className='relative  top-[-1px] shrink-0 cursor-pointer p-0.5' onClick={hide}>
