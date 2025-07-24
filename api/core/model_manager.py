@@ -535,21 +535,19 @@ class LBModelManager:
 
             if dify_config.DEBUG:
                 logger.info(
-                    logger.info(
-                        """Model LB
+                    """Model LB
 id: %s
 name:%s
 tenant_id: %s
 provider: %s
 model_type: %s
 model: %s""",
-                        config.id,
-                        config.name,
-                        self._tenant_id,
-                        self._provider,
-                        self._model_type.value,
-                        self._model,
-                    )
+                    config.id,
+                    config.name,
+                    self._tenant_id,
+                    self._provider,
+                    self._model_type.value,
+                    self._model,
                 )
 
             return config
