@@ -38,7 +38,7 @@ const Card = ({
   } = item
   const pluginPayload = {
     category: AuthCategory.datasource,
-    provider: item.name,
+    provider: `${item.plugin_id}/${item.name}`,
   }
   const { handleAuthUpdate } = useDataSourceAuthUpdate()
   const {
