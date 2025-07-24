@@ -50,9 +50,7 @@ export const loadLangResources = async (lang: string) => {
     acc[camelCase(NAMESPACES[index])] = mod
     return acc
   }, {} as Record<string, any>)
-  return {
-    translation: resources,
-  }
+  return resources
 }
 
 const getFallbackTranslation = () => {
@@ -80,7 +78,7 @@ export const changeLanguage = async (lng?: string) => {
   const resolvedLng = lng ?? 'en-US'
   const resource = await loadLangResources(resolvedLng)
   if (!i18n.hasResourceBundle(resolvedLng, 'translation'))
-    i18n.addResourceBundle(resolvedLng, 'translation', resource.translation, true, true)
+    i18n.addResourceBundle(resolvedLng, 'translation', resource, true, true)
   await i18n.changeLanguage(resolvedLng)
 }
 
