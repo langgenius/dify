@@ -26,7 +26,7 @@ class DataSourceOauthBinding(Base):
     source_info = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    disabled = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
+    disabled: Mapped[Optional[bool]] = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
 
 
 class DataSourceApiKeyAuthBinding(Base):
@@ -44,7 +44,7 @@ class DataSourceApiKeyAuthBinding(Base):
     credentials = mapped_column(db.Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    disabled = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
+    disabled: Mapped[Optional[bool]] = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
 
     def to_dict(self):
         return {

@@ -344,7 +344,7 @@ class Document(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # pause
-    is_paused = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
+    is_paused: Mapped[Optional[bool]] = mapped_column(db.Boolean, nullable=True, server_default=db.text("false"))
     paused_by = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
