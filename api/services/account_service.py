@@ -671,6 +671,12 @@ class AccountService:
 
         return account
 
+    @classmethod
+    def is_account_in_freeze(cls, email: str) -> bool:
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            return True
+        return False
+
     @staticmethod
     @redis_fallback(default_return=None)
     def add_login_error_rate_limit(email: str) -> None:

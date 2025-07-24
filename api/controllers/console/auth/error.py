@@ -113,3 +113,9 @@ class MemberNotInTenantError(BaseHTTPException):
     error_code = "member_not_in_tenant"
     description = "The member is not in the workspace."
     code = 400
+
+
+class AccountInFreezeError(BaseHTTPException):
+    error_code = "account_in_freeze"
+    description = "This email is temporarily unavailable."
+    code = 400
