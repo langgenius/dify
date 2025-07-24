@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
-import ClearAllAnnotationsConfirmModal from './clear-all-annotations-confirm-modal'
+import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -88,7 +88,8 @@ const HeaderOptions: FC<Props> = ({
   try {
     await clearAllAnnotations(appId)
     onAdded()
-  } catch (_) {
+  }
+ catch (_) {
   }
 }
   const Operations = () => {
@@ -141,10 +142,10 @@ const HeaderOptions: FC<Props> = ({
         </Menu>
         <button
           onClick={handleClearAll}
-          className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
+          className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50'
         >
-          <RiDeleteBinLine className='w-4 h-4'/>
-          <span className='grow system-sm-regular text-left'>
+          <RiDeleteBinLine className='h-4 w-4'/>
+          <span className='system-sm-regular grow text-left'>
             {t('appAnnotation.table.header.clearAll')}
           </span>
         </button>
