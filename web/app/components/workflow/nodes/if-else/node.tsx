@@ -7,6 +7,7 @@ import { isEmptyRelatedOperator } from './utils'
 import type { Condition, IfElseNodeType } from './types'
 import ConditionValue from './components/condition-value'
 import ConditionFilesListValue from './components/condition-files-list-value'
+import { VarType } from '../../types'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
@@ -26,15 +27,14 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         if (isEmptyRelatedOperator(c.comparison_operator!))
           return true
 
-        return typeof c.value === 'boolean' ? true : !!c.value
+        return c.varType === VarType.boolean ? true : !!c.value
       })
       return isSet
     }
     else {
       if (isEmptyRelatedOperator(condition.comparison_operator!))
         return true
-
-      return typeof condition.value === 'boolean' ? true : !!condition.value
+      return condition.varType === VarType.boolean ? true : !!condition.value
     }
   }, [])
   const conditionNotSet = (<div className='flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary'>
@@ -73,7 +73,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                             <ConditionValue
                               variableSelector={condition.variable_selector!}
                               operator={condition.comparison_operator!}
-                              value={condition.value}
+                              value={condition.varType === VarType.boolean ? (!condition.value ? 'False' : condition.value) : condition.value}
                             />
                           )
 
