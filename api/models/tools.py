@@ -367,8 +367,8 @@ class ToolModelInvoke(Base):
     # invoke response
     model_response = mapped_column(db.Text, nullable=False)
 
-    prompt_tokens = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
-    answer_tokens = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
+    prompt_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
+    answer_tokens: Mapped[int] = mapped_column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = mapped_column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     provider_response_latency = mapped_column(db.Float, nullable=False, server_default=db.text("0"))

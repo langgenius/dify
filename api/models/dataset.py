@@ -313,7 +313,7 @@ class Document(Base):
     id = mapped_column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
-    position = mapped_column(db.Integer, nullable=False)
+    position: Mapped[int] = mapped_column(db.Integer, nullable=False)
     data_source_type: Mapped[str] = mapped_column(String(255), nullable=False)
     data_source_info = mapped_column(db.Text, nullable=True)
     dataset_process_rule_id = mapped_column(StringUUID, nullable=True)
@@ -669,7 +669,7 @@ class DocumentSegment(Base):
     index_node_hash = mapped_column(String(255), nullable=True)
 
     # basic fields
-    hit_count = mapped_column(db.Integer, nullable=False, default=0)
+    hit_count: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
@@ -806,9 +806,9 @@ class ChildChunk(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     segment_id = mapped_column(StringUUID, nullable=False)
-    position = mapped_column(db.Integer, nullable=False)
+    position: Mapped[int] = mapped_column(db.Integer, nullable=False)
     content = mapped_column(db.Text, nullable=False)
-    word_count = mapped_column(db.Integer, nullable=False)
+    word_count: Mapped[int] = mapped_column(db.Integer, nullable=False)
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
     index_node_hash = mapped_column(String(255), nullable=True)
