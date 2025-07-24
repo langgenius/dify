@@ -1,7 +1,8 @@
+from datetime import datetime
 import enum
 
 from sqlalchemy import DateTime, String, Text, func
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, Mapped
 
 from .base import Base
 from .engine import db
@@ -27,4 +28,4 @@ class APIBasedExtension(Base):
     name = mapped_column(String(255), nullable=False)
     api_endpoint = mapped_column(String(255), nullable=False)
     api_key = mapped_column(Text, nullable=False)
-    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

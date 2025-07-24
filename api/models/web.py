@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,7 +23,7 @@ class SavedMessage(Base):
         String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def message(self):
@@ -43,4 +44,4 @@ class PinnedConversation(Base):
         String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
