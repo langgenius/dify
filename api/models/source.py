@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Mapped
-from datetime import datetime
 import json
+from datetime import datetime
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
 
