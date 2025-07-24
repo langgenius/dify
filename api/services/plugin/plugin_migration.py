@@ -101,7 +101,7 @@ class PluginMigration:
                 for test_interval in test_intervals:
                     tenant_count = (
                         session.query(Tenant.id)
-                        .filter(Tenant.created_at.between(current_time, current_time + test_interval))
+                        .where(Tenant.created_at.between(current_time, current_time + test_interval))
                         .count()
                     )
                     if tenant_count <= 100:
@@ -126,7 +126,7 @@ class PluginMigration:
 
                 rs = (
                     session.query(Tenant.id)
-                    .filter(Tenant.created_at.between(current_time, batch_end))
+                    .where(Tenant.created_at.between(current_time, batch_end))
                     .order_by(Tenant.created_at)
                 )
 
@@ -212,7 +212,7 @@ class PluginMigration:
         Extract tool tables.
         """
         with Session(db.engine) as session:
-            rs = session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
+            rs = session.query(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id).all()
             result = []
             for row in rs:
                 result.append(ToolProviderID(row.provider).plugin_id)
@@ -226,7 +226,7 @@ class PluginMigration:
         """
 
         with Session(db.engine) as session:
-            rs = session.query(Workflow).filter(Workflow.tenant_id == tenant_id).all()
+            rs = session.query(Workflow).where(Workflow.tenant_id == tenant_id).all()
             result = []
             for row in rs:
                 graph = row.graph_dict
@@ -249,7 +249,7 @@ class PluginMigration:
         Extract app tables.
         """
         with Session(db.engine) as session:
-            apps = session.query(App).filter(App.tenant_id == tenant_id).all()
+            apps = session.query(App).where(App.tenant_id == tenant_id).all()
             if not apps:
                 return []
 
@@ -257,7 +257,7 @@ class PluginMigration:
                 app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT.value
             ]
 
-            rs = session.query(AppModelConfig).filter(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
+            rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
             result = []
             for row in rs:
                 agent_config = row.agent_mode_dict

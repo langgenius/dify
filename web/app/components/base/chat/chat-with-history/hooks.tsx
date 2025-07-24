@@ -16,7 +16,7 @@ import type {
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
@@ -181,6 +181,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
+  const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
@@ -249,7 +250,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     // init inputs from url params
     (async () => {
       const inputs = await getRawInputsFromUrlParams()
+      const userVariables = await getRawUserVariablesFromUrlParams()
       setInitInputs(inputs)
+      setInitUserVariables(userVariables)
     })()
   }, [])
 
@@ -520,5 +523,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   }
 }

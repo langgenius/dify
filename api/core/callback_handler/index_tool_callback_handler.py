@@ -49,7 +49,7 @@ class DatasetIndexToolCallbackHandler:
         for document in documents:
             if document.metadata is not None:
                 document_id = document.metadata["document_id"]
-                dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+                dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
                 if not dataset_document:
                     _logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s",
@@ -59,7 +59,7 @@ class DatasetIndexToolCallbackHandler:
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = (
                         db.session.query(ChildChunk)
-                        .filter(
+                        .where(
                             ChildChunk.index_node_id == document.metadata["doc_id"],
                             ChildChunk.dataset_id == dataset_document.dataset_id,
                             ChildChunk.document_id == dataset_document.id,
@@ -69,18 +69,18 @@ class DatasetIndexToolCallbackHandler:
                     if child_chunk:
                         segment = (
                             db.session.query(DocumentSegment)
-                            .filter(DocumentSegment.id == child_chunk.segment_id)
+                            .where(DocumentSegment.id == child_chunk.segment_id)
                             .update(
                                 {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
                             )
                         )
                 else:
-                    query = db.session.query(DocumentSegment).filter(
+                    query = db.session.query(DocumentSegment).where(
                         DocumentSegment.index_node_id == document.metadata["doc_id"]
                     )
 
                     if "dataset_id" in document.metadata:
-                        query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                        query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                     # add hit count to document segment
                     query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)

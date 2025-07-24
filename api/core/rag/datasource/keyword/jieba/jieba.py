@@ -94,11 +94,11 @@ class Jieba(BaseKeyword):
 
         documents = []
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).filter(
+            segment_query = db.session.query(DocumentSegment).where(
                 DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
             )
             if document_ids_filter:
-                segment_query = segment_query.filter(DocumentSegment.document_id.in_(document_ids_filter))
+                segment_query = segment_query.where(DocumentSegment.document_id.in_(document_ids_filter))
             segment = segment_query.first()
 
             if segment:
@@ -215,7 +215,7 @@ class Jieba(BaseKeyword):
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
         document_segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
+            .where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
             .first()
         )
         if document_segment:

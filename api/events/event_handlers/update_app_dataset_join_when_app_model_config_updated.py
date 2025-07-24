@@ -13,7 +13,7 @@ def handle(sender, **kwargs):
 
     dataset_ids = get_dataset_ids_from_model_config(app_model_config)
 
-    app_dataset_joins = db.session.query(AppDatasetJoin).filter(AppDatasetJoin.app_id == app.id).all()
+    app_dataset_joins = db.session.query(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id).all()
 
     removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:
@@ -27,7 +27,7 @@ def handle(sender, **kwargs):
 
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
-            db.session.query(AppDatasetJoin).filter(
+            db.session.query(AppDatasetJoin).where(
                 AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
             ).delete()
 

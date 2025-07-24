@@ -91,7 +91,7 @@ const PureSelect = ({
       triggerPopupSameWidth={triggerPopupSameWidth}
     >
       <PortalToFollowElemTrigger
-        onClick={() => handleOpenChange(!mergedOpen)}
+        onClick={() => !disabled && handleOpenChange(!mergedOpen)}
         asChild
       >
         <div
@@ -116,7 +116,7 @@ const PureSelect = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
-        'z-10',
+        'z-[9999]',
         popupWrapperClassName,
       )}>
         <div

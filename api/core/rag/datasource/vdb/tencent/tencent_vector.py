@@ -284,7 +284,8 @@ class TencentVector(BaseVector):
                 # Compatible with version 1.1.3 and below.
                 meta = json.loads(meta)
                 score = 1 - result.get("score", 0.0)
-            score = result.get("score", 0.0)
+            else:
+                score = result.get("score", 0.0)
             if score > score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)

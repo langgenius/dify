@@ -135,7 +135,7 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
             # pass if dataset is not available
             if not dataset:
@@ -242,7 +242,7 @@ class DatasetRetrieval:
                         dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                         document = (
                             db.session.query(DatasetDocument)
-                            .filter(
+                            .where(
                                 DatasetDocument.id == segment.document_id,
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
@@ -327,7 +327,7 @@ class DatasetRetrieval:
 
         if dataset_id:
             # get retrieval model config
-            dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+            dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
             if dataset:
                 results = []
                 if dataset.provider == "external":
@@ -516,14 +516,14 @@ class DatasetRetrieval:
             if document.metadata is not None:
                 dataset_document = (
                     db.session.query(DatasetDocument)
-                    .filter(DatasetDocument.id == document.metadata["document_id"])
+                    .where(DatasetDocument.id == document.metadata["document_id"])
                     .first()
                 )
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                         child_chunk = (
                             db.session.query(ChildChunk)
-                            .filter(
+                            .where(
                                 ChildChunk.index_node_id == document.metadata["doc_id"],
                                 ChildChunk.dataset_id == dataset_document.dataset_id,
                                 ChildChunk.document_id == dataset_document.id,
@@ -533,7 +533,7 @@ class DatasetRetrieval:
                         if child_chunk:
                             segment = (
                                 db.session.query(DocumentSegment)
-                                .filter(DocumentSegment.id == child_chunk.segment_id)
+                                .where(DocumentSegment.id == child_chunk.segment_id)
                                 .update(
                                     {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                                     synchronize_session=False,
@@ -541,13 +541,13 @@ class DatasetRetrieval:
                             )
                             db.session.commit()
                     else:
-                        query = db.session.query(DocumentSegment).filter(
+                        query = db.session.query(DocumentSegment).where(
                             DocumentSegment.index_node_id == document.metadata["doc_id"]
                         )
 
                         # if 'dataset_id' in document.metadata:
                         if "dataset_id" in document.metadata:
-                            query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                            query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                         # add hit count to document segment
                         query.update(
@@ -600,7 +600,7 @@ class DatasetRetrieval:
     ):
         with flask_app.app_context():
             with Session(db.engine) as session:
-                dataset = session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
             if not dataset:
                 return []
@@ -685,7 +685,7 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+            dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
             # pass if dataset is not available
             if not dataset:
@@ -862,7 +862,7 @@ class DatasetRetrieval:
         metadata_filtering_conditions: Optional[MetadataFilteringCondition],
         inputs: dict,
     ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
-        document_query = db.session.query(DatasetDocument).filter(
+        document_query = db.session.query(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
@@ -930,9 +930,9 @@ class DatasetRetrieval:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
             if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore
-                document_query = document_query.filter(and_(*filters))
+                document_query = document_query.where(and_(*filters))
             else:
-                document_query = document_query.filter(or_(*filters))
+                document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
@@ -958,7 +958,7 @@ class DatasetRetrieval:
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> Optional[list[dict[str, Any]]]:
         # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        metadata_fields = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:

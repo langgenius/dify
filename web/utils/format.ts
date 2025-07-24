@@ -90,7 +90,3 @@ export const formatNumberAbbreviated = (num: number) => {
     }
   }
 }
-
-export const snakeCase2CamelCase = (input: string): string => {
-  return input.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-}

@@ -153,7 +153,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.workflow_run_id)
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or uuid_to_trace_id(trace_info.workflow_run_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -296,7 +297,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == trace_info.message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 message_metadata["end_user_id"] = end_user_data.session_id
@@ -702,7 +703,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.process_data,
                 WorkflowNodeExecutionModel.execution_metadata,
             )
-            .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
             .all()
         )
         return workflow_nodes
