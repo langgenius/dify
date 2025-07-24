@@ -9,6 +9,7 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
+    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
@@ -479,20 +480,27 @@ class ChangeEmailResetApi(Resource):
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
+        if AccountService.is_account_in_freeze(args["new_email"]):
+            raise AccountInFreezeError()
+
+        if not AccountService.check_email_unique(args["new_email"]):
+            raise EmailAlreadyInUseError()
+
         reset_data = AccountService.get_change_email_data(args["token"])
         if not reset_data:
             raise InvalidTokenError()
 
         AccountService.revoke_change_email_token(args["token"])
 
-        if not AccountService.check_email_unique(args["new_email"]):
-            raise EmailAlreadyInUseError()
-
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
             raise AccountNotFound()
 
         updated_account = AccountService.update_account(current_user, email=args["new_email"])
+
+        AccountService.send_change_email_completed_notify_email(
+            email=args["new_email"],
+        )
 
         return updated_account
 

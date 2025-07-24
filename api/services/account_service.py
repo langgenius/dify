@@ -54,7 +54,10 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
-from tasks.mail_change_mail_task import send_change_mail_task
+from tasks.mail_change_mail_task import (
+    send_change_mail_completed_notification_task,
+    send_change_mail_task,
+)
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_owner_transfer_task import (
@@ -462,6 +465,22 @@ class AccountService:
         return token
 
     @classmethod
+    def send_change_email_completed_notify_email(
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
+    ):
+        account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
+
+        send_change_mail_completed_notification_task.delay(
+            language=language,
+            to=account_email,
+        )
+
+    @classmethod
     def send_owner_transfer_email(
         cls,
         account: Optional[Account] = None,
@@ -651,6 +670,12 @@ class AccountService:
             raise Unauthorized("Account is banned.")
 
         return account
+
+    @classmethod
+    def is_account_in_freeze(cls, email: str) -> bool:
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            return True
+        return False
 
     @staticmethod
     @redis_fallback(default_return=None)

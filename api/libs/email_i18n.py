@@ -25,6 +25,7 @@ class EmailType(Enum):
     EMAIL_CODE_LOGIN = "email_code_login"
     CHANGE_EMAIL_OLD = "change_email_old"
     CHANGE_EMAIL_NEW = "change_email_new"
+    CHANGE_EMAIL_COMPLETED = "change_email_completed"
     OWNER_TRANSFER_CONFIRM = "owner_transfer_confirm"
     OWNER_TRANSFER_OLD_NOTIFY = "owner_transfer_old_notify"
     OWNER_TRANSFER_NEW_NOTIFY = "owner_transfer_new_notify"
@@ -342,6 +343,18 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="确认您的邮箱地址变更",
                 template_path="change_mail_confirm_new_template_zh-CN.html",
                 branded_template_path="without-brand/change_mail_confirm_new_template_zh-CN.html",
+            ),
+        },
+        EmailType.CHANGE_EMAIL_COMPLETED: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="Your login email has been changed",
+                template_path="change_mail_completed_template_en-US.html",
+                branded_template_path="without-brand/change_mail_completed_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="您的登录邮箱已更改",
+                template_path="change_mail_completed_template_zh-CN.html",
+                branded_template_path="without-brand/change_mail_completed_template_zh-CN.html",
             ),
         },
         EmailType.OWNER_TRANSFER_CONFIRM: {
