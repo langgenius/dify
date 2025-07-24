@@ -5,8 +5,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -39,7 +37,6 @@ import { basePath } from '@/utils/var'
 import { fetchInstalledAppList } from '@/service/explore'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useGetLanguage } from '@/context/i18n'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -49,7 +46,7 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-dayjs.extend(relativeTime)
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -92,6 +89,7 @@ const AppPublisher = ({
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
@@ -117,11 +115,6 @@ const AppPublisher = ({
       setIsAppAccessSet(true)
     }
   }, [appAccessSubjects, appDetail])
-  const language = useGetLanguage()
-
-  const formatTimeFromNow = useCallback((time: number) => {
-    return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
-  }, [language])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
