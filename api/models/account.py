@@ -2,10 +2,11 @@ import enum
 import json
 from datetime import datetime
 from typing import Optional, cast
-from sqlalchemy.types import String
+
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func, select
 from sqlalchemy.orm import Mapped, mapped_column, reconstructor
+from sqlalchemy.types import String
 
 from models.base import Base
 

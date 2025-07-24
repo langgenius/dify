@@ -2,7 +2,8 @@ import enum
 
 from sqlalchemy import func
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.types import String, Text, DateTime
+from sqlalchemy.types import DateTime, String, Text
+
 from .base import Base
 from .engine import db
 from .types import StringUUID

@@ -4,6 +4,7 @@ from typing import Optional
 from celery import states  # type: ignore
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import String
+
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
 

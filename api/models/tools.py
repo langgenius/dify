@@ -2,12 +2,12 @@ import json
 from datetime import datetime
 from typing import Any, cast
 from urllib.parse import urlparse
-from sqlalchemy.types import String
 
 import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import String
 
 from core.file import helpers as file_helpers
 from core.helper import encrypter

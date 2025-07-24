@@ -28,6 +28,7 @@ import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 from sqlalchemy.types import String
+
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Segment, SegmentType, Variable

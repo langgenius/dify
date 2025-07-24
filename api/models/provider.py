@@ -5,6 +5,7 @@ from typing import Optional
 from sqlalchemy import func, text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import String
+
 from .base import Base
 from .engine import db
 from .types import StringUUID

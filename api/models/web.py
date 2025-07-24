@@ -1,8 +1,8 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import String
 
 from models.base import Base
-from sqlalchemy.types import String
 
 from .engine import db
 from .model import Message

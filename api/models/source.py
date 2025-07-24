@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import String
+
 from models.base import Base
 
 from .engine import db

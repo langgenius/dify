@@ -1,7 +1,7 @@
+from typing import Annotated
+
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.types import String
-from typing_extensions import Annotated
-
 
 from models.engine import metadata
 
