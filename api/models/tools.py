@@ -115,7 +115,7 @@ class ApiToolProvider(Base):
     # name of the api provider
     name = mapped_column(String(255), nullable=False, server_default=db.text("'API KEY 1'::character varying"))
     # icon
-    icon = mapped_column(String(255), nullable=False)
+    icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
     schema = mapped_column(db.Text, nullable=False)
     schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -355,7 +355,7 @@ class ToolModelInvoke(Base):
     # tenant id
     tenant_id = mapped_column(StringUUID, nullable=False)
     # provider
-    provider = mapped_column(String(255), nullable=False)
+    provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # type
     tool_type = mapped_column(String(40), nullable=False)
     # tool name
@@ -373,7 +373,7 @@ class ToolModelInvoke(Base):
     answer_price_unit = mapped_column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     provider_response_latency = mapped_column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = mapped_column(db.Numeric(10, 7))
-    currency = mapped_column(String(255), nullable=False)
+    currency: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 

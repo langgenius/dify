@@ -25,7 +25,7 @@ class APIBasedExtension(Base):
 
     id = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = mapped_column(StringUUID, nullable=False)
-    name = mapped_column(String(255), nullable=False)
-    api_endpoint = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
