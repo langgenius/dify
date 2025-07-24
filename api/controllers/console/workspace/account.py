@@ -14,6 +14,7 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
+    AccountInFreezeError
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
@@ -487,6 +488,9 @@ class ChangeEmailResetApi(Resource):
 
         if not AccountService.check_email_unique(args["new_email"]):
             raise EmailAlreadyInUseError()
+
+        if AccountService.is_account_in_freeze(args["new_email"]):
+            raise AccountInFreezeError()
 
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
