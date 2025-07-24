@@ -107,6 +107,13 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
+    case VarType.boolean:
+      return [
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
     case VarType.file:
       return [
         ComparisonOperator.exists,
@@ -114,6 +121,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
       ]
     case VarType.arrayString:
     case VarType.arrayNumber:
+    case VarType.arrayBoolean:
       return [
         ComparisonOperator.contains,
         ComparisonOperator.notContains,

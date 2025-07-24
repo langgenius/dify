@@ -204,8 +204,12 @@ const ConditionItem = ({
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
   const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    const {
+      conversationVariables,
+    } = workflowStore.getState()
     const resolvedVarType = getVarType({
       valueSelector,
+      conversationVariables,
       availableNodes,
       isChatMode,
     })
