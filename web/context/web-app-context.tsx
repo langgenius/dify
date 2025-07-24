@@ -2,6 +2,7 @@
 
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import Loading from '@/app/components/base/loading'
+import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import { AccessMode } from '@/models/access-control'
 import type { AppData, AppMeta } from '@/models/share'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
@@ -60,6 +61,8 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
+  const session = searchParams.get('session')
+  const sysUserId = searchParams.get('sys.user_id')
   const [shareCode, setShareCode] = useState<string | null>(null)
   useEffect(() => {
     const shareCodeFromRedirect = getShareCodeFromRedirectUrl(redirectUrlParam)
@@ -69,11 +72,22 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     updateShareCode(newShareCode)
   }, [pathname, redirectUrlParam, updateShareCode])
   const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+  const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(true)
   useEffect(() => {
-    if (accessModeResult?.accessMode)
+    if (accessModeResult?.accessMode) {
       updateWebAppAccessMode(accessModeResult.accessMode)
-  }, [accessModeResult, updateWebAppAccessMode])
-  if (isFetching) {
+      if (accessModeResult?.accessMode === AccessMode.PUBLIC && session && sysUserId) {
+        setIsFetchingAccessToken(true)
+        checkOrSetAccessToken(shareCode).finally(() => {
+          setIsFetchingAccessToken(false)
+        })
+      }
+      else {
+        setIsFetchingAccessToken(false)
+      }
+    }
+  }, [accessModeResult, updateWebAppAccessMode, setIsFetchingAccessToken, shareCode, session, sysUserId])
+  if (isFetching || isFetchingAccessToken) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>
