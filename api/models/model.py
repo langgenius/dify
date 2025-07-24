@@ -569,7 +569,7 @@ class RecommendedApp(Base):
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     position = mapped_column(db.Integer, nullable=False, default=0)
-    is_listed = mapped_column(db.Boolean, nullable=False, default=True)
+    is_listed: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=True)
     install_count = mapped_column(db.Integer, nullable=False, default=0)
     language = mapped_column(String(255), nullable=False, server_default=db.text("'en-US'::character varying"))
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -595,7 +595,7 @@ class InstalledApp(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     app_owner_tenant_id = mapped_column(StringUUID, nullable=False)
     position = mapped_column(db.Integer, nullable=False, default=0)
-    is_pinned = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_pinned: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     last_used_at = mapped_column(db.DateTime, nullable=True)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -653,7 +653,7 @@ class Conversation(Base):
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def inputs(self):
@@ -924,7 +924,7 @@ class Message(Base):
     from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, server_default=func.current_timestamp())
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    agent_based = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    agent_based: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
 
     @property
@@ -1439,7 +1439,7 @@ class EndUser(Base, UserMixin):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
-    is_anonymous = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    is_anonymous: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     session_id: Mapped[str] = mapped_column()
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1495,15 +1495,15 @@ class Site(Base):
     description = mapped_column(db.Text)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
     chat_color_theme = mapped_column(String(255))
-    chat_color_theme_inverted = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    chat_color_theme_inverted: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     copyright = mapped_column(String(255))
     privacy_policy = mapped_column(String(255))
-    show_workflow_steps = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
-    use_icon_as_answer_icon = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    show_workflow_steps: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", sa.TEXT, default="")
     customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
-    prompt_public = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    prompt_public: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     status = mapped_column(String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1845,7 +1845,7 @@ class TraceAppConfig(Base):
     updated_at = mapped_column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    is_active = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    is_active: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
 
     @property
     def tracing_config_dict(self):

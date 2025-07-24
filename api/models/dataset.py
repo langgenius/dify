@@ -63,7 +63,7 @@ class Dataset(Base):
     embedding_model_provider = db.Column(String(255), nullable=True)  # TODO: mapped_column
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
-    built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    built_in_field_enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def dataset_keyword_table(self):
@@ -354,10 +354,10 @@ class Document(Base):
 
     # basic fields
     indexing_status = mapped_column(String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
-    enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
-    archived = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     archived_reason = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -670,7 +670,7 @@ class DocumentSegment(Base):
 
     # basic fields
     hit_count = mapped_column(db.Integer, nullable=False, default=0)
-    enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    enabled: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=db.text("'waiting'::character varying"))
@@ -969,7 +969,7 @@ class TidbAuthBinding(Base):
     tenant_id = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    active = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    active: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     status = mapped_column(String(255), nullable=False, server_default=db.text("CREATING"))
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1001,7 +1001,7 @@ class DatasetPermission(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     account_id = mapped_column(StringUUID, nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
-    has_permission = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
+    has_permission: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -1092,7 +1092,7 @@ class DatasetAutoDisableLog(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
-    notified = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
+    notified: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
