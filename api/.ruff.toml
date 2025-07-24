@@ -42,6 +42,7 @@ select = [
     "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
     "S311", # suspicious-non-cryptographic-random-usage
+    "G004", # don't use f-strings to format logging messages.
 ]
 
 ignore = [
