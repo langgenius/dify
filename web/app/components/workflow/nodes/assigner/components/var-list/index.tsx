@@ -16,6 +16,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { noop } from 'lodash-es'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 type Props = {
   readonly: boolean
@@ -75,7 +76,7 @@ const VarList: FC<Props> = ({
   }, [list, onChange])
 
   const handleToAssignedVarChange = useCallback((index: number) => {
-    return (value: ValueSelector | string | number) => {
+    return (value: ValueSelector | string | number | boolean) => {
       const newList = produce(list, (draft) => {
         draft[index].value = value as ValueSelector
       })
@@ -186,6 +187,12 @@ const VarList: FC<Props> = ({
                       value={item.value as string}
                       onChange={e => handleToAssignedVarChange(index)(e.target.value)}
                       className='w-full'
+                    />
+                  )}
+                  {assignedVarType === 'boolean' && (
+                    <BoolValue
+                      value={item.value as boolean}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
                     />
                   )}
                   {assignedVarType === 'object' && (

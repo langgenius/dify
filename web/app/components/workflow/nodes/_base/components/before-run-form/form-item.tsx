@@ -168,7 +168,7 @@ const FormItem: FC<Props> = ({
           )
         }
 
-        { isBooleanType && (
+        {isBooleanType && (
           <BoolInput
             name={payload.label as string}
             value={!!value}

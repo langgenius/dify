@@ -1,4 +1,4 @@
-import { BlockEnum, type NodeDefault } from '../../types'
+import { BlockEnum, type NodeDefault, VarType } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
@@ -64,7 +64,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
               errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
           }
           else {
-            if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
+            if (!isEmptyRelatedOperator(condition.comparison_operator!) && (condition.varType === VarType.boolean ? condition.value === undefined : !condition.value))
               errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
           }
         }

@@ -81,6 +81,7 @@ import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
+import { fetchCollectionList } from '@/service/tools'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -520,8 +521,7 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
-      // const collectionList = await fetchCollectionList()
-      const collectionList: any[] = [] // this api has problem in dev, so comment it for temporarily
+      const collectionList = await fetchCollectionList()
       if (basePath) {
         collectionList.forEach((item) => {
           if (typeof item.icon == 'string' && !item.icon.includes(basePath))
