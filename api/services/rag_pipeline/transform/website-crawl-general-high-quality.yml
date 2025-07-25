@@ -603,7 +603,7 @@ workflow:
     allowed_file_types: null
     belong_to_node_id: shared
     default_value: \n\n
-    label: delimiter
+    label: Delimiter
     max_length: 100
     options: []
     placeholder: null

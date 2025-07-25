@@ -640,13 +640,15 @@ workflow:
     allow_file_upload_methods: null
     allowed_file_types: null
     belong_to_node_id: shared
-    default_value: null
-    label: delimiter
+    default_value: \n\n
+    label: Delimiter
     max_length: 100
     options: []
     placeholder: null
     required: true
-    tooltips: null
+    tooltips: A delimiter is the character used to separate text. \n\n is recommended
+      for splitting the original document into large parent chunks. You can also use
+      special delimiters defined by yourself.
     type: text-input
     unit: null
     variable: delimiter
@@ -662,7 +664,7 @@ workflow:
     required: true
     tooltips: null
     type: number
-    unit: null
+    unit: characters
     variable: max_chunk_length
   - allow_file_extension: null
     allow_file_upload_methods: null
@@ -676,7 +678,7 @@ workflow:
     required: false
     tooltips: null
     type: number
-    unit: null
+    unit: characters
     variable: chunk_overlap
   - allow_file_extension: null
     allow_file_upload_methods: null
