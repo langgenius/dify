@@ -3,11 +3,6 @@ import { del, get, post } from './base'
 import type { AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
 
-const toBatchAnnotationsIdParams = (annotationIds: string[] | string) => {
-  const ids = Array.isArray(annotationIds) ? annotationIds : [annotationIds]
-  return ids.map(id => `annotation_id=${id}`).join('&')
-}
-
 export const fetchAnnotationConfig = (appId: string) => {
   return get(`apps/${appId}/annotation-setting`)
 }
@@ -66,7 +61,9 @@ export const delAnnotation = (appId: string, annotationId: string) => {
 }
 
 export const delAnnotations = (appId: string, annotationIds: string[]) => {
-  return del(`/apps/${appId}/annotations/batch-delete?${toBatchAnnotationsIdParams(annotationIds)}`)
+  return del(`/apps/${appId}/annotations`, {
+    params: { annotation_ids: annotationIds.join(',') },
+  })
 }
 
 export const fetchHitHistoryList = (appId: string, annotationId: string, params: Record<string, any>) => {
