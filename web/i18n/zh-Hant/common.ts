@@ -237,6 +237,7 @@ const translation = {
       existingEmail: '此電子郵件的用戶已經存在。',
       authTip: '一旦您的電子郵件更改，與您的舊電子郵件相關聯的 Google 或 GitHub 帳戶將無法再登錄此帳戶。',
       resendTip: '沒有收到代碼嗎？',
+      unAvailableEmail: '此郵件暫時無法使用。',
     },
   },
   members: {

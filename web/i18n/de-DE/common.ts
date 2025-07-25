@@ -237,6 +237,7 @@ const translation = {
       existingEmail: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.',
       emailLabel: 'Neue E-Mail',
       authTip: 'Sobald Ihre E-Mail geändert wurde, können Google- oder GitHub-Konten, die mit Ihrer alten E-Mail verknüpft sind, nicht mehr auf dieses Konto zugreifen.',
+      unAvailableEmail: 'Diese E-Mail ist vorübergehend nicht verfügbar.',
     },
   },
   members: {
