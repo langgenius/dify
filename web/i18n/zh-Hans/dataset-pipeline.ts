@@ -131,7 +131,7 @@ const translation = {
     title: '转换为知识库 pipeline',
     descriptionChunk1: '您现在可以将现有知识库转换为使用知识库 pipeline 来处理文档',
     descriptionChunk2: ' —— 这是一种更开放、更灵活的方式，可以访问我们市场中的插件。新的处理方式将应用到后续添加的所有文档。',
-    warning: '此操作无法撤销',
+    warning: '此操作无法撤销。',
     confirm: {
       title: '确认',
       content: '此操作是永久性的。您将无法恢复到之前的方式。请确认转换。',
