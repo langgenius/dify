@@ -27,13 +27,11 @@ const SearchBoxWrapper = ({
   return (
     <SearchBox
       wrapperClassName={cn(
-        'z-[0] mx-auto shrink-0',
+        'z-[0] mx-auto w-[640px] shrink-0',
         searchBoxCanAnimate && 'sticky top-3 z-[11]',
-      )}
-      inputClassName={cn(
-        'w-[640px]',
         !intersected && searchBoxCanAnimate && 'w-[508px] transition-[width] duration-300',
       )}
+      inputClassName='w-full'
       search={searchPluginText}
       onSearchChange={handleSearchPluginTextChange}
       tags={filterPluginTags}
