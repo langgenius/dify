@@ -129,7 +129,7 @@ class IfElseNode(BaseNode):
         var_mapping: dict[str, list[str]] = {}
         for case in typed_node_data.cases or []:
             for condition in case.conditions:
-                key = "{}.#{}#".format(node_id, ".".join(condition.variable_selector))
+                key = f"{node_id}.#{'.'.join(condition.variable_selector)}#"
                 var_mapping[key] = condition.variable_selector
 
         return var_mapping

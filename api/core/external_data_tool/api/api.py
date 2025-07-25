@@ -49,7 +49,7 @@ class ApiExternalDataTool(ExternalDataTool):
         """
         # get params from config
         if not self.config:
-            raise ValueError("config is required, config: {}".format(self.config))
+            raise ValueError(f"config is required, config: {self.config}")
         api_based_extension_id = self.config.get("api_based_extension_id")
         assert api_based_extension_id is not None, "api_based_extension_id is required"
 
@@ -74,7 +74,7 @@ class ApiExternalDataTool(ExternalDataTool):
             # request api
             requestor = APIBasedExtensionRequestor(api_endpoint=api_based_extension.api_endpoint, api_key=api_key)
         except Exception as e:
-            raise ValueError("[External data tool] API query failed, variable: {}, error: {}".format(self.variable, e))
+            raise ValueError(f"[External data tool] API query failed, variable: {self.variable}, error: {e}")
 
         response_json = requestor.request(
             point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY,
@@ -90,7 +90,7 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if not isinstance(response_json["result"], str):
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, error: result is not string".format(self.variable)
+                f"[External data tool] API query failed, variable: {self.variable}, error: result is not string"
             )
 
         return response_json["result"]

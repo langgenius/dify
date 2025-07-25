@@ -19,7 +19,7 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
     logging.info(
-        click.style("Start clean document when import form notion document deleted: {}".format(dataset_id), fg="green")
+        click.style(f"Start clean document when import form notion document deleted: {dataset_id}", fg="green")
     )
     start_at = time.perf_counter()
 

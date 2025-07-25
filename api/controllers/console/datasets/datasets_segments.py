@@ -184,7 +184,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
 
-        document_indexing_cache_key = "document_{}_indexing".format(document.id)
+        document_indexing_cache_key = f"document_{document.id}_indexing"
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
@@ -391,7 +391,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
                 raise ValueError("The CSV file is empty.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "segment_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"segment_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_create_segment_to_index_task.delay(
@@ -406,7 +406,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     def get(self, job_id):
         job_id = str(job_id)
-        indexing_cache_key = "segment_batch_import_{}".format(job_id)
+        indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")

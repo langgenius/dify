@@ -74,14 +74,14 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
-        enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
+        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = "enable_app_annotation_job_{}".format(str(job_id))
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         enable_annotation_reply_task.delay(
@@ -97,14 +97,14 @@ class AppAnnotationService:
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> dict:
-        disable_app_annotation_key = "disable_app_annotation_{}".format(str(app_id))
+        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = "disable_app_annotation_job_{}".format(str(job_id))
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
         disable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id)
@@ -127,8 +127,8 @@ class AppAnnotationService:
                 .where(MessageAnnotation.app_id == app_id)
                 .where(
                     or_(
-                        MessageAnnotation.question.ilike("%{}%".format(keyword)),
-                        MessageAnnotation.content.ilike("%{}%".format(keyword)),
+                        MessageAnnotation.question.ilike(f"%{keyword}%"),
+                        MessageAnnotation.content.ilike(f"%{keyword}%"),
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
@@ -295,7 +295,7 @@ class AppAnnotationService:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_import_annotations_task.delay(

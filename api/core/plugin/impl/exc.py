@@ -1,3 +1,8 @@
+from collections.abc import Mapping
+
+from pydantic import TypeAdapter
+
+
 class PluginDaemonError(Exception):
     """Base class for all plugin daemon errors."""
 
@@ -35,6 +40,21 @@ class PluginDaemonBadRequestError(PluginDaemonClientSideError):
 
 class PluginInvokeError(PluginDaemonClientSideError):
     description: str = "Invoke Error"
+
+    def _get_error_object(self) -> Mapping:
+        try:
+            return TypeAdapter(Mapping).validate_json(self.description)
+        except Exception:
+            return {}
+
+    def get_error_type(self) -> str:
+        return self._get_error_object().get("error_type", "unknown")
+
+    def get_error_message(self) -> str:
+        try:
+            return self._get_error_object().get("message", "unknown")
+        except Exception:
+            return self.description
 
 
 class PluginUniqueIdentifierError(PluginDaemonClientSideError):

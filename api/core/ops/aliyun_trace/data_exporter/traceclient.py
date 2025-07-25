@@ -69,10 +69,10 @@ class TraceClient:
             if response.status_code == 405:
                 return True
             else:
-                logger.debug(f"AliyunTrace API check failed: Unexpected status code: {response.status_code}")
+                logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
         except requests.exceptions.RequestException as e:
-            logger.debug(f"AliyunTrace API check failed: {str(e)}")
+            logger.debug("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -109,7 +109,7 @@ class TraceClient:
             try:
                 self.exporter.export(spans_to_export)
             except Exception as e:
-                logger.debug(f"Error exporting spans: {e}")
+                logger.debug("Error exporting spans: %s", e)
 
     def shutdown(self):
         with self.condition:

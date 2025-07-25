@@ -136,6 +136,6 @@ class OutputModeration(BaseModel):
             result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
             return result
         except Exception as e:
-            logger.exception(f"Moderation Output error, app_id: {app_id}")
+            logger.exception("Moderation Output error, app_id: %s", app_id)
 
         return None
