@@ -452,14 +452,13 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
-        for annotation in annotations:
-            annotation_hit_histories = (
+        annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
+        for annotation in annotations_query.yield_per(100):
+            annotation_hit_histories_query = (
                 db.session.query(AppAnnotationHitHistory)
                 .filter(AppAnnotationHitHistory.annotation_id == annotation.id)
-                .all()
             )
-            for annotation_hit_history in annotation_hit_histories:
+            for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
 
             db.session.delete(annotation)
