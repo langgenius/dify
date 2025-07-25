@@ -194,7 +194,7 @@ class ClickzettaVector(BaseVector):
         """Create table and indexes (executed in write worker thread)."""
         # Check if table already exists to avoid unnecessary index creation
         if self._table_exists():
-            logger.info(f"Table {self._config.schema_name}.{self._table_name} already exists, skipping creation")
+            logger.info("Table %s.%s already exists, skipping creation", self._config.schema_name, self._table_name)
             return
 
         # Create table with vector and metadata columns
@@ -214,7 +214,7 @@ class ClickzettaVector(BaseVector):
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
             cursor.execute(create_table_sql)
-            logger.info(f"Created table {self._config.schema_name}.{self._table_name}")
+            logger.info("Created table %s.%s", self._config.schema_name, self._table_name)
 
             # Create vector index
             self._create_vector_index(cursor)
@@ -235,10 +235,10 @@ class ClickzettaVector(BaseVector):
             for idx in existing_indexes:
                 # Check if vector index already exists on the embedding column
                 if Field.VECTOR.value in str(idx).lower():
-                    logger.info(f"Vector index already exists on column {Field.VECTOR.value}")
+                    logger.info("Vector index already exists on column %s", Field.VECTOR.value)
                     return
         except Exception as e:
-            logger.warning(f"Failed to check existing indexes: {e}")
+            logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
         CREATE VECTOR INDEX IF NOT EXISTS {index_name}
@@ -252,13 +252,13 @@ class ClickzettaVector(BaseVector):
         """
         try:
             cursor.execute(index_sql)
-            logger.info(f"Created vector index: {index_name}")
+            logger.info("Created vector index: %s", index_name)
         except Exception as e:
             error_msg = str(e).lower()
             if ("already exists" in error_msg or
                 "already has index" in error_msg or
                 "with the same type" in error_msg):
-                logger.info(f"Vector index already exists: {e}")
+                logger.info("Vector index already exists: %s", e)
             else:
                 logger.exception("Failed to create vector index")
                 raise
@@ -278,10 +278,10 @@ class ClickzettaVector(BaseVector):
                 if ("inverted" in idx_str and
                     Field.CONTENT_KEY.value.lower() in idx_str and
                     (index_name.lower() in idx_str or f"idx_{self._table_name}_text" in idx_str)):
-                    logger.info(f"Inverted index already exists on column {Field.CONTENT_KEY.value}: {idx}")
+                    logger.info("Inverted index already exists on column %s: %s", Field.CONTENT_KEY.value, idx)
                     return
         except Exception as e:
-            logger.warning(f"Failed to check existing indexes: {e}")
+            logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
         CREATE INVERTED INDEX IF NOT EXISTS {index_name}
@@ -293,7 +293,7 @@ class ClickzettaVector(BaseVector):
         """
         try:
             cursor.execute(index_sql)
-            logger.info(f"Created inverted index: {index_name}")
+            logger.info("Created inverted index: %s", index_name)
         except Exception as e:
             error_msg = str(e).lower()
             # Handle ClickZetta specific error messages
@@ -302,19 +302,19 @@ class ClickzettaVector(BaseVector):
                 "with the same type" in error_msg or
                 "cannot create inverted index" in error_msg) and
                 "already has index" in error_msg):
-                logger.info(f"Inverted index already exists on column {Field.CONTENT_KEY.value}")
+                logger.info("Inverted index already exists on column %s", Field.CONTENT_KEY.value)
                 # Try to get the existing index name for logging
                 try:
                     cursor.execute(f"SHOW INDEX FROM {self._config.schema_name}.{self._table_name}")
                     existing_indexes = cursor.fetchall()
                     for idx in existing_indexes:
                         if "inverted" in str(idx).lower() and Field.CONTENT_KEY.value.lower() in str(idx).lower():
-                            logger.info(f"Found existing inverted index: {idx}")
+                            logger.info("Found existing inverted index: %s", idx)
                             break
                 except Exception:
                     pass
             else:
-                logger.warning(f"Failed to create inverted index: {e}")
+                logger.warning("Failed to create inverted index: %s", e)
                 # Continue without inverted index - full-text search will fall back to LIKE
 
 
@@ -341,7 +341,7 @@ class ClickzettaVector(BaseVector):
             return
 
         if len(batch_docs) != len(batch_embeddings):
-            logger.error(f"Mismatch between docs ({len(batch_docs)}) and embeddings ({len(batch_embeddings)})")
+            logger.error("Mismatch between docs (%d) and embeddings (%d)", len(batch_docs), len(batch_embeddings))
             return
 
         # Prepare data for parameterized insertion
@@ -373,7 +373,7 @@ class ClickzettaVector(BaseVector):
 
         # Check if we have any valid data to insert
         if not data_rows:
-            logger.warning(f"No valid documents to insert in batch {batch_index // batch_size + 1}/{total_batches}")
+            logger.warning("No valid documents to insert in batch %d/%d", batch_index // batch_size + 1, total_batches)
             return
 
         # Use parameterized INSERT with executemany for better performance and security
@@ -393,9 +393,9 @@ class ClickzettaVector(BaseVector):
                     f"({len(data_rows)} valid docs using parameterized query with VECTOR({vector_dimension}) cast)"
                 )
             except Exception as e:
-                logger.exception(f"Parameterized SQL execution failed for {len(data_rows)} documents: {e}")
-                logger.exception(f"SQL template: {insert_sql}")
-                logger.exception(f"Sample data row: {data_rows[0] if data_rows else 'None'}")
+                logger.exception("Parameterized SQL execution failed for %d documents: %s", len(data_rows), e)
+                logger.exception("SQL template: %s", insert_sql)
+                logger.exception("Sample data row: %s", data_rows[0] if data_rows else 'None')
                 raise
 
     def text_exists(self, id: str) -> bool:
@@ -417,7 +417,7 @@ class ClickzettaVector(BaseVector):
 
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
+            logger.warning("Table %s.%s does not exist, skipping delete", self._config.schema_name, self._table_name)
             return
 
         # Execute delete through write queue
@@ -438,7 +438,7 @@ class ClickzettaVector(BaseVector):
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
+            logger.warning("Table %s.%s does not exist, skipping delete", self._config.schema_name, self._table_name)
             return
 
         # Execute delete through write queue
@@ -527,7 +527,7 @@ class ClickzettaVector(BaseVector):
                     else:
                         metadata = {}
                 except (json.JSONDecodeError, TypeError) as e:
-                    logger.error(f"JSON parsing failed: {e}")
+                    logger.error("JSON parsing failed: %s", e)
                     # Fallback: extract document_id with regex
                     import re
                     doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
@@ -613,7 +613,7 @@ class ClickzettaVector(BaseVector):
                         else:
                             metadata = {}
                     except (json.JSONDecodeError, TypeError) as e:
-                        logger.error(f"JSON parsing failed: {e}")
+                        logger.error("JSON parsing failed: %s", e)
                         # Fallback: extract document_id with regex
                         import re
                         doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
@@ -690,7 +690,7 @@ class ClickzettaVector(BaseVector):
                     else:
                         metadata = {}
                 except (json.JSONDecodeError, TypeError) as e:
-                    logger.error(f"JSON parsing failed: {e}")
+                    logger.error("JSON parsing failed: %s", e)
                     # Fallback: extract document_id with regex
                     import re
                     doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
