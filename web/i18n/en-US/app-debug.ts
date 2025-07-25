@@ -306,6 +306,10 @@ const translation = {
     to: 'to ',
     insertContext: 'insert context',
     optimizePromptTooltip: 'Optimize in Prompt Generator',
+    optimizationNote: 'Optimization Note',
+    versions: 'Versions',
+    version: 'Version',
+    latest: 'Latest',
   },
   resetConfig: {
     title: 'Confirm reset?',

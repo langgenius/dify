@@ -305,6 +305,10 @@ const translation = {
     to: '来',
     insertContext: '插入上下文',
     optimizePromptTooltip: '在提示词生成器中优化',
+    optimizationNote: '优化说明',
+    versions: '版本',
+    version: '版本',
+    latest: '最新',
   },
   resetConfig: {
     title: '确认重置？',

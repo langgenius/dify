@@ -1,49 +1,52 @@
-import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
+import { RiArrowDownSLine, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import React from 'react'
 import cn from '@/utils/classnames'
 import { Markdown } from '@/app/components/base/markdown'
+import { useTranslation } from 'react-i18next'
+import s from './style.module.css'
+
 type Props = {
   message: string
   className?: string
 }
 const PromptToast = ({
-  message,
+  // message,
   className,
 }: Props) => {
-  const [isHide, {
-    setTrue: hide,
+  const { t } = useTranslation()
+  const [isFold, {
+    toggle: toggleFold,
   }] = useBoolean(false)
-  //   const message = `
-  // # h1
-  // **strong text**  ~~strikethrough~~
+  const message = `
+  list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
+  # h1
+  **strong text**  ~~strikethrough~~
 
-  // * list1
-  // * list2
+  * list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
+  * list2
 
-  // xxxx
+  xxxx
 
-  // ## h2
-  // \`\`\`python
-  // print('Hello, World!')
-  // \`\`\`
-  //   `
-  if (isHide)
-    return
+  ## h2
+  \`\`\`python
+  print('Hello, World!')
+  \`\`\`
+    `
   return (
-    <div className={cn('relative flex items-center p-2 ', className)}>
-      {/* Background Effect */}
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-[linear-gradient(92deg,rgba(11,165,236,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40 shadow-md"></div>
-      <div className='relative flex h-full w-full  justify-between'>
-        <div className="flex h-full w-0 grow gap-1">
-          <RiInformation2Fill className="mt-[3px] size-4 shrink-0 text-text-accent" />
-          <Markdown className="w-0 grow text-sm" content={message} />
+    <div className={cn('rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn pl-4 shadow-xs', className)}>
+      <div className='my-3 flex h-4 items-center justify-between pr-3'>
+        <div className='flex items-center space-x-1'>
+          <RiSparklingFill className='size-3.5 text-components-input-border-active-prompt-1' />
+          <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>{t('appDebug.generate.optimizationNote')}</span>
         </div>
-
-        <div className='relative  top-[-1px] shrink-0 cursor-pointer p-0.5' onClick={hide}>
-          <RiCloseLine className='size-5 text-text-tertiary' />
-        </div>
+        <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && 'rotate-[-90deg]')} onClick={toggleFold} />
       </div>
+      {!isFold && (
+        <div className='max-h-[300px] overflow-y-auto pb-4 pr-4'>
+          <Markdown className="text-sm" content={message} />
+        </div>
+      )}
     </div>
   )
 }

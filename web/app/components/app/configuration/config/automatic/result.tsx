@@ -64,7 +64,7 @@ const Result: FC<Props> = ({
       </div>
       {
         current?.message && (
-          <PromptToast message={current.message} className='mt-4 shrink-0' />
+          <PromptToast message={current.message} className='shrink-0' />
         )
       }
       <div className={cn('mt-3 grow', isGeneratorPrompt && 'overflow-y-auto')}>

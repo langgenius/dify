@@ -3,6 +3,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { useBoolean } from 'ahooks'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 
 type Option = {
   label: string
@@ -16,6 +17,7 @@ type VersionSelectorProps = {
 }
 
 const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, onChange }) => {
+  const { t } = useTranslation()
   const [isOpen, {
     setFalse: handleOpenFalse,
     toggle: handleOpenToggle,
@@ -33,7 +35,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
   }, [moreThanOneVersion, handleOpenToggle])
 
   const versions = Array.from({ length: versionLen }, (_, index) => ({
-    label: `Version ${index + 1}${index === versionLen - 1 ? ' · Latest' : ''}`,
+    label: `${t('appDebug.generate.version')} ${index + 1}${index === versionLen - 1 ? ` · ${t('appDebug.generate.latest')}` : ''}`,
     value: index,
   }))
 
@@ -44,7 +46,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
       placement={'bottom-start'}
       offset={{
         mainAxis: 4,
-        crossAxis: -8,
+        crossAxis: -12,
       }}
       open={isOpen}
       onOpenChange={handleOpen}
@@ -54,8 +56,8 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         asChild
       >
 
-        <div className={cn('system-xs-medium flex items-center text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
-          <div>Version {value + 1}{isLatest && ' · Latest'}</div>
+        <div className={cn('system-xs-medium flex items-center text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
+          <div>{t('appDebug.generate.version')} {value + 1}{isLatest && ` · ${t('appDebug.generate.latest')}`}</div>
           {moreThanOneVersion && <RiArrowDownSLine className='size-3 ' />}
         </div>
       </PortalToFollowElemTrigger >
@@ -67,8 +69,8 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
             'w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
           )}
         >
-          <div className='system-xs-medium-uppercase flex h-[22px] items-center px-3 pl-3 text-text-tertiary'>
-            Versions
+          <div className={cn('system-xs-medium-uppercase flex h-[22px] items-center px-3 pl-3 text-text-tertiary')}>
+            {t('appDebug.generate.versions')}
           </div>
           {
             versions.map(option => (
