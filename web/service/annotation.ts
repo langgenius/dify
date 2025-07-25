@@ -60,6 +60,12 @@ export const delAnnotation = (appId: string, annotationId: string) => {
   return del(`apps/${appId}/annotations/${annotationId}`)
 }
 
+export const delAnnotations = (appId: string, annotationIds: string[]) => {
+  return del(`/apps/${appId}/annotations/batch-delete`, {
+    body: { annotation_ids: annotationIds },
+  })
+}
+
 export const fetchHitHistoryList = (appId: string, annotationId: string, params: Record<string, any>) => {
   return get(`apps/${appId}/annotations/${annotationId}/hit-histories`, { params })
 }

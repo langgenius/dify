@@ -56,6 +56,16 @@ const translation = {
     error: 'Import Error',
     ok: 'OK',
   },
+  list: {
+    delete: {
+      title: 'Are you sure Delete?',
+    },
+  },
+  batchAction: {
+    selected: 'Selected',
+    delete: 'Delete',
+    cancel: 'Cancel',
+  },
   errorMessage: {
     answerRequired: 'Answer is required',
     queryRequired: 'Question is required',

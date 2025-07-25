@@ -26,6 +26,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import type { App } from '@/types/app'
 import cn from '@/utils/classnames'
+import { delAnnotations } from '@/service/annotation'
 
 type Props = {
   appDetail: App
@@ -50,6 +51,7 @@ const Annotation: FC<Props> = (props) => {
   const [controlUpdateList, setControlUpdateList] = useState(Date.now())
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
   const [isShowViewModal, setIsShowViewModal] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const fetchAnnotationConfig = async () => {
@@ -60,7 +62,6 @@ const Annotation: FC<Props> = (props) => {
 
   useEffect(() => {
     if (isChatApp) fetchAnnotationConfig()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
@@ -89,7 +90,6 @@ const Annotation: FC<Props> = (props) => {
 
   useEffect(() => {
     fetchList(currPage + 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
@@ -104,6 +104,14 @@ const Annotation: FC<Props> = (props) => {
     Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
+  }
+
+  const handleBatchDelete = async () => {
+    await delAnnotations(appDetail.id, selectedIds)
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+    fetchList()
+    setControlUpdateList(Date.now())
+    setSelectedIds([])
   }
 
   const handleView = (item: AnnotationItem) => {
@@ -189,6 +197,10 @@ const Annotation: FC<Props> = (props) => {
               list={list}
               onRemove={handleRemove}
               onView={handleView}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={setSelectedIds}
+              onBatchDelete={handleBatchDelete}
+              onCancel={() => setSelectedIds([])}
             />
             : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
         }
