@@ -98,16 +98,17 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   const handleVarKeyBlur = useCallback((e: any) => {
     const varName = e.target.value
-    if (!checkVariableName(varName, true) || tempPayload.label)
+    if (!checkVariableName(varName, true) || tempPayload.label || tempPayload.var_description)
       return
 
     setTempPayload((prev) => {
       return {
         ...prev,
         label: varName,
+        var_description: varName,
       }
     })
-  }, [checkVariableName, tempPayload.label])
+  }, [checkVariableName, tempPayload.label, tempPayload.var_description])
 
   const handleVarNameChange = useCallback((e: ChangeEvent<any>) => {
     replaceSpaceWithUnderscreInVarNameInput(e.target)
