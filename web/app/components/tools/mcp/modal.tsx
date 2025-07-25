@@ -97,9 +97,8 @@ const MCPModal = ({
     catch (e) {
       let errorMessage = 'Failed to fetch remote icon'
       const errorData = await (e as Response).json()
-      if (errorData?.code) {
+      if (errorData?.code)
         errorMessage = `Upload failed: ${errorData.code}`
-      }
       console.error('Failed to fetch remote icon:', e)
       Toast.notify({ type: 'warning', message: errorMessage })
     }
