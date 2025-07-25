@@ -464,14 +464,4 @@ class AppAnnotationService:
             db.session.delete(annotation)
 
         db.session.commit()
-
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
-        if annotation_setting:
-            for annotation in annotations:
-                delete_annotation_index_task.delay(
-                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
-                )
-
         return {"result": "success"}
