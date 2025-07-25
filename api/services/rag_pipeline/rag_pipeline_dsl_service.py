@@ -649,7 +649,7 @@ class RagPipelineDslService:
             "version": CURRENT_DSL_VERSION,
             "kind": "rag_pipeline",
             "rag_pipeline": {
-                "name": pipeline.name,
+                "name": dataset.name,
                 "icon": icon_info.get("icon", "📙") if icon_info else "📙",
                 "icon_type": icon_info.get("icon_type", "emoji") if icon_info else "emoji",
                 "icon_background": icon_info.get("icon_background", "#FFEAD5") if icon_info else "#FFEAD5",
