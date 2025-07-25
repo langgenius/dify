@@ -207,6 +207,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           type: 'number',
         }
       }
+
+      if(item.boolean) {
+        return {
+          ...item.boolean,
+          default: false,
+          type: 'boolean',
+        }
+      }
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
