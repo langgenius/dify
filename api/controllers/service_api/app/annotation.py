@@ -108,17 +108,20 @@ class AnnotationBatchDeleteApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('annotation_ids', type=str, required=True, nullable=False, location='args',
-                            help='Annotation IDs are required.')
-        args = parser.parse_args()
-        annotation_ids = args['annotation_ids'].split(',')
-
-        AppAnnotationService.delete_app_annotations_in_batch(
-            app_id=app_model.id,
-            annotation_ids=annotation_ids
+        parser.add_argument(
+            "annotation_ids",
+            type=str,
+            required=True,
+            nullable=False,
+            location="args",
+            help="Annotation IDs are required.",
         )
+        args = parser.parse_args()
+        annotation_ids = args["annotation_ids"].split(",")
 
-        return {'result': 'success'}, 204
+        AppAnnotationService.delete_app_annotations_in_batch(app_id=app_model.id, annotation_ids=annotation_ids)
+
+        return {"result": "success"}, 204
 
 
 api.add_resource(AnnotationReplyActionApi, "/apps/annotation-reply/<string:action>")

@@ -306,8 +306,7 @@ class AppAnnotationService:
             # Delete search index entries
             if annotation_setting:
                 delete_annotation_index_task.delay(
-                    annotation.id, app_id, current_user.current_tenant_id,
-                    annotation_setting.collection_binding_id
+                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
                 )
 
         db.session.commit()
