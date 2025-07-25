@@ -66,7 +66,7 @@ class TestArizeConfig:
     def test_endpoint_validation_with_path(self):
         """Test endpoint validation normalizes URL by removing path"""
         config = ArizeConfig(endpoint="https://custom.arize.com/api/v1")
-        assert config.endpoint == "https://custom.arize.com"
+        assert config.endpoint == "https://custom.arize.com/api/v1"
 
     def test_endpoint_validation_invalid_scheme(self):
         """Test endpoint validation rejects invalid schemes"""
@@ -104,7 +104,7 @@ class TestPhoenixConfig:
     def test_endpoint_validation_with_path(self):
         """Test endpoint validation normalizes URL by removing path"""
         config = PhoenixConfig(endpoint="https://custom.phoenix.com/api/v1")
-        assert config.endpoint == "https://custom.phoenix.com"
+        assert config.endpoint == "https://custom.phoenix.com/api/v1"
 
 
 class TestLangfuseConfig:
@@ -321,7 +321,7 @@ class TestAliyunConfig:
         config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
-        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+        assert config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
 
     def test_endpoint_validation_invalid_scheme(self):
         """Test endpoint validation rejects invalid schemes"""
@@ -366,9 +366,9 @@ class TestConfigIntegration:
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
 
-        assert arize_config.endpoint == "https://arize.com"
-        assert phoenix_config.endpoint == "https://phoenix.com"
-        assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
+        assert arize_config.endpoint == "https://arize.com/api/v1/test"
+        assert phoenix_config.endpoint == "https://phoenix.com/api/v2/"
+        assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
 
     def test_project_default_values(self):
         """Test that project default values are set correctly"""

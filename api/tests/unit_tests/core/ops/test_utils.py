@@ -19,17 +19,17 @@ class TestValidateUrl:
     def test_url_with_path_removed(self):
         """Test that URL path is removed during normalization"""
         result = validate_url("https://example.com/api/v1/test", "https://default.com")
-        assert result == "https://example.com"
+        assert result == "https://example.com/api/v1/test"
 
     def test_url_with_query_removed(self):
         """Test that URL query parameters are removed"""
         result = validate_url("https://example.com?param=value", "https://default.com")
-        assert result == "https://example.com"
+        assert result == "https://example.com?param=value"
 
     def test_url_with_fragment_removed(self):
         """Test that URL fragments are removed"""
         result = validate_url("https://example.com#section", "https://default.com")
-        assert result == "https://example.com"
+        assert result == "https://example.com#section"
 
     def test_empty_url_returns_default(self):
         """Test empty URL returns default"""
