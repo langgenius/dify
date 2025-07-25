@@ -47,6 +47,7 @@ from models.model import Conversation
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .exc import (
+    AgentNodeError,
     AgentInputTypeError,
     AgentInvocationError,
     AgentMessageTransformError,
@@ -593,7 +594,14 @@ class AgentNode(BaseNode):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                assert isinstance(message.meta, File)
+                assert isinstance(message.meta, dict)
+                # Validate that meta contains a 'file' key
+                if "file" not in message.meta:
+                    raise AgentNodeError("File message is missing 'file' key in meta")
+
+                # Validate that the file is an instance of File
+                if not isinstance(message.meta["file"], File):
+                    raise AgentNodeError(f"Expected File object but got {type(message.meta['file']).__name__}")
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
