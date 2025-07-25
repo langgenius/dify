@@ -448,6 +448,8 @@ class LLMGenerator:
     ) -> dict:
         from services.workflow_service import WorkflowService
         app: App = db.session.query(App).filter(App.id == flow_id).first()
+        if not app:
+            raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
