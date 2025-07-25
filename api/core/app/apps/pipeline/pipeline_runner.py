@@ -17,6 +17,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.dataset import Document, Pipeline
@@ -36,6 +37,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self,
         application_generate_entity: RagPipelineGenerateEntity,
         queue_manager: AppQueueManager,
+        variable_loader: VariableLoader,
+        workflow: Workflow,
+        system_user_id: str,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> None:
         """
@@ -43,9 +47,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         :param queue_manager: application queue manager
         :param workflow_thread_pool_id: workflow thread pool id
         """
+        super().__init__(
+            queue_manager=queue_manager,
+            variable_loader=variable_loader,
+            app_id=application_generate_entity.app_config.app_id,
+        )
         self.application_generate_entity = application_generate_entity
-        self.queue_manager = queue_manager
         self.workflow_thread_pool_id = workflow_thread_pool_id
+        self._workflow = workflow
+        self._sys_user_id = system_user_id
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
