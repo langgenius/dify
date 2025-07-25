@@ -329,7 +329,7 @@ class Document(Base):
 
     # parsing
     file_id = mapped_column(db.Text, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)
+    word_count: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)  # TODO: make this not nullable
     parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # cleaning
