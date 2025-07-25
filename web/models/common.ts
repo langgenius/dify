@@ -1,4 +1,4 @@
-import type { I18nText } from '@/i18n/language'
+import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {

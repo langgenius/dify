@@ -22,7 +22,7 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']

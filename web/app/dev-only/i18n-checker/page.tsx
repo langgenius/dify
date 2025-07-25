@@ -1,8 +1,8 @@
 'use client'
-import { loadLangResources } from '@/i18n/i18next-config'
+import { loadLangResources } from '@/i18n-config/i18next-config'
 import { useCallback, useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 export default function I18nTest() {
   const [langs, setLangs] = useState<Lang[]>([])
