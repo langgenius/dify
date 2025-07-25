@@ -332,7 +332,7 @@ Both your input and output should be in JSON format.
         },
         "ideal_output": {
             "type": "string",
-            "description": "The ideal output that the user expects from the large language model after modifying the prompt."
+            "description": "The ideal output that the user expects from the large language model after modifying the prompt. You should compare the last output with the ideal output and make changes to the prompt to achieve the goal."
         }
     }
 }
