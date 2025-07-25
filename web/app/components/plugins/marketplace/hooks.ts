@@ -109,6 +109,7 @@ export const useMarketplacePlugins = () => {
 export const useMixedTranslation = (localeFromOuter?: string) => {
   let t = useTranslation().t
 
+  // !localeFromOuter only support zh-Hans and en-US for now
   if (localeFromOuter)
     t = i18n.getFixedT(localeFromOuter)
 
