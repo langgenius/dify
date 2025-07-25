@@ -697,6 +697,8 @@ const getLoopItemType = ({
       return VarType.number
     case VarType.arrayObject:
       return VarType.object
+    case VarType.arrayBoolean:
+      return VarType.boolean
     case VarType.array:
       return VarType.any
     case VarType.arrayFile:
