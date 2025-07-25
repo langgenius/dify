@@ -101,7 +101,28 @@ class AnnotationUpdateDeleteApi(Resource):
         return {"result": "success"}, 204
 
 
+class AnnotationBatchDeleteApi(Resource):
+    @validate_app_token
+    def delete(self, app_model: App):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('annotation_ids', type=str, required=True, nullable=False, location='args',
+                            help='Annotation IDs are required.')
+        args = parser.parse_args()
+        annotation_ids = args['annotation_ids'].split(',')
+
+        AppAnnotationService.delete_app_annotations_in_batch(
+            app_id=app_model.id,
+            annotation_ids=annotation_ids
+        )
+
+        return {'result': 'success'}, 204
+
+
 api.add_resource(AnnotationReplyActionApi, "/apps/annotation-reply/<string:action>")
 api.add_resource(AnnotationReplyActionStatusApi, "/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
 api.add_resource(AnnotationListApi, "/apps/annotations")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/annotations/<uuid:annotation_id>")
+api.add_resource(AnnotationBatchDeleteApi, "/apps/annotations/batch-delete")

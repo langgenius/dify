@@ -267,6 +267,53 @@ class AppAnnotationService:
             )
 
     @classmethod
+    def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
+        # get app info
+        app = (
+            db.session.query(App)
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # Fetch annotations and their settings in a single query
+        annotations_to_delete = (
+            db.session.query(MessageAnnotation, AppAnnotationSetting)
+            .join(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
+            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .all()
+        )
+
+        if not annotations_to_delete:
+            return {"deleted_count": 0}
+
+        deleted_count = 0
+        for annotation, annotation_setting in annotations_to_delete:
+            db.session.delete(annotation)
+            deleted_count += 1
+
+            # Delete hit histories
+            annotation_hit_histories = (
+                db.session.query(AppAnnotationHitHistory)
+                .where(AppAnnotationHitHistory.annotation_id == annotation.id)
+                .all()
+            )
+            for annotation_hit_history in annotation_hit_histories:
+                db.session.delete(annotation_hit_history)
+
+            # Delete search index entries
+            if annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id,
+                    annotation_setting.collection_binding_id
+                )
+
+        db.session.commit()
+        return {"deleted_count": deleted_count}
+
+    @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
         app = (
