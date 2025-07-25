@@ -84,14 +84,16 @@ const HeaderOptions: FC<Props> = ({
     setShowClearConfirm(true)
   }
   const handleConfirmed = async () => {
-  try {
-    await clearAllAnnotations(appId)
-    onAdded()
-  }
- catch (_) {
-  } finally {
+    try {
+      await clearAllAnnotations(appId)
+      onAdded()
+    }
+catch (_) {
+    }
+ finally {
     setShowClearConfirm(false)
-}
+    }
+  }
   const Operations = () => {
     return (
       <div className="w-full py-1">
