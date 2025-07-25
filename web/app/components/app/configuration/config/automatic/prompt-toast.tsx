@@ -11,28 +11,28 @@ type Props = {
   className?: string
 }
 const PromptToast = ({
-  // message,
+  message,
   className,
 }: Props) => {
   const { t } = useTranslation()
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
-  const message = `
-  list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
-  # h1
-  **strong text**  ~~strikethrough~~
+  // const message = `
+  // list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
+  // # h1
+  // **strong text**  ~~strikethrough~~
 
-  * list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
-  * list2
+  // * list1list1list1list1list1list1list1list1list1list1list1list1list1list1list1
+  // * list2
 
-  xxxx
+  // xxxx
 
-  ## h2
-  \`\`\`python
-  print('Hello, World!')
-  \`\`\`
-    `
+  // ## h2
+  // \`\`\`python
+  // print('Hello, World!')
+  // \`\`\`
+  //   `
   return (
     <div className={cn('rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn pl-4 shadow-xs', className)}>
       <div className='my-3 flex h-4 items-center justify-between pr-3'>
