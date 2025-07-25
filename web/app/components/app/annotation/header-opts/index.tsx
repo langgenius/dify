@@ -84,13 +84,13 @@ const HeaderOptions: FC<Props> = ({
     setShowClearConfirm(true)
   }
   const handleConfirmed = async () => {
-  setShowClearConfirm(false)
   try {
     await clearAllAnnotations(appId)
     onAdded()
   }
  catch (_) {
-  }
+  } finally {
+    setShowClearConfirm(false)
 }
   const Operations = () => {
     return (
