@@ -440,3 +440,27 @@ class AppAnnotationService:
                 "embedding_model_name": collection_binding_detail.model_name,
             },
         }
+
+    @classmethod
+    def clear_all_annotations(cls, app_id: str) -> dict:
+        app = (
+            db.session.query(App)
+            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
+        for annotation in annotations_query.yield_per(100):
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
+                AppAnnotationHitHistory.annotation_id == annotation.id
+            )
+            for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
+                db.session.delete(annotation_hit_history)
+
+            db.session.delete(annotation)
+
+        db.session.commit()
+        return {"result": "success"}
