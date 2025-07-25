@@ -25,6 +25,8 @@ export const useShortcuts = (): void => {
     handleNodesDelete,
     handleHistoryBack,
     handleHistoryForward,
+    dimOtherNodes,
+    undimAllNodes,
   } = useNodesInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
@@ -211,4 +213,40 @@ export const useShortcuts = (): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  // Shift ↓（按下）
+  useKeyPress(
+    'shift',
+    (e) => {
+      console.log('Shift down', e)
+      if (shouldHandleShortcut(e)) {
+        // handleSelectedNodeHighlight()
+        dimOtherNodes()
+      }
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keydown'],
+    },
+  )
+
+  // Shift ↑
+  useKeyPress(
+    (e) => {
+      return e.key === 'Shift'
+    },
+    (e) => {
+      if (shouldHandleShortcut(e)) {
+        console.log('Shift up 2: ', e)
+        // handleSelectedNodeUnhighlight()
+        undimAllNodes()
+      }
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keyup'],
+    },
+  )
 }

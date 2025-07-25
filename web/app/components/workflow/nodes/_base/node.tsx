@@ -143,6 +143,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
+        data._dimmed && 'opacity-30',
       )}
       ref={nodeRef}
       style={{
