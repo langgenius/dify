@@ -28,5 +28,5 @@ def supported_language(lang):
     if lang in languages:
         return lang
 
-    error = "{lang} is not a valid language.".format(lang=lang)
+    error = f"{lang} is not a valid language."
     raise ValueError(error)

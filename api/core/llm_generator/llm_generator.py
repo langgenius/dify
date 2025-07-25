@@ -167,7 +167,7 @@ class LLMGenerator:
                 error = str(e)
                 error_step = "generate rule config"
             except Exception as e:
-                logging.exception(f"Failed to generate rule config, model: {model_config.get('name')}")
+                logging.exception("Failed to generate rule config, model: %s", model_config.get("name"))
                 rule_config["error"] = str(e)
 
             rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
@@ -264,7 +264,7 @@ class LLMGenerator:
                 error_step = "generate conversation opener"
 
         except Exception as e:
-            logging.exception(f"Failed to generate rule config, model: {model_config.get('name')}")
+            logging.exception("Failed to generate rule config, model: %s", model_config.get("name"))
             rule_config["error"] = str(e)
 
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
@@ -314,7 +314,7 @@ class LLMGenerator:
             return {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
             logging.exception(
-                f"Failed to invoke LLM model, model: {model_config.get('name')}, language: {code_language}"
+                "Failed to invoke LLM model, model: %s, language: %s", model_config.get("name"), code_language
             )
             return {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
 
@@ -386,5 +386,5 @@ class LLMGenerator:
             error = str(e)
             return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
         except Exception as e:
-            logging.exception(f"Failed to invoke LLM model, model: {model_config.get('name')}")
+            logging.exception("Failed to invoke LLM model, model: %s", model_config.get("name"))
             return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}

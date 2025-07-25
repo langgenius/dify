@@ -186,7 +186,7 @@ class ElasticSearchVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name} already exists.")
+                logger.info("Collection %s already exists.", self._collection_name)
                 return
 
             if not self._client.indices.exists(index=self._collection_name):

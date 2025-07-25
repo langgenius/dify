@@ -287,7 +287,7 @@ class OpsTraceManager:
             # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logging.info(f"new tracing_instance for app_id: {app_id}")
+            logging.info("new tracing_instance for app_id: %s", app_id)
         return tracing_instance
 
     @classmethod
@@ -843,7 +843,7 @@ class TraceQueueManager:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
-            logging.exception(f"Error adding trace task, trace_type {trace_task.trace_type}")
+            logging.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
 

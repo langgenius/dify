@@ -363,7 +363,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
+                    logger.warning("Failed to extract table from DOC: %s", e)
                     continue
 
         return "\n".join(text)

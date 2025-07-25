@@ -129,7 +129,7 @@ class HttpRequestNode(BaseNode):
                 },
             )
         except HttpRequestNodeError as e:
-            logger.warning(f"http request node {self.node_id} failed to run: {e}")
+            logger.warning("http request node %s failed to run: %s", self.node_id, e)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),

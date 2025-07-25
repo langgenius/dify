@@ -37,12 +37,10 @@ def send_deletion_success_task(to: str, language: str = "en-US") -> None:
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                "Send account deletion success email to {}: latency: {}".format(to, end_at - start_at), fg="green"
-            )
+            click.style(f"Send account deletion success email to {to}: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
-        logging.exception("Send account deletion success email to {} failed".format(to))
+        logging.exception("Send account deletion success email to %s failed", to)
 
 
 @shared_task(queue="mail")
@@ -83,4 +81,4 @@ def send_account_deletion_verification_code(to: str, code: str, language: str = 
             )
         )
     except Exception:
-        logging.exception("Send account deletion verification code email to {} failed".format(to))
+        logging.exception("Send account deletion verification code email to %s failed", to)
