@@ -132,7 +132,7 @@ class AnnotationListApi(Resource):
 
         app_id = str(app_id)
         AppAnnotationService.clear_all_annotations(app_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class AnnotationExportApi(Resource):
