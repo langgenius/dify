@@ -25,19 +25,22 @@ class RagPipelineTransformService:
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == "rag_pipeline":
-            return
+            return {
+            "pipeline_id": dataset.pipeline_id,
+            "dataset_id": dataset_id,
+            "status": "success",
+        }
         if dataset.provider != "vendor":
             raise ValueError("External dataset is not supported")
         datasource_type = dataset.data_source_type
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            self._transfrom_to_empty_pipeline(dataset)
-            return
+            return self._transfrom_to_empty_pipeline(dataset)
+
         doc_form = dataset.doc_form
         if not doc_form:
-            self._transfrom_to_empty_pipeline(dataset)
-            return
+            return self._transfrom_to_empty_pipeline(dataset)
         retrieval_model = dataset.retrieval_model
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -282,3 +285,8 @@ class RagPipelineTransformService:
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.add(dataset)
         db.session.commit()
+        return {
+            "pipeline_id": pipeline.id,
+            "dataset_id": dataset.id,
+            "status": "success",
+        }
