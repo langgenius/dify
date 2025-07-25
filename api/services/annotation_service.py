@@ -454,9 +454,8 @@ class AppAnnotationService:
 
         annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
-            annotation_hit_histories_query = (
-                db.session.query(AppAnnotationHitHistory)
-                .filter(AppAnnotationHitHistory.annotation_id == annotation.id)
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
+                AppAnnotationHitHistory.annotation_id == annotation.id
             )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
