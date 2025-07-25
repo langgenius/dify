@@ -120,7 +120,8 @@ class ApiBasedToolSchemaParser:
                                             if key not in prop_dict:
                                                 prop_dict[key] = []
                                             # extends list field
-                                            prop_dict[key] += value
+                                            if isinstance(prop_dict[key], list):
+                                                prop_dict[key].extend(value)
                                         elif key not in prop_dict:
                                             # add new field
                                             prop_dict[key] = value
