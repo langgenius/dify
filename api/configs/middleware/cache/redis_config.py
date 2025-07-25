@@ -84,6 +84,11 @@ class RedisConfig(BaseSettings):
         default=None,
     )
 
+    REDIS_CLUSTERS_USERNAME: Optional[str] = Field(
+        description="Username for Redis Clusters authentication (Required if a custom username is used)",
+        default=None,
+    )
+
     REDIS_SERIALIZATION_PROTOCOL: int = Field(
         description="Redis serialization protocol (RESP) version",
         default=3,
