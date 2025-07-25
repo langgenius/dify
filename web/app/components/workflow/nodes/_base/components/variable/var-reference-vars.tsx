@@ -118,7 +118,6 @@ const Item: FC<ItemProps> = ({
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -219,11 +218,9 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   const isHovering = isItemHovering || isChildrenHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   useEffect(() => {
     onHovering && onHovering(isItemHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isItemHovering])
   // absolute top-[-2px]
   return (

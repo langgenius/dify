@@ -164,7 +164,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       if (totalPages < currPage + 1)
         setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentsRes])
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
@@ -178,7 +177,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       invalidChunkList()
       invalidChildChunkList()
     }, 5000)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const documentsWithProgress = useMemo(() => {

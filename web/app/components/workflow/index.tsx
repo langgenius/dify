@@ -190,7 +190,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -282,7 +281,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   useEffect(() => {
     fetchInspectVars()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const store = useStoreApi()

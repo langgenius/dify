@@ -64,7 +64,6 @@ const OutputVarList: FC<Props> = ({
       })
       onChange(newOutputs, index, newKey)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarTypeChange = useCallback((index: number) => {
@@ -75,7 +74,6 @@ const OutputVarList: FC<Props> = ({
       })
       onChange(newOutputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarRemove = useCallback((index: number) => {

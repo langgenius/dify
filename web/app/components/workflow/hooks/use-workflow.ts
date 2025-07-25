@@ -270,8 +270,6 @@ export const useWorkflow = () => {
       })
       setNodes(newNodes)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
