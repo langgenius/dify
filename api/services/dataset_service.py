@@ -2176,6 +2176,7 @@ class SegmentService:
                 db.session.commit()
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
