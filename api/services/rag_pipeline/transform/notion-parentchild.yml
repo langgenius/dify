@@ -339,15 +339,15 @@ workflow:
           separator: ''
           subchunk_max_length: ''
           subchunk_separator: ''
-        provider_id: langgenius/parent_child_chunk/parent_child_chunk
-        provider_name: langgenius/parent_child_chunk/parent_child_chunk
+        provider_id: langgenius/parentchild_chunker/parentchild_chunker
+        provider_name: langgenius/parentchild_chunker/parentchild_chunker
         provider_type: builtin
         selected: true
         title: 父子分块处理器
         tool_configurations: {}
         tool_description: 将文档处理为父子分块结构
         tool_label: 父子分块处理器
-        tool_name: parent_child_chunk
+        tool_name: parentchild_chunker
         tool_parameters:
           input_text:
             type: mixed
