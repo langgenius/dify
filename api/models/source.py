@@ -1,6 +1,6 @@
-from typing import Optional
 import json
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import JSONB
