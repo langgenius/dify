@@ -1,4 +1,3 @@
-/* eslint-disable no-eval */
 const fs = require('node:fs')
 const path = require('node:path')
 const transpile = require('typescript').transpile

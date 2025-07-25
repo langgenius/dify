@@ -6,10 +6,10 @@ import { initReactI18next } from 'react-i18next'
 const requireSilent = async (lang: string, namespace: string) => {
   let res
   try {
-    res = (await import(`./${lang}/${namespace}`)).default
+    res = (await import(`../i18n/${lang}/${namespace}`)).default
   }
   catch {
-    res = (await import(`./en-US/${namespace}`)).default
+    res = (await import(`../i18n/en-US/${namespace}`)).default
   }
 
   return res
@@ -55,7 +55,7 @@ export const loadLangResources = async (lang: string) => {
 
 const getFallbackTranslation = () => {
   const resources = NAMESPACES.reduce((acc, ns, index) => {
-    acc[camelCase(NAMESPACES[index])] = require(`./en-US/${ns}`).default
+    acc[camelCase(NAMESPACES[index])] = require(`../i18n/en-US/${ns}`).default
     return acc
   }, {} as Record<string, any>)
   return {
