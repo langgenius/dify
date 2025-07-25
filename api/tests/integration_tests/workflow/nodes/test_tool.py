@@ -1,4 +1,3 @@
-import time
 import uuid
 from unittest.mock import MagicMock
 
@@ -54,7 +53,9 @@ def init_tool_node(config: dict):
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(
+            variable_pool=variable_pool,
+        ),
         config=config,
     )
     node.init_node_data(config.get("data", {}))

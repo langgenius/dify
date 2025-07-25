@@ -3,17 +3,18 @@ import logging
 import queue
 import time
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Optional, cast
 
 from flask import Flask, current_app
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -27,6 +28,7 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    GraphRunSuspendedEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
@@ -53,8 +55,16 @@ from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
-from models.enums import UserFrom
 from models.workflow import WorkflowType
+
+from .command_source import (
+    CommandParams,
+    CommandSource,
+    CommandTypes,
+    ContinueCommand,
+    StopCommand,
+    SuspendCommand,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,26 +96,25 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
 
+def _default_source(_: CommandParams) -> CommandTypes:
+    return ContinueCommand()
+
+
 class GraphEngine:
     workflow_thread_pool_mapping: dict[str, GraphEngineThreadPool] = {}
 
     def __init__(
         self,
-        tenant_id: str,
-        app_id: str,
-        workflow_type: WorkflowType,
-        workflow_id: str,
-        user_id: str,
-        user_from: UserFrom,
-        invoke_from: InvokeFrom,
-        call_depth: int,
         graph: Graph,
-        graph_config: Mapping[str, Any],
+        graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
-        max_execution_steps: int,
-        max_execution_time: int,
         thread_pool_id: Optional[str] = None,
+        command_source: CommandSource = _default_source,
     ) -> None:
+        """Create a graph from the given state.
+
+        The
+        """
         thread_pool_max_submit_count = dify_config.MAX_SUBMIT_COUNT
         thread_pool_max_workers = 10
 
@@ -126,22 +135,11 @@ class GraphEngine:
             GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id] = self.thread_pool
 
         self.graph = graph
-        self.init_params = GraphInitParams(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_type=workflow_type,
-            workflow_id=workflow_id,
-            graph_config=graph_config,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
-        )
+        self.init_params = graph_init_params
 
         self.graph_runtime_state = graph_runtime_state
 
-        self.max_execution_steps = max_execution_steps
-        self.max_execution_time = max_execution_time
+        self._command_source = command_source
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event
@@ -160,12 +158,18 @@ class GraphEngine:
                 )
 
             # run graph
+
+            next_node_to_run = self.graph.root_node_id
+            if (next_node_id := self.graph_runtime_state.node_run_state.next_node_id) is not None:
+                next_node_to_run = next_node_id
             generator = stream_processor.process(
-                self._run(start_node_id=self.graph.root_node_id, handle_exceptions=handle_exceptions)
+                self._run(start_node_id=next_node_to_run, handle_exceptions=handle_exceptions)
             )
             for item in generator:
                 try:
                     yield item
+                    if isinstance(item, GraphRunSuspendedEvent):
+                        return
                     if isinstance(item, NodeRunFailedEvent):
                         yield GraphRunFailedEvent(
                             error=item.route_node_state.failed_reason or "Unknown error.",
@@ -229,22 +233,22 @@ class GraphEngine:
         parent_parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
+        # Hint: the `_run` method is used both when running a the main graph,
+        # and also running parallel branches.
         parallel_start_node_id = None
         if in_parallel_id:
             parallel_start_node_id = start_node_id
 
         next_node_id = start_node_id
         previous_route_node_state: Optional[RouteNodeState] = None
+
         while True:
             # max steps reached
-            if self.graph_runtime_state.node_run_steps > self.max_execution_steps:
-                raise GraphRunFailedError("Max steps {} reached.".format(self.max_execution_steps))
+            if self.graph_runtime_state.node_run_steps > self.init_params.max_execution_steps:
+                raise GraphRunFailedError("Max steps {} reached.".format(self.init_params.max_execution_steps))
 
-            # or max execution time reached
-            if self._is_timed_out(
-                start_at=self.graph_runtime_state.start_at, max_execution_time=self.max_execution_time
-            ):
-                raise GraphRunFailedError("Max execution time {}s reached.".format(self.max_execution_time))
+            if self.graph_runtime_state.is_timed_out(self.init_params.max_execution_time):
+                raise GraphRunFailedError("Max execution time {}s reached.".format(self.init_params.max_execution_time))
 
             # init route node state
             route_node_state = self.graph_runtime_state.node_run_state.create_node_state(node_id=next_node_id)
@@ -277,6 +281,23 @@ class GraphEngine:
                 thread_pool_id=self.thread_pool_id,
             )
             node.init_node_data(node_config.get("data", {}))
+            # Determine if the execution should be suspended or stopped at this point.
+            # If so, yield the corresponding event.
+            #
+            # Note: Suspension is not allowed while the graph engine is running in parallel mode.
+            if in_parallel_id is None:
+                command = self._command_source(CommandParams(next_node=node))
+                if isinstance(command, SuspendCommand):
+                    self.graph_runtime_state.record_suspend_state(next_node_id)
+                    yield GraphRunSuspendedEvent(next_node_id=next_node_id)
+                    return
+                elif isinstance(command, StopCommand):
+                    # TODO: STOP the execution of worklow.
+                    return
+                elif isinstance(command, ContinueCommand):
+                    pass
+                else:
+                    raise AssertionError("unreachable statement.")
             try:
                 # run node
                 generator = self._run_node(
@@ -403,8 +424,8 @@ class GraphEngine:
                             )
 
                             for parallel_result in parallel_generator:
-                                if isinstance(parallel_result, str):
-                                    final_node_id = parallel_result
+                                if isinstance(parallel_result, _ParallelBranchResult):
+                                    final_node_id = parallel_result.final_node_id
                                 else:
                                     yield parallel_result
 
@@ -429,8 +450,8 @@ class GraphEngine:
                     )
 
                     for generated_item in parallel_generator:
-                        if isinstance(generated_item, str):
-                            final_node_id = generated_item
+                        if isinstance(generated_item, _ParallelBranchResult):
+                            final_node_id = generated_item.final_node_id
                         else:
                             yield generated_item
 
@@ -448,7 +469,7 @@ class GraphEngine:
         in_parallel_id: Optional[str] = None,
         parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
-    ) -> Generator[GraphEngineEvent | str, None, None]:
+    ) -> Generator["GraphEngineEvent | _ParallelBranchResult", None, None]:
         # if nodes has no run conditions, parallel run all nodes
         parallel_id = self.graph.node_parallel_mapping.get(edge_mappings[0].target_node_id)
         if not parallel_id:
@@ -526,7 +547,7 @@ class GraphEngine:
         # get final node id
         final_node_id = parallel.end_to_node_id
         if final_node_id:
-            yield final_node_id
+            yield _ParallelBranchResult(final_node_id)
 
     def _run_parallel_node(
         self,
@@ -928,7 +949,41 @@ class GraphEngine:
             )
         return error_result
 
+    def save(self) -> str:
+        """save serializes the state inside this graph engine.
+
+        This method should be called when suspension of the execution is necessary.
+        """
+        state = _GraphEngineState(init_params=self.init_params, graph_runtime_state=self.graph_runtime_state)
+        return state.model_dump_json()
+
+    @classmethod
+    def resume(
+        cls,
+        state: str,
+        graph: Graph,
+        command_source: CommandSource = _default_source,
+    ) -> "GraphEngine":
+        """`resume` continues a suspended execution."""
+        state_ = _GraphEngineState.model_validate_json(state)
+        return cls(
+            graph=graph,
+            graph_init_params=state_.init_params,
+            graph_runtime_state=state_.graph_runtime_state,
+            command_source=command_source,
+        )
+
 
 class GraphRunFailedError(Exception):
     def __init__(self, error: str):
         self.error = error
+
+
+@dataclass
+class _ParallelBranchResult:
+    final_node_id: str
+
+
+class _GraphEngineState(BaseModel):
+    init_params: GraphInitParams
+    graph_runtime_state: GraphRuntimeState

@@ -1,5 +1,4 @@
 import logging
-import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
@@ -70,8 +69,9 @@ class WorkflowEntry:
             raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
 
         # init workflow run state
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-        self.graph_engine = GraphEngine(
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool)
+
+        graph_init_params = GraphInitParams(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_type=workflow_type,
@@ -80,11 +80,14 @@ class WorkflowEntry:
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            graph=graph,
             graph_config=graph_config,
-            graph_runtime_state=graph_runtime_state,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+        )
+        self.graph_engine = GraphEngine(
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            graph_init_params=graph_init_params,
             thread_pool_id=thread_pool_id,
         )
 
@@ -146,7 +149,7 @@ class WorkflowEntry:
         graph = Graph.init(graph_config=workflow.graph_dict)
 
         # init workflow run state
-        node = node_cls(
+        node_instance = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(
@@ -161,7 +164,7 @@ class WorkflowEntry:
                 call_depth=0,
             ),
             graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         )
         node.init_node_data(node_config_data)
 
@@ -191,11 +194,17 @@ class WorkflowEntry:
 
         try:
             # run node
-            generator = node.run()
+            generator = node_instance.run()
         except Exception as e:
-            logger.exception(f"error while running node, {workflow.id=}, {node.id=}, {node.type_=}, {node.version()=}")
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
-        return node, generator
+            logger.exception(
+                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                workflow.id,
+                node_instance.id,
+                node_instance.type_,
+                node_instance.version(),
+            )
+            raise WorkflowNodeRunFailedError(node=node_instance, err_msg=str(e))
+        return node_instance, generator
 
     @classmethod
     def run_free_node(
@@ -257,7 +266,7 @@ class WorkflowEntry:
 
         node_cls = cast(type[BaseNode], node_cls)
         # init workflow run state
-        node: BaseNode = node_cls(
+        node_instance: BaseNode = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(
@@ -272,7 +281,7 @@ class WorkflowEntry:
                 call_depth=0,
             ),
             graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         )
         node.init_node_data(node_data)
 
@@ -293,12 +302,17 @@ class WorkflowEntry:
             )
 
             # run node
-            generator = node.run()
+            generator = node_instance.run()
 
-            return node, generator
+            return node_instance, generator
         except Exception as e:
-            logger.exception(f"error while running node, {node.id=}, {node.type_=}, {node.version()=}")
-            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+            logger.exception(
+                "error while running node_instance, node_id=%s, type=%s, version=%s",
+                node_instance.id,
+                node_instance.type_,
+                node_instance.version(),
+            )
+            raise WorkflowNodeRunFailedError(node=node_instance, err_msg=str(e))
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:

@@ -1,4 +1,3 @@
-import time
 from decimal import Decimal
 
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -49,7 +48,6 @@ def create_test_graph_runtime_state() -> GraphRuntimeState:
 
     return GraphRuntimeState(
         variable_pool=variable_pool,
-        start_at=time.perf_counter(),
         total_tokens=100,
         llm_usage=llm_usage,
         outputs={
@@ -106,7 +104,6 @@ def test_empty_outputs_round_trip():
     variable_pool = VariablePool.empty()
     original_state = GraphRuntimeState(
         variable_pool=variable_pool,
-        start_at=time.perf_counter(),
         outputs={},  # Empty outputs
     )
 

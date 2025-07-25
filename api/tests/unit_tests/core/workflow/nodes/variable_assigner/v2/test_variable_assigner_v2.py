@@ -1,4 +1,3 @@
-import time
 import uuid
 from uuid import uuid4
 
@@ -135,7 +134,7 @@ def test_remove_first_from_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         config=node_config,
     )
 
@@ -227,7 +226,7 @@ def test_remove_last_from_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         config=node_config,
     )
 
@@ -311,7 +310,7 @@ def test_remove_first_from_empty_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         config=node_config,
     )
 
@@ -395,7 +394,7 @@ def test_remove_last_from_empty_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool),
         config=node_config,
     )
 

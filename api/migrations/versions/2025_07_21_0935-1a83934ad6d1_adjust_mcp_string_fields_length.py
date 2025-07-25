@@ -1,4 +1,4 @@
-"""update models
+"""adjust length for mcp tool name and server identifiers
 
 Revision ID: 1a83934ad6d1
 Revises: 71f5020c6470

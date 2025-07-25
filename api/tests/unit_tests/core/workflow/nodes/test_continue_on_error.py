@@ -1,4 +1,3 @@
-import time
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -12,6 +11,7 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStreamChunkEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
@@ -175,9 +175,11 @@ class ContinueOnErrorTestHelper:
             ),
             user_inputs=user_inputs or {"uid": "takato"},
         )
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=variable_pool,
+        )
 
-        return GraphEngine(
+        graph_init_params = GraphInitParams(
             tenant_id="111",
             app_id="222",
             workflow_type=WorkflowType.CHAT,
@@ -187,10 +189,13 @@ class ContinueOnErrorTestHelper:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.WEB_APP,
             call_depth=0,
-            graph=graph,
-            graph_runtime_state=graph_runtime_state,
             max_execution_steps=500,
             max_execution_time=1200,
+        )
+        return GraphEngine(
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            graph_init_params=graph_init_params,
         )
 
 

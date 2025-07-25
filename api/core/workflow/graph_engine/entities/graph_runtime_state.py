@@ -1,18 +1,32 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.graph_engine._engine_utils import get_timestamp
 from core.workflow.graph_engine.entities.runtime_route_state import RuntimeRouteState
+
+_SECOND_TO_US = 1_000_000
 
 
 class GraphRuntimeState(BaseModel):
+    """`GraphRuntimeState` encapsulates the runtime state of workflow execution,
+    including scheduling details, variable values, and timing information.
+
+    Values that are initialized prior to workflow execution and remain constant
+    throughout the execution should be part of `GraphInitParams` instead.
+    """
+
     variable_pool: VariablePool = Field(..., description="variable pool")
     """variable pool"""
 
-    start_at: float = Field(..., description="start time")
-    """start time"""
+    # The `start_at` field records the execution start time of the workflow.
+    #
+    # This field is automatically generated, and its value or interpretation may evolve.
+    # Avoid manually setting this field to ensure compatibility with future updates.
+    start_at: float = Field(description="start time", default_factory=get_timestamp)
+
     total_tokens: int = 0
     """total tokens"""
     llm_usage: LLMUsage = LLMUsage.empty_usage()
@@ -29,3 +43,28 @@ class GraphRuntimeState(BaseModel):
 
     node_run_state: RuntimeRouteState = RuntimeRouteState()
     """node run state"""
+
+    # `execution_time_us` tracks the total execution time of the workflow in microseconds.
+    # Time spent in suspension is excluded from this calculation.
+    #
+    # This field is used to persist the time already spent while suspending a workflow.
+    execution_time_us: int = 0
+
+    # `_last_execution_started_at` records the timestamp of the most recent resume start.
+    # It is updated when the workflow resumes from a suspended state.
+    _last_execution_started_at: float = PrivateAttr(default_factory=get_timestamp)
+
+    def is_timed_out(self, max_execution_time_seconds: int) -> bool:
+        """Checks if the workflow execution has exceeded the specified `max_execution_time_seconds`."""
+        remaining_time_us = max_execution_time_seconds * _SECOND_TO_US - self.execution_time_us
+        if remaining_time_us <= 0:
+            return False
+        return int(get_timestamp() - self._last_execution_started_at) * _SECOND_TO_US > remaining_time_us
+
+    def record_suspend_state(self, next_node_id: str):
+        """Record the time already spent in executing workflow.
+
+        This function should be called when suspending the workflow.
+        """
+        self.execution_time_us = int(get_timestamp() - self._last_execution_started_at) * _SECOND_TO_US
+        self.node_run_state.next_node_id = next_node_id

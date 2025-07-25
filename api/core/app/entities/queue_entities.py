@@ -29,6 +29,7 @@ class QueueEvent(StrEnum):
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
     WORKFLOW_PARTIAL_SUCCEEDED = "workflow_partial_succeeded"
+    WORKFLOW_SUSPENDED = "workflow_suspended"
     ITERATION_START = "iteration_start"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
@@ -324,6 +325,13 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
     graph_runtime_state: GraphRuntimeState
+
+
+class QueueWorkflowSuspendedEvent(AppQueueEvent):
+    event: QueueEvent = QueueEvent.WORKFLOW_SUSPENDED
+    # next_node_id records the next node to execute after resuming
+    # workflow.
+    next_node_id: str
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
