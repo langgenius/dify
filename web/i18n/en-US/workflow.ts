@@ -905,9 +905,16 @@ const translation = {
       parameterSchema: 'Parameter Schema',
     },
     humanInput: {
-      deliveryMethod: 'delivery method',
+      deliveryMethod: {
+        title: 'Delivery Method',
+      },
       formContent: 'form content',
       userActions: 'user actions',
+      timeout: {
+        title: 'Timeout',
+        hours: 'Hours',
+        days: 'Days',
+      },
     },
   },
   tracing: {

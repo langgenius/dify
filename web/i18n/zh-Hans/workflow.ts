@@ -906,9 +906,16 @@ const translation = {
       parameterSchema: '参数 Schema',
     },
     humanInput: {
-      deliveryMethod: '提交方式',
+      deliveryMethod: {
+        title: '提交方式',
+      },
       formContent: '表单内容',
       userActions: '用户操作',
+      timeout: {
+        title: '超时设置',
+        hours: '小时',
+        days: '日',
+      },
     },
   },
   tracing: {

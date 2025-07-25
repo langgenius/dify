@@ -4,7 +4,7 @@ export type HumanInputNodeType = CommonNodeType & {
   deliveryMethod: DeliveryMethod[]
   formContent: any
   userActions: UserAction[]
-  timeout: any
+  timeout: Timeout
   outputs: Variable[]
 }
 

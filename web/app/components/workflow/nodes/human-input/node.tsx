@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiMailSendFill,
   RiRobot2Fill,
@@ -9,7 +10,11 @@ import type { HumanInputNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { DeliveryMethodType } from './types'
 
+const i18nPrefix = 'workflow.nodes.humanInput'
+
 const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
+  const { t } = useTranslation()
+
   const { data } = props
   const deliveryMethods = data.deliveryMethod
   const userActions = data.userActions
@@ -18,7 +23,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
     <>
       {deliveryMethods.length > 0 && (
         <div className='space-y-0.5 py-1'>
-          <div className='system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary'>delivery method</div>
+          <div className='system-2xs-medium-uppercase px-2.5 py-0.5 text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.title`)}</div>
           <div className='space-y-0.5 px-2.5'>
             {deliveryMethods.map(method => (
               <div key={method.type} className='flex items-center gap-1 rounded-[6px] bg-workflow-block-parma-bg p-1'>
