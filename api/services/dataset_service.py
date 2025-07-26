@@ -2031,6 +2031,7 @@ class SegmentService:
 
             db.session.add(segment_document)
             # update document word count
+            assert document.word_count is not None
             document.word_count += segment_document.word_count
             db.session.add(document)
             db.session.commit()
@@ -2115,6 +2116,7 @@ class SegmentService:
                 else:
                     keywords_list.append(None)
             # update document word count
+            assert document.word_count is not None
             document.word_count += increment_word_count
             db.session.add(document)
             try:
@@ -2176,6 +2178,7 @@ class SegmentService:
                 db.session.commit()
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
@@ -2251,6 +2254,7 @@ class SegmentService:
                 word_count_change = segment.word_count - word_count_change
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 db.session.add(segment)
@@ -2314,6 +2318,7 @@ class SegmentService:
             delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
         db.session.delete(segment)
         # update document word count
+        assert document.word_count is not None
         document.word_count -= segment.word_count
         db.session.add(document)
         db.session.commit()
