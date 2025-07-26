@@ -287,6 +287,9 @@ const translation = {
       atLeastOneOption: '적어도 하나의 옵션이 필요합니다',
       optionRepeat: '옵션이 중복되어 있습니다',
     },
+    'defaultValue': '기본값',
+    'noDefaultValue': '기본값 없음',
+    'selectDefaultValue': '기본값 선택',
   },
   vision: {
     name: '비전',

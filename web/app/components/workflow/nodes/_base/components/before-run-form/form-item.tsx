@@ -158,7 +158,7 @@ const FormItem: FC<Props> = ({
           type === InputVarType.select && (
             <Select
               className="w-full"
-              defaultValue={value || ''}
+              defaultValue={value || payload.default || ''}
               items={payload.options?.map(option => ({ name: option, value: option })) || []}
               onSelect={i => onChange(i.value)}
               allowSearch={false}
