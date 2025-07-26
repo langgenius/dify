@@ -152,6 +152,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    setClipboardElements,
   } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
@@ -177,6 +178,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
+
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible') {
+      const storedElements = localStorage.getItem('clipboard_elements')
+      setClipboardElements(storedElements ? JSON.parse(storedElements) : [])
+    }
+  }, [setClipboardElements])
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     setAutoFreeze(false)
