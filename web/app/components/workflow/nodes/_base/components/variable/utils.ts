@@ -171,7 +171,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
 
     if (isFile && Array.isArray(childrenResult)) {
       if (childrenResult.length === 0) {
-        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map((key) => ({
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
           variable: key,
           type: key === 'size' ? VarType.number : VarType.string,
         }))
@@ -561,7 +561,7 @@ const formatItem = (
     const { children } = (() => {
       if (isFile) {
         return {
-          children: OUTPUT_FILE_SUB_VARIABLES.map(key => {
+          children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
             return {
               variable: key,
               type: key === 'size' ? VarType.number : VarType.string,
