@@ -561,7 +561,7 @@ const formatItem = (
     const { children } = (() => {
       if (isFile) {
         return {
-          children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+          children: OUTPUT_FILE_SUB_VARIABLES.map(key => {
             return {
               variable: key,
               type: key === 'size' ? VarType.number : VarType.string,
