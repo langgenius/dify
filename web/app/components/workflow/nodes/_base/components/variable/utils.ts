@@ -149,8 +149,8 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
 
       const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
       const hasValidChildren = filteredObj.children && (
-        (Array.isArray(filteredObj.children) && filteredObj.children.length > 0) ||
-        (!Array.isArray(filteredObj.children) && Object.keys((filteredObj.children as StructuredOutput)?.schema?.properties || {}).length > 0)
+        (Array.isArray(filteredObj.children) && filteredObj.children.length > 0)
+        || (!Array.isArray(filteredObj.children) && Object.keys((filteredObj.children as StructuredOutput)?.schema?.properties || {}).length > 0)
       )
 
       if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
