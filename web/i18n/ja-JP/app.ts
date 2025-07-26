@@ -79,7 +79,7 @@ const translation = {
     appCreateDSLErrorTitle: 'バージョンの非互換性',
     appCreateDSLWarning: '注意:DSL のバージョンの違いは、特定の機能に影響を与える可能性があります',
     appCreateDSLErrorPart1: 'DSL バージョンに大きな違いが検出されました。インポートを強制すると、アプリケーションが誤動作する可能性があります。',
-    optional: '随意',
+    optional: '任意',
     forBeginners: '初心者向けの基本的なアプリタイプ',
     noTemplateFoundTip: '別のキーワードを使用して検索してみてください。',
     agentShortDescription: '推論と自律的なツールの使用を備えたインテリジェントエージェント',

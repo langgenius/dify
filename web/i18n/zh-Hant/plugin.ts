@@ -84,6 +84,16 @@ const translation = {
     configureModel: '配置模型',
     endpointModalTitle: '設置終端節點',
     endpointsDocLink: '查看文件',
+    deprecation: {
+      reason: {
+        businessAdjustments: '業務調整',
+        ownershipTransferred: '所有權轉移',
+        noMaintainer: '沒有維護者',
+      },
+      noReason: '此插件已被廢棄，將不再進行更新。',
+      onlyReason: '此插件因為 {{deprecatedReason}} 而被棄用，將不再更新。',
+      fullMessage: '由於 {{deprecatedReason}}，此插件已被棄用，將不再更新。請改用 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>。',
+    },
   },
   debugInfo: {
     viewDocs: '查看文件',
@@ -237,6 +247,7 @@ const translation = {
     clientInfo: '由於未找到此工具提供者的系統客戶端秘密，因此需要手動設置，對於 redirect_uri，請使用',
     useApiAuthDesc: '配置完憑證後，工作區內的所有成員在協調應用程式時都可以使用此工具。',
   },
+  deprecated: '不推薦使用的',
 }
 
 export default translation

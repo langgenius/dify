@@ -84,6 +84,16 @@ const translation = {
     endpointModalDesc: 'پس از پیکربندی، می توان از ویژگی های ارائه شده توسط افزونه از طریق نقاط پایانی API استفاده کرد.',
     switchVersion: 'نسخه سوئیچ',
     endpointDeleteContent: 'آیا می خواهید {{name}} را حذف کنید؟',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'مالکیت منتقل شد',
+        businessAdjustments: 'تنظیمات کسب و کار',
+        noMaintainer: 'بدون نگهدارنده',
+      },
+      noReason: 'این افزونه منسوخ شده است و دیگر به روز رسانی نخواهد شد.',
+      onlyReason: 'این افزونه به دلیل {{deprecatedReason}} منسوخ شده و دیگر به‌روزرسانی نخواهد شد.',
+      fullMessage: 'این افزونه به دلیل {{deprecatedReason}} منسوخ شده است و دیگر به‌روزرسانی نخواهد شد. لطفا به‌جای آن از <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> استفاده کنید.',
+    },
   },
   debugInfo: {
     title: 'اشکال زدایی',
@@ -237,6 +247,7 @@ const translation = {
     clientInfo: 'از آنجایی که هیچ راز مشتری سیستم برای این ارائه‌دهنده ابزار پیدا نشد، تنظیم دستی آن ضروری است، لطفاً برای redirect_uri از',
     useApiAuthDesc: 'پس از پیکربندی اعتبارنامه‌ها، تمامی اعضای درون فضای کاری می‌توانند از این ابزار هنگام نظم‌دهی به برنامه‌ها استفاده کنند.',
   },
+  deprecated: 'منسوخ شده',
 }
 
 export default translation

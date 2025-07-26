@@ -229,7 +229,7 @@ const translation = {
     permanentlyDeleteButton: 'アカウントを完全に削除',
     feedbackTitle: 'フィードバック',
     feedbackLabel: 'アカウントを削除した理由を教えてください。',
-    feedbackPlaceholder: '随意',
+    feedbackPlaceholder: '任意',
     sendVerificationButton: '確認コードの送信',
     editWorkspaceInfo: 'ワークスペース情報を編集',
     workspaceName: 'ワークスペース名',

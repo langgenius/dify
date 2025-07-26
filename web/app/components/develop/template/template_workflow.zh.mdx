@@ -60,7 +60,12 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       - `user` (string) Required
         用户标识，用于定义终端用户的身份，方便检索、统计。
         由开发者定义规则，需保证用户标识在应用内唯一。API 无法访问 WebApp 创建的会话。
-
+      - `files` (array[object]) 可选
+      - `trace_id` (string) Optional
+        链路追踪ID。适用于与业务系统已有的trace组件打通，实现端到端分布式追踪等场景。如果未指定，系统将自动生成 `trace_id`。支持以下三种方式传递，具体优先级依次为：
+        1. Header：推荐通过 HTTP Header `X-Trace-Id` 传递，优先级最高。
+        2. Query 参数：通过 URL 查询参数 `trace_id` 传递。
+        3. Request Body：通过请求体字段 `trace_id` 传递（即本字段）。
 
     ### Response
     当 `response_mode` 为 `blocking` 时，返回 CompletionResponse object。
@@ -678,11 +683,30 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `default` (string) 默认值
         - `options` (array[string]) 选项值
     - `file_upload` (object) 文件上传配置
-      - `image` (object) 图片设置
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 是否开启
-        - `number_limits` (int) 图片数量限制，默认 3
-        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+      - `document` (object) 文档设置  
+        当前仅支持文档类型：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 文档数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `image` (object) 图片设置  
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 图片数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `audio` (object) 音频设置  
+        当前仅支持音频类型：`mp3`, `m4a`, `wav`, `webm`, `amr`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 音频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `video` (object) 视频设置  
+        当前仅支持视频类型：`mp4`, `mov`, `mpeg`, `mpga`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 视频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `custom` (object) 自定义设置  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 自定义数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。 
     - `system_parameters` (object) 系统参数
       - `file_size_limit` (int) 文档上传大小限制 (MB)
       - `image_file_size_limit` (int) 图片文件上传大小限制（MB）

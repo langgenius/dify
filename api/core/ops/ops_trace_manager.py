@@ -520,6 +520,10 @@ class TraceTask:
                 "app_id": workflow_run.app_id,
             }
 
+            external_trace_id = self.kwargs.get("external_trace_id")
+            if external_trace_id:
+                metadata["external_trace_id"] = external_trace_id
+
             workflow_trace_info = WorkflowTraceInfo(
                 workflow_data=workflow_run.to_dict(),
                 conversation_id=conversation_id,

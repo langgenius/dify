@@ -1,4 +1,7 @@
 import os
+import uuid
+
+import tablestore
 
 from core.rag.datasource.vdb.tablestore.tablestore_vector import (
     TableStoreConfig,
@@ -6,6 +9,8 @@ from core.rag.datasource.vdb.tablestore.tablestore_vector import (
 )
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    get_example_document,
+    get_example_text,
     setup_mock_redis,
 )
 
@@ -28,6 +33,49 @@ class TableStoreVectorTest(AbstractVectorTest):
         assert ids is not None
         assert len(ids) == 1
         assert ids[0] == self.example_doc_id
+
+    def create_vector(self):
+        self.vector.create(
+            texts=[get_example_document(doc_id=self.example_doc_id)],
+            embeddings=[self.example_embedding],
+        )
+        while True:
+            search_response = self.vector._tablestore_client.search(
+                table_name=self.vector._table_name,
+                index_name=self.vector._index_name,
+                search_query=tablestore.SearchQuery(query=tablestore.MatchAllQuery(), get_total_count=True, limit=0),
+                columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
+            )
+            if search_response.total_count == 1:
+                break
+
+    def search_by_vector(self):
+        super().search_by_vector()
+        docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[self.example_doc_id])
+        assert len(docs) == 1
+        assert docs[0].metadata["doc_id"] == self.example_doc_id
+        assert docs[0].metadata["score"] > 0
+
+        docs = self.vector.search_by_vector(self.example_embedding, document_ids_filter=[str(uuid.uuid4())])
+        assert len(docs) == 0
+
+    def search_by_full_text(self):
+        super().search_by_full_text()
+        docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
+        assert len(docs) == 1
+        assert docs[0].metadata["doc_id"] == self.example_doc_id
+        assert not hasattr(docs[0], "score")
+
+        docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[str(uuid.uuid4())])
+        assert len(docs) == 0
+
+    def run_all_tests(self):
+        try:
+            self.vector.delete()
+        except Exception:
+            pass
+
+        return super().run_all_tests()
 
 
 def test_tablestore_vector(setup_mock_redis):

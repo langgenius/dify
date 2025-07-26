@@ -22,6 +22,7 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
@@ -123,6 +124,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         )
 
         inputs: Mapping[str, Any] = args["inputs"]
+
+        extras = {
+            **extract_external_trace_id_from_args(args),
+        }
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
@@ -142,6 +147,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager,
             workflow_execution_id=workflow_run_id,
+            extras=extras,
         )
 
         contexts.plugin_tool_providers.set({})

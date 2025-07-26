@@ -84,6 +84,16 @@ const translation = {
     endpointDeleteContent: 'Bạn có muốn xóa {{name}} không?',
     endpointModalTitle: 'Điểm cuối thiết lập',
     disabled: 'Tàn tật',
+    deprecation: {
+      reason: {
+        noMaintainer: 'không có người bảo trì',
+        ownershipTransferred: 'quyền sở hữu được chuyển nhượng',
+        businessAdjustments: 'điều chỉnh kinh doanh',
+      },
+      noReason: 'Plugin này đã bị loại bỏ và sẽ không còn được cập nhật.',
+      onlyReason: 'Plugin này đã bị ngừng hỗ trợ do {{deprecatedReason}} và sẽ không còn được cập nhật nữa.',
+      fullMessage: 'Plugin này đã bị ngừng sử dụng do {{deprecatedReason}}, và sẽ không còn được cập nhật nữa. Vui lòng sử dụng <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> thay thế.',
+    },
   },
   debugInfo: {
     title: 'Gỡ lỗi',
@@ -237,6 +247,7 @@ const translation = {
     useApiAuthDesc: 'Sau khi cấu hình thông tin xác thực, tất cả các thành viên trong không gian làm việc có thể sử dụng công cụ này khi điều phối các ứng dụng.',
     clientInfo: 'Vì không tìm thấy bí mật khách hàng hệ thống cho nhà cung cấp công cụ này, cần thiết lập thủ công, đối với redirect_uri, vui lòng sử dụng',
   },
+  deprecated: 'Đã bị ngưng sử dụng',
 }
 
 export default translation

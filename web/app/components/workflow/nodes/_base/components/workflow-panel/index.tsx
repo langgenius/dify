@@ -99,15 +99,18 @@ const BasePanel: FC<BasePanelProps> = ({
     return Math.max(available, 400)
   }, [workflowCanvasWidth, otherPanelWidth])
 
-  const updateNodePanelWidth = useCallback((width: number) => {
+  const updateNodePanelWidth = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     // Ensure the width is within the min and max range
     const newValue = Math.max(400, Math.min(width, maxNodePanelWidth))
-    localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+
+    if (source === 'user')
+      localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth])
 
   const handleResize = useCallback((width: number) => {
-    updateNodePanelWidth(width)
+    updateNodePanelWidth(width, 'user')
   }, [updateNodePanelWidth])
 
   const {
@@ -121,7 +124,10 @@ const BasePanel: FC<BasePanelProps> = ({
     onResize: debounce(handleResize),
   })
 
-  const debounceUpdate = debounce(updateNodePanelWidth)
+  const debounceUpdate = debounce((width: number) => {
+    updateNodePanelWidth(width, 'system')
+  })
+
   useEffect(() => {
     if (!workflowCanvasWidth)
       return
@@ -132,7 +138,7 @@ const BasePanel: FC<BasePanelProps> = ({
       const target = Math.max(workflowCanvasWidth - otherPanelWidth - reservedCanvasWidth, 400)
       debounceUpdate(target)
     }
-  }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
+  }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, debounceUpdate])
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()

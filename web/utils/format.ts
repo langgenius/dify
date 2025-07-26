@@ -56,3 +56,7 @@ export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string 
   a.remove()
   window.URL.revokeObjectURL(url)
 }
+
+export const snakeCase2CamelCase = (input: string): string => {
+  return input.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+}

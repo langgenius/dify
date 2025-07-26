@@ -38,6 +38,9 @@ class PluginService:
         plugin_id: str
         version: str
         unique_identifier: str
+        status: str
+        deprecated_reason: str
+        alternative_plugin_id: str
 
     REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
     REDIS_TTL = 60 * 5  # 5 minutes
@@ -71,6 +74,9 @@ class PluginService:
                         plugin_id=plugin_id,
                         version=manifest.latest_version,
                         unique_identifier=manifest.latest_package_identifier,
+                        status=manifest.status,
+                        deprecated_reason=manifest.deprecated_reason,
+                        alternative_plugin_id=manifest.alternative_plugin_id,
                     )
 
                     # Store in Redis
