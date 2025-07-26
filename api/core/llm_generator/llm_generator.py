@@ -453,11 +453,20 @@ class LLMGenerator:
         workflow = WorkflowService().get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
+        workflow.graph_dict
         last_run = WorkflowService().get_node_last_run(
             app_model=app,
             workflow=workflow,
             node_id=node_id
         )
+        try:
+            node_type = last_run.node_type
+        except Exception:
+            try:
+                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["type"]
+            except Exception:
+                node_type = "llm"
+
         if not last_run: # Node is not executed yet
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,
@@ -466,10 +475,9 @@ class LLMGenerator:
                 current=current,
                 error_message="",
                 instruction=instruction,
-                node_type="llm",
+                node_type=node_type,
                 ideal_output=ideal_output
             )
-
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
             raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
             if not raw_agent_log:
