@@ -18,7 +18,8 @@ const translation = {
       addAnnotation: '添加标注',
       bulkImport: '批量导入',
       bulkExport: '批量导出',
-      clearAll: '删除所有标注',
+      clearAll: '删除所有',
+      clearAllConfirm: '删除所有标注？',
     },
   },
   editModal: {

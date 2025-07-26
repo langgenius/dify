@@ -243,6 +243,7 @@ const translation = {
       content2: 'Twój aktualny adres email to <email>{{email}}</email>. Kod weryfikacyjny został wysłany na ten adres email.',
       content4: 'Właśnie wysłaliśmy Ci tymczasowy kod weryfikacyjny na <email>{{email}}</email>.',
       authTip: 'Gdy twoje e-mail zostanie zmienione, konta Google lub GitHub powiązane z twoim starym e-mailem nie będą mogły już logować się do tego konta.',
+      unAvailableEmail: 'Ten email jest tymczasowo niedostępny.',
     },
   },
   members: {

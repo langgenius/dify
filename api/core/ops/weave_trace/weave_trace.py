@@ -66,11 +66,11 @@ class WeaveDataTrace(BaseTraceInstance):
             project_url = f"https://wandb.ai/{self.weave_client._project_id()}"
             return project_url
         except Exception as e:
-            logger.debug(f"Weave get run url failed: {str(e)}")
+            logger.debug("Weave get run url failed: %s", str(e))
             raise ValueError(f"Weave get run url failed: {str(e)}")
 
     def trace(self, trace_info: BaseTraceInfo):
-        logger.debug(f"Trace info: {trace_info}")
+        logger.debug("Trace info: %s", trace_info)
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
         if isinstance(trace_info, MessageTraceInfo):
@@ -403,7 +403,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 print("Weave login successful")
                 return True
         except Exception as e:
-            logger.debug(f"Weave API check failed: {str(e)}")
+            logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: Optional[str] = None):

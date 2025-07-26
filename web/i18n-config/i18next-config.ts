@@ -6,10 +6,10 @@ import { initReactI18next } from 'react-i18next'
 const requireSilent = async (lang: string, namespace: string) => {
   let res
   try {
-    res = (await import(`./${lang}/${namespace}`)).default
+    res = (await import(`../i18n/${lang}/${namespace}`)).default
   }
   catch {
-    res = (await import(`./en-US/${namespace}`)).default
+    res = (await import(`../i18n/en-US/${namespace}`)).default
   }
 
   return res
@@ -53,13 +53,27 @@ export const loadLangResources = async (lang: string) => {
   return resources
 }
 
-const getFallbackTranslation = () => {
-  const resources = NAMESPACES.reduce((acc, ns, index) => {
-    acc[camelCase(NAMESPACES[index])] = require(`./en-US/${ns}`).default
+/**
+ * !Need to load en-US and zh-Hans resources for initial rendering, which are used in both marketplace and dify
+ * !Other languages will be loaded on demand
+ * !This is to avoid loading all languages at once which can be slow
+ */
+const getInitialTranslations = () => {
+  const en_USResources = NAMESPACES.reduce((acc, ns, index) => {
+    acc[camelCase(NAMESPACES[index])] = require(`../i18n/en-US/${ns}`).default
+    return acc
+  }, {} as Record<string, any>)
+  const zh_HansResources = NAMESPACES.reduce((acc, ns, index) => {
+    acc[camelCase(NAMESPACES[index])] = require(`../i18n/zh-Hans/${ns}`).default
     return acc
   }, {} as Record<string, any>)
   return {
-    translation: resources,
+    'en-US': {
+      translation: en_USResources,
+    },
+    'zh-Hans': {
+      translation: zh_HansResources,
+    },
   }
 }
 
@@ -68,9 +82,7 @@ if (!i18n.isInitialized) {
     .init({
       lng: undefined,
       fallbackLng: 'en-US',
-      resources: {
-        'en-US': getFallbackTranslation(),
-      },
+      resources: getInitialTranslations(),
     })
 }
 

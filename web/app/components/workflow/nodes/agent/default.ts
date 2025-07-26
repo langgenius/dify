@@ -3,7 +3,7 @@ import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/ap
 import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderI18nObject } from '@/i18n'
+import { renderI18nObject } from '@/i18n-config'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   defaultValue: {

@@ -18,7 +18,8 @@ const translation = {
       addAnnotation: '注釈を追加',
       bulkImport: '一括インポート',
       bulkExport: '一括エクスポート',
-      clearAll: 'すべての注釈をクリア',
+      clearAll: 'すべて削除',
+      clearAllConfirm: 'すべての寸法を削除?',
     },
   },
   editModal: {

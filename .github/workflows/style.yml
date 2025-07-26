@@ -49,8 +49,8 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           uv run --directory api ruff --version
-          uv run --directory api ruff check --diff ./
-          uv run --directory api ruff format --check --diff ./
+          uv run --directory api ruff check ./
+          uv run --directory api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'

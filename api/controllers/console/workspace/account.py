@@ -511,6 +511,8 @@ class CheckEmailUnique(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
         args = parser.parse_args()
+        if AccountService.is_account_in_freeze(args["email"]):
+            raise AccountInFreezeError()
         if not AccountService.check_email_unique(args["email"]):
             raise EmailAlreadyInUseError()
         return {"result": "success"}

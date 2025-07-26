@@ -27,12 +27,12 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
-        logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
+        logging.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
         db.session.close()
         return
     tenant_id = dataset.tenant_id
     for document_id in document_ids:
-        retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
+        retry_indexing_cache_key = f"document_{document_id}_is_retried"
         # check document limit
         features = FeatureService.get_features(tenant_id)
         try:
@@ -57,12 +57,12 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             db.session.close()
             return
 
-        logging.info(click.style("Start retry document: {}".format(document_id), fg="green"))
+        logging.info(click.style(f"Start retry document: {document_id}", fg="green"))
         document = (
             db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
         )
         if not document:
-            logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
+            logging.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             db.session.close()
             return
         try:
@@ -95,8 +95,8 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             db.session.commit()
             logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
-            logging.exception("retry_document_indexing_task failed, document_id: {}".format(document_id))
+            logging.exception("retry_document_indexing_task failed, document_id: %s", document_id)
         finally:
             db.session.close()
     end_at = time.perf_counter()
-    logging.info(click.style("Retry dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))
+    logging.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))

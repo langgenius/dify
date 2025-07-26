@@ -228,7 +228,7 @@ class ClearFreePlanTenantExpiredLogs:
                     # only process sandbox tenant
                     cls.process_tenant(flask_app, tenant_id, days, batch)
             except Exception:
-                logger.exception(f"Failed to process tenant {tenant_id}")
+                logger.exception("Failed to process tenant %s", tenant_id)
             finally:
                 nonlocal handled_tenant_count
                 handled_tenant_count += 1
@@ -311,7 +311,7 @@ class ClearFreePlanTenantExpiredLogs:
                         try:
                             tenants.append(tenant_id)
                         except Exception:
-                            logger.exception(f"Failed to process tenant {tenant_id}")
+                            logger.exception("Failed to process tenant %s", tenant_id)
                             continue
 
                         futures.append(
