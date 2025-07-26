@@ -2,7 +2,7 @@
 
 set -e
 
-# Ensure UTF-8 encoding
+# Set UTF-8 encoding to address potential encoding issues in containerized environments
 export LANG=${LANG:-en_US.UTF-8}
 export LC_ALL=${LC_ALL:-en_US.UTF-8}
 export PYTHONIOENCODING=${PYTHONIOENCODING:-utf-8}
