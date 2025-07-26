@@ -463,7 +463,7 @@ class LLMGenerator:
             node_type = last_run.node_type
         except Exception:
             try:
-                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["type"]
+                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"]["type"]
             except Exception:
                 node_type = "llm"
 
