@@ -92,12 +92,13 @@ const PureSelect = ({
     >
       <PortalToFollowElemTrigger
         onClick={() => !disabled && handleOpenChange(!mergedOpen)}
-        asChild
-      >
+        asChild >
         <div
           className={cn(
-            'system-sm-regular group flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt',
-            mergedOpen && 'bg-state-base-hover-alt',
+            'system-sm-regular group flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled',
+            !disabled && 'cursor-pointer hover:bg-state-base-hover-alt',
+            disabled && 'cursor-not-allowed opacity-50',
+            mergedOpen && !disabled && 'bg-state-base-hover-alt',
             triggerClassName,
           )}
         >
