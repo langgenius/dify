@@ -139,7 +139,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   if (isStructuredOutput) {
     childrenResult = findExceptVarInStructuredOutput(children, filterVar)
   }
- else if (Array.isArray(children)) {
+  else if (Array.isArray(children)) {
     childrenResult = children.filter((item: Var) => {
       const { children: itemChildren } = item
       const currSelector = [...value_selector, item.variable]
@@ -147,11 +147,36 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
       if (!itemChildren)
         return filterVar(item, currSelector)
 
-      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
-      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
+      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
+      const hasValidChildren = filteredObj.children && (
+        (Array.isArray(filteredObj.children) && filteredObj.children.length > 0) ||
+        (!Array.isArray(filteredObj.children) && Object.keys((filteredObj.children as StructuredOutput)?.schema?.properties || {}).length > 0)
+      )
+
+      if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
+        return hasValidChildren || filterVar(item, currSelector)
+
+      return hasValidChildren
+    }).map((item: Var) => {
+      const { children: itemChildren } = item
+      if (!itemChildren)
+        return item
+
+      const filteredObj = findExceptVarInObject(item, filterVar, [...value_selector, item.variable], false)
+      return {
+        ...item,
+        children: filteredObj.children
+      }
     })
+
+    if (isFile && Array.isArray(childrenResult))
+      if (childrenResult.length === 0)
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map((key) => ({
+          variable: key,
+          type: key === 'size' ? VarType.number : VarType.string,
+        }))
   }
- else {
+  else {
     childrenResult = []
   }
 
