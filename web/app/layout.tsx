@@ -62,24 +62,25 @@ const LocaleLayout = async ({
         className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <BrowserInitializer>
-          <SentryInitializer>
-            <TanstackQueryInitializer>
-              <ThemeProvider
-                attribute='data-theme'
-                defaultTheme='system'
-                enableSystem
-                disableTransitionOnChange
-              >
+        <ThemeProvider
+          attribute='data-theme'
+          defaultTheme='system'
+          enableSystem
+          disableTransitionOnChange
+          enableColorScheme={false}
+        >
+          <BrowserInitializer>
+            <SentryInitializer>
+              <TanstackQueryInitializer>
                 <I18nServer>
                   <GlobalPublicStoreProvider>
                     {children}
                   </GlobalPublicStoreProvider>
                 </I18nServer>
-              </ThemeProvider>
-            </TanstackQueryInitializer>
-          </SentryInitializer>
-        </BrowserInitializer>
+              </TanstackQueryInitializer>
+            </SentryInitializer>
+          </BrowserInitializer>
+        </ThemeProvider>
         <RoutePrefixHandle />
       </body>
     </html>
