@@ -156,7 +156,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
           return {
             item,
             filteredObj: null,
-            passesFilter: filterVar(item, currSelector)
+            passesFilter: filterVar(item, currSelector),
           }
         }
 
