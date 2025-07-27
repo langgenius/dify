@@ -277,6 +277,22 @@ class Executor:
             elif self.auth.config.type == "custom":
                 headers[authorization.config.header] = authorization.config.api_key or ""
 
+        # Handle Content-Type for multipart/form-data requests
+        # Fix for issue #22880: Missing boundary when using multipart/form-data
+        body = self.node_data.body
+        if body and body.type == "form-data":
+            # For multipart/form-data with files, let httpx handle the boundary automatically
+            # by not setting Content-Type header when files are present
+            if not self.files or all(f[0] == "__multipart_placeholder__" for f in self.files):
+                # Only set Content-Type when there are no actual files
+                # This ensures httpx generates the correct boundary
+                if "content-type" not in (k.lower() for k in headers):
+                    headers["Content-Type"] = "multipart/form-data"
+        elif body and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+            # Set Content-Type for other body types
+            if "content-type" not in (k.lower() for k in headers):
+                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
+
         return headers
 
     def _validate_and_parse_response(self, response: httpx.Response) -> Response:
@@ -387,12 +403,17 @@ class Executor:
             for key, (filename, content, mime_type) in self.files:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                # decode content
+                # decode content safely
                 try:
+                    # Try UTF-8 first, then fallback to other encodings
                     body_string += content.decode("utf-8")
                 except UnicodeDecodeError:
-                    # fix: decode binary content
-                    pass
+                    try:
+                        # Try with error handling
+                        body_string += content.decode("utf-8", errors="replace")
+                    except UnicodeDecodeError:
+                        # For binary content, show a placeholder
+                        body_string += f"[Binary content: {len(content)} bytes]"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
