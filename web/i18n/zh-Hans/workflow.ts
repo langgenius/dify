@@ -910,7 +910,14 @@ const translation = {
         title: '提交方式',
       },
       formContent: '表单内容',
-      userActions: '用户操作',
+      userActions: {
+        title: '用户操作',
+        tooltip: '定义用户可以点击以响应此表单的按钮。每个按钮都可以触发不同的工作流路径。',
+        emptyTip: '点击 \'+\' 按钮添加用户操作',
+        actionNamePlaceholder: '操作名称',
+        buttonTextPlaceholder: '按钮显示文本',
+        chooseStyle: '选择按钮样式',
+      },
       timeout: {
         title: '超时设置',
         hours: '小时',

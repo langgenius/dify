@@ -17,21 +17,25 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     ],
     userActions: [
       {
+        id: 'approve-action',
         name: 'approve',
         text: 'Post to X',
         type: UserActionButtonType.Primary,
       },
       {
+        id: 'regenerate-action',
         name: 'regenerate',
         text: 'regenerate',
         type: UserActionButtonType.Default,
       },
       {
+        id: 'thinking-action',
         name: 'thinking',
         text: 'think more',
         type: UserActionButtonType.Accent,
       },
       {
+        id: 'cancel-action',
         name: 'cancel',
         text: 'cancel',
         type: UserActionButtonType.Ghost,

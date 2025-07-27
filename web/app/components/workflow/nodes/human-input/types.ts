@@ -33,6 +33,7 @@ export enum UserActionButtonType {
 }
 
 export type UserAction = {
+  id: string
   name: string
   text: string
   type: UserActionButtonType

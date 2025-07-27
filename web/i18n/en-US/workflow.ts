@@ -909,7 +909,14 @@ const translation = {
         title: 'Delivery Method',
       },
       formContent: 'form content',
-      userActions: 'user actions',
+      userActions: {
+        title: 'User Actions',
+        tooltip: 'Define buttons that users can click to respond to this form. Each button can trigger different workflow paths.',
+        emptyTip: 'Click the \'+\' button to add user actions',
+        actionNamePlaceholder: 'Action Name',
+        buttonTextPlaceholder: 'Button display Text',
+        chooseStyle: 'Choose a button style',
+      },
       timeout: {
         title: 'Timeout',
         hours: 'Hours',
