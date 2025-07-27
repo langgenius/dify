@@ -28,6 +28,7 @@ class AbstractVectorFactory(ABC):
         index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
 
+
 VECTOR_FACTORY_CLS: type[AbstractVectorFactory]
 
 match dify_config.VECTOR_STORE:
