@@ -319,6 +319,29 @@ class Workflow(Base):
 
         return variables
 
+    def output_form(self) -> list:
+        """Get workflow output form from end nodes."""
+        if not self.graph:
+            return []
+
+        graph_dict = self.graph_dict
+        if "nodes" not in graph_dict:
+            return []
+
+        # Find all end nodes
+        end_nodes = [node for node in graph_dict["nodes"] if node["data"]["type"] == "end"]
+        if not end_nodes:
+            return []
+
+        # Get outputs from all end nodes
+        outputs = []
+        for end_node in end_nodes:
+            end_node_outputs = end_node.get("data", {}).get("outputs", [])
+            for output in end_node_outputs:
+                outputs.append(output)
+
+        return outputs
+
     @property
     def unique_hash(self) -> str:
         """
