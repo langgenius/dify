@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Optional
 
 from msal_extensions.persistence import ABC  # type: ignore
 from pydantic import BaseModel, ConfigDict
@@ -21,11 +21,7 @@ class DatasetRetrieverBaseTool(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @abstractmethod
-    def _run(
-        self,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
+    def _run(self, query: str) -> str:
         """Use the tool.
 
         Add run_manager: Optional[CallbackManagerForToolRun] = None

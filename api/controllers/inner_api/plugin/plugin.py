@@ -17,6 +17,7 @@ from core.plugin.entities.request import (
     RequestInvokeApp,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
+    RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
     RequestInvokeParameterExtractorNode,
     RequestInvokeQuestionClassifierNode,
@@ -42,6 +43,21 @@ class PluginInvokeLLMApi(Resource):
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
+            return PluginModelBackwardsInvocation.convert_to_event_stream(response)
+
+        return length_prefixed_response(0xF, generator())
+
+
+class PluginInvokeLLMWithStructuredOutputApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @get_user_tenant
+    @plugin_data(payload_type=RequestInvokeLLMWithStructuredOutput)
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput):
+        def generator():
+            response = PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
+                user_model.id, tenant_model, payload
+            )
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
         return length_prefixed_response(0xF, generator())
@@ -159,6 +175,7 @@ class PluginInvokeToolApi(Resource):
                     provider=payload.provider,
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
+                    credential_id=payload.credential_id,
                 ),
             )
 
@@ -291,6 +308,7 @@ class PluginFetchAppInfoApi(Resource):
 
 
 api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
+api.add_resource(PluginInvokeLLMWithStructuredOutputApi, "/invoke/llm/structured-output")
 api.add_resource(PluginInvokeTextEmbeddingApi, "/invoke/text-embedding")
 api.add_resource(PluginInvokeRerankApi, "/invoke/rerank")
 api.add_resource(PluginInvokeTTSApi, "/invoke/tts")

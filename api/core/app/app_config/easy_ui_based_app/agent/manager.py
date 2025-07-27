@@ -39,6 +39,7 @@ class AgentConfigManager:
                         "provider_id": tool["provider_id"],
                         "tool_name": tool["tool_name"],
                         "tool_parameters": tool.get("tool_parameters", {}),
+                        "credential_id": tool.get("credential_id", None),
                     }
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))

@@ -1,4 +1,3 @@
-import datetime
 import json
 
 from flask import request
@@ -15,6 +14,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
@@ -30,7 +30,7 @@ class DataSourceApi(Resource):
         # get workspace data source integrates
         data_source_integrates = (
             db.session.query(DataSourceOauthBinding)
-            .filter(
+            .where(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )
@@ -88,7 +88,7 @@ class DataSourceApi(Resource):
         if action == "enable":
             if data_source_binding.disabled:
                 data_source_binding.disabled = False
-                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                data_source_binding.updated_at = naive_utc_now()
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
@@ -97,7 +97,7 @@ class DataSourceApi(Resource):
         if action == "disable":
             if not data_source_binding.disabled:
                 data_source_binding.disabled = True
-                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                data_source_binding.updated_at = naive_utc_now()
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
@@ -171,7 +171,7 @@ class DataSourceNotionApi(Resource):
         page_id = str(page_id)
         with Session(db.engine) as session:
             data_source_binding = session.execute(
-                select(DataSourceOauthBinding).filter(
+                select(DataSourceOauthBinding).where(
                     db.and_(
                         DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
                         DataSourceOauthBinding.provider == "notion",

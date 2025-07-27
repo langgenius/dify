@@ -18,6 +18,7 @@ from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from libs.helper import extract_tenant_id
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -61,11 +62,7 @@ class FileService:
         # generate file key
         file_uuid = str(uuid.uuid4())
 
-        if isinstance(user, Account):
-            current_tenant_id = user.current_tenant_id
-        else:
-            # end_user
-            current_tenant_id = user.tenant_id
+        current_tenant_id = extract_tenant_id(user)
 
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
@@ -147,7 +144,7 @@ class FileService:
 
     @staticmethod
     def get_file_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found")
@@ -170,7 +167,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -190,7 +187,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -201,7 +198,7 @@ class FileService:
 
     @staticmethod
     def get_public_image_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")

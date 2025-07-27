@@ -1,4 +1,4 @@
-import React, { type FC, useMemo, useState } from 'react'
+import React, { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -16,8 +16,10 @@ import { useSegmentListContext } from './index'
 import { ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { IndexingType } from '../../../create/step-two'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
@@ -48,6 +50,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
+  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -56,56 +59,41 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       setLoading(false)
   })
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     onCancel()
-  }
+  }, [onCancel])
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     onUpdate(segInfo?.id || '', question, answer, keywords)
-  }
+  }, [onUpdate, segInfo?.id, question, answer, keywords])
 
-  const handleRegeneration = () => {
+  const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
-  }
+  }, [])
 
-  const onCancelRegeneration = () => {
+  const onCancelRegeneration = useCallback(() => {
     setShowRegenerationModal(false)
-  }
+  }, [])
 
-  const onConfirmRegeneration = () => {
+  const onConfirmRegeneration = useCallback(() => {
     onUpdate(segInfo?.id || '', question, answer, keywords, true)
-  }
-
-  const isParentChildMode = useMemo(() => {
-    return mode === 'hierarchical'
-  }, [mode])
-
-  const isFullDocMode = useMemo(() => {
-    return mode === 'hierarchical' && parentMode === 'full-doc'
-  }, [mode, parentMode])
-
-  const titleText = useMemo(() => {
-    return isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
-  }, [isEditMode, t])
-
-  const isQAModel = useMemo(() => {
-    return docForm === ChunkingMode.qa
-  }, [docForm])
+  }, [onUpdate, segInfo?.id, question, answer, keywords])
 
   const wordCountText = useMemo(() => {
-    const contentLength = isQAModel ? (question.length + answer.length) : question.length
+    const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
     const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
     const count = isEditMode ? contentLength : segInfo!.word_count as number
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
-  }, [isEditMode, question.length, answer.length, isQAModel, segInfo, t])
+  }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
-  const labelPrefix = useMemo(() => {
-    return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
-  }, [isParentChildMode, t])
+  const isFullDocMode = mode === 'hierarchical' && parentMode === 'full-doc'
+  const titleText = isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
+  const labelPrefix = mode === 'hierarchical' ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+  const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
     <div className={'flex h-full flex-col'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>{titleText}</div>
           <div className='flex items-center gap-x-2'>
@@ -134,12 +122,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames(
+      <div className={cn(
         'flex grow',
-        fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4',
-        !isEditMode && 'pb-0 overflow-hidden',
+        fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
+        !isEditMode && 'overflow-hidden pb-0',
       )}>
-        <div className={classNames(isEditMode ? 'break-all whitespace-pre-line overflow-hidden' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={cn(isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -149,7 +137,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isEditMode={isEditMode}
           />
         </div>
-        {mode === 'custom' && <Keywords
+        {isECOIndexing && <Keywords
           className={fullScreen ? 'w-1/5' : ''}
           actionType={isEditMode ? 'edit' : 'view'}
           segInfo={segInfo}

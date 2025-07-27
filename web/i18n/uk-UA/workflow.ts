@@ -115,6 +115,7 @@ const translation = {
     addBlock: 'Додати вузол',
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
+    tagBound: 'Кількість додатків, що використовують цей тег',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -129,6 +130,8 @@ const translation = {
       value: 'Значення',
       valuePlaceholder: 'значення середовища',
       secretTip: 'Використовується для визначення конфіденційної інформації або даних, з налаштуваннями DSL, сконфігурованими для запобігання витоку.',
+      description: 'Опис',
+      descriptionPlaceholder: 'Опишіть змінну',
     },
     export: {
       title: 'Експортувати секретні змінні середовища?',
@@ -232,6 +235,8 @@ const translation = {
     'agent': 'Стратегія агента',
     'blocks': 'Вузли',
     'searchBlock': 'Пошуковий вузол',
+    'addAll': 'Додати все',
+    'allAdded': 'Всі додані',
   },
   blocks: {
     'start': 'Початок',
@@ -303,6 +308,8 @@ const translation = {
     changeBlock: 'Змінити вузол',
     selectNextStep: 'Виберіть наступний крок',
     addNextStep: 'Додайте наступний крок у цей робочий процес',
+    minimize: 'Вийти з повноекранного режиму',
+    maximize: 'Максимізувати полотно',
   },
   nodes: {
     common: {
@@ -359,6 +366,10 @@ const translation = {
         retrySuccessful: 'Повторна спроба успішна',
         retryFailedTimes: '{{times}} повторні спроби не вдалися',
         retryTimes: 'Повторіть спробу {{times}} у разі невдачі',
+      },
+      typeSwitch: {
+        input: 'Вхідне значення',
+        variable: 'Використовуйте змінну',
       },
     },
     start: {
@@ -535,6 +546,10 @@ const translation = {
         title: 'Імпорт з cURL',
         placeholder: 'Вставте сюди рядок cURL',
       },
+      verifySSL: {
+        title: 'Перевірити SSL сертифікат',
+        warningTooltip: 'Вимкнення перевірки SSL не рекомендується для виробничих середовищ. Це слід використовувати лише в розробці або тестуванні, оскільки це робить з\'єднання вразливим до загроз безпеці, таких як атаки «людина посередині».',
+      },
     },
     code: {
       inputVars: 'Вхідні змінні',
@@ -542,6 +557,7 @@ const translation = {
       advancedDependencies: 'Розширені залежності',
       advancedDependenciesTip: 'Додайте тут деякі попередньо завантажені залежності, які потребують більше часу для споживання або не є за замовчуванням вбудованими',
       searchDependencies: 'Шукати залежності',
+      syncFunctionSignature: 'Синхронізувати підпис функції з кодом',
     },
     templateTransform: {
       inputVars: 'Вхідні змінні',
@@ -661,12 +677,16 @@ const translation = {
         json: 'JSON, згенерований інструментом',
       },
       authorize: 'Уповноважити',
+      settings: 'Налаштування',
+      insertPlaceholder2: 'вставте змінну',
+      insertPlaceholder1: 'Введіть або натисніть',
     },
     questionClassifiers: {
       model: 'модель',
       inputVars: 'Вхідні змінні',
       outputVars: {
         className: 'Назва класу',
+        usage: 'Інформація про використання моделі',
       },
       class: 'Клас',
       classNamePlaceholder: 'Напишіть назву вашого класу',
@@ -680,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Вхідна змінна',
+      outputVars: {
+        isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
+        errorReason: 'Причина помилки',
+        usage: 'Інформація про використання моделі',
+      },
       extractParameters: 'Витягти параметри',
       importFromTool: 'Імпорт з інструментів',
       addExtractParameter: 'Додати параметр витягування',
@@ -699,8 +724,6 @@ const translation = {
       advancedSetting: 'Розширене налаштування',
       reasoningMode: 'Режим інференції',
       reasoningModeTip: 'Ви можете вибрати відповідний режим інференції залежно від здатності моделі реагувати на інструкції щодо викликів функцій або запитів.',
-      isSuccess: 'Є успіх. У разі успіху значення 1, у разі невдачі значення 0.',
-      errorReason: 'Причина помилки',
     },
     iteration: {
       deleteTitle: 'Видалити вузол ітерації?',
@@ -841,6 +864,8 @@ const translation = {
       pluginNotInstalledDesc: 'Цей плагін встановлюється з GitHub. Будь ласка, перейдіть до Плагіни для перевстановлення',
       modelNotSelected: 'Модель не обрана',
       strategyNotFoundDescAndSwitchVersion: 'Встановлена версія плагіна не забезпечує цю стратегію. Натисніть, щоб змінити версію.',
+      parameterSchema: 'Схема параметрів',
+      clickToViewParameterSchema: 'Натисніть, щоб переглянути схему параметрів',
     },
     loop: {
       ErrorMethod: {
@@ -916,6 +941,35 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Запустіть цей вузол',
+      description: 'Результати останнього запуску будуть відображені тут',
+    },
+    variableInspect: {
+      trigger: {
+        stop: 'Зупинись бігти',
+        normal: 'Перевірка змінних',
+        clear: 'Чіткий',
+        cached: 'Переглянути кешовані змінні',
+        running: 'Кешування статусу виконання',
+      },
+      systemNode: 'Система',
+      view: 'Переглянути журнал',
+      title: 'Перевірка змінних',
+      edited: 'Редагований',
+      emptyLink: 'Дізнайтеся більше',
+      clearNode: 'Очистити кешовану змінну',
+      envNode: 'Навколишнє середовище',
+      reset: 'Скинути до значення останнього запуску',
+      clearAll: 'Скиньте все',
+      chatNode: 'Розмова',
+      resetConversationVar: 'Скинути змінну розмови на значення за замовчуванням',
+      emptyTip: 'Після переходу через вузол на полотні або виконання вузла поетапно, ви можете переглянути поточне значення змінної вузла у Перевірці змінних.',
+    },
+    lastRunTab: 'Останній запуск',
+    settingsTab: 'Налаштування',
   },
 }
 

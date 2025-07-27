@@ -186,6 +186,7 @@ const translation = {
     checkName: {
       invalid: 'Il nome dei metadati può contenere solo lettere minuscole, numeri e underscore e deve iniziare con una lettera minuscola.',
       empty: 'Il nome dei metadati non può essere vuoto',
+      tooLong: 'Il nome dei metadati non può superare {{max}} caratteri.',
     },
     batchEditMetadata: {
       multipleValue: 'Valore Multiplo',
@@ -210,6 +211,7 @@ const translation = {
       deleteContent: 'Sei sicuro di voler eliminare i metadati "{{name}}"?',
       builtInDescription: 'I metadati incorporati vengono estratti e generati automaticamente. Devono essere abilitati prima dell\'uso e non possono essere modificati.',
       description: 'Puoi gestire tutti i metadati in questa conoscenza qui. Le modifiche saranno sincronizzate con ogni documento.',
+      builtIn: 'Integrato',
     },
     documentMetadata: {
       documentInformation: 'Informazioni sul documento',

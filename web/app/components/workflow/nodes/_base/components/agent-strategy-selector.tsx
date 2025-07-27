@@ -22,6 +22,7 @@ import type { ListRef } from '@/app/components/workflow/block-selector/market-pl
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 
@@ -48,7 +49,6 @@ const NotFoundWarn = (props: {
         </p>
       </div>
     }
-    needsDelay
   >
     <div>
       <RiErrorWarningFill className='size-4 text-text-destructive' />
@@ -67,6 +67,7 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
       icon: getIcon(item.declaration.identity.icon),
       label: item.declaration.identity.label as any,
       type: CollectionType.all,
+      meta: item.meta,
       tools: item.declaration.strategies.map(strategy => ({
         name: strategy.identity.name,
         author: strategy.identity.author,
@@ -88,10 +89,13 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy,
   onChange: (value?: Strategy) => void,
+  canChooseMCPTool: boolean,
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { value, onChange } = props
+    const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
+  const { value, onChange, canChooseMCPTool } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -132,6 +136,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   } = useMarketplacePlugins()
 
   useEffect(() => {
+    if (!enable_marketplace) return
     if (query) {
       fetchPlugins({
         query,
@@ -158,7 +163,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           alt='icon'
         /></div>}
         <p
-          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'text-xs px-1')}
+          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
         >
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
@@ -210,19 +215,25 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 agent_strategy_label: tool!.tool_label,
                 agent_output_schema: tool!.output_schema,
                 plugin_unique_identifier: tool!.provider_id,
+                meta: tool!.meta,
               })
               setOpen(false)
             }}
             className='h-full max-h-full max-w-none overflow-y-auto'
-            indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
-          <PluginList
+            indexBarClassName='top-0 xl:top-36'
+            hasSearchText={false}
+            canNotSelectMultiple
+            canChooseMCPTool={canChooseMCPTool}
+            isAgent
+          />
+          {enable_marketplace && <PluginList
             ref={pluginRef}
             wrapElemRef={wrapElemRef}
             list={notInstalledPlugins}
             searchText={query}
             tags={DEFAULT_TAGS}
             disableMaxWidth
-          />
+          />}
         </main>
       </div>
     </PortalToFollowElemContent>

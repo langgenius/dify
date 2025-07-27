@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import Badge from '../badge/index'
-import { RiCheckLine } from '@remixicon/react'
+import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
@@ -51,6 +51,8 @@ export type ISelectProps = {
     item: Item
     selected: boolean
   }) => React.ReactNode
+  isLoading?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 const Select: FC<ISelectProps> = ({
   className,
@@ -114,7 +116,7 @@ const Select: FC<ISelectProps> = ({
                 if (!disabled)
                   setOpen(!open)
               }
-            } className={classNames(`flex items-center h-9 w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover group-hover:bg-state-base-hover`, optionClassName)}>
+            } className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}>
               <div className='w-0 grow truncate text-left' title={selectedItem?.name}>{selectedItem?.name}</div>
             </ComboboxButton>}
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" onClick={
@@ -135,7 +137,7 @@ const Select: FC<ISelectProps> = ({
                 value={item}
                 className={({ active }: { active: boolean }) =>
                   classNames(
-                    'relative cursor-default select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
+                    'relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
                     active ? 'bg-state-base-hover' : '',
                     optionClassName,
                   )
@@ -178,17 +180,20 @@ const SimpleSelect: FC<ISelectProps> = ({
   defaultValue = 1,
   disabled = false,
   onSelect,
+  onOpenChange,
   placeholder,
   optionWrapClassName,
   optionClassName,
   hideChecked,
   notClearable,
   renderOption,
+  isLoading = false,
 }) => {
   const { t } = useTranslation()
   const localPlaceholder = placeholder || t('common.placeholder.select')
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
@@ -199,8 +204,10 @@ const SimpleSelect: FC<ISelectProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue])
 
+  const listboxRef = useRef<HTMLDivElement>(null)
+
   return (
-    <Listbox
+    <Listbox ref={listboxRef}
       value={selectedItem}
       onChange={(value: Item) => {
         if (!disabled) {
@@ -212,10 +219,17 @@ const SimpleSelect: FC<ISelectProps> = ({
       <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
         {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem)}</ListboxButton>}
         {!renderTrigger && (
-          <ListboxButton className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover-alt group-hover/simple-select:bg-state-base-hover-alt ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
-            <span className={classNames('block truncate text-left system-sm-regular text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
+          <ListboxButton onClick={() => {
+              // get data-open, use setTimeout to ensure the attribute is set
+              setTimeout(() => {
+                if (listboxRef.current)
+                  onOpenChange?.(listboxRef.current.getAttribute('data-open') !== null)
+              })
+          }} className={classNames(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+            <span className={classNames('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
             <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-              {(selectedItem && !notClearable)
+              {isLoading ? <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
+              : (selectedItem && !notClearable)
                 ? (
                   <XMarkIcon
                     onClick={(e) => {
@@ -237,14 +251,14 @@ const SimpleSelect: FC<ISelectProps> = ({
           </ListboxButton>
         )}
 
-        {!disabled && (
-          <ListboxOptions className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-xl bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+        {(!disabled) && (
+          <ListboxOptions className={classNames('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
             {items.map((item: Item) => (
               <ListboxOption
                 key={item.value}
                 className={
                   classNames(
-                    'relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
+                    'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
                     optionClassName,
                   )
                 }
@@ -324,7 +338,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
           : (
             <div
               className={classNames(`
-            group flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-components-input-bg-normal hover:bg-state-base-hover-alt text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}
+            group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}
           `, triggerClassName, triggerClassNameFn?.(open))}
               title={selectedItem?.name}
             >
@@ -344,7 +358,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className={classNames('px-1 py-1 max-h-60 overflow-auto rounded-md text-base shadow-lg border-components-panel-border bg-components-panel-bg border-[0.5px] focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={classNames('max-h-60 overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

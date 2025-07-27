@@ -1,6 +1,5 @@
 from typing import Any
 
-from core.file import File
 from core.variables import SegmentType
 
 from .enums import Operation
@@ -11,10 +10,16 @@ def is_operation_supported(*, variable_type: SegmentType, operation: Operation):
         case Operation.OVER_WRITE | Operation.CLEAR:
             return True
         case Operation.SET:
-            return variable_type in {SegmentType.OBJECT, SegmentType.STRING, SegmentType.NUMBER}
+            return variable_type in {
+                SegmentType.OBJECT,
+                SegmentType.STRING,
+                SegmentType.NUMBER,
+                SegmentType.INTEGER,
+                SegmentType.FLOAT,
+            }
         case Operation.ADD | Operation.SUBTRACT | Operation.MULTIPLY | Operation.DIVIDE:
             # Only number variable can be added, subtracted, multiplied or divided
-            return variable_type == SegmentType.NUMBER
+            return variable_type in {SegmentType.NUMBER, SegmentType.INTEGER, SegmentType.FLOAT}
         case Operation.APPEND | Operation.EXTEND:
             # Only array variable can be appended or extended
             return variable_type in {
@@ -47,7 +52,7 @@ def is_constant_input_supported(*, variable_type: SegmentType, operation: Operat
     match variable_type:
         case SegmentType.STRING | SegmentType.OBJECT:
             return operation in {Operation.OVER_WRITE, Operation.SET}
-        case SegmentType.NUMBER:
+        case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
             return operation in {
                 Operation.OVER_WRITE,
                 Operation.SET,
@@ -67,7 +72,7 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
         case SegmentType.STRING:
             return isinstance(value, str)
 
-        case SegmentType.NUMBER:
+        case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
             if not isinstance(value, int | float):
                 return False
             if operation == Operation.DIVIDE and value == 0:
@@ -86,8 +91,6 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, int | float)
         case SegmentType.ARRAY_OBJECT if operation == Operation.APPEND:
             return isinstance(value, dict)
-        case SegmentType.ARRAY_FILE if operation == Operation.APPEND:
-            return isinstance(value, File)
 
         # Array & Extend / Overwrite
         case SegmentType.ARRAY_ANY if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
@@ -98,8 +101,6 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, list) and all(isinstance(item, int | float) for item in value)
         case SegmentType.ARRAY_OBJECT if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
-        case SegmentType.ARRAY_FILE if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
-            return isinstance(value, list) and all(isinstance(item, File) for item in value)
 
         case _:
             return False

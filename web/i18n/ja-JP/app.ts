@@ -79,11 +79,11 @@ const translation = {
     appCreateDSLErrorTitle: 'バージョンの非互換性',
     appCreateDSLWarning: '注意:DSL のバージョンの違いは、特定の機能に影響を与える可能性があります',
     appCreateDSLErrorPart1: 'DSL バージョンに大きな違いが検出されました。インポートを強制すると、アプリケーションが誤動作する可能性があります。',
-    optional: '随意',
+    optional: '任意',
     forBeginners: '初心者向けの基本的なアプリタイプ',
     noTemplateFoundTip: '別のキーワードを使用して検索してみてください。',
     agentShortDescription: '推論と自律的なツールの使用を備えたインテリジェントエージェント',
-    foundResults: '{{カウント}}業績',
+    foundResults: '{{count}}件の結果',
     noTemplateFound: 'テンプレートが見つかりません',
     noAppsFound: 'アプリが見つかりませんでした',
     workflowShortDescription: 'インテリジェントな自動化のためのエージェントフロー',
@@ -91,7 +91,7 @@ const translation = {
     advancedUserDescription: '追加のメモリ機能とチャットボットインターフェースを備えたワークフロー',
     advancedShortDescription: 'メモリを使用した複雑なマルチターン対話のワークフロー',
     agentUserDescription: 'タスクの目標を達成するために反復的な推論と自律的なツールを使用できるインテリジェントエージェント。',
-    foundResult: '{{カウント}}結果',
+    foundResult: '{{count}}件の結果',
     forAdvanced: '上級ユーザー向け',
     chooseAppType: 'アプリタイプを選択',
     learnMore: '詳細情報',
@@ -100,6 +100,7 @@ const translation = {
     chatbotUserDescription: '簡単な設定で LLM ベースのチャットボットを迅速に構築します。Chatflow は後で切り替えることができます。',
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
+    dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',
@@ -144,6 +145,14 @@ const translation = {
       notConfigured: 'トレース機能を有効化するためには、サービスの設定が必要です。',
       moreProvider: 'その他のプロバイダー',
     },
+    arize: {
+      title: 'Arize',
+      description: 'エンタープライズグレードのLLM可観測性、オンラインおよびオフライン評価、モニタリング、実験—OpenTelemetryによって支えられています。LLMおよびエージェント駆動型アプリケーション向けに特別に設計されています。',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'オープンソースおよびOpenTelemetryベースの可観測性、評価、プロンプトエンジニアリング、実験プラットフォームで、LLMワークフローおよびエージェントに対応します。',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'LLM を利用したアプリケーションのライフサイクル全段階を支援する、オールインワンの開発者向けプラットフォームです。',
@@ -170,6 +179,10 @@ const translation = {
     weave: {
       title: '織る',
       description: 'Weave は、LLM アプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
+    },
+    aliyun: {
+      title: 'クラウドモニター',
+      description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
     },
   },
   answerIcon: {
@@ -245,6 +258,8 @@ const translation = {
     notSetDesc: '現在この Web アプリには誰もアクセスできません。権限を設定してください。',
   },
   noAccessPermission: 'Web アプリにアクセス権限がありません',
+  maxActiveRequestsPlaceholder: '無制限のために0を入力してください',
+  maxActiveRequests: '最大同時リクエスト数',
 }
 
 export default translation

@@ -36,7 +36,7 @@ class VectorService:
                 # get the process rule
                 processing_rule = (
                     db.session.query(DatasetProcessRule)
-                    .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
                 if not processing_rule:
@@ -97,16 +97,16 @@ class VectorService:
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
-
-        # update keyword index
-        keyword = Keyword(dataset)
-        keyword.delete_by_ids([segment.index_node_id])
-
-        # save keyword index
-        if keywords and len(keywords) > 0:
-            keyword.add_texts([document], keywords_list=[keywords])
         else:
-            keyword.add_texts([document])
+            # update keyword index
+            keyword = Keyword(dataset)
+            keyword.delete_by_ids([segment.index_node_id])
+
+            # save keyword index
+            if keywords and len(keywords) > 0:
+                keyword.add_texts([document], keywords_list=[keywords])
+            else:
+                keyword.add_texts([document])
 
     @classmethod
     def generate_child_chunks(

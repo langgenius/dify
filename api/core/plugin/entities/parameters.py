@@ -5,11 +5,15 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
+from core.workflow.nodes.base.entities import NumberType
 
 
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+    icon: Optional[str] = Field(
+        default=None, description="The icon of the option, can be a url or a base64 encoded image"
+    )
 
     @field_validator("value", mode="before")
     @classmethod
@@ -35,9 +39,24 @@ class PluginParameterType(enum.StrEnum):
     APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
     MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
+    ANY = CommonParameterType.ANY.value
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
 
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+
+    # MCP object and array type parameters
+    ARRAY = CommonParameterType.ARRAY.value
+    OBJECT = CommonParameterType.OBJECT.value
+
+
+class MCPServerParameterType(enum.StrEnum):
+    """
+    MCP server got complex parameter types
+    """
+
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class PluginParameterAutoGenerate(BaseModel):
@@ -133,6 +152,38 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
             case PluginParameterType.TOOLS_SELECTOR:
                 if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
+                return value
+            case PluginParameterType.ANY:
+                if value and not isinstance(value, str | dict | list | NumberType):
+                    raise ValueError("The var selector must be a string, dictionary, list or number.")
+                return value
+            case PluginParameterType.ARRAY:
+                if not isinstance(value, list):
+                    # Try to parse JSON string for arrays
+                    if isinstance(value, str):
+                        try:
+                            import json
+
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, list):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return [value]
+                return value
+            case PluginParameterType.OBJECT:
+                if not isinstance(value, dict):
+                    # Try to parse JSON string for objects
+                    if isinstance(value, str):
+                        try:
+                            import json
+
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, dict):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return {}
                 return value
             case _:
                 return str(value)

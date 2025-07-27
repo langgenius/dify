@@ -22,7 +22,7 @@ class PluginDataMigration:
         cls.migrate_datasets()
         cls.migrate_db_records("embeddings", "provider_name", ModelProviderID)  # large table
         cls.migrate_db_records("dataset_collection_bindings", "provider_name", ModelProviderID)
-        cls.migrate_db_records("tool_builtin_providers", "provider_name", ToolProviderID)
+        cls.migrate_db_records("tool_builtin_providers", "provider", ToolProviderID)
 
     @classmethod
     def migrate_datasets(cls) -> None:
@@ -110,7 +110,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 
@@ -183,7 +183,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 

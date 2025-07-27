@@ -78,7 +78,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         query = (
             select(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.document_id == str(document_id),
                 DocumentSegment.tenant_id == current_user.current_tenant_id,
             )
@@ -86,19 +86,19 @@ class DatasetDocumentSegmentListApi(Resource):
         )
 
         if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
+            query = query.where(DocumentSegment.status.in_(status_list))
 
         if hit_count_gte is not None:
-            query = query.filter(DocumentSegment.hit_count >= hit_count_gte)
+            query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         if args["enabled"].lower() != "all":
             if args["enabled"].lower() == "true":
-                query = query.filter(DocumentSegment.enabled == True)
+                query = query.where(DocumentSegment.enabled == True)
             elif args["enabled"].lower() == "false":
-                query = query.filter(DocumentSegment.enabled == False)
+                query = query.where(DocumentSegment.enabled == False)
 
         segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
@@ -184,7 +184,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
 
-        document_indexing_cache_key = "document_{}_indexing".format(document.id)
+        document_indexing_cache_key = f"document_{document.id}_indexing"
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
@@ -285,7 +285,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -331,7 +331,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -391,7 +391,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
                 raise ValueError("The CSV file is empty.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "segment_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"segment_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_create_segment_to_index_task.delay(
@@ -406,7 +406,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     def get(self, job_id):
         job_id = str(job_id)
-        indexing_cache_key = "segment_batch_import_{}".format(job_id)
+        indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -436,7 +436,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -493,7 +493,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -540,7 +540,7 @@ class ChildChunkAddApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -586,7 +586,7 @@ class ChildChunkUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -595,7 +595,7 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not child_chunk:
@@ -635,7 +635,7 @@ class ChildChunkUpdateApi(Resource):
         segment_id = str(segment_id)
         segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not segment:
@@ -644,7 +644,7 @@ class ChildChunkUpdateApi(Resource):
         child_chunk_id = str(child_chunk_id)
         child_chunk = (
             db.session.query(ChildChunk)
-            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
             .first()
         )
         if not child_chunk:

@@ -21,27 +21,28 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
     :param keywords:
     Usage: create_segment_to_index_task.delay(segment_id)
     """
-    logging.info(click.style("Start create segment to index: {}".format(segment_id), fg="green"))
+    logging.info(click.style(f"Start create segment to index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
-    segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
+    segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
     if not segment:
-        logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
+        logging.info(click.style(f"Segment not found: {segment_id}", fg="red"))
         db.session.close()
         return
 
     if segment.status != "waiting":
         return
 
-    indexing_cache_key = "segment_{}_indexing".format(segment.id)
+    indexing_cache_key = f"segment_{segment.id}_indexing"
 
     try:
         # update segment status to indexing
-        update_params = {
-            DocumentSegment.status: "indexing",
-            DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-        }
-        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(
+            {
+                DocumentSegment.status: "indexing",
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
         document = Document(
             page_content=segment.content,
@@ -56,17 +57,17 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         dataset = segment.dataset
 
         if not dataset:
-            logging.info(click.style("Segment {} has no dataset, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
             return
 
         dataset_document = segment.document
 
         if not dataset_document:
-            logging.info(click.style("Segment {} has no document, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
             return
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            logging.info(click.style("Segment {} document status is invalid, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
             return
 
         index_type = dataset.doc_form
@@ -74,17 +75,16 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         index_processor.load(dataset, [document])
 
         # update segment to completed
-        update_params = {
-            DocumentSegment.status: "completed",
-            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
-        }
-        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(
+            {
+                DocumentSegment.status: "completed",
+                DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style("Segment created to index: {} latency: {}".format(segment.id, end_at - start_at), fg="green")
-        )
+        logging.info(click.style(f"Segment created to index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("create segment to index failed")
         segment.enabled = False

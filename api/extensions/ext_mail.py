@@ -64,7 +64,7 @@ class Mail:
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
                 )
             case _:
-                raise ValueError("Unsupported mail type {}".format(mail_type))
+                raise ValueError(f"Unsupported mail type {mail_type}")
 
     def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:

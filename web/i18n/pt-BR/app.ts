@@ -93,6 +93,7 @@ const translation = {
     workflowShortDescription: 'Fluxo agêntico para automações inteligentes',
     noAppsFound: 'Nenhum aplicativo encontrado',
     advancedShortDescription: 'Fluxo aprimorado para conversas de múltiplos turnos',
+    dropDSLToCreateApp: 'Cole o arquivo DSL aqui para criar o aplicativo',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: 'Configure o provedor para habilitar o rastreamento',
       moreProvider: 'Mais provedores',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Observabilidade de LLM de nível empresarial, avaliação online e offline, monitoramento e experimentação—impulsionada pelo OpenTelemetry. Projetado especificamente para aplicações baseadas em LLM e agentes.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Plataforma de observabilidade, avaliação, engenharia de prompts e experimentação de código aberto baseada em OpenTelemetry para seus fluxos de trabalho e agentes de LLM.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Uma plataforma de desenvolvedor completa para cada etapa do ciclo de vida do aplicativo impulsionado por LLM.',
@@ -162,6 +171,10 @@ const translation = {
     weave: {
       description: 'Weave é uma plataforma de código aberto para avaliar, testar e monitorar aplicações de LLM.',
       title: 'Trançar',
+    },
+    aliyun: {
+      title: 'Monitoramento em Nuvem',
+      description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
     },
   },
   answerIcon: {
@@ -246,6 +259,8 @@ const translation = {
   },
   accessControl: 'Controle de Acesso do Aplicativo Web',
   noAccessPermission: 'Sem permissão para acessar o aplicativo web',
+  maxActiveRequestsPlaceholder: 'Digite 0 para ilimitado',
+  maxActiveRequests: 'Máximo de solicitações simultâneas',
 }
 
 export default translation

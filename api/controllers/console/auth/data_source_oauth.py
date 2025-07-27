@@ -41,7 +41,7 @@ class OAuthDataSource(Resource):
             if not internal_secret:
                 return ({"error": "Internal secret is not set"},)
             oauth_provider.save_internal_access_token(internal_secret)
-            return {"data": ""}
+            return {"data": "internal"}
         else:
             auth_url = oauth_provider.get_authorization_url()
             return {"data": auth_url}, 200
@@ -81,7 +81,7 @@ class OAuthDataSourceBinding(Resource):
                 oauth_provider.get_access_token(code)
             except requests.exceptions.HTTPError as e:
                 logging.exception(
-                    f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}"
+                    "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
                 )
                 return {"error": "OAuth data source process failed"}, 400
 
@@ -103,7 +103,9 @@ class OAuthDataSourceSync(Resource):
         try:
             oauth_provider.sync_data_source(binding_id)
         except requests.exceptions.HTTPError as e:
-            logging.exception(f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
+            logging.exception(
+                "An error occurred during the OAuthCallback process with %s: %s", provider, e.response.text
+            )
             return {"error": "OAuth data source process failed"}, 400
 
         return {"result": "success"}, 200

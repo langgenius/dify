@@ -56,8 +56,7 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        with Session(db.engine) as session:
-            app = session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
+        app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
 
@@ -75,41 +74,41 @@ class InsertExploreAppListApi(Resource):
 
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"])
+                select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"])
             ).scalar_one_or_none()
 
-        if not recommended_app:
-            recommended_app = RecommendedApp(
-                app_id=app.id,
-                description=desc,
-                copyright=copy_right,
-                privacy_policy=privacy_policy,
-                custom_disclaimer=custom_disclaimer,
-                language=args["language"],
-                category=args["category"],
-                position=args["position"],
-            )
+            if not recommended_app:
+                recommended_app = RecommendedApp(
+                    app_id=app.id,
+                    description=desc,
+                    copyright=copy_right,
+                    privacy_policy=privacy_policy,
+                    custom_disclaimer=custom_disclaimer,
+                    language=args["language"],
+                    category=args["category"],
+                    position=args["position"],
+                )
 
-            db.session.add(recommended_app)
+                db.session.add(recommended_app)
 
-            app.is_public = True
-            db.session.commit()
+                app.is_public = True
+                db.session.commit()
 
-            return {"result": "success"}, 201
-        else:
-            recommended_app.description = desc
-            recommended_app.copyright = copy_right
-            recommended_app.privacy_policy = privacy_policy
-            recommended_app.custom_disclaimer = custom_disclaimer
-            recommended_app.language = args["language"]
-            recommended_app.category = args["category"]
-            recommended_app.position = args["position"]
+                return {"result": "success"}, 201
+            else:
+                recommended_app.description = desc
+                recommended_app.copyright = copy_right
+                recommended_app.privacy_policy = privacy_policy
+                recommended_app.custom_disclaimer = custom_disclaimer
+                recommended_app.language = args["language"]
+                recommended_app.category = args["category"]
+                recommended_app.position = args["position"]
 
-            app.is_public = True
+                app.is_public = True
 
-            db.session.commit()
+                db.session.commit()
 
-            return {"result": "success"}, 200
+                return {"result": "success"}, 200
 
 
 class InsertExploreAppApi(Resource):
@@ -118,21 +117,21 @@ class InsertExploreAppApi(Resource):
     def delete(self, app_id):
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).filter(RecommendedApp.app_id == str(app_id))
+                select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
 
         if not recommended_app:
             return {"result": "success"}, 204
 
         with Session(db.engine) as session:
-            app = session.execute(select(App).filter(App.id == recommended_app.app_id)).scalar_one_or_none()
+            app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
 
         if app:
             app.is_public = False
 
         with Session(db.engine) as session:
             installed_apps = session.execute(
-                select(InstalledApp).filter(
+                select(InstalledApp).where(
                     InstalledApp.app_id == recommended_app.app_id,
                     InstalledApp.tenant_id != InstalledApp.app_owner_tenant_id,
                 )

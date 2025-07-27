@@ -85,6 +85,11 @@ class VectorStoreConfig(BaseSettings):
         default=False,
     )
 
+    VECTOR_INDEX_NAME_PREFIX: Optional[str] = Field(
+        description="Prefix used to create collection name in vector database",
+        default="Vector_index",
+    )
+
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
@@ -162,6 +167,11 @@ class DatabaseConfig(BaseSettings):
         default=3600,
     )
 
+    SQLALCHEMY_POOL_USE_LIFO: bool = Field(
+        description="If True, SQLAlchemy will use last-in-first-out way to retrieve connections from pool.",
+        default=False,
+    )
+
     SQLALCHEMY_POOL_PRE_PING: bool = Field(
         description="If True, enables connection pool pre-ping feature to check connections.",
         default=False,
@@ -199,13 +209,14 @@ class DatabaseConfig(BaseSettings):
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
+            "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
         }
 
 
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
         description="Backend for Celery task results. Options: 'database', 'redis'.",
-        default="database",
+        default="redis",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(
@@ -223,6 +234,10 @@ class CeleryConfig(DatabaseConfig):
         default=None,
     )
 
+    CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
+        description="Password of the Redis Sentinel master.",
+        default=None,
+    )
     CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
@@ -230,11 +245,7 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     def CELERY_RESULT_BACKEND(self) -> str | None:
-        return (
-            "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
-            if self.CELERY_BACKEND == "database"
-            else self.CELERY_BROKER_URL
-        )
+        return f"db+{self.SQLALCHEMY_DATABASE_URI}" if self.CELERY_BACKEND == "database" else self.CELERY_BROKER_URL
 
     @property
     def BROKER_USE_SSL(self) -> bool:

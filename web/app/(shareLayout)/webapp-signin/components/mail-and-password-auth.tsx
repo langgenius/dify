@@ -1,3 +1,4 @@
+'use client'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +34,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   const redirectUrl = searchParams.get('redirect_url')
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
     if (!appCode)
       return null
 
@@ -87,7 +91,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         localStorage.setItem('webapp_access_token', res.data.access_token)
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: res.data.access_token })
         await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
       }
       else {
         Toast.notify({

@@ -150,6 +150,14 @@ const translation = {
       notConfigured: 'Config provider to enable tracing',
       moreProvider: 'More Provider',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Enterprise-grade LLM observability, online & offline evaluation, monitoring, and experimentation—powered by OpenTelemetry. Purpose-built for LLM & agent-driven applications.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
@@ -165,6 +173,10 @@ const translation = {
     weave: {
       title: 'Weave',
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
+    },
+    aliyun: {
+      title: 'Cloud Monitor',
+      description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
     inUse: 'In use',
     configProvider: {
@@ -199,9 +211,9 @@ const translation = {
   accessControl: 'Web App Access Control',
   accessItemsDescription: {
     anyone: 'Anyone can access the web app (no login required)',
-    specific: 'Only specific members within the platform can access the Web application',
-    organization: 'All members within the platform can access the Web application',
-    external: 'Only authenticated external users can access the Web application',
+    specific: 'Only specific members within the platform can access the web app',
+    organization: 'All members within the platform can access the web app',
+    external: 'Only authenticated external users can access the web app',
   },
   accessControlDialog: {
     title: 'Web App Access Control',
@@ -218,7 +230,7 @@ const translation = {
     members_one: '{{count}} MEMBER',
     members_other: '{{count}} MEMBERS',
     noGroupsOrMembers: 'No groups or members selected',
-    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the Web application.',
+    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the web app.',
     operateGroupAndMember: {
       searchPlaceholder: 'Search groups and members',
       allMembers: 'All members',
@@ -233,6 +245,9 @@ const translation = {
     notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
   },
   noAccessPermission: 'No permission to access web app',
+  maxActiveRequests: 'Max concurrent requests',
+  maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
+  maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
 }
 
 export default translation

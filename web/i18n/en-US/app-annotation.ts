@@ -16,7 +16,8 @@ const translation = {
       addAnnotation: 'Add Annotation',
       bulkImport: 'Bulk Import',
       bulkExport: 'Bulk Export',
-      clearAll: 'Clear All Annotation',
+      clearAll: 'Delete All',
+      clearAllConfirm: 'Delete all annotations?',
     },
   },
   editModal: {

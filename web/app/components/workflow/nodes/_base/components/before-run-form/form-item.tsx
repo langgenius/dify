@@ -95,6 +95,7 @@ const FormItem: FC<Props> = ({
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
+  const isIteratorItemFile = isIterator && payload.isFileItem
   const singleFileValue = useMemo(() => {
     if (payload.variable === '#files#')
       return value?.[0] || []
@@ -202,12 +203,12 @@ const FormItem: FC<Props> = ({
             }}
           />
         )}
-        {(type === InputVarType.multiFiles) && (
+        {(type === InputVarType.multiFiles || isIteratorItemFile) && (
           <FileUploaderInAttachmentWrapper
             value={value}
             onChange={files => onChange(files)}
             fileConfig={{
-              allowed_file_types: inStepRun
+              allowed_file_types: (inStepRun || isIteratorItemFile)
                 ? [
                   SupportUploadFileTypes.image,
                   SupportUploadFileTypes.document,
@@ -215,7 +216,7 @@ const FormItem: FC<Props> = ({
                   SupportUploadFileTypes.video,
                 ]
                 : payload.allowed_file_types,
-              allowed_file_extensions: inStepRun
+              allowed_file_extensions: (inStepRun || isIteratorItemFile)
                 ? [
                   ...FILE_EXTS[SupportUploadFileTypes.image],
                   ...FILE_EXTS[SupportUploadFileTypes.document],
@@ -223,8 +224,8 @@ const FormItem: FC<Props> = ({
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ]
                 : payload.allowed_file_extensions,
-              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
-              number_limits: inStepRun ? 5 : payload.max_length,
+              allowed_file_upload_methods: (inStepRun || isIteratorItemFile) ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: (inStepRun || isIteratorItemFile) ? 5 : payload.max_length,
               fileUploadConfig: fileSettings?.fileUploadConfig,
             }}
           />
@@ -272,7 +273,7 @@ const FormItem: FC<Props> = ({
         }
 
         {
-          isIterator && (
+          (isIterator && !isIteratorItemFile) && (
             <div className='space-y-2'>
               {(value || []).map((item: any, index: number) => (
                 <TextEditor

@@ -22,7 +22,7 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
                 user_id = "DEFAULT-USER"
 
             if user_id == "DEFAULT-USER":
-                user_model = session.query(EndUser).filter(EndUser.session_id == "DEFAULT-USER").first()
+                user_model = session.query(EndUser).where(EndUser.session_id == "DEFAULT-USER").first()
                 if not user_model:
                     user_model = EndUser(
                         tenant_id=tenant_id,
@@ -36,7 +36,7 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
             else:
                 user_model = AccountService.load_user(user_id)
                 if not user_model:
-                    user_model = session.query(EndUser).filter(EndUser.id == user_id).first()
+                    user_model = session.query(EndUser).where(EndUser.id == user_id).first()
                 if not user_model:
                     raise ValueError("user not found")
     except Exception:
@@ -71,7 +71,7 @@ def get_user_tenant(view: Optional[Callable] = None):
             try:
                 tenant_model = (
                     db.session.query(Tenant)
-                    .filter(
+                    .where(
                         Tenant.id == tenant_id,
                     )
                     .first()

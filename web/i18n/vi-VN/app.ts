@@ -80,19 +80,20 @@ const translation = {
     optional: 'Tùy chọn',
     advancedShortDescription: 'Quy trình làm việc cho các cuộc đối thoại nhiều lượt phức tạp với bộ nhớ',
     workflowUserDescription: 'Xây dựng trực quan quy trình AI tự động bằng kéo thả đơn giản.',
-    foundResults: '{{đếm}} Kết quả',
+    foundResults: '{{count}} Kết quả',
     chatbotUserDescription: 'Nhanh chóng xây dựng chatbot dựa trên LLM với cấu hình đơn giản. Bạn có thể chuyển sang Chatflow sau.',
     agentUserDescription: 'Một tác nhân thông minh có khả năng suy luận lặp đi lặp lại và sử dụng công cụ tự động để đạt được mục tiêu nhiệm vụ.',
     noIdeaTip: 'Không có ý tưởng? Kiểm tra các mẫu của chúng tôi',
     advancedUserDescription: 'Quy trình với tính năng bộ nhớ bổ sung và giao diện chatbot.',
     forAdvanced: 'DÀNH CHO NGƯỜI DÙNG NÂNG CAO',
-    foundResult: '{{đếm}} Kết quả',
+    foundResult: '{{count}} Kết quả',
     agentShortDescription: 'Quy trình nâng cao cho hội thoại nhiều lượt',
     noTemplateFound: 'Không tìm thấy mẫu',
     noAppsFound: 'Không tìm thấy ứng dụng nào',
     learnMore: 'Tìm hiểu thêm',
     completionShortDescription: 'Trợ lý AI cho các tác vụ tạo văn bản',
     completionUserDescription: 'Nhanh chóng xây dựng trợ lý AI cho các tác vụ tạo văn bản với cấu hình đơn giản.',
+    dropDSLToCreateApp: 'Kéo tệp DSL vào đây để tạo ứng dụng',
   },
   editApp: 'Chỉnh sửa thông tin',
   editAppTitle: 'Chỉnh sửa thông tin ứng dụng',
@@ -135,6 +136,14 @@ const translation = {
       notConfigured: 'Cấu hình nhà cung cấp để bật theo dõi',
       moreProvider: 'Thêm nhà cung cấp',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Khả năng quan sát LLM cấp doanh nghiệp, đánh giá trực tuyến và ngoại tuyến, giám sát và thử nghiệm—được hỗ trợ bởi OpenTelemetry. Được thiết kế đặc biệt cho các ứng dụng dựa trên LLM và tác nhân.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Nền tảng mã nguồn mở và dựa trên OpenTelemetry cho khả năng quan sát, đánh giá, kỹ thuật prompt và thử nghiệm cho quy trình làm việc và tác nhân LLM của bạn.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Nền tảng phát triển tất cả trong một cho mọi bước của vòng đời ứng dụng được hỗ trợ bởi LLM.',
@@ -162,6 +171,10 @@ const translation = {
     weave: {
       title: 'Dệt',
       description: 'Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
+    },
+    aliyun: {
+      title: 'Giám sát Đám mây',
+      description: 'Nền tảng quan sát được quản lý hoàn toàn và không cần bảo trì do Alibaba Cloud cung cấp, cho phép giám sát, theo dõi và đánh giá các ứng dụng Dify ngay lập tức.',
     },
   },
   answerIcon: {
@@ -246,6 +259,8 @@ const translation = {
   },
   noAccessPermission: 'Không được phép truy cập ứng dụng web',
   accessControl: 'Kiểm soát truy cập ứng dụng web',
+  maxActiveRequestsPlaceholder: 'Nhập 0 để không giới hạn',
+  maxActiveRequests: 'Số yêu cầu đồng thời tối đa',
 }
 
 export default translation

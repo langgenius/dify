@@ -110,7 +110,7 @@ function unicodeToChar(text: string) {
 
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
-  params.append('redirect_url', globalThis.location.pathname)
+  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
   if (message)
     params.append('message', message)
   if (code)
@@ -413,7 +413,7 @@ export const ssePost = async (
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
-                  globalThis.location.reload()
+                  requiredWebSSOLogin()
                 }
               }
             })
@@ -507,7 +507,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         removeAccessToken()
-        globalThis.location.reload()
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {

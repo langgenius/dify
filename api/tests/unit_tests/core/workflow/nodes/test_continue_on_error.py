@@ -1,9 +1,10 @@
+import time
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     GraphRunPartialSucceededEvent,
     NodeRunExceptionEvent,
@@ -11,9 +12,11 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStreamChunkEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -163,15 +166,16 @@ class ContinueOnErrorTestHelper:
     def create_test_graph_engine(graph_config: dict, user_inputs: dict | None = None):
         """Helper method to create a graph engine instance for testing"""
         graph = Graph.init(graph_config=graph_config)
-        variable_pool = {
-            "system_variables": {
-                SystemVariableKey.QUERY: "clear",
-                SystemVariableKey.FILES: [],
-                SystemVariableKey.CONVERSATION_ID: "abababa",
-                SystemVariableKey.USER_ID: "aaa",
-            },
-            "user_inputs": user_inputs or {"uid": "takato"},
-        }
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="aaa",
+                files=[],
+                query="clear",
+                conversation_id="abababa",
+            ),
+            user_inputs=user_inputs or {"uid": "takato"},
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         return GraphEngine(
             tenant_id="111",
@@ -184,7 +188,7 @@ class ContinueOnErrorTestHelper:
             invoke_from=InvokeFrom.WEB_APP,
             call_depth=0,
             graph=graph,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
             max_execution_steps=500,
             max_execution_time=1200,
         )

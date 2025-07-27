@@ -115,6 +115,7 @@ const translation = {
     exitVersions: '退出版本',
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
+    tagBound: '使用此標籤的應用程式數量',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -129,6 +130,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '環境值',
       secretTip: '用於定義敏感信息或數據，DSL 設置配置為防止洩露。',
+      description: '描述',
+      descriptionPlaceholder: '描述此變數',
     },
     export: {
       title: '導出機密環境變數？',
@@ -232,6 +235,8 @@ const translation = {
     'searchTool': '搜索工具',
     'agent': '代理策略',
     'plugin': '插件',
+    'allAdded': '所有已添加的',
+    'addAll': '全部添加',
   },
   blocks: {
     'start': '開始',
@@ -303,6 +308,8 @@ const translation = {
     change: '更改',
     optional: '(選擇性)',
     moveToThisNode: '定位至此節點',
+    minimize: '退出全螢幕',
+    maximize: '最大化畫布',
   },
   nodes: {
     common: {
@@ -359,6 +366,10 @@ const translation = {
         times: '次',
         ms: '毫秒',
         retries: '{{num}}重試',
+      },
+      typeSwitch: {
+        input: '輸入值',
+        variable: '使用變數',
       },
     },
     start: {
@@ -535,6 +546,10 @@ const translation = {
         placeholder: '在此處粘貼 cURL 字串',
         title: '從 cURL 導入',
       },
+      verifySSL: {
+        title: '驗證 SSL 證書',
+        warningTooltip: '不建議在生產環境中禁用SSL驗證。這僅應用於開發或測試，因為這樣會使連接容易受到中間人攻擊等安全威脅的威脅。',
+      },
     },
     code: {
       inputVars: '輸入變量',
@@ -542,6 +557,7 @@ const translation = {
       advancedDependencies: '高級依賴',
       advancedDependenciesTip: '在這裡添加一些預加載需要消耗較多時間或非默認內置的依賴包',
       searchDependencies: '搜索依賴',
+      syncFunctionSignature: '同步函數簽名至代碼',
     },
     templateTransform: {
       inputVars: '輸入變量',
@@ -661,12 +677,16 @@ const translation = {
         },
         json: '工具生成的 JSON',
       },
+      insertPlaceholder2: '插入變量',
+      insertPlaceholder1: '輸入或按壓',
+      settings: '設定',
     },
     questionClassifiers: {
       model: '模型',
       inputVars: '輸入變量',
       outputVars: {
         className: '分類名稱',
+        usage: '模型用量信息',
       },
       class: '分類',
       classNamePlaceholder: '輸入你的分類名稱',
@@ -680,6 +700,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '輸入變量',
+      outputVars: {
+        isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
+        errorReason: '錯誤原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取參數',
       importFromTool: '從工具導入',
       addExtractParameter: '添加提取參數',
@@ -699,8 +724,6 @@ const translation = {
       advancedSetting: '高級設置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根據模型對於 Function calling 或 Prompt 的指令響應能力選擇合適的推理模式',
-      isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
-      errorReason: '錯誤原因',
     },
     iteration: {
       deleteTitle: '刪除迭代節點？',
@@ -841,6 +864,8 @@ const translation = {
       linkToPlugin: '連結到插件',
       pluginNotInstalled: '此插件未安裝',
       notAuthorized: '未授權',
+      clickToViewParameterSchema: '點擊查看參數架構',
+      parameterSchema: '參數架構',
     },
     loop: {
       ErrorMethod: {
@@ -916,6 +941,35 @@ const translation = {
     deletionTip: '刪除是不可逆的，請確認。',
     releaseNotesPlaceholder: '描述發生了什麼變化',
     defaultName: '未命名版本',
+  },
+  debug: {
+    noData: {
+      runThisNode: '運行此節點',
+      description: '上次運行的結果將顯示在這裡',
+    },
+    variableInspect: {
+      trigger: {
+        cached: '查看緩存的變量',
+        stop: '停止跑步',
+        clear: '清晰',
+        running: '快取運行狀態',
+        normal: '變數檢查',
+      },
+      emptyLink: '了解更多',
+      view: '查看日誌',
+      clearAll: '重置所有',
+      envNode: '環境',
+      title: '變數檢查',
+      clearNode: '清除快取變數',
+      systemNode: '系統',
+      reset: '重置為上次運行值',
+      chatNode: '對話',
+      edited: '編輯的',
+      emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
+      resetConversationVar: '將對話變數重置為默認值',
+    },
+    settingsTab: '設定',
+    lastRunTab: '最後一次運行',
   },
 }
 

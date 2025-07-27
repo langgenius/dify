@@ -37,10 +37,10 @@ def batch_create_segment_to_index_task(
 
     Usage: batch_create_segment_to_index_task.delay(job_id, content, dataset_id, document_id, tenant_id, user_id)
     """
-    logging.info(click.style("Start batch create segment jobId: {}".format(job_id), fg="green"))
+    logging.info(click.style(f"Start batch create segment jobId: {job_id}", fg="green"))
     start_at = time.perf_counter()
 
-    indexing_cache_key = "segment_batch_import_{}".format(job_id)
+    indexing_cache_key = f"segment_batch_import_{job_id}"
 
     try:
         with Session(db.engine) as session:
@@ -81,7 +81,7 @@ def batch_create_segment_to_index_task(
             segment_hash = helper.generate_text_hash(content)  # type: ignore
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
-                .filter(DocumentSegment.document_id == dataset_document.id)
+                .where(DocumentSegment.document_id == dataset_document.id)
                 .scalar()
             )
             segment_document = DocumentSegment(
@@ -115,7 +115,7 @@ def batch_create_segment_to_index_task(
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Segment batch created job: {} latency: {}".format(job_id, end_at - start_at),
+                f"Segment batch created job: {job_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )
