@@ -172,7 +172,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
         return {
           item,
           filteredObj,
-          passesFilter
+          passesFilter,
         }
       })
       .filter(({ passesFilter }) => passesFilter)
