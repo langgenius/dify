@@ -90,7 +90,6 @@ async function main() {
   const files = fs
     .readdirSync(path.join(__dirname, i18nFolder, targetLanguage))
     .map(file => file.replace(/\.ts/, ''))
-    .map(file => file.replace(/\.ts/, ''))
     .filter(f => f !== 'app-debug') // ast parse error in app-debug
 
   await Promise.all(files.map(async (file) => {
