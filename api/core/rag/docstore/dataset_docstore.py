@@ -32,7 +32,7 @@ class DatasetDocumentStore:
         }
 
     @property
-    def dateset_id(self) -> Any:
+    def dataset_id(self) -> Any:
         return self._dataset.id
 
     @property
@@ -123,13 +123,13 @@ class DatasetDocumentStore:
                 db.session.flush()
                 if save_child:
                     if doc.children:
-                        for postion, child in enumerate(doc.children, start=1):
+                        for position, child in enumerate(doc.children, start=1):
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
                                 document_id=self._document_id,
                                 segment_id=segment_document.id,
-                                position=postion,
+                                position=position,
                                 index_node_id=child.metadata.get("doc_id"),
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
