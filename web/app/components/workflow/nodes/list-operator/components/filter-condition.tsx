@@ -84,8 +84,8 @@ const FilterCondition: FC<Props> = ({
   }, [condition, onChange, isArrayValue])
 
   const handleSubVariableChange = useCallback((value: string) => {
-    const operators = getOperators(expectedVarType ?? VarType.string, { key: value });
-    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal;
+    const operators = getOperators(expectedVarType ?? VarType.string, { key: value })
+    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal
     onChange({
       key: value,
       comparison_operator: newOperator,
@@ -143,7 +143,7 @@ const FilterCondition: FC<Props> = ({
             ) : (
               <input
                 type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
-                className={`${sharedInputStyles} border-components-input-border-hover bg-components-input-bg-normal`}
+                className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
                 value={condition.value}
                 onChange={e => handleChange('value')(e.target.value)}
                 readOnly={readOnly}
