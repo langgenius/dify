@@ -20,7 +20,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
     :param action: action
     Usage: deal_dataset_vector_index_task.delay(dataset_id, action)
     """
-    logging.info(click.style("Start deal dataset vector index: {}".format(dataset_id), fg="green"))
+    logging.info(click.style(f"Start deal dataset vector index: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -162,9 +162,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                 index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style("Deal dataset vector index: {} latency: {}".format(dataset_id, end_at - start_at), fg="green")
-        )
+        logging.info(click.style(f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception:
         logging.exception("Deal dataset vector index failed")
     finally:

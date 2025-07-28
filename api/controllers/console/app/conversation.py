@@ -51,8 +51,8 @@ class CompletionConversationApi(Resource):
         if args["keyword"]:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
-                    Message.query.ilike("%{}%".format(args["keyword"])),
-                    Message.answer.ilike("%{}%".format(args["keyword"])),
+                    Message.query.ilike(f"%{args['keyword']}%"),
+                    Message.answer.ilike(f"%{args['keyword']}%"),
                 )
             )
 
@@ -174,7 +174,7 @@ class ChatConversationApi(Resource):
         query = db.select(Conversation).where(Conversation.app_id == app_model.id)
 
         if args["keyword"]:
-            keyword_filter = "%{}%".format(args["keyword"])
+            keyword_filter = f"%{args['keyword']}%"
             query = (
                 query.join(
                     Message,

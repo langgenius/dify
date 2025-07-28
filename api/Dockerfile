@@ -37,6 +37,11 @@ EXPOSE 5001
 # set timezone
 ENV TZ=UTC
 
+# Set UTF-8 locale
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV PYTHONIOENCODING=utf-8
+
 WORKDIR /app/api
 
 RUN \

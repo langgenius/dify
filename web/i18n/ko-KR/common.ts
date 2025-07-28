@@ -233,6 +233,7 @@ const translation = {
       content3: '새로운 이메일을 입력하시면 인증 코드를 보내드립니다.',
       content1: '계속 진행하면, 재인증을 위해 <email>{{email}}</email>로 인증 코드를 전송하겠습니다.',
       authTip: '이메일이 변경되면, 이전 이메일에 연결된 Google 또는 GitHub 계정은 더 이상 이 계정에 로그인할 수 없습니다.',
+      unAvailableEmail: '이 이메일은 일시적으로 사용할 수 없습니다.',
     },
   },
   members: {

@@ -15,6 +15,8 @@ import {
   verifyEmail,
 } from '@/service/common'
 import { noop } from 'lodash-es'
+import { asyncRunSafe } from '@/utils'
+import type { ResponseError } from '@/service/fetch'
 
 type Props = {
   show: boolean
@@ -39,6 +41,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const [time, setTime] = useState<number>(0)
   const [stepToken, setStepToken] = useState<string>('')
   const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
+  const [unAvailableEmail, setUnAvailableEmail] = useState<boolean>(false)
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false)
 
   const startCount = () => {
@@ -124,9 +127,17 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
         email,
       })
       setNewEmailExited(false)
+      setUnAvailableEmail(false)
     }
-    catch {
-      setNewEmailExited(true)
+    catch (e: any) {
+      if (e.status === 400) {
+        const [, errRespData] = await asyncRunSafe<ResponseError>(e.json())
+        const { code } = errRespData || {}
+        if (code === 'email_already_in_use')
+          setNewEmailExited(true)
+        if (code === 'account_in_freeze')
+          setUnAvailableEmail(true)
+      }
     }
     finally {
       setIsCheckingEmail(false)
@@ -291,15 +302,18 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               placeholder={t('common.account.changeEmail.emailPlaceholder')}
               value={mail}
               onChange={e => handleNewEmailValueChange(e.target.value)}
-              destructive={newEmailExited}
+              destructive={newEmailExited || unAvailableEmail}
             />
             {newEmailExited && (
               <div className='body-xs-regular mt-1 py-0.5 text-text-destructive'>{t('common.account.changeEmail.existingEmail')}</div>
             )}
+            {unAvailableEmail && (
+              <div className='body-xs-regular mt-1 py-0.5 text-text-destructive'>{t('common.account.changeEmail.unAvailableEmail')}</div>
+            )}
           </div>
           <div className='mt-3 space-y-2'>
             <Button
-              disabled={!mail || newEmailExited || isCheckingEmail || !isValidEmail(mail)}
+              disabled={!mail || newEmailExited || unAvailableEmail || isCheckingEmail || !isValidEmail(mail)}
               className='!w-full'
               variant='primary'
               onClick={sendCodeToNewEmail}

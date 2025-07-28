@@ -90,7 +90,7 @@ def mail_clean_document_notify_task():
             db.session.commit()
         end_at = time.perf_counter()
         logging.info(
-            click.style("Send document clean notify mail succeeded: latency: {}".format(end_at - start_at), fg="green")
+            click.style(f"Send document clean notify mail succeeded: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Send document clean notify mail failed")

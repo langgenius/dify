@@ -33,7 +33,7 @@ def create_tidb_serverless_task():
             break
 
     end_at = time.perf_counter()
-    click.echo(click.style("Create tidb serverless task success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Create tidb serverless task success latency: {end_at - start_at}", fg="green"))
 
 
 def create_clusters(batch_size):
