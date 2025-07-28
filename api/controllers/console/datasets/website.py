@@ -23,6 +23,7 @@ class WebsiteCrawlApi(Resource):
         )
         parser.add_argument("url", type=str, required=True, nullable=True, location="json")
         parser.add_argument("options", type=dict, required=True, nullable=True, location="json")
+        parser.add_argument("credential_id", type=str, required=True, nullable=True, location="json")
         args = parser.parse_args()
 
         # Create typed request and validate
@@ -48,6 +49,7 @@ class WebsiteCrawlStatusApi(Resource):
         parser.add_argument(
             "provider", type=str, choices=["firecrawl", "watercrawl", "jinareader"], required=True, location="args"
         )
+        parser.add_argument("credential_id", type=str, required=True, nullable=True, location="args")
         args = parser.parse_args()
 
         # Create typed request and validate

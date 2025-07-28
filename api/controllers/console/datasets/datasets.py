@@ -438,10 +438,12 @@ class DatasetIndexingEstimateApi(Resource):
             notion_info_list = args["info_list"]["notion_info_list"]
             for notion_info in notion_info_list:
                 workspace_id = notion_info["workspace_id"]
+                credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
                         datasource_type="notion_import",
                         notion_info={
+                            "credential_id": credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
                             "notion_page_type": page["type"],
@@ -462,6 +464,7 @@ class DatasetIndexingEstimateApi(Resource):
                         "tenant_id": current_user.current_tenant_id,
                         "mode": "crawl",
                         "only_main_content": website_info_list["only_main_content"],
+                        "credential_id": website_info_list["credential_id"],
                     },
                     document_model=args["doc_form"],
                 )

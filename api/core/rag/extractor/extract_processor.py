@@ -171,6 +171,7 @@ class ExtractProcessor:
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
+                credential_id=extract_setting.notion_info.credential_id,
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
@@ -182,6 +183,7 @@ class ExtractProcessor:
                     tenant_id=extract_setting.website_info.tenant_id,
                     mode=extract_setting.website_info.mode,
                     only_main_content=extract_setting.website_info.only_main_content,
+                    credential_id=extract_setting.website_info.credential_id,
                 )
                 return extractor.extract()
             elif extract_setting.website_info.provider == "watercrawl":
@@ -191,6 +193,7 @@ class ExtractProcessor:
                     tenant_id=extract_setting.website_info.tenant_id,
                     mode=extract_setting.website_info.mode,
                     only_main_content=extract_setting.website_info.only_main_content,
+                    credential_id=extract_setting.website_info.credential_id,
                 )
                 return extractor.extract()
             elif extract_setting.website_info.provider == "jinareader":
@@ -200,6 +203,7 @@ class ExtractProcessor:
                     tenant_id=extract_setting.website_info.tenant_id,
                     mode=extract_setting.website_info.mode,
                     only_main_content=extract_setting.website_info.only_main_content,
+                    credential_id=extract_setting.website_info.credential_id,
                 )
                 return extractor.extract()
             else:

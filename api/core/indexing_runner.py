@@ -365,6 +365,7 @@ class IndexingRunner:
             extract_setting = ExtractSetting(
                 datasource_type="notion_import",
                 notion_info={
+                    "credential_id": data_source_info["credential_id"],
                     "notion_workspace_id": data_source_info["notion_workspace_id"],
                     "notion_obj_id": data_source_info["notion_page_id"],
                     "notion_page_type": data_source_info["type"],
@@ -391,6 +392,7 @@ class IndexingRunner:
                     "url": data_source_info["url"],
                     "mode": data_source_info["mode"],
                     "only_main_content": data_source_info["only_main_content"],
+                    "credential_id": data_source_info["credential_id"],
                 },
                 document_model=dataset_document.doc_form,
             )

@@ -10,7 +10,7 @@ class NotionInfo(BaseModel):
     """
     Notion import info.
     """
-
+    credential_id: Optional[str] = None
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str
@@ -35,6 +35,7 @@ class WebsiteInfo(BaseModel):
     mode: str
     tenant_id: str
     only_main_content: bool = False
+    credential_id: Optional[str] = None
 
 
 class ExtractSetting(BaseModel):
