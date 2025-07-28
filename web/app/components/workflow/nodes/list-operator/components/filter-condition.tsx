@@ -128,7 +128,7 @@ const FilterCondition: FC<Props> = ({
                   isFocus
                     ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
                     : 'border-components-input-border-hover bg-components-input-bg-normal',
-                  'w-0 grow rounded-lg border px-3 py-[6px]'
+                  'w-0 grow rounded-lg border px-3 py-[6px]',
                 )}
                 value={condition.value}
                 onChange={handleChange('value')}
@@ -142,7 +142,7 @@ const FilterCondition: FC<Props> = ({
             ) : (
               <input
                 type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
-                className='grow px-3 py-[6px] border rounded-lg border-components-input-border-hover bg-components-input-bg-normal'
+                className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
                 value={condition.value}
                 onChange={e => handleChange('value')(e.target.value)}
                 readOnly={readOnly}
