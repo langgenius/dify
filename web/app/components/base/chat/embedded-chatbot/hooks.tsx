@@ -199,7 +199,7 @@ export const useEmbeddedChatbot = () => {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
-          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.select.default,
           type: 'select',
         }
       }

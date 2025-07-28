@@ -272,6 +272,9 @@ const translation = {
       atLeastOneOption: '至少需要一個選項',
       optionRepeat: '選項不能重複',
     },
+    'defaultValue': '預設值',
+    'noDefaultValue': '無預設值',
+    'selectDefaultValue': '選擇預設值',
   },
   vision: {
     name: '視覺',

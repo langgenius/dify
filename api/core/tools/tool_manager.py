@@ -237,7 +237,7 @@ class ToolManager:
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-            encrypter, _ = create_provider_encrypter(
+            encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[
                     x.to_basic_provider_config()
@@ -281,6 +281,7 @@ class ToolManager:
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
                 decrypted_credentials = refreshed_credentials.credentials
+                cache.delete()
 
             return cast(
                 BuiltinTool,
