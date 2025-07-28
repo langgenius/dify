@@ -9,14 +9,13 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
-    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
