@@ -244,6 +244,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                   <SimpleSelect
                     key={`default-select-${options.join('-')}`}
                     className="w-full"
+                    optionWrapClassName="max-h-[140px] overflow-y-auto"
                     items={[
                       { value: '', name: t('appDebug.variableConfig.noDefaultValue') },
                       ...options.filter(opt => opt.trim() !== '').map(option => ({
