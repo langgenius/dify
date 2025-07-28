@@ -24,7 +24,7 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
@@ -45,7 +45,7 @@ class Jieba(BaseKeyword):
             return self
 
     def add_texts(self, texts: list[Document], **kwargs):
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
 
@@ -77,7 +77,7 @@ class Jieba(BaseKeyword):
         return id in set.union(*keyword_table.values())
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table = self._get_dataset_keyword_table()
             if keyword_table is not None:
@@ -117,7 +117,7 @@ class Jieba(BaseKeyword):
         return documents
 
     def delete(self) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             dataset_keyword_table = self.dataset.dataset_keyword_table
             if dataset_keyword_table:

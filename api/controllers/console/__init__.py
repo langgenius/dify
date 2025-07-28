@@ -77,10 +77,10 @@ from .billing import billing, compliance
 
 # Import datasets controllers
 from .datasets import (
+    data_source,
     datasets,
     datasets_document,
     datasets_segments,
-    data_source,
     external,
     hit_testing,
     metadata,

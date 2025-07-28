@@ -329,6 +329,9 @@ const translation = {
       atLeastOneOption: 'Требуется хотя бы один вариант',
       optionRepeat: 'Есть повторяющиеся варианты',
     },
+    'defaultValue': 'Значение по умолчанию',
+    'noDefaultValue': 'Без значения по умолчанию',
+    'selectDefaultValue': 'Выберите значение по умолчанию',
   },
   vision: {
     name: 'Зрение',

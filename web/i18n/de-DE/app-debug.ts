@@ -261,6 +261,9 @@ const translation = {
     options: 'Optionen',
     addOption: 'Option hinzufügen',
     apiBasedVar: 'API-basierte Variable',
+    defaultValue: 'Standardwert',
+    noDefaultValue: 'Kein Standardwert',
+    selectDefaultValue: 'Standardwert auswählen',
   },
   vision: {
     name: 'Vision',

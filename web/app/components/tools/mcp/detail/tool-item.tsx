@@ -3,7 +3,7 @@ import React from 'react'
 import { useContext } from 'use-context-selector'
 import type { Tool } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 

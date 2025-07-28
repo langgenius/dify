@@ -32,9 +32,6 @@ from .engine import db
 from .enums import CreatorUserRole
 from .types import StringUUID
 
-if TYPE_CHECKING:
-    from .workflow import Workflow
-
 
 class DifySetup(Base):
     __tablename__ = "dify_setups"

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type { useMarketplace } from './hooks'
 import List from '@/app/components/plugins/marketplace/list'
 import Loading from '@/app/components/base/loading'
-import { getLocaleOnClient } from '@/i18n'
+import { getLocaleOnClient } from '@/i18n-config'
 import { getMarketplaceUrl } from '@/utils/var'
 
 type MarketplaceProps = {

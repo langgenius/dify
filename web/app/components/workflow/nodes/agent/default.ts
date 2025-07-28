@@ -2,13 +2,13 @@ import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plug
 import { BlockEnum, type NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderI18nObject } from '@/i18n'
 import { genNodeMetaData } from '../../utils'
 
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.Agent,
 })
+import { renderI18nObject } from '@/i18n-config'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   metaData,

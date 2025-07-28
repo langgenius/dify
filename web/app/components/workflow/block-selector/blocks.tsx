@@ -72,6 +72,7 @@ const Blocks = ({
               key={block.metaData.type}
               position='right'
               popupClassName='w-[200px]'
+              needsDelay={false}
               popupContent={(
                 <div>
                   <BlockIcon

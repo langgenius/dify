@@ -419,6 +419,8 @@ const translation = {
       optionRepeat: 'Has repeat options',
     },
     'startChecked': 'Start checked',
+    'noDefaultValue': 'No default value',
+    'selectDefaultValue': 'Select default value',
   },
   vision: {
     name: 'Vision',

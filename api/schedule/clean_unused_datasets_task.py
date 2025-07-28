@@ -101,11 +101,9 @@ def clean_unused_datasets_task():
                     # update document
                     db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                     db.session.commit()
-                    click.echo(click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green"))
+                    click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))
                 except Exception as e:
-                    click.echo(
-                        click.style("clean dataset index error: {} {}".format(e.__class__.__name__, str(e)), fg="red")
-                    )
+                    click.echo(click.style(f"clean dataset index error: {e.__class__.__name__} {str(e)}", fg="red"))
     while True:
         try:
             # Subquery for counting new documents
@@ -176,12 +174,8 @@ def clean_unused_datasets_task():
                         # update document
                         db.session.query(Document).filter_by(dataset_id=dataset.id).update({Document.enabled: False})
                         db.session.commit()
-                        click.echo(
-                            click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green")
-                        )
+                        click.echo(click.style(f"Cleaned unused dataset {dataset.id} from db success!", fg="green"))
                 except Exception as e:
-                    click.echo(
-                        click.style("clean dataset index error: {} {}".format(e.__class__.__name__, str(e)), fg="red")
-                    )
+                    click.echo(click.style(f"clean dataset index error: {e.__class__.__name__} {str(e)}", fg="red"))
     end_at = time.perf_counter()
-    click.echo(click.style("Cleaned unused dataset from db success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Cleaned unused dataset from db success latency: {end_at - start_at}", fg="green"))

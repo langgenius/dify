@@ -68,7 +68,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <div className='flex pt-4'>
         <StepNum>2</StepNum>
         <div className='flex flex-col'>
-          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step2`)}</div>
           <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
             <Button>

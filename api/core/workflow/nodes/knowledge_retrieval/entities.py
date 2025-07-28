@@ -55,6 +55,7 @@ class MultipleRetrievalConfig(BaseModel):
     reranking_model: Optional[RerankingModelConfig] = None
     weights: Optional[WeightedScoreConfig] = None
 
+
 class SingleRetrievalConfig(BaseModel):
     """
     Single Retrieval Config.

@@ -900,7 +900,7 @@ class ProviderConfiguration(BaseModel):
                                 credentials=copy_credentials,
                             )
                         except Exception as ex:
-                            logger.warning(f"get custom model schema failed, {ex}")
+                            logger.warning("get custom model schema failed, %s", ex)
                             continue
 
                         if not custom_model_schema:
@@ -1009,7 +1009,7 @@ class ProviderConfiguration(BaseModel):
                     credentials=model_configuration.credentials,
                 )
             except Exception as ex:
-                logger.warning(f"get custom model schema failed, {ex}")
+                logger.warning("get custom model schema failed, %s", ex)
                 continue
 
             if not custom_model_schema:

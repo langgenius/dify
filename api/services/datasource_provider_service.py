@@ -641,10 +641,10 @@ class DatasourceProviderService:
             # update credentials
             if credentials:
                 secret_variables = self.extract_secret_variables(
-                        tenant_id=tenant_id,
-                        provider_id=f"{plugin_id}/{provider}",
-                        credential_type=CredentialType.of(datasource_provider.auth_type),
-                    )
+                    tenant_id=tenant_id,
+                    provider_id=f"{plugin_id}/{provider}",
+                    credential_type=CredentialType.of(datasource_provider.auth_type),
+                )
                 original_credentials = {
                     key: value if key not in secret_variables else encrypter.decrypt_token(tenant_id, value)
                     for key, value in datasource_provider.encrypted_credentials.items()

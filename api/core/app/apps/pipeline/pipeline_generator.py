@@ -562,7 +562,9 @@ class PipelineGenerator(BaseAppGenerator):
 
                     if is_external_api_call:
                         # For external API calls, use end user's session ID
-                        end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                        end_user = session.scalar(
+                            select(EndUser).where(EndUser.id == application_generate_entity.user_id)
+                        )
                         system_user_id = end_user.session_id if end_user else ""
                     else:
                         # For internal calls, use the original user ID

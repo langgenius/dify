@@ -1,6 +1,6 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 export enum PluginType {

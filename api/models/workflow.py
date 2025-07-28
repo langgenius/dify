@@ -42,9 +42,6 @@ from .types import EnumText, StringUUID
 
 _logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from models.model import AppMode
-
 
 class WorkflowType(Enum):
     """

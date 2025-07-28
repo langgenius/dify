@@ -99,6 +99,7 @@ class BuiltinToolProvider(Base):
     def credentials(self) -> dict:
         return cast(dict, json.loads(self.encrypted_credentials))
 
+
 class ApiToolProvider(Base):
     """
     The table stores the api providers.

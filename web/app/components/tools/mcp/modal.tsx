@@ -95,8 +95,12 @@ const MCPModal = ({
       setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
     }
     catch (e) {
+      let errorMessage = 'Failed to fetch remote icon'
+      const errorData = await (e as Response).json()
+      if (errorData?.code)
+        errorMessage = `Upload failed: ${errorData.code}`
       console.error('Failed to fetch remote icon:', e)
-      Toast.notify({ type: 'warning', message: 'Failed to fetch remote icon' })
+      Toast.notify({ type: 'warning', message: errorMessage })
     }
     finally {
       setIsFetchingIcon(false)

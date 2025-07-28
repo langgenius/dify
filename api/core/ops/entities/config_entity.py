@@ -102,7 +102,7 @@ class LangfuseConfig(BaseTracingConfig):
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://api.langfuse.com")
+        return validate_url_with_path(v, "https://api.langfuse.com")
 
 
 class LangSmithConfig(BaseTracingConfig):

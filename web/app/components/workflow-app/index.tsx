@@ -17,6 +17,7 @@ import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { useAppContext } from '@/context/app-context'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
@@ -31,6 +32,7 @@ const WorkflowAppWithAdditionalContext = () => {
     isLoading,
     fileUploadConfigResponse,
   } = useWorkflowInit()
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
   const nodesData = useMemo(() => {
     if (data)
@@ -45,7 +47,7 @@ const WorkflowAppWithAdditionalContext = () => {
     return []
   }, [data])
 
-  if (!data || isLoading) {
+  if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
       <div className='relative flex h-full w-full items-center justify-center'>
         <Loading />

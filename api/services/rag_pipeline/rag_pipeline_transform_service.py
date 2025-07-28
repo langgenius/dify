@@ -26,10 +26,10 @@ class RagPipelineTransformService:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == "rag_pipeline":
             return {
-            "pipeline_id": dataset.pipeline_id,
-            "dataset_id": dataset_id,
-            "status": "success",
-        }
+                "pipeline_id": dataset.pipeline_id,
+                "dataset_id": dataset_id,
+                "status": "success",
+            }
         if dataset.provider != "vendor":
             raise ValueError("External dataset is not supported")
         datasource_type = dataset.data_source_type
@@ -269,7 +269,6 @@ class RagPipelineTransformService:
             )
 
     def _transfrom_to_empty_pipeline(self, dataset: Dataset):
-
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
