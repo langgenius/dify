@@ -77,10 +77,10 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
 
         # Create a named tracer instead of setting the global provider
         tracer_name = f"arize_phoenix_tracer_{arize_phoenix_config.project}"
-        logger.info(f"[Arize/Phoenix] Created tracer with name: {tracer_name}")
+        logger.info("[Arize/Phoenix] Created tracer with name: %s", tracer_name)
         return cast(trace_sdk.Tracer, provider.get_tracer(tracer_name)), processor
     except Exception as e:
-        logger.error(f"[Arize/Phoenix] Failed to setup the tracer: {str(e)}", exc_info=True)
+        logger.error("[Arize/Phoenix] Failed to setup the tracer: %s", str(e), exc_info=True)
         raise
 
 
@@ -120,7 +120,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
     def trace(self, trace_info: BaseTraceInfo):
-        logger.info(f"[Arize/Phoenix] Trace: {trace_info}")
+        logger.info("[Arize/Phoenix] Trace: %s", trace_info)
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -138,7 +138,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 self.generate_name_trace(trace_info)
 
         except Exception as e:
-            logger.error(f"[Arize/Phoenix] Error in the trace: {str(e)}", exc_info=True)
+            logger.error("[Arize/Phoenix] Error in the trace: %s", str(e), exc_info=True)
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
@@ -570,7 +570,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         trace_id = uuid_to_trace_id(trace_info.message_id)
         tool_span_id = RandomIdGenerator().generate_span_id()
-        logger.info(f"[Arize/Phoenix] Creating tool trace with trace_id: {trace_id}, span_id: {tool_span_id}")
+        logger.info("[Arize/Phoenix] Creating tool trace with trace_id: %s, span_id: %s", trace_id, tool_span_id)
 
         # Create span context with the same trace_id as the parent
         # todo: Create with the appropriate parent span context, so that the tool span is
@@ -673,7 +673,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 span.set_attribute("test", "true")
             return True
         except Exception as e:
-            logger.info(f"[Arize/Phoenix] API check failed: {str(e)}", exc_info=True)
+            logger.info("[Arize/Phoenix] API check failed: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -683,7 +683,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             else:
                 return f"{self.arize_phoenix_config.endpoint}/projects/"
         except Exception as e:
-            logger.info(f"[Arize/Phoenix] Get run url failed: {str(e)}", exc_info=True)
+            logger.info("[Arize/Phoenix] Get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] Get run url failed: {str(e)}")
 
     def _get_workflow_nodes(self, workflow_run_id: str):

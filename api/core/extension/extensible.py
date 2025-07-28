@@ -66,7 +66,7 @@ class Extensible:
 
                 # Check for extension module file
                 if (extension_name + ".py") not in file_names:
-                    logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip.")
+                    logging.warning("Missing %s.py file in %s, Skip.", extension_name, subdir_path)
                     continue
 
                 # Check for builtin flag and position
@@ -95,7 +95,7 @@ class Extensible:
                         break
 
                 if not extension_class:
-                    logging.warning(f"Missing subclass of {cls.__name__} in {module_name}, Skip.")
+                    logging.warning("Missing subclass of %s in %s, Skip.", cls.__name__, module_name)
                     continue
 
                 # Load schema if not builtin
@@ -103,7 +103,7 @@ class Extensible:
                 if not builtin:
                     json_path = os.path.join(subdir_path, "schema.json")
                     if not os.path.exists(json_path):
-                        logging.warning(f"Missing schema.json file in {subdir_path}, Skip.")
+                        logging.warning("Missing schema.json file in %s, Skip.", subdir_path)
                         continue
 
                     with open(json_path, encoding="utf-8") as f:

@@ -6,7 +6,7 @@ import { useMount } from 'ahooks'
 import cn from '@/utils/classnames'
 import { Apps02 } from '@/app/components/base/icons/src/vender/line/others'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
 import { fetchLabelList } from '@/service/tools'
 

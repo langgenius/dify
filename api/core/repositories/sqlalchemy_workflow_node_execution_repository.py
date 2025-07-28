@@ -215,7 +215,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Update the in-memory cache for faster subsequent lookups
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
-                logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
+                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
     def get_db_models_by_workflow_run(

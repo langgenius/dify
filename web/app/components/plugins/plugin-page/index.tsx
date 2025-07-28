@@ -117,7 +117,6 @@ const PluginPage = ({
         showInstallFromMarketplace()
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId, bundleInfo])
 
   const {

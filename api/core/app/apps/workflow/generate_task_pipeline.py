@@ -246,7 +246,7 @@ class WorkflowAppGenerateTaskPipeline:
                 else:
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Fails to get audio trunk, task_id: {task_id}")
+                logger.exception("Fails to get audio trunk, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)

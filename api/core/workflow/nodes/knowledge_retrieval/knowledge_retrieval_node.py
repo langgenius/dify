@@ -453,35 +453,34 @@ class KnowledgeRetrievalNode(BaseNode):
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 conditions = []
-                if node_data.metadata_filtering_conditions:
-                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
-                        metadata_name = condition.name
-                        expected_value = condition.value
-                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
-                            if isinstance(expected_value, str):
-                                expected_value = self.graph_runtime_state.variable_pool.convert_template(
-                                    expected_value
-                                ).value[0]
-                                if expected_value.value_type in {"number", "integer", "float"}:  # type: ignore
-                                    expected_value = expected_value.value  # type: ignore
-                                elif expected_value.value_type == "string":  # type: ignore
-                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
-                                else:
-                                    raise ValueError("Invalid expected metadata value type")
-                        conditions.append(
-                            Condition(
-                                name=metadata_name,
-                                comparison_operator=condition.comparison_operator,
-                                value=expected_value,
-                            )
+                for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
+                        if isinstance(expected_value, str):
+                            expected_value = self.graph_runtime_state.variable_pool.convert_template(
+                                expected_value
+                            ).value[0]
+                            if expected_value.value_type in {"number", "integer", "float"}:  # type: ignore
+                                expected_value = expected_value.value  # type: ignore
+                            elif expected_value.value_type == "string":  # type: ignore
+                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                            else:
+                                raise ValueError("Invalid expected metadata value type")
+                    conditions.append(
+                        Condition(
+                            name=metadata_name,
+                            comparison_operator=condition.comparison_operator,
+                            value=expected_value,
                         )
-                        filters = self._process_metadata_filter_func(
-                            sequence,
-                            condition.comparison_operator,
-                            metadata_name,
-                            expected_value,
-                            filters,
-                        )
+                    )
+                    filters = self._process_metadata_filter_func(
+                        sequence,
+                        condition.comparison_operator,
+                        metadata_name,
+                        expected_value,
+                        filters,
+                    )
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator,
                     conditions=conditions,

@@ -129,7 +129,7 @@ class StreamableHTTPTransport:
         new_session_id = response.headers.get(MCP_SESSION_ID)
         if new_session_id:
             self.session_id = new_session_id
-            logger.info(f"Received session ID: {self.session_id}")
+            logger.info("Received session ID: %s", self.session_id)
 
     def _handle_sse_event(
         self,
@@ -142,7 +142,7 @@ class StreamableHTTPTransport:
         if sse.event == "message":
             try:
                 message = JSONRPCMessage.model_validate_json(sse.data)
-                logger.debug(f"SSE message: {message}")
+                logger.debug("SSE message: %s", message)
 
                 # If this is a response and we have original_request_id, replace it
                 if original_request_id is not None and isinstance(message.root, JSONRPCResponse | JSONRPCError):
@@ -168,7 +168,7 @@ class StreamableHTTPTransport:
             logger.debug("Received ping event")
             return False
         else:
-            logger.warning(f"Unknown SSE event: {sse.event}")
+            logger.warning("Unknown SSE event: %s", sse.event)
             return False
 
     def handle_get_stream(
@@ -197,7 +197,7 @@ class StreamableHTTPTransport:
                     self._handle_sse_event(sse, server_to_client_queue)
 
         except Exception as exc:
-            logger.debug(f"GET stream error (non-fatal): {exc}")
+            logger.debug("GET stream error (non-fatal): %s", exc)
 
     def _handle_resumption_request(self, ctx: RequestContext) -> None:
         """Handle a resumption request using GET with SSE."""
@@ -352,7 +352,7 @@ class StreamableHTTPTransport:
                 # Check if this is a resumption request
                 is_resumption = bool(metadata and metadata.resumption_token)
 
-                logger.debug(f"Sending client message: {message}")
+                logger.debug("Sending client message: %s", message)
 
                 # Handle initialized notification
                 if self._is_initialized_notification(message):
@@ -389,9 +389,9 @@ class StreamableHTTPTransport:
             if response.status_code == 405:
                 logger.debug("Server does not allow session termination")
             elif response.status_code != 200:
-                logger.warning(f"Session termination failed: {response.status_code}")
+                logger.warning("Session termination failed: %s", response.status_code)
         except Exception as exc:
-            logger.warning(f"Session termination failed: {exc}")
+            logger.warning("Session termination failed: %s", exc)
 
     def get_session_id(self) -> str | None:
         """Get the current session ID."""

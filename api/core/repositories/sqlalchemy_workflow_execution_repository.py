@@ -203,5 +203,5 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
-            logger.debug(f"Updating cache for execution_id: {db_model.id}")
+            logger.debug("Updating cache for execution_id: %s", db_model.id)
             self._execution_cache[db_model.id] = db_model

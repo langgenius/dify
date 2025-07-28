@@ -164,7 +164,7 @@ const FormInputItem: FC<Props> = ({
       ...value,
       [variable]: {
         ...varInput,
-        ...newValue,
+        value: newValue,
       },
     })
   }
@@ -242,7 +242,7 @@ const FormInputItem: FC<Props> = ({
         <AppSelector
           disabled={readOnly}
           scope={scope || 'all'}
-          value={varInput as any}
+          value={varInput?.value}
           onSelect={handleAppOrModelSelect}
         />
       )}
@@ -251,7 +251,7 @@ const FormInputItem: FC<Props> = ({
           popupClassName='!w-[387px]'
           isAdvancedMode
           isInWorkflow
-          value={varInput}
+          value={varInput?.value}
           setModel={handleAppOrModelSelect}
           readonly={readOnly}
           scope={scope}

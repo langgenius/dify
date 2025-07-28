@@ -52,7 +52,6 @@ const TimePicker = ({
     else {
       setSelectedTime(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timezone])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
