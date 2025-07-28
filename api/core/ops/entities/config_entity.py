@@ -32,7 +32,7 @@ class BaseTracingConfig(BaseModel):
         Returns:
             Validated and normalized URL
         """
-        return validate_url(v, default_url)
+        return validate_url_with_path(v, default_url)
 
     @classmethod
     def validate_project_field(cls, v: str, default_name: str) -> str:
