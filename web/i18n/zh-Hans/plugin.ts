@@ -300,7 +300,7 @@ const translation = {
     clientInfo: '由于未找到此工具提供者的系统客户端密钥，因此需要手动设置，对于 redirect_uri，请使用',
     oauthClient: 'OAuth 客户端',
     connectedWorkspace: '已连接的工作区',
-    emptyAuth: '请配置身份验证',
+    emptyAuth: '请配置凭据',
   },
 }
 
