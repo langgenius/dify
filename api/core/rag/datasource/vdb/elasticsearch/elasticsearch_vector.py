@@ -83,8 +83,9 @@ class ElasticSearchVector(BaseVector):
         """
         try:
             # Check if using Elastic Cloud
+            client_config: dict[str, Any]
             if config.use_cloud and config.cloud_url:
-                client_config: dict[str, Any] = {
+                client_config = {
                     'request_timeout': config.request_timeout,
                     'retry_on_timeout': config.retry_on_timeout,
                     'max_retries': config.max_retries,
@@ -116,7 +117,7 @@ class ElasticSearchVector(BaseVector):
                     hosts = f"http://{config.host}:{config.port}"
                     use_https = False
                 
-                client_config: dict[str, Any] = {
+                client_config = {
                     'hosts': [hosts],
                     'basic_auth': (config.username, config.password),
                     'request_timeout': config.request_timeout,

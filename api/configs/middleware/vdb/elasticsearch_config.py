@@ -1,4 +1,5 @@
 from typing import Optional
+
 from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
