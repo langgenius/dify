@@ -134,12 +134,12 @@ class AnnotationListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("annotation_ids", type=str, required=True, location="args", action="append")
         args = parser.parse_args()
-        
+
         raw_ids = args["annotation_ids"]
         processed_ids = []
         for raw_id_str in raw_ids:
-            processed_ids.extend(raw_id_str.split(','))
-        
+            processed_ids.extend(raw_id_str.split(","))
+
         annotation_ids = [id.strip() for id in processed_ids if id.strip()]
 
         if not annotation_ids:
