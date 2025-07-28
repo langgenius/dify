@@ -42,7 +42,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -106,7 +106,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       // if ((appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSiderbarExpand('collapse')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appDetail, isMobile])
 
   useEffect(() => {
@@ -120,11 +119,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }).finally(() => {
       setIsLoadingAppDetail(false)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId, pathname])
 
   useEffect(() => {
-    if (!appDetailRes || isLoadingCurrentWorkspace || isLoadingAppDetail)
+    if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
       return
     const res = appDetailRes
     // redirection
@@ -143,7 +141,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
 
   useUnmount(() => {

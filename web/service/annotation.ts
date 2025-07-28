@@ -63,3 +63,7 @@ export const delAnnotation = (appId: string, annotationId: string) => {
 export const fetchHitHistoryList = (appId: string, annotationId: string, params: Record<string, any>) => {
   return get(`apps/${appId}/annotations/${annotationId}/hit-histories`, { params })
 }
+
+export const clearAllAnnotations = (appId: string): Promise<any> => {
+  return del(`apps/${appId}/annotations`)
+}

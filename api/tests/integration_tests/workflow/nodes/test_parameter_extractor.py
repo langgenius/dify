@@ -74,13 +74,15 @@ def init_parameter_extractor_node(config: dict):
     variable_pool.add(["a", "b123", "args1"], 1)
     variable_pool.add(["a", "b123", "args2"], 2)
 
-    return ParameterExtractorNode(
+    node = ParameterExtractorNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
     )
+    node.init_node_data(config.get("data", {}))
+    return node
 
 
 def test_function_calling_parameter_extractor(setup_model_mock):

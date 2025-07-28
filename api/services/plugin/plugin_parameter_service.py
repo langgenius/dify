@@ -51,7 +51,7 @@ class PluginParameterService:
                     with Session(db.engine) as session:
                         db_record = (
                             session.query(BuiltinToolProvider)
-                            .filter(
+                            .where(
                                 BuiltinToolProvider.tenant_id == tenant_id,
                                 BuiltinToolProvider.provider == provider,
                             )

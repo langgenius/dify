@@ -147,10 +147,17 @@ class ElasticSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        query_str = {"match": {Field.CONTENT_KEY.value: query}}
+        query_str: dict[str, Any] = {"match": {Field.CONTENT_KEY.value: query}}
         document_ids_filter = kwargs.get("document_ids_filter")
+
         if document_ids_filter:
-            query_str["filter"] = {"terms": {"metadata.document_id": document_ids_filter}}  # type: ignore
+            query_str = {
+                "bool": {
+                    "must": {"match": {Field.CONTENT_KEY.value: query}},
+                    "filter": {"terms": {"metadata.document_id": document_ids_filter}},
+                }
+            }
+
         results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:
@@ -179,7 +186,7 @@ class ElasticSearchVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name} already exists.")
+                logger.info("Collection %s already exists.", self._collection_name)
                 return
 
             if not self._client.indices.exists(index=self._collection_name):

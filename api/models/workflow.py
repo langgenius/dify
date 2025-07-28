@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
@@ -16,6 +16,7 @@ from core.variables.variables import FloatVariable, IntegerVariable, StringVaria
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
@@ -40,9 +41,6 @@ from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
 
 _logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from models.model import AppMode
 
 
 class WorkflowType(Enum):
@@ -138,7 +136,7 @@ class Workflow(Base):
     updated_at: Mapped[datetime] = mapped_column(
         db.DateTime,
         nullable=False,
-        default=datetime.now(UTC).replace(tzinfo=None),
+        default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
@@ -179,7 +177,7 @@ class Workflow(Base):
         workflow.conversation_variables = conversation_variables or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
-        workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.created_at = naive_utc_now()
         workflow.updated_at = workflow.created_at
         return workflow
 
@@ -342,7 +340,7 @@ class Workflow(Base):
 
         return (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
+            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
             .count()
             > 0
         )
@@ -548,12 +546,12 @@ class WorkflowRun(Base):
         from models.model import Message
 
         return (
-            db.session.query(Message).filter(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
+            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
         )
 
     @property
     def workflow(self):
-        return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+        return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
     def to_dict(self):
         return {
@@ -907,7 +905,7 @@ _EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
 
 
 def _naive_utc_datetime():
-    return datetime.now(UTC).replace(tzinfo=None)
+    return naive_utc_now()
 
 
 class WorkflowDraftVariable(Base):

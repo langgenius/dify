@@ -29,7 +29,7 @@ from libs.login import login_required
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.mcp_tools_mange_service import MCPToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
@@ -739,7 +739,7 @@ class ToolOAuthCallback(Resource):
             raise Forbidden("no oauth available client config found for this tool provider")
 
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
-        credentials = oauth_handler.get_credentials(
+        credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
             user_id=user_id,
             plugin_id=plugin_id,
@@ -747,7 +747,10 @@ class ToolOAuthCallback(Resource):
             redirect_uri=redirect_uri,
             system_credentials=oauth_client_params,
             request=request,
-        ).credentials
+        )
+
+        credentials = credentials_response.credentials
+        expires_at = credentials_response.expires_at
 
         if not credentials:
             raise Exception("the plugin credentials failed")
@@ -758,6 +761,7 @@ class ToolOAuthCallback(Resource):
             tenant_id=tenant_id,
             provider=provider,
             credentials=dict(credentials),
+            expires_at=expires_at,
             api_type=CredentialType.OAUTH2,
         )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")

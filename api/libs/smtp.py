@@ -50,7 +50,7 @@ class SMTPClient:
             logging.exception("Timeout occurred while sending email")
             raise
         except Exception as e:
-            logging.exception(f"Unexpected error occurred while sending email to {mail['to']}")
+            logging.exception("Unexpected error occurred while sending email to %s", mail["to"])
             raise
         finally:
             if smtp:

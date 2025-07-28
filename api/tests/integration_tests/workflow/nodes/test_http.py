@@ -52,13 +52,19 @@ def init_http_node(config: dict):
     variable_pool.add(["a", "b123", "args1"], 1)
     variable_pool.add(["a", "b123", "args2"], 2)
 
-    return HttpRequestNode(
+    node = HttpRequestNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
     )
+
+    # Initialize node data
+    if "data" in config:
+        node.init_node_data(config["data"])
+
+    return node
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)

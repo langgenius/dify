@@ -7,7 +7,7 @@ import logging
 from collections.abc import Sequence
 from typing import Optional, Union
 
-from sqlalchemy import UnaryExpression, asc, delete, desc, select
+from sqlalchemy import UnaryExpression, asc, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -215,49 +215,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Update the in-memory cache for faster subsequent lookups
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
-                logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
+                logger.debug("Updating cache for node_execution_id: %s", db_model.node_execution_id)
                 self._node_execution_cache[db_model.node_execution_id] = db_model
-
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
-        """
-        Retrieve a NodeExecution by its node_execution_id.
-
-        First checks the in-memory cache, and if not found, queries the database.
-        If found in the database, adds it to the cache for future lookups.
-
-        Args:
-            node_execution_id: The node execution ID
-
-        Returns:
-            The NodeExecution instance if found, None otherwise
-        """
-        # First check the cache
-        if node_execution_id in self._node_execution_cache:
-            logger.debug(f"Cache hit for node_execution_id: {node_execution_id}")
-            # Convert cached DB model to domain model
-            cached_db_model = self._node_execution_cache[node_execution_id]
-            return self._to_domain_model(cached_db_model)
-
-        # If not in cache, query the database
-        logger.debug(f"Cache miss for node_execution_id: {node_execution_id}, querying database")
-        with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.node_execution_id == node_execution_id,
-                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-            )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
-
-            db_model = session.scalar(stmt)
-            if db_model:
-                # Add DB model to cache
-                self._node_execution_cache[node_execution_id] = db_model
-
-                # Convert to domain model and return
-                return self._to_domain_model(db_model)
-
-            return None
 
     def get_db_models_by_workflow_run(
         self,
@@ -344,68 +303,3 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             domain_models.append(domain_model)
 
         return domain_models
-
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
-        """
-        Retrieve all running NodeExecution instances for a specific workflow run.
-
-        This method queries the database directly and updates the cache with any
-        retrieved executions that have a node_execution_id.
-
-        Args:
-            workflow_run_id: The workflow run ID
-
-        Returns:
-            A list of running NodeExecution instances
-        """
-        with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
-                WorkflowNodeExecutionModel.status == WorkflowNodeExecutionStatus.RUNNING,
-                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-            )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
-
-            db_models = session.scalars(stmt).all()
-            domain_models = []
-
-            for model in db_models:
-                # Update cache if node_execution_id is present
-                if model.node_execution_id:
-                    self._node_execution_cache[model.node_execution_id] = model
-
-                # Convert to domain model
-                domain_model = self._to_domain_model(model)
-                domain_models.append(domain_model)
-
-            return domain_models
-
-    def clear(self) -> None:
-        """
-        Clear all WorkflowNodeExecution records for the current tenant_id and app_id.
-
-        This method deletes all WorkflowNodeExecution records that match the tenant_id
-        and app_id (if provided) associated with this repository instance.
-        It also clears the in-memory cache.
-        """
-        with self._session_factory() as session:
-            stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.tenant_id == self._tenant_id)
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
-
-            result = session.execute(stmt)
-            session.commit()
-
-            deleted_count = result.rowcount
-            logger.info(
-                f"Cleared {deleted_count} workflow node execution records for tenant {self._tenant_id}"
-                + (f" and app {self._app_id}" if self._app_id else "")
-            )
-
-            # Clear the in-memory cache
-            self._node_execution_cache.clear()
-            logger.info("Cleared in-memory node execution cache")

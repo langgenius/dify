@@ -2,7 +2,6 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from datetime import UTC, datetime
 from typing import Any, Optional, cast
 from uuid import uuid4
 
@@ -33,6 +32,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
+from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -89,7 +89,7 @@ class WorkflowService:
     def is_workflow_exist(self, app_model: App) -> bool:
         return (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.version == Workflow.VERSION_DRAFT,
@@ -104,7 +104,7 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == "draft"
             )
             .first()
@@ -117,7 +117,7 @@ class WorkflowService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == workflow_id,
@@ -141,7 +141,7 @@ class WorkflowService:
         # fetch published workflow by workflow_id
         workflow = (
             db.session.query(Workflow)
-            .filter(
+            .where(
                 Workflow.tenant_id == app_model.tenant_id,
                 Workflow.app_id == app_model.id,
                 Workflow.id == app_model.workflow_id,
@@ -232,7 +232,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+            workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
@@ -268,7 +268,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=Workflow.version_from_datetime(datetime.now(UTC).replace(tzinfo=None)),
+            version=Workflow.version_from_datetime(naive_utc_now()),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
@@ -465,10 +465,10 @@ class WorkflowService:
         node_id: str,
     ) -> WorkflowNodeExecution:
         try:
-            node_instance, generator = invoke_node_fn()
+            node, node_events = invoke_node_fn()
 
             node_run_result: NodeRunResult | None = None
-            for event in generator:
+            for event in node_events:
                 if isinstance(event, RunCompletedEvent):
                     node_run_result = event.run_result
 
@@ -479,18 +479,18 @@ class WorkflowService:
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.continue_on_error:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                    "metadata": {"error_strategy": node.error_strategy},
                 }
-                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                if node.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
                         **node_error_args,
                         outputs={
-                            **node_instance.node_data.default_value_dict,
+                            **node.default_value_dict,
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
                         },
@@ -509,10 +509,10 @@ class WorkflowService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e.node_instance
+            node = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
 
         # Create a NodeExecution domain model
         node_execution = WorkflowNodeExecution(
@@ -520,11 +520,11 @@ class WorkflowService:
             workflow_id="",  # This is a single-step execution, so no workflow ID
             index=1,
             node_id=node_id,
-            node_type=node_instance.node_type,
-            title=node_instance.node_data.title,
+            node_type=node.type_,
+            title=node.title,
             elapsed_time=time.perf_counter() - start_at,
-            created_at=datetime.now(UTC).replace(tzinfo=None),
-            finished_at=datetime.now(UTC).replace(tzinfo=None),
+            created_at=naive_utc_now(),
+            finished_at=naive_utc_now(),
         )
 
         if run_succeeded and node_run_result:
@@ -621,7 +621,7 @@ class WorkflowService:
                 setattr(workflow, field, value)
 
         workflow.updated_by = account_id
-        workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = naive_utc_now()
 
         return workflow
 
@@ -658,7 +658,7 @@ class WorkflowService:
         # Check if there's a tool provider using this specific workflow version
         tool_provider = (
             session.query(WorkflowToolProvider)
-            .filter(
+            .where(
                 WorkflowToolProvider.tenant_id == workflow.tenant_id,
                 WorkflowToolProvider.app_id == workflow.app_id,
                 WorkflowToolProvider.version == workflow.version,

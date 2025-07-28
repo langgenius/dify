@@ -82,22 +82,27 @@ def test_overwrite_string_variable():
     mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
     mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "assigned_variable_selector": ["conversation", conversation_variable.name],
+            "write_mode": WriteMode.OVER_WRITE.value,
+            "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "assigned_variable_selector": ["conversation", conversation_variable.name],
-                "write_mode": WriteMode.OVER_WRITE.value,
-                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
-            },
-        },
+        config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_var = StringVariable(
@@ -178,22 +183,27 @@ def test_append_variable_to_array():
     mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
     mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "assigned_variable_selector": ["conversation", conversation_variable.name],
+            "write_mode": WriteMode.APPEND.value,
+            "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "assigned_variable_selector": ["conversation", conversation_variable.name],
-                "write_mode": WriteMode.APPEND.value,
-                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
-            },
-        },
+        config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_value = list(conversation_variable.value)
@@ -265,22 +275,27 @@ def test_clear_array():
     mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
     mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
+    node_config = {
+        "id": "node_id",
+        "data": {
+            "title": "test",
+            "assigned_variable_selector": ["conversation", conversation_variable.name],
+            "write_mode": WriteMode.CLEAR.value,
+            "input_variable_selector": [],
+        },
+    }
+
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config={
-            "id": "node_id",
-            "data": {
-                "title": "test",
-                "assigned_variable_selector": ["conversation", conversation_variable.name],
-                "write_mode": WriteMode.CLEAR.value,
-                "input_variable_selector": [],
-            },
-        },
+        config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_var = ArrayStringVariable(

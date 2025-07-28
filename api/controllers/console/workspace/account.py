@@ -1,5 +1,3 @@
-import datetime
-
 import pytz
 from flask import request
 from flask_login import current_user
@@ -11,6 +9,7 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
+    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
@@ -35,6 +34,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.member_fields import account_fields
+from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, email, extract_remote_ip, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
@@ -69,7 +69,7 @@ class AccountInitApi(Resource):
             # check invitation code
             invitation_code = (
                 db.session.query(InvitationCode)
-                .filter(
+                .where(
                     InvitationCode.code == args["invitation_code"],
                     InvitationCode.status == "unused",
                 )
@@ -80,7 +80,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            invitation_code.used_at = naive_utc_now()
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -88,7 +88,7 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        account.initialized_at = naive_utc_now()
         db.session.commit()
 
         return {"result": "success"}
@@ -229,7 +229,7 @@ class AccountIntegrateApi(Resource):
     def get(self):
         account = current_user
 
-        account_integrates = db.session.query(AccountIntegrate).filter(AccountIntegrate.account_id == account.id).all()
+        account_integrates = db.session.query(AccountIntegrate).where(AccountIntegrate.account_id == account.id).all()
 
         base_url = request.url_root.rstrip("/")
         oauth_base_path = "/console/api/oauth/login"
@@ -480,20 +480,27 @@ class ChangeEmailResetApi(Resource):
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
+        if AccountService.is_account_in_freeze(args["new_email"]):
+            raise AccountInFreezeError()
+
+        if not AccountService.check_email_unique(args["new_email"]):
+            raise EmailAlreadyInUseError()
+
         reset_data = AccountService.get_change_email_data(args["token"])
         if not reset_data:
             raise InvalidTokenError()
 
         AccountService.revoke_change_email_token(args["token"])
 
-        if not AccountService.check_email_unique(args["new_email"]):
-            raise EmailAlreadyInUseError()
-
         old_email = reset_data.get("old_email", "")
         if current_user.email != old_email:
             raise AccountNotFound()
 
         updated_account = AccountService.update_account(current_user, email=args["new_email"])
+
+        AccountService.send_change_email_completed_notify_email(
+            email=args["new_email"],
+        )
 
         return updated_account
 
@@ -504,6 +511,8 @@ class CheckEmailUnique(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
         args = parser.parse_args()
+        if AccountService.is_account_in_freeze(args["email"]):
+            raise AccountInFreezeError()
         if not AccountService.check_email_unique(args["email"]):
             raise EmailAlreadyInUseError()
         return {"result": "success"}

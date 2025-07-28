@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     __MAX_BUILTIN_TOOL_PROVIDER_COUNT__ = 100
+    __DEFAULT_EXPIRES_AT__ = 2147483647
 
     @staticmethod
     def delete_custom_oauth_client_params(tenant_id: str, provider: str):
@@ -153,7 +154,7 @@ class BuiltinToolManageService:
             # get if the provider exists
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -212,6 +213,7 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credentials: dict,
+        expires_at: int = -1,
         name: str | None = None,
     ):
         """
@@ -269,6 +271,9 @@ class BuiltinToolManageService:
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
                         credential_type=api_type.value,
                         name=name,
+                        expires_at=expires_at
+                        if expires_at is not None
+                        else BuiltinToolManageService.__DEFAULT_EXPIRES_AT__,
                     )
 
                     session.add(db_provider)
@@ -332,7 +337,7 @@ class BuiltinToolManageService:
             max_number = max(numbers)
             return f"{default_pattern} {max_number + 1}"
         except Exception as e:
-            logger.warning(f"Error generating next provider name for {provider}: {str(e)}")
+            logger.warning("Error generating next provider name for %s: %s", provider, str(e))
             # fallback
             return f"{credential_type.get_name()} 1"
 
@@ -399,7 +404,7 @@ class BuiltinToolManageService:
         with Session(db.engine) as session:
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -608,7 +613,7 @@ class BuiltinToolManageService:
                 if provider_id_entity.organization != "langgenius":
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             BuiltinToolProvider.provider == full_provider_name,
                         )
@@ -621,7 +626,7 @@ class BuiltinToolManageService:
                 else:
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             (BuiltinToolProvider.provider == provider_name)
                             | (BuiltinToolProvider.provider == full_provider_name),
@@ -642,7 +647,7 @@ class BuiltinToolManageService:
                 # it's an old provider without organization
                 return (
                     session.query(BuiltinToolProvider)
-                    .filter(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
+                    .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                     .order_by(
                         BuiltinToolProvider.is_default.desc(),  # default=True first
                         BuiltinToolProvider.created_at.asc(),  # oldest first

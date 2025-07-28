@@ -66,11 +66,11 @@ class WeaveDataTrace(BaseTraceInstance):
             project_url = f"https://wandb.ai/{self.weave_client._project_id()}"
             return project_url
         except Exception as e:
-            logger.debug(f"Weave get run url failed: {str(e)}")
+            logger.debug("Weave get run url failed: %s", str(e))
             raise ValueError(f"Weave get run url failed: {str(e)}")
 
     def trace(self, trace_info: BaseTraceInfo):
-        logger.debug(f"Trace info: {trace_info}")
+        logger.debug("Trace info: %s", trace_info)
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
         if isinstance(trace_info, MessageTraceInfo):
@@ -87,7 +87,8 @@ class WeaveDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.message_id or trace_info.workflow_run_id
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
 
@@ -234,7 +235,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         if message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
@@ -402,7 +403,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 print("Weave login successful")
                 return True
         except Exception as e:
-            logger.debug(f"Weave API check failed: {str(e)}")
+            logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: Optional[str] = None):

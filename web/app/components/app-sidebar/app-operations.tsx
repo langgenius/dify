@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { JSX } from 'react'
 import { cloneElement, useCallback } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { RiMoreLine } from '@remixicon/react'
 
 export type Operation = {
-  id: string; title: string; icon: ReactElement; onClick: () => void
+  id: string; title: string; icon: JSX.Element; onClick: () => void
 }
 
 const AppOperations = ({ operations, gap }: {
@@ -47,7 +47,7 @@ const AppOperations = ({ operations, gap }: {
         updatedEntries[id] = true
         width += gap + childWidth
       }
- else {
+      else {
         if (i === childrens.length - 1 && width + childWidth <= containerWidth)
           updatedEntries[id] = true
         else

@@ -65,7 +65,8 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.message_id or trace_info.workflow_run_id
+        external_trace_id = trace_info.metadata.get("external_trace_id")
+        trace_id = external_trace_id or trace_info.message_id or trace_info.workflow_run_id
         if trace_info.start_time is None:
             trace_info.start_time = datetime.now()
         message_dotted_order = (
@@ -261,7 +262,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         if message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 end_user_id = end_user_data.session_id
@@ -503,7 +504,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.delete_project(project_name=random_project_name)
             return True
         except Exception as e:
-            logger.debug(f"LangSmith API check failed: {str(e)}")
+            logger.debug("LangSmith API check failed: %s", str(e))
             raise ValueError(f"LangSmith API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -522,5 +523,5 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
             return project_url.split("/r/")[0]
         except Exception as e:
-            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            logger.debug("LangSmith get run url failed: %s", str(e))
             raise ValueError(f"LangSmith get run url failed: {str(e)}")

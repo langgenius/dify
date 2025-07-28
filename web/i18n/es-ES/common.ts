@@ -241,6 +241,7 @@ const translation = {
       verifyNew: 'Verifica tu nuevo correo electrónico',
       codeLabel: 'Código de verificación',
       authTip: 'Una vez que tu correo electrónico sea cambiado, las cuentas de Google o GitHub vinculadas a tu antiguo correo electrónico ya no podrán iniciar sesión en esta cuenta.',
+      unAvailableEmail: 'Este correo electrónico no está disponible temporalmente.',
     },
   },
   members: {
@@ -690,6 +691,7 @@ const translation = {
   license: {
     expiring: 'Caduca en un día',
     expiring_plural: 'Caducando en {{count}} días',
+    unlimited: 'Ilimitado',
   },
   pagination: {
     perPage: 'Elementos por página',
