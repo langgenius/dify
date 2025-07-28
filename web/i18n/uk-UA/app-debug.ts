@@ -281,7 +281,6 @@ const translation = {
     'required': 'Обов\'язково',
     'hide': 'Приховати',
     'errorMsg': {
-      varNameRequired: 'Потрібно вказати назву змінної',
       labelNameRequired: 'Потрібно вказати назву мітки',
       varNameCanBeRepeat: 'Назва змінної не може повторюватися',
       atLeastOneOption: 'Потрібно щонайменше одну опцію',

@@ -309,7 +309,6 @@ const translation = {
     'required': 'Requerido',
     'hide': 'Ocultar',
     'errorMsg': {
-      varNameRequired: 'Nombre de la variable es requerido',
       labelNameRequired: 'Nombre de la etiqueta es requerido',
       varNameCanBeRepeat: 'El nombre de la variable no puede repetirse',
       atLeastOneOption: 'Se requiere al menos una opción',

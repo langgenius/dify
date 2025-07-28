@@ -281,7 +281,6 @@ const translation = {
     'required': 'Bắt buộc',
     'hide': 'Ẩn',
     'errorMsg': {
-      varNameRequired: 'Tên biến là bắt buộc',
       labelNameRequired: 'Tên nhãn là bắt buộc',
       varNameCanBeRepeat: 'Tên biến không được trùng lặp',
       atLeastOneOption: 'Cần ít nhất một tùy chọn',

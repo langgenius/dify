@@ -297,7 +297,6 @@ const translation = {
     'required': 'Required',
     'hide': 'Caché',
     'errorMsg': {
-      varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
       atLeastOneOption: 'At least one option is required',

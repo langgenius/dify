@@ -314,7 +314,6 @@ const translation = {
     'required': 'Obrigatório',
     'hide': 'Ocultar',
     'errorMsg': {
-      varNameRequired: 'O nome da variável é obrigatório',
       labelNameRequired: 'O nome do rótulo é obrigatório',
       varNameCanBeRepeat: 'O nome da variável não pode ser repetido',
       atLeastOneOption: 'Pelo menos uma opção é obrigatória',

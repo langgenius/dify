@@ -311,6 +311,9 @@ const translation = {
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
     waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
   },
+  warningMessage: {
+    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を取得するにはログを参照してください。',
+  },
   chatSubTitle: 'プロンプト',
   completionSubTitle: '接頭辞プロンプト',
   promptTip: 'プロンプトは、AI の応答を指示と制約で誘導します。 {{input}} のような変数を挿入します。このプロンプトはユーザーには表示されません。',
@@ -390,7 +393,6 @@ const translation = {
     'maxNumberOfUploads': 'アップロードの最大数',
     'maxNumberTip': 'ドキュメント < {{docLimit}}, 画像 < {{imgLimit}}, 音声 < {{audioLimit}}, 映像 < {{videoLimit}}',
     'errorMsg': {
-      varNameRequired: '変数名は必須です',
       labelNameRequired: 'ラベル名は必須です',
       varNameCanBeRepeat: '変数名は繰り返すことができません',
       atLeastOneOption: '少なくとも 1 つのオプションが必要です',

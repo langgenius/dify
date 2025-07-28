@@ -287,7 +287,6 @@ const translation = {
     'required': 'Obligatoriu',
     'hide': 'Ascundeți',
     'errorMsg': {
-      varNameRequired: 'Numele variabilei este obligatoriu',
       labelNameRequired: 'Numele etichetei este obligatoriu',
       varNameCanBeRepeat: 'Numele variabilei nu poate fi repetat',
       atLeastOneOption: 'Este necesară cel puțin o opțiune',

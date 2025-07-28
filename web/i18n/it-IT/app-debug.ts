@@ -343,7 +343,6 @@ const translation = {
     'required': 'Richiesto',
     'hide': 'Nascondi',
     'errorMsg': {
-      varNameRequired: 'Il nome della variabile è richiesto',
       labelNameRequired: 'Il nome dell\'etichetta è richiesto',
       varNameCanBeRepeat: 'Il nome della variabile non può essere ripetuto',
       atLeastOneOption: 'È richiesta almeno un\'opzione',

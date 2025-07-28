@@ -311,6 +311,9 @@ const translation = {
     waitForImgUpload: '请等待图片上传完成',
     waitForFileUpload: '请等待文件上传完成',
   },
+  warningMessage: {
+    timeoutExceeded: '由于超时，结果未显示。请参考日志获取完整结果。',
+  },
   chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
   promptTip:

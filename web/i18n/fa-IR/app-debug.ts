@@ -317,7 +317,6 @@ const translation = {
       'required': 'مورد نیاز',
       'hide': 'مخفی کردن',
       'errorMsg': {
-        varNameRequired: 'نام متغیر مورد نیاز است',
         labelNameRequired: 'نام برچسب مورد نیاز است',
         varNameCanBeRepeat: 'نام متغیر نمی‌تواند تکراری باشد',
         atLeastOneOption: 'حداقل یک گزینه مورد نیاز است',

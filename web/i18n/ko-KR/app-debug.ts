@@ -308,7 +308,6 @@ const translation = {
     'required': '필수',
     'hide': '숨기기',
     'errorMsg': {
-      varNameRequired: '변수명은 필수입니다',
       labelNameRequired: '레이블명은 필수입니다',
       varNameCanBeRepeat: '변수명은 중복될 수 없습니다',
       atLeastOneOption: '적어도 하나의 옵션이 필요합니다',

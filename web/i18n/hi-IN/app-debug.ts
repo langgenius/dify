@@ -314,7 +314,6 @@ const translation = {
     'required': 'आवश्यक',
     'hide': 'छुपाएँ',
     'errorMsg': {
-      varNameRequired: 'वेरिएबल नाम आवश्यक है',
       labelNameRequired: 'लेबल नाम आवश्यक है',
       varNameCanBeRepeat: 'वेरिएबल नाम दोहराया नहीं जा सकता',
       atLeastOneOption: 'कम से कम एक विकल्प आवश्यक है',
