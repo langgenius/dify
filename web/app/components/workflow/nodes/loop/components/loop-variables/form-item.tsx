@@ -27,6 +27,7 @@ import {
   arrayStringPlaceholder,
   objectPlaceholder,
 } from '@/app/components/workflow/panel/chat-variable-panel/utils'
+import ArrayBoolList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
 
 type FormItemProps = {
   nodeId: string
@@ -114,7 +115,7 @@ const FormItem = ({
       }
       {
         value_type === ValueType.constant
-        && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject || var_type === VarType.arrayBoolean)
+        && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
         && (
           <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
             <CodeEditor
@@ -127,6 +128,15 @@ const FormItem = ({
               placeholder={<div className='whitespace-pre'>{placeholder}</div>}
             />
           </div>
+        )
+      }
+      {
+        value_type === ValueType.constant && var_type === VarType.arrayBoolean && (
+          <ArrayBoolList
+            className='mt-2'
+            list={value || ['false']}
+            onChange={handleChange}
+          />
         )
       }
     </div>

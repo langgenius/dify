@@ -7,20 +7,23 @@ import produce from 'immer'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import Button from '@/app/components/base/button'
 import BoolValue from './bool-value'
+import cn from '@/utils/classnames'
 
 type Props = {
+  className?: string
   list: any[]
-  onChange: (list: any[]) => void
+  onChange: (list: string[]) => void
 }
 
 const ArrayValueList: FC<Props> = ({
+  className,
   list,
   onChange,
 }) => {
   const { t } = useTranslation()
 
   const handleChange = useCallback((index: number) => {
-    return (value: boolean) => {
+    return (value: string) => {
       const newList = produce(list, (draft: any[]) => {
         draft[index] = value
       })
@@ -39,13 +42,13 @@ const ArrayValueList: FC<Props> = ({
 
   const handleItemAdd = useCallback(() => {
     const newList = produce(list, (draft: any[]) => {
-      draft.push(true)
+      draft.push('false')
     })
     onChange(newList)
   }, [list, onChange])
 
   return (
-    <div className='w-full space-y-2'>
+    <div className={cn('w-full space-y-2', className)}>
       {list.map((item, index) => (
         <div className='flex items-center space-x-1' key={index}>
           <BoolValue
