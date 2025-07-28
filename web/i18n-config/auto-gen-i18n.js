@@ -8,6 +8,7 @@ const { translate } = bingTranslate
 const data = require('./languages.json')
 
 const targetLanguage = 'en-US'
+const i18nFolder = '../i18n' // Path to i18n folder relative to this script
 // https://github.com/plainheart/bing-translate-api/blob/master/src/met/lang.json
 const languageKeyMap = data.languages.reduce((map, language) => {
   if (language.supported) {
@@ -52,10 +53,9 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
     }
   }))
 }
-
 async function autoGenTrans(fileName, toGenLanguage) {
-  const fullKeyFilePath = path.join(__dirname, targetLanguage, `${fileName}.ts`)
-  const toGenLanguageFilePath = path.join(__dirname, toGenLanguage, `${fileName}.ts`)
+  const fullKeyFilePath = path.join(__dirname, i18nFolder, targetLanguage, `${fileName}.ts`)
+  const toGenLanguageFilePath = path.join(__dirname, i18nFolder, toGenLanguage, `${fileName}.ts`)
   // eslint-disable-next-line sonarjs/code-eval
   const fullKeyContent = eval(transpile(fs.readFileSync(fullKeyFilePath, 'utf8')))
   // if toGenLanguageFilePath is not exist, create it
@@ -87,9 +87,8 @@ async function main() {
   // Promise.all(Object.keys(languageKeyMap).map(async (toLanguage) => {
   //   await autoGenTrans(fileName, toLanguage)
   // }))
-
   const files = fs
-    .readdirSync(path.join(__dirname, targetLanguage))
+    .readdirSync(path.join(__dirname, i18nFolder, targetLanguage))
     .map(file => file.replace(/\.ts/, ''))
     .filter(f => f !== 'app-debug') // ast parse error in app-debug
 
