@@ -27,7 +27,7 @@ export type CreateAppModalProps = {
   appIconUrl?: string | null
   appMode?: string
   appUseIconAsAnswerIcon?: boolean
-  max_active_requests: number | null
+  max_active_requests?: number | null
   onConfirm: (info: {
     name: string
     icon_type: AppIconType
