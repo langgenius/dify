@@ -80,6 +80,7 @@ from .datasets import (
     datasets,
     datasets_document,
     datasets_segments,
+    data_source,
     external,
     hit_testing,
     metadata,
