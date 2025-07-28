@@ -90,7 +90,7 @@ class PhoenixConfig(BaseTracingConfig):
         return cls.validate_endpoint_url(v, "https://app.phoenix.arize.com")
 
 
-class LangfuseConfig(BaseModel):
+class LangfuseConfig(BaseTracingConfig):
     """
     Model class for Langfuse tracing config.
     """
