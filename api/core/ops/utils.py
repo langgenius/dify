@@ -65,7 +65,13 @@ def generate_dotted_order(
 
 def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", "http")) -> str:
     """
-    Validate and normalize URL with proper error handling
+    Validate and normalize URL with proper error handling.
+
+    NOTE: This function does not retain the `path` component of the provided URL.
+    In most cases, it is recommended to use `validate_url_with_path` instead.
+
+    This function is deprecated and retained only for compatibility purposes.
+    New implementations should use `validate_url_with_path`.
 
     Args:
         url: The URL to validate
@@ -88,7 +94,10 @@ def validate_url(url: str, default_url: str, allowed_schemes: tuple = ("https", 
     if parsed.scheme not in allowed_schemes:
         raise ValueError(f"URL scheme must be one of: {', '.join(allowed_schemes)}")
 
-    return url
+    # Reconstruct URL with only scheme, netloc (removing path, query, fragment)
+    normalized_url = f"{parsed.scheme}://{parsed.netloc}"
+
+    return normalized_url
 
 
 def validate_url_with_path(url: str, default_url: str, required_suffix: str | None = None) -> str:
