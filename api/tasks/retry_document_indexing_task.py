@@ -44,7 +44,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                         )
             except Exception as e:
                 document = (
-                    db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+                    db.session.query(Document)
+                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                    .first()
                 )
                 if document:
                     document.indexing_status = "error"
@@ -96,7 +98,9 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             end_at = time.perf_counter()
             logging.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
-        logging.exception("retry_document_indexing_task failed, dataset_id: %s, document_ids: %s", dataset_id, document_ids)
+        logging.exception(
+            "retry_document_indexing_task failed, dataset_id: %s, document_ids: %s", dataset_id, document_ids
+        )
         raise e
     finally:
         db.session.close()
