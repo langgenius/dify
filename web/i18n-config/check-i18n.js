@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const vm = require('node:vm')
 const transpile = require('typescript').transpile
 
 const targetLanguage = 'en-US'
@@ -30,13 +31,19 @@ async function getKeysFromLanguage(language) {
         try {
           const content = fs.readFileSync(filePath, 'utf8')
 
-          // Create a safer module environment for eval
+          // Create a safer module environment for vm
           const moduleExports = {}
-          const exports = moduleExports
-          const module = { exports: moduleExports }
+          const context = {
+            exports: moduleExports,
+            module: { exports: moduleExports },
+            require,
+            console,
+            __filename: filePath,
+            __dirname: folderPath,
+          }
 
-          // eslint-disable-next-line sonarjs/code-eval
-          eval(transpile(content))
+          // Use vm.runInNewContext instead of eval for better security
+          vm.runInNewContext(transpile(content), context)
 
           // Extract the translation object
           const translationObj = moduleExports.default || moduleExports

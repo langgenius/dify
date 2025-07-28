@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const vm = require('node:vm')
 const transpile = require('typescript').transpile
 const magicast = require('magicast')
 const { parseModule, generateCode, loadFile } = magicast
@@ -42,8 +43,8 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
           const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
           targetObject[key] = translation
         }
-        catch {
-          console.error(`Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`)
+        catch (error) {
+          console.error(`Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`, error.message)
         }
       }
     }
@@ -54,32 +55,58 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
   }))
 }
 async function autoGenTrans(fileName, toGenLanguage) {
-  const fullKeyFilePath = path.join(__dirname, i18nFolder, targetLanguage, `${fileName}.ts`)
-  const toGenLanguageFilePath = path.join(__dirname, i18nFolder, toGenLanguage, `${fileName}.ts`)
-  // eslint-disable-next-line sonarjs/code-eval
-  const fullKeyContent = eval(transpile(fs.readFileSync(fullKeyFilePath, 'utf8')))
-  // if toGenLanguageFilePath is not exist, create it
-  if (!fs.existsSync(toGenLanguageFilePath)) {
-    fs.writeFileSync(toGenLanguageFilePath, `const translation = {
+  const fullKeyFilePath = path.resolve(__dirname, i18nFolder, targetLanguage, `${fileName}.ts`)
+  const toGenLanguageFilePath = path.resolve(__dirname, i18nFolder, toGenLanguage, `${fileName}.ts`)
+
+  try {
+    const content = fs.readFileSync(fullKeyFilePath, 'utf8')
+
+    // Create a safer module environment for vm
+    const moduleExports = {}
+    const context = {
+      exports: moduleExports,
+      module: { exports: moduleExports },
+      require,
+      console,
+      __filename: fullKeyFilePath,
+      __dirname: path.dirname(fullKeyFilePath),
+    }
+
+    // Use vm.runInNewContext instead of eval for better security
+    vm.runInNewContext(transpile(content), context)
+
+    const fullKeyContent = moduleExports.default || moduleExports
+
+    if (!fullKeyContent || typeof fullKeyContent !== 'object')
+      throw new Error(`Failed to extract translation object from ${fullKeyFilePath}`)
+
+    // if toGenLanguageFilePath is not exist, create it
+    if (!fs.existsSync(toGenLanguageFilePath)) {
+      fs.writeFileSync(toGenLanguageFilePath, `const translation = {
 }
 
 export default translation
 `)
-  }
-  // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
-  const readContent = await loadFile(toGenLanguageFilePath)
-  const { code: toGenContent } = generateCode(readContent)
-  const mod = await parseModule(`export default ${toGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
-  const toGenOutPut = mod.exports.default
+    }
+    // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
+    const readContent = await loadFile(toGenLanguageFilePath)
+    const { code: toGenContent } = generateCode(readContent)
+    const mod = await parseModule(`export default ${toGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
+    const toGenOutPut = mod.exports.default
 
-  await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
-  const { code } = generateCode(mod)
-  const res = `const translation =${code.replace('export default', '')}
+    await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
+    const { code } = generateCode(mod)
+    const res = `const translation =${code.replace('export default', '')}
 
 export default translation
 `.replace(/,\n\n/g, ',\n').replace('};', '}')
 
-  fs.writeFileSync(toGenLanguageFilePath, res)
+    fs.writeFileSync(toGenLanguageFilePath, res)
+  }
+ catch (error) {
+    console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
+    throw error
+  }
 }
 
 async function main() {
@@ -88,8 +115,9 @@ async function main() {
   //   await autoGenTrans(fileName, toLanguage)
   // }))
   const files = fs
-    .readdirSync(path.join(__dirname, i18nFolder, targetLanguage))
-    .map(file => file.replace(/\.ts/, ''))
+    .readdirSync(path.resolve(__dirname, i18nFolder, targetLanguage))
+    .filter(file => /\.ts$/.test(file)) // Only process .ts files
+    .map(file => file.replace(/\.ts$/, ''))
     .filter(f => f !== 'app-debug') // ast parse error in app-debug
 
   await Promise.all(files.map(async (file) => {
