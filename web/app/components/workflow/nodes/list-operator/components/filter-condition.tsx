@@ -84,7 +84,8 @@ const FilterCondition: FC<Props> = ({
   }, [condition, onChange, isArrayValue])
 
   const handleSubVariableChange = useCallback((value: string) => {
-    const newOperator = getOperators(expectedVarType ?? VarType.string, { key: value })[0]
+    const operators = getOperators(expectedVarType ?? VarType.string, { key: value });
+    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal;
     onChange({
       key: value,
       comparison_operator: newOperator,
