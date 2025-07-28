@@ -132,26 +132,26 @@ class AnnotationListApi(Resource):
 
         app_id = str(app_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("annotation_ids", type=str, required=True, location="args", action="append")
-        args = parser.parse_args()
+        # Use request.args.getlist to handle the absence of the parameter gracefully
+        annotation_ids_str = request.args.getlist("annotation_ids")
 
-        raw_ids = args["annotation_ids"]
-        processed_ids = []
-        for raw_id_str in raw_ids:
-            processed_ids.extend(raw_id_str.split(","))
+        # If annotation_ids are provided, handle batch deletion
+        if annotation_ids_str:
+            processed_ids = []
+            for raw_id_str in annotation_ids_str:
+                processed_ids.extend(raw_id_str.split(","))
 
-        annotation_ids = [id.strip() for id in processed_ids if id.strip()]
+            annotation_ids = [id.strip() for id in processed_ids if id.strip()]
 
-        if not annotation_ids:
-            return {"code": "bad_request", "message": "annotation_ids are required."}, 400
+            if not annotation_ids:
+                return {"code": "bad_request", "message": "annotation_ids are required if the parameter is provided."}, 400
 
-        result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
-        return result, 200
-
-      
-      AppAnnotationService.clear_all_annotations(app_id)
-        return {"result": "success"}, 204
+            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            return result, 204
+        # If no annotation_ids are provided, handle clearing all annotations
+        else:
+            AppAnnotationService.clear_all_annotations(app_id)
+            return {"result": "success"}, 204
 
 
 class AnnotationExportApi(Resource):
