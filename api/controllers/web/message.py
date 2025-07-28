@@ -77,7 +77,7 @@ class MessageListApi(WebApiResource):
             return MessageService.pagination_by_first_id(
                 app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
-        except services.errors.conversation.ConversationNotExistsError:
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
