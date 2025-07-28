@@ -21,12 +21,14 @@ const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   url: VarType.string,
   extension: VarType.string,
   mime_type: VarType.string,
-  related_id: VarType.number,
+  related_id: VarType.string,
+  size: VarType.number,
 }
 
 type Props = {
   condition: Condition
   onChange: (condition: Condition) => void
+  varType: VarType
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
@@ -34,6 +36,7 @@ type Props = {
 
 const FilterCondition: FC<Props> = ({
   condition = { key: '', comparison_operator: ComparisonOperator.equal, value: '' },
+  varType,
   onChange,
   hasSubVariable,
   readOnly,
@@ -42,7 +45,7 @@ const FilterCondition: FC<Props> = ({
   const { t } = useTranslation()
   const [isFocus, setIsFocus] = useState(false)
 
-  const expectedVarType = VAR_INPUT_SUPPORTED_KEYS[condition.key]
+  const expectedVarType = condition.key ? VAR_INPUT_SUPPORTED_KEYS[condition.key] : varType
   const supportVariableInput = !!expectedVarType
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
@@ -137,12 +140,12 @@ const FilterCondition: FC<Props> = ({
                 nodesOutputVars={availableVars}
                 availableNodes={availableNodesWithParent}
                 onFocusChange={setIsFocus}
-                placeholder={!readOnly ? t('workflow.nodes.http.extractListPlaceholder')! : ''}
+                placeholder={!readOnly ? t('workflow.nodes.http.insertVarPlaceholder')! : ''}
                 placeholderClassName='!leading-[21px]'
               />
             ) : (
               <input
-                type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
+                type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
                 className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
                 value={condition.value}
                 onChange={e => handleChange('value')(e.target.value)}
