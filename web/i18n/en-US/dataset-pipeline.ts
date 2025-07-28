@@ -114,6 +114,9 @@ const translation = {
   documentSettings: {
     title: 'Document Settings',
   },
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} pages',
+  },
   onlineDrive: {
     notConnected: '{{name}} is not connected',
     notConnectedTip: 'To sync with {{name}}, connection to {{name}} must be established first.',
@@ -126,6 +129,9 @@ const translation = {
     emptyFolder: 'This folder is empty',
     emptySearchResult: 'No items were found',
     resetKeywords: 'Reset keywords',
+  },
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
   },
   conversion: {
     title: 'Convert to Knowledge Pipeline',

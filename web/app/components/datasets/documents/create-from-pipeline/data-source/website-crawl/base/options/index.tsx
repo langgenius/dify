@@ -67,7 +67,6 @@ const Options = ({
   useEffect(() => {
     if (controlFoldOptions !== 0)
       foldHide()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlFoldOptions])
 
   return (
@@ -87,7 +86,7 @@ const Options = ({
           <span className='system-sm-semibold-uppercase text-text-secondary'>
             {t(`${I18N_PREFIX}.options`)}
           </span>
-          <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-tertiary', fold && '-rotate-90')} />
+          <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
         </div>
         <Button
           variant='primary'

@@ -1,3 +1,5 @@
+import type { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
+
 export type DataSourceNodeProcessingResponse = {
   event: 'datasource_processing'
   total: number
@@ -30,4 +32,13 @@ export type DataSourceNodeCompletedResponse = {
 export type DataSourceNodeErrorResponse = {
   event: 'datasource_error'
   error: string
+}
+
+export type DataSourceCredential = {
+  avatar_url?: string
+  credential: Record<string, any>
+  id: string
+  is_default: boolean
+  name: string
+  type: CredentialTypeEnum
 }

@@ -1,5 +1,5 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import Header from './header'
+import Header from '../base/header'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import FileList from './file-list'
 import type { OnlineDriveFile } from '@/models/pipeline'
@@ -12,6 +12,9 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { convertOnlineDriveData } from './utils'
 import produce from 'immer'
 import { useShallow } from 'zustand/react/shallow'
+import { useModalContextSelector } from '@/context/modal-context'
+import { noop } from 'lodash-es'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
 
 type OnlineDriveProps = {
   nodeId: string
@@ -25,6 +28,7 @@ const OnlineDrive = ({
   isInPipeline = false,
 }: OnlineDriveProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
     prefix,
     keywords,
@@ -118,7 +122,6 @@ const OnlineDrive = ({
       if (fileList.length > 0) return
       getOnlineDriveFiles({})
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId])
 
   const onlineDriveFileList = useMemo(() => {
@@ -173,11 +176,32 @@ const OnlineDrive = ({
     }
   }, [dataSourceStore, getOnlineDriveFiles])
 
+  const handleSetting = useCallback(() => {
+    setShowAccountSettingModal({
+      payload: 'data-source',
+    })
+  }, [setShowAccountSettingModal])
+
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
+        // todo: delete mock data
         docTitle='Online Drive Docs'
         docLink='https://docs.dify.ai/'
+        onClickConfiguration={handleSetting}
+        pluginName={nodeData.datasource_label}
+        currentCredentialId={'12345678'}
+        onCredentialChange={noop}
+        credentials={[{
+          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
+          credential: {
+            credentials: '......',
+          },
+          id: '12345678',
+          is_default: true,
+          name: 'test123',
+          type: CredentialTypeEnum.API_KEY,
+        }]}
       />
       <FileList
         fileList={onlineDriveFileList}

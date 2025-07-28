@@ -114,6 +114,9 @@ const translation = {
   documentSettings: {
     title: '文档设置',
   },
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} 页面',
+  },
   onlineDrive: {
     notConnected: '{{name}} 未绑定',
     notConnectedTip: '同步 {{name}} 内容前, 须先绑定 {{name}}。',
@@ -126,6 +129,9 @@ const translation = {
     emptyFolder: '此文件夹为空',
     emptySearchResult: '未找到任何项目',
     resetKeywords: '重置关键词',
+  },
+  credentialSelector: {
+    name: '{{credentialName}} 的 {{pluginName}}',
   },
   conversion: {
     title: '转换为知识库 pipeline',

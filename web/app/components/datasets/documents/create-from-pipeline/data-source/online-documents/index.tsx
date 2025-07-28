@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from './page-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
-import Header from '@/app/components/datasets/create/website/base/header'
+import Header from '../base/header'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
@@ -12,6 +11,10 @@ import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } fro
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
+import { useModalContextSelector } from '@/context/modal-context'
+import Title from './title'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
+import { noop } from 'lodash-es'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -20,11 +23,12 @@ type OnlineDocumentsProps = {
 }
 
 const OnlineDocuments = ({
-  isInPipeline = false,
   nodeId,
   nodeData,
+  isInPipeline = false,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
     documentsData,
     searchValue,
@@ -106,7 +110,6 @@ const OnlineDocuments = ({
       if (!documentsData.length)
         getOnlineDocuments()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId])
 
   const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
@@ -114,11 +117,6 @@ const OnlineDocuments = ({
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
     setSearchValue(value)
-  }, [dataSourceStore])
-
-  const handleSelectWorkspace = useCallback((workspaceId: string) => {
-    const { setCurrentWorkspaceId } = dataSourceStore.getState()
-    setCurrentWorkspaceId(workspaceId)
   }, [dataSourceStore])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
@@ -133,13 +131,11 @@ const OnlineDocuments = ({
     setCurrentDocument(PagesMapAndSelectedPagesId[previewPageId])
   }, [PagesMapAndSelectedPagesId, dataSourceStore])
 
-  const headerInfo = useMemo(() => {
-    return {
-      title: nodeData.title,
-      docTitle: 'How to use?',
-      docLink: 'https://docs.dify.ai',
-    }
-  }, [nodeData])
+  const handleSetting = useCallback(() => {
+    setShowAccountSettingModal({
+      payload: 'data-source',
+    })
+  }, [setShowAccountSettingModal])
 
   if (!documentsData?.length)
     return null
@@ -147,17 +143,28 @@ const OnlineDocuments = ({
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        isInPipeline={isInPipeline}
-        {...headerInfo}
+        // todo: delete mock data
+        docTitle='How to use?'
+        docLink='https://docs.dify.ai'
+        onClickConfiguration={handleSetting}
+        pluginName={nodeData.datasource_label}
+        currentCredentialId={'12345678'}
+        onCredentialChange={noop}
+        credentials={[{
+          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
+          credential: {
+            credentials: '......',
+          },
+          id: '12345678',
+          is_default: true,
+          name: 'test123',
+          type: CredentialTypeEnum.API_KEY,
+        }]}
       />
       <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
-        <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
-          <div className='flex grow items-center gap-x-1'>
-            <WorkspaceSelector
-              value={currentWorkspaceId}
-              items={documentsData}
-              onSelect={handleSelectWorkspace}
-            />
+        <div className='flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3'>
+          <div className='flex grow items-center'>
+            <Title name={nodeData.datasource_label} />
           </div>
           <SearchInput
             value={searchValue}

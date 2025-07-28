@@ -23,6 +23,7 @@ import type {
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
+import { useModalContextSelector } from '@/context/modal-context'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -43,6 +44,7 @@ const WebsiteCrawl = ({
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
     crawlResult,
     step,
@@ -87,7 +89,6 @@ const WebsiteCrawl = ({
       setCrawlErrorMessage('')
       currentNodeIdRef.current = nodeId
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId])
 
   const isInit = step === CrawlStep.init
@@ -164,10 +165,17 @@ const WebsiteCrawl = ({
     }
   }, [nodeData])
 
+  const handleSetting = useCallback(() => {
+    setShowAccountSettingModal({
+      payload: 'data-source',
+    })
+  }, [setShowAccountSettingModal])
+
   return (
     <div className='flex flex-col'>
       <Header
         isInPipeline
+        onClickConfiguration={handleSetting}
         {...headerInfo}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
