@@ -144,7 +144,10 @@ class AnnotationListApi(Resource):
             annotation_ids = [id.strip() for id in processed_ids if id.strip()]
 
             if not annotation_ids:
-                return {"code": "bad_request", "message": "annotation_ids are required if the parameter is provided."}, 400
+                return {
+                    "code": "bad_request",
+                    "message": "annotation_ids are required if the parameter is provided.",
+                }, 400
 
             result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
             return result, 204
