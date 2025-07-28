@@ -15,6 +15,10 @@ const translation = {
     create: '创建用户输入字段',
     manage: '管理',
   },
+  publishToast: {
+    title: '此 Pipeline 尚未发布',
+    desc: '当 Pipeline 未发布时，您可以修改知识库节点中的分块结构，Pipeline 编排和更改将自动保存为草稿。',
+  },
 }
 
 export default translation

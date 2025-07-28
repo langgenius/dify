@@ -16,6 +16,7 @@ import {
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import PublishToast from './publish-toast'
 
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -62,6 +63,7 @@ const RagPipelineChildren = () => {
       {
         showInputFieldDialog && (<InputField />)
       }
+      <PublishToast />
     </>
   )
 }

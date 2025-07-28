@@ -15,6 +15,10 @@ const translation = {
     create: 'Create user input field',
     manage: 'Manage',
   },
+  publishToast: {
+    title: 'This pipeline has not yet been published',
+    desc: 'When the pipeline is not published, you can modify the chunk structure in the knowledge base node, and the pipeline orchestration and changes will be automatically saved as a draft.',
+  },
 }
 
 export default translation
