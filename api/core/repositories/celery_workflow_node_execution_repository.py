@@ -105,7 +105,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Cache for pending async operations
         self._pending_saves: dict[str, AsyncResult] = {}
-        
+
         # Cache for mapping execution IDs to workflow_execution_ids for efficient workflow-specific waiting
         self._workflow_execution_mapping: dict[str, str] = {}
 
@@ -140,7 +140,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
             # Store the task result for potential status checking
             self._pending_saves[execution.id] = task_result
-            
+
             # Cache the workflow_execution_id mapping for efficient workflow-specific waiting
             if execution.workflow_execution_id:
                 self._workflow_execution_mapping[execution.id] = execution.workflow_execution_id
@@ -204,7 +204,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def _wait_for_pending_saves_by_workflow_run(self, workflow_run_id: str) -> None:
         """
         Wait for any pending save operations that might affect the given workflow run.
-        
+
         This method now uses the cached workflow_execution_id mapping to only wait for
         tasks that belong to the specific workflow run, improving efficiency.
 
@@ -213,12 +213,13 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         # Find execution IDs that belong to this workflow run
         relevant_execution_ids = [
-            execution_id for execution_id, cached_workflow_id in self._workflow_execution_mapping.items()
+            execution_id
+            for execution_id, cached_workflow_id in self._workflow_execution_mapping.items()
             if cached_workflow_id == workflow_run_id and execution_id in self._pending_saves
         ]
-        
+
         logger.debug(f"Found {len(relevant_execution_ids)} pending saves for workflow run {workflow_run_id}")
-        
+
         for execution_id in relevant_execution_ids:
             task_result = self._pending_saves.get(execution_id)
             if task_result and not task_result.ready():
@@ -227,7 +228,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                     task_result.get(timeout=self._async_timeout)
                 except Exception as e:
                     logger.exception(f"Failed to wait for pending save {execution_id}")
-            
+
             # Clean up completed tasks from both caches
             if task_result and task_result.ready():
                 self._pending_saves.pop(execution_id, None)

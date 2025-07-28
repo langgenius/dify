@@ -179,7 +179,6 @@ class TestCeleryWorkflowNodeExecutionRepository:
         with pytest.raises(Exception, match="Celery is down"):
             repo.save(sample_workflow_node_execution)
 
-
     @patch(
         "core.repositories.celery_workflow_node_execution_repository.get_workflow_node_executions_by_workflow_run_task"
     )
@@ -237,7 +236,6 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert call_args["order_config"] is None
 
         assert len(result) == 0
-
 
     def test_wait_for_pending_saves(self, mock_session_factory, mock_account):
         """Test waiting for all pending save operations."""
@@ -306,4 +304,3 @@ class TestCeleryWorkflowNodeExecutionRepository:
         repo.clear_pending_saves()
 
         assert len(repo._pending_saves) == 0
-

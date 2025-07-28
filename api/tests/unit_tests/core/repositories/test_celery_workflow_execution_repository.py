@@ -168,7 +168,6 @@ class TestCeleryWorkflowExecutionRepository:
         with pytest.raises(Exception, match="Celery is down"):
             repo.save(sample_workflow_execution)
 
-
     def test_wait_for_pending_saves(self, mock_session_factory, mock_account, sample_workflow_execution):
         """Test waiting for all pending save operations."""
         repo = CeleryWorkflowExecutionRepository(
