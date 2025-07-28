@@ -14,7 +14,6 @@ from configs import dify_config
 from constants.languages import languages
 from core.helper import encrypter
 from core.plugin.entities.plugin import DatasourceProviderID, PluginInstallationSource, ToolProviderID
-from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -38,7 +37,6 @@ from models.provider import Provider, ProviderModel
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
-from services.auth import firecrawl
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
@@ -1255,6 +1253,7 @@ def setup_datasource_oauth_client(provider, client_params):
     click.echo(click.style(f"params: {json.dumps(client_params_dict, indent=2, ensure_ascii=False)}", fg="green"))
     click.echo(click.style(f"Datasource oauth client setup successfully. id: {oauth_client.id}", fg="green"))
 
+
 @click.command("transform-datasource-credentials", help="Transform datasource credentials.")
 def transform_datasource_credentials():
     """
@@ -1272,7 +1271,6 @@ def transform_datasource_credentials():
         jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
-
 
         # deal notion credentials
         deal_notion_count = 0
@@ -1429,5 +1427,7 @@ def transform_datasource_credentials():
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
     click.echo(click.style(f"Transforming notion successfully. deal_notion_count: {deal_notion_count}", fg="green"))
-    click.echo(click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green"))
+    click.echo(
+        click.style(f"Transforming firecrawl successfully. deal_firecrawl_count: {deal_firecrawl_count}", fg="green")
+    )
     click.echo(click.style(f"Transforming jina successfully. deal_jina_count: {deal_jina_count}", fg="green"))

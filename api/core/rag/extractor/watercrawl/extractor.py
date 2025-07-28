@@ -1,4 +1,5 @@
 from typing import Optional
+
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from services.website_service import WebsiteService
@@ -17,8 +18,15 @@ class WaterCrawlWebExtractor(BaseExtractor):
         only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """
 
-    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = True,
-                 credential_id: Optional[str] = None):
+    def __init__(
+        self,
+        url: str,
+        job_id: str,
+        tenant_id: str,
+        mode: str = "crawl",
+        only_main_content: bool = True,
+        credential_id: Optional[str] = None,
+    ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
         self.job_id = job_id
@@ -31,7 +39,9 @@ class WaterCrawlWebExtractor(BaseExtractor):
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
-            crawl_data = WebsiteService.get_crawl_url_data(self.job_id, "watercrawl", self._url, self.tenant_id, self.credential_id)
+            crawl_data = WebsiteService.get_crawl_url_data(
+                self.job_id, "watercrawl", self._url, self.tenant_id, self.credential_id
+            )
             if crawl_data is None:
                 return []
             document = Document(

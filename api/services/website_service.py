@@ -120,7 +120,9 @@ class WebsiteService:
     """Service class for website crawling operations using different providers."""
 
     @classmethod
-    def _get_credentials_and_config(cls, tenant_id: str, provider: str, credential_id: Optional[str] = None) -> tuple[Any, Any]:
+    def _get_credentials_and_config(
+        cls, tenant_id: str, provider: str, credential_id: Optional[str] = None
+    ) -> tuple[Any, Any]:
         """Get and validate credentials for a provider."""
         if credential_id:
             if provider == "firecrawl":
@@ -164,7 +166,9 @@ class WebsiteService:
         """Crawl a URL using the specified provider with typed request."""
         request = api_request.to_crawl_request()
 
-        _, config = cls._get_credentials_and_config(current_user.current_tenant_id, request.provider, api_request.credential_id)
+        _, config = cls._get_credentials_and_config(
+            current_user.current_tenant_id, request.provider, api_request.credential_id
+        )
         if api_request.credential_id:
             api_key = _
         else:
@@ -258,9 +262,9 @@ class WebsiteService:
     @classmethod
     def get_crawl_status_typed(cls, api_request: WebsiteCrawlStatusApiRequest) -> dict[str, Any]:
         """Get crawl status using typed request."""
-        _, config = cls._get_credentials_and_config(current_user.current_tenant_id,
-                                                    api_request.provider,
-                                                    api_request.credential_id)
+        _, config = cls._get_credentials_and_config(
+            current_user.current_tenant_id, api_request.provider, api_request.credential_id
+        )
         if api_request.credential_id:
             api_key = _
         else:
@@ -337,7 +341,9 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str, credential_id: Optional[str] = None) -> dict[str, Any] | None:
+    def get_crawl_url_data(
+        cls, job_id: str, provider: str, url: str, tenant_id: str, credential_id: Optional[str] = None
+    ) -> dict[str, Any] | None:
         _, config = cls._get_credentials_and_config(tenant_id, provider, credential_id)
         if credential_id:
             api_key = _
@@ -412,13 +418,14 @@ class WebsiteService:
         return None
 
     @classmethod
-    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool,
-                            credential_id: Optional[str] = None) -> dict[str, Any]:
+    def get_scrape_url_data(
+        cls, provider: str, url: str, tenant_id: str, only_main_content: bool, credential_id: Optional[str] = None
+    ) -> dict[str, Any]:
         request = ScrapeRequest(provider=provider, url=url, tenant_id=tenant_id, only_main_content=only_main_content)
 
-        _, config = cls._get_credentials_and_config(tenant_id=request.tenant_id,
-                                                    provider=request.provider,
-                                                    credential_id=credential_id)
+        _, config = cls._get_credentials_and_config(
+            tenant_id=request.tenant_id, provider=request.provider, credential_id=credential_id
+        )
         if credential_id:
             api_key = _
         else:

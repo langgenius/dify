@@ -9,8 +9,6 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
-from models.oauth import DatasourceProvider
-from models.source import DataSourceOauthBinding
 from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)

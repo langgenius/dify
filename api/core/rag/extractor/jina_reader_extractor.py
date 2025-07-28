@@ -1,4 +1,5 @@
 from typing import Optional
+
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from services.website_service import WebsiteService
@@ -9,8 +10,15 @@ class JinaReaderWebExtractor(BaseExtractor):
     Crawl and scrape websites and return content in clean llm-ready markdown.
     """
 
-    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = False,
-                 credential_id: Optional[str] = None):
+    def __init__(
+        self,
+        url: str,
+        job_id: str,
+        tenant_id: str,
+        mode: str = "crawl",
+        only_main_content: bool = False,
+        credential_id: Optional[str] = None,
+    ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
         self.job_id = job_id
@@ -23,7 +31,9 @@ class JinaReaderWebExtractor(BaseExtractor):
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
-            crawl_data = WebsiteService.get_crawl_url_data(self.job_id, "jinareader", self._url, self.tenant_id, self.credential_id)
+            crawl_data = WebsiteService.get_crawl_url_data(
+                self.job_id, "jinareader", self._url, self.tenant_id, self.credential_id
+            )
             if crawl_data is None:
                 return []
             document = Document(

@@ -1,5 +1,6 @@
 import json
-from typing import Generator, cast
+from collections.abc import Generator
+from typing import cast
 
 from flask import request
 from flask_login import current_user
@@ -20,7 +21,6 @@ from fields.data_source_fields import integrate_list_fields, integrate_notion_in
 from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import DataSourceOauthBinding, Document
-from models.oauth import DatasourceProvider
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task

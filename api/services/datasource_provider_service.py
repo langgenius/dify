@@ -56,15 +56,15 @@ class DatasourceProviderService:
                 return {}
             return datasource_provider.encrypted_credentials
 
-    def get_real_credential_by_id(self, tenant_id: str, credential_id: str, provider: str, plugin_id: str) -> dict[str, Any]:
+    def get_real_credential_by_id(
+        self, tenant_id: str, credential_id: str, provider: str, plugin_id: str
+    ) -> dict[str, Any]:
         """
         get credential by id
         """
         with Session(db.engine) as session:
             datasource_provider = (
-                session.query(DatasourceProvider)
-                .filter_by(tenant_id=tenant_id, id=credential_id)
-                .first()
+                session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
             )
             if not datasource_provider:
                 return {}
