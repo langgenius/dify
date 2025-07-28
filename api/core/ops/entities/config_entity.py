@@ -32,7 +32,7 @@ class BaseTracingConfig(BaseModel):
         Returns:
             Validated and normalized URL
         """
-        return validate_url_with_path(v, default_url)
+        return validate_url(v, default_url)
 
     @classmethod
     def validate_project_field(cls, v: str, default_name: str) -> str:
@@ -90,7 +90,7 @@ class PhoenixConfig(BaseTracingConfig):
         return cls.validate_endpoint_url(v, "https://app.phoenix.arize.com")
 
 
-class LangfuseConfig(BaseTracingConfig):
+class LangfuseConfig(BaseModel):
     """
     Model class for Langfuse tracing config.
     """
@@ -102,7 +102,7 @@ class LangfuseConfig(BaseTracingConfig):
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://api.langfuse.com")
+        return validate_url_with_path(v, "https://api.langfuse.com")
 
 
 class LangSmithConfig(BaseTracingConfig):
