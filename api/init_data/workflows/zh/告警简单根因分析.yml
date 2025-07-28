@@ -1633,11 +1633,11 @@ workflow:
       height: 1408
       id: '1741497176064'
       position:
-        x: 2854.9832383794974
-        y: 2073.810679715789
+        x: 5540.628458918075
+        y: 882
       positionAbsolute:
-        x: 2854.9832383794974
-        y: 2073.810679715789
+        x: 5540.628458918075
+        y: 882
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1658,8 +1658,8 @@ workflow:
         x: 24
         y: 68
       positionAbsolute:
-        x: 2878.9832383794974
-        y: 2141.810679715789
+        x: 5564.628458918075
+        y: 950
       selectable: false
       selected: false
       sourcePosition: right
@@ -1700,8 +1700,8 @@ workflow:
         x: 247.70722025930104
         y: 65
       positionAbsolute:
-        x: 3102.690458638798
-        y: 2138.810679715789
+        x: 5788.335679177376
+        y: 947
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1850,8 +1850,8 @@ workflow:
         x: 844.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 3698.990050266041
-        y: 2874.066788008113
+        x: 6384.635270804619
+        y: 1682.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1933,12 +1933,12 @@ workflow:
       id: '1741506766037'
       parentId: '1741497176064'
       position:
-        x: 3307.8348182855225
-        y: 368.7104754665029
+        x: 3006.207221549953
+        y: 414.18197246181467
       positionAbsolute:
-        x: 6162.81805666502
-        y: 2442.5211551822917
-      selected: true
+        x: 8546.835680468028
+        y: 1296.1819724618147
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -2046,11 +2046,11 @@ workflow:
       height: 88
       id: '1741512806512'
       position:
-        x: 12023.588988734078
-        y: 924.8932135191069
+        x: 12041
+        y: 904
       positionAbsolute:
-        x: 12023.588988734078
-        y: 924.8932135191069
+        x: 12041
+        y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2341,8 +2341,8 @@ workflow:
         x: 836.4108804698271
         y: 516.5435777950536
       positionAbsolute:
-        x: 3691.3941188493245
-        y: 2590.354257510842
+        x: 6377.039339387902
+        y: 1398.5435777950536
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2490,8 +2490,8 @@ workflow:
         x: 830.759912814824
         y: 627.5199846908333
       positionAbsolute:
-        x: 3685.7431511943214
-        y: 2701.3306644066224
+        x: 6371.388371732899
+        y: 1509.5199846908333
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2734,8 +2734,8 @@ workflow:
         x: 806.8281636370702
         y: 209.51853849411827
       positionAbsolute:
-        x: 3661.8114020165676
-        y: 2283.329218209907
+        x: 6347.456622555145
+        y: 1091.5185384941183
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2910,8 +2910,8 @@ workflow:
         x: 822.1553196215964
         y: 365.4012769180829
       positionAbsolute:
-        x: 3677.1385580010938
-        y: 2439.2119566338715
+        x: 6362.783778539671
+        y: 1247.4012769180829
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3037,8 +3037,8 @@ workflow:
         x: 514.3995603929916
         y: 213.7029593937964
       positionAbsolute:
-        x: 3369.382798772489
-        y: 2287.5136391095853
+        x: 6055.028019311067
+        y: 1095.7029593937964
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3164,8 +3164,8 @@ workflow:
         x: 514.4907183300102
         y: 357.1210001145894
       positionAbsolute:
-        x: 3369.4739567095075
-        y: 2430.931679830378
+        x: 6055.119177248085
+        y: 1239.1210001145894
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3291,8 +3291,8 @@ workflow:
         x: 498.92195671051286
         y: 507.6795388616679
       positionAbsolute:
-        x: 3353.9051950900102
-        y: 2581.4902185774567
+        x: 6039.550415628588
+        y: 1389.6795388616679
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3418,8 +3418,8 @@ workflow:
         x: 498.72888694334415
         y: 625.7624548529454
       positionAbsolute:
-        x: 3353.7121253228415
-        y: 2699.5731345687345
+        x: 6039.357345861419
+        y: 1507.7624548529454
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3545,8 +3545,8 @@ workflow:
         x: 484.5481805965983
         y: 761.528674458782
       positionAbsolute:
-        x: 3339.5314189760957
-        y: 2835.339354174571
+        x: 6025.176639514673
+        y: 1643.528674458782
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5806,8 +5806,8 @@ workflow:
         x: 1151.2711627353192
         y: 627.1076447913074
       positionAbsolute:
-        x: 4006.2544011148166
-        y: 2700.9183245070963
+        x: 6691.899621653394
+        y: 1509.1076447913074
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5850,8 +5850,8 @@ workflow:
         x: 1156.3163049456798
         y: 510.0892315007202
       positionAbsolute:
-        x: 4011.299543325177
-        y: 2583.8999112165093
+        x: 6696.944763863755
+        y: 1392.0892315007202
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5959,8 +5959,8 @@ workflow:
         x: 1700.1869849540008
         y: 204.3925457136836
       positionAbsolute:
-        x: 4555.170223333498
-        y: 2278.2032254294727
+        x: 7240.815443872076
+        y: 1086.3925457136836
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6068,8 +6068,8 @@ workflow:
         x: 1703.1730983370517
         y: 349.7691336710102
       positionAbsolute:
-        x: 4558.156336716549
-        y: 2423.5798133867993
+        x: 7243.801557255127
+        y: 1231.7691336710102
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6177,8 +6177,8 @@ workflow:
         x: 1987.8206041612648
         y: 524.9159074871468
       positionAbsolute:
-        x: 4842.803842540762
-        y: 2598.7265872029357
+        x: 7528.44906307934
+        y: 1406.9159074871468
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6286,8 +6286,8 @@ workflow:
         x: 2002.2706428766232
         y: 621.6422646922922
       positionAbsolute:
-        x: 4857.253881256121
-        y: 2695.452944408081
+        x: 7542.899101794698
+        y: 1503.6422646922922
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6395,8 +6395,8 @@ workflow:
         x: 1518.9801190795033
         y: 794.3381824607964
       positionAbsolute:
-        x: 4373.963357459001
-        y: 2868.148862176585
+        x: 7059.608577997578
+        y: 1676.3381824607964
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6445,8 +6445,8 @@ workflow:
         x: 1994.223018874618
         y: 818.3728824315269
       positionAbsolute:
-        x: 4849.206257254115
-        y: 2892.1835621473156
+        x: 7534.851477792693
+        y: 1700.372882431527
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6495,8 +6495,8 @@ workflow:
         x: 2373.719131964811
         y: 609.5519407976731
       positionAbsolute:
-        x: 5228.702370344308
-        y: 2683.362620513462
+        x: 7914.347590882886
+        y: 1491.551940797673
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6545,8 +6545,8 @@ workflow:
         x: 2379.031494081666
         y: 522.042854145948
       positionAbsolute:
-        x: 5234.0147324611635
-        y: 2595.8535338617367
+        x: 7919.659952999741
+        y: 1404.042854145948
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6595,8 +6595,8 @@ workflow:
         x: 2220.1847222316082
         y: 342.0400931544832
       positionAbsolute:
-        x: 5075.167960611106
-        y: 2415.850772870272
+        x: 7760.813181149683
+        y: 1224.0400931544832
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6645,8 +6645,8 @@ workflow:
         x: 2253.5190676645516
         y: 214.3934728157035
       positionAbsolute:
-        x: 5108.502306044049
-        y: 2288.2041525314926
+        x: 7794.147526582627
+        y: 1096.3934728157035
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6706,8 +6706,8 @@ workflow:
         x: 1121.8455136224347
         y: 209.51853849411827
       positionAbsolute:
-        x: 3976.828752001932
-        y: 2283.329218209907
+        x: 6662.47397254051
+        y: 1091.5185384941183
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6767,8 +6767,8 @@ workflow:
         x: 1137.1726696069618
         y: 357.8904331772294
       positionAbsolute:
-        x: 3992.155907986459
-        y: 2431.701112893018
+        x: 6677.801128525037
+        y: 1239.8904331772294
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6828,8 +6828,8 @@ workflow:
         x: 1487.8575111609225
         y: 514.5957377452321
       positionAbsolute:
-        x: 4342.84074954042
-        y: 2588.406417461021
+        x: 7028.4859700789975
+        y: 1396.595737745232
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6889,8 +6889,8 @@ workflow:
         x: 1481.3102002023916
         y: 616.5924635541128
       positionAbsolute:
-        x: 4336.293438581889
-        y: 2690.4031432699016
+        x: 7021.938659120467
+        y: 1498.5924635541128
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6950,8 +6950,8 @@ workflow:
         x: 1147.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 4001.990050266041
-        y: 2874.066788008113
+        x: 6687.635270804619
+        y: 1682.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -10274,12 +10274,12 @@ workflow:
           \ = [(x - avg)**2 for x in values]\n    sum_squared_diffs = sum(squared_diffs)\n\
           \    variance = sum_squared_diffs / (len(values))\n    return variance**0.5\n\
           \ndef analyze_data(result_str: str):        \n\n        data = json.loads(result_str)\n\
-          \        timeseries = data.get('data', {}).get('timeseries', [])\n     \
-          \   unit = data.get('unit', '')\n        filtered = []\n\n        for entry\
-          \ in timeseries:\n            labels = entry.get('labels', {})\n\n     \
-          \       chart = entry.get('chart', {}).get('chartData', {})\n          \
-          \  values = [v for v in chart.values() if v != 0]\n\n            if len(values)\
-          \ == 0:\n                continue\n\n            avg = _get_avg(values)\n\
+          \        timeseries = data.get('data', {}).get('timeseries', [])[:10]\n\
+          \        unit = data.get('unit', '')\n        filtered = []\n\n        for\
+          \ entry in timeseries:\n            labels = entry.get('labels', {})\n\n\
+          \            chart = entry.get('chart', {}).get('chartData', {})\n     \
+          \       values = [v for v in chart.values() if v != 0]\n\n            if\
+          \ len(values) == 0:\n                continue\n\n            avg = _get_avg(values)\n\
           \            variance = _get_standard_deviation(avg, values)\n\n       \
           \     threshold = avg + 1 * variance\n            \n            count =\
           \ 0\n            for _, value in chart.items():\n                if value\
@@ -10297,7 +10297,7 @@ workflow:
           result:
             children: null
             type: string
-        selected: false
+        selected: true
         title: RTT分析
         type: code
         variables:
@@ -10313,7 +10313,7 @@ workflow:
       positionAbsolute:
         x: 4566
         y: 903
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -10545,6 +10545,6 @@ workflow:
       type: custom
       width: 242
     viewport:
-      x: -809.7474399773944
-      y: -425.88237507589304
-      zoom: 0.25
+      x: -3205.37374559532
+      y: -387.17769429358145
+      zoom: 0.7145673336857012
