@@ -248,7 +248,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           node_id: nodeId,
           current: currentPrompt,
           instruction,
-          idea_output: ideaOutput,
+          ideal_output: ideaOutput,
           model_config: model,
         })
         apiRes = res

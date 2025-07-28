@@ -135,7 +135,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         current: currentCode,
         instruction,
         model_config: model,
-        idea_output: ideaOutput,
+        ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
 
