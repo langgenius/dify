@@ -301,10 +301,11 @@ class ParameterExtractorNode(BaseNode):
         model = model_instance.model
         completion_params = node_data_model.completion_params
 
-        thinking_business_qwen3 = provider == "langgenius/tongyi/tongyi" \
-                                   and model in ("qwen-plus-latest", "qwen-plus-2025-04-28",
-                                                 "qwen-turbo-latest", "qwen-turbo-2025-04-28") \
-                                  and completion_params.get("enable_thinking", False)
+        thinking_business_qwen3 = (
+            provider == "langgenius/tongyi/tongyi"
+            and model in ("qwen-plus-latest", "qwen-plus-2025-04-28", "qwen-turbo-latest", "qwen-turbo-2025-04-28")
+            and completion_params.get("enable_thinking", False)
+        )
 
         stream = False
         # Qwen3 business edition (Thinking Mode), Qwen3 open-source edition, QwQ, and QVQ models only supports streaming output.
