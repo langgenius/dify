@@ -29,7 +29,7 @@ class ElasticSearchConfig(BaseModel):
     password: Optional[str] = None
     
     # Elastic Cloud specific config
-    cloud_id: Optional[str] = None
+    cloud_url: Optional[str] = None  # Cloud URL for Elasticsearch Cloud
     api_key: Optional[str] = None
     
     # Common config
@@ -44,22 +44,18 @@ class ElasticSearchConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict) -> dict:
         use_cloud = values.get("use_cloud", True)
-        cloud_id = values.get("cloud_id")
+        cloud_url = values.get("cloud_url")
         
-        if use_cloud and cloud_id:
-            # Cloud configuration validation
-            if not cloud_id:
-                raise ValueError("cloud_id is required for Elastic Cloud")
+        if use_cloud:
+            # Cloud configuration validation - requires cloud_url and api_key
+            if not cloud_url:
+                raise ValueError("cloud_url is required for Elastic Cloud")
             
-            # For authentication, require either api_key or username/password
             api_key = values.get("api_key")
-            username = values.get("username")
-            password = values.get("password")
-            
-            if not api_key and not (username and password):
-                raise ValueError("Either api_key or both username and password are required for Elastic Cloud")
+            if not api_key:
+                raise ValueError("api_key is required for Elastic Cloud")
                 
-        elif not use_cloud:
+        else:
             # Regular Elasticsearch validation
             if not values.get("host"):
                 raise ValueError("config HOST is required for regular Elasticsearch")
@@ -87,21 +83,24 @@ class ElasticSearchVector(BaseVector):
         """
         try:
             # Check if using Elastic Cloud
-            if config.use_cloud and config.cloud_id:
-                client_config = {
+            if config.use_cloud and config.cloud_url:
+                client_config: dict[str, Any] = {
                     'request_timeout': config.request_timeout,
                     'retry_on_timeout': config.retry_on_timeout,
                     'max_retries': config.max_retries,
                     'verify_certs': config.verify_certs,
                 }
                 
-                client_config['cloud_id'] = config.cloud_id
+                # Parse cloud URL and configure hosts
+                parsed_url = urlparse(config.cloud_url)
+                host = f"{parsed_url.scheme}://{parsed_url.hostname}"
+                if parsed_url.port:
+                    host += f":{parsed_url.port}"
                 
-                # Authentication - prefer API key over basic auth for cloud
-                if config.api_key:
-                    client_config['api_key'] = config.api_key
-                elif config.username and config.password:
-                    client_config['basic_auth'] = (config.username, config.password)
+                client_config['hosts'] = [host]
+                
+                # API key authentication for cloud
+                client_config['api_key'] = config.api_key
                 
                 # SSL settings
                 if config.ca_certs:
@@ -109,7 +108,7 @@ class ElasticSearchVector(BaseVector):
                 
             else:
                 # Regular Elasticsearch configuration
-                parsed_url = urlparse(config.host)
+                parsed_url = urlparse(config.host or "")
                 if parsed_url.scheme in {"http", "https"}:
                     hosts = f"{config.host}:{config.port}"
                     use_https = parsed_url.scheme == "https"
@@ -117,7 +116,7 @@ class ElasticSearchVector(BaseVector):
                     hosts = f"http://{config.host}:{config.port}"
                     use_https = False
                 
-                client_config = {
+                client_config: dict[str, Any] = {
                     'hosts': [hosts],
                     'basic_auth': (config.username, config.password),
                     'request_timeout': config.request_timeout,
@@ -290,7 +289,7 @@ class ElasticSearchVector(BaseVector):
                     index=self._collection_name,
                     body={"mappings": mappings}
                 )
-                logger.info(f"Created index {self._collection_name} with dimension {dim}")
+                logger.info("Created index %s with dimension %s", self._collection_name, dim)
             else:
                 logger.info("Collection %s already exists.", self._collection_name)
                 
@@ -324,14 +323,12 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
             }
         else:
             # Check for cloud configuration
-            cloud_id = config.get("ELASTICSEARCH_CLOUD_ID")
-            if cloud_id:
+            cloud_url = config.get("ELASTICSEARCH_CLOUD_URL")
+            if cloud_url:
                 config_dict = {
                     "use_cloud": True,
-                    "cloud_id": cloud_id,
+                    "cloud_url": cloud_url,
                     "api_key": config.get("ELASTICSEARCH_API_KEY"),
-                    "username": config.get("ELASTICSEARCH_USERNAME"),
-                    "password": config.get("ELASTICSEARCH_PASSWORD"),
                 }
             else:
                 # Fallback to regular Elasticsearch
@@ -345,11 +342,11 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
         
         # Common configuration
         config_dict.update({
-            "ca_certs": config.get("ELASTICSEARCH_CA_CERTS"),
-            "verify_certs": config.get("ELASTICSEARCH_VERIFY_CERTS", False),
-            "request_timeout": config.get("ELASTICSEARCH_REQUEST_TIMEOUT", 100000),
-            "retry_on_timeout": config.get("ELASTICSEARCH_RETRY_ON_TIMEOUT", True),
-            "max_retries": config.get("ELASTICSEARCH_MAX_RETRIES", 10000),
+            "ca_certs": str(config.get("ELASTICSEARCH_CA_CERTS")) if config.get("ELASTICSEARCH_CA_CERTS") else None,
+            "verify_certs": bool(config.get("ELASTICSEARCH_VERIFY_CERTS", False)),
+            "request_timeout": int(config.get("ELASTICSEARCH_REQUEST_TIMEOUT", 100000)),
+            "retry_on_timeout": bool(config.get("ELASTICSEARCH_RETRY_ON_TIMEOUT", True)),
+            "max_retries": int(config.get("ELASTICSEARCH_MAX_RETRIES", 10000)),
         })
 
         return ElasticSearchVector(

@@ -1,6 +1,5 @@
 from typing import Optional
-
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -31,13 +30,55 @@ class ElasticsearchConfig(BaseSettings):
     )
 
     # Elastic Cloud (optional)
-    ELASTICSEARCH_USE_CLOUD: Optional[bool] = Field(default=False)
-    ELASTICSEARCH_CLOUD_ID: Optional[str] = None
-    ELASTICSEARCH_API_KEY: Optional[str] = None
+    ELASTICSEARCH_USE_CLOUD: Optional[bool] = Field(
+        description="Set to True to use Elastic Cloud instead of self-hosted Elasticsearch",
+        default=False
+    )
+    ELASTICSEARCH_CLOUD_URL: Optional[str] = Field(
+        description="Full URL for Elastic Cloud deployment (e.g., 'https://example.es.region.aws.found.io:443')",
+        default=None
+    )
+    ELASTICSEARCH_API_KEY: Optional[str] = Field(
+        description="API key for authenticating with Elastic Cloud",
+        default=None
+    )
 
     # Common options
-    ELASTICSEARCH_CA_CERTS: Optional[str] = None
-    ELASTICSEARCH_VERIFY_CERTS: bool = True
-    ELASTICSEARCH_REQUEST_TIMEOUT: int = 100000
-    ELASTICSEARCH_RETRY_ON_TIMEOUT: bool = True
-    ELASTICSEARCH_MAX_RETRIES: int = 10000
+    ELASTICSEARCH_CA_CERTS: Optional[str] = Field(
+        description="Path to CA certificate file for SSL verification",
+        default=None
+    )
+    ELASTICSEARCH_VERIFY_CERTS: bool = Field(
+        description="Whether to verify SSL certificates (default is True)",
+        default=True
+    )
+    ELASTICSEARCH_REQUEST_TIMEOUT: int = Field(
+        description="Request timeout in milliseconds (default is 100000)",
+        default=100000
+    )
+    ELASTICSEARCH_RETRY_ON_TIMEOUT: bool = Field(
+        description="Whether to retry requests on timeout (default is True)",
+        default=True
+    )
+    ELASTICSEARCH_MAX_RETRIES: int = Field(
+        description="Maximum number of retry attempts (default is 10000)",
+        default=10000
+    )
+
+    @model_validator(mode="after")
+    def validate_elasticsearch_config(self):
+        """Validate Elasticsearch configuration based on deployment type."""
+        if self.ELASTICSEARCH_USE_CLOUD:
+            if not self.ELASTICSEARCH_CLOUD_URL:
+                raise ValueError("ELASTICSEARCH_CLOUD_URL is required when using Elastic Cloud")
+            if not self.ELASTICSEARCH_API_KEY:
+                raise ValueError("ELASTICSEARCH_API_KEY is required when using Elastic Cloud")
+        else:
+            if not self.ELASTICSEARCH_HOST:
+                raise ValueError("ELASTICSEARCH_HOST is required for self-hosted Elasticsearch")
+            if not self.ELASTICSEARCH_USERNAME:
+                raise ValueError("ELASTICSEARCH_USERNAME is required for self-hosted Elasticsearch")
+            if not self.ELASTICSEARCH_PASSWORD:
+                raise ValueError("ELASTICSEARCH_PASSWORD is required for self-hosted Elasticsearch")
+        
+        return self
