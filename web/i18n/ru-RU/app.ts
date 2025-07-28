@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'Нет разрешения на доступ к веб-приложению',
   maxActiveRequests: 'Максимальное количество параллельных запросов',
   maxActiveRequestsPlaceholder: 'Введите 0 для неограниченного количества',
+  maxActiveRequestsTip: 'Максимальное количество одновременно активных запросов на одно приложение (0 для неограниченного количества)',
 }
 
 export default translation

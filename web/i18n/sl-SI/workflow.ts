@@ -279,6 +279,7 @@ const translation = {
     'start': 'Določite začetne parametre za zagon delovnega toka',
     'variable-assigner': 'Združite večpodružinske spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
     'variable-aggregator': 'Združite večpodružnične spremenljivke v eno samo spremenljivko za enotno konfiguracijo spodnjih vozlišč.',
+    'assigner': 'Vožnji vozlišča za dodelitev spremenljivk se uporablja za dodeljevanje vrednosti spremenljivkam, ki jih je mogoče zapisati (kot so spremenljivke za pogovor).',
   },
   operator: {
     zoomOut: 'Zoomirati ven',
@@ -312,6 +313,7 @@ const translation = {
     organizeBlocks: 'Organizirajte vozlišča',
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
+    optional: '(neobvezno)',
   },
   nodes: {
     common: {
@@ -497,6 +499,7 @@ const translation = {
           add: 'Dodaj pogoj',
         },
         title: 'Filtriranje metapodatkov',
+        tip: 'Filtriranje metapodatkov je postopek uporabe metapodatkovnih atributov (kot so oznake, kategorije ali dovoljenja za dostop) za natančnejše določanje in nadzorovanje pridobivanja relevantnih informacij znotraj sistema.',
       },
       queryVariable: 'Vprašanje spremenljivka',
       knowledge: 'Znanje',

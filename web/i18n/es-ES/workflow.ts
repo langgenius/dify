@@ -497,6 +497,7 @@ const translation = {
           search: 'Buscar metadatos',
         },
         title: 'Filtrado de Metadatos',
+        tip: 'El filtrado de metadatos es el proceso de utilizar atributos de metadatos (como etiquetas, categorías o permisos de acceso) para refinar y controlar la recuperación de información relevante dentro de un sistema.',
       },
     },
     http: {
