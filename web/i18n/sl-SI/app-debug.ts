@@ -236,6 +236,33 @@ const translation = {
         ok: 'V redu',
       },
     },
+    fileUpload: {
+      title: 'Nalaganje datoteke',
+      description: 'Pogovorno polje omogoča nalaganje slik, dokumentov in drugih datotek.',
+      supportedTypes: 'Podprte vrste datotek',
+      numberLimit: 'Največje število nalaganj',
+      modalTitle: 'Nastavitve nalaganja datoteke',
+    },
+    imageUpload: {
+      title: 'Nalaganje slike',
+      description: 'Omogoči nalaganje slik.',
+      supportedTypes: 'Podprte vrste datotek',
+      numberLimit: 'Največje število nalaganj',
+      modalTitle: 'Nastavitve nalaganja slike',
+    },
+    bar: {
+      empty: 'Omogoči funkcije za izboljšanje uporabniške izkušnje spletne aplikacije',
+      enableText: 'Funkcije omogočene',
+      manage: 'Upravljaj',
+    },
+    documentUpload: {
+      title: 'Dokument',
+      description: 'Omogočitev dokumenta bo omogočila modelu, da sprejme dokumente in odgovori na vprašanja o njih.',
+    },
+    audioUpload: {
+      title: 'Zvok',
+      description: 'Omogočitev zvoka bo omogočila modelu, da obdela zvočne datoteke za prepisovanje in analizo.',
+    },
   },
 }
 
