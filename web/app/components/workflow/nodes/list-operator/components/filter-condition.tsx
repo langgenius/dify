@@ -11,6 +11,7 @@ import SubVariablePicker from './sub-variable-picker'
 import Input from '@/app/components/base/input'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { SimpleSelect as Select } from '@/app/components/base/select'
+import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 type Props = {
@@ -96,12 +97,18 @@ const FilterCondition: FC<Props> = ({
                 placeholder='Select value'
               />
             )}
-            {!isSelect && (
+            {!isSelect && varType !== VarType.boolean && (
               <Input
                 type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
                 className='grow'
-                value={condition.value}
+                value={condition.value as string}
                 onChange={e => handleChange('value')(e.target.value)}
+              />
+            )}
+            {!isSelect && varType === VarType.boolean && (
+              <BoolValue
+                value={condition.value as boolean}
+                onChange={handleChange('value')}
               />
             )}
           </>
