@@ -113,6 +113,3 @@ class MemberNotInTenantError(BaseHTTPException):
     error_code = "member_not_in_tenant"
     description = "The member is not in the workspace."
     code = 400
-
-
-
