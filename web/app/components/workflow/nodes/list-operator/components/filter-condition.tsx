@@ -143,7 +143,7 @@ const FilterCondition: FC<Props> = ({
             ) : (
               <input
                 type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
-                className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
+                className={`${sharedInputStyles} border-components-input-border-hover bg-components-input-bg-normal`}
                 value={condition.value}
                 onChange={e => handleChange('value')(e.target.value)}
                 readOnly={readOnly}
