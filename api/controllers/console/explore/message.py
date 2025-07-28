@@ -5,7 +5,6 @@ from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
-import services
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
