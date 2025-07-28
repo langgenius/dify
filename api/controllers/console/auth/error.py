@@ -115,7 +115,4 @@ class MemberNotInTenantError(BaseHTTPException):
     code = 400
 
 
-class AccountInFreezeError(BaseHTTPException):
-    error_code = "account_in_freeze"
-    description = "This email is temporarily unavailable."
-    code = 400
+
