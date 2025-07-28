@@ -123,6 +123,31 @@ class AnnotationListApi(Resource):
         }
         return response, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        parser = reqparse.RequestParser()
+        parser.add_argument("annotation_ids", type=str, required=True, location="args", action="append")
+        args = parser.parse_args()
+        
+        raw_ids = args["annotation_ids"]
+        processed_ids = []
+        for raw_id_str in raw_ids:
+            processed_ids.extend(raw_id_str.split(','))
+        
+        annotation_ids = [id.strip() for id in processed_ids if id.strip()]
+
+        if not annotation_ids:
+            return {"code": "bad_request", "message": "annotation_ids are required."}, 400
+
+        result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+        return result, 200
+
 
 class AnnotationExportApi(Resource):
     @setup_required
@@ -267,6 +292,7 @@ api.add_resource(
 )
 api.add_resource(AnnotationListApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
+api.add_resource(AnnotationCreateApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 api.add_resource(AnnotationBatchImportApi, "/apps/<uuid:app_id>/annotations/batch-import")
 api.add_resource(AnnotationBatchImportStatusApi, "/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")

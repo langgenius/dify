@@ -53,6 +53,7 @@ const Annotation: FC<Props> = (props) => {
   const [isShowViewModal, setIsShowViewModal] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
 
   const fetchAnnotationConfig = async () => {
     const res = await doFetchAnnotationConfig(appDetail.id)
@@ -107,11 +108,22 @@ const Annotation: FC<Props> = (props) => {
   }
 
   const handleBatchDelete = async () => {
-    await delAnnotations(appDetail.id, selectedIds)
-    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
-    fetchList()
-    setControlUpdateList(Date.now())
-    setSelectedIds([])
+    if (isBatchDeleting)
+      return
+    setIsBatchDeleting(true)
+    try {
+      await delAnnotations(appDetail.id, selectedIds)
+      Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+      fetchList()
+      setControlUpdateList(Date.now())
+      setSelectedIds([])
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: e.message || t('common.api.actionFailed') })
+    }
+    finally {
+      setIsBatchDeleting(false)
+    }
   }
 
   const handleView = (item: AnnotationItem) => {
@@ -201,6 +213,7 @@ const Annotation: FC<Props> = (props) => {
               onSelectedIdsChange={setSelectedIds}
               onBatchDelete={handleBatchDelete}
               onCancel={() => setSelectedIds([])}
+              isBatchDeleting={isBatchDeleting}
             />
             : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
         }

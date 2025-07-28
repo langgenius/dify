@@ -19,6 +19,7 @@ type Props = {
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
   onCancel: () => void
+  isBatchDeleting?: boolean
 }
 
 const List: FC<Props> = ({
@@ -29,6 +30,7 @@ const List: FC<Props> = ({
   onSelectedIdsChange,
   onBatchDelete,
   onCancel,
+  isBatchDeleting,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -44,11 +46,14 @@ const List: FC<Props> = ({
   }, [list, selectedIds])
 
   const handleSelectAll = useCallback(() => {
+    const currentPageIds = list.map(item => item.id)
+    const otherPageIds = selectedIds.filter(id => !currentPageIds.includes(id))
+
     if (isAllSelected)
-      onSelectedIdsChange([])
+      onSelectedIdsChange(otherPageIds)
     else
-      onSelectedIdsChange(list.map(item => item.id))
-  }, [isAllSelected, list, onSelectedIdsChange])
+      onSelectedIdsChange([...otherPageIds, ...currentPageIds])
+  }, [isAllSelected, list, selectedIds, onSelectedIdsChange])
 
   return (
     <div className='relative grow overflow-x-auto'>
@@ -137,6 +142,7 @@ const List: FC<Props> = ({
           selectedIds={selectedIds}
           onBatchDelete={onBatchDelete}
           onCancel={onCancel}
+          isBatchDeleting={isBatchDeleting}
         />
       )}
     </div>
