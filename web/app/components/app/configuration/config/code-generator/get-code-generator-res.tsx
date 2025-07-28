@@ -25,6 +25,7 @@ import useGenData from '../automatic/use-gen-data'
 import Result from '../automatic/result'
 import ResPlaceholder from '../automatic/res-placeholder'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { useSessionStorageState } from 'ahooks'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
@@ -72,7 +73,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
-  const [instruction, setInstruction] = useState<string>('')
+  const [instruction, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
@@ -83,10 +84,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
   const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.code)
   useEffect(() => {
-    if (!instruction && instructionTemplate) {
+    if (!instruction && instructionTemplate)
       setInstruction(instructionTemplate.data)
-      setEditorKey(`${flowId}-${Date.now()}`)
-    }
+
+    setEditorKey(`${flowId}-${Date.now()}`)
   }, [instructionTemplate])
 
   const isValid = () => {

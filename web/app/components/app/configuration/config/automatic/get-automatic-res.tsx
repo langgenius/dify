@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useSessionStorageState } from 'ahooks'
 import {
   RiDatabase2Line,
   RiFileExcel2Line,
@@ -132,7 +132,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instruction, setInstruction] = useState<string>('')
+  const [instruction, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}`}`)
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
@@ -146,10 +146,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt, isBasicMode)
   useEffect(() => {
-    if (!instruction && instructionTemplate) {
+    if (!instruction && instructionTemplate)
       setInstruction(instructionTemplate.data)
-      setEditorKey(`${flowId}-${Date.now()}`)
-    }
+
+    setEditorKey(`${flowId}-${Date.now()}`)
   }, [instructionTemplate])
 
   const isValid = () => {

@@ -43,9 +43,9 @@ const InstructionEditor: FC<Props> = ({
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isBasicMode = !!getVarType
-  // const [controlPromptEditorRerenderKey] =
+
   const isCode = generatorType === 'code'
-  const placeholder = (
+  const placeholder = isCode ? ' ' : (
     <div className='system-sm-regular  text-text-placeholder'>
       <div className='leading-6'>{t(`${i18nPrefix}.instructionPlaceHolderTitle`)}</div>
       <div className='mt-2'>
@@ -105,7 +105,7 @@ const InstructionEditor: FC<Props> = ({
         editable
         isSupportFileVar={false}
       />
-      <div className='system-xs-regular absolute bottom-0 left-3 flex h-8 items-center space-x-0.5 text-components-input-text-placeholder'>
+      <div className='system-xs-regular absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 text-components-input-text-placeholder'>
         <span>{t('appDebug.generate.press')}</span>
         <span className='system-kbd flex h-4 w-3.5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray text-text-placeholder'>/</span>
         <span>{t('appDebug.generate.to')}</span>
