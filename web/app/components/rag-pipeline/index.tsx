@@ -23,7 +23,7 @@ const RagPipeline = () => {
   } = usePipelineInit()
   const nodesData = useMemo(() => {
     if (data)
-      return processNodesWithoutDataSource(initialNodes(data.graph.nodes, data.graph.edges))
+      return initialNodes(data.graph.nodes, data.graph.edges)
 
     return []
   }, [data])
@@ -41,15 +41,20 @@ const RagPipeline = () => {
       </div>
     )
   }
+
+  const {
+    nodes: processedNodes,
+    viewport,
+  } = processNodesWithoutDataSource(nodesData, data.graph.viewport)
   return (
     <WorkflowWithDefaultContext
       edges={edgesData}
-      nodes={nodesData}
+      nodes={processedNodes}
     >
       <RagPipelineMain
         edges={edgesData}
-        nodes={nodesData}
-        viewport={data.graph.viewport}
+        nodes={processedNodes}
+        viewport={viewport}
       />
     </WorkflowWithDefaultContext>
   )

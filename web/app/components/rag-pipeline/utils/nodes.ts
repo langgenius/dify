@@ -1,3 +1,4 @@
+import type { Viewport } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
@@ -5,15 +6,23 @@ import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from '@/app/components/workflow/nodes/d
 import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
 import { NoteTheme } from '@/app/components/workflow/note-node/types'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
-import { CUSTOM_NODE } from '@/app/components/workflow/constants'
+import {
+  CUSTOM_NODE,
+  NODE_WIDTH_X_OFFSET,
+  START_INITIAL_POSITION,
+} from '@/app/components/workflow/constants'
 
-export const processNodesWithoutDataSource = (nodes: Node[]) => {
+export const processNodesWithoutDataSource = (nodes: Node[], viewport?: Viewport) => {
   let leftNode
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i]
 
-    if (node.data.type === BlockEnum.DataSource)
-      return nodes
+    if (node.data.type === BlockEnum.DataSource) {
+      return {
+        nodes,
+        viewport,
+      }
+    }
 
     if (node.type === CUSTOM_NODE && !leftNode)
       leftNode = node
@@ -23,6 +32,8 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
   }
 
   if (leftNode) {
+    const startX = leftNode.position.x - NODE_WIDTH_X_OFFSET
+    const startY = leftNode.position.y
     const { newNode } = generateNewNode({
       id: 'data-source-empty',
       type: CUSTOM_DATA_SOURCE_EMPTY_NODE,
@@ -34,8 +45,8 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
         _isTempNode: true,
       },
       position: {
-        x: leftNode.position.x - 500,
-        y: leftNode.position.y,
+        x: startX,
+        y: startY,
       },
     })
     const newNoteNode = generateNewNode({
@@ -54,16 +65,26 @@ export const processNodesWithoutDataSource = (nodes: Node[]) => {
         _isTempNode: true,
       } as NoteNodeType,
       position: {
-        x: leftNode.position.x - 500,
-        y: leftNode.position.y + 100,
+        x: startX,
+        y: startY + 100,
       },
     }).newNode
-    return [
-      newNode,
-      newNoteNode,
-      ...nodes,
-    ]
+    return {
+      nodes: [
+        newNode,
+        newNoteNode,
+        ...nodes,
+      ],
+      viewport: {
+        x: (START_INITIAL_POSITION.x - startX) * (viewport?.zoom || 1),
+        y: (START_INITIAL_POSITION.y - startY) * (viewport?.zoom || 1),
+        zoom: viewport?.zoom || 1,
+      },
+    }
   }
 
-  return nodes
+  return {
+    nodes,
+    viewport,
+  }
 }

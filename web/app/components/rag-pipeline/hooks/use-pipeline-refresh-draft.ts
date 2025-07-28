@@ -19,9 +19,14 @@ export const usePipelineRefreshDraft = () => {
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`).then((response) => {
+      const {
+        nodes: processedNodes,
+        viewport,
+      } = processNodesWithoutDataSource(response.graph.nodes, response.graph.viewport)
       handleUpdateWorkflowCanvas({
         ...response.graph,
-        nodes: processNodesWithoutDataSource(response.graph.nodes),
+        nodes: processedNodes,
+        viewport,
       } as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
