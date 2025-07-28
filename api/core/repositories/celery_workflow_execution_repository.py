@@ -100,8 +100,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         self._pending_saves: dict[str, AsyncResult] = {}
 
         logger.info(
-            f"Initialized CeleryWorkflowExecutionRepository for tenant {self._tenant_id}, "
-            f"app {self._app_id}, triggered_from {self._triggered_from}"
+            "Initialized CeleryWorkflowExecutionRepository for tenant %s, app %s, triggered_from %s",
+            self._tenant_id, self._app_id, self._triggered_from
         )
 
     def save(self, execution: WorkflowExecution) -> None:
@@ -131,10 +131,10 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             # Store the task result for potential status checking
             self._pending_saves[execution.id_] = task_result
 
-            logger.debug(f"Queued async save for workflow execution: {execution.id_}")
+            logger.debug("Queued async save for workflow execution: %s", execution.id_)
 
         except Exception as e:
-            logger.exception(f"Failed to queue save operation for execution {execution.id_}")
+            logger.exception("Failed to queue save operation for execution %s", execution.id_)
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
@@ -154,12 +154,12 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         for execution_id, task_result in list(self._pending_saves.items()):
             try:
                 if not task_result.ready():
-                    logger.debug(f"Waiting for save operation to complete: {execution_id}")
+                    logger.debug("Waiting for save operation to complete: %s", execution_id)
                     task_result.get(timeout=wait_timeout)
                 # Remove completed task
                 del self._pending_saves[execution_id]
             except Exception as e:
-                logger.exception(f"Failed to wait for save operation {execution_id}")
+                logger.exception("Failed to wait for save operation %s", execution_id)
 
     def get_pending_save_count(self) -> int:
         """

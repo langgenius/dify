@@ -110,8 +110,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._workflow_execution_mapping: dict[str, str] = {}
 
         logger.info(
-            f"Initialized CeleryWorkflowNodeExecutionRepository for tenant {self._tenant_id}, "
-            f"app {self._app_id}, triggered_from {self._triggered_from}"
+            "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
+            self._tenant_id, self._app_id, self._triggered_from
         )
 
     def save(self, execution: WorkflowNodeExecution) -> None:
@@ -145,10 +145,10 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if execution.workflow_execution_id:
                 self._workflow_execution_mapping[execution.id] = execution.workflow_execution_id
 
-            logger.debug(f"Queued async save for workflow node execution: {execution.id}")
+            logger.debug("Queued async save for workflow node execution: %s", execution.id)
 
         except Exception as e:
-            logger.exception(f"Failed to queue save operation for node execution {execution.id}")
+            logger.exception("Failed to queue save operation for node execution %s", execution.id)
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
@@ -197,7 +197,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             return result
 
         except Exception as e:
-            logger.exception(f"Failed to get workflow node executions for run {workflow_run_id}")
+            logger.exception("Failed to get workflow node executions for run %s", workflow_run_id)
             # Could implement fallback to direct database access here
             return []
 
@@ -218,16 +218,16 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if cached_workflow_id == workflow_run_id and execution_id in self._pending_saves
         ]
 
-        logger.debug(f"Found {len(relevant_execution_ids)} pending saves for workflow run {workflow_run_id}")
+        logger.debug("Found %s pending saves for workflow run %s", len(relevant_execution_ids), workflow_run_id)
 
         for execution_id in relevant_execution_ids:
             task_result = self._pending_saves.get(execution_id)
             if task_result and not task_result.ready():
                 try:
-                    logger.debug(f"Waiting for pending save to complete before read: {execution_id}")
+                    logger.debug("Waiting for pending save to complete before read: %s", execution_id)
                     task_result.get(timeout=self._async_timeout)
                 except Exception as e:
-                    logger.exception(f"Failed to wait for pending save {execution_id}")
+                    logger.exception("Failed to wait for pending save %s", execution_id)
 
             # Clean up completed tasks from both caches
             if task_result and task_result.ready():
@@ -249,13 +249,13 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         for execution_id, task_result in list(self._pending_saves.items()):
             try:
                 if not task_result.ready():
-                    logger.debug(f"Waiting for save operation to complete: {execution_id}")
+                    logger.debug("Waiting for save operation to complete: %s", execution_id)
                     task_result.get(timeout=wait_timeout)
                 # Remove completed task from both caches
                 del self._pending_saves[execution_id]
                 self._workflow_execution_mapping.pop(execution_id, None)
             except Exception as e:
-                logger.exception(f"Failed to wait for save operation {execution_id}")
+                logger.exception("Failed to wait for save operation %s", execution_id)
 
     def get_pending_save_count(self) -> int:
         """

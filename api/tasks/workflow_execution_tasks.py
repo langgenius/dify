@@ -59,7 +59,7 @@ def save_workflow_execution_task(
             if existing_run:
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
-                logger.debug(f"Updated existing workflow run: {execution.id_}")
+                logger.debug("Updated existing workflow run: %s", execution.id_)
             else:
                 # Create new workflow run
                 workflow_run = _create_workflow_run_from_execution(
@@ -71,13 +71,13 @@ def save_workflow_execution_task(
                     creator_user_role=CreatorUserRole(creator_user_role),
                 )
                 session.add(workflow_run)
-                logger.debug(f"Created new workflow run: {execution.id_}")
+                logger.debug("Created new workflow run: %s", execution.id_)
 
             session.commit()
             return True
 
     except Exception as e:
-        logger.exception(f"Failed to save workflow execution {execution_data.get('id_', 'unknown')}")
+        logger.exception("Failed to save workflow execution %s", execution_data.get('id_', 'unknown'))
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 

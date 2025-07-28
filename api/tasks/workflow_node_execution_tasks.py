@@ -68,7 +68,7 @@ def save_workflow_node_execution_task(
             if existing_execution:
                 # Update existing node execution
                 _update_node_execution_from_domain(existing_execution, execution)
-                logger.debug(f"Updated existing workflow node execution: {execution.id}")
+                logger.debug("Updated existing workflow node execution: %s", execution.id)
             else:
                 # Create new node execution
                 node_execution = _create_node_execution_from_domain(
@@ -80,13 +80,13 @@ def save_workflow_node_execution_task(
                     creator_user_role=CreatorUserRole(creator_user_role),
                 )
                 session.add(node_execution)
-                logger.debug(f"Created new workflow node execution: {execution.id}")
+                logger.debug("Created new workflow node execution: %s", execution.id)
 
             session.commit()
             return True
 
     except Exception as e:
-        logger.exception(f"Failed to save workflow node execution {execution_data.get('id', 'unknown')}")
+        logger.exception("Failed to save workflow node execution %s", execution_data.get('id', 'unknown'))
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
@@ -145,7 +145,7 @@ def get_workflow_node_executions_by_workflow_run_task(
             return result
 
     except Exception as e:
-        logger.exception(f"Failed to get workflow node executions for run {workflow_run_id}")
+        logger.exception("Failed to get workflow node executions for run %s", workflow_run_id)
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
