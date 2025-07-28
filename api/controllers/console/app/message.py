@@ -133,7 +133,7 @@ class MessageFeedbackApi(Resource):
                 rating=args.get("rating"),
                 content=None,
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
