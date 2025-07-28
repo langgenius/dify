@@ -1,6 +1,7 @@
 import logging
+import re
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import click
 from redis import Redis
@@ -10,14 +11,60 @@ from configs import dify_config
 from extensions.ext_database import db
 from libs.email_i18n import EmailType, get_email_i18n_service
 
+
+def parse_redis_url_robust(url):
+    """
+    Robust Redis URL parser that handles special characters in passwords.
+
+    Handles URLs in formats like:
+    - redis://password/host:port/db (when password contains special chars like #)
+    - redis://user:password@host:port/db (standard format)
+    - redis://host:port/db (no password)
+
+    Args:
+        url (str): Redis URL to parse
+
+    Returns:
+        dict: Parsed components with keys: hostname, port, password, path
+    """
+    if not url:
+        return {"hostname": "localhost", "port": 6379, "password": None, "path": "/1"}
+
+    # Pattern for Redis URL format: redis://password/host:port/db (no @ separator)
+    # This handles cases where password contains special characters like #
+    pattern = r"redis://([^/]+)/([^:]+):(\d+)/(\d+)$"
+    match = re.match(pattern, url)
+
+    if match:
+        password, host, port, db = match.groups()
+        return {"hostname": host, "port": int(port), "password": password, "path": f"/{db}"}
+
+    # Try standard URL parsing for properly formatted URLs
+    try:
+        parsed = urlparse(url)
+        return {
+            "hostname": parsed.hostname,
+            "port": parsed.port,
+            "password": unquote(parsed.password) if parsed.password else None,
+            "path": parsed.path,
+        }
+    except Exception as e:
+        logging.warning("Failed to parse Redis URL: %s, error: %s", url, e)
+        return {"hostname": "localhost", "port": 6379, "password": None, "path": "/1"}
+
+
 # Create a dedicated Redis connection (using the same configuration as Celery)
 celery_broker_url = dify_config.CELERY_BROKER_URL
 
-parsed = urlparse(celery_broker_url)
-host = parsed.hostname or "localhost"
-port = parsed.port or 6379
-password = parsed.password or None
-redis_db = parsed.path.strip("/") or "1"  # type: ignore
+# Use robust parsing to handle special characters in passwords
+parsed_result = parse_redis_url_robust(celery_broker_url)
+host = parsed_result["hostname"] or "localhost"
+port = parsed_result["port"] or 6379
+password = parsed_result["password"] or None
+redis_db = parsed_result["path"].strip("/") if parsed_result["path"] else "1"
+
+# Log the parsed connection details (without password for security)
+logging.info("Redis connection config - host: %s, port: %s, db: %s", host, port, redis_db)
 
 celery_redis = Redis(host=host, port=port, password=password, db=redis_db)
 
