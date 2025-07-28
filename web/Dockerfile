@@ -1,5 +1,5 @@
 # base image
-FROM node:22-alpine3.21 AS base
+FROM registry.cn-hangzhou.aliyuncs.com/google_containers/node:22-alpine3.21 AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
