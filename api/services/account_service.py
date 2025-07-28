@@ -356,6 +356,17 @@ class AccountService:
         return account
 
     @staticmethod
+    def update_account_email(account: Account, email: str) -> Account:
+        """Update account email"""
+        account.email = email
+        account_integrate = db.session.query(AccountIntegrate).filter_by(account_id=account.id).first()
+        if account_integrate:
+            db.session.delete(account_integrate)
+        db.session.add(account)
+        db.session.commit()
+        return account
+
+    @staticmethod
     def update_login_info(account: Account, *, ip_address: str) -> None:
         """Update last login time and ip"""
         account.last_login_at = naive_utc_now()

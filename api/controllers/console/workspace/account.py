@@ -496,7 +496,7 @@ class ChangeEmailResetApi(Resource):
         if current_user.email != old_email:
             raise AccountNotFound()
 
-        updated_account = AccountService.update_account(current_user, email=args["new_email"])
+        updated_account = AccountService.update_account_email(current_user, email=args["new_email"])
 
         AccountService.send_change_email_completed_notify_email(
             email=args["new_email"],
