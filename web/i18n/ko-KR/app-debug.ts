@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: '파일 업로드',
+      description: '채팅 입력 상자에서 이미지, 문서 및 기타 파일 업로드를 지원합니다.',
+      supportedTypes: '지원 파일 유형',
+      numberLimit: '최대 업로드 수',
+      modalTitle: '파일 업로드 설정',
+    },
+    imageUpload: {
+      title: '이미지 업로드',
+      description: '이미지 업로드를 지원합니다.',
+      supportedTypes: '지원 파일 유형',
+      numberLimit: '최대 업로드 수',
+      modalTitle: '이미지 업로드 설정',
+    },
+    bar: {
+      empty: '웹 앱 사용자 경험을 향상시키는 기능 활성화',
+      enableText: '기능 활성화됨',
+      manage: '관리',
+    },
+    documentUpload: {
+      title: '문서',
+      description: '문서를 활성화하면 모델이 문서를 받아들이고 문서에 대한 질문에 답할 수 있습니다.',
+    },
+    audioUpload: {
+      title: '오디오',
+      description: '오디오를 활성화하면 모델이 전사 및 분석을 위해 오디오 파일을 처리할 수 있습니다.',
+    },
   },
   automatic: {
     title: '자동 어플리케이션 오케스트레이션',

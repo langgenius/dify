@@ -222,6 +222,10 @@ const translation = {
       title: '文档',
       description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
     },
+    audioUpload: {
+      title: '音频',
+      description: '启用音频后，模型可以处理音频文件进行转录和分析。',
+    },
   },
   codegen: {
     title: '代码生成器',

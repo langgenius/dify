@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Téléchargement de fichier',
+      description: 'La boîte de saisie de chat permet de télécharger des images, des documents et d\'autres fichiers.',
+      supportedTypes: 'Types de fichiers supportés',
+      numberLimit: 'Nombre max de téléchargements',
+      modalTitle: 'Paramètres de téléchargement de fichier',
+    },
+    imageUpload: {
+      title: 'Téléchargement d\'image',
+      description: 'Permet de télécharger des images.',
+      supportedTypes: 'Types de fichiers supportés',
+      numberLimit: 'Nombre max de téléchargements',
+      modalTitle: 'Paramètres de téléchargement d\'image',
+    },
+    bar: {
+      empty: 'Activer la fonctionnalité pour améliorer l\'expérience utilisateur de l\'application web',
+      enableText: 'Fonctionnalités activées',
+      manage: 'Gérer',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Activer Document permettra au modèle de prendre des documents et de répondre aux questions à leur sujet.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Activer Audio permettra au modèle de traiter les fichiers audio pour la transcription et l\'analyse.',
+    },
   },
   resetConfig: {
     title: 'Confirmer la réinitialisation ?',

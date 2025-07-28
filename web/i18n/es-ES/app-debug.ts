@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Subida de archivos',
+      description: 'La caja de entrada del chat permite subir imágenes, documentos y otros archivos.',
+      supportedTypes: 'Tipos de archivo soportados',
+      numberLimit: 'Máximo de subidas',
+      modalTitle: 'Configuración de subida de archivos',
+    },
+    imageUpload: {
+      title: 'Subida de imágenes',
+      description: 'Permite subir imágenes.',
+      supportedTypes: 'Tipos de archivo soportados',
+      numberLimit: 'Máximo de subidas',
+      modalTitle: 'Configuración de subida de imágenes',
+    },
+    bar: {
+      empty: 'Habilitar funciones para mejorar la experiencia del usuario de la aplicación web',
+      enableText: 'Funciones habilitadas',
+      manage: 'Gestionar',
+    },
+    documentUpload: {
+      title: 'Documento',
+      description: 'Habilitar Documento permitirá al modelo aceptar documentos y responder preguntas sobre ellos.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Habilitar Audio permitirá al modelo procesar archivos de audio para transcripción y análisis.',
+    },
   },
   automatic: {
     title: 'Orquestación automatizada de aplicaciones',

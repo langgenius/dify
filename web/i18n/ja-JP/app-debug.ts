@@ -222,6 +222,10 @@ const translation = {
       title: 'ドキュメント',
       description: 'ドキュメント機能を有効にすると、AI モデルがファイルを処理し、その内容に基づいて質問に回答できるようになります。',
     },
+    audioUpload: {
+      title: '音声',
+      description: '音声機能を有効にすると、モデルが音声ファイルの転写と分析を処理できるようになります。',
+    },
   },
   codegen: {
     title: 'コードジェネレーター',
