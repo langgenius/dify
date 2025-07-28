@@ -217,7 +217,7 @@ const ConditionItem = ({
     const newCondition = produce(condition, (draft) => {
       draft.variable_selector = valueSelector
       draft.varType = resolvedVarType
-      draft.value = ''
+      draft.value = resolvedVarType === VarType.boolean ? 'false' : ''
       draft.comparison_operator = getOperators(resolvedVarType)[0]
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
