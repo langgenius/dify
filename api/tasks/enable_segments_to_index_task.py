@@ -28,6 +28,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
         logging.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
+        db.session.close()
         return
 
     dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
