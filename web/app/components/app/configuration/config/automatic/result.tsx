@@ -67,7 +67,7 @@ const Result: FC<Props> = ({
             <PromptToast message={current.message} className='mb-3 shrink-0' />
           )
         }
-        <div className='grow'>
+        <div className='grow pb-6'>
           {isGeneratorPrompt ? (
             isBasicMode ? (
               <PromptRes
