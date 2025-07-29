@@ -50,6 +50,7 @@ from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -415,7 +416,7 @@ class RagPipelineService:
                 user_inputs=user_inputs,
                 user_id=account.id,
                 variable_pool=VariablePool(
-                    system_variables={},
+                    system_variables=SystemVariable.empty(),
                     user_inputs=user_inputs,
                     environment_variables=[],
                     conversation_variables=[],
@@ -763,18 +764,18 @@ class RagPipelineService:
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.continue_on_error:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                    "metadata": {"error_strategy": node_instance.error_strategy},
                 }
-                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                if node_instance.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
                         **node_error_args,
                         outputs={
-                            **node_instance.node_data.default_value_dict,
+                            **node_instance.default_value_dict,
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
                         },
@@ -793,18 +794,18 @@ class RagPipelineService:
             )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            node_instance = e.node_instance
+            node_instance = e._node
             run_succeeded = False
             node_run_result = None
-            error = e.error
+            error = e._error
 
         workflow_node_execution = WorkflowNodeExecution(
             id=str(uuid4()),
             workflow_id=node_instance.workflow_id,
             index=1,
             node_id=node_id,
-            node_type=node_instance.node_type,
-            title=node_instance.node_data.title,
+            node_type=node_instance.type_,
+            title=node_instance.title,
             elapsed_time=time.perf_counter() - start_at,
             finished_at=datetime.now(UTC).replace(tzinfo=None),
             created_at=datetime.now(UTC).replace(tzinfo=None),
