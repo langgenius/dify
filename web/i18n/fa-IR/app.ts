@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'دسترسی به برنامه وب مجاز نیست',
   maxActiveRequests: 'بیشترین درخواست‌های همزمان',
   maxActiveRequestsPlaceholder: 'برای نامحدود، 0 را وارد کنید',
+  maxActiveRequestsTip: 'حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)',
 }
 
 export default translation

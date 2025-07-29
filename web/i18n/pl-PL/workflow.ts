@@ -497,6 +497,7 @@ const translation = {
           select: 'Wybierz zmienną...',
         },
         title: 'Filtrowanie metadanych',
+        tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
     },
     http: {

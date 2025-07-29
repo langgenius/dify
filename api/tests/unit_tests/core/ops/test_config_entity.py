@@ -118,7 +118,7 @@ class TestLangfuseConfig:
         assert config.host == "https://custom.langfuse.com"
 
     def test_valid_config_with_path(self):
-        host = host = "https://custom.langfuse.com/api/v1"
+        host = "https://custom.langfuse.com/api/v1"
         config = LangfuseConfig(public_key="public_key", secret_key="secret_key", host=host)
         assert config.public_key == "public_key"
         assert config.secret_key == "secret_key"

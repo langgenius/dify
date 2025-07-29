@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: '建立知識庫',
-      update: '上傳檔案',
       fallbackRoute: '知識',
     },
     one: '選擇資料來源',

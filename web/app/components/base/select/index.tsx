@@ -342,7 +342,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
             >
               <span
                 className={`
-              grow truncate
+              grow truncate text-text-secondary
               ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
               >

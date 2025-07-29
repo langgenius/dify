@@ -8,7 +8,6 @@ This directory contains the internationalization (i18n) files for this project.
 
 ```
 ├── [  24]  README.md
-├── [   0]  README_CN.md
 ├── [ 704]  en-US
 │   ├── [2.4K]  app-annotation.ts
 │   ├── [5.2K]  app-api.ts
@@ -48,6 +47,7 @@ By default we will use `LanguagesSupported` to determine which languages are sup
 1. Create a new folder for the new language.
 
 ```
+cd web/i18n
 cp -r en-US fr-FR
 ```
 

@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'واردات انبوه',
       bulkExport: 'صادرات انبوه',
       clearAll: 'پاک کردن همه یادداشت‌ها',
+      clearAllConfirm: 'آیا همه حاشیه‌نویسی‌ها را حذف کنیم؟',
     },
   },
   editModal: {
