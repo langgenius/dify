@@ -11,7 +11,6 @@ from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from services.auth.api_key_auth_service import ApiKeyAuthService
 from services.datasource_provider_service import DatasourceProviderService
 
 

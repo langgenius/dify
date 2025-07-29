@@ -1,7 +1,6 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from pydoc import doc
 from uuid import uuid4
 
 import yaml
@@ -9,15 +8,12 @@ from flask_login import current_user
 
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.entities.plugin import PluginInstallationSource
-from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.plugin import PluginInstaller
-from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
-from services.auth import firecrawl
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
 
