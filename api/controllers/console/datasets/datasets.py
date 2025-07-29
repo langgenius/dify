@@ -464,7 +464,6 @@ class DatasetIndexingEstimateApi(Resource):
                         "tenant_id": current_user.current_tenant_id,
                         "mode": "crawl",
                         "only_main_content": website_info_list["only_main_content"],
-                        "credential_id": website_info_list["credential_id"],
                     },
                     document_model=args["doc_form"],
                 )

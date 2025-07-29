@@ -82,6 +82,36 @@ class DatasourceProviderService:
                 if key in credential_secret_variables:
                     copy_credentials[key] = encrypter.decrypt_token(tenant_id, value)
             return copy_credentials
+    
+    def get_default_real_credential(
+        self, tenant_id: str, provider: str, plugin_id: str
+    ) -> dict[str, Any]:
+        """
+        get default credential
+        """
+        with Session(db.engine) as session:
+            datasource_provider = (
+                session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, 
+                                                            is_default=True, 
+                                                            provider=provider, 
+                                                            plugin_id=plugin_id).first()
+            )
+            if not datasource_provider:
+                return {}
+            encrypted_credentials = datasource_provider.encrypted_credentials
+            # Get provider credential secret variables
+            credential_secret_variables = self.extract_secret_variables(
+                tenant_id=tenant_id,
+                provider_id=f"{plugin_id}/{provider}",
+                credential_type=CredentialType.of(datasource_provider.auth_type),
+            )
+
+            # Obfuscate provider credentials
+            copy_credentials = encrypted_credentials.copy()
+            for key, value in copy_credentials.items():
+                if key in credential_secret_variables:
+                    copy_credentials[key] = encrypter.decrypt_token(tenant_id, value)
+            return copy_credentials
 
     def update_datasource_provider_name(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, name: str, credential_id: str

@@ -17,7 +17,6 @@ class JinaReaderWebExtractor(BaseExtractor):
         tenant_id: str,
         mode: str = "crawl",
         only_main_content: bool = False,
-        credential_id: Optional[str] = None,
     ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
@@ -25,14 +24,13 @@ class JinaReaderWebExtractor(BaseExtractor):
         self.tenant_id = tenant_id
         self.mode = mode
         self.only_main_content = only_main_content
-        self.credential_id = credential_id
 
     def extract(self) -> list[Document]:
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
             crawl_data = WebsiteService.get_crawl_url_data(
-                self.job_id, "jinareader", self._url, self.tenant_id, self.credential_id
+                self.job_id, "jinareader", self._url, self.tenant_id
             )
             if crawl_data is None:
                 return []

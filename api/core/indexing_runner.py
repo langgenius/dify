@@ -392,7 +392,6 @@ class IndexingRunner:
                     "url": data_source_info["url"],
                     "mode": data_source_info["mode"],
                     "only_main_content": data_source_info["only_main_content"],
-                    "credential_id": data_source_info["credential_id"],
                 },
                 document_model=dataset_document.doc_form,
             )

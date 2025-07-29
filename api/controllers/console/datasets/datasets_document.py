@@ -529,7 +529,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                         "tenant_id": current_user.current_tenant_id,
                         "mode": data_source_info["mode"],
                         "only_main_content": data_source_info["only_main_content"],
-                        "credential_id": data_source_info["credential_id"],
                     },
                     document_model=document.doc_form,
                 )
