@@ -132,7 +132,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instruction, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}`}`)
+  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}`}`)
+  const instruction = instructionFromSessionStorage || ''
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
@@ -153,7 +154,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   }, [instructionTemplate])
 
   const isValid = () => {
-    if (!instruction || instruction.trim() === '') {
+    if (instruction.trim() === '') {
       Toast.notify({
         type: 'error',
         message: t('common.errorMsg.fieldRequired', {
@@ -285,7 +286,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     >
       <div className='flex h-[680px] flex-wrap'>
         <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-4'>
+          <div className='mb-5'>
             <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.generate.description')}</div>
           </div>

@@ -26,6 +26,7 @@ import Result from '../automatic/result'
 import ResPlaceholder from '../automatic/res-placeholder'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { useSessionStorageState } from 'ahooks'
+import s from '../automatic/style.module.css'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
@@ -73,7 +74,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
-  const [instruction, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
+  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
+  const instruction = instructionFromSessionStorage || ''
+
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
@@ -199,11 +202,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     >
       <div className='relative flex h-[680px] flex-wrap'>
         <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-4'>
-            <div className={'text-lg font-bold leading-[28px] text-text-primary'}>{t('appDebug.codegen.title')}</div>
+          <div className='mb-5'>
+            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.codegen.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.codegen.description')}</div>
           </div>
-          <div className='mb-8'>
+          <div className='mb-4'>
             <ModelParameterModal
               popupClassName='!w-[520px]'
               portalToFollowElemContentClassName='z-[1000]'
