@@ -452,7 +452,7 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        # if annotation reply is enabled , delete annotation index
+        # if annotation reply is enabled, delete annotation index
         app_annotation_setting = (
             db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
