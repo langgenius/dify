@@ -61,13 +61,13 @@ const Result: FC<Props> = ({
           </Button>
         </div>
       </div>
-      <div className='grow overflow-y-auto'>
+      <div className='flex grow flex-col overflow-y-auto'>
         {
           current?.message && (
             <PromptToast message={current.message} className='mb-3 shrink-0' />
           )
         }
-        <div>
+        <div className='grow'>
           {isGeneratorPrompt ? (
             isBasicMode ? (
               <PromptRes
