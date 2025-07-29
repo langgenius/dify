@@ -105,7 +105,9 @@ class WorkflowService:
         workflow = (
             db.session.query(Workflow)
             .where(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == Workflow.VERSION_DRAFT
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
             )
             .first()
         )
