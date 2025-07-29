@@ -101,7 +101,9 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         logger.info(
             "Initialized CeleryWorkflowExecutionRepository for tenant %s, app %s, triggered_from %s",
-            self._tenant_id, self._app_id, self._triggered_from
+            self._tenant_id,
+            self._app_id,
+            self._triggered_from,
         )
 
     def save(self, execution: WorkflowExecution) -> None:

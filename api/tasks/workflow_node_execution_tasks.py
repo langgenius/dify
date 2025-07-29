@@ -86,7 +86,7 @@ def save_workflow_node_execution_task(
             return True
 
     except Exception as e:
-        logger.exception("Failed to save workflow node execution %s", execution_data.get('id', 'unknown'))
+        logger.exception("Failed to save workflow node execution %s", execution_data.get("id", "unknown"))
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
