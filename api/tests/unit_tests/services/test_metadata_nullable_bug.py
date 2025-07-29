@@ -24,20 +24,20 @@ class TestMetadataNullableBug:
         mock_metadata_args.name = None  # This will cause len() to crash
         mock_metadata_args.type = "string"
 
-        with patch('services.metadata_service.current_user') as mock_user:
+        with patch("services.metadata_service.current_user") as mock_user:
             mock_user.current_tenant_id = "tenant-123"
             mock_user.id = "user-456"
-            
+
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
     def test_metadata_service_update_with_none_name_crashes(self):
         """Test that MetadataService.update_metadata_name crashes when name is None."""
-        with patch('services.metadata_service.current_user') as mock_user:
+        with patch("services.metadata_service.current_user") as mock_user:
             mock_user.current_tenant_id = "tenant-123"
             mock_user.id = "user-456"
-            
+
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
@@ -48,19 +48,16 @@ class TestMetadataNullableBug:
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=True, location="json")
         parser.add_argument("name", type=str, required=True, nullable=True, location="json")
-        
+
         # Simulate request data with null values
-        with app.test_request_context(
-            json={"type": None, "name": None}, 
-            content_type='application/json'
-        ):
+        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This should parse successfully due to nullable=True
             args = parser.parse_args()
-            
+
             # Verify that null values are accepted
             assert args["type"] is None
             assert args["name"] is None
-            
+
             # This demonstrates the bug: API accepts None but business logic will crash
 
     def test_integration_bug_scenario(self, app):
@@ -69,28 +66,25 @@ class TestMetadataNullableBug:
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=True, location="json")
         parser.add_argument("name", type=str, required=True, nullable=True, location="json")
-        
-        with app.test_request_context(
-            json={"type": None, "name": None}, 
-            content_type='application/json'
-        ):
+
+        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             args = parser.parse_args()
-            
+
             # Step 2: Try to create MetadataArgs with None values
             # This should fail at Pydantic validation level
             with pytest.raises((ValueError, TypeError)):
                 metadata_args = MetadataArgs(**args)
-                
+
         # Step 3: If we bypass Pydantic (simulating the bug scenario)
         # Move this outside the request context to avoid Flask-Login issues
         mock_metadata_args = Mock()
         mock_metadata_args.name = None  # From args["name"]
         mock_metadata_args.type = None  # From args["type"]
-        
-        with patch('services.metadata_service.current_user') as mock_user:
+
+        with patch("services.metadata_service.current_user") as mock_user:
             mock_user.current_tenant_id = "tenant-123"
             mock_user.id = "user-456"
-            
+
             # Step 4: Service layer crashes on len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -101,16 +95,14 @@ class TestMetadataNullableBug:
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        
-        with app.test_request_context(
-            json={"type": None, "name": None}, 
-            content_type='application/json'
-        ):
+
+        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This should fail with BadRequest due to nullable=False
             from werkzeug.exceptions import BadRequest
+
             with pytest.raises(BadRequest):
                 parser.parse_args()
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])

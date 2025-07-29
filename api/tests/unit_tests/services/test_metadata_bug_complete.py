@@ -16,13 +16,13 @@ class TestMetadataBugCompleteValidation:
         # Pydantic should reject None values for required fields
         with pytest.raises((ValueError, TypeError)):
             MetadataArgs(type=None, name=None)
-        
+
         with pytest.raises((ValueError, TypeError)):
             MetadataArgs(type="string", name=None)
-        
+
         with pytest.raises((ValueError, TypeError)):
             MetadataArgs(type=None, name="test")
-        
+
         # Valid values should work
         valid_args = MetadataArgs(type="string", name="test_name")
         assert valid_args.type == "string"
@@ -35,19 +35,19 @@ class TestMetadataBugCompleteValidation:
         mock_metadata_args.name = None
         mock_metadata_args.type = "string"
 
-        with patch('services.metadata_service.current_user') as mock_user:
+        with patch("services.metadata_service.current_user") as mock_user:
             mock_user.current_tenant_id = "tenant-123"
             mock_user.id = "user-456"
-            
+
             # Should crash with TypeError
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
         # Test update method as well
-        with patch('services.metadata_service.current_user') as mock_user:
+        with patch("services.metadata_service.current_user") as mock_user:
             mock_user.current_tenant_id = "tenant-123"
             mock_user.id = "user-456"
-            
+
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
@@ -56,14 +56,14 @@ class TestMetadataBugCompleteValidation:
         from sqlalchemy import inspect
 
         from models.dataset import DatasetMetadata
-        
+
         # Get table info
         mapper = inspect(DatasetMetadata)
-        
+
         # Check that type and name columns are not nullable
-        type_column = mapper.columns['type']
-        name_column = mapper.columns['name']
-        
+        type_column = mapper.columns["type"]
+        name_column = mapper.columns["name"]
+
         assert type_column.nullable is False, "type column should be nullable=False"
         assert name_column.nullable is False, "name column should be nullable=False"
 
@@ -73,27 +73,18 @@ class TestMetadataBugCompleteValidation:
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        
-        with app.test_request_context(
-            json={"type": None, "name": None}, 
-            content_type='application/json'
-        ):
+
+        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
                 parser.parse_args()
 
         # Test with just name being null
-        with app.test_request_context(
-            json={"type": "string", "name": None}, 
-            content_type='application/json'
-        ):
+        with app.test_request_context(json={"type": "string", "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
                 parser.parse_args()
 
-        # Test with just type being null  
-        with app.test_request_context(
-            json={"type": None, "name": "test"}, 
-            content_type='application/json'
-        ):
+        # Test with just type being null
+        with app.test_request_context(json={"type": None, "name": "test"}, content_type="application/json"):
             with pytest.raises(BadRequest):
                 parser.parse_args()
 
@@ -102,11 +93,8 @@ class TestMetadataBugCompleteValidation:
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        
-        with app.test_request_context(
-            json={"type": "string", "name": "valid_name"}, 
-            content_type='application/json'
-        ):
+
+        with app.test_request_context(json={"type": "string", "name": "valid_name"}, content_type="application/json"):
             args = parser.parse_args()
             assert args["type"] == "string"
             assert args["name"] == "valid_name"
@@ -117,16 +105,13 @@ class TestMetadataBugCompleteValidation:
         buggy_parser = reqparse.RequestParser()
         buggy_parser.add_argument("type", type=str, required=True, nullable=True, location="json")
         buggy_parser.add_argument("name", type=str, required=True, nullable=True, location="json")
-        
-        with app.test_request_context(
-            json={"type": None, "name": None}, 
-            content_type='application/json'
-        ):
+
+        with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This would pass in the buggy version
             args = buggy_parser.parse_args()
             assert args["type"] is None
             assert args["name"] is None
-            
+
             # But would crash when trying to create MetadataArgs
             with pytest.raises((ValueError, TypeError)):
                 MetadataArgs(**args)
@@ -134,71 +119,71 @@ class TestMetadataBugCompleteValidation:
     def test_7_end_to_end_validation_layers(self):
         """Test all validation layers work together correctly."""
         # Layer 1: API should reject null at parameter level (with fix)
-        # Layer 2: Pydantic should reject null at model level  
+        # Layer 2: Pydantic should reject null at model level
         # Layer 3: Business logic expects non-null
         # Layer 4: Database enforces non-null
-        
+
         # Test that valid data flows through all layers
         valid_data = {"type": "string", "name": "test_metadata"}
-        
+
         # Should create valid Pydantic object
         metadata_args = MetadataArgs(**valid_data)
         assert metadata_args.type == "string"
         assert metadata_args.name == "test_metadata"
-        
+
         # Should not crash in business logic length check
         assert len(metadata_args.name) <= 255  # This should not crash
-        assert len(metadata_args.type) > 0     # This should not crash
+        assert len(metadata_args.type) > 0  # This should not crash
 
     def test_8_verify_specific_fix_locations(self):
         """Verify that the specific locations mentioned in bug report are fixed."""
         # Read the actual files to verify fixes
         import os
-        
+
         # Console API create
         console_create_file = "api/controllers/console/datasets/metadata.py"
         if os.path.exists(console_create_file):
             with open(console_create_file) as f:
                 content = f.read()
                 # Should contain nullable=False, not nullable=True
-                assert 'nullable=True' not in content.split('class DatasetMetadataCreateApi')[1].split('class')[0]
-        
-        # Service API create  
+                assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
+
+        # Service API create
         service_create_file = "api/controllers/service_api/dataset/metadata.py"
         if os.path.exists(service_create_file):
             with open(service_create_file) as f:
                 content = f.read()
                 # Should contain nullable=False, not nullable=True
-                create_api_section = content.split('class DatasetMetadataCreateServiceApi')[1].split('class')[0]
-                assert 'nullable=True' not in create_api_section
+                create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
+                assert "nullable=True" not in create_api_section
 
 
 class TestMetadataValidationSummary:
     """Summary tests that demonstrate the complete validation architecture."""
-    
+
     def test_validation_layer_architecture(self):
         """Document and test the 4-layer validation architecture."""
         # Layer 1: API Parameter Validation (Flask-RESTful reqparse)
         # - Role: First line of defense, validates HTTP request parameters
         # - Fixed: nullable=False ensures null values are rejected at API boundary
-        
-        # Layer 2: Pydantic Model Validation  
+
+        # Layer 2: Pydantic Model Validation
         # - Role: Validates data structure and types before business logic
         # - Working: Required fields without Optional[] reject None values
-        
+
         # Layer 3: Business Logic Validation
         # - Role: Domain-specific validation (length checks, uniqueness, etc.)
         # - Vulnerable: Direct len() calls crash on None values
-        
+
         # Layer 4: Database Constraints
         # - Role: Final data integrity enforcement
         # - Working: nullable=False prevents None values in database
-        
+
         # The bug was: Layer 1 allowed None, but Layers 2-4 expected non-None
         # The fix: Make Layer 1 consistent with Layers 2-4
-        
+
         assert True  # This test documents the architecture
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])
