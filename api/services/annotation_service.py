@@ -465,7 +465,7 @@ class AppAnnotationService:
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
 
-            # if annotation reply is enabled , delete annotation index
+            # if annotation reply is enabled, delete annotation index
             if app_annotation_setting:
                 delete_annotation_index_task.delay(
                     annotation.id, app_id, current_user.current_tenant_id, app_annotation_setting.collection_binding_id
