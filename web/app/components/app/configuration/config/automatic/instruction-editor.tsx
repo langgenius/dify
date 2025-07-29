@@ -45,7 +45,9 @@ const InstructionEditor: FC<Props> = ({
   const isBasicMode = !!getVarType
 
   const isCode = generatorType === 'code'
-  const placeholder = isCode ? ' ' : (
+  const placeholder = isCode ? <div className='system-sm-regular whitespace-break-spaces text-text-placeholder'>
+    {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`)}
+  </div> : (
     <div className='system-sm-regular  text-text-placeholder'>
       <div className='leading-6'>{t(`${i18nPrefix}.instructionPlaceHolderTitle`)}</div>
       <div className='mt-2'>

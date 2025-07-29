@@ -252,6 +252,7 @@ const translation = {
     instructionPlaceHolderLine1: 'Make the output more concise, retaining the core points.',
     instructionPlaceHolderLine2: 'The output format is incorrect, please strictly follow the JSON format.',
     instructionPlaceHolderLine3: 'The tone is too harsh, please make it more friendly.',
+    codeGenInstructionPlaceHolderLine: 'The more detailed the feedback, such as the data types of input and output as well as how variables are processed, the more accurate the code generation will be.',
     idealOutput: 'Ideal Output',
     idealOutputPlaceholder: 'Describe your ideal response format, length, tone, and content requirements...',
     optional: 'Optional',

@@ -250,6 +250,7 @@ const translation = {
     instructionPlaceHolderLine1: '使输出更简洁，保留核心要点。',
     instructionPlaceHolderLine2: '输出格式不正确，请严格遵循 JSON 格式。',
     instructionPlaceHolderLine3: '语气过于生硬，请使其更友好。',
+    codeGenInstructionPlaceHolderLine: '反馈越详细，例如输入和输出的数据类型以及变量的处理方式，代码生成就会越准确。',
     idealOutput: '理想输出',
     idealOutputPlaceholder: '描述您理想的回复格式、长度、语气和内容要求……',
     optional: '可选',
