@@ -148,7 +148,7 @@ class ConversationVariableDetailApi(Resource):
         except services.errors.conversation.ConversationVariableNotExistsError:
             raise NotFound("Conversation Variable Not Exists.")
         except services.errors.conversation.ConversationVariableTypeMismatchError as e:
-            raise BadRequest(e.message)
+            raise BadRequest(str(e))
 
 
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
