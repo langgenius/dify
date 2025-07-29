@@ -56,6 +56,13 @@ const DatasetCard = ({
   const isPipelineUnpublished = useMemo(() => {
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
+  const isShowChunkingModeIcon = useMemo(() => {
+    return dataset.doc_form && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
+  }, [dataset.doc_form, dataset.runtime_mode, dataset.is_published])
+  const isShowDocModeInfo = useMemo(() => {
+    return dataset.doc_form && dataset.indexing_technique && dataset.retrieval_model_dict?.search_method && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
+  }, [dataset.doc_form, dataset.indexing_technique, dataset.retrieval_model_dict?.search_method, dataset.runtime_mode, dataset.is_published])
+
   const chunkingModeIcon = dataset.doc_form ? DOC_FORM_ICON_WITH_BG[dataset.doc_form] : React.Fragment
   const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
   const iconInfo = dataset.icon_info || {
@@ -177,7 +184,7 @@ const DatasetCard = ({
               background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
               imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
             />
-            {(dataset.doc_form || isExternalProvider) && (
+            {(isShowChunkingModeIcon || isExternalProvider) && (
               <div className='absolute -bottom-1 -right-1 z-[5]'>
                 <Icon className='size-4' />
               </div>
@@ -192,7 +199,7 @@ const DatasetCard = ({
             </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
-              {!isExternalProvider && (
+              {!isExternalProvider && isShowDocModeInfo && (
                 <>
                   {dataset.doc_form && <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>}
                   {dataset.indexing_technique && <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>}

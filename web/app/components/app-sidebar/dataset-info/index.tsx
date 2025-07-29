@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '../../base/app-icon'
 import Effect from '../../base/effect'
@@ -27,6 +27,9 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
     icon_url: '',
   }
   const isExternalProvider = dataset.provider === 'external'
+  const isPipelinePublished = useMemo(() => {
+    return dataset.runtime_mode === 'rag_pipeline' && dataset.is_published
+  }, [dataset.runtime_mode, dataset.is_published])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   return (
@@ -54,7 +57,7 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
               </div>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>
                 {isExternalProvider && t('dataset.externalTag')}
-                {!isExternalProvider && dataset.doc_form && dataset.indexing_technique && (
+                {!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique && (
                   <div className='flex items-center gap-x-2'>
                     <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
                     <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>

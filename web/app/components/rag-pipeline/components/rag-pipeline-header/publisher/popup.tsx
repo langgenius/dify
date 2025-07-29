@@ -38,6 +38,7 @@ import {
 import Confirm from '@/app/components/base/confirm'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import type { IconInfo } from '@/models/datasets'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -76,6 +77,7 @@ const Popup = () => {
   }] = useBoolean(false)
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
+  const resetDatasetList = useResetDatasetList()
 
   const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (publishing)
@@ -100,6 +102,7 @@ const Popup = () => {
           workflowStore.getState().setPublishedAt(res.created_at)
           mutateDatasetRes?.()
           invalidPublishedPipelineInfo()
+          resetDatasetList()
         }
       }
     }
