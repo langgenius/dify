@@ -261,6 +261,7 @@ const translation = {
   accessControl: 'Kiểm soát truy cập ứng dụng web',
   maxActiveRequestsPlaceholder: 'Nhập 0 để không giới hạn',
   maxActiveRequests: 'Số yêu cầu đồng thời tối đa',
+  maxActiveRequestsTip: 'Số yêu cầu hoạt động đồng thời tối đa cho mỗi ứng dụng (0 để không giới hạn)',
 }
 
 export default translation

@@ -497,6 +497,7 @@ const translation = {
           search: 'Suchmetadaten',
         },
         title: 'Metadatenfilterung',
+        tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
     },
     http: {

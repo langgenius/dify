@@ -268,6 +268,7 @@ const translation = {
   noAccessPermission: 'Keine Berechtigung zum Zugriff auf die Webanwendung',
   maxActiveRequests: 'Maximale gleichzeitige Anfragen',
   maxActiveRequestsPlaceholder: 'Geben Sie 0 für unbegrenzt ein',
+  maxActiveRequestsTip: 'Maximale Anzahl gleichzeitiger aktiver Anfragen pro App (0 für unbegrenzt)',
 }
 
 export default translation

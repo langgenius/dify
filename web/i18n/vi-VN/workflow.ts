@@ -497,6 +497,7 @@ const translation = {
           search: 'Tìm kiếm siêu dữ liệu',
         },
         title: 'Lọc siêu dữ liệu',
+        tip: 'Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.',
       },
     },
     http: {

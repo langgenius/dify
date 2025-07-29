@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'Немає дозволу на доступ до веб-додатку',
   maxActiveRequestsPlaceholder: 'Введіть 0 для необмеженого',
   maxActiveRequests: 'Максимальна кількість одночасних запитів',
+  maxActiveRequestsTip: 'Максимальна кількість одночасних активних запитів на додаток (0 для необмеженої кількості)',
 }
 
 export default translation
