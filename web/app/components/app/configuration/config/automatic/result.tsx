@@ -13,7 +13,6 @@ import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
-import cn from '@/utils/classnames'
 
 type Props = {
   isBasicMode?: boolean
@@ -41,7 +40,7 @@ const Result: FC<Props> = ({
 
   return (
     <div className='flex h-full flex-col'>
-      <div className='mb-3 flex  shrink-0 items-center justify-between'>
+      <div className='mb-3 flex shrink-0 items-center justify-between'>
         <div>
           <div className='shrink-0 text-base font-semibold leading-[160%] text-text-secondary'>{t('appDebug.generate.resTitle')}</div>
           <VersionSelector
@@ -62,33 +61,35 @@ const Result: FC<Props> = ({
           </Button>
         </div>
       </div>
-      {
-        current?.message && (
-          <PromptToast message={current.message} className='shrink-0' />
-        )
-      }
-      <div className={cn('mt-3 grow', isGeneratorPrompt && 'overflow-y-auto')}>
-        {isGeneratorPrompt ? (
-          isBasicMode ? (
-            <PromptRes
+      <div className='grow overflow-y-auto'>
+        {
+          current?.message && (
+            <PromptToast message={current.message} className='mb-3 shrink-0' />
+          )
+        }
+        <div>
+          {isGeneratorPrompt ? (
+            isBasicMode ? (
+              <PromptRes
+                value={current?.modified}
+                workflowVariableBlock={{
+                  show: false,
+                }}
+              />
+            ) : (<PromptResInWorkflow
+              value={current?.modified || ''}
+              nodeId={nodeId!}
+            />)
+          ) : (
+            <CodeEditor
+              editorWrapperClassName='h-full'
+              className='bg-transparent pt-0'
               value={current?.modified}
-              workflowVariableBlock={{
-                show: false,
-              }}
+              readOnly
+              hideTopMenu
             />
-          ) : (<PromptResInWorkflow
-            value={current?.modified || ''}
-            nodeId={nodeId!}
-          />)
-        ) : (
-          <CodeEditor
-            editorWrapperClassName='h-full'
-            className='bg-transparent pt-0'
-            value={current?.modified}
-            readOnly
-            hideTopMenu
-          />
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

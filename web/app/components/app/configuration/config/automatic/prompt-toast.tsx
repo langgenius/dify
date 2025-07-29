@@ -43,8 +43,8 @@ const PromptToast = ({
         <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && 'rotate-[-90deg]')} onClick={toggleFold} />
       </div>
       {!isFold && (
-        <div className='max-h-[300px] overflow-y-auto pb-4 pr-4'>
-          <Markdown className="text-sm" content={message} />
+        <div className='pb-4 pr-4'>
+          <Markdown className="!text-sm" content={message} />
         </div>
       )}
     </div>
