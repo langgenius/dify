@@ -350,6 +350,7 @@ const translation = {
     content: 'İçerik',
     required: 'Gerekli',
     errorMsg: {
+      varNameRequired: 'Değişken adı gereklidir',
       labelNameRequired: 'Etiket adı gereklidir',
       varNameCanBeRepeat: 'Değişken adı tekrar edemez',
       atLeastOneOption: 'En az bir seçenek gereklidir',
