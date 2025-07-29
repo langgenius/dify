@@ -133,6 +133,7 @@ const translation = {
   credentialSelector: {
     name: '{{credentialName}}\'s {{pluginName}}',
   },
+  configurationTip: 'Configure {{pluginName}}',
   conversion: {
     title: 'Convert to Knowledge Pipeline',
     descriptionChunk1: 'You can now convert your existing knowledge base to use the Knowledge Pipeline for document processing',

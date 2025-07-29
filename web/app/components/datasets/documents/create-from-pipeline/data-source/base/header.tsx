@@ -4,6 +4,8 @@ import Button from '@/app/components/base/button'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import type { CredentialSelectorProps } from './credential-selector'
 import CredentialSelector from './credential-selector'
+import Tooltip from '@/app/components/base/tooltip'
+import { useTranslation } from 'react-i18next'
 
 type HeaderProps = {
   docTitle: string
@@ -17,6 +19,8 @@ const Header = ({
   onClickConfiguration,
   ...rest
 }: HeaderProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className='flex items-center gap-x-2'>
       <div className='flex shrink-0 grow items-center gap-x-1'>
@@ -24,16 +28,21 @@ const Header = ({
           {...rest}
         />
         <Divider type='vertical' className='mx-1 h-3.5' />
-        <Button
-          variant='ghost'
-          size='small'
-          className='size-6 px-1'
+        <Tooltip
+          popupContent={t('datasetPipeline.configurationTip', { pluginName: rest.pluginName })}
+          position='top'
         >
-          <RiEqualizer2Line
-            className='h-4 w-4'
-            onClick={onClickConfiguration}
-          />
-        </Button>
+          <Button
+            variant='ghost'
+            size='small'
+            className='size-6 px-1'
+          >
+            <RiEqualizer2Line
+              className='h-4 w-4'
+              onClick={onClickConfiguration}
+            />
+          </Button>
+        </Tooltip>
       </div>
       <a
         className='system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent'

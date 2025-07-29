@@ -133,6 +133,7 @@ const translation = {
   credentialSelector: {
     name: '{{credentialName}} 的 {{pluginName}}',
   },
+  configurationTip: '配置 {{pluginName}}',
   conversion: {
     title: '转换为知识库 pipeline',
     descriptionChunk1: '您现在可以将现有知识库转换为使用知识库 pipeline 来处理文档',
