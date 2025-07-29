@@ -73,12 +73,12 @@ class TestFileUploadSecurity:
             patch("controllers.console.wraps.cloud_edition_billing_resource_check", lambda x: lambda f: f),
             patch("flask_restful.marshal_with", lambda x: lambda f: f),
         ]
-        
+
         for p in patches:
             p.start()
-        
+
         yield patches
-        
+
         for p in patches:
             p.stop()
 
@@ -119,10 +119,7 @@ class TestFileUploadSecurity:
 
         # Create file with malicious extension
         file_content = b"<?php system($_GET['cmd']); ?>"
-        file_data = {
-            "file": (io.BytesIO(file_content), filename, "application/octet-stream"),
-            "source": "datasets"
-        }
+        file_data = {"file": (io.BytesIO(file_content), filename, "application/octet-stream"), "source": "datasets"}
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if should_reject:
@@ -172,11 +169,8 @@ class TestFileUploadSecurity:
         actual_size = min(size_mb * 1024, 1024 * 1024)  # Limit to 1MB for test performance
         file_content = b"X" * actual_size
         filename = f"test.{extension}"
-        
-        file_data = {
-            "file": (io.BytesIO(file_content), filename, "application/octet-stream"),
-            "source": "datasets"
-        }
+
+        file_data = {"file": (io.BytesIO(file_content), filename, "application/octet-stream"), "source": "datasets"}
 
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if should_reject:
@@ -219,19 +213,16 @@ class TestFileUploadSecurity:
         """Test filename sanitization and validation"""
         mock_current_user.return_value = mock_user
 
-        file_data = {
-            "file": (io.BytesIO(b"content"), filename, "text/plain"),
-            "source": "datasets"
-        }
+        file_data = {"file": (io.BytesIO(b"content"), filename, "text/plain"), "source": "datasets"}
 
         def upload_file_side_effect(**kwargs):
             # Simulate filename validation in FileService
             filename = kwargs.get("filename", "")
             invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\x00"]
-            
+
             if any(char in filename for char in invalid_chars):
                 raise ValueError("Filename contains invalid characters")
-            
+
             return MagicMock(id="test_file_id", name=filename)
 
         mock_upload_file.side_effect = upload_file_side_effect
@@ -358,7 +349,7 @@ class TestFileUploadSecurity:
     ):
         """Test GET endpoint returns proper upload configuration"""
         mock_current_user.return_value = mock_user
-        
+
         # Mock configuration values
         mock_config.UPLOAD_FILE_SIZE_LIMIT = 15
         mock_config.UPLOAD_FILE_BATCH_LIMIT = 5
@@ -369,7 +360,7 @@ class TestFileUploadSecurity:
 
         with app.test_request_context(method="GET"):
             result, status = api.get()
-            
+
             assert status == 200
             assert result["file_size_limit"] == 15
             assert result["batch_count_limit"] == 5
