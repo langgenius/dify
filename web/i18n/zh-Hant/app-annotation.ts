@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '提問',
-      match: '匹配',
-      response: '回覆',
       answer: '答案',
       createdAt: '建立時間',
       hits: '命中次數',
@@ -71,7 +69,6 @@ const translation = {
     noHitHistory: '沒有命中歷史',
   },
   hitHistoryTable: {
-    question: '問題',
     query: '提問',
     match: '匹配',
     response: '回覆',
