@@ -149,7 +149,7 @@ SupportedComparisonOperator = Literal[
     "empty",
     "not empty",
     "in",
-    "not in"
+    "not in",
     # for number
     "=",
     "≠",
