@@ -153,7 +153,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   }, [instructionTemplate])
 
   const isValid = () => {
-    if (instruction.trim() === '') {
+    if (!instruction || instruction.trim() === '') {
       Toast.notify({
         type: 'error',
         message: t('common.errorMsg.fieldRequired', {
