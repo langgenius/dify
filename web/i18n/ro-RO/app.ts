@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'Nici o permisiune pentru a accesa aplicația web',
   maxActiveRequestsPlaceholder: 'Introduceți 0 pentru nelimitat',
   maxActiveRequests: 'Maxime cereri simultane',
+  maxActiveRequestsTip: 'Numărul maxim de cereri active concurente pe aplicație (0 pentru nelimitat)',
 }
 
 export default translation

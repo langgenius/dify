@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'बल्क आयात',
       bulkExport: 'बल्क निर्यात',
       clearAll: 'सभी एनोटेशन साफ करें',
+      clearAllConfirm: 'क्या सभी टिप्पणियाँ हटानी हैं?',
     },
   },
   editModal: {

@@ -97,14 +97,16 @@ class DatasetService:
 
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
-                if permitted_dataset_ids:
+                # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                     query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
             else:
                 if user.current_role != TenantAccountRole.OWNER or not include_all:
                     # show all datasets that the user has permission to access
-                    if permitted_dataset_ids:
+                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                         query = query.where(
                             db.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
@@ -133,9 +135,10 @@ class DatasetService:
         if search:
             query = query.where(Dataset.name.ilike(f"%{search}%"))
 
-        if tag_ids:
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if tag_ids and len(tag_ids) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
-            if target_ids:
+            if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
                 return [], 0
@@ -164,6 +167,9 @@ class DatasetService:
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
+        # Check if ids is not empty to avoid WHERE false condition
+        if not ids or len(ids) == 0:
+            return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
@@ -1132,6 +1138,9 @@ class DocumentService:
 
     @staticmethod
     def delete_documents(dataset: Dataset, document_ids: list[str]):
+        # Check if document_ids is not empty to avoid WHERE false condition
+        if not document_ids or len(document_ids) == 0:
+            return
         documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
@@ -2778,6 +2787,9 @@ class SegmentService:
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
         index_node_ids = (
             db.session.query(DocumentSegment)
             .with_entities(DocumentSegment.index_node_id)
@@ -2797,6 +2809,9 @@ class SegmentService:
 
     @classmethod
     def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
         if action == "enable":
             segments = (
                 db.session.query(DocumentSegment)
@@ -3058,7 +3073,8 @@ class SegmentService:
             DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
         )
 
-        if status_list:
+        # Check if status_list is not empty to avoid WHERE false condition
+        if status_list and len(status_list) > 0:
             query = query.where(DocumentSegment.status.in_(status_list))
 
         if keyword:

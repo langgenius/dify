@@ -9,14 +9,13 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.auth.error import (
-    AccountInFreezeError,
     EmailAlreadyInUseError,
     EmailChangeLimitError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -496,7 +495,7 @@ class ChangeEmailResetApi(Resource):
         if current_user.email != old_email:
             raise AccountNotFound()
 
-        updated_account = AccountService.update_account(current_user, email=args["new_email"])
+        updated_account = AccountService.update_account_email(current_user, email=args["new_email"])
 
         AccountService.send_change_email_completed_notify_email(
             email=args["new_email"],

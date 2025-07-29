@@ -17,6 +17,7 @@ const translation = {
       bulkImport: '일괄 가져오기',
       bulkExport: '일괄 내보내기',
       clearAll: '모든 어노테이션 지우기',
+      clearAllConfirm: '모든 주석을 삭제하시겠습니까?',
     },
   },
   editModal: {

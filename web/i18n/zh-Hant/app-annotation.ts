@@ -19,6 +19,7 @@ const translation = {
       bulkImport: '批次匯入',
       bulkExport: '批次匯出',
       clearAll: '刪除所有標註',
+      clearAllConfirm: '要刪除所有標註嗎？',
     },
   },
   editModal: {
