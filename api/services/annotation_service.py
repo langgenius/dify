@@ -452,6 +452,11 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
+        # if annotation reply is enabled , delete annotation index
+        app_annotation_setting = (
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        )
+
         annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
             annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
@@ -459,6 +464,12 @@ class AppAnnotationService:
             )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
+
+            # if annotation reply is enabled , delete annotation index
+            if app_annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, app_annotation_setting.collection_binding_id
+                )
 
             db.session.delete(annotation)
 
