@@ -79,15 +79,23 @@ async function getKeysFromLanguage(language) {
   })
 }
 
+// Add command line argument support
+const targetFile = process.argv.find(arg => arg.startsWith('--file='))?.split('=')[1]
+const targetLang = process.argv.find(arg => arg.startsWith('--lang='))?.split('=')[1]
+
 async function main() {
   const compareKeysCount = async () => {
     const targetKeys = await getKeysFromLanguage(targetLanguage)
-    const languagesKeys = await Promise.all(languages.map(language => getKeysFromLanguage(language)))
+
+    // Filter languages by target language if specified
+    const languagesToProcess = targetLang ? [targetLang] : languages
+
+    const languagesKeys = await Promise.all(languagesToProcess.map(language => getKeysFromLanguage(language)))
 
     const keysCount = languagesKeys.map(keys => keys.length)
     const targetKeysCount = targetKeys.length
 
-    const comparison = languages.reduce((result, language, index) => {
+    const comparison = languagesToProcess.reduce((result, language, index) => {
       const languageKeysCount = keysCount[index]
       const difference = targetKeysCount - languageKeysCount
       result[language] = difference
@@ -97,11 +105,24 @@ async function main() {
     console.log(comparison)
 
     // Print missing keys
-    languages.forEach((language, index) => {
+    languagesToProcess.forEach((language, index) => {
       const missingKeys = targetKeys.filter(key => !languagesKeys[index].includes(key))
-      console.log(`Missing keys in ${language}:`, missingKeys)
+
+      // Filter by target file if specified
+      const filteredMissingKeys = targetFile
+        ? missingKeys.filter(key => key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())))
+        : missingKeys
+
+      console.log(`Missing keys in ${language}:`, filteredMissingKeys)
     })
   }
+
+  console.log('🚀 Starting check-i18n script...')
+  if (targetFile)
+    console.log(`📁 Checking file: ${targetFile}`)
+
+  if (targetLang)
+    console.log(`🌍 Checking language: ${targetLang}`)
 
   compareKeysCount()
 }
