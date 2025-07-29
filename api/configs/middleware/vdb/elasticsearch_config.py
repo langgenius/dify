@@ -47,7 +47,7 @@ class ElasticsearchConfig(BaseSettings):
         description="Path to CA certificate file for SSL verification", default=None
     )
     ELASTICSEARCH_VERIFY_CERTS: bool = Field(
-        description="Whether to verify SSL certificates (default is True)", default=True
+        description="Whether to verify SSL certificates (default is False)", default=False
     )
     ELASTICSEARCH_REQUEST_TIMEOUT: int = Field(
         description="Request timeout in milliseconds (default is 100000)", default=100000
