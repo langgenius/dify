@@ -280,10 +280,10 @@ class AppAnnotationService:
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype=str)
             result = []
             for index, row in df.iterrows():
-                content = {"question": str(row.iloc[0]), "answer": str(row.iloc[1])}
+                content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")
