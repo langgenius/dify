@@ -439,10 +439,16 @@ export const NODE_LAYOUT_MIN_DISTANCE = 100
 
 let maxParallelLimit = 10
 
-if (process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT && process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT !== '')
-  maxParallelLimit = Number.parseInt(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT)
-else if (globalThis.document?.body?.getAttribute('data-public-max-parallel-limit') && globalThis.document.body.getAttribute('data-public-max-parallel-limit') !== '')
-  maxParallelLimit = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-parallel-limit') as string)
+if (process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT && process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT !== '') {
+  const parsed = Number.parseInt(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT)
+  if (!Number.isNaN(parsed) && parsed > 0)
+    maxParallelLimit = parsed
+}
+ else if (globalThis.document?.body?.getAttribute('data-public-max-parallel-limit') && globalThis.document.body.getAttribute('data-public-max-parallel-limit') !== '') {
+  const parsed = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-parallel-limit') as string)
+  if (!Number.isNaN(parsed) && parsed > 0)
+    maxParallelLimit = parsed
+}
 
 export const PARALLEL_LIMIT = maxParallelLimit
 export const PARALLEL_DEPTH_LIMIT = 3
