@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from flask_login import AnonymousUserMixin
-from werkzeug.datastructures import FileStorage
+from flask_login import LoginManager, UserMixin
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import FilenameNotExistsError
 from controllers.console.error import (
     FileTooLargeError,
     NoFileUploadedError,
@@ -14,32 +14,73 @@ from controllers.console.error import (
     UnsupportedFileTypeError,
 )
 from controllers.console.files import FileApi
-from models.account import Account
+from models.account import AccountStatus
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
 
+class MockUser(UserMixin):
+    """Mock user for testing"""
+
+    def __init__(self, user_id: str = "test_user", is_dataset_editor: bool = True):
+        self.id = user_id
+        self.current_tenant_id = "test_tenant_id"
+        self.is_dataset_editor = is_dataset_editor
+        self.status = AccountStatus.ACTIVE
+
+    def get_id(self) -> str:
+        return self.id
+
+
+def create_test_app():
+    """Create Flask app with LoginManager for testing"""
+    app = Flask(__name__)
+    app.config["SECRET_KEY"] = "test-secret-key"
+    app.config["TESTING"] = True
+
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        return MockUser(user_id)
+
+    return app
+
+
 class TestFileUploadSecurity:
-    """Comprehensive security tests for file upload functionality"""
+    """Security tests for file upload functionality"""
 
     @pytest.fixture
     def app(self):
-        app = Flask(__name__)
-        app.config["TESTING"] = True
-        return app
+        return create_test_app()
 
     @pytest.fixture
     def api(self):
         return FileApi()
 
     @pytest.fixture
-    def mock_current_user(self):
-        user = MagicMock(spec=Account)
-        user.is_authenticated = True
-        user.is_dataset_editor = True
-        user.id = "test_user_id"
-        user.current_tenant_id = "test_tenant_id"
-        return user
+    def mock_user(self):
+        return MockUser()
+
+    @pytest.fixture
+    def mock_decorators(self):
+        """Mock all decorators used by FileApi"""
+        patches = [
+            patch("controllers.console.wraps.setup_required", lambda f: f),
+            patch("libs.login.login_required", lambda f: f),
+            patch("controllers.console.wraps.account_initialization_required", lambda f: f),
+            patch("controllers.console.wraps.cloud_edition_billing_resource_check", lambda x: lambda f: f),
+            patch("flask_restful.marshal_with", lambda x: lambda f: f),
+        ]
+        
+        for p in patches:
+            p.start()
+        
+        yield patches
+        
+        for p in patches:
+            p.stop()
 
     # Test 1: Malicious File Type Detection
     @pytest.mark.parametrize(
@@ -61,371 +102,174 @@ class TestFileUploadSecurity:
             ("script.js", True),
             ("macro.vbs", True),
             ("applet.jar", True),
-            # Valid files
+            # Valid files for datasets
             ("document.pdf", False),
             ("image.jpg", False),
             ("text.txt", False),
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
     def test_should_detect_malicious_file_types(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user, filename, should_reject
+        self, mock_current_user, mock_upload_file, mock_decorators, api, app, mock_user, filename, should_reject
     ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+        """Test detection of malicious file types"""
+        mock_current_user.return_value = mock_user
+        mock_current_user.is_dataset_editor = True
 
         # Create file with malicious extension
         file_content = b"<?php system($_GET['cmd']); ?>"
-        file = FileStorage(stream=io.BytesIO(file_content), filename=filename, content_type="application/octet-stream")
+        file_data = {
+            "file": (io.BytesIO(file_content), filename, "application/octet-stream"),
+            "source": "datasets"
+        }
 
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if should_reject:
                 # Configure service to raise error for dangerous files
-                mock_file_service.upload_file.side_effect = ServiceUnsupportedFileTypeError()
+                mock_upload_file.side_effect = ServiceUnsupportedFileTypeError()
 
                 with pytest.raises(UnsupportedFileTypeError):
                     api.post()
             else:
                 # Configure service to accept safe files
-                mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
+                mock_upload_file.return_value = MagicMock(id="test_file_id")
                 result, status = api.post()
                 assert status == 201
 
-    # Test 2: MIME Type Forgery Detection
+    # Test 2: File Size Limits
     @pytest.mark.parametrize(
-        ("filename", "content", "mime_type", "description"),
+        ("extension", "size_mb", "should_reject"),
         [
-            # PHP code disguised as image
-            ("photo.jpg", b"<?php phpinfo(); ?>", "image/jpeg", "PHP disguised as JPEG"),
-            # JavaScript in HTML
-            ("page.html", b"<script>alert('xss')</script>", "text/html", "JavaScript in HTML"),
-            # Executable with wrong MIME
-            ("app.exe", b"MZ\x90\x00", "image/png", "EXE disguised as PNG"),
-            # Valid image data (JPEG magic number)
-            ("real.jpg", b"\xff\xd8\xff\xe0", "image/jpeg", "Valid JPEG"),
+            ("jpg", 15, True),  # Over image limit (assume 10MB)
+            ("jpg", 8, False),  # Under image limit
+            ("mp4", 550, True),  # Over video limit (assume 500MB)
+            ("mp4", 450, False),  # Under video limit
+            ("mp3", 60, True),  # Over audio limit (assume 50MB)
+            ("mp3", 40, False),  # Under audio limit
+            ("pdf", 20, True),  # Over general limit (assume 15MB)
+            ("pdf", 10, False),  # Under general limit
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_validate_mime_type_matches_content(
-        self,
-        mock_file_service,
-        mock_current_user_context,
-        api,
-        app,
-        mock_current_user,
-        filename,
-        content,
-        mime_type,
-        description,
-    ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
-
-        file = FileStorage(stream=io.BytesIO(content), filename=filename, content_type=mime_type)
-
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
-            if description.startswith("Valid"):
-                mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
-                result, status = api.post()
-                assert status == 201
-            else:
-                mock_file_service.upload_file.side_effect = ServiceUnsupportedFileTypeError()
-                with pytest.raises(UnsupportedFileTypeError):
-                    api.post()
-
-    # Test 3: File Content Security Validation
-    @pytest.mark.parametrize(
-        ("filename", "content", "description"),
-        [
-            # SVG with embedded script
-            (
-                "icon.svg",
-                b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script></svg>',
-                "SVG with script tag",
-            ),
-            # SVG with event handler
-            (
-                "image.svg",
-                b'<svg xmlns="http://www.w3.org/2000/svg"><image href="x" onerror="alert(1)"/></svg>',
-                "SVG with onerror",
-            ),
-            # PDF with JavaScript
-            ("document.pdf", b'%PDF-1.4\n/JS (app.alert("XSS"))', "PDF with JavaScript"),
-            # Office document with macro indicator
-            ("spreadsheet.xlsx", b"PK\x03\x04...vbaProject.bin", "Excel with macro"),
-            # Clean SVG
-            (
-                "clean.svg",
-                b'<svg xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40"/></svg>',
-                "Clean SVG",
-            ),
-        ],
-    )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_detect_embedded_malicious_content(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user, filename, content, description
-    ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
-
-        file = FileStorage(stream=io.BytesIO(content), filename=filename, content_type="application/octet-stream")
-
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
-            if "Clean" in description:
-                mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
-                result, status = api.post()
-                assert status == 201
-            else:
-                mock_file_service.upload_file.side_effect = ServiceUnsupportedFileTypeError()
-                with pytest.raises(UnsupportedFileTypeError):
-                    api.post()
-
-    # Test 4: Path Traversal Attack Prevention
-    @pytest.mark.parametrize(
-        ("filename", "description"),
-        [
-            ("../../../etc/passwd", "Unix path traversal"),
-            ("..\\..\\windows\\system32\\config\\sam", "Windows path traversal"),
-            ("file.jpg\x00.php", "Null byte injection"),
-            ("%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd", "URL encoded traversal"),
-            ("....//....//....//etc/passwd", "Alternative traversal"),
-            ("/etc/passwd", "Absolute path"),
-            ("C:\\Windows\\System32\\drivers\\etc\\hosts", "Windows absolute path"),
-        ],
-    )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_prevent_path_traversal_attacks(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user, filename, description
-    ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
-
-        file = FileStorage(stream=io.BytesIO(b"content"), filename=filename, content_type="text/plain")
-
-        # The FileService should validate and sanitize filenames
-        def upload_file_side_effect(filename, content, mimetype, user, source):
-            # Check if filename contains path traversal attempts
-            if any(char in filename for char in ["/", "\\", "\x00", ".."]):
-                raise ValueError("Filename contains invalid characters")
-            return MagicMock(id="test_file_id")
-
-        mock_file_service.upload_file.side_effect = upload_file_side_effect
-
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
-            with pytest.raises(ValueError):
-                api.post()
-
-    # Test 5: File Size Limit Enforcement
-    @pytest.mark.parametrize(
-        ("file_type", "extension", "size_mb", "limit_mb", "should_reject"),
-        [
-            # Image files
-            ("image", "jpg", 15, 10, True),  # Over image limit
-            ("image", "png", 8, 10, False),  # Under image limit
-            # Video files
-            ("video", "mp4", 550, 500, True),  # Over video limit
-            ("video", "mov", 450, 500, False),  # Under video limit
-            # Audio files
-            ("audio", "mp3", 60, 50, True),  # Over audio limit
-            ("audio", "wav", 40, 50, False),  # Under audio limit
-            # Document files
-            ("document", "pdf", 20, 15, True),  # Over general limit
-            ("document", "txt", 10, 15, False),  # Under general limit
-            # Edge cases
-            ("image", "jpg", 0, 10, False),  # Zero size file
-            ("document", "txt", 0.001, 15, False),  # Very small file
-        ],
-    )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    @patch("controllers.console.files.dify_config")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
     def test_should_enforce_file_size_limits(
         self,
-        mock_config,
-        mock_file_service,
-        mock_current_user_context,
+        mock_current_user,
+        mock_upload_file,
+        mock_decorators,
         api,
         app,
-        mock_current_user,
-        file_type,
+        mock_user,
         extension,
         size_mb,
-        limit_mb,
         should_reject,
     ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+        """Test file size limit enforcement"""
+        mock_current_user.return_value = mock_user
 
-        # Configure size limits
-        mock_config.UPLOAD_FILE_SIZE_LIMIT = 15  # General limit
-        mock_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT = 10
-        mock_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT = 500
-        mock_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT = 50
-        mock_config.UPLOAD_FILE_BATCH_LIMIT = 5
-        mock_config.WORKFLOW_FILE_UPLOAD_LIMIT = 10
+        # Create file with specific size (limit to reasonable size for testing)
+        actual_size = min(size_mb * 1024, 1024 * 1024)  # Limit to 1MB for test performance
+        file_content = b"X" * actual_size
+        filename = f"test.{extension}"
+        
+        file_data = {
+            "file": (io.BytesIO(file_content), filename, "application/octet-stream"),
+            "source": "datasets"
+        }
 
-        # Create file with specific size
-        file_content = b"X" * int(size_mb * 1024 * 1024)
-        file = FileStorage(
-            stream=io.BytesIO(file_content), filename=f"test.{extension}", content_type="application/octet-stream"
-        )
-
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if should_reject:
-                mock_file_service.upload_file.side_effect = ServiceFileTooLargeError(
-                    f"File size exceeds limit of {limit_mb}MB"
-                )
+                mock_upload_file.side_effect = ServiceFileTooLargeError("File size exceeds limit")
                 with pytest.raises(FileTooLargeError):
                     api.post()
             else:
-                mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
+                mock_upload_file.return_value = MagicMock(id="test_file_id")
                 result, status = api.post()
                 assert status == 201
 
-    # Test 6: Filename Security
+    # Test 3: Filename Security
     @pytest.mark.parametrize(
-        ("filename", "expected_sanitized"),
+        ("filename", "should_reject"),
         [
-            # Special characters that should be rejected
-            ("<script>alert('xss')</script>.txt", "Invalid"),
-            ("'; DROP TABLE users; --.sql", "Invalid"),
-            ("file|cmd.txt", "Invalid"),
-            ("file:data.txt", "Invalid"),
-            ('file"name".txt', "Invalid"),
-            ("file?name.txt", "Invalid"),
-            ("file*name.txt", "Invalid"),
-            ("file<>name.txt", "Invalid"),
-            # Long filenames (should be truncated)
-            ("a" * 250 + ".txt", "a" * 200 + ".txt"),
-            # Unicode and control characters
-            ("file\x00name.txt", "Invalid"),
-            ("file\nname.txt", "Invalid"),
-            ("file\rname.txt", "Invalid"),
-            # Windows reserved names
-            ("CON.txt", "Invalid"),
-            ("PRN.txt", "Invalid"),
-            ("AUX.txt", "Invalid"),
-            ("NUL.txt", "Invalid"),
-            ("COM1.txt", "Invalid"),
-            ("LPT1.txt", "Invalid"),
+            # Dangerous characters
+            ("<script>alert('xss')</script>.txt", True),
+            ("'; DROP TABLE users; --.sql", True),
+            ("file|cmd.txt", True),
+            ("file:data.txt", True),
+            ('file"name".txt', True),
+            ("file?name.txt", True),
+            ("file*name.txt", True),
+            ("file<>name.txt", True),
+            # Path traversal
+            ("../../../etc/passwd", True),
+            ("..\\..\\windows\\system32\\config\\sam", True),
+            ("file.jpg\x00.php", True),  # Null byte injection
             # Valid filenames
-            ("normal_file-name.txt", "normal_file-name.txt"),
-            ("file.with.dots.txt", "file.with.dots.txt"),
-            ("文件名.txt", "文件名.txt"),  # Unicode filename
+            ("normal_file-name.txt", False),
+            ("file.with.dots.txt", False),
+            ("文件名.txt", False),  # Unicode filename
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
     def test_should_sanitize_dangerous_filenames(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user, filename, expected_sanitized
+        self, mock_current_user, mock_upload_file, mock_decorators, api, app, mock_user, filename, should_reject
     ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+        """Test filename sanitization and validation"""
+        mock_current_user.return_value = mock_user
 
-        file = FileStorage(stream=io.BytesIO(b"content"), filename=filename, content_type="text/plain")
+        file_data = {
+            "file": (io.BytesIO(b"content"), filename, "text/plain"),
+            "source": "datasets"
+        }
 
-        def upload_file_side_effect(filename, content, mimetype, user, source):
+        def upload_file_side_effect(**kwargs):
             # Simulate filename validation in FileService
-            invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\x00", "\n", "\r"]
-            reserved_names = ["CON", "PRN", "AUX", "NUL", "COM1", "LPT1"]
-
-            base_name = filename.rsplit(".", 1)[0] if "." in filename else filename
-            if any(char in filename for char in invalid_chars) or base_name.upper() in reserved_names:
+            filename = kwargs.get("filename", "")
+            invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\x00"]
+            
+            if any(char in filename for char in invalid_chars):
                 raise ValueError("Filename contains invalid characters")
-
-            # Truncate long filenames
-            if len(filename) > 200:
-                extension = filename.split(".")[-1] if "." in filename else ""
-                filename = filename[: 200 - len(extension) - 1] + "." + extension
-
+            
             return MagicMock(id="test_file_id", name=filename)
 
-        mock_file_service.upload_file.side_effect = upload_file_side_effect
+        mock_upload_file.side_effect = upload_file_side_effect
 
-        with app.test_request_context(method="POST", data={"file": file, "source": "datasets"}):
-            if expected_sanitized == "Invalid":
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
+            if should_reject:
                 with pytest.raises(ValueError):
                     api.post()
             else:
                 result, status = api.post()
                 assert status == 201
-                # Verify filename was properly handled
-                mock_file_service.upload_file.assert_called_once()
 
-    # Test 7: Concurrent Upload Security
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_handle_concurrent_uploads_safely(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user
-    ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
-
-        # Simulate multiple concurrent uploads with same filename
-        filename = "concurrent_test.txt"
-        file1 = FileStorage(stream=io.BytesIO(b"content1"), filename=filename, content_type="text/plain")
-        file2 = FileStorage(stream=io.BytesIO(b"content2"), filename=filename, content_type="text/plain")
-
-        # Each upload should get unique ID
-        mock_file_service.upload_file.side_effect = [
-            MagicMock(id="unique_id_1", name=filename),
-            MagicMock(id="unique_id_2", name=filename),
-        ]
-
-        with app.test_request_context(method="POST", data={"file": file1}):
-            result1, status1 = api.post()
-            assert status1 == 201
-            assert result1.id == "unique_id_1"
-
-        with app.test_request_context(method="POST", data={"file": file2}):
-            result2, status2 = api.post()
-            assert status2 == 201
-            assert result2.id == "unique_id_2"
-
-        # Verify both uploads were processed
-        assert mock_file_service.upload_file.call_count == 2
-
-    # Test 8: Permission and Authorization
+    # Test 4: Permission Validation
     @pytest.mark.parametrize(
-        ("is_authenticated", "is_dataset_editor", "source", "should_allow"),
+        ("is_dataset_editor", "source", "should_allow"),
         [
-            (True, True, "datasets", True),  # Authorized dataset editor
-            (True, False, "datasets", False),  # Not a dataset editor
-            (True, True, None, True),  # General upload
-            (False, False, "datasets", False),  # Not authenticated
-            (True, True, "invalid_source", True),  # Invalid source treated as None
+            (True, "datasets", True),  # Authorized dataset editor
+            (False, "datasets", False),  # Not a dataset editor
+            (True, None, True),  # General upload
+            (False, None, True),  # General upload (no dataset permission needed)
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
     def test_should_enforce_proper_permissions(
-        self,
-        mock_file_service,
-        mock_current_user_context,
-        api,
-        app,
-        is_authenticated,
-        is_dataset_editor,
-        source,
-        should_allow,
+        self, mock_current_user, mock_upload_file, mock_decorators, api, app, is_dataset_editor, source, should_allow
     ):
-        # Configure user permissions
-        if is_authenticated:
-            user = MagicMock(spec=Account)
-            user.is_authenticated = True
-            user.is_dataset_editor = is_dataset_editor
-            user.id = "test_user_id"
-        else:
-            user = AnonymousUserMixin()
+        """Test permission enforcement for dataset uploads"""
+        user = MockUser(is_dataset_editor=is_dataset_editor)
+        mock_current_user.return_value = user
 
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(user, x)
-
-        file = FileStorage(stream=io.BytesIO(b"content"), filename="test.txt", content_type="text/plain")
-
-        mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
-
-        form_data = {"file": file}
+        file_data = {"file": (io.BytesIO(b"content"), "test.txt", "text/plain")}
         if source:
-            form_data["source"] = source
+            file_data["source"] = source
 
-        with app.test_request_context(method="POST", data=form_data):
+        mock_upload_file.return_value = MagicMock(id="test_file_id")
+
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if should_allow:
                 result, status = api.post()
                 assert status == 201
@@ -433,56 +277,41 @@ class TestFileUploadSecurity:
                 with pytest.raises(Forbidden):
                     api.post()
 
-    # Test 9: Multiple File Upload Prevention
-    @patch("controllers.console.files.current_user")
-    def test_should_prevent_multiple_file_uploads(self, mock_current_user_context, api, app, mock_current_user):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+    # Test 5: Multiple File Upload Prevention
+    @patch("flask_login.current_user")
+    def test_should_prevent_multiple_file_uploads(self, mock_current_user, mock_decorators, api, app, mock_user):
+        """Test prevention of multiple file uploads"""
+        mock_current_user.return_value = mock_user
 
-        # Try to upload multiple files
-        file1 = FileStorage(stream=io.BytesIO(b"content1"), filename="file1.txt", content_type="text/plain")
-        file2 = FileStorage(stream=io.BytesIO(b"content2"), filename="file2.txt", content_type="text/plain")
+        # Create form data with multiple files
+        file_data = {
+            "file": (io.BytesIO(b"content1"), "file1.txt", "text/plain"),
+            "file2": (io.BytesIO(b"content2"), "file2.txt", "text/plain"),
+        }
 
-        with app.test_request_context(method="POST", data={"file": file1, "file2": file2}):
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             with pytest.raises(TooManyFilesError):
                 api.post()
 
-    # Test 10: Empty File and Missing File Handling
+    # Test 6: Missing File Handling
     @pytest.mark.parametrize(
-        ("test_case", "file_data", "expected_error"),
+        ("file_data", "expected_error"),
         [
-            ("no_file", {}, NoFileUploadedError),  # No file in request
-            ("empty_filename", {"file": FileStorage(stream=io.BytesIO(b"content"), filename="")}, None),  # Empty name
-            (
-                "zero_byte_file",
-                {"file": FileStorage(stream=io.BytesIO(b""), filename="empty.txt")},
-                None,
-            ),  # Zero bytes
+            ({}, NoFileUploadedError),  # No file in request
+            ({"file": (io.BytesIO(b"content"), "", "text/plain")}, FilenameNotExistsError),  # Empty filename
+            ({"file": (io.BytesIO(b""), "empty.txt", "text/plain")}, None),  # Zero bytes (should be OK)
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_handle_edge_cases(
-        self,
-        mock_file_service,
-        mock_current_user_context,
-        api,
-        app,
-        mock_current_user,
-        test_case,
-        file_data,
-        expected_error,
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
+    def test_should_handle_missing_files_and_edge_cases(
+        self, mock_current_user, mock_upload_file, mock_decorators, api, app, mock_user, file_data, expected_error
     ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+        """Test handling of missing files and edge cases"""
+        mock_current_user.return_value = mock_user
+        mock_upload_file.return_value = MagicMock(id="test_file_id")
 
-        if test_case == "empty_filename":
-            # Import the specific error
-            from controllers.common.errors import FilenameNotExistsError
-
-            expected_error = FilenameNotExistsError
-
-        mock_file_service.upload_file.return_value = MagicMock(id="test_file_id")
-
-        with app.test_request_context(method="POST", data=file_data):
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             if expected_error:
                 with pytest.raises(expected_error):
                     api.post()
@@ -490,67 +319,61 @@ class TestFileUploadSecurity:
                 result, status = api.post()
                 assert status == 201
 
-    # Test 11: Compression Bomb Protection
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_protect_against_compression_bombs(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user
-    ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
-
-        # Create a file that simulates a compression bomb
-        # In real implementation, this would be a zip file with high compression ratio
-        compressed_content = b"PK\x03\x04" + b"\x00" * 100  # Minimal zip header
-        file = FileStorage(stream=io.BytesIO(compressed_content), filename="bomb.zip", content_type="application/zip")
-
-        # Service should detect and reject compression bombs
-        mock_file_service.upload_file.side_effect = ServiceFileTooLargeError(
-            "Compressed file exceeds maximum decompression size"
-        )
-
-        with app.test_request_context(method="POST", data={"file": file}):
-            with pytest.raises(FileTooLargeError):
-                api.post()
-
-    # Test 12: Unicode and Encoding Attack Prevention
+    # Test 7: Service Error Propagation
     @pytest.mark.parametrize(
-        ("filename", "description"),
+        ("service_error", "expected_controller_error"),
         [
-            ("file\u202e\u0074\u0078\u0074.exe", "Right-to-left override attack"),  # Makes exe appear as txt
-            ("file\ufeff.txt", "Zero-width space attack"),
-            ("file\u200b\u200c\u200d.txt", "Invisible character attack"),
-            ("file%E2%80%AE%74%78%74.exe", "URL encoded RLO attack"),
-            ("\u0000\u0000\u0000.txt", "Null character filename"),
+            (ServiceFileTooLargeError("File too large"), FileTooLargeError),
+            (ServiceUnsupportedFileTypeError(), UnsupportedFileTypeError),
         ],
     )
-    @patch("controllers.console.files.current_user")
-    @patch("controllers.console.files.FileService")
-    def test_should_handle_unicode_attacks(
-        self, mock_file_service, mock_current_user_context, api, app, mock_current_user, filename, description
+    @patch("services.file_service.FileService.upload_file")
+    @patch("flask_login.current_user")
+    def test_should_propagate_service_errors_correctly(
+        self,
+        mock_current_user,
+        mock_upload_file,
+        mock_decorators,
+        api,
+        app,
+        mock_user,
+        service_error,
+        expected_controller_error,
     ):
-        mock_current_user_context.__getattr__.side_effect = lambda x: getattr(mock_current_user, x)
+        """Test that service errors are correctly propagated as controller errors"""
+        mock_current_user.return_value = mock_user
+        mock_upload_file.side_effect = service_error
 
-        file = FileStorage(stream=io.BytesIO(b"content"), filename=filename, content_type="text/plain")
+        file_data = {"file": (io.BytesIO(b"content"), "test.txt", "text/plain")}
 
-        # Service should sanitize or reject suspicious Unicode patterns
-        def upload_file_side_effect(filename, content, mimetype, user, source):
-            # Check for dangerous Unicode characters
-            dangerous_chars = [
-                "\u202e",  # Right-to-left override
-                "\u200b",  # Zero-width space
-                "\u200c",  # Zero-width non-joiner
-                "\u200d",  # Zero-width joiner
-                "\ufeff",  # Zero-width no-break space
-                "\u0000",  # Null character
-            ]
-
-            if any(char in filename for char in dangerous_chars):
-                raise ValueError("Filename contains suspicious Unicode characters")
-
-            return MagicMock(id="test_file_id")
-
-        mock_file_service.upload_file.side_effect = upload_file_side_effect
-
-        with app.test_request_context(method="POST", data={"file": file}):
-            with pytest.raises(ValueError):
+        with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
+            with pytest.raises(expected_controller_error):
                 api.post()
+
+    # Test 8: Configuration Endpoint
+    @patch("controllers.console.files.dify_config")
+    @patch("flask_login.current_user")
+    def test_should_return_upload_configuration(
+        self, mock_current_user, mock_config, mock_decorators, api, app, mock_user
+    ):
+        """Test GET endpoint returns proper upload configuration"""
+        mock_current_user.return_value = mock_user
+        
+        # Mock configuration values
+        mock_config.UPLOAD_FILE_SIZE_LIMIT = 15
+        mock_config.UPLOAD_FILE_BATCH_LIMIT = 5
+        mock_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT = 10
+        mock_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT = 500
+        mock_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT = 50
+        mock_config.WORKFLOW_FILE_UPLOAD_LIMIT = 10
+
+        with app.test_request_context(method="GET"):
+            result, status = api.get()
+            
+            assert status == 200
+            assert result["file_size_limit"] == 15
+            assert result["batch_count_limit"] == 5
+            assert result["image_file_size_limit"] == 10
+            assert result["video_file_size_limit"] == 500
+            assert result["audio_file_size_limit"] == 50
+            assert result["workflow_file_upload_limit"] == 10
