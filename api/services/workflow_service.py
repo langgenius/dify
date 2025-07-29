@@ -105,7 +105,7 @@ class WorkflowService:
         workflow = (
             db.session.query(Workflow)
             .where(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == "draft"
+                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == Workflow.VERSION_DRAFT
             )
             .first()
         )
@@ -219,7 +219,7 @@ class WorkflowService:
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=WorkflowType.from_app_mode(app_model.mode).value,
-                version="draft",
+                version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
@@ -257,7 +257,7 @@ class WorkflowService:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
-            Workflow.version == "draft",
+            Workflow.version == Workflow.VERSION_DRAFT,
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
@@ -644,7 +644,7 @@ class WorkflowService:
             raise ValueError(f"Workflow with ID {workflow_id} not found")
 
         # Check if workflow is a draft version
-        if workflow.version == "draft":
+        if workflow.version == Workflow.VERSION_DRAFT:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
