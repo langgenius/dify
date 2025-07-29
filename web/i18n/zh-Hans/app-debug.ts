@@ -258,7 +258,6 @@ const translation = {
     generate: '生成',
     resTitle: '生成的提示词',
     newNoDataLine1: '在左侧描述您的用例，点击生成查看结果。',
-    newNoDataLine2: '了解提示词设计',
     apply: '应用',
     noData: '在左侧描述您的用例，编排预览将在此处显示。',
     loading: '为您编排应用程序中…',

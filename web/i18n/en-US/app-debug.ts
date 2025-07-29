@@ -260,7 +260,6 @@ const translation = {
     generate: 'Generate',
     resTitle: 'Generated Prompt',
     newNoDataLine1: 'Write a instruction in the left column, and click Generate to see response. ',
-    newNoDataLine2: 'Learn about prompt design',
     apply: 'Apply',
     loading: 'Orchestrating the application for you...',
     overwriteTitle: 'Override existing configuration?',
