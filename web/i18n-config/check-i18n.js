@@ -58,9 +58,14 @@ async function getKeysFromLanguage(language) {
           const iterateKeys = (obj, prefix = '') => {
             for (const key in obj) {
               const nestedKey = prefix ? `${prefix}.${key}` : key
-              nestedKeys.push(nestedKey)
-              if (typeof obj[key] === 'object' && obj[key] !== null)
+              if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                // This is an object (but not array), recurse into it but don't add it as a key
                 iterateKeys(obj[key], nestedKey)
+              }
+ else {
+                // This is a leaf node (string, number, boolean, array, etc.), add it as a key
+                nestedKeys.push(nestedKey)
+              }
             }
           }
           iterateKeys(translationObj)
@@ -106,29 +111,6 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
   }
 
   try {
-    const content = fs.readFileSync(filePath, 'utf8')
-
-    // Create a safer module environment for vm
-    const moduleExports = {}
-    const context = {
-      exports: moduleExports,
-      module: { exports: moduleExports },
-      require,
-      console,
-      __filename: filePath,
-      __dirname: path.dirname(filePath),
-    }
-
-    // Use vm.runInNewContext instead of eval for better security
-    vm.runInNewContext(transpile(content), context)
-
-    const translationObj = moduleExports.default || moduleExports
-
-    if (!translationObj || typeof translationObj !== 'object') {
-      console.error(`Error parsing file: ${filePath}`)
-      return false
-    }
-
     // Filter keys that belong to this file
     const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) => c.toUpperCase())
     const fileSpecificKeys = extraKeys
@@ -139,14 +121,98 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
       return false
 
     console.log(`🔄 Processing file: ${filePath}`)
-    const modified = removeKeysFromObject(translationObj, fileSpecificKeys)
+
+    // Read the original file content
+    const content = fs.readFileSync(filePath, 'utf8')
+    const lines = content.split('\n')
+
+    let modified = false
+    const linesToRemove = []
+
+    // Find lines to remove for each key
+    for (const keyToRemove of fileSpecificKeys) {
+      const keyParts = keyToRemove.split('.')
+      let targetLineIndex = -1
+
+      // Build regex pattern for the exact key path
+      if (keyParts.length === 1) {
+        // Simple key at root level like "pickDate: 'value'"
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const simpleKeyPattern = new RegExp(`^\\s*${keyParts[0]}\\s*:`)
+          if (simpleKeyPattern.test(line)) {
+            targetLineIndex = i
+            break
+          }
+        }
+      }
+ else {
+        // Nested key - need to find the exact path
+        const currentPath = []
+        let braceDepth = 0
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i]
+          const trimmedLine = line.trim()
+
+          // Track current object path
+          const keyMatch = trimmedLine.match(/^(\w+)\s*:\s*{/)
+          if (keyMatch) {
+            currentPath.push(keyMatch[1])
+            braceDepth++
+          }
+ else if (trimmedLine === '},' || trimmedLine === '}') {
+            if (braceDepth > 0) {
+              braceDepth--
+              currentPath.pop()
+            }
+          }
+
+          // Check if this line matches our target key
+          const leafKeyMatch = trimmedLine.match(/^(\w+)\s*:/)
+          if (leafKeyMatch) {
+            const fullPath = [...currentPath, leafKeyMatch[1]]
+            const fullPathString = fullPath.join('.')
+
+            if (fullPathString === keyToRemove) {
+              targetLineIndex = i
+              break
+            }
+          }
+        }
+      }
+
+      if (targetLineIndex !== -1) {
+        linesToRemove.push(targetLineIndex)
+        console.log(`🗑️  Found key to remove: ${keyToRemove} at line ${targetLineIndex + 1}`)
+        modified = true
+      }
+ else {
+        console.log(`⚠️  Could not find key: ${keyToRemove}`)
+      }
+    }
 
     if (modified) {
-      // Write back to file
-      const newContent = `const translation = ${JSON.stringify(translationObj, null, 2)}
+      // Remove lines in reverse order to maintain correct indices
+      linesToRemove.sort((a, b) => b - a)
 
-export default translation
-`
+      for (const lineIndex of linesToRemove) {
+        const line = lines[lineIndex]
+        console.log(`🗑️  Removing line ${lineIndex + 1}: ${line.trim()}`)
+        lines.splice(lineIndex, 1)
+
+        // Also remove trailing comma from previous line if it exists and the next line is a closing brace
+        if (lineIndex > 0 && lineIndex < lines.length) {
+          const prevLine = lines[lineIndex - 1]
+          const nextLine = lines[lineIndex] ? lines[lineIndex].trim() : ''
+
+          if (prevLine.trim().endsWith(',') && (nextLine.startsWith('}') || nextLine === ''))
+            lines[lineIndex - 1] = prevLine.replace(/,\s*$/, '')
+        }
+      }
+
+      // Write back to file
+      const newContent = lines.join('\n')
       fs.writeFileSync(filePath, newContent)
       console.log(`💾 Updated file: ${filePath}`)
       return true
