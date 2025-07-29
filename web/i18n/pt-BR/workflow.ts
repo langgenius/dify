@@ -497,6 +497,7 @@ const translation = {
           placeholder: 'Insira o valor',
         },
         title: 'Filtragem de Metadados',
+        tip: 'A filtragem de metadados é o processo de usar atributos de metadados (como etiquetas, categorias ou permissões de acesso) para refinar e controlar a recuperação de informações relevantes dentro de um sistema.',
       },
     },
     http: {

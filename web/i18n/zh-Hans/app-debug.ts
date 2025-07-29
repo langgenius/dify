@@ -222,6 +222,10 @@ const translation = {
       title: '文档',
       description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
     },
+    audioUpload: {
+      title: '音频',
+      description: '启用音频后，模型可以处理音频文件进行转录和分析。',
+    },
   },
   codegen: {
     title: '代码生成器',
@@ -306,6 +310,9 @@ const translation = {
     notSelectModel: '请选择模型',
     waitForImgUpload: '请等待图片上传完成',
     waitForFileUpload: '请等待文件上传完成',
+  },
+  warningMessage: {
+    timeoutExceeded: '由于超时，结果未显示。请参考日志获取完整结果。',
   },
   chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
@@ -394,6 +401,9 @@ const translation = {
       atLeastOneOption: '至少需要一个选项',
       optionRepeat: '选项不能重复',
     },
+    'defaultValue': '默认值',
+    'noDefaultValue': '无默认值',
+    'selectDefaultValue': '选择默认值',
   },
   vision: {
     name: '视觉',

@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: 'Chỉ sửa chữa',
         selectedDescription: 'Tự động cập nhật chỉ cho các phiên bản bản vá',
+        description: 'Tự động cập nhật chỉ cho các phiên bản vá (ví dụ: 1.0.1 → 1.0.2). Thay đổi phiên bản nhỏ sẽ không kích hoạt cập nhật.',
       },
       latest: {
         name: 'Mới nhất',

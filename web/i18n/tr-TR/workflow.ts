@@ -497,6 +497,7 @@ const translation = {
           datePlaceholder: 'Bir zaman seçin...',
         },
         title: 'Meta Verileri Filtreleme',
+        tip: 'Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.',
       },
     },
     http: {

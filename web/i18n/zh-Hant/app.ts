@@ -260,6 +260,7 @@ const translation = {
   noAccessPermission: '沒有權限訪問網絡應用程式',
   maxActiveRequestsPlaceholder: '輸入 0 以表示無限',
   maxActiveRequests: '同時最大請求數',
+  maxActiveRequestsTip: '每個應用程式可同時活躍請求的最大數量（0為無限制）',
 }
 
 export default translation

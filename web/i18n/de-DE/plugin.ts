@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: 'Nur fixieren',
         selectedDescription: 'Auto-Update nur für Patch-Versionen',
+        description: 'Automatische Aktualisierung nur für Patchversionen (z. B. 1.0.1 → 1.0.2). Kleinere Versionsänderungen lösen keine Aktualisierungen aus.',
       },
       latest: {
         description: 'Immer auf die neueste Version aktualisieren',

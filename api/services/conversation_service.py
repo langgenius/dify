@@ -46,9 +46,11 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
-        if include_ids is not None:
+        # Check if include_ids is not None and not empty to avoid WHERE false condition
+        if include_ids is not None and len(include_ids) > 0:
             stmt = stmt.where(Conversation.id.in_(include_ids))
-        if exclude_ids is not None:
+        # Check if exclude_ids is not None and not empty to avoid WHERE false condition
+        if exclude_ids is not None and len(exclude_ids) > 0:
             stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions

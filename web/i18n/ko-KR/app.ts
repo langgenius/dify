@@ -286,6 +286,7 @@ const translation = {
   noAccessPermission: '웹 앱에 대한 접근 권한이 없습니다.',
   maxActiveRequests: '동시 최대 요청 수',
   maxActiveRequestsPlaceholder: '무제한 사용을 원하시면 0을 입력하세요.',
+  maxActiveRequestsTip: '앱당 최대 동시 활성 요청 수(무제한은 0)',
 }
 
 export default translation

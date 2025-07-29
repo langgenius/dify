@@ -88,10 +88,10 @@ const HeaderOptions: FC<Props> = ({
       await clearAllAnnotations(appId)
       onAdded()
     }
-catch (_) {
+    catch (_) {
     }
- finally {
-    setShowClearConfirm(false)
+    finally {
+      setShowClearConfirm(false)
     }
   }
   const Operations = () => {
@@ -146,7 +146,7 @@ catch (_) {
           onClick={handleClearAll}
           className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50'
         >
-          <RiDeleteBinLine className='h-4 w-4'/>
+          <RiDeleteBinLine className='h-4 w-4' />
           <span className='system-sm-regular grow text-left'>
             {t('appAnnotation.table.header.clearAll')}
           </span>
@@ -168,11 +168,9 @@ catch (_) {
         position="br"
         trigger="click"
         btnElement={
-          <Button variant='secondary' className='w-8 p-0'>
-            <RiMoreFill className='h-4 w-4' />
-          </Button>
+          <RiMoreFill className='h-4 w-4' />
         }
-        btnClassName='p-0 border-0'
+        btnClassName='btn btn-secondary btn-medium w-8 p-0'
         className={'!z-20 h-fit !w-[155px]'}
         popupClassName='!w-full !overflow-visible'
         manualClose
@@ -196,12 +194,12 @@ catch (_) {
         )
       }
       {
-      showClearConfirm && (
-        <ClearAllAnnotationsConfirmModal
-          isShow={showClearConfirm}
-          onHide={() => setShowClearConfirm(false)}
-          onConfirm={handleConfirmed}
-        />
+        showClearConfirm && (
+          <ClearAllAnnotationsConfirmModal
+            isShow={showClearConfirm}
+            onHide={() => setShowClearConfirm(false)}
+            onConfirm={handleConfirmed}
+          />
         )
       }
     </div>

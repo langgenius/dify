@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'वेब एप्लिकेशन तक पहुँचने की अनुमति नहीं है',
   maxActiveRequests: 'अधिकतम समवर्ती अनुरोध',
   maxActiveRequestsPlaceholder: 'असीमित के लिए 0 दर्ज करें',
+  maxActiveRequestsTip: 'प्रति ऐप अधिकतम सक्रिय अनुरोधों की अधिकतम संख्या (असीमित के लिए 0)',
 }
 
 export default translation
