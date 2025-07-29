@@ -107,10 +107,8 @@ const translation = {
     loadMore: '載入更多工作流',
     noHistory: '無歷史記錄',
     publishUpdate: '發布更新',
-    referenceVar: '參考變量',
     exportSVG: '匯出為 SVG',
     exportPNG: '匯出為 PNG',
-    noExist: '沒有這個變數',
     versionHistory: '版本歷史',
     exitVersions: '退出版本',
     exportImage: '匯出圖像',
@@ -610,7 +608,6 @@ const translation = {
       },
       select: '選擇',
       addSubVariable: '子變數',
-      condition: '條件',
     },
     variableAssigner: {
       title: '變量賦值',

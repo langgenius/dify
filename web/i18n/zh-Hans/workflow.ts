@@ -213,7 +213,6 @@ const translation = {
     startRun: '开始运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
-    testRunLoop: '测试运行循环',
     back: '返回',
     iteration: '迭代',
     loop: '循环',
