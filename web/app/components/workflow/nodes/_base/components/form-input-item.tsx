@@ -198,7 +198,7 @@ const FormInputItem: FC<Props> = ({
         <Input
           className='h-8 grow'
           type='number'
-          value={varInput?.value || ''}
+          value={Number.isNaN(varInput?.value) ? '' : varInput?.value}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
