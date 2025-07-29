@@ -5,7 +5,6 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
 from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -133,7 +132,7 @@ class MessageFeedbackApi(Resource):
                 rating=args.get("rating"),
                 content=None,
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
