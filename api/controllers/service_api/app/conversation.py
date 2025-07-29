@@ -2,6 +2,7 @@ from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
+import json
 
 import services
 from controllers.service_api import api
@@ -139,7 +140,7 @@ class ConversationVariableDetailApi(Resource):
 
         try:
             return ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id, end_user, args["value"]
+                app_model, conversation_id, variable_id, end_user, json.loads(args["value"])
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
