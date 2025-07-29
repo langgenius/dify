@@ -23,18 +23,13 @@ const translation = {
     contractSales: 'Vertrieb kontaktieren',
     contractOwner: 'Teammanager kontaktieren',
     startForFree: 'Kostenlos starten',
-    getStartedWith: 'Beginnen Sie mit ',
     contactSales: 'Vertrieb kontaktieren',
     talkToSales: 'Mit dem Vertrieb sprechen',
     modelProviders: 'Modellanbieter',
-    teamMembers: 'Teammitglieder',
     buildApps: 'Apps bauen',
     vectorSpace: 'Vektorraum',
-    vectorSpaceBillingTooltip: 'Jedes 1MB kann ungefähr 1,2 Millionen Zeichen an vektorisierten Daten speichern (geschätzt mit OpenAI Embeddings, variiert je nach Modell).',
     vectorSpaceTooltip: 'Vektorraum ist das Langzeitspeichersystem, das erforderlich ist, damit LLMs Ihre Daten verstehen können.',
-    documentsUploadQuota: 'Dokumenten-Upload-Kontingent',
     documentProcessingPriority: 'Priorität der Dokumentenverarbeitung',
-    documentProcessingPriorityTip: 'Für eine höhere Dokumentenverarbeitungspriorität, bitte Ihren Tarif upgraden.',
     documentProcessingPriorityUpgrade: 'Mehr Daten mit höherer Genauigkeit bei schnelleren Geschwindigkeiten verarbeiten.',
     priority: {
       'standard': 'Standard',
@@ -103,19 +98,16 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: '200 mal GPT kostenlos testen',
-      includesTitle: 'Beinhaltet:',
       for: 'Kostenlose Testversion der Kernfunktionen',
     },
     professional: {
       name: 'Professionell',
       description: 'Für Einzelpersonen und kleine Teams, um mehr Leistung erschwinglich freizuschalten.',
-      includesTitle: 'Alles im kostenlosen Tarif, plus:',
       for: 'Für unabhängige Entwickler/kleine Teams',
     },
     team: {
       name: 'Team',
       description: 'Zusammenarbeiten ohne Grenzen und Top-Leistung genießen.',
-      includesTitle: 'Alles im Professionell-Tarif, plus:',
       for: 'Für mittelgroße Teams',
     },
     enterprise: {
@@ -123,15 +115,6 @@ const translation = {
       description: 'Erhalten Sie volle Fähigkeiten und Unterstützung für großangelegte, missionskritische Systeme.',
       includesTitle: 'Alles im Team-Tarif, plus:',
       features: {
-        2: 'Exklusive Unternehmensfunktionen',
-        8: 'Professioneller technischer Support',
-        6: 'Erweiterte Sicherheits- und Kontrollsysteme',
-        4: 'SSO',
-        0: 'Enterprise-Grade Skalierbare Bereitstellungslösungen',
-        3: 'Mehrere Arbeitsbereiche und Unternehmensverwaltung',
-        1: 'Kommerzielle Lizenzgenehmigung',
-        5: 'Verhandelte SLAs durch Dify-Partner',
-        7: 'Updates und Wartung von Dify offiziell',
       },
       btnText: 'Vertrieb kontaktieren',
       price: 'Benutzerdefiniert',
@@ -140,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        2: 'Entspricht der Dify Open Source Lizenz',
-        1: 'Einzelner Arbeitsbereich',
-        0: 'Alle Kernfunktionen wurden im öffentlichen Repository veröffentlicht.',
       },
       description: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
       for: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
@@ -153,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: 'WebApp-Logo und Branding-Anpassung',
-        0: 'Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter',
-        3: 'Priorisierte E-Mail- und Chat-Unterstützung',
-        1: 'Einzelner Arbeitsbereich',
       },
       includesTitle: 'Alles aus der Community, plus:',
       name: 'Premium',
@@ -173,8 +149,6 @@ const translation = {
     fullSolution: 'Upgraden Sie Ihren Tarif, um mehr Speicherplatz zu erhalten.',
   },
   apps: {
-    fullTipLine1: 'Upgraden Sie Ihren Tarif, um',
-    fullTipLine2: 'mehr Apps zu bauen.',
     contactUs: 'Kontaktieren Sie uns',
     fullTip1: 'Upgrade, um mehr Apps zu erstellen',
     fullTip2des: 'Es wird empfohlen, inaktive Anwendungen zu bereinigen, um Speicherplatz freizugeben, oder uns zu kontaktieren.',
