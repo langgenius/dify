@@ -36,7 +36,6 @@ class WebsiteInfo(BaseModel):
     mode: str
     tenant_id: str
     only_main_content: bool = False
-    credential_id: Optional[str] = None
 
 
 class ExtractSetting(BaseModel):
