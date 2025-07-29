@@ -22,8 +22,9 @@ class TestFileUploadSecurity:
     def test_should_validate_file_presence(self):
         """Test that missing file is detected"""
         from flask import Flask, request
+
         app = Flask(__name__)
-        
+
         with app.test_request_context(method="POST", data={}):
             # Simulate the check in FileApi.post()
             if "file" not in request.files:
@@ -33,13 +34,14 @@ class TestFileUploadSecurity:
     def test_should_validate_multiple_files(self):
         """Test that multiple files are rejected"""
         from flask import Flask, request
+
         app = Flask(__name__)
-        
+
         file_data = {
             "file": (io.BytesIO(b"content1"), "file1.txt", "text/plain"),
             "file2": (io.BytesIO(b"content2"), "file2.txt", "text/plain"),
         }
-        
+
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             # Simulate the check in FileApi.post()
             if len(request.files) > 1:
@@ -49,10 +51,11 @@ class TestFileUploadSecurity:
     def test_should_validate_empty_filename(self):
         """Test that empty filename is rejected"""
         from flask import Flask, request
+
         app = Flask(__name__)
-        
+
         file_data = {"file": (io.BytesIO(b"content"), "", "text/plain")}
-        
+
         with app.test_request_context(method="POST", data=file_data, content_type="multipart/form-data"):
             file = request.files["file"]
             if not file.filename:
@@ -68,7 +71,7 @@ class TestFileUploadSecurity:
             "../../../../etc/shadow",
             "./../../../sensitive.txt",
         ]
-        
+
         for filename in dangerous_filenames:
             # Any filename containing .. should be considered dangerous
             assert ".." in filename, f"Filename {filename} should be detected as path traversal"
@@ -80,7 +83,7 @@ class TestFileUploadSecurity:
             "document.pdf\x00.exe",
             "image.png\x00.sh",
         ]
-        
+
         for filename in dangerous_filenames:
             # Null bytes should be detected
             assert "\x00" in filename, f"Filename {filename} should be detected as null byte injection"
@@ -88,8 +91,8 @@ class TestFileUploadSecurity:
     def test_should_sanitize_special_characters(self):
         """Test that special characters in filenames are handled safely"""
         # Characters that could be problematic in various contexts
-        dangerous_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\x00']
-        
+        dangerous_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|", "\x00"]
+
         for char in dangerous_chars:
             filename = f"file{char}name.txt"
             # These characters should be detected or sanitized
@@ -98,12 +101,13 @@ class TestFileUploadSecurity:
     # Test 3: Permission validation
     def test_should_validate_dataset_permissions(self):
         """Test dataset upload permission logic"""
+
         class MockUser:
             is_dataset_editor = False
-            
+
         user = MockUser()
         source = "datasets"
-        
+
         # Simulate the permission check in FileApi.post()
         if source == "datasets" and not user.is_dataset_editor:
             with pytest.raises(Forbidden):
@@ -111,12 +115,13 @@ class TestFileUploadSecurity:
 
     def test_should_allow_general_upload_without_permission(self):
         """Test general upload doesn't require dataset permission"""
+
         class MockUser:
             is_dataset_editor = False
-            
+
         user = MockUser()
         source = None  # General upload
-        
+
         # This should not raise an exception
         if source == "datasets" and not user.is_dataset_editor:
             raise Forbidden()
@@ -127,7 +132,7 @@ class TestFileUploadSecurity:
     def test_should_handle_file_too_large_error(self, mock_upload):
         """Test that service FileTooLargeError is properly converted"""
         mock_upload.side_effect = ServiceFileTooLargeError("File too large")
-        
+
         try:
             mock_upload(filename="test.txt", content=b"data", mimetype="text/plain", user=None, source=None)
         except ServiceFileTooLargeError as e:
@@ -139,11 +144,10 @@ class TestFileUploadSecurity:
     def test_should_handle_unsupported_file_type_error(self, mock_upload):
         """Test that service UnsupportedFileTypeError is properly converted"""
         mock_upload.side_effect = ServiceUnsupportedFileTypeError()
-        
+
         try:
             mock_upload(
-                filename="test.exe", content=b"data", 
-                mimetype="application/octet-stream", user=None, source=None
+                filename="test.exe", content=b"data", mimetype="application/octet-stream", user=None, source=None
             )
         except ServiceUnsupportedFileTypeError:
             # Simulate the error conversion in FileApi.post()
@@ -154,26 +158,33 @@ class TestFileUploadSecurity:
     def test_should_identify_dangerous_file_extensions(self):
         """Test detection of potentially dangerous file extensions"""
         dangerous_extensions = [
-            ".php", ".PHP", ".pHp",  # PHP files (case variations)
-            ".exe", ".EXE",          # Executables
-            ".sh", ".SH",            # Shell scripts
-            ".bat", ".BAT",          # Batch files
-            ".cmd", ".CMD",          # Command files
-            ".ps1", ".PS1",          # PowerShell
-            ".jar", ".JAR",          # Java archives
-            ".vbs", ".VBS",          # VBScript
+            ".php",
+            ".PHP",
+            ".pHp",  # PHP files (case variations)
+            ".exe",
+            ".EXE",  # Executables
+            ".sh",
+            ".SH",  # Shell scripts
+            ".bat",
+            ".BAT",  # Batch files
+            ".cmd",
+            ".CMD",  # Command files
+            ".ps1",
+            ".PS1",  # PowerShell
+            ".jar",
+            ".JAR",  # Java archives
+            ".vbs",
+            ".VBS",  # VBScript
         ]
-        
-        safe_extensions = [
-            ".txt", ".pdf", ".jpg", ".png", ".doc", ".docx"
-        ]
-        
+
+        safe_extensions = [".txt", ".pdf", ".jpg", ".png", ".doc", ".docx"]
+
         # Just verify our test data is correct
         for ext in dangerous_extensions:
-            assert ext.lower() in ['.php', '.exe', '.sh', '.bat', '.cmd', '.ps1', '.jar', '.vbs']
-        
+            assert ext.lower() in [".php", ".exe", ".sh", ".bat", ".cmd", ".ps1", ".jar", ".vbs"]
+
         for ext in safe_extensions:
-            assert ext.lower() not in ['.php', '.exe', '.sh', '.bat', '.cmd', '.ps1', '.jar', '.vbs']
+            assert ext.lower() not in [".php", ".exe", ".sh", ".bat", ".cmd", ".ps1", ".jar", ".vbs"]
 
     def test_should_detect_double_extensions(self):
         """Test detection of double extension attacks"""
@@ -183,10 +194,10 @@ class TestFileUploadSecurity:
             "photo.png.sh",
             "file.txt.bat",
         ]
-        
+
         for filename in suspicious_filenames:
             # Check that these have multiple extensions
-            parts = filename.split('.')
+            parts = filename.split(".")
             assert len(parts) > 2, f"Filename {filename} should have multiple extensions"
 
     # Test 6: Configuration validation
@@ -201,17 +212,17 @@ class TestFileUploadSecurity:
             "audio_file_size_limit": 50,
             "workflow_file_upload_limit": 10,
         }
-        
+
         # Verify all required fields are present
         required_fields = [
             "file_size_limit",
-            "batch_count_limit", 
+            "batch_count_limit",
             "image_file_size_limit",
             "video_file_size_limit",
             "audio_file_size_limit",
-            "workflow_file_upload_limit"
+            "workflow_file_upload_limit",
         ]
-        
+
         for field in required_fields:
             assert field in config, f"Missing required field: {field}"
             assert isinstance(config[field], int), f"Field {field} should be an integer"
@@ -226,7 +237,7 @@ class TestFileUploadSecurity:
             ("", None),
             (None, None),
         ]
-        
+
         for input_source, expected in test_cases:
             # Simulate the source normalization in FileApi.post()
             source = "datasets" if input_source == "datasets" else None
@@ -238,13 +249,13 @@ class TestFileUploadSecurity:
     def test_should_handle_edge_case_file_sizes(self):
         """Test handling of boundary file sizes"""
         test_cases = [
-            (0, "Empty file"),           # 0 bytes
-            (1, "Single byte"),          # 1 byte
+            (0, "Empty file"),  # 0 bytes
+            (1, "Single byte"),  # 1 byte
             (15 * 1024 * 1024 - 1, "Just under limit"),  # Just under 15MB
-            (15 * 1024 * 1024, "At limit"),              # Exactly 15MB
-            (15 * 1024 * 1024 + 1, "Just over limit"),   # Just over 15MB
+            (15 * 1024 * 1024, "At limit"),  # Exactly 15MB
+            (15 * 1024 * 1024 + 1, "Just over limit"),  # Just over 15MB
         ]
-        
+
         for size, description in test_cases:
             # Just verify our test data
             assert isinstance(size, int), f"{description}: Size should be integer"
@@ -260,7 +271,7 @@ class TestFileUploadSecurity:
             ("", "Empty MIME type"),
             (None, "None MIME type"),
         ]
-        
+
         for mime_type, description in mime_type_tests:
             # Verify test data structure
             if mime_type is not None:
