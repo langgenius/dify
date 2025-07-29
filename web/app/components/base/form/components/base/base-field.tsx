@@ -72,7 +72,7 @@ const BaseField = ({
   })
   const memorizedOptions = useMemo(() => {
     return options?.filter((option) => {
-      if (!option.show_on?.length)
+      if (!option.show_on || option.show_on.length === 0)
         return true
 
       return option.show_on.every((condition) => {
@@ -85,7 +85,7 @@ const BaseField = ({
         value: option.value,
       }
     }) || []
-  }, [options, renderI18nObject])
+  }, [options, renderI18nObject, optionValues])
   const value = useStore(field.form.store, s => s.values[field.name])
   const values = useStore(field.form.store, (s) => {
     return show_on.reduce((acc, condition) => {

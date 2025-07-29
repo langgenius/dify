@@ -4,18 +4,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
 import type {
-  CredentialFormSchema,
-  CredentialFormSchemaRadio,
-  CredentialFormSchemaSelect,
   CustomConfigurationModelFixedFields,
-  FormValue,
   ModelLoadBalancingConfig,
   ModelLoadBalancingConfigEntry,
   ModelProvider,
@@ -35,10 +29,7 @@ import {
   useLanguage,
   useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import { useValidate } from '../../key-validator/hooks'
-import { ValidatedStatus } from '../../key-validator/declarations'
 import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
-import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -49,6 +40,11 @@ import {
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import { useAppContext } from '@/context/app-context'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -115,77 +111,7 @@ const ModelModal: FC<ModelModalProps> = ({
     provider.model_credential_schema?.model,
     draftConfig?.enabled,
   ])
-  const [
-    requiredFormSchemas,
-    defaultFormSchemaValue,
-    showOnVariableMap,
-  ] = useMemo(() => {
-    const requiredFormSchemas: CredentialFormSchema[] = []
-    const defaultFormSchemaValue: Record<string, string | number> = {}
-    const showOnVariableMap: Record<string, string[]> = {}
-
-    formSchemas.forEach((formSchema) => {
-      if (formSchema.required)
-        requiredFormSchemas.push(formSchema)
-
-      if (formSchema.default)
-        defaultFormSchemaValue[formSchema.variable] = formSchema.default
-
-      if (formSchema.show_on.length) {
-        formSchema.show_on.forEach((showOnItem) => {
-          if (!showOnVariableMap[showOnItem.variable])
-            showOnVariableMap[showOnItem.variable] = []
-
-          if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-            showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-        })
-      }
-
-      if (formSchema.type === FormTypeEnum.select || formSchema.type === FormTypeEnum.radio) {
-        (formSchema as (CredentialFormSchemaRadio | CredentialFormSchemaSelect)).options.forEach((option) => {
-          if (option.show_on.length) {
-            option.show_on.forEach((showOnItem) => {
-              if (!showOnVariableMap[showOnItem.variable])
-                showOnVariableMap[showOnItem.variable] = []
-
-              if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-                showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-            })
-          }
-        })
-      }
-    })
-
-    return [
-      requiredFormSchemas,
-      defaultFormSchemaValue,
-      showOnVariableMap,
-    ]
-  }, [formSchemas])
-  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
-    return {
-      ...defaultFormSchemaValue,
-      ...formSchemasValue,
-    } as unknown as Record<string, string | number>
-  }, [formSchemasValue, defaultFormSchemaValue])
-  const [value, setValue] = useState(initialFormSchemasValue)
-  useEffect(() => {
-    setValue(initialFormSchemasValue)
-  }, [initialFormSchemasValue])
-  const [_, validating, validatedStatusState] = useValidate(value)
-  const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
-    if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
-      return true
-
-    if (!requiredFormSchema.show_on.length)
-      return true
-
-    return false
-  })
-
-  const handleValueChange = (v: FormValue) => {
-    setValue(v)
-  }
+  const formRef = useRef<FormRefObject>(null)
 
   const extendedSecretFormSchemas = useMemo(
     () =>
@@ -205,15 +131,6 @@ const ModelModal: FC<ModelModalProps> = ({
     ],
   )
 
-  const encodeSecretValues = useCallback((v: FormValue) => {
-    const result = { ...v }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable] && result[variable] !== undefined)
-        result[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, formSchemasValue])
-
   const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
     const result = { ...entry }
     extendedSecretFormSchemas.forEach(({ variable }) => {
@@ -226,10 +143,19 @@ const ModelModal: FC<ModelModalProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true)
+      const {
+        isCheckValidated,
+        values,
+      } = formRef.current?.getFormValues({
+        needCheckValidatedValues: true,
+        needTransformWhenSecretFieldIsPristine: true,
+      }) || { isCheckValidated: false, values: {} }
+      if (!isCheckValidated)
+        return
       const res = await saveCredentials(
         providerFormSchemaPredefined,
         provider.provider,
-        encodeSecretValues(value),
+        values,
         {
           ...draftConfig,
           enabled: Boolean(draftConfig?.enabled),
@@ -251,11 +177,19 @@ const ModelModal: FC<ModelModalProps> = ({
   const handleRemove = async () => {
     try {
       setLoading(true)
-
+      const {
+        isCheckValidated,
+        values,
+      } = formRef.current?.getFormValues({
+        needCheckValidatedValues: true,
+        needTransformWhenSecretFieldIsPristine: true,
+      }) || { isCheckValidated: false, values: {} }
+      if (!isCheckValidated)
+        return
       const res = await removeCredentials(
         providerFormSchemaPredefined,
         provider.provider,
-        value,
+        values,
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -285,14 +219,17 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
 
               <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
-                <Form
-                  value={value}
-                  onChange={handleValueChange}
-                  formSchemas={formSchemas}
-                  validating={validating}
-                  validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-                  showOnVariableMap={showOnVariableMap}
-                  isEditMode={isEditMode}
+                <AuthForm
+                  formSchemas={formSchemas.map((formSchema) => {
+                    return {
+                      ...formSchema,
+                      name: formSchema.variable,
+                      showRadioUI: formSchema.type === FormTypeEnum.radio,
+                    }
+                  }) as FormSchema[]}
+                  defaultValues={formSchemasValue}
+                  inputClassName='justify-start'
+                  ref={formRef}
                 />
                 <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
                 <ModelLoadBalancingConfigs withSwitch {...{
@@ -346,7 +283,6 @@ const ModelModal: FC<ModelModalProps> = ({
                     onClick={handleSave}
                     disabled={
                       loading
-                      || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
                       || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
                     }
 
@@ -357,29 +293,18 @@ const ModelModal: FC<ModelModalProps> = ({
               </div>
             </div>
             <div className='border-t-[0.5px] border-t-divider-regular'>
-              {
-                (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
-                  ? (
-                    <div className='flex bg-background-section-burn px-[10px] py-3 text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
-                      {validatedStatusState.message}
-                    </div>
-                  )
-                  : (
-                    <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-                      {t('common.modelProvider.encrypted.front')}
-                      <a
-                        className='mx-1 text-text-accent'
-                        target='_blank' rel='noopener noreferrer'
-                        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                      >
-                        PKCS1_OAEP
-                      </a>
-                      {t('common.modelProvider.encrypted.back')}
-                    </div>
-                  )
-              }
+              <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
+                <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
+                {t('common.modelProvider.encrypted.front')}
+                <a
+                  className='mx-1 text-text-accent'
+                  target='_blank' rel='noopener noreferrer'
+                  href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                >
+                  PKCS1_OAEP
+                </a>
+                {t('common.modelProvider.encrypted.back')}
+              </div>
             </div>
           </div>
           {
