@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.ops.aliyun_trace.data_exporter.traceclient import (
     TraceClient,
     convert_datetime_to_nanoseconds,
-    convert_to_span_id,
     convert_string_to_id,
+    convert_to_span_id,
     convert_to_trace_id,
     generate_span_id,
 )
