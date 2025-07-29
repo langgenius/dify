@@ -639,7 +639,8 @@ class PipelineGenerator(BaseAppGenerator):
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(
-                    f"Fails to process generate task pipeline, task_id: {application_generate_entity.task_id}"
+                    "Fails to process generate task pipeline, task_id: %r",
+                    application_generate_entity.task_id,
                 )
                 raise e
 
