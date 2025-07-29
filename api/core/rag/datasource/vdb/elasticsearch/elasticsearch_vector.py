@@ -33,7 +33,7 @@ class ElasticSearchConfig(BaseModel):
     api_key: Optional[str] = None
 
     # Common config
-    use_cloud: bool = True
+    use_cloud: bool = False
     ca_certs: Optional[str] = None
     verify_certs: bool = False
     request_timeout: int = 100000
