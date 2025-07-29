@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import {
+import React, {
   cloneElement,
   memo,
   useCallback,
@@ -45,8 +45,10 @@ import {
   canRunBySingle,
   hasErrorHandleNode,
   hasRetryNode,
+  isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
+import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
@@ -69,9 +71,19 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useModalContext } from '@/context/modal-context'
+import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 
+const getCustomRunForm = (nodeType: BlockEnum, payload: CommonNodeType): React.JSX.Element => {
+  switch (nodeType) {
+    case BlockEnum.DataSource:
+      return <DataSourceBeforeRunForm payload={payload as DataSourceNodeType} />
+    default:
+      return <div>Custom Run Form: {nodeType} not found</div>
+  }
+}
 type BasePanelProps = {
   children: ReactNode
   id: Node['id']
@@ -294,6 +306,8 @@ const BasePanel: FC<BasePanelProps> = ({
   }
 
   if (isShowSingleRun) {
+    const form = getCustomRunForm(data.type, data)
+
     return (
       <div className={cn(
         'relative mr-1  h-full',
@@ -305,16 +319,21 @@ const BasePanel: FC<BasePanelProps> = ({
             width: `${nodePanelWidth}px`,
           }}
         >
-          <BeforeRunForm
-            nodeName={data.title}
-            nodeType={data.type}
-            onHide={hideSingleRun}
-            onRun={handleRunWithParams}
-            {...singleRunParams!}
-            {...passedLogParams}
-            existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-            filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-          />
+          {isSupportCustomRunForm(data.type) ? (
+            form
+          ) : (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              onRun={handleRunWithParams}
+              {...singleRunParams!}
+              {...passedLogParams}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+            />
+          )}
+
         </div>
       </div>
     )

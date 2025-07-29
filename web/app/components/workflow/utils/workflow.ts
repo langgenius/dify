@@ -37,6 +37,12 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.IfElse
     || nodeType === BlockEnum.VariableAggregator
     || nodeType === BlockEnum.Assigner
+    || nodeType === BlockEnum.DataSource
+    // || nodeType === BlockEnum.KnowledgeBase
+}
+
+export const isSupportCustomRunForm = (nodeType: BlockEnum) => {
+  return nodeType === BlockEnum.DataSource
 }
 
 type ConnectedSourceOrTargetNodesChange = {
