@@ -17,7 +17,7 @@ def generate_provider_name(
             f"{credential_type.get_name()}",
         )
     except Exception as e:
-        logger.warning(f"Error generating next provider name for {fallback_context}: {str(e)}")
+        logger.warning("Error generating next provider name for %r: %r", fallback_context, e)
         return f"{credential_type.get_name()} 1"
 
 

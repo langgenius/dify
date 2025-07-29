@@ -20,7 +20,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         try:
             result = self.fetch_pipeline_template_detail_from_dify_official(pipeline_id)
         except Exception as e:
-            logger.warning(f"fetch recommended app detail from dify official failed: {e}, switch to built-in.")
+            logger.warning("fetch recommended app detail from dify official failed: %r, switch to built-in.", e)
             result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(pipeline_id)
         return result
 
@@ -28,7 +28,7 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         try:
             result = self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
-            logger.warning(f"fetch pipeline templates from dify official failed: {e}, switch to built-in.")
+            logger.warning("fetch pipeline templates from dify official failed: %r, switch to built-in.", e)
             result = BuildInRecommendAppRetrieval.fetch_recommended_apps_from_builtin(language)
         return result
 

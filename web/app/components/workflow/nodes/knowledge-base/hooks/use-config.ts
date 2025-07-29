@@ -15,6 +15,7 @@ import type {
   KnowledgeBaseNodeType,
   RerankingModel,
 } from '../types'
+import { isHighQualitySearchMethod } from '../utils'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
@@ -36,10 +37,18 @@ export const useConfig = (id: string) => {
 
   const handleChunkStructureChange = useCallback((chunkStructure: ChunkStructureEnum) => {
     const nodeData = getNodeData()
-    const { indexing_technique } = nodeData?.data
+    const {
+      indexing_technique,
+      retrieval_model,
+    } = nodeData?.data
+    const { search_method } = retrieval_model || {}
     handleNodeDataUpdate({
       chunk_structure: chunkStructure,
       indexing_technique: (chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) ? IndexMethodEnum.QUALIFIED : indexing_technique,
+      retrieval_model: {
+        ...retrieval_model,
+        search_method: ((chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) && !isHighQualitySearchMethod(search_method)) ? RetrievalSearchMethodEnum.semantic : search_method,
+      },
     })
   }, [handleNodeDataUpdate, getNodeData])
 
@@ -50,7 +59,7 @@ export const useConfig = (id: string) => {
       draft.indexing_technique = indexMethod
 
       if (indexMethod === IndexMethodEnum.ECONOMICAL)
-        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.keywordSearch
+        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.invertedIndex
       else if (indexMethod === IndexMethodEnum.QUALIFIED)
         draft.retrieval_model.search_method = RetrievalSearchMethodEnum.semantic
     }))
