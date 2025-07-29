@@ -208,6 +208,17 @@ class DatasourceAuthListApi(Resource):
             tenant_id=current_user.current_tenant_id
         )
         return {"result": jsonable_encoder(datasources)}, 200
+    
+class DatasourceHardCodeAuthListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        datasource_provider_service = DatasourceProviderService()
+        datasources = datasource_provider_service.get_hard_code_datasource_credentials(
+            tenant_id=current_user.current_tenant_id
+        )
+        return {"result": jsonable_encoder(datasources)}, 200
 
 
 class DatasourceAuthOauthCustomClient(Resource):
@@ -312,6 +323,11 @@ api.add_resource(
 api.add_resource(
     DatasourceAuthListApi,
     "/auth/plugin/datasource/list",
+)
+
+api.add_resource(
+    DatasourceHardCodeAuthListApi,
+    "/auth/plugin/datasource/default-list",
 )
 
 api.add_resource(
