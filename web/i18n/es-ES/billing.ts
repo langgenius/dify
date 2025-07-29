@@ -23,19 +23,14 @@ const translation = {
     contractSales: 'Contactar ventas',
     contractOwner: 'Contactar al administrador del equipo',
     startForFree: 'Empezar gratis',
-    getStartedWith: 'Empezar con ',
     contactSales: 'Contactar Ventas',
     talkToSales: 'Hablar con Ventas',
     modelProviders: 'Proveedores de Modelos',
-    teamMembers: 'Miembros del Equipo',
     annotationQuota: 'Cuota de Anotación',
     buildApps: 'Crear Aplicaciones',
     vectorSpace: 'Espacio Vectorial',
-    vectorSpaceBillingTooltip: 'Cada 1MB puede almacenar aproximadamente 1.2 millones de caracteres de datos vectorizados (estimado utilizando OpenAI Embeddings, varía según los modelos).',
     vectorSpaceTooltip: 'El Espacio Vectorial es el sistema de memoria a largo plazo necesario para que los LLMs comprendan tus datos.',
-    documentsUploadQuota: 'Cuota de Carga de Documentos',
     documentProcessingPriority: 'Prioridad de Procesamiento de Documentos',
-    documentProcessingPriorityTip: 'Para una mayor prioridad de procesamiento de documentos, por favor actualiza tu plan.',
     documentProcessingPriorityUpgrade: 'Procesa más datos con mayor precisión y velocidad.',
     priority: {
       'standard': 'Estándar',
@@ -103,19 +98,16 @@ const translation = {
     sandbox: {
       name: 'Sandbox',
       description: 'Prueba gratuita de 200 veces GPT',
-      includesTitle: 'Incluye:',
       for: 'Prueba gratuita de capacidades básicas',
     },
     professional: {
       name: 'Profesional',
       description: 'Para individuos y pequeños equipos que desean desbloquear más poder de manera asequible.',
-      includesTitle: 'Todo en el plan gratuito, más:',
       for: 'Para desarrolladores independientes/equipos pequeños',
     },
     team: {
       name: 'Equipo',
       description: 'Colabora sin límites y disfruta de un rendimiento de primera categoría.',
-      includesTitle: 'Todo en el plan Profesional, más:',
       for: 'Para equipos de tamaño mediano',
     },
     enterprise: {
@@ -123,15 +115,6 @@ const translation = {
       description: 'Obtén capacidades completas y soporte para sistemas críticos a gran escala.',
       includesTitle: 'Todo en el plan Equipo, más:',
       features: {
-        0: 'Soluciones de implementación escalables de nivel empresarial',
-        7: 'Actualizaciones y Mantenimiento por Dify Oficialmente',
-        8: 'Soporte Técnico Profesional',
-        3: 'Múltiples Espacios de Trabajo y Gestión Empresarial',
-        1: 'Autorización de Licencia Comercial',
-        2: 'Características Exclusivas de la Empresa',
-        5: 'SLA negociados por Dify Partners',
-        4: 'SSO',
-        6: 'Seguridad y Controles Avanzados',
       },
       btnText: 'Contactar ventas',
       for: 'Para equipos de gran tamaño',
@@ -140,9 +123,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Todas las características principales se lanzaron bajo el repositorio público',
-        2: 'Cumple con la Licencia de Código Abierto de Dify',
-        1: 'Espacio de trabajo único',
       },
       includesTitle: 'Características gratuitas:',
       for: 'Para usuarios individuales, pequeños equipos o proyectos no comerciales',
@@ -153,10 +133,6 @@ const translation = {
     },
     premium: {
       features: {
-        0: 'Confiabilidad autogestionada por varios proveedores de nube',
-        1: 'Espacio de trabajo único',
-        3: 'Soporte prioritario por correo electrónico y chat',
-        2: 'Personalización de logotipos y marcas de WebApp',
       },
       description: 'Para organizaciones y equipos de tamaño mediano',
       comingSoon: 'Soporte de Microsoft Azure y Google Cloud disponible próximamente',
@@ -173,8 +149,6 @@ const translation = {
     fullSolution: 'Actualiza tu plan para obtener más espacio.',
   },
   apps: {
-    fullTipLine1: 'Actualiza tu plan para',
-    fullTipLine2: 'crear más aplicaciones.',
     fullTip1des: 'Has alcanzado el límite de aplicaciones de construcción en este plan',
     fullTip2des: 'Se recomienda limpiar las aplicaciones inactivas para liberar espacio de uso, o contactarnos.',
     fullTip1: 'Actualiza para crear más aplicaciones',

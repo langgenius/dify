@@ -231,7 +231,6 @@ const translation = {
   tabs: {
     'tools': '도구',
     'allTool': '전체',
-    'builtInTool': '내장',
     'customTool': '사용자 정의',
     'workflowTool': '워크플로우',
     'question-understand': '질문 이해',
@@ -617,7 +616,6 @@ const translation = {
         'not empty': '비어 있지 않음',
         'null': 'null 임',
         'not null': 'null 이 아님',
-        'regex match': '정규식 일치',
         'in': '안으로',
         'exists': '존재',
         'all of': '모두의',

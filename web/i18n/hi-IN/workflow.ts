@@ -225,7 +225,6 @@ const translation = {
   tabs: {
     'tools': 'टूल्स',
     'allTool': 'सभी',
-    'builtInTool': 'अंतर्निहित',
     'customTool': 'कस्टम',
     'workflowTool': 'कार्यप्रवाह',
     'question-understand': 'प्रश्न समझ',
@@ -602,7 +601,6 @@ const translation = {
         'not empty': 'खाली नहीं है',
         'null': 'शून्य है',
         'not null': 'शून्य नहीं है',
-        'regex match': 'रेगेक्स मैच',
         'in': 'में',
         'all of': 'के सभी',
         'not exists': 'मौजूद नहीं है',

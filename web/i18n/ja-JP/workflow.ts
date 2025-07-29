@@ -592,7 +592,6 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'null でない',
-        'regex match': '正規表現マッチ',
         'in': '含まれている',
         'not in': '含まれていない',
         'all of': 'すべての',
