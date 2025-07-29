@@ -1,4 +1,6 @@
 import mimetypes
+import os
+import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
@@ -240,16 +242,21 @@ def _build_from_remote_url(
 
 def _get_remote_file_info(url: str):
     file_size = -1
-    filename = url.split("/")[-1].split("?")[0] or "unknown_file"
-    mime_type = mimetypes.guess_type(filename)[0] or ""
+    parsed_url = urllib.parse.urlparse(url)
+    url_path = parsed_url.path
+    filename = os.path.basename(url_path)
+
+    # Initialize mime_type from filename as fallback
+    mime_type, _ = mimetypes.guess_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     resp = cast(httpx.Response, resp)
     if resp.status_code == httpx.codes.OK:
         if content_disposition := resp.headers.get("Content-Disposition"):
             filename = str(content_disposition.split("filename=")[-1].strip('"'))
+            # Re-guess mime_type from updated filename
+            mime_type, _ = mimetypes.guess_type(filename)
         file_size = int(resp.headers.get("Content-Length", file_size))
-        mime_type = mime_type or str(resp.headers.get("Content-Type", ""))
 
     return mime_type, filename, file_size
 
