@@ -13,6 +13,6 @@ export const useSettingsDisplay = () => {
     [RetrievalSearchMethodEnum.semantic]: t('dataset.retrieval.semantic_search.title'),
     [RetrievalSearchMethodEnum.fullText]: t('dataset.retrieval.full_text_search.title'),
     [RetrievalSearchMethodEnum.hybrid]: t('dataset.retrieval.hybrid_search.title'),
-    [RetrievalSearchMethodEnum.keywordSearch]: t('dataset.retrieval.invertedIndex.title'),
+    [RetrievalSearchMethodEnum.invertedIndex]: t('dataset.retrieval.invertedIndex.title'),
   }
 }
