@@ -26,6 +26,9 @@ class TagService:
 
     @staticmethod
     def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list) -> list:
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids or len(tag_ids) == 0:
+            return []
         tags = (
             db.session.query(Tag)
             .where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
@@ -34,6 +37,9 @@ class TagService:
         if not tags:
             return []
         tag_ids = [tag.id for tag in tags]
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if not tag_ids or len(tag_ids) == 0:
+            return []
         tag_bindings = (
             db.session.query(TagBinding.target_id)
             .where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
