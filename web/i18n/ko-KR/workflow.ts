@@ -111,11 +111,9 @@ const translation = {
     exportJPEG: 'JPEG 로 내보내기',
     exitVersions: '종료 버전',
     exportImage: '이미지 내보내기',
-    noExist: '해당 변수가 없습니다.',
     exportSVG: 'SVG 로 내보내기',
     versionHistory: '버전 기록',
     exportPNG: 'PNG 로 내보내기',
-    referenceVar: '참조 변수',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
@@ -638,7 +636,6 @@ const translation = {
       },
       select: '고르다',
       addSubVariable: '하위 변수',
-      condition: '조건',
     },
     variableAssigner: {
       title: '변수 할당',
@@ -759,8 +756,6 @@ const translation = {
       reasoningMode: '추론 모드',
       reasoningModeTip:
         '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
-      isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
-      errorReason: '오류 원인',
     },
     iteration: {
       deleteTitle: '반복 노드를 삭제하시겠습니까?',

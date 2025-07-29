@@ -364,6 +364,7 @@ const translation = {
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
+    'content': '内容',
     'required': '必須',
     'hide': '非表示',
     'file': {

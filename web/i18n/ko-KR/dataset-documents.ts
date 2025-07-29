@@ -341,7 +341,6 @@ const translation = {
     keywords: '키워드',
     addKeyWord: '키워드 추가',
     keywordError: '키워드 최대 길이는 20 자입니다',
-    characters: '문자',
     hitCount: '검색 횟수',
     vectorHash: '벡터 해시: ',
     questionPlaceholder: '질문을 입력하세요',
