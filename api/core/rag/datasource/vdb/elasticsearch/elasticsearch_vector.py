@@ -43,7 +43,7 @@ class ElasticSearchConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def validate_config(cls, values: dict) -> dict:
-        use_cloud = values.get("use_cloud", True)
+        use_cloud = values.get("use_cloud", False)
         cloud_url = values.get("cloud_url")
 
         if use_cloud:
@@ -286,7 +286,7 @@ class ElasticSearchVector(BaseVector):
                     }
                 }
 
-                self._client.indices.create(index=self._collection_name, body={"mappings": mappings})
+                self._client.indices.create(index=self._collection_name, mappings=mappings)
                 logger.info("Created index %s with dimension %s", self._collection_name, dim)
             else:
                 logger.info("Collection %s already exists.", self._collection_name)
