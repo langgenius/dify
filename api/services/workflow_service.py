@@ -382,9 +382,9 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
         )
 
-        eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
-        if eclosing_node_type_and_id:
-            _, enclosing_node_id = eclosing_node_type_and_id
+        enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        if enclosing_node_type_and_id:
+            _, enclosing_node_id = enclosing_node_type_and_id
         else:
             enclosing_node_id = None
 
