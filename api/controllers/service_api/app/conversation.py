@@ -148,13 +148,15 @@ class ConversationVariableDetailApi(Resource):
             raise NotFound("Conversation Variable Not Exists.")
         except services.errors.conversation.ConversationVariableTypeMismatchError:
             raise BadRequest("Variable type mismatch.")
-        
+
 
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
 api.add_resource(ConversationApi, "/conversations")
 api.add_resource(ConversationDetailApi, "/conversations/<uuid:c_id>", endpoint="conversation_detail")
 api.add_resource(ConversationVariablesApi, "/conversations/<uuid:c_id>/variables", endpoint="conversation_variables")
-api.add_resource(ConversationVariableDetailApi, 
-                 "/conversations/<uuid:c_id>/variables/<uuid:variable_id>",
-                 endpoint="conversation_variable_detail",
-                 methods=["PUT"])
+api.add_resource(
+    ConversationVariableDetailApi,
+    "/conversations/<uuid:c_id>/variables/<uuid:variable_id>",
+    endpoint="conversation_variable_detail",
+    methods=["PUT"],
+)
