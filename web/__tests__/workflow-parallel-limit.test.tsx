@@ -172,50 +172,50 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   })
 
   describe('Environment Variable Parsing', () => {
-    it('should parse PARALLEL_LIMIT from NEXT_PUBLIC_MAX_PARALLEL_LIMIT environment variable', () => {
+    it('should parse MAX_PARALLEL_LIMIT from NEXT_PUBLIC_MAX_PARALLEL_LIMIT environment variable', () => {
       setupEnvironment('25')
-      const { PARALLEL_LIMIT } = require('@/config')
-      expect(PARALLEL_LIMIT).toBe(25)
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      expect(MAX_PARALLEL_LIMIT).toBe(25)
     })
 
     it('should fallback to default when environment variable is not set', () => {
       setupEnvironment() // No environment variable
-      const { PARALLEL_LIMIT } = require('@/config')
-      expect(PARALLEL_LIMIT).toBe(10)
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
     it('should handle invalid environment variable values', () => {
       setupEnvironment('invalid')
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
 
       // Should fall back to default when parsing fails
-      expect(PARALLEL_LIMIT).toBe(10)
+      expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
     it('should handle empty environment variable', () => {
       setupEnvironment('')
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
 
       // Should fall back to default when empty
-      expect(PARALLEL_LIMIT).toBe(10)
+      expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
     // Edge cases for boundary values
-    it('should clamp PARALLEL_LIMIT to MIN when env is 0 or negative', () => {
+    it('should clamp MAX_PARALLEL_LIMIT to MIN when env is 0 or negative', () => {
       setupEnvironment('0')
-      let { PARALLEL_LIMIT } = require('@/config')
-      expect(PARALLEL_LIMIT).toBe(10) // Falls back to default
+      let { MAX_PARALLEL_LIMIT } = require('@/config')
+      expect(MAX_PARALLEL_LIMIT).toBe(10) // Falls back to default
 
       setupEnvironment('-5')
-      ;({ PARALLEL_LIMIT } = require('@/config'))
-      expect(PARALLEL_LIMIT).toBe(10) // Falls back to default
+      ;({ MAX_PARALLEL_LIMIT } = require('@/config'))
+      expect(MAX_PARALLEL_LIMIT).toBe(10) // Falls back to default
     })
 
     it('should handle float numbers by parseInt behavior', () => {
       setupEnvironment('12.7')
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
       // parseInt truncates to integer
-      expect(PARALLEL_LIMIT).toBe(12)
+      expect(MAX_PARALLEL_LIMIT).toBe(12)
     })
   })
 
@@ -226,7 +226,7 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
 
       // Import Panel after setting environment
       const Panel = require('@/app/components/workflow/nodes/iteration/panel').default
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
 
       render(
         <Panel
@@ -235,15 +235,15 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
         />,
       )
 
-      // Behavior-focused assertion: UI max should equal PARALLEL_LIMIT
+      // Behavior-focused assertion: UI max should equal MAX_PARALLEL_LIMIT
       const numberInput = screen.getByTestId('number-input')
-      expect(numberInput).toHaveAttribute('data-max', String(PARALLEL_LIMIT))
+      expect(numberInput).toHaveAttribute('data-max', String(MAX_PARALLEL_LIMIT))
 
       const slider = screen.getByTestId('slider')
-      expect(slider).toHaveAttribute('data-max', String(PARALLEL_LIMIT))
+      expect(slider).toHaveAttribute('data-max', String(MAX_PARALLEL_LIMIT))
 
       // Verify the actual values
-      expect(PARALLEL_LIMIT).toBe(30)
+      expect(MAX_PARALLEL_LIMIT).toBe(30)
       expect(numberInput.getAttribute('data-max')).toBe('30')
       expect(slider.getAttribute('data-max')).toBe('30')
     })
@@ -251,7 +251,7 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
     it('should maintain UI consistency with different environment values', () => {
       setupEnvironment('15')
       const Panel = require('@/app/components/workflow/nodes/iteration/panel').default
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
 
       render(
         <Panel
@@ -260,12 +260,12 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
         />,
       )
 
-      // Both input and slider should use the same max value from PARALLEL_LIMIT
+      // Both input and slider should use the same max value from MAX_PARALLEL_LIMIT
       const numberInput = screen.getByTestId('number-input')
       const slider = screen.getByTestId('slider')
 
       expect(numberInput.getAttribute('data-max')).toBe(slider.getAttribute('data-max'))
-      expect(numberInput.getAttribute('data-max')).toBe(String(PARALLEL_LIMIT))
+      expect(numberInput.getAttribute('data-max')).toBe(String(MAX_PARALLEL_LIMIT))
     })
   })
 
@@ -277,25 +277,25 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
       expect(MAX_ITERATION_PARALLEL_NUM).toBe(10) // Hardcoded legacy value
     })
 
-    it('should demonstrate PARALLEL_LIMIT vs legacy constant difference', () => {
+    it('should demonstrate MAX_PARALLEL_LIMIT vs legacy constant difference', () => {
       setupEnvironment('50')
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
       const { MAX_ITERATION_PARALLEL_NUM } = require('@/app/components/workflow/constants')
 
-      // PARALLEL_LIMIT is configurable, MAX_ITERATION_PARALLEL_NUM is not
-      expect(PARALLEL_LIMIT).toBe(50)
+      // MAX_PARALLEL_LIMIT is configurable, MAX_ITERATION_PARALLEL_NUM is not
+      expect(MAX_PARALLEL_LIMIT).toBe(50)
       expect(MAX_ITERATION_PARALLEL_NUM).toBe(10)
-      expect(PARALLEL_LIMIT).not.toBe(MAX_ITERATION_PARALLEL_NUM)
+      expect(MAX_PARALLEL_LIMIT).not.toBe(MAX_ITERATION_PARALLEL_NUM)
     })
   })
 
   describe('Constants Validation', () => {
     it('should validate that required constants exist and have correct types', () => {
-      const { PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = require('@/config')
       const { MIN_ITERATION_PARALLEL_NUM } = require('@/app/components/workflow/constants')
-      expect(typeof PARALLEL_LIMIT).toBe('number')
+      expect(typeof MAX_PARALLEL_LIMIT).toBe('number')
       expect(typeof MIN_ITERATION_PARALLEL_NUM).toBe('number')
-      expect(PARALLEL_LIMIT).toBeGreaterThanOrEqual(MIN_ITERATION_PARALLEL_NUM)
+      expect(MAX_PARALLEL_LIMIT).toBeGreaterThanOrEqual(MIN_ITERATION_PARALLEL_NUM)
     })
   })
 })
