@@ -114,26 +114,36 @@ const translation = {
       name: 'Empresa',
       description: 'Obtén capacidades completas y soporte para sistemas críticos a gran escala.',
       includesTitle: 'Todo en el plan Equipo, más:',
-      features: {
-      },
       btnText: 'Contactar ventas',
       for: 'Para equipos de gran tamaño',
       price: 'Personalizado',
       priceTip: 'Facturación Anual Solo',
+      features: [
+        'Soluciones de implementación escalables a nivel empresarial',
+        'Autorización de licencia comercial',
+        'Funciones exclusivas para empresas',
+        'Múltiples espacios de trabajo y gestión empresarial',
+        'SSO (inicio de sesión único)',
+        'SLAs negociados con socios de Dify',
+        'Seguridad y controles avanzados',
+        'Actualizaciones y mantenimiento oficiales por parte de Dify',
+        'Soporte técnico profesional',
+      ],
     },
     community: {
-      features: {
-      },
       includesTitle: 'Características gratuitas:',
       for: 'Para usuarios individuales, pequeños equipos o proyectos no comerciales',
       price: 'Gratis',
       btnText: 'Comienza con la Comunidad',
       name: 'Comunidad',
       description: 'Para usuarios individuales, pequeños equipos o proyectos no comerciales',
+      features: [
+        'Todas las funciones principales publicadas en el repositorio público',
+        'Espacio de trabajo único',
+        'Cumple con la licencia de código abierto de Dify',
+      ],
     },
     premium: {
-      features: {
-      },
       description: 'Para organizaciones y equipos de tamaño mediano',
       comingSoon: 'Soporte de Microsoft Azure y Google Cloud disponible próximamente',
       btnText: 'Obtén Premium en',
@@ -142,6 +152,12 @@ const translation = {
       includesTitle: 'Todo de Community, además:',
       name: 'Premium',
       for: 'Para organizaciones y equipos de tamaño mediano',
+      features: [
+        'Fiabilidad autogestionada mediante varios proveedores de nube',
+        'Espacio de trabajo único',
+        'Personalización del logotipo y la marca de la aplicación web',
+        'Soporte prioritario por correo electrónico y chat',
+      ],
     },
   },
   vectorSpace: {

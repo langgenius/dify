@@ -114,26 +114,36 @@ const translation = {
       name: 'Unternehmen',
       description: 'Erhalten Sie volle Fähigkeiten und Unterstützung für großangelegte, missionskritische Systeme.',
       includesTitle: 'Alles im Team-Tarif, plus:',
-      features: {
-      },
       btnText: 'Vertrieb kontaktieren',
       price: 'Benutzerdefiniert',
       priceTip: 'Jährliche Abrechnung nur',
       for: 'Für große Teams',
+      features: [
+        'Skalierbare Bereitstellungslösungen in Unternehmensqualität',
+        'Kommerzielle Lizenzierung',
+        'Exklusive Enterprise-Funktionen',
+        'Mehrere Arbeitsbereiche und Unternehmensverwaltung',
+        'SSO (Single Sign-On)',
+        'Vereinbarte SLAs mit Dify-Partnern',
+        'Erweiterte Sicherheitsfunktionen und Kontrollen',
+        'Offizielle Updates und Wartung durch Dify',
+        'Professioneller technischer Support',
+      ],
     },
     community: {
-      features: {
-      },
       description: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
       for: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
       btnText: 'Beginnen Sie mit der Gemeinschaft',
       price: 'Kostenlos',
       includesTitle: 'Kostenlose Funktionen:',
       name: 'Gemeinschaft',
+      features: [
+        'Alle Kernfunktionen im öffentlichen Repository veröffentlicht',
+        'Einzelner Arbeitsbereich',
+        'Entspricht der Dify Open-Source-Lizenz',
+      ],
     },
     premium: {
-      features: {
-      },
       includesTitle: 'Alles aus der Community, plus:',
       name: 'Premium',
       priceTip: 'Basierend auf dem Cloud-Marktplatz',
@@ -142,6 +152,12 @@ const translation = {
       comingSoon: 'Microsoft Azure- und Google Cloud-Support demnächst verfügbar',
       description: 'Für mittelgroße Organisationen und Teams',
       price: 'Skalierbar',
+      features: [
+        'Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter',
+        'Einzelner Arbeitsbereich',
+        'Anpassung von WebApp-Logo und Branding',
+        'Bevorzugter E-Mail- und Chat-Support',
+      ],
     },
   },
   vectorSpace: {
