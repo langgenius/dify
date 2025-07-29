@@ -235,17 +235,17 @@ class ConversationService:
     ) -> dict:
         """
         Update a conversation variable's value.
-        
+
         Args:
             app_model: The app model
             conversation_id: The conversation ID
             variable_id: The variable ID to update
             user: The user (Account or EndUser)
             new_value: The new value for the variable
-            
+
         Returns:
             Dictionary containing the updated variable information
-            
+
         Raises:
             ConversationNotExistsError: If the conversation doesn't exist
             ConversationVariableNotExistsError: If the variable doesn't exist
@@ -253,7 +253,7 @@ class ConversationService:
         """
         # Verify conversation exists and user has access
         conversation = cls.get_conversation(app_model, conversation_id, user)
-        
+
         # Get the existing conversation variable
         stmt = (
             select(ConversationVariable)
@@ -261,15 +261,15 @@ class ConversationService:
             .where(ConversationVariable.conversation_id == conversation.id)
             .where(ConversationVariable.id == variable_id)
         )
-        
+
         with Session(db.engine) as session:
             existing_variable = session.scalar(stmt)
             if not existing_variable:
                 raise ConversationVariableNotExistsError()
-            
+
             # Convert existing variable to Variable object
             current_variable = existing_variable.to_variable()
-            
+
             # Validate that the new value type matches the expected variable type
             expected_type = SegmentType(current_variable.value_type)
             if not expected_type.is_valid(new_value):
@@ -278,7 +278,7 @@ class ConversationService:
                     f"Type mismatch: variable '{current_variable.name}' expects {expected_type.value}, "
                     f"but got {inferred_type.value if inferred_type else 'unknown'} type"
                 )
-            
+
             # Create updated variable with new value only, preserving everything else
             updated_variable_dict = {
                 "id": current_variable.id,
@@ -288,16 +288,17 @@ class ConversationService:
                 "value": new_value,
                 "selector": current_variable.selector,
             }
-            
+
             # Create a new Variable object from the updated data
             from factories import variable_factory
+
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
-            
+
             # Use the conversation variable updater to persist the changes
             updater = conversation_variable_updater_factory()
             updater.update(conversation_id, updated_variable)
             updater.flush()
-            
+
             # Return the updated variable data
             return {
                 "created_at": existing_variable.created_at,
