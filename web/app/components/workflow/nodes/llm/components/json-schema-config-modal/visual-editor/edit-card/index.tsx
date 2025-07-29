@@ -43,7 +43,6 @@ const TYPE_OPTIONS = [
   { value: Type.object, text: 'object' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
-  { value: ArrayType.boolean, text: 'array[boolean]' },
   { value: ArrayType.object, text: 'array[object]' },
 ]
 
@@ -53,7 +52,6 @@ const MAXIMUM_DEPTH_TYPE_OPTIONS = [
   { value: Type.boolean, text: 'boolean' },
   { value: ArrayType.string, text: 'array[string]' },
   { value: ArrayType.number, text: 'array[number]' },
-  { value: ArrayType.boolean, text: 'array[boolean]' },
 ]
 
 const EditCard: FC<EditCardProps> = ({
