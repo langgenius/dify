@@ -1,8 +1,9 @@
+import json
+
 from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
-import json
 
 import services
 from controllers.service_api import api
