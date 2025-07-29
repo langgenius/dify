@@ -18,6 +18,7 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
+import type { FileUpload } from '../../base/features/types'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -64,6 +65,7 @@ export type CommonHooksFnMap = {
   configsMap?: {
     flowId: string
     flowType: FlowType
+    fileSettings: FileUpload
   }
 }
 
