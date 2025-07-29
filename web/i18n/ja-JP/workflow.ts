@@ -213,7 +213,6 @@ const translation = {
     startRun: '実行開始',
     running: '実行中',
     testRunIteration: 'テスト実行（イテレーション）',
-    testRunLoop: 'テスト実行（ループ）',
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
@@ -618,7 +617,6 @@ const translation = {
     variableAssigner: {
       title: '変数を代入する',
       outputType: '出力タイプ',
-      outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
       noVarTip: '代入された変数を追加してください',
       type: {
