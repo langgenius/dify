@@ -82,19 +82,16 @@ class DatasourceProviderService:
                 if key in credential_secret_variables:
                     copy_credentials[key] = encrypter.decrypt_token(tenant_id, value)
             return copy_credentials
-    
-    def get_default_real_credential(
-        self, tenant_id: str, provider: str, plugin_id: str
-    ) -> dict[str, Any]:
+
+    def get_default_real_credential(self, tenant_id: str, provider: str, plugin_id: str) -> dict[str, Any]:
         """
         get default credential
         """
         with Session(db.engine) as session:
             datasource_provider = (
-                session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, 
-                                                            is_default=True, 
-                                                            provider=provider, 
-                                                            plugin_id=plugin_id).first()
+                session.query(DatasourceProvider)
+                .filter_by(tenant_id=tenant_id, is_default=True, provider=provider, plugin_id=plugin_id)
+                .first()
             )
             if not datasource_provider:
                 return {}
@@ -356,6 +353,35 @@ class DatasourceProviderService:
             [provider.name for provider in db_providers],
             f"{credential_type.get_name()}",
         )
+
+    def reauthorize_datasource_oauth_provider(
+        self,
+        name: str | None,
+        tenant_id: str,
+        provider_id: DatasourceProviderID,
+        avatar_url: str | None,
+        credentials: dict,
+        credential_id: str,
+    ) -> None:
+        """
+        update datasource oauth provider
+        """
+        with Session(db.engine) as session:
+            target_provider = session.query(DatasourceProvider).filter_by(id=credential_id, tenant_id=tenant_id).first()
+            if target_provider is None:
+                raise ValueError("provider not found")
+
+            provider_credential_secret_variables = self.extract_secret_variables(
+                tenant_id=tenant_id, provider_id=f"{provider_id}", credential_type=CredentialType.OAUTH2
+            )
+            for key, value in credentials.items():
+                if key in provider_credential_secret_variables:
+                    credentials[key] = encrypter.encrypt_token(tenant_id, value)
+
+            target_provider.encrypted_credentials = credentials
+            target_provider.avatar_url = avatar_url or target_provider.avatar_url
+            target_provider.name = name or target_provider.name
+            session.commit()
 
     def add_datasource_oauth_provider(
         self,
@@ -625,7 +651,7 @@ class DatasourceProviderService:
                 }
             )
         return datasource_credentials
-    
+
     def get_hard_code_datasource_credentials(self, tenant_id: str) -> list[dict]:
         """
         get hard code datasource credentials.
@@ -637,14 +663,16 @@ class DatasourceProviderService:
         datasources = manager.fetch_installed_datasource_providers(tenant_id)
         datasource_credentials = []
         for datasource in datasources:
-            if datasource.plugin_id in ["langgenius/firecrawl_datasource", "langgenius/notion_datasource", "langgenius/jina_datasource"]:
+            if datasource.plugin_id in [
+                "langgenius/firecrawl_datasource",
+                "langgenius/notion_datasource",
+                "langgenius/jina_datasource",
+            ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.get_datasource_credentials(
                     tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
                 )
-                redirect_uri = (
-                    f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-                )
+                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
                 datasource_credentials.append(
                     {
                         "provider": datasource.provider,

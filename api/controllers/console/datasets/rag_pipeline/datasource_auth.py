@@ -32,6 +32,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
+        credential_id = request.args.get("credential_id")
         datasource_provider_id = DatasourceProviderID(provider_id)
         provider_name = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
@@ -43,7 +44,11 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             raise ValueError(f"No OAuth Client Config for {provider_id}")
 
         context_id = OAuthProxyService.create_proxy_context(
-            user_id=current_user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
+            user_id=current_user.id,
+            tenant_id=tenant_id,
+            plugin_id=plugin_id,
+            provider=provider_name,
+            credential_id=credential_id,
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
@@ -98,13 +103,24 @@ class DatasourceOAuthCallback(Resource):
             system_credentials=oauth_client_params,
             request=request,
         )
-        datasource_provider_service.add_datasource_oauth_provider(
-            tenant_id=tenant_id,
-            provider_id=datasource_provider_id,
-            avatar_url=oauth_response.metadata.get("avatar_url") or None,
-            name=oauth_response.metadata.get("name") or None,
-            credentials=dict(oauth_response.credentials),
-        )
+        credential_id = context.get("credential_id")
+        if credential_id:
+            datasource_provider_service.reauthorize_datasource_oauth_provider(
+                tenant_id=tenant_id,
+                provider_id=datasource_provider_id,
+                avatar_url=oauth_response.metadata.get("avatar_url") or None,
+                name=oauth_response.metadata.get("name") or None,
+                credentials=dict(oauth_response.credentials),
+                credential_id=context.get("credential_id"),
+            )
+        else:
+            datasource_provider_service.add_datasource_oauth_provider(
+                tenant_id=tenant_id,
+                provider_id=datasource_provider_id,
+                avatar_url=oauth_response.metadata.get("avatar_url") or None,
+                name=oauth_response.metadata.get("name") or None,
+                credentials=dict(oauth_response.credentials),
+            )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
@@ -208,7 +224,8 @@ class DatasourceAuthListApi(Resource):
             tenant_id=current_user.current_tenant_id
         )
         return {"result": jsonable_encoder(datasources)}, 200
-    
+
+
 class DatasourceHardCodeAuthListApi(Resource):
     @setup_required
     @login_required
