@@ -20,6 +20,10 @@ const useContextMenu = (props: ContextMenuProps) => {
         key: VersionHistoryContextMenuOptions.restore,
         name: t('workflow.common.restore'),
       },
+      {
+        key: VersionHistoryContextMenuOptions.copyId,
+        name: t('workflow.versionHistory.copyId'),
+      },
       isNamedVersion
         ? {
           key: VersionHistoryContextMenuOptions.edit,
@@ -30,7 +34,6 @@ const useContextMenu = (props: ContextMenuProps) => {
           name: t('workflow.versionHistory.nameThisVersion'),
         },
     ]
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNamedVersion])
 
   return {

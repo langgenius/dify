@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
+import { RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import ContextMenu from './context-menu'
 import cn from '@/utils/classnames'
 import type { VersionHistory } from '@/types/workflow'
 import { type VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
+import Toast from '@/app/components/base/toast'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
@@ -55,7 +58,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   useEffect(() => {
     if (isDraft)
       onClick(item)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleClickItem = () => {
@@ -114,6 +116,28 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           !isDraft && (
             <div className='system-xs-regular truncate text-text-tertiary'>
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
+            </div>
+          )
+        }
+        {
+          !isDraft && (
+            <div className='flex items-center gap-x-1'>
+              <div className='system-xs-regular truncate text-text-tertiary'>
+                ID: {item.id}
+              </div>
+              <button
+                className='flex h-3 w-3 items-center justify-center rounded hover:bg-state-base-hover'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  copy(item.id)
+                  Toast.notify({
+                    type: 'success',
+                    message: t('workflow.versionHistory.action.copyIdSuccess'),
+                  })
+                }}
+              >
+                <RiClipboardLine className='h-2.5 w-2.5 text-text-quaternary' />
+              </button>
             </div>
           )
         }

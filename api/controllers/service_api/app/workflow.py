@@ -5,7 +5,7 @@ from flask import request
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import InternalServerError
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.service_api import api
 from controllers.service_api.app.error import (
@@ -34,6 +34,7 @@ from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
@@ -91,6 +92,7 @@ class WorkflowRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("workflow_id", type=str, required=False, location="json")
         args = parser.parse_args()
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -103,6 +105,10 @@ class WorkflowRunApi(Resource):
             )
 
             return helper.compact_generate_response(response)
+        except WorkflowNotFoundError as ex:
+            raise NotFound(str(ex))
+        except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

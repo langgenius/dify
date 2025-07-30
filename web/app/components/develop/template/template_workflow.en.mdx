@@ -67,6 +67,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         <br/>
         <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
       - `files` (array[object]) Optional
+      - `workflow_id` (string) Optional
+        Workflow ID to specify a specific version, if not provided, uses the default published version.
       - `trace_id` (string) Optional
         Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
         1. Header: via HTTP Header `X-Trace-Id`, highest priority.
@@ -186,6 +188,8 @@ Workflow applications offers non-session support and is ideal for translation, a
     - 400, `provider_quota_exceeded`, model invocation quota insufficient
     - 400, `model_currently_not_support`, current model unavailable
     - 400, `workflow_request_error`, workflow execution failed
+    - 400, `workflow_not_found`, specified workflow version not found
+    - 400, `draft_workflow_error`, cannot use draft workflow version
     - 500, internal server error
 
   </Col>

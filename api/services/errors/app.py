@@ -8,3 +8,7 @@ class WorkflowHashNotEqualError(Exception):
 
 class IsDraftWorkflowError(Exception):
     pass
+
+
+class WorkflowNotFoundError(Exception):
+    pass
