@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
@@ -40,8 +41,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
     try:
         # Choose the appropriate exporter based on config type
         exporter: Union[GrpcOTLPSpanExporter, HttpOTLPSpanExporter]
+
+        # Inspect the provided endpoint to determine its structure
+        parsed = urlparse(arize_phoenix_config.endpoint)
+        base_endpoint = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path.rstrip("/")
+
         if isinstance(arize_phoenix_config, ArizeConfig):
-            arize_endpoint = f"{arize_phoenix_config.endpoint}/v1"
+            arize_endpoint = f"{base_endpoint}/v1"
             arize_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "space_id": arize_phoenix_config.space_id or "",
@@ -53,7 +60,7 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
                 timeout=30,
             )
         else:
-            phoenix_endpoint = f"{arize_phoenix_config.endpoint}/v1/traces"
+            phoenix_endpoint = f"{base_endpoint}{path}/v1/traces"
             phoenix_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "authorization": f"Bearer {arize_phoenix_config.api_key or ''}",
