@@ -214,10 +214,10 @@ const ChatVariableModal = ({
       try {
         let newValue = JSON.parse(content)
         if(type === ChatVarType.ArrayBoolean) {
-          newValue = newValue.map((item: string) => {
-            if (item === 'True' || item === 'true')
+          newValue = newValue.map((item: string | boolean) => {
+            if (item === 'True' || item === 'true' || item === true)
               return true
-            if (item === 'False' || item === 'false')
+            if (item === 'False' || item === 'false' || item === false)
               return false
             return undefined
           }).filter((item?: boolean) => item !== undefined)

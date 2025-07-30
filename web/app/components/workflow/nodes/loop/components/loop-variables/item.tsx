@@ -48,9 +48,9 @@ const Item = ({
       return undefined
     switch (varType) {
       case VarType.boolean:
-        return 'false'
+        return false
       case VarType.arrayBoolean:
-        return ['false']
+        return [false]
       default:
         return undefined
     }
