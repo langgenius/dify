@@ -189,23 +189,6 @@ resource "google_secret_manager_secret" "openai_api_key" {
   depends_on = [google_project_service.services]
 }
 
-# Cloud Build trigger
-resource "google_cloudbuild_trigger" "dify_trigger" {
-  name        = "dify-deploy"
-  description = "Deploy Dify on main branch push"
-
-  github {
-    owner = "wesamahakem"  # Change to your GitHub username
-    name  = "dify"         # Change to your repo name
-    push {
-      branch = "main"
-    }
-  }
-
-  filename = "cloudbuild.yaml"
-
-  depends_on = [google_project_service.services]
-}
 
 # Outputs
 output "project_id" {

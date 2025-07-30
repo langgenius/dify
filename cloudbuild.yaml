@@ -21,9 +21,9 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$BUILD_ID'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/dify-api:latest'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:latest'
       - '-f'
       - 'api/Dockerfile.gcp'
       - '.'
@@ -35,9 +35,9 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/dify-web:$BUILD_ID'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$BUILD_ID'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/dify-web:latest'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:latest'
       - '-f'
       - 'web/Dockerfile.gcp'
       - 'web'
@@ -46,13 +46,13 @@ steps:
   # Push API Image
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-api'
-    args: ['push', 'gcr.io/$PROJECT_ID/dify-api:$BUILD_ID']
+    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$BUILD_ID']
     waitFor: ['build-api']
 
   # Push Web Image  
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-web'
-    args: ['push', 'gcr.io/$PROJECT_ID/dify-web:$BUILD_ID']
+    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$BUILD_ID']
     waitFor: ['build-web-docker']
 
   # Deploy API Service
@@ -63,7 +63,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'dify-api'
-      - '--image=gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$BUILD_ID'
       - '--region=$_REGION'
       - '--platform=managed'
       - '--allow-unauthenticated'
@@ -86,7 +86,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'dify-worker'
-      - '--image=gcr.io/$PROJECT_ID/dify-api:$BUILD_ID'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-api:$BUILD_ID'
       - '--region=$_REGION'
       - '--platform=managed'
       - '--no-allow-unauthenticated'
@@ -108,7 +108,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'dify-web'
-      - '--image=gcr.io/$PROJECT_ID/dify-web:$BUILD_ID'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/dify-repo/dify-web:$BUILD_ID'
       - '--region=$_REGION'
       - '--platform=managed'
       - '--allow-unauthenticated'
