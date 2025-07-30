@@ -1043,17 +1043,6 @@ workflow:
         isInIteration: false
         sourceType: llm
         targetType: code
-      id: 1750662088384-source-1750661889002-target
-      source: '1750662088384'
-      sourceHandle: source
-      target: '1750661889002'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: llm
-        targetType: code
       id: 1750068431868-source-1750672701216-target
       source: '1750068431868'
       sourceHandle: source
@@ -1556,6 +1545,28 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: code
+      id: 1750662088384-source-1753840330051-target
+      source: '1750662088384'
+      sourceHandle: source
+      target: '1753840330051'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: code
+      id: 1753840330051-source-1750661889002-target
+      source: '1753840330051'
+      sourceHandle: source
+      target: '1750661889002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -1599,23 +1610,23 @@ workflow:
           required: false
           type: paragraph
           variable: edition
-      height: 218
+      height: 220
       id: '1741227526517'
       position:
         x: 30
-        y: 440
+        y: 361
       positionAbsolute:
         x: 30
-        y: 440
+        y: 361
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         error_handle_mode: terminated
-        height: 1408
+        height: 1100
         is_parallel: false
         iterator_selector:
         - '1741509454645'
@@ -1629,20 +1640,20 @@ workflow:
         start_node_id: 1741497176064start
         title: iteration
         type: iteration
-        width: 6503.360125927147
-      height: 1408
+        width: 3312
+      height: 1100
       id: '1741497176064'
       position:
-        x: 5540.628458918075
-        y: 882
+        x: 5502
+        y: 827
       positionAbsolute:
-        x: 5540.628458918075
-        y: 882
+        x: 5502
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 6503
+      width: 3312
       zIndex: 1
     - data:
         desc: ''
@@ -1658,8 +1669,8 @@ workflow:
         x: 24
         y: 68
       positionAbsolute:
-        x: 5564.628458918075
-        y: 950
+        x: 5526
+        y: 895
       selectable: false
       selected: false
       sourcePosition: right
@@ -1693,20 +1704,20 @@ workflow:
           - '1741497176064'
           - item
           variable: data
-      height: 52
+      height: 54
       id: '1741497181784'
       parentId: '1741497176064'
       position:
         x: 247.70722025930104
         y: 65
       positionAbsolute:
-        x: 5788.335679177376
-        y: 947
+        x: 5749.707220259301
+        y: 892
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -1843,20 +1854,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1741502699500'
       parentId: '1741497176064'
       position:
         x: 844.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 6384.635270804619
-        y: 1682.2561082923241
+        x: 6346.006811886544
+        y: 1627.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -1876,19 +1887,19 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 140
+      height: 142
       id: '1741502839759'
       position:
-        x: 15375
-        y: 1146
+        x: 12518
+        y: 1071
       positionAbsolute:
-        x: 15375
-        y: 1146
+        x: 12518
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -1929,20 +1940,20 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1741506766037'
       parentId: '1741497176064'
       position:
         x: 3006.207221549953
         y: 414.18197246181467
       positionAbsolute:
-        x: 8546.835680468028
-        y: 1296.1819724618147
+        x: 8508.207221549954
+        y: 1241.1819724618147
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef main(arg: list) -> dict:\n    pod_info = []\n  \
@@ -1966,19 +1977,19 @@ workflow:
           - '1741597274153'
           - output
           variable: arg
-      height: 52
+      height: 54
       id: '1741509454645'
       position:
-        x: 1844
-        y: 550
+        x: 1854
+        y: 473
       positionAbsolute:
-        x: 1844
-        y: 550
+        x: 1854
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -2043,19 +2054,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1741512806512'
       position:
-        x: 12041
-        y: 904
+        x: 8874
+        y: 827
       positionAbsolute:
-        x: 12041
-        y: 904
+        x: 8874
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -2063,19 +2074,19 @@ workflow:
         title: unsupport alert
         type: template-transform
         variables: []
-      height: 52
+      height: 54
       id: '1741592094819'
       position:
-        x: 938
-        y: 440
+        x: 942
+        y: 361
       positionAbsolute:
-        x: 938
-        y: 440
+        x: 942
+        y: 361
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -2086,19 +2097,19 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 88
+      height: 90
       id: '1741592144815'
       position:
-        x: 1240
-        y: 440
+        x: 1246
+        y: 361
       positionAbsolute:
-        x: 1240
-        y: 440
+        x: 1246
+        y: 361
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         output_type: array[object]
@@ -2110,19 +2121,19 @@ workflow:
           - result
         - - '1750658087300'
           - result
-      height: 129
+      height: 131
       id: '1741597274153'
       position:
-        x: 1542
-        y: 550
+        x: 1550
+        y: 473
       positionAbsolute:
-        x: 1542
-        y: 550
+        x: 1550
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -2187,19 +2198,19 @@ workflow:
         selected: false
         title: alert instance info
         type: if-else
-      height: 320
+      height: 322
       id: '1742453019576'
       position:
-        x: 636
-        y: 440
+        x: 638
+        y: 361
       positionAbsolute:
-        x: 636
-        y: 440
+        x: 638
+        y: 361
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -2334,20 +2345,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742547917612'
       parentId: '1741497176064'
       position:
         x: 836.4108804698271
         y: 516.5435777950536
       positionAbsolute:
-        x: 6377.039339387902
-        y: 1398.5435777950536
+        x: 6338.410880469827
+        y: 1343.5435777950536
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -2483,20 +2494,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742798505742'
       parentId: '1741497176064'
       position:
         x: 830.759912814824
         y: 627.5199846908333
       positionAbsolute:
-        x: 6371.388371732899
-        y: 1509.5199846908333
+        x: 6332.759912814824
+        y: 1454.5199846908333
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
@@ -2553,19 +2564,19 @@ workflow:
           - '1741227526517'
           - nodeName
           variable: node
-      height: 52
+      height: 54
       id: '1742807803325'
       position:
         x: 334
-        y: 440
+        y: 361
       positionAbsolute:
         x: 334
-        y: 440
+        y: 361
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -2727,20 +2738,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980228913'
       parentId: '1741497176064'
       position:
         x: 806.8281636370702
         y: 209.51853849411827
       positionAbsolute:
-        x: 6347.456622555145
-        y: 1091.5185384941183
+        x: 6308.82816363707
+        y: 1036.5185384941183
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -2903,20 +2914,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980318484'
       parentId: '1741497176064'
       position:
         x: 822.1553196215964
         y: 365.4012769180829
       positionAbsolute:
-        x: 6362.783778539671
-        y: 1247.4012769180829
+        x: 6324.155319621596
+        y: 1192.4012769180829
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3030,20 +3041,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980720651'
       parentId: '1741497176064'
       position:
         x: 514.3995603929916
         y: 213.7029593937964
       positionAbsolute:
-        x: 6055.028019311067
-        y: 1095.7029593937964
+        x: 6016.399560392992
+        y: 1040.7029593937964
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3157,20 +3168,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980748320'
       parentId: '1741497176064'
       position:
         x: 514.4907183300102
         y: 357.1210001145894
       positionAbsolute:
-        x: 6055.119177248085
-        y: 1239.1210001145894
+        x: 6016.49071833001
+        y: 1184.1210001145894
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3284,20 +3295,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980780865'
       parentId: '1741497176064'
       position:
         x: 498.92195671051286
         y: 507.6795388616679
       positionAbsolute:
-        x: 6039.550415628588
-        y: 1389.6795388616679
+        x: 6000.921956710513
+        y: 1334.6795388616679
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3411,20 +3422,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980837261'
       parentId: '1741497176064'
       position:
         x: 498.72888694334415
         y: 625.7624548529454
       positionAbsolute:
-        x: 6039.357345861419
-        y: 1507.7624548529454
+        x: 6000.728886943344
+        y: 1452.7624548529454
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3538,20 +3549,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1742980885557'
       parentId: '1741497176064'
       position:
         x: 484.5481805965983
         y: 761.528674458782
       positionAbsolute:
-        x: 6025.176639514673
-        y: 1643.528674458782
+        x: 5986.548180596598
+        y: 1588.528674458782
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "\ndef main(data: dict) -> dict:\n    return {\n        \"pod\": data.get(\"\
@@ -3583,19 +3594,19 @@ workflow:
           - '1741509454645'
           - first
           variable: data
-      height: 52
+      height: 54
       id: '17430589567120'
       position:
-        x: 2448
-        y: 696
+        x: 2462
+        y: 621
       positionAbsolute:
-        x: 2448
-        y: 696
+        x: 2462
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3712,19 +3723,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430595109950'
       position:
-        x: 3354
-        y: 1019
+        x: 3374
+        y: 939
       positionAbsolute:
-        x: 3354
-        y: 1019
+        x: 3374
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3886,19 +3897,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430595158080'
       position:
-        x: 3656
-        y: 1019
+        x: 3678
+        y: 939
       positionAbsolute:
-        x: 3656
-        y: 1019
+        x: 3678
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         context:
@@ -3932,33 +3943,30 @@ workflow:
             - **文件操作延迟升高**：检查文件句柄是否打开过多。\n- RunQ方向要描述为 CPU抢占，不要描述为RunQ方向！！！\n- 只能给出一个方向问题，不要出现xx和xx方向问题，只能说明主要和次要\n\
             \n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}  \n**北极星指标趋势摘要**\n- 按指标维度描述显著变化，如xxx个线程xxxxx,若无异常标注\"\
             未观测到显著偏离\"。\n- 描述网络Ping质量\n\n**初步根因结论**\n- 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n\
-            1. 若网络/Epoll类异常但网络链路延迟正常，归因为下游服务延迟。*\n2. 如果对应方向有报告连接，需展示报告链接，可点击\n没有不用展示报告\n\
-            \n# 输入数据\n-cpu：{{#17443388433580.result#}}  \n- net：{{#17443388438160.result#}}\
-            \  \n- file：{{#17443388421360.result#}}  \n- epoll：{{#1744290470304.result#}}\
-            \  \n- RunQ：{{#17443388443000.result#}}\n- 网络ping数据\n{{#17511674060740.text#}}\n\
-            (如果网络ping持续超过0.05s以上认为存在问题)\n\n#报告链接（说明是报告即可，不用关联线程）\n如果存在报告链接，必须把报告链接显示出来\n\
-            不要有遗漏，且不要将不同方向报告弄混。如误将network报告划为cpu方向，某个方向没有报告就不显示！请仔细思考！！！\ncpu 方向{{#1751504789699.text#}}\n\
-            network方向 {{#17515048509810.text#}}\nrunq方向 {{#17515048888700.text#}}\n\
-            \n# 输出准则\n- 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"检查代码嵌套\"而非\"可能存在性能问题\"）。"
+            1. 若网络/Epoll类异常但网络链路延迟正常，归因为下游服务延迟。\n\n# 输入数据\n-cpu：{{#17443388433580.result#}}\
+            \  \n- net：{{#17443388438160.result#}}  \n- file：{{#17443388421360.result#}}\
+            \  \n- epoll：{{#1744290470304.result#}}  \n- RunQ：{{#17443388443000.result#}}\n\
+            - 网络ping数据\n{{#17511674060740.text#}}\n(如果网络ping持续超过0.05s以上认为存在问题)\n\n\
+            # 输出准则\n- 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"检查代码嵌套\"而非\"可能存在性能问题\"）。"
         selected: false
         title: llm analysis root cause
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '17430596469370'
       position:
-        x: 5174
-        y: 904
+        x: 5198
+        y: 827
       positionAbsolute:
-        x: 5174
-        y: 904
+        x: 5198
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4075,19 +4083,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430597987060'
       position:
-        x: 3656
-        y: 696
+        x: 3678
+        y: 621
       positionAbsolute:
-        x: 3656
-        y: 696
+        x: 3678
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4204,19 +4212,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430598907140'
       position:
-        x: 3052
-        y: 1113
+        x: 3070
+        y: 1033
       positionAbsolute:
-        x: 3052
-        y: 1113
+        x: 3070
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4361,19 +4369,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430598942980'
       position:
-        x: 3354
-        y: 1113
+        x: 3374
+        y: 1033
       positionAbsolute:
-        x: 3354
-        y: 1113
+        x: 3374
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4490,19 +4498,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430610599980'
       position:
-        x: 3354
-        y: 790
+        x: 3374
+        y: 715
       positionAbsolute:
-        x: 3354
-        y: 790
+        x: 3374
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4647,19 +4655,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430610640640'
       position:
-        x: 3656
-        y: 790
+        x: 3678
+        y: 715
       positionAbsolute:
-        x: 3656
-        y: 790
+        x: 3678
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4773,19 +4781,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430610719970'
       position:
-        x: 3354
-        y: 1359
+        x: 3374
+        y: 1283
       positionAbsolute:
-        x: 3354
-        y: 1359
+        x: 3374
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4921,19 +4929,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17430610756270'
       position:
-        x: 3656
-        y: 1359
+        x: 3678
+        y: 1283
       positionAbsolute:
-        x: 3656
-        y: 1359
+        x: 3678
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -4962,19 +4970,19 @@ workflow:
           - '17430610640640'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '1744255998058'
       position:
-        x: 3959
-        y: 790
+        x: 3982
+        y: 715
       positionAbsolute:
-        x: 3959
-        y: 790
+        x: 3982
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -5002,19 +5010,19 @@ workflow:
           - '17430598942980'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '17442560822670'
       position:
-        x: 3656
-        y: 1113
+        x: 3678
+        y: 1033
       positionAbsolute:
-        x: 3656
-        y: 1113
+        x: 3678
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5107,19 +5115,19 @@ workflow:
           - '1744255998058'
           - result
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744287265980'
       position:
-        x: 4567
-        y: 790
+        x: 4590
+        y: 715
       positionAbsolute:
-        x: 4567
-        y: 790
+        x: 4590
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5153,19 +5161,19 @@ workflow:
           - '1744287265980'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744290470304'
       position:
-        x: 4871
-        y: 790
+        x: 4894
+        y: 715
       positionAbsolute:
-        x: 4871
-        y: 790
+        x: 4894
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5258,19 +5266,19 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '17443356883380'
       position:
-        x: 4263
-        y: 1360
+        x: 4286
+        y: 1283
       positionAbsolute:
-        x: 4263
-        y: 1360
+        x: 4286
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5363,19 +5371,19 @@ workflow:
           - '17442560822670'
           - result
           variable: proof_json
-      height: 52
+      height: 54
       id: '17443357536900'
       position:
-        x: 4263
-        y: 1114
+        x: 4286
+        y: 1033
       positionAbsolute:
-        x: 4263
-        y: 1114
+        x: 4286
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5468,19 +5476,19 @@ workflow:
           - '1750661176423'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '17443357893440'
       position:
-        x: 4567
-        y: 696
+        x: 4590
+        y: 621
       positionAbsolute:
-        x: 4567
-        y: 696
+        x: 4590
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5573,19 +5581,19 @@ workflow:
           - '17430595158080'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '17443357899060'
       position:
-        x: 4263
-        y: 1020
+        x: 4286
+        y: 939
       positionAbsolute:
-        x: 4263
-        y: 1020
+        x: 4286
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5619,19 +5627,19 @@ workflow:
           - '17443357893440'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '17443388421360'
       position:
-        x: 4871
-        y: 696
+        x: 4894
+        y: 621
       positionAbsolute:
-        x: 4871
-        y: 696
+        x: 4894
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5665,19 +5673,19 @@ workflow:
           - '17443357899060'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '17443388433580'
       position:
-        x: 4567
-        y: 1019
+        x: 4590
+        y: 939
       positionAbsolute:
-        x: 4567
-        y: 1019
+        x: 4590
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5711,19 +5719,19 @@ workflow:
           - '17443357536900'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '17443388438160'
       position:
-        x: 4567
-        y: 1113
+        x: 4590
+        y: 1033
       positionAbsolute:
-        x: 4567
-        y: 1113
+        x: 4590
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5757,19 +5765,19 @@ workflow:
           - '17443356883380'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '17443388443000'
       position:
-        x: 4567
-        y: 1359
+        x: 4590
+        y: 1283
       positionAbsolute:
-        x: 4567
-        y: 1359
+        x: 4590
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -5799,20 +5807,20 @@ workflow:
           - '1742798505742'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342068305'
       parentId: '1741497176064'
       position:
         x: 1151.2711627353192
         y: 627.1076447913074
       positionAbsolute:
-        x: 6691.899621653394
-        y: 1509.1076447913074
+        x: 6653.271162735319
+        y: 1454.1076447913074
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -5843,20 +5851,20 @@ workflow:
           - '1742547917612'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342138380'
       parentId: '1741497176064'
       position:
         x: 1156.3163049456798
         y: 510.0892315007202
       positionAbsolute:
-        x: 6696.944763863755
-        y: 1392.0892315007202
+        x: 6658.31630494568
+        y: 1337.0892315007202
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
@@ -5952,20 +5960,20 @@ workflow:
           - '1742980228913'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744342244843'
       parentId: '1741497176064'
       position:
         x: 1700.1869849540008
         y: 204.3925457136836
       positionAbsolute:
-        x: 7240.815443872076
-        y: 1086.3925457136836
+        x: 7202.186984954001
+        y: 1031.3925457136836
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
@@ -6061,20 +6069,20 @@ workflow:
           - '1742980318484'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744342309386'
       parentId: '1741497176064'
       position:
         x: 1703.1730983370517
         y: 349.7691336710102
       positionAbsolute:
-        x: 7243.801557255127
-        y: 1231.7691336710102
+        x: 7205.173098337052
+        y: 1176.7691336710102
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
@@ -6170,20 +6178,20 @@ workflow:
           - '1744342138380'
           - result
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744342372882'
       parentId: '1741497176064'
       position:
         x: 1987.8206041612648
         y: 524.9159074871468
       positionAbsolute:
-        x: 7528.44906307934
-        y: 1406.9159074871468
+        x: 7489.820604161265
+        y: 1351.9159074871468
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
@@ -6279,20 +6287,20 @@ workflow:
           - '1744342068305'
           - result
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744342426374'
       parentId: '1741497176064'
       position:
         x: 2002.2706428766232
         y: 621.6422646922922
       positionAbsolute:
-        x: 7542.899101794698
-        y: 1503.6422646922922
+        x: 7504.270642876623
+        y: 1448.6422646922922
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
@@ -6388,20 +6396,20 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 52
+      height: 54
       id: '1744342478278'
       parentId: '1741497176064'
       position:
         x: 1518.9801190795033
         y: 794.3381824607964
       positionAbsolute:
-        x: 7059.608577997578
-        y: 1676.3381824607964
+        x: 7020.980119079503
+        y: 1621.3381824607964
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6438,20 +6446,20 @@ workflow:
           - '1744342478278'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342609856'
       parentId: '1741497176064'
       position:
         x: 1994.223018874618
         y: 818.3728824315269
       positionAbsolute:
-        x: 7534.851477792693
-        y: 1700.372882431527
+        x: 7496.223018874618
+        y: 1645.372882431527
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6488,20 +6496,20 @@ workflow:
           - '1744342426374'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342800777'
       parentId: '1741497176064'
       position:
         x: 2373.719131964811
         y: 609.5519407976731
       positionAbsolute:
-        x: 7914.347590882886
-        y: 1491.551940797673
+        x: 7875.719131964811
+        y: 1436.551940797673
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6538,20 +6546,20 @@ workflow:
           - '1744342372882'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342846753'
       parentId: '1741497176064'
       position:
         x: 2379.031494081666
         y: 522.042854145948
       positionAbsolute:
-        x: 7919.659952999741
-        y: 1404.042854145948
+        x: 7881.031494081666
+        y: 1349.042854145948
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6588,20 +6596,20 @@ workflow:
           - '1744342309386'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342890395'
       parentId: '1741497176064'
       position:
         x: 2220.1847222316082
         y: 342.0400931544832
       positionAbsolute:
-        x: 7760.813181149683
-        y: 1224.0400931544832
+        x: 7722.184722231608
+        y: 1169.0400931544832
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6638,20 +6646,20 @@ workflow:
           - '1744342244843'
           - result
           variable: data_json
-      height: 52
+      height: 54
       id: '1744342920172'
       parentId: '1741497176064'
       position:
         x: 2253.5190676645516
         y: 214.3934728157035
       positionAbsolute:
-        x: 7794.147526582627
-        y: 1096.3934728157035
+        x: 7755.519067664552
+        y: 1041.3934728157035
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6699,20 +6707,20 @@ workflow:
             type: mixed
             value: '{{#1742980720651.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1745325937486'
       parentId: '1741497176064'
       position:
         x: 1121.8455136224347
         y: 209.51853849411827
       positionAbsolute:
-        x: 6662.47397254051
-        y: 1091.5185384941183
+        x: 6623.845513622435
+        y: 1036.5185384941183
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6760,20 +6768,20 @@ workflow:
             type: mixed
             value: '{{#1742980748320.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1745326017289'
       parentId: '1741497176064'
       position:
         x: 1137.1726696069618
         y: 357.8904331772294
       positionAbsolute:
-        x: 6677.801128525037
-        y: 1239.8904331772294
+        x: 6639.172669606962
+        y: 1184.8904331772294
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6821,20 +6829,20 @@ workflow:
             type: mixed
             value: '{{#1742980780865.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1745326029444'
       parentId: '1741497176064'
       position:
         x: 1487.8575111609225
         y: 514.5957377452321
       positionAbsolute:
-        x: 7028.4859700789975
-        y: 1396.595737745232
+        x: 6989.8575111609225
+        y: 1341.595737745232
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6882,20 +6890,20 @@ workflow:
             type: mixed
             value: '{{#1742980837261.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1745326038950'
       parentId: '1741497176064'
       position:
         x: 1481.3102002023916
         y: 616.5924635541128
       positionAbsolute:
-        x: 7021.938659120467
-        y: 1498.5924635541128
+        x: 6983.310200202392
+        y: 1443.5924635541128
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6943,20 +6951,20 @@ workflow:
             type: mixed
             value: '{{#1742980885557.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1745326055068'
       parentId: '1741497176064'
       position:
         x: 1147.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 6687.635270804619
-        y: 1682.2561082923241
+        x: 6649.006811886544
+        y: 1627.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         cases:
@@ -6975,19 +6983,19 @@ workflow:
         selected: false
         title: 是否获取监控实例
         type: if-else
-      height: 124
+      height: 126
       id: '1745494305165'
       position:
-        x: 2146
-        y: 550
+        x: 2158
+        y: 473
       positionAbsolute:
-        x: 2146
-        y: 550
+        x: 2158
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -6995,19 +7003,19 @@ workflow:
         title: 未查询到关联服务
         type: template-transform
         variables: []
-      height: 52
+      height: 54
       id: '1745494335273'
       position:
-        x: 2448
-        y: 550
+        x: 2462
+        y: 473
       positionAbsolute:
-        x: 2448
-        y: 550
+        x: 2462
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -7018,19 +7026,19 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 90
       id: '1745494338512'
       position:
-        x: 2750
-        y: 550
+        x: 2766
+        y: 473
       positionAbsolute:
-        x: 2750
-        y: 550
+        x: 2766
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -7048,19 +7056,19 @@ workflow:
         selected: false
         title: 告警初步方向分析
         type: if-else
-      height: 124
+      height: 126
       id: '1747355869184'
       position:
-        x: 2750
-        y: 678
+        x: 2766
+        y: 603
       positionAbsolute:
-        x: 2750
-        y: 678
+        x: 2766
+        y: 603
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -7202,19 +7210,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1747355986489'
       position:
-        x: 3052
-        y: 1236
+        x: 3070
+        y: 1158
       positionAbsolute:
-        x: 3052
-        y: 1236
+        x: 3070
+        y: 1158
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -7358,19 +7366,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '17473562733380'
       position:
-        x: 4263
-        y: 905
+        x: 4286
+        y: 827
       positionAbsolute:
-        x: 4263
-        y: 905
+        x: 4286
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7416,19 +7424,19 @@ workflow:
             type: mixed
             value: '{{#1747355986489.text#}}'
         type: tool
-      height: 52
+      height: 54
       id: '17473564423850'
       position:
-        x: 3354
-        y: 1236
+        x: 3374
+        y: 1158
       positionAbsolute:
-        x: 3354
-        y: 1236
+        x: 3374
+        y: 1158
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
           \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
@@ -7473,19 +7481,19 @@ workflow:
           - '17473564423850'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '1747356893645'
       position:
-        x: 3656
-        y: 1236
+        x: 3678
+        y: 1158
       positionAbsolute:
-        x: 3656
-        y: 1236
+        x: 3678
+        y: 1158
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -7523,19 +7531,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '17473569800940'
       position:
-        x: 3958
-        y: 1214
+        x: 3982
+        y: 1140
       positionAbsolute:
-        x: 3958
-        y: 1214
+        x: 3982
+        y: 1140
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7551,19 +7559,19 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 114
+      height: 116
       id: '1747357345949'
       position:
-        x: 4567
-        y: 1205
+        x: 4590
+        y: 1127
       positionAbsolute:
-        x: 4567
-        y: 1205
+        x: 4590
+        y: 1127
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -7605,19 +7613,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750068431868'
       position:
-        x: 13861
-        y: 1146
+        x: 10698
+        y: 1071
       positionAbsolute:
-        x: 13861
-        y: 1146
+        x: 10698
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -7652,19 +7660,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 94
+      height: 96
       id: '17501667334220'
       position:
-        x: 4263
-        y: 1216
+        x: 4286
+        y: 1137
       positionAbsolute:
-        x: 4263
-        y: 1216
+        x: 4286
+        y: 1137
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -7878,19 +7886,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1750657927551'
       position:
-        x: 938
-        y: 642
+        x: 942
+        y: 567
       positionAbsolute:
-        x: 938
-        y: 642
+        x: 942
+        y: 567
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -8020,19 +8028,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1750657965188'
       position:
-        x: 938
-        y: 550
+        x: 942
+        y: 473
       positionAbsolute:
-        x: 938
-        y: 550
+        x: 942
+        y: 473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(data: str) -> dict:\n    instances = json.loads(data).get('data',\
           \ [])[:3]\n    return {\n        \"result\": instances,\n    }\n\n"
@@ -8050,19 +8058,19 @@ workflow:
           - '1750657965188'
           - text
           variable: data
-      height: 52
+      height: 54
       id: '1750658087300'
       position:
-        x: 1240
-        y: 568
+        x: 1246
+        y: 491
       positionAbsolute:
-        x: 1240
-        y: 568
+        x: 1246
+        y: 491
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\n\ndef main(pod: str, containerId: str, pid: str, node: str, service:\
           \ str, endpoint: str) -> dict:\n    return {\n        \"result\": [{\n \
@@ -8103,19 +8111,19 @@ workflow:
           - '1742807803325'
           - endpoint
           variable: endpoint
-      height: 52
+      height: 54
       id: '1750658174684'
       position:
-        x: 1240
-        y: 660
+        x: 1246
+        y: 585
       positionAbsolute:
-        x: 1240
-        y: 660
+        x: 1246
+        y: 585
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -8273,19 +8281,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1750661176423'
       position:
-        x: 3959
-        y: 696
+        x: 3982
+        y: 621
       positionAbsolute:
-        x: 3959
-        y: 696
+        x: 3982
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(timestamp: int, reason: str, tags: dict, detail: str, endpoint:\
           \ str, service: str) -> dict:\n    data = {\n        \"timestamp\": timestamp,\n\
@@ -8317,8 +8325,8 @@ workflow:
           - text
           variable: reason
         - value_selector:
-          - '1750662084996'
-          - text
+          - '1753840330051'
+          - result
           variable: detail
         - value_selector:
           - '1742807803325'
@@ -8328,19 +8336,19 @@ workflow:
           - '1742807803325'
           - service
           variable: service
-      height: 52
+      height: 54
       id: '1750661889002'
       position:
-        x: 14165
-        y: 904
+        x: 11302
+        y: 827
       positionAbsolute:
-        x: 14165
-        y: 904
+        x: 11302
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -8369,19 +8377,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750662084996'
       position:
-        x: 13557
-        y: 904
+        x: 10394
+        y: 827
       positionAbsolute:
-        x: 13557
-        y: 904
+        x: 10394
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -8438,19 +8446,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750662088384'
       position:
-        x: 13861
-        y: 904
+        x: 10698
+        y: 827
       positionAbsolute:
-        x: 13861
-        y: 904
+        x: 10698
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(alertEventId: str, run_id: str) -> dict:\n    data = {\n\
           \        \"alertEventId\": alertEventId,\n        \"runId\": run_id\n  \
@@ -8473,19 +8481,19 @@ workflow:
           - sys
           - workflow_run_id
           variable: run_id
-      height: 52
+      height: 54
       id: '1750662168285'
       position:
-        x: 14165
-        y: 1054
+        x: 11002
+        y: 977
       positionAbsolute:
-        x: 14165
-        y: 1054
+        x: 11002
+        y: 977
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -8515,19 +8523,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750662408086'
       position:
-        x: 13861
-        y: 1282
+        x: 10698
+        y: 1201
       positionAbsolute:
-        x: 13861
-        y: 1282
+        x: 10698
+        y: 1201
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import re\ndef main(raw_data: str) -> dict:\n    pattern = r'```json\\\
           n(.*?)\\n```'\n    match = re.search(pattern, raw_data, re.DOTALL)\n\n \
@@ -8547,19 +8555,19 @@ workflow:
           - '1750068431868'
           - text
           variable: raw_data
-      height: 52
+      height: 54
       id: '1750672701216'
       position:
-        x: 14165
-        y: 1146
+        x: 11002
+        y: 1071
       positionAbsolute:
-        x: 14165
-        y: 1146
+        x: 11002
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import re\ndef main(raw_data: str) -> dict:\n    pattern = r'```json\\\
           n(.*?)\\n```'\n    match = re.search(pattern, raw_data, re.DOTALL)\n\n \
@@ -8579,19 +8587,19 @@ workflow:
           - '1750662408086'
           - text
           variable: raw_data
-      height: 52
+      height: 54
       id: '17506728633540'
       position:
-        x: 14165
-        y: 1282
+        x: 11002
+        y: 1201
       positionAbsolute:
-        x: 14165
-        y: 1282
+        x: 11002
+        y: 1201
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import requests\nimport json\n\n\ndef get_red(query_params):\n    response\
           \ = requests.get(\n        \"http://apo-backend-svc:8080\" + \"/api/dataplane/redcharts\"\
@@ -8655,19 +8663,19 @@ workflow:
           - '1741227526517'
           - endTime
           variable: endTime
-      height: 52
+      height: 54
       id: '1750750056742'
       position:
-        x: 14165
-        y: 1374
+        x: 11002
+        y: 1295
       positionAbsolute:
-        x: 14165
-        y: 1374
+        x: 11002
+        y: 1295
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -8880,19 +8888,19 @@ workflow:
             type: mixed
             value: '{{#1750750056742.result#}}'
         type: tool
-      height: 52
+      height: 54
       id: '1750754610625'
       position:
-        x: 14467
-        y: 1146
+        x: 11606
+        y: 1071
       positionAbsolute:
-        x: 14467
-        y: 1146
+        x: 11606
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(arg1: str, red: str, logs: str, red_text: str, rtt_text:\
           \ str, log_text: str) -> dict:\n    rtt = json.loads(arg1)\n    logs_raw\
@@ -8941,19 +8949,19 @@ workflow:
           - '1750927215923'
           - text
           variable: log_text
-      height: 52
+      height: 54
       id: '1750769951427'
       position:
-        x: 14165
-        y: 1588
+        x: 11002
+        y: 1389
       positionAbsolute:
-        x: 14165
-        y: 1588
+        x: 11002
+        y: 1389
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import requests\nimport json\n\n\ndef get_red(service, cluster, start_time,\
           \ end_time) -> str:\n    query_params = {\"startTime\": start_time, \"endTime\"\
@@ -9001,19 +9009,19 @@ workflow:
           - '1741227526517'
           - endTime
           variable: endTime
-      height: 52
+      height: 54
       id: '1750819000832'
       position:
-        x: 13558
-        y: 1746
+        x: 10394
+        y: 1537
       positionAbsolute:
-        x: 13558
-        y: 1746
+        x: 10394
+        y: 1537
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(pod: str, service: str, node: str, pid: str, containerId:\
           \ str) -> dict:\n    query = ''\n    if len(containerId) > 0 and len(node)\
@@ -9056,19 +9064,19 @@ workflow:
           - '1742807803325'
           - containerId
           variable: containerId
-      height: 52
+      height: 54
       id: '1750830567613'
       position:
-        x: 12650
-        y: 1471
+        x: 9482
+        y: 1407
       positionAbsolute:
-        x: 12650
-        y: 1471
+        x: 9482
+        y: 1407
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -9229,19 +9237,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1750830747193'
       position:
-        x: 12953
-        y: 1452
+        x: 9786
+        y: 1389
       positionAbsolute:
-        x: 12953
-        y: 1452
+        x: 9786
+        y: 1389
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import re\nfrom typing import List\nimport json\n\nERROR_PATTERNS:\
           \ List[str] = [\n    r\"ERROR\",\n    r\"ERR\",\n    r\"EXCEPTION\",\n \
@@ -9280,19 +9288,19 @@ workflow:
           - '1750830747193'
           - text
           variable: data_json
-      height: 52
+      height: 54
       id: '1750830805330'
       position:
-        x: 13255
-        y: 1452
+        x: 10090
+        y: 1389
       positionAbsolute:
-        x: 13255
-        y: 1452
+        x: 10090
+        y: 1389
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -9327,19 +9335,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750927215923'
       position:
-        x: 13861
-        y: 1452
+        x: 10698
+        y: 1389
       positionAbsolute:
-        x: 13861
-        y: 1452
+        x: 10698
+        y: 1389
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -9374,19 +9382,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750927458985'
       position:
-        x: 13861
-        y: 1724
+        x: 10698
+        y: 1519
       positionAbsolute:
-        x: 13861
-        y: 1724
+        x: 10698
+        y: 1519
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -9427,19 +9435,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '1750995139153'
       position:
-        x: 15073
-        y: 1146
+        x: 12214
+        y: 1071
       positionAbsolute:
-        x: 15073
-        y: 1146
+        x: 12214
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -9478,19 +9486,19 @@ workflow:
           - '17430597987060'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '1751112705936'
       position:
-        x: 4262
-        y: 696
+        x: 4286
+        y: 621
       positionAbsolute:
-        x: 4262
-        y: 696
+        x: 4286
+        y: 621
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -9529,19 +9537,19 @@ workflow:
           - '17430610599980'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '17511127594560'
       position:
-        x: 4262
-        y: 790
+        x: 4286
+        y: 715
       positionAbsolute:
-        x: 4262
-        y: 790
+        x: 4286
+        y: 715
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -9580,19 +9588,19 @@ workflow:
           - '17430595109950'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '17511128355920'
       position:
-        x: 3958
-        y: 1018
+        x: 3982
+        y: 939
       positionAbsolute:
-        x: 3958
-        y: 1018
+        x: 3982
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -9631,19 +9639,19 @@ workflow:
           - '17430598907140'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '17511128736240'
       position:
-        x: 3958
-        y: 1112
+        x: 3982
+        y: 1033
       positionAbsolute:
-        x: 3958
-        y: 1112
+        x: 3982
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -9682,19 +9690,19 @@ workflow:
           - '17430610719970'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '17511129103380'
       position:
-        x: 3958
-        y: 1358
+        x: 3982
+        y: 1283
       positionAbsolute:
-        x: 3958
-        y: 1358
+        x: 3982
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         context:
           enabled: false
@@ -9735,19 +9743,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 90
       id: '17511674060740'
       position:
-        x: 4870
-        y: 882
+        x: 4894
+        y: 809
       positionAbsolute:
-        x: 4870
-        y: 882
+        x: 4894
+        y: 809
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -9908,19 +9916,19 @@ workflow:
             type: mixed
             value: cpu_time
         type: tool
-      height: 52
+      height: 54
       id: '1751504789699'
       position:
-        x: 4870
-        y: 1018
+        x: 4894
+        y: 939
       positionAbsolute:
-        x: 4870
-        y: 1018
+        x: 4894
+        y: 939
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -10081,19 +10089,19 @@ workflow:
             type: mixed
             value: network_time
         type: tool
-      height: 52
+      height: 54
       id: '17515048509810'
       position:
-        x: 4870
-        y: 1112
+        x: 4894
+        y: 1033
       positionAbsolute:
-        x: 4870
-        y: 1112
+        x: 4894
+        y: 1033
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -10254,19 +10262,19 @@ workflow:
             type: mixed
             value: scheduling_time
         type: tool
-      height: 52
+      height: 54
       id: '17515048888700'
       position:
-        x: 4870
-        y: 1358
+        x: 4894
+        y: 1283
       positionAbsolute:
-        x: 4870
-        y: 1358
+        x: 4894
+        y: 1283
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import json\n\n\ndef _get_avg(values):\n    if not values:\n      \
           \  return 0\n    return sum(values) / len(values)\n\ndef _get_standard_deviation(avg,\
@@ -10297,7 +10305,7 @@ workflow:
           result:
             children: null
             type: string
-        selected: true
+        selected: false
         title: RTT分析
         type: code
         variables:
@@ -10305,19 +10313,19 @@ workflow:
           - '17473562733380'
           - text
           variable: arg1
-      height: 52
+      height: 54
       id: '17515143872690'
       position:
-        x: 4566
-        y: 903
+        x: 4590
+        y: 827
       positionAbsolute:
-        x: 4566
-        y: 903
-      selected: true
+        x: 4590
+        y: 827
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -10478,19 +10486,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 54
       id: '1751601681225'
       position:
-        x: 14769
-        y: 1146
+        x: 11910
+        y: 1071
       positionAbsolute:
-        x: 14769
-        y: 1146
+        x: 11910
+        y: 1071
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -10508,19 +10516,19 @@ workflow:
         selected: false
         title: report
         type: if-else
-      height: 124
+      height: 126
       id: '1751601842740'
       position:
-        x: 12345
-        y: 904
+        x: 9178
+        y: 827
       positionAbsolute:
-        x: 12345
-        y: 904
+        x: 9178
+        y: 827
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -10531,20 +10539,89 @@ workflow:
         selected: false
         title: 结束 5
         type: end
-      height: 88
+      height: 90
       id: '1751601994805'
       position:
-        x: 12719.594033345926
-        y: 780.9445175572653
+        x: 9482
+        y: 902
       positionAbsolute:
-        x: 12719.594033345926
-        y: 780.9445175572653
+        x: 9482
+        y: 902
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
+    - data:
+        code: "import json\n\ndef main(cpu, net, runq, report):\n    cpu_reports =\
+          \ json.loads(cpu).get('data', [])\n    net_reports = json.loads(net).get('data',\
+          \ [])\n    runq_reports = json.loads(runq).get('data', [])\n    report =\
+          \ append_report_links(cpu_reports, net_reports, runq_reports, report)\n\
+          \    return {\n        \"result\": report\n    }\n\ndef append_report_links(cpu_links,\
+          \ net_links, runq_links, report):\n    \"\"\"\n    Appends valid report\
+          \ links in markdown format to the end of the report.\n    \n    Args:\n\
+          \        cpu_links (list): List of CPU report URLs\n        runq_links (list):\
+          \ List of run queue report URLs\n        net_links (list): List of network\
+          \ report URLs\n        report (str): Original markdown report\n        \n\
+          \    Returns:\n        str: Updated markdown report with links appended\n\
+          \    \"\"\"\n    link_sections = []\n    \n    if cpu_links and any(cpu_links):\n\
+          \        valid_cpu_links = [link for link in cpu_links if link and link.strip()]\n\
+          \        if valid_cpu_links:\n            cpu_section = \"- **CPU方向报告**：\"\
+          \ + \", \".join(f\"[报告{i+1}]({link})\" \n                              \
+          \                          for i, link in enumerate(valid_cpu_links))\n\
+          \            link_sections.append(cpu_section)\n    \n    if net_links and\
+          \ any(net_links):\n        valid_net_links = [link for link in net_links\
+          \ if link and link.strip()]\n        if valid_net_links:\n            net_section\
+          \ = \"- **网络方向报告**：\" + \", \".join(f\"[报告{i+1}]({link})\" \n          \
+          \                                             for i, link in enumerate(valid_net_links))\n\
+          \            link_sections.append(net_section)\n    \n    if runq_links\
+          \ and any(runq_links):\n        valid_runq_links = [link for link in runq_links\
+          \ if link and link.strip()]\n        if valid_runq_links:\n            runq_section\
+          \ = \"- **运行队列(RunQ)方向报告**：\" + \", \".join(f\"[报告{i+1}]({link})\" \n  \
+          \                                                             for i, link\
+          \ in enumerate(valid_runq_links))\n            link_sections.append(runq_section)\n\
+          \    \n    if link_sections:\n        report = report.rstrip() + \"\\n\\\
+          n**报告链接**\\n\" + \"\\n\".join(link_sections)\n    \n    return report"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 添加各方向报告链接
+        type: code
+        variables:
+        - value_selector:
+          - '1751504789699'
+          - text
+          variable: cpu
+        - value_selector:
+          - '17515048509810'
+          - text
+          variable: net
+        - value_selector:
+          - '17515048888700'
+          - text
+          variable: runq
+        - value_selector:
+          - '1750662084996'
+          - text
+          variable: report
+      height: 54
+      id: '1753840330051'
+      position:
+        x: 11002
+        y: 827
+      positionAbsolute:
+        x: 11002
+        y: 827
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     viewport:
-      x: -3205.37374559532
-      y: -387.17769429358145
-      zoom: 0.7145673336857012
+      x: -5150.4467331291
+      y: -288.65113680213494
+      zoom: 0.4981039041501592

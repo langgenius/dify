@@ -2085,28 +2085,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: variable-aggregator
-        targetType: iteration
-      id: 1752818532791-source-17526597221060-target
-      source: '1752818532791'
-      sourceHandle: source
-      target: '17526597221060'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: code
-      id: 1752659323846-source-17526596567180-target
-      source: '1752659323846'
-      sourceHandle: source
-      target: '17526596567180'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: tool
         targetType: code
       id: 1752805118721-source-17528257033920-target
@@ -2209,6 +2187,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-true-1752659323846-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 'true'
       target: '1752659323846'
@@ -2220,6 +2199,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-d1ef7676-a411-413c-b65d-aad8a3c196d6-1752741317428-target
+      selected: false
       source: '1753019933658'
       sourceHandle: d1ef7676-a411-413c-b65d-aad8a3c196d6
       target: '1752741317428'
@@ -2231,6 +2211,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-8e02341f-5cd0-4e3f-b55b-f8051c6dbd23-17526550363340-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 8e02341f-5cd0-4e3f-b55b-f8051c6dbd23
       target: '17526550363340'
@@ -2242,6 +2223,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-68bf79df-3482-4b34-a827-916f50e098d3-1743672656692-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 68bf79df-3482-4b34-a827-916f50e098d3
       target: '1743672656692'
@@ -2253,6 +2235,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-92782a9c-0bfd-4cc3-83cf-4a78f40bd2a2-1743672762507-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 92782a9c-0bfd-4cc3-83cf-4a78f40bd2a2
       target: '1743672762507'
@@ -2264,6 +2247,7 @@ workflow:
         sourceType: if-else
         targetType: if-else
       id: 1753019933658-78632341-07bd-4f44-b165-5b5a9cb67712-17459267080670-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 78632341-07bd-4f44-b165-5b5a9cb67712
       target: '17459267080670'
@@ -2275,6 +2259,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-466ef5a8-c266-4409-9079-2a76555cf941-1743673124913-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 466ef5a8-c266-4409-9079-2a76555cf941
       target: '1743673124913'
@@ -2286,6 +2271,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-efacfcfe-ffdf-42de-9b0b-79c69f98e1f8-1743673153877-target
+      selected: false
       source: '1753019933658'
       sourceHandle: efacfcfe-ffdf-42de-9b0b-79c69f98e1f8
       target: '1743673153877'
@@ -2297,6 +2283,7 @@ workflow:
         sourceType: if-else
         targetType: if-else
       id: 1753019933658-ed4a0c1c-0263-418c-a5d2-f03bfe9f5775-17459265895570-target
+      selected: false
       source: '1753019933658'
       sourceHandle: ed4a0c1c-0263-418c-a5d2-f03bfe9f5775
       target: '17459265895570'
@@ -2308,6 +2295,7 @@ workflow:
         sourceType: if-else
         targetType: if-else
       id: 1753019933658-dd2740b0-3056-4c2d-b2ad-ce06fc5277a1-1743844014629-target
+      selected: false
       source: '1753019933658'
       sourceHandle: dd2740b0-3056-4c2d-b2ad-ce06fc5277a1
       target: '1743844014629'
@@ -2319,6 +2307,7 @@ workflow:
         sourceType: if-else
         targetType: if-else
       id: 1753019933658-958f241b-2d16-4ff1-8a53-d4ce521c8b46-17438442246820-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 958f241b-2d16-4ff1-8a53-d4ce521c8b46
       target: '17438442246820'
@@ -2341,9 +2330,54 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1753019933658-92782a9c-0bfd-4cc3-83cf-4a78f40bd2a2-1743672756524-target
+      selected: false
       source: '1753019933658'
       sourceHandle: 92782a9c-0bfd-4cc3-83cf-4a78f40bd2a2
       target: '1743672756524'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1752659323846-source-1753789618196-target
+      source: '1752659323846'
+      sourceHandle: source
+      target: '1753789618196'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: code
+      id: 1753789618196-source-17526596567180-target
+      source: '1753789618196'
+      sourceHandle: source
+      target: '17526596567180'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: code
+      id: 1752818532791-source-1753853974605-target
+      source: '1752818532791'
+      sourceHandle: source
+      target: '1753853974605'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: iteration
+      id: 1753853974605-source-17526597221060-target
+      source: '1753853974605'
+      sourceHandle: source
+      target: '17526597221060'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -2439,7 +2473,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 492
+      height: 498
       id: '1743577315409'
       position:
         x: 2462
@@ -2679,10 +2713,10 @@ workflow:
       id: '1743652485397'
       position:
         x: 942
-        y: 633
+        y: 613.5616880625357
       positionAbsolute:
         x: 942
-        y: 633
+        y: 613.5616880625357
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2719,10 +2753,10 @@ workflow:
       id: '1743652552181'
       position:
         x: 1246
-        y: 651
+        y: 613.5616880625357
       positionAbsolute:
         x: 1246
-        y: 651
+        y: 613.5616880625357
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2783,10 +2817,10 @@ workflow:
       id: '1743664113196'
       position:
         x: 1246
-        y: 557
+        y: 539
       positionAbsolute:
         x: 1246
-        y: 557
+        y: 539
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5167,10 +5201,10 @@ workflow:
       height: 142
       id: '17438490239160'
       position:
-        x: 12462
+        x: 13062
         y: 2262
       positionAbsolute:
-        x: 12462
+        x: 13062
         y: 2262
       selected: false
       sourcePosition: right
@@ -5693,10 +5727,10 @@ workflow:
       height: 373
       id: '1743850218410'
       position:
-        x: 10030
+        x: 10630
         y: 2112
       positionAbsolute:
-        x: 10030
+        x: 10630
         y: 2112
       selected: false
       sourcePosition: right
@@ -7905,10 +7939,10 @@ workflow:
       id: '17467776423974'
       position:
         x: 9726
-        y: 2691
+        y: 2657.5817829092935
       positionAbsolute:
         x: 9726
-        y: 2691
+        y: 2657.5817829092935
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -9921,10 +9955,10 @@ workflow:
       height: 54
       id: '1750988315593'
       position:
-        x: 11550
+        x: 12150
         y: 2262
       positionAbsolute:
-        x: 11550
+        x: 12150
         y: 2262
       selected: false
       sourcePosition: right
@@ -9952,10 +9986,10 @@ workflow:
       height: 54
       id: '1750988333220'
       position:
-        x: 11246
+        x: 11846
         y: 2486
       positionAbsolute:
-        x: 11246
+        x: 11846
         y: 2486
       selected: false
       sourcePosition: right
@@ -10016,10 +10050,10 @@ workflow:
       height: 54
       id: '1750988484023'
       position:
-        x: 11246
+        x: 11846
         y: 2392
       positionAbsolute:
-        x: 11246
+        x: 11846
         y: 2392
       selected: false
       sourcePosition: right
@@ -10057,10 +10091,10 @@ workflow:
       height: 90
       id: '1750988845336'
       position:
-        x: 10942
+        x: 11542
         y: 2392
       positionAbsolute:
-        x: 10942
+        x: 11542
         y: 2392
       selected: false
       sourcePosition: right
@@ -10128,10 +10162,10 @@ workflow:
       height: 90
       id: '1750988869166'
       position:
-        x: 10638
+        x: 11238
         y: 2392
       positionAbsolute:
-        x: 10638
+        x: 11238
         y: 2392
       selected: false
       sourcePosition: right
@@ -10170,10 +10204,10 @@ workflow:
       height: 90
       id: '1750990566608'
       position:
-        x: 10942
+        x: 11542
         y: 2262
       positionAbsolute:
-        x: 10942
+        x: 11542
         y: 2262
       selected: false
       sourcePosition: right
@@ -10202,10 +10236,10 @@ workflow:
       height: 54
       id: '1750990570740'
       position:
-        x: 11246
+        x: 11846
         y: 2262
       positionAbsolute:
-        x: 11246
+        x: 11846
         y: 2262
       selected: false
       sourcePosition: right
@@ -10241,10 +10275,10 @@ workflow:
       height: 90
       id: '1750995788076'
       position:
-        x: 12158
+        x: 12758
         y: 2262
       positionAbsolute:
-        x: 12158
+        x: 12758
         y: 2262
       selected: false
       sourcePosition: right
@@ -10414,10 +10448,10 @@ workflow:
       height: 54
       id: '1751602121596'
       position:
-        x: 11854
+        x: 12454
         y: 2262
       positionAbsolute:
-        x: 11854
+        x: 12454
         y: 2262
       selected: false
       sourcePosition: right
@@ -10444,10 +10478,10 @@ workflow:
       height: 126
       id: '1751602227575'
       position:
-        x: 10334
+        x: 10934
         y: 2112
       positionAbsolute:
-        x: 10334
+        x: 10934
         y: 2112
       selected: false
       sourcePosition: right
@@ -10467,10 +10501,10 @@ workflow:
       height: 90
       id: '1751602318456'
       position:
-        x: 10638
+        x: 11238
         y: 2187
       positionAbsolute:
-        x: 10638
+        x: 11238
         y: 2187
       selected: false
       sourcePosition: right
@@ -11618,10 +11652,10 @@ workflow:
       height: 54
       id: '17526596567180'
       position:
-        x: 5806
+        x: 6106
         y: 1349
       positionAbsolute:
-        x: 5806
+        x: 6106
         y: 1349
       selected: false
       sourcePosition: right
@@ -11649,10 +11683,10 @@ workflow:
       height: 152
       id: '17526597221060'
       position:
-        x: 6718
+        x: 7318
         y: 1149
       positionAbsolute:
-        x: 6718
+        x: 7318
         y: 1149
       selected: false
       sourcePosition: right
@@ -11686,7 +11720,7 @@ workflow:
         x: 428
         y: 68
       positionAbsolute:
-        x: 7146
+        x: 7746
         y: 1217
       selected: false
       sourcePosition: right
@@ -11729,7 +11763,7 @@ workflow:
         x: 1032
         y: 68
       positionAbsolute:
-        x: 7750
+        x: 8350
         y: 1217
       selected: false
       sourcePosition: right
@@ -11751,7 +11785,7 @@ workflow:
         x: 24
         y: 68
       positionAbsolute:
-        x: 6742
+        x: 7342
         y: 1217
       selectable: false
       sourcePosition: right
@@ -11975,7 +12009,7 @@ workflow:
         x: 120.42151473047943
         y: 68
       positionAbsolute:
-        x: 6838.421514730479
+        x: 7438.421514730479
         y: 1217
       selected: false
       sourcePosition: right
@@ -12139,8 +12173,8 @@ workflow:
           startTime:
             type: variable
             value:
-            - '1743576019537'
-            - startTime
+            - '1753853974605'
+            - result
         type: tool
       height: 54
       id: '1752659811737'
@@ -12149,9 +12183,9 @@ workflow:
         x: 732
         y: 68
       positionAbsolute:
-        x: 7450
+        x: 8050
         y: 1217
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -12211,10 +12245,10 @@ workflow:
       height: 90
       id: '1752660000891'
       position:
-        x: 8070
+        x: 8670
         y: 1180
       positionAbsolute:
-        x: 8070
+        x: 8670
         y: 1180
       selected: false
       sourcePosition: right
@@ -12986,10 +13020,10 @@ workflow:
       height: 152
       id: '1752753916357'
       position:
-        x: 8898
+        x: 9498
         y: 1149
       positionAbsolute:
-        x: 8898
+        x: 9498
         y: 1149
       selected: false
       sourcePosition: right
@@ -13041,10 +13075,10 @@ workflow:
       height: 90
       id: '1752754438301'
       position:
-        x: 9726
+        x: 10326
         y: 1180
       positionAbsolute:
-        x: 9726
+        x: 10326
         y: 1180
       selected: false
       sourcePosition: right
@@ -13164,10 +13198,10 @@ workflow:
       height: 153
       id: '1752804755713'
       position:
-        x: 6110
+        x: 6410
         y: 1148.5
       positionAbsolute:
-        x: 6110
+        x: 6410
         y: 1148.5
       selected: false
       sourcePosition: right
@@ -13274,10 +13308,10 @@ workflow:
       height: 90
       id: '1752808097130'
       position:
-        x: 10942
+        x: 11542
         y: 2112
       positionAbsolute:
-        x: 10942
+        x: 11542
         y: 2112
       selected: false
       sourcePosition: right
@@ -13306,10 +13340,10 @@ workflow:
       height: 54
       id: '1752808187410'
       position:
-        x: 11246
+        x: 11846
         y: 2112
       positionAbsolute:
-        x: 11246
+        x: 11846
         y: 2112
       selected: false
       sourcePosition: right
@@ -13387,15 +13421,15 @@ workflow:
           - result
         - - '1752818481370'
           - result
-        - - '1752659323846'
-          - text
+        - - '1753789618196'
+          - result
       height: 153
       id: '1752818532791'
       position:
-        x: 6414
+        x: 6714
         y: 1148.5
       positionAbsolute:
-        x: 6414
+        x: 6714
         y: 1148.5
       selected: false
       sourcePosition: right
@@ -13766,12 +13800,72 @@ workflow:
       positionAbsolute:
         x: 2158
         y: 633
-      selected: true
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main(arg1: str) -> dict:\n    data = json.loads(arg1)\n    data['data']['timeseries']\
+          \ = data['data']['timeseries'][:10]\n    return {\n        \"result\": json.dumps(data)\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 获取CPU使用异常数据
+        type: code
+        variables:
+        - value_selector:
+          - '1752659323846'
+          - text
+          variable: arg1
+      height: 54
+      id: '1753789618196'
+      position:
+        x: 5806
+        y: 1349
+      positionAbsolute:
+        x: 5806
+        y: 1349
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "def main(timestamp_us: int) -> int:\n    return {\n        \"result\"\
+          : timestamp_us - 15 * 60 * 1_000_000\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: number
+        selected: false
+        title: 扩大查询范围
+        type: code
+        variables:
+        - value_selector:
+          - '1743576019537'
+          - startTime
+          variable: timestamp_us
+      height: 54
+      id: '1753853974605'
+      position:
+        x: 7018
+        y: 1149
+      positionAbsolute:
+        x: 7018
+        y: 1149
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: -881.8977900302086
-      y: -341.5601841220605
-      zoom: 0.6215681025689878
+      x: -1646.9546351505387
+      y: -82.29110766169327
+      zoom: 0.3030290639047471
