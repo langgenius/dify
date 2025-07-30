@@ -330,6 +330,7 @@ class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
         "expireAt": TimestampField,
+        "allow_refresh": fields.Boolean,
     }
 
     @setup_required
