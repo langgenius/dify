@@ -223,7 +223,7 @@ class AppGenerateService:
         :return:
         """
         workflow_service = WorkflowService()
-        
+
         # If workflow_id is specified, get the specific workflow version
         if workflow_id:
             try:
@@ -234,7 +234,7 @@ class AppGenerateService:
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
             return workflow
-            
+
         if invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = workflow_service.get_draft_workflow(app_model=app_model)
