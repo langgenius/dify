@@ -56,7 +56,7 @@ importers:
         version: 0.30.0
       '@lexical/react':
         specifier: ^0.30.0
-        version: 0.30.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.24)
+        version: 0.30.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.27)
       '@lexical/selection':
         specifier: ^0.30.0
         version: 0.30.0
@@ -345,6 +345,9 @@ importers:
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
+      yjs:
+        specifier: ^13.6.27
+        version: 13.6.27
       zod:
         specifier: ^3.23.8
         version: 3.24.2
@@ -8895,8 +8898,8 @@ packages:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
     engines: {node: '>=12'}
 
-  yjs@13.6.24:
-    resolution: {integrity: sha512-xn/pYLTZa3uD1uDG8lpxfLRo5SR/rp0frdASOl2a71aYNvUXdWcLtVL91s2y7j+Q8ppmjZ9H3jsGVgoFMbT2VA==}
+  yjs@13.6.27:
+    resolution: {integrity: sha512-OIDwaflOaq4wC6YlPBy2L6ceKeKuF7DeTxx+jPzv1FHn9tCZ0ZwSRnUBxD05E3yed46fv/FWJbvR+Ud7x0L7zw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   yn@3.1.1:
@@ -10780,7 +10783,7 @@ snapshots:
       '@lexical/utils': 0.30.0
       lexical: 0.30.0
 
-  '@lexical/react@0.30.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.24)':
+  '@lexical/react@0.30.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(yjs@13.6.27)':
     dependencies:
       '@lexical/devtools-core': 0.30.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@lexical/dragon': 0.30.0
@@ -10796,7 +10799,7 @@ snapshots:
       '@lexical/table': 0.30.0
       '@lexical/text': 0.30.0
       '@lexical/utils': 0.30.0
-      '@lexical/yjs': 0.30.0(yjs@13.6.24)
+      '@lexical/yjs': 0.30.0(yjs@13.6.27)
       lexical: 0.30.0
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
@@ -10832,12 +10835,12 @@ snapshots:
       '@lexical/table': 0.30.0
       lexical: 0.30.0
 
-  '@lexical/yjs@0.30.0(yjs@13.6.24)':
+  '@lexical/yjs@0.30.0(yjs@13.6.27)':
     dependencies:
       '@lexical/offset': 0.30.0
       '@lexical/selection': 0.30.0
       lexical: 0.30.0
-      yjs: 13.6.24
+      yjs: 13.6.27
 
   '@mapbox/node-pre-gyp@1.0.11':
     dependencies:
@@ -19239,7 +19242,7 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 21.1.1
 
-  yjs@13.6.24:
+  yjs@13.6.27:
     dependencies:
       lib0: 0.2.102
 

@@ -61,6 +61,7 @@ import {
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import useInspectVarsCrud from './use-inspect-vars-crud'
+import { useCollaborationStore } from '@/app/components/workflow/store/collaboration-store'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -1496,6 +1497,21 @@ export const useNodesInteractions = () => {
       return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
     setEdges(newEdges)
+
+    const { yNodesMap, yEdgesMap, ydoc } = useCollaborationStore.getState()
+    if (yNodesMap && yEdgesMap && ydoc) {
+      ydoc.transact(() => {
+        newNodes.forEach((node) => {
+          yNodesMap.set(node.id, node)
+        })
+        console.log('Before edge delete, yEdgesMap size:', yEdgesMap?.size)
+        connectedEdges.forEach((edge) => {
+          yEdgesMap.delete(edge.id)
+        })
+        console.log('After edge delete, yEdgesMap size:', yEdgesMap?.size)
+      })
+    }
+
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
   }, [store, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory])

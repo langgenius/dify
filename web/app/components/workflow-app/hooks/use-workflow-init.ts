@@ -17,6 +17,8 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { useCollaborationStore } from '@/app/components/workflow/store/collaboration-store'
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -38,9 +40,45 @@ export const useWorkflowInit = () => {
   }, [workflowStore])
   useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
 
+    const initializeCollaboration = async (appId: string) => {
+    const { initCollaboration } = useCollaborationStore.getState()
+    initCollaboration(appId)
+
+    return new Promise<void>((resolve) => {
+      const checkInitialized = () => {
+        const { yNodesMap, yEdgesMap } = useCollaborationStore.getState()
+        if (yNodesMap && yEdgesMap)
+          resolve()
+         else
+          setTimeout(checkInitialized, 50)
+      }
+      checkInitialized()
+    })
+  }
+
+  const populateYjsWithServerData = async (serverData: any) => {
+    const { yNodesMap, yEdgesMap } = useCollaborationStore.getState()
+
+    if (yNodesMap && yEdgesMap && serverData.graph) {
+      const { ydoc } = useCollaborationStore.getState()
+      ydoc?.transact(() => {
+        serverData.graph.nodes?.forEach((node: any) => {
+          yNodesMap.set(node.id, node)
+        })
+
+        serverData.graph.edges?.forEach((edge: any) => {
+          yEdgesMap.set(edge.id, edge)
+        })
+      })
+    }
+  }
+
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const [res] = await Promise.all([
+        fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`),
+        initializeCollaboration(appDetail.id),
+      ])
       setData(res)
       workflowStore.setState({
         envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
@@ -50,6 +88,7 @@ export const useWorkflowInit = () => {
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
       })
+      await populateYjsWithServerData(res)
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
