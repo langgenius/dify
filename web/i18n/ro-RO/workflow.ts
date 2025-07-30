@@ -497,6 +497,7 @@ const translation = {
           search: 'Căutare metadate',
         },
         title: 'Filtrarea metadatelor',
+        tip: 'Filtrarea metadatelor este procesul de utilizare a atributelor metadatelor (cum ar fi etichetele, categoriile sau permisiunile de acces) pentru a rafina și controla recuperarea informațiilor relevante într-un sistem.',
       },
     },
     http: {

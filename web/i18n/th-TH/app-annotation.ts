@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'นําเข้าจํานวนมาก',
       bulkExport: 'ส่งออกจํานวนมาก',
       clearAll: 'ล้างคําอธิบายประกอบทั้งหมด',
+      clearAllConfirm: 'ลบหมายเหตุต่างๆ ทั้งหมดหรือไม่?',
     },
   },
   editModal: {

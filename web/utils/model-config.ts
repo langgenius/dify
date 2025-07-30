@@ -62,6 +62,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         options: content.options,
         is_context_var,
         hide: content.hide,
+        default: content.default,
       })
     }
     else if (type === 'file') {
@@ -148,7 +149,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           variable: item.key,
           required: item.required !== false, // default true
           options: item.options,
-          default: '',
+          default: item.default ?? '',
           hide: item.hide,
         },
       } as any)

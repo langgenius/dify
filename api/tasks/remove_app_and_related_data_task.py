@@ -201,7 +201,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info(f"Deleted {deleted_count} workflow runs for app {app_id}")
+    logging.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
@@ -215,7 +215,7 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info(f"Deleted {deleted_count} workflow node executions for app {app_id}")
+    logging.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
@@ -342,6 +342,6 @@ def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: s
                     db.session.commit()
                     logging.info(click.style(f"Deleted {name} {record_id}", fg="green"))
                 except Exception:
-                    logging.exception(f"Error occurred while deleting {name} {record_id}")
+                    logging.exception("Error occurred while deleting %s %s", name, record_id)
                     continue
             rs.close()

@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'Importação em Massa',
       bulkExport: 'Exportação em Massa',
       clearAll: 'Limpar Todas as Anotações',
+      clearAllConfirm: 'Excluir todas as anotações?',
     },
   },
   editModal: {

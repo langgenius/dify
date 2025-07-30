@@ -49,7 +49,8 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
@@ -61,14 +62,14 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file.id))
+                    logging.exception("Delete file failed when document deleted, file_id: %s", file.id)
                 db.session.delete(file)
             db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Cleaned documents when documents deleted latency: {}".format(end_at - start_at),
+                f"Cleaned documents when documents deleted latency: {end_at - start_at}",
                 fg="green",
             )
         )

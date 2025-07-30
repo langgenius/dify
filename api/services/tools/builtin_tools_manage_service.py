@@ -337,7 +337,7 @@ class BuiltinToolManageService:
             max_number = max(numbers)
             return f"{default_pattern} {max_number + 1}"
         except Exception as e:
-            logger.warning(f"Error generating next provider name for {provider}: {str(e)}")
+            logger.warning("Error generating next provider name for %s: %s", provider, str(e))
             # fallback
             return f"{credential_type.get_name()} 1"
 

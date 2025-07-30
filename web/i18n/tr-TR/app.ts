@@ -257,6 +257,7 @@ const translation = {
   noAccessPermission: 'Web uygulamasına erişim izni yok',
   maxActiveRequestsPlaceholder: 'Sınırsız için 0 girin',
   maxActiveRequests: 'Maksimum eş zamanlı istekler',
+  maxActiveRequestsTip: 'Her uygulama için maksimum eşzamanlı aktif istek sayısı (sınırsız için 0)',
 }
 
 export default translation

@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '提问',
-      match: '匹配',
-      response: '回复',
       answer: '答案',
       createdAt: '创建时间',
       hits: '命中次数',
@@ -18,7 +16,8 @@ const translation = {
       addAnnotation: '添加标注',
       bulkImport: '批量导入',
       bulkExport: '批量导出',
-      clearAll: '删除所有标注',
+      clearAll: '删除所有',
+      clearAllConfirm: '删除所有标注？',
     },
   },
   editModal: {
@@ -70,7 +69,6 @@ const translation = {
     noHitHistory: '没有命中历史',
   },
   hitHistoryTable: {
-    question: '问题',
     query: '提问',
     match: '匹配',
     response: '回复',

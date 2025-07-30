@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: 'Popravi samo',
         selectedDescription: 'Samodejno posodabljanje samo za različice popravkov',
+        description: 'Samodejno posodabljanje samo za različice popravkov (npr. 1.0.1 → 1.0.2). Spremembe manjših različic ne bodo povzročile posodobitev.',
       },
       latest: {
         selectedDescription: 'Vedno posodobite na najnovejšo različico',

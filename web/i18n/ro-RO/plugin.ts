@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Actualizare automată doar pentru versiuni patch',
         name: 'Fix doar',
+        description: 'Actualizare automată doar pentru versiunile de patch (de exemplu, 1.0.1 → 1.0.2). Schimbările de versiune minore nu vor declanșa actualizări.',
       },
       latest: {
         name: 'Ultimul',

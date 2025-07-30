@@ -340,7 +340,7 @@ class ModelLoadBalancingService:
                 config_id = str(config_id)
 
                 if config_id not in current_load_balancing_configs_dict:
-                    raise ValueError("Invalid load balancing config id: {}".format(config_id))
+                    raise ValueError(f"Invalid load balancing config id: {config_id}")
 
                 updated_config_ids.add(config_id)
 
@@ -349,7 +349,7 @@ class ModelLoadBalancingService:
                 # check duplicate name
                 for current_load_balancing_config in current_load_balancing_configs:
                     if current_load_balancing_config.id != config_id and current_load_balancing_config.name == name:
-                        raise ValueError("Load balancing config name {} already exists".format(name))
+                        raise ValueError(f"Load balancing config name {name} already exists")
 
                 if credentials:
                     if not isinstance(credentials, dict):
@@ -383,7 +383,7 @@ class ModelLoadBalancingService:
                 # check duplicate name
                 for current_load_balancing_config in current_load_balancing_configs:
                     if current_load_balancing_config.name == name:
-                        raise ValueError("Load balancing config name {} already exists".format(name))
+                        raise ValueError(f"Load balancing config name {name} already exists")
 
                 if not credentials:
                     raise ValueError("Invalid load balancing config credentials")

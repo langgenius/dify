@@ -78,7 +78,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(f"Failed to handle response, conversation_id: {conversation.id}")
+                logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
     def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:

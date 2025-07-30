@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'Toplu İçe Aktarma',
       bulkExport: 'Toplu Dışa Aktarma',
       clearAll: 'Tüm Ek Açıklamaları Temizle',
+      clearAllConfirm: 'Tüm açıklamaları silinsin mi?',
     },
   },
   editModal: {

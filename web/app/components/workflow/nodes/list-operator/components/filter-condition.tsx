@@ -1,25 +1,37 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConditionOperator from '../../if-else/components/condition-list/condition-operator'
-import { VarType } from '../../../types'
 import type { Condition } from '../types'
 import { ComparisonOperator } from '../../if-else/types'
 import { comparisonOperatorNotRequireValue, getOperators } from '../../if-else/utils'
 import SubVariablePicker from './sub-variable-picker'
-import Input from '@/app/components/base/input'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import cn from '@/utils/classnames'
+import { VarType } from '../../../types'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
+
+const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
+  name: VarType.string,
+  url: VarType.string,
+  extension: VarType.string,
+  mime_type: VarType.string,
+  related_id: VarType.number,
+}
+
 type Props = {
   condition: Condition
-  onChange: (condition: Condition) => void
   varType: VarType
+  onChange: (condition: Condition) => void
   hasSubVariable: boolean
   readOnly: boolean
+  nodeId: string
 }
 
 const FilterCondition: FC<Props> = ({
@@ -28,10 +40,25 @@ const FilterCondition: FC<Props> = ({
   onChange,
   hasSubVariable,
   readOnly,
+  nodeId,
 }) => {
   const { t } = useTranslation()
+  const [isFocus, setIsFocus] = useState(false)
+
+  const expectedVarType = VAR_INPUT_SUPPORTED_KEYS[condition.key]
+  const supportVariableInput = !!expectedVarType
+
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload) => {
+      return expectedVarType ? varPayload.type === expectedVarType : true
+    },
+  })
+
   const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
   const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
+  const isBoolean = varType === VarType.boolean
+
   const selectOptions = useMemo(() => {
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -50,6 +77,7 @@ const FilterCondition: FC<Props> = ({
     }
     return []
   }, [condition.comparison_operator, condition.key, isSelect, t])
+
   const handleChange = useCallback((key: string) => {
     return (value: any) => {
       onChange({
@@ -60,12 +88,14 @@ const FilterCondition: FC<Props> = ({
   }, [condition, onChange, isArrayValue])
 
   const handleSubVariableChange = useCallback((value: string) => {
+    const operators = getOperators(expectedVarType ?? VarType.string, { key: value })
+    const newOperator = operators.length > 0 ? operators[0] : ComparisonOperator.equal
     onChange({
       key: value,
-      comparison_operator: getOperators(varType, { key: value })[0],
+      comparison_operator: newOperator,
       value: '',
     })
-  }, [onChange, varType])
+  }, [onChange, expectedVarType])
 
   return (
     <div>
@@ -79,7 +109,7 @@ const FilterCondition: FC<Props> = ({
       <div className='flex space-x-1'>
         <ConditionOperator
           className='h-8 bg-components-input-bg-normal'
-          varType={varType}
+          varType={expectedVarType ?? VarType.string}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}
           file={hasSubVariable ? { key: condition.key } : undefined}
@@ -97,15 +127,36 @@ const FilterCondition: FC<Props> = ({
                 placeholder='Select value'
               />
             )}
-            {!isSelect && varType !== VarType.boolean && (
+            {!isSelect && !isBoolean && supportVariableInput && (
               <Input
-                type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
-                className='grow'
+                instanceId='filter-condition-input'
+                className={cn(
+                  isFocus
+                    ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+                    : 'border-components-input-border-hover bg-components-input-bg-normal',
+                  'w-0 grow rounded-lg border px-3 py-[6px]',
+                )}
                 value={condition.value as string}
-                onChange={e => handleChange('value')(e.target.value)}
+                onChange={handleChange('value')}
+                readOnly={readOnly}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodesWithParent}
+                onFocusChange={setIsFocus}
+                placeholder={!readOnly ? t('workflow.nodes.http.extractListPlaceholder')! : ''}
+                placeholderClassName='!leading-[21px]'
               />
             )}
-            {!isSelect && varType === VarType.boolean && (
+
+            {!isSelect && !isBoolean && !supportVariableInput && (
+              <input
+                type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
+                className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
+                value={condition.value as string}
+                onChange={e => handleChange('value')(e.target.value)}
+                readOnly={readOnly}
+              />
+            )}
+            {!isSelect && isBoolean && (
               <BoolValue
                 value={condition.value as boolean}
                 onChange={handleChange('value')}
@@ -117,4 +168,5 @@ const FilterCondition: FC<Props> = ({
     </div>
   )
 }
+
 export default React.memo(FilterCondition)

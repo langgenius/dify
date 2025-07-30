@@ -84,14 +84,14 @@ class IndexingRunner:
                     documents=documents,
                 )
             except DocumentIsPausedError:
-                raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+                raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e.description)
                 dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning("Document deleted, document id: {}".format(dataset_document.id))
+                logging.warning("Document deleted, document id: %s", dataset_document.id)
             except Exception as e:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = "error"
@@ -147,7 +147,7 @@ class IndexingRunner:
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
         except DocumentIsPausedError:
-            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+            raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -222,7 +222,7 @@ class IndexingRunner:
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
         except DocumentIsPausedError:
-            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
+            raise DocumentIsPausedError(f"Document paused, document id: {dataset_document.id}")
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -324,7 +324,8 @@ class IndexingRunner:
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
 
@@ -649,7 +650,7 @@ class IndexingRunner:
 
     @staticmethod
     def _check_document_paused_status(document_id: str):
-        indexing_cache_key = "document_{}_is_paused".format(document_id)
+        indexing_cache_key = f"document_{document_id}_is_paused"
         result = redis_client.get(indexing_cache_key)
         if result:
             raise DocumentIsPausedError()
