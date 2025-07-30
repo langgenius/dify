@@ -144,6 +144,11 @@ class BaseAppGenerator:
                     raise ValueError(
                         f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} files"
                     )
+            case VariableEntityType.CHECKBOX:
+                if not isinstance(value, bool):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a valid boolean value")
+            case _:
+                raise AssertionError("this statement should be unreachable.")
 
         return value
 
