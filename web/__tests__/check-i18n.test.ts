@@ -272,9 +272,6 @@ export default translation
       const filteredEnKeys = allEnKeys.filter(key =>
         key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())),
       )
-      const filteredZhKeys = allZhKeys.filter(key =>
-        key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())),
-      )
 
       expect(allEnKeys).toHaveLength(4) // 2 keys from each file
       expect(filteredEnKeys).toHaveLength(2) // only components keys
