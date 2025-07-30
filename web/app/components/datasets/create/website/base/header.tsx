@@ -34,12 +34,10 @@ const Header = ({
         <Button
           variant='secondary'
           size='small'
-          className={cn(isInPipeline ? 'size-6 px-1' : 'px-1.5')}
+          className={cn(isInPipeline ? 'size-6 px-1' : 'gap-x-0.5 px-1.5')}
+          onClick={onClickConfiguration}
         >
-          <RiEqualizer2Line
-            className='h-4 w-4'
-            onClick={onClickConfiguration}
-          />
+          <RiEqualizer2Line className='size-4' />
           {!isInPipeline && (
             <span className='system-xs-medium'>
               {buttonText}
