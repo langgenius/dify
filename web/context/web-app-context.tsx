@@ -76,7 +76,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   useEffect(() => {
     if (accessModeResult?.accessMode) {
       updateWebAppAccessMode(accessModeResult.accessMode)
-      if (accessModeResult?.accessMode === AccessMode.PUBLIC && session && sysUserId) {
+      if (accessModeResult?.accessMode === AccessMode.PUBLIC) {
         setIsFetchingAccessToken(true)
         checkOrSetAccessToken(shareCode).finally(() => {
           setIsFetchingAccessToken(false)
