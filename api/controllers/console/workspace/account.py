@@ -317,12 +317,9 @@ class EducationVerifyApi(Resource):
 
 
 class EducationApi(Resource):
-    data_fields = {
-        "active": fields.Boolean,
-        "expireAt": TimestampField,
-    }
     status_fields = {
-        "data": fields.Nested(data_fields),
+        "result": fields.Boolean,
+        "expireAt": TimestampField,
     }
 
     @setup_required
