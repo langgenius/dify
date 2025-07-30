@@ -132,17 +132,11 @@ class AnnotationListApi(Resource):
 
         app_id = str(app_id)
 
-        # Use request.args.getlist to handle the absence of the parameter gracefully
-        annotation_ids_str = request.args.getlist("annotation_ids")
+        # Use request.args.getlist to get annotation_ids array directly
+        annotation_ids = request.args.getlist("annotation_id")
 
         # If annotation_ids are provided, handle batch deletion
-        if annotation_ids_str:
-            processed_ids = []
-            for raw_id_str in annotation_ids_str:
-                processed_ids.extend(raw_id_str.split(","))
-
-            annotation_ids = [id.strip() for id in processed_ids if id.strip()]
-
+        if annotation_ids:
             if not annotation_ids:
                 return {
                     "code": "bad_request",
