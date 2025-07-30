@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'ابزارها',
     'allTool': 'همه',
-    'builtInTool': 'درون‌ساخت',
     'customTool': 'سفارشی',
     'workflowTool': 'جریان کار',
     'question-understand': 'درک سوال',
@@ -587,7 +586,6 @@ const translation = {
         'not empty': 'خالی نیست',
         'null': 'خالی',
         'not null': 'خالی نیست',
-        'regex match': 'مسابقه regex',
         'in': 'در',
         'not exists': 'وجود ندارد',
         'all of': 'همه از',

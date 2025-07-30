@@ -227,7 +227,6 @@ const translation = {
   tabs: {
     'tools': 'Strumenti',
     'allTool': 'Tutti',
-    'builtInTool': 'Integrato',
     'customTool': 'Personalizzato',
     'workflowTool': 'Flusso di lavoro',
     'question-understand': 'Comprensione Domanda',
@@ -606,7 +605,6 @@ const translation = {
         'not empty': 'non è vuoto',
         'null': 'è nullo',
         'not null': 'non è nullo',
-        'regex match': 'Corrispondenza regex',
         'in': 'in',
         'all of': 'tutto di',
         'not in': 'non in',
