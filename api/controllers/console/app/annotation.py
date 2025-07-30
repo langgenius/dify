@@ -137,7 +137,8 @@ class AnnotationListApi(Resource):
 
         # If annotation_ids are provided, handle batch deletion
         if annotation_ids:
-            if not annotation_ids:
+            # Check if any annotation_ids contain empty strings or invalid values
+            if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
                 return {
                     "code": "bad_request",
                     "message": "annotation_ids are required if the parameter is provided.",
