@@ -54,7 +54,21 @@ class DatasourceProviderService:
             )
             if not datasource_provider:
                 return {}
-            return datasource_provider.encrypted_credentials
+
+            encrypted_credentials = datasource_provider.encrypted_credentials
+            # Get provider credential secret variables
+            credential_secret_variables = self.extract_secret_variables(
+                tenant_id=tenant_id,
+                provider_id=f"{plugin_id}/{provider}",
+                credential_type=CredentialType.of(datasource_provider.auth_type),
+            )
+
+            # Obfuscate provider credentials
+            copy_credentials = encrypted_credentials.copy()
+            for key, value in copy_credentials.items():
+                if key in credential_secret_variables:
+                    copy_credentials[key] = encrypter.decrypt_token(tenant_id, value)
+            return copy_credentials
 
     def get_real_credential_by_id(
         self, tenant_id: str, credential_id: str, provider: str, plugin_id: str
