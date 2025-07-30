@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'ユーザー名を入力してください',
   forget: 'パスワードをお忘れですか？',
   signBtn: 'サインイン',
-  sso: 'SSO に続ける',
   installBtn: 'セットアップ',
   setAdminAccount: '管理者アカウントの設定',
   setAdminAccountDesc: 'アプリケーションの作成や LLM プロバイダの管理など、管理者アカウントの最大権限を設定します。',

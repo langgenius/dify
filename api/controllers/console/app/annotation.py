@@ -131,8 +131,24 @@ class AnnotationListApi(Resource):
             raise Forbidden()
 
         app_id = str(app_id)
-        AppAnnotationService.clear_all_annotations(app_id)
-        return {"result": "success"}, 204
+
+        # Use request.args.getlist to get annotation_ids array directly
+        annotation_ids = request.args.getlist("annotation_id")
+
+        # If annotation_ids are provided, handle batch deletion
+        if annotation_ids:
+            if not annotation_ids:
+                return {
+                    "code": "bad_request",
+                    "message": "annotation_ids are required if the parameter is provided.",
+                }, 400
+
+            result = AppAnnotationService.delete_app_annotations_in_batch(app_id, annotation_ids)
+            return result, 204
+        # If no annotation_ids are provided, handle clearing all annotations
+        else:
+            AppAnnotationService.clear_all_annotations(app_id)
+            return {"result": "success"}, 204
 
 
 class AnnotationExportApi(Resource):
@@ -278,6 +294,7 @@ api.add_resource(
 )
 api.add_resource(AnnotationListApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationExportApi, "/apps/<uuid:app_id>/annotations/export")
+api.add_resource(AnnotationCreateApi, "/apps/<uuid:app_id>/annotations")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 api.add_resource(AnnotationBatchImportApi, "/apps/<uuid:app_id>/annotations/batch-import")
 api.add_resource(AnnotationBatchImportStatusApi, "/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")

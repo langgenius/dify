@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Ferramentas',
     'allTool': 'Todos',
-    'builtInTool': 'Integrado',
     'customTool': 'Personalizado',
     'workflowTool': 'Fluxo de trabalho',
     'question-understand': 'Compreensão de perguntas',
@@ -587,7 +586,6 @@ const translation = {
         'not empty': 'não está vazio',
         'null': 'é nulo',
         'not null': 'não é nulo',
-        'regex match': 'partida regex',
         'in': 'em',
         'not in': 'não em',
         'exists': 'Existe',

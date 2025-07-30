@@ -254,7 +254,6 @@ const translation = {
     noDataLine1: '左側に使用例を記入してください，',
     noDataLine2: 'オーケストレーションのプレビューがこちらに表示されます。',
     apply: '適用',
-    noData: '左側にユースケースを入力すると、こちらでプレビューができます。',
     loading: 'アプリケーションを処理中です',
     overwriteTitle: '既存の設定を上書きしますか？',
     overwriteMessage: 'このプロンプトを適用すると、既存の設定が上書きされます。',
@@ -365,6 +364,7 @@ const translation = {
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
+    'content': '内容',
     'required': '必須',
     'hide': '非表示',
     'file': {

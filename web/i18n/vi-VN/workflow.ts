@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Công cụ',
     'allTool': 'Tất cả',
-    'builtInTool': 'Tích hợp sẵn',
     'customTool': 'Tùy chỉnh',
     'workflowTool': 'Quy trình làm việc',
     'question-understand': 'Hiểu câu hỏi',
@@ -587,7 +586,6 @@ const translation = {
         'not empty': 'không trống',
         'null': 'là null',
         'not null': 'không là null',
-        'regex match': 'Trận đấu Regex',
         'exists': 'Tồn tại',
         'not exists': 'không tồn tại',
         'not in': 'không có trong',
