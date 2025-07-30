@@ -15,18 +15,18 @@ import type { DataSourceProvider, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import NotionConnector from '@/app/components/base/notion-connector'
+import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
   dataSourceTypeDisable: boolean
-  hasConnection: boolean
   onSetting: () => void
   files: FileItem[]
   updateFileList: (files: FileItem[]) => void
@@ -41,6 +41,7 @@ type IStepOneProps = {
   onWebsiteCrawlJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
+  authedDataSourceList: DataSourceAuth[]
 }
 
 const StepOne = ({
@@ -48,7 +49,6 @@ const StepOne = ({
   dataSourceType: inCreatePageDataSourceType,
   dataSourceTypeDisable,
   changeType,
-  hasConnection,
   onSetting,
   onStepChange,
   files,
@@ -62,8 +62,9 @@ const StepOne = ({
   onWebsiteCrawlJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
+  authedDataSourceList,
 }: IStepOneProps) => {
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
@@ -113,6 +114,17 @@ const StepOne = ({
       return true
     return isShowVectorSpaceFull
   }, [files, isShowVectorSpaceFull])
+
+  const isNotionAuthed = useMemo(() => {
+    if (!authedDataSourceList) return false
+    const notionSource = authedDataSourceList.find(item => item.provider === 'notion_datasource')
+    if (!notionSource) return false
+    return notionSource.credentials_list.length > 0
+  }, [authedDataSourceList])
+
+  const notionCredentialList = useMemo(() => {
+    return authedDataSourceList.find(item => item.provider === 'notion_datasource')?.credentials_list || []
+  }, [authedDataSourceList])
 
   return (
     <div className='h-full w-full overflow-x-auto'>
@@ -221,7 +233,6 @@ const StepOne = ({
                     </div>
                   )}
                   <div className="flex max-w-[640px] justify-end gap-2">
-                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                     <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
                         <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
@@ -233,14 +244,16 @@ const StepOne = ({
               )}
               {dataSourceType === DataSourceType.NOTION && (
                 <>
-                  {!hasConnection && <NotionConnector onSetting={onSetting} />}
-                  {hasConnection && (
+                  {!isNotionAuthed && <NotionConnector onSetting={onSetting} />}
+                  {isNotionAuthed && (
                     <>
                       <div className='mb-8 w-[640px]'>
                         <NotionPageSelector
                           value={notionPages.map(page => page.page_id)}
                           onSelect={updateNotionPages}
                           onPreview={updateCurrentPage}
+                          credentialList={notionCredentialList}
+                          datasetId={datasetId}
                         />
                       </div>
                       {isShowVectorSpaceFull && (
@@ -249,7 +262,6 @@ const StepOne = ({
                         </div>
                       )}
                       <div className="flex max-w-[640px] justify-end gap-2">
-                        {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                         <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
                           <span className="flex gap-0.5 px-[10px]">
                             <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
@@ -272,6 +284,7 @@ const StepOne = ({
                       onJobIdChange={onWebsiteCrawlJobIdChange}
                       crawlOptions={crawlOptions}
                       onCrawlOptionsChange={onCrawlOptionsChange}
+                      authedDataSourceList={authedDataSourceList}
                     />
                   </div>
                   {isShowVectorSpaceFull && (
@@ -280,7 +293,6 @@ const StepOne = ({
                     </div>
                   )}
                   <div className="flex max-w-[640px] justify-end gap-2">
-                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
                     <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
                         <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>

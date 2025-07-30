@@ -1,6 +1,5 @@
 import { get, post } from './base'
 import type {
-  DataSourceNotion,
   FileUploadConfigResponse,
   Member,
   StructuredOutputRulesRequestBody,
@@ -34,17 +33,6 @@ export const useFileSupportTypes = () => {
   return useQuery<FileTypesRes>({
     queryKey: [NAME_SPACE, 'file-types'],
     queryFn: () => get<FileTypesRes>('/files/support-type'),
-  })
-}
-
-type DataSourcesResponse = {
-  data: DataSourceNotion[]
-}
-
-export const useDataSources = () => {
-  return useQuery<DataSourcesResponse>({
-    queryKey: [NAME_SPACE, 'data-sources'],
-    queryFn: () => get<DataSourcesResponse>('/data-source/integrates'),
   })
 }
 

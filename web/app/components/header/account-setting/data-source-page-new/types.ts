@@ -9,6 +9,8 @@ export type DataSourceCredential = {
   type: CredentialTypeEnum
   name: string
   id: string
+  is_default: boolean
+  avatar_url: string
 }
 export type DataSourceAuth = {
   author: string

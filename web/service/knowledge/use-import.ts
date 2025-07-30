@@ -1,16 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
-import { preImportNotionPages } from '../datasets'
+import { get } from '../base'
+import type { DataSourceNotionWorkspace } from '@/models/common'
 
 type PreImportNotionPagesParams = {
-  url: string
-  datasetId?: string
+  credentialId: string
+  datasetId: string
 }
 
-export const usePreImportNotionPages = ({ datasetId }: PreImportNotionPagesParams) => {
+export const usePreImportNotionPages = ({
+  credentialId,
+  datasetId,
+}: PreImportNotionPagesParams) => {
   return useQuery({
-    queryKey: ['notion-pre-import-pages'],
+    queryKey: ['notion-pre-import-pages', credentialId, datasetId],
     queryFn: async () => {
-      return preImportNotionPages({ url: '/notion/pre-import/pages', datasetId })
+      return get<{ notion_info: DataSourceNotionWorkspace[] }>('/notion/pre-import/pages', {
+        params: {
+          dataset_id: datasetId,
+          credential_id: credentialId,
+        },
+      })
     },
+    retry: 0,
   })
 }
