@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Item from './item'
@@ -17,6 +18,8 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { useDataSourceAuthUpdate } from './hooks'
 import Confirm from '@/app/components/base/confirm'
+import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 
 type CardProps = {
   item: DataSourceAuth
@@ -55,6 +58,20 @@ const Card = ({
     closeConfirm,
     pendingOperationCredentialId,
   } = usePluginAuthAction(pluginPayload, handleAuthUpdate)
+  const changeCredentialIdRef = useRef<string | undefined>(undefined)
+  const {
+    mutateAsync: getPluginOAuthUrl,
+  } = useGetDataSourceOAuthUrl(pluginPayload.provider)
+  const handleOAuth = useCallback(async () => {
+    const { authorization_url } = await getPluginOAuthUrl(changeCredentialIdRef.current)
+
+    if (authorization_url) {
+      openOAuthPopup(
+        authorization_url,
+        handleAuthUpdate,
+      )
+    }
+  }, [getPluginOAuthUrl, handleAuthUpdate])
   const handleAction = useCallback((
     action: string,
     credentialItem: DataSourceCredential,
@@ -78,6 +95,11 @@ const Card = ({
 
     if (action === 'rename')
       handleRename(renamePayload as any)
+
+    if (action === 'change') {
+      changeCredentialIdRef.current = credentialItem.id
+      handleOAuth()
+    }
   }, [
     openConfirm,
     handleEdit,
