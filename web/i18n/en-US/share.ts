@@ -36,7 +36,28 @@ const translation = {
     temporarySystemIssue: 'Sorry, temporary system issue.',
     expand: 'Expand',
     collapse: 'Collapse',
-    memory: 'Chat Memory',
+    memory: {
+      actionButton: 'Chat Memory',
+      title: 'Memory',
+      latestVersion: 'Memory updated',
+      notLatestVersion: '{{num}} messages wait to be merged',
+      clearAll: 'Clear All Memory',
+      editTitle: 'Edit Memory',
+      updateVersion: {
+        previews: 'Previous Version',
+        next: 'Next Version',
+        title: 'Update Version',
+        update: 'Update',
+        edited: 'Edited',
+      },
+      operations: {
+        edit: 'Edit',
+        reset: 'Reset to default',
+        clear: 'Clear all update version',
+        cancel: 'Cancel',
+        save: 'Save & Apply',
+      },
+    },
   },
   generation: {
     tabs: {

@@ -146,7 +146,7 @@ const Header = () => {
           )}
           {currentConversationId && (
             <Tooltip
-              popupContent={t('share.chat.memory')}
+              popupContent={t('share.chat.memory.actionButton')}
             >
               <ActionButton size='l' state={showChatMemory ? ActionButtonState.Active : ActionButtonState.Default} onClick={handleChatMemoryToggle}>
                 <Memory className='h-[18px] w-[18px]' />

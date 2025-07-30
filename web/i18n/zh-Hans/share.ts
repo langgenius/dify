@@ -32,7 +32,28 @@ const translation = {
     temporarySystemIssue: '抱歉，临时系统问题。',
     expand: '展开',
     collapse: '折叠',
-    memory: '聊天记忆',
+    memory: {
+      actionButton: '聊天记忆',
+      title: '记忆',
+      latestVersion: '记忆已更新',
+      notLatestVersion: '{{num}} 条消息等待合并',
+      clearAll: '清除所有记忆',
+      editTitle: '编辑记忆',
+      updateVersion: {
+        previews: '上一个版本',
+        next: '下一个版本',
+        title: '更新版本',
+        update: '更新',
+        edited: '已编辑',
+      },
+      operations: {
+        edit: '编辑',
+        reset: '重置为默认',
+        clear: '清除所有更新版本',
+        cancel: '取消',
+        save: '保存并应用',
+      },
+    },
   },
   generation: {
     tabs: {

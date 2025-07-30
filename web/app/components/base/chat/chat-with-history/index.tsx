@@ -15,13 +15,14 @@ import Sidebar from './sidebar'
 import Header from './header'
 import HeaderInMobile from './header-in-mobile'
 import ChatWrapper from './chat-wrapper'
+import MemoryPanel from './memory'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
+import cn from '@/utils/classnames'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -36,6 +37,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     isMobile,
     themeBuilder,
     sidebarCollapseState,
+    showChatMemory,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
@@ -66,7 +68,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       {isMobile && (
         <HeaderInMobile />
       )}
-      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%_-_56px)] p-0')}>
+      <div className={cn('relative flex grow p-2', isMobile && 'h-[calc(100%_-_56px)] p-0')}>
         {isSidebarCollapsed && (
           <div
             className={cn(
@@ -79,7 +81,11 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             <Sidebar isPanel />
           </div>
         )}
-        <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
+        <div className={cn(
+          'flex h-full grow flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg',
+          isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
+          showChatMemory && 'mr-1',
+        )}>
           {!isMobile && <Header />}
           {appChatListDataLoading && (
             <Loading type='app' />
@@ -88,6 +94,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             <ChatWrapper key={chatShouldReloadKey} />
           )}
         </div>
+        <MemoryPanel showChatMemory={showChatMemory} />
       </div>
     </div>
   )

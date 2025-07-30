@@ -478,7 +478,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 
-  const [showChatMemory, setShowChatMemory] = useState(false)
+  const [showChatMemory, setShowChatMemory] = useState(true)
 
   return {
     isInstalledApp,
