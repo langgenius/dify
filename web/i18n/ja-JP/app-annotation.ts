@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: '保存',
   },
   embeddingModelSwitchTip: '注釈テキストのベクトル化モデルです。モデルを切り替えると再埋め込みが行われ、追加のコストが発生します。',
+  list: {
+    delete: {
+      title: '本当に削除しますか？',
+    },
+  },
+  batchAction: {
+    cancel: 'キャンセル',
+    delete: '削除する',
+    selected: '選択された',
+  },
 }
 
 export default translation
