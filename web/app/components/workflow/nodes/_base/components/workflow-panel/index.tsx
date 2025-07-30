@@ -48,7 +48,6 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
-import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
@@ -71,15 +70,16 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { canFindTool } from '@/utils'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 
-const getCustomRunForm = (nodeType: BlockEnum, payload: CommonNodeType): React.JSX.Element => {
+const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
+  const nodeType = params.payload.type
   switch (nodeType) {
     case BlockEnum.DataSource:
-      return <DataSourceBeforeRunForm payload={payload as DataSourceNodeType} />
+      return <DataSourceBeforeRunForm {...params} />
     default:
       return <div>Custom Run Form: {nodeType} not found</div>
   }
@@ -227,6 +227,7 @@ const BasePanel: FC<BasePanelProps> = ({
     tabType,
     isRunAfterSingleRun,
     setTabType,
+    handleAfterCustomSingleRun,
     singleRunParams,
     nodeInfo,
     setRunInputData,
@@ -306,7 +307,11 @@ const BasePanel: FC<BasePanelProps> = ({
   }
 
   if (isShowSingleRun) {
-    const form = getCustomRunForm(data.type, data)
+    const form = getCustomRunForm({
+      payload: data,
+      onSuccess: handleAfterCustomSingleRun,
+      onCancel: hideSingleRun,
+    })
 
     return (
       <div className={cn(

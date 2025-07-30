@@ -124,7 +124,7 @@ class DataSourceNotionListApi(Resource):
         credential = datasource_provider_service.get_real_credential_by_id(
             tenant_id=current_user.current_tenant_id,
             credential_id=credential_id,
-            provider="notion",
+            provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
         if not credential:
@@ -155,8 +155,8 @@ class DataSourceNotionListApi(Resource):
             from core.datasource.datasource_manager import DatasourceManager
 
             datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id="langgenius/notion_datasource/notion",
-                datasource_name="notion",
+                provider_id="langgenius/notion_datasource/notion_datasource",
+                datasource_name="notion_datasource",
                 tenant_id=current_user.current_tenant_id,
                 datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             )
@@ -209,7 +209,7 @@ class DataSourceNotionApi(Resource):
         credential = datasource_provider_service.get_real_credential_by_id(
             tenant_id=current_user.current_tenant_id,
             credential_id=credential_id,
-            provider="notion",
+            provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
 
