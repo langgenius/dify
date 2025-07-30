@@ -1,9 +1,11 @@
+from flask_restful import (
+    Resource,  # type: ignore
+    reqparse,
+)
+
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
-from controllers.inner_api.wraps import (billing_inner_api_only,
-                                         enterprise_inner_api_only)
-from flask_restful import Resource  # type: ignore
-from flask_restful import reqparse
+from controllers.inner_api.wraps import billing_inner_api_only, enterprise_inner_api_only
 from tasks.mail_inner_task import send_inner_email_task
 
 

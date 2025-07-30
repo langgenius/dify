@@ -3,9 +3,10 @@ from functools import wraps
 from hashlib import sha1
 from hmac import new as hmac_new
 
+from flask import abort, request
+
 from configs import dify_config
 from extensions.ext_database import db
-from flask import abort, request
 from models.model import EndUser
 
 

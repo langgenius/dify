@@ -4,8 +4,9 @@ from collections.abc import Mapping
 
 import click
 from celery import shared_task  # type: ignore
-from extensions.ext_mail import mail
 from flask import render_template_string
+
+from extensions.ext_mail import mail
 from libs.email_i18n import get_email_i18n_service
 
 
