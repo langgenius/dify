@@ -87,7 +87,7 @@ class PhoenixConfig(BaseTracingConfig):
     @field_validator("endpoint")
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://app.phoenix.arize.com")
+        return validate_url_with_path(v, "https://app.phoenix.arize.com")
 
 
 class LangfuseConfig(BaseTracingConfig):
