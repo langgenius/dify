@@ -478,6 +478,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 
+  const [showChatMemory, setShowChatMemory] = useState(false)
+
   return {
     isInstalledApp,
     appId,
@@ -524,5 +526,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    showChatMemory,
+    setShowChatMemory,
   }
 }

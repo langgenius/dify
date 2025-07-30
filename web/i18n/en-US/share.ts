@@ -36,6 +36,7 @@ const translation = {
     temporarySystemIssue: 'Sorry, temporary system issue.',
     expand: 'Expand',
     collapse: 'Collapse',
+    memory: 'Chat Memory',
   },
   generation: {
     tabs: {

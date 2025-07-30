@@ -32,6 +32,7 @@ const translation = {
     temporarySystemIssue: '抱歉，临时系统问题。',
     expand: '展开',
     collapse: '折叠',
+    memory: '聊天记忆',
   },
   generation: {
     tabs: {

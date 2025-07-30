@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiEditBoxLine,
   RiLayoutRight2Line,
   RiResetLeftLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { Memory } from '@/app/components/base/icons/src/vender/line/others'
 import {
   useChatWithHistoryContext,
 } from '../context'
@@ -34,6 +35,8 @@ const Header = () => {
     sidebarCollapseState,
     handleSidebarCollapse,
     isResponding,
+    showChatMemory,
+    setShowChatMemory,
   } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const isSidebarCollapsed = sidebarCollapseState
@@ -69,6 +72,10 @@ const Header = () => {
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
+
+  const handleChatMemoryToggle = useCallback(() => {
+    setShowChatMemory(!showChatMemory)
+  }, [setShowChatMemory, showChatMemory])
 
   return (
     <>
@@ -136,6 +143,15 @@ const Header = () => {
           )}
           {currentConversationId && inputsForms.length > 0 && (
             <ViewFormDropdown />
+          )}
+          {currentConversationId && (
+            <Tooltip
+              popupContent={t('share.chat.memory')}
+            >
+              <ActionButton size='l' state={showChatMemory ? ActionButtonState.Active : ActionButtonState.Default} onClick={handleChatMemoryToggle}>
+                <Memory className='h-[18px] w-[18px]' />
+              </ActionButton>
+            </Tooltip>
           )}
         </div>
       </div>
