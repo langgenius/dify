@@ -93,7 +93,7 @@ const FormItem: FC<Props> = ({
     return ''
   })()
 
-  const isBooleanType = type === InputVarType.boolean
+  const isBooleanType = type === InputVarType.checkbox
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator

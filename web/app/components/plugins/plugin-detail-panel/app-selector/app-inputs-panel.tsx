@@ -77,6 +77,13 @@ const AppInputsPanel = ({
             required: false,
           }
         }
+        if(item.checkbox) {
+          return {
+            ...item.checkbox,
+            type: 'checkbox',
+            required: false,
+          }
+        }
         if (item.select) {
           return {
             ...item.select,

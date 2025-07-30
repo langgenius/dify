@@ -355,7 +355,7 @@ const translation = {
     'paragraph': '段落',
     'select': '下拉选项',
     'number': '数字',
-    'boolean': '复选框',
+    'checkbox': '复选框',
     'single-file': '单文件',
     'multi-files': '文件列表',
     'notSet': '未设置，在 Prompt 中输入 {{input}} 试试',

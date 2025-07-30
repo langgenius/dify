@@ -32,7 +32,7 @@ export const getProcessedInputs = (inputs: Record<string, any>, inputsForm: Inpu
   inputsForm.forEach((item) => {
     const inputValue = inputs[item.variable]
     // set boolean type default value
-    if(item.type === InputVarType.boolean) {
+    if(item.type === InputVarType.checkbox) {
       processedInputs[item.variable] = !!inputValue
       return
     }

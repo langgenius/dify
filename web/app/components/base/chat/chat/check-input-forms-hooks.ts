@@ -12,7 +12,7 @@ export const useCheckInputsForms = () => {
   const checkInputsForm = useCallback((inputs: Record<string, any>, inputsForm: InputForm[]) => {
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForm.filter(({ required, type }) => required && type !== InputVarType.boolean) // boolean can be not checked
+    const requiredVars = inputsForm.filter(({ required, type }) => required && type !== InputVarType.checkbox) // boolean can be not checked
 
     if (requiredVars?.length) {
       requiredVars.forEach(({ variable, label, type }) => {

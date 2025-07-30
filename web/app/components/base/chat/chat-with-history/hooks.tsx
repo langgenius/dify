@@ -208,11 +208,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         }
       }
 
-      if(item.boolean) {
+      if(item.checkbox) {
         return {
-          ...item.boolean,
+          ...item.checkbox,
           default: false,
-          type: 'boolean',
+          type: 'checkbox',
         }
       }
       if (item.select) {
@@ -333,7 +333,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.boolean)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)

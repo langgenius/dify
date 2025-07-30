@@ -18,6 +18,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item.number)
         return ['number', item.number]
 
+      if (item.checkbox)
+        return ['boolean', item.checkbox]
+
       if (item.file)
         return ['file', item.file]
 

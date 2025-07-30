@@ -59,7 +59,7 @@ export const hasValidChildren = (children: any): boolean => {
 export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
-    [InputVarType.boolean]: VarType.boolean,
+    [InputVarType.checkbox]: VarType.boolean,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
   } as any)[type] || VarType.string

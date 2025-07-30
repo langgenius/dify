@@ -178,7 +178,7 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
-  boolean = 'boolean',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
@@ -449,6 +449,6 @@ export enum VersionHistoryContextMenuOptions {
   delete = 'delete',
 }
 
-export interface ChildNodeTypeCount {
+export type ChildNodeTypeCount = {
   [key: string]: number;
 }

@@ -359,7 +359,7 @@ const translation = {
     'paragraph': 'Paragraph',
     'select': 'Select',
     'number': 'Number',
-    'boolean': 'Checkbox',
+    'checkbox': 'Checkbox',
     'single-file': 'Single File',
     'multi-files': 'File List',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',

@@ -97,8 +97,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
       value: InputVarType.number,
     },
     {
-      name: t('appDebug.variableConfig.boolean'),
-      value: InputVarType.boolean,
+      name: t('appDebug.variableConfig.checkbox'),
+      value: InputVarType.checkbox,
     },
     ...(supportFile ? [
       {

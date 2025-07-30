@@ -43,7 +43,7 @@ const InputsFormContent = ({ showTip }: Props) => {
     <div className='space-y-4'>
       {visibleInputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
-          {form.type !== InputVarType.boolean && (
+          {form.type !== InputVarType.checkbox && (
             <div className='flex h-6 items-center gap-1'>
               <div className='system-md-semibold text-text-secondary'>{form.label}</div>
               {!form.required && (
@@ -73,7 +73,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               placeholder={form.label}
             />
           )}
-          {form.type === InputVarType.boolean && (
+          {form.type === InputVarType.checkbox && (
             <BoolInput
               name={form.label}
               value={!!inputsFormValue?.[form.variable]}
