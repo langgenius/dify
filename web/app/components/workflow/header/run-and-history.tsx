@@ -106,16 +106,18 @@ const RunAndHistory: FC = () => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
-      {
-        !isChatMode && <RunMode />
-      }
-      {
-        isChatMode && <PreviewMode />
-      }
-      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
-      <ViewHistory />
-      <Checklist disabled={nodesReadOnly} />
+    <div className='rounded-lg bg-components-actionbar-bg'>
+      <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
+        {
+          !isChatMode && <RunMode />
+        }
+        {
+          isChatMode && <PreviewMode />
+        }
+        <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
+        <ViewHistory />
+        <Checklist disabled={nodesReadOnly} />
+      </div>
     </div>
   )
 }

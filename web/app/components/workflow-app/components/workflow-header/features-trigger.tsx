@@ -121,10 +121,12 @@ const FeaturesTrigger = () => {
 
   return (
     <>
-      <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-        <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
-        {t('workflow.common.features')}
-      </Button>
+      <div className='rounded-lg bg-components-actionbar-bg'>
+        <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+          <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
+          {t('workflow.common.features')}
+        </Button>
+      </div>
       <AppPublisher
         {...{
           publishedAt,

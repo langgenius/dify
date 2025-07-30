@@ -78,23 +78,27 @@ const HeaderInRestoring = ({
       <div>
         <RestoringTitle />
       </div>
-      <div className='flex items-center justify-end gap-x-2'>
-        <Button
-          onClick={handleRestore}
-          disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
-          variant='primary'
-        >
-          {t('workflow.common.restore')}
-        </Button>
-        <Button
-          className='text-components-button-secondary-accent-text'
-          onClick={handleCancelRestore}
-        >
-          <div className='flex items-center gap-x-0.5'>
-            <RiHistoryLine className='h-4 w-4' />
-            <span className='px-0.5'>{t('workflow.common.exitVersions')}</span>
-          </div>
-        </Button>
+      <div className=' flex items-center justify-end gap-x-2'>
+        <div className='rounded-lg bg-components-actionbar-bg'>
+          <Button
+            onClick={handleRestore}
+            disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
+            variant='primary'
+          >
+            {t('workflow.common.restore')}
+          </Button>
+        </div>
+        <div className='rounded-lg bg-components-actionbar-bg'>
+          <Button
+            className='text-components-button-secondary-accent-text'
+            onClick={handleCancelRestore}
+          >
+            <div className='flex items-center gap-x-0.5'>
+              <RiHistoryLine className='h-4 w-4' />
+              <span className='px-0.5'>{t('workflow.common.exitVersions')}</span>
+            </div>
+          </Button>
+        </div>
       </div>
     </>
   )

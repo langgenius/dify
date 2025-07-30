@@ -15,9 +15,11 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
   }
 
   return (
-    <Button className='p-2' disabled={disabled} onClick={handleClick}>
-      <Env className='h-4 w-4 text-components-button-secondary-text' />
-    </Button>
+    <div className='rounded-lg bg-components-actionbar-bg'>
+      <Button className='p-2' disabled={disabled} onClick={handleClick}>
+        <Env className='h-4 w-4 text-components-button-secondary-text' />
+      </Button>
+    </div>
   )
 }
 
