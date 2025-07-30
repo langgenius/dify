@@ -31,6 +31,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         return
 
     if segment.status != "waiting":
+        db.session.close()
         return
 
     indexing_cache_key = f"segment_{segment.id}_indexing"
