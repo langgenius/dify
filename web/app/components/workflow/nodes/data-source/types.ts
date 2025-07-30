@@ -28,3 +28,9 @@ export type DataSourceNodeType = CommonNodeType & {
   datasource_parameters: ToolVarInputs
   datasource_configurations: Record<string, any>
 }
+
+export type CustomRunFormProps = {
+  payload: CommonNodeType
+  onSuccess: () => void
+  onCancel: () => void
+}

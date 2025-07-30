@@ -32,6 +32,7 @@ import {
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -117,6 +118,7 @@ const useLastRun = <T>({
   const isIterationNode = blockType === BlockEnum.Iteration
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
+  const isCustomRunNode = isSupportCustomRunForm(blockType)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -299,10 +301,20 @@ const useLastRun = <T>({
     })
   }
 
+  const handleAfterCustomSingleRun = () => {
+    invalidLastRun()
+    setTabType(TabType.lastRun)
+    hideSingleRun()
+  }
+
   const handleSingleRun = () => {
     const { isValid } = checkValid()
     if(!isValid)
       return
+    if(isCustomRunNode) {
+      showSingleRun()
+      return
+    }
     const vars = singleRunParams?.getDependentVars?.()
     // no need to input params
     if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
@@ -323,6 +335,7 @@ const useLastRun = <T>({
     tabType,
     isRunAfterSingleRun,
     setTabType: handleTabClicked,
+    handleAfterCustomSingleRun,
     singleRunParams,
     nodeInfo,
     setRunInputData,
