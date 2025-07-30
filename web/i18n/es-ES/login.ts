@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Tu nombre de usuario',
   forget: '¿Olvidaste tu contraseña?',
   signBtn: 'Iniciar sesión',
-  sso: 'Continuar con SSO',
   installBtn: 'Configurar',
   setAdminAccount: 'Configurando una cuenta de administrador',
   setAdminAccountDesc: 'Privilegios máximos para la cuenta de administrador, que se puede utilizar para crear aplicaciones y administrar proveedores de LLM, etc.',

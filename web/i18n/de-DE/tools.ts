@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Http Header Key, Sie können es bei "Authorization" belassen, wenn Sie nicht wissen, was es ist, oder auf einen benutzerdefinierten Wert setzen',
       types: {
         none: 'Keine',
-        api_key: 'API-Key',
         apiKeyPlaceholder: 'HTTP-Headername für API-Key',
         apiValuePlaceholder: 'API-Key eingeben',
         api_key_header: 'Kopfzeile',

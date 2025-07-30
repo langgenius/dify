@@ -193,7 +193,6 @@ const translation = {
     showAppLength: '{{length}}개의 앱 표시',
     delete: '계정 삭제',
     deleteTip: '계정을 삭제하면 모든 데이터가 영구적으로 지워지며 복구할 수 없습니다.',
-    deleteConfirmTip: '확인하려면 등록된 이메일에서 다음 내용을 로 보내주세요 ',
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
     account: '계정',

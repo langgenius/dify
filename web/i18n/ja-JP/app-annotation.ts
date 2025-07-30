@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '質問',
-      match: 'マッチ',
-      response: '応答',
       answer: '回答',
       createdAt: '作成日時',
       hits: 'ヒット数',
@@ -71,7 +69,6 @@ const translation = {
     noHitHistory: 'ヒット履歴はありません',
   },
   hitHistoryTable: {
-    question: '質問',
     query: 'クエリ',
     match: '一致',
     response: '応答',
