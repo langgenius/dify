@@ -407,7 +407,6 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        trace_id: Optional[str] = None,
         message_id: Optional[str] = None,
         workflow_execution: Optional[WorkflowExecution] = None,
         conversation_id: Optional[str] = None,
@@ -423,7 +422,7 @@ class TraceTask:
         self.timer = timer
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.app_id = None
-
+        self.trace_id = None
         self.kwargs = kwargs
         external_trace_id = kwargs.get("external_trace_id")
         if external_trace_id:
