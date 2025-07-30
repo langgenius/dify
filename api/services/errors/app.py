@@ -12,3 +12,7 @@ class IsDraftWorkflowError(Exception):
 
 class WorkflowNotFoundError(Exception):
     pass
+
+
+class WorkflowIdFormatError(Exception):
+    pass

@@ -445,7 +445,6 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
-  copyId = 'copyId',
 }
 
 export type ChildNodeTypeCount = {

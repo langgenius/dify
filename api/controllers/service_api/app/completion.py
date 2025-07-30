@@ -30,7 +30,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
 
@@ -132,6 +132,8 @@ class ChatApi(Resource):
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
+        except WorkflowIdFormatError as ex:
             raise BadRequest(str(ex))
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

@@ -920,7 +920,6 @@ const translation = {
     defaultName: 'Untitled Version',
     nameThisVersion: 'Name this version',
     editVersionInfo: 'Edit version info',
-    copyId: 'Copy ID',
     editField: {
       title: 'Title',
       releaseNotes: 'Release Notes',
@@ -938,7 +937,7 @@ const translation = {
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
       copyIdSuccess: 'ID copied to clipboard',
-    },
+      },
   },
   debug: {
     settingsTab: 'Settings',

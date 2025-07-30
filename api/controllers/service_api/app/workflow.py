@@ -34,7 +34,7 @@ from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
@@ -108,6 +108,8 @@ class WorkflowRunApi(Resource):
         except WorkflowNotFoundError as ex:
             raise NotFound(str(ex))
         except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
+        except WorkflowIdFormatError as ex:
             raise BadRequest(str(ex))
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)

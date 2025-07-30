@@ -16,7 +16,7 @@ from libs.helper import RateLimiter
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.billing_service import BillingService
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 
@@ -229,7 +229,7 @@ class AppGenerateService:
             try:
                 workflow_uuid = uuid.UUID(workflow_id)
             except ValueError:
-                raise ValueError(f"Invalid UUID format: {workflow_id}")
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
             workflow = workflow_service.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
