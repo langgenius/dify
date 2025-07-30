@@ -1,35 +1,40 @@
 from collections.abc import Sequence
-from typing import Literal
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
 
-_Condition = Literal[
+
+class FilterOperator(StrEnum):
     # string conditions
-    "contains",
-    "start with",
-    "end with",
-    "is",
-    "in",
-    "empty",
-    "not contains",
-    "is not",
-    "not in",
-    "not empty",
+    CONTAINS = "contains"
+    START_WITH = "start with"
+    END_WITH = "end with"
+    IS = "is"
+    IN = "in"
+    EMPTY = "empty"
+    NOT_CONTAINS = "not contains"
+    IS_NOT = "is not"
+    NOT_IN = "not in"
+    NOT_EMPTY = "not empty"
     # number conditions
-    "=",
-    "≠",
-    "<",
-    ">",
-    "≥",
-    "≤",
-]
+    EQUAL = "="
+    NOT_EQUAL = "≠"
+    LESS_THAN = "<"
+    GREATER_THAN = ">"
+    GREATER_THAN_OR_EQUAL = "≥"
+    LESS_THAN_OR_EQUAL = "≤"
+
+
+class Order(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
 
 
 class FilterCondition(BaseModel):
     key: str = ""
-    comparison_operator: _Condition = "contains"
+    comparison_operator: FilterOperator = FilterOperator.CONTAINS
     value: str | Sequence[str] = ""
 
 
@@ -38,10 +43,10 @@ class FilterBy(BaseModel):
     conditions: Sequence[FilterCondition] = Field(default_factory=list)
 
 
-class OrderBy(BaseModel):
+class OrderByConfig(BaseModel):
     enabled: bool = False
     key: str = ""
-    value: Literal["asc", "desc"] = "asc"
+    value: Order = Order.ASC
 
 
 class Limit(BaseModel):
@@ -57,6 +62,6 @@ class ExtractConfig(BaseModel):
 class ListOperatorNodeData(BaseNodeData):
     variable: Sequence[str] = Field(default_factory=list)
     filter_by: FilterBy
-    order_by: OrderBy
+    order_by: OrderByConfig
     limit: Limit
     extract_by: ExtractConfig = Field(default_factory=ExtractConfig)

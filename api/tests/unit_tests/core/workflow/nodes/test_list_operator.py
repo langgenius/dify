@@ -11,7 +11,7 @@ from core.workflow.nodes.list_operator.entities import (
     FilterCondition,
     Limit,
     ListOperatorNodeData,
-    OrderBy,
+    Order,
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
@@ -27,7 +27,7 @@ def list_operator_node():
                 FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])
             ],
         ),
-        "order_by": OrderBy(enabled=False, value="asc"),
+        "order_by": Order(enabled=False, value="asc"),
         "limit": Limit(enabled=False, size=0),
         "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
