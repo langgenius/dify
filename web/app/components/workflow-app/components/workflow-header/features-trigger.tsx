@@ -96,8 +96,10 @@ const FeaturesTrigger = () => {
         title: params?.title || '',
         releaseNotes: params?.releaseNotes || '',
       })
-
-      if (res) {
+      if (res?.result === 'no_modification') {
+        notify({ type: 'info', message: t('common.actionMsg.noModification') })
+      }
+      else if (res?.result === 'success') {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
         updatePublishedWorkflow(appID!)
         updateAppDetail()

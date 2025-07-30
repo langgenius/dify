@@ -501,6 +501,15 @@ class PublishedWorkflowApi(Resource):
             raise ValueError("Marked comment cannot exceed 100 characters")
 
         workflow_service = WorkflowService()
+        current_draft = workflow_service.get_draft_workflow(app_model=app_model)
+        published_workflow = workflow_service.get_published_workflow(app_model=app_model)
+
+        if published_workflow and current_draft.unique_hash == published_workflow.unique_hash:
+            return {
+                "result": "no_modification",
+                "message": "No changes detected. Workflow not published.",
+        }
+
         with Session(db.engine) as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
