@@ -1,0 +1,86 @@
+identity:
+  name: service_process_start_time
+  author: APO
+  label:
+    zh_Hans: 进程UNIX启动时间时间戳
+    en_US: The unix timestamp of start time of process.
+description:
+  human:
+    zh_Hans: 进程UNIX启动时间时间戳
+    en_US: The unix timestamp of start time of process.
+  llm: The unix timestamp of start time of process.
+display:
+  type: metric
+  title: The unix timestamp of start time of process.
+  unit: count
+parameters:
+  - name: comm
+    type: string
+    required: false
+    label:
+      en_US: Name of process.
+      zh_Hans: 进程名
+    human_description: 
+      en_US: Name of process, metirc's comm label.
+      zh_Hans: 进程名，指标comm标签
+    llm_description: Name of process, metric's comm label.
+    form: llm
+  - name: workloadName
+    type: string
+    required: false
+    label:
+      en_US: Name of workload.
+      zh_Hans: 工作负载名
+    human_description: 
+      en_US: Name of workload.
+      zh_Hans: 工作负载名
+    llm_description: Name of workload.
+    form: llm
+  - name: pid
+    type: string
+    required: false
+    label:
+      zh_Hans: 进程id
+      en_US: Id of process.
+    llm_description: Id of process.
+    human_description: 
+      en_US: Id of process
+      zh_Hans: 进程id
+    form: llm
+  - name: nodeName
+    type: string
+    required: true
+    label: 
+      en_US: Name of node.
+      zh_Hans: 主机名
+    llm_description: Name of node.
+    human_description:
+      en_US: Name of node.
+      zh_Hans: 主机名
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time(Microsecond)
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm

@@ -18,16 +18,16 @@ class OriginxServiceRedRespOkTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        service_name = tool_parameters.get("service_name")
-        content_key = tool_parameters.get("content_key")
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+        key_map = {
+          "service_name": "service_name",
+          "content_key": "content_key"
+        }
+        metric_params = APOUtils.get_and_build_metric_params(tool_parameters, key_map)
         params = {
           'metricName': 'Originx 北极星指标 (服务层级) - RED指标 - 请求成功率',
-          'params': {
-            "service_name": service_name,
-            "content_key": content_key
-          },
+          'params': metric_params,
           'startTime': start_time,
           'endTime': end_time,
           'step': APOUtils.get_step(start_time, end_time),

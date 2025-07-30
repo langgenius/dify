@@ -1121,6 +1121,63 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1750058827536-f15918a3-b6a0-48a0-ab08-758f0862fd4c-1753355666153-target
+      selected: false
+      source: '1750058827536'
+      sourceHandle: f15918a3-b6a0-48a0-ab08-758f0862fd4c
+      target: '1753355666153'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1753355666153-source-17533586233540-target
+      source: '1753355666153'
+      sourceHandle: source
+      target: '17533586233540'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17533586233540-source-1753358645238-target
+      source: '17533586233540'
+      sourceHandle: source
+      target: '1753358645238'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: end
+      id: 1753358645238-source-1753358683010-target
+      source: '1753358645238'
+      sourceHandle: source
+      target: '1753358683010'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 1741158559444-1753360372736-1753355666153-target
+      selected: false
+      source: '1741158559444'
+      sourceHandle: '1753360372736'
+      target: '1753355666153'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -1175,10 +1232,10 @@ workflow:
       id: '1741157526222'
       position:
         x: 30
-        y: 637
+        y: 638
       positionAbsolute:
         x: 30
-        y: 637
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1197,11 +1254,11 @@ workflow:
       height: 90
       id: '1741157560922'
       position:
-        x: 4258
-        y: 2040
+        x: 3982
+        y: 3133
       positionAbsolute:
-        x: 4258
-        y: 2040
+        x: 3982
+        y: 3133
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1295,6 +1352,10 @@ workflow:
           name: '其他类型
 
             不在其他分类范围之内'
+        - id: '1753360372736'
+          name: '应用指标
+
+            进程不活跃'
         desc: ''
         instruction: '请你从告警事件描述
 
@@ -1315,14 +1376,14 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 876
+      height: 912
       id: '1741158559444'
       position:
-        x: 1540
-        y: 637
+        x: 1550
+        y: 638
       positionAbsolute:
-        x: 1540
-        y: 637
+        x: 1550
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1368,11 +1429,11 @@ workflow:
       height: 417
       id: '1741162531836'
       position:
-        x: 2446
-        y: 1859
+        x: 2462
+        y: 2077
       positionAbsolute:
-        x: 2446
-        y: 1859
+        x: 2462
+        y: 2077
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1513,11 +1574,11 @@ workflow:
       height: 54
       id: '1741328045214'
       position:
-        x: 1842
-        y: 3108
+        x: 1854
+        y: 2735
       positionAbsolute:
-        x: 1842
-        y: 3108
+        x: 1854
+        y: 2735
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1658,11 +1719,11 @@ workflow:
       height: 54
       id: '1741328076453'
       position:
-        x: 1842
-        y: 637
+        x: 1854
+        y: 638
       positionAbsolute:
-        x: 1842
-        y: 637
+        x: 1854
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1812,11 +1873,11 @@ workflow:
       height: 54
       id: '1741328197695'
       position:
-        x: 2311.6789223996607
-        y: 2514.7380521199802
+        x: 2462
+        y: 3651.5
       positionAbsolute:
-        x: 2311.6789223996607
-        y: 2514.7380521199802
+        x: 2462
+        y: 3651.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1929,11 +1990,11 @@ workflow:
       height: 54
       id: '1741328213545'
       position:
-        x: 1842
-        y: 1672
+        x: 1854
+        y: 1607
       positionAbsolute:
-        x: 1842
-        y: 1672
+        x: 1854
+        y: 1607
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2046,11 +2107,11 @@ workflow:
       height: 54
       id: '1741328346220'
       position:
-        x: 1842
-        y: 1764
+        x: 1854
+        y: 1701
       positionAbsolute:
-        x: 1842
-        y: 1764
+        x: 1854
+        y: 1701
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2163,11 +2224,11 @@ workflow:
       height: 54
       id: '1741328423453'
       position:
-        x: 1842
-        y: 1856
+        x: 1854
+        y: 1795
       positionAbsolute:
-        x: 1842
-        y: 1856
+        x: 1854
+        y: 1795
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2280,11 +2341,11 @@ workflow:
       height: 54
       id: '1741328466394'
       position:
-        x: 1842
-        y: 1948
+        x: 1854
+        y: 1889
       positionAbsolute:
-        x: 1842
-        y: 1948
+        x: 1854
+        y: 1889
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2397,11 +2458,11 @@ workflow:
       height: 54
       id: '1741328742817'
       position:
-        x: 1842
-        y: 2040
+        x: 1854
+        y: 1983
       positionAbsolute:
-        x: 1842
-        y: 2040
+        x: 1854
+        y: 1983
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2514,11 +2575,11 @@ workflow:
       height: 54
       id: '1741328773213'
       position:
-        x: 1842
-        y: 2132
+        x: 1854
+        y: 2077
       positionAbsolute:
-        x: 1842
-        y: 2132
+        x: 1854
+        y: 2077
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2631,11 +2692,11 @@ workflow:
       height: 54
       id: '1741328799030'
       position:
-        x: 1842
-        y: 2224
+        x: 1854
+        y: 2171
       positionAbsolute:
-        x: 1842
-        y: 2224
+        x: 1854
+        y: 2171
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2776,11 +2837,11 @@ workflow:
       height: 54
       id: '1741329632798'
       position:
-        x: 2446
-        y: 2740
+        x: 2462
+        y: 3314.5
       positionAbsolute:
-        x: 2446
-        y: 2740
+        x: 2462
+        y: 3314.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2851,11 +2912,11 @@ workflow:
       height: 90
       id: '1742366141890'
       position:
-        x: 3050
-        y: 2040
+        x: 3070
+        y: 2847
       positionAbsolute:
-        x: 3050
-        y: 2040
+        x: 3070
+        y: 2847
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2894,11 +2955,11 @@ workflow:
       height: 79
       id: '1742433446760'
       position:
-        x: 634
-        y: 637
+        x: 638
+        y: 638
       positionAbsolute:
-        x: 634
-        y: 637
+        x: 638
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3039,11 +3100,11 @@ workflow:
       height: 54
       id: '17424339242280'
       position:
-        x: 2144
-        y: 3108
+        x: 2158
+        y: 2735
       positionAbsolute:
-        x: 2144
-        y: 3108
+        x: 2158
+        y: 2735
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3089,11 +3150,11 @@ workflow:
       height: 417
       id: '1742434016239'
       position:
-        x: 2748
-        y: 1859
+        x: 2766
+        y: 2077
       positionAbsolute:
-        x: 2748
-        y: 1859
+        x: 2766
+        y: 2077
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3234,11 +3295,11 @@ workflow:
       height: 54
       id: '17424342365860'
       position:
-        x: 2144
-        y: 637
+        x: 2158
+        y: 638
       positionAbsolute:
-        x: 2144
-        y: 637
+        x: 2158
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3379,11 +3440,11 @@ workflow:
       height: 54
       id: '17424344697090'
       position:
-        x: 2748
-        y: 2740
+        x: 2766
+        y: 3314.5
       positionAbsolute:
-        x: 2748
-        y: 2740
+        x: 2766
+        y: 3314.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3533,11 +3594,11 @@ workflow:
       height: 54
       id: '17424345080000'
       position:
-        x: 2692.2153979484565
-        y: 2505.498466761298
+        x: 2766
+        y: 3651.5
       positionAbsolute:
-        x: 2692.2153979484565
-        y: 2505.498466761298
+        x: 2766
+        y: 3651.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3650,11 +3711,11 @@ workflow:
       height: 54
       id: '17424345315500'
       position:
-        x: 2144
-        y: 1672
+        x: 2158
+        y: 1607
       positionAbsolute:
-        x: 2144
-        y: 1672
+        x: 2158
+        y: 1607
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3767,11 +3828,11 @@ workflow:
       height: 54
       id: '17424345826170'
       position:
-        x: 2144
-        y: 1764
+        x: 2158
+        y: 1701
       positionAbsolute:
-        x: 2144
-        y: 1764
+        x: 2158
+        y: 1701
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -3884,11 +3945,11 @@ workflow:
       height: 54
       id: '17424346884650'
       position:
-        x: 2144
-        y: 1856
+        x: 2158
+        y: 1795
       positionAbsolute:
-        x: 2144
-        y: 1856
+        x: 2158
+        y: 1795
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4001,11 +4062,11 @@ workflow:
       height: 54
       id: '17424347242840'
       position:
-        x: 2144
-        y: 1948
+        x: 2158
+        y: 1889
       positionAbsolute:
-        x: 2144
-        y: 1948
+        x: 2158
+        y: 1889
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4118,11 +4179,11 @@ workflow:
       height: 54
       id: '17424348206030'
       position:
-        x: 2144
-        y: 2040
+        x: 2158
+        y: 1983
       positionAbsolute:
-        x: 2144
-        y: 2040
+        x: 2158
+        y: 1983
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4235,11 +4296,11 @@ workflow:
       height: 54
       id: '17424348526540'
       position:
-        x: 2144
-        y: 2132
+        x: 2158
+        y: 2077
       positionAbsolute:
-        x: 2144
-        y: 2132
+        x: 2158
+        y: 2077
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4352,11 +4413,11 @@ workflow:
       height: 54
       id: '17424348570980'
       position:
-        x: 2144
-        y: 2224
+        x: 2158
+        y: 2171
       positionAbsolute:
-        x: 2144
-        y: 2224
+        x: 2158
+        y: 2171
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4365,18 +4426,23 @@ workflow:
     - data:
         code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
-          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
-          \  return { \n  \"node\": get_value(data, [\"svc_node\", \"node\", \"nodename\"\
-          , \"node_name\"]),      \n  \"service\": get_value(data, [\"svc_name\",\
-          \ \"service\"]), \n  \"endpoint\": get_value(data,[\"endpoint\", \"content_key\"\
-          ]), \n  \"pod\": get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n\
-          \  \"namespace\": get_value(data,[\"namespace\", \"src_namespace\"]), \n\
-          \  \"pid\": get_value(data,[\"pid\"]),\n  \"containerId\": get_value(data,[\"\
-          container_id\", \"containerID\"]),\n  \"instanceName\": get_value(data,\
-          \ [\"instance_name\", \"instanceName\"])\n}"
+          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg)\n\
+          \  raw_tags = data.get('raw_tags')\n  return { \n  \"node\": get_value(data,\
+          \ [\"svc_node\", \"node\", \"nodename\", \"node_name\"]),      \n  \"service\"\
+          : get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\": get_value(data,[\"\
+          endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"pod\", \"\
+          src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"namespace\"\
+          , \"src_namespace\"]), \n  \"pid\": get_value(data,[\"pid\"]),\n  \"containerId\"\
+          : get_value(data,[\"container_id\", \"containerID\"]),\n  \"instanceName\"\
+          : get_value(data, [\"instance_name\", \"instanceName\"]),\n  \"workloadName\"\
+          : get_value(raw_tags, [\"workload_name\"]),\n  \"comm\": get_value(raw_tags,\
+          \ [\"comm\"])\n}"
         code_language: python3
         desc: ''
         outputs:
+          comm:
+            children: null
+            type: string
           containerId:
             children: null
             type: string
@@ -4401,6 +4467,9 @@ workflow:
           service:
             children: null
             type: string
+          workloadName:
+            children: null
+            type: string
         selected: false
         title: 告警事件标签提取
         type: code
@@ -4412,11 +4481,11 @@ workflow:
       height: 54
       id: '1742806924635'
       position:
-        x: 332
-        y: 637
+        x: 334
+        y: 638
       positionAbsolute:
-        x: 332
-        y: 637
+        x: 334
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4583,11 +4652,11 @@ workflow:
       height: 54
       id: '1742979394268'
       position:
-        x: 1842
-        y: 2500
+        x: 1854
+        y: 2453
       positionAbsolute:
-        x: 1842
-        y: 2500
+        x: 1854
+        y: 2453
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4754,11 +4823,11 @@ workflow:
       height: 54
       id: '1742979595004'
       position:
-        x: 1842
-        y: 2592
+        x: 1854
+        y: 2547
       positionAbsolute:
-        x: 1842
-        y: 2592
+        x: 1854
+        y: 2547
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4925,11 +4994,11 @@ workflow:
       height: 54
       id: '17429797453350'
       position:
-        x: 1842
-        y: 2316
+        x: 1854
+        y: 2265
       positionAbsolute:
-        x: 1842
-        y: 2316
+        x: 1854
+        y: 2265
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5096,11 +5165,11 @@ workflow:
       height: 54
       id: '17429797664440'
       position:
-        x: 2144
-        y: 2316
+        x: 2158
+        y: 2265
       positionAbsolute:
-        x: 2144
-        y: 2316
+        x: 2158
+        y: 2265
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5238,11 +5307,11 @@ workflow:
       height: 54
       id: '1742979828391'
       position:
-        x: 1842
-        y: 2408
+        x: 1854
+        y: 2359
       positionAbsolute:
-        x: 1842
-        y: 2408
+        x: 1854
+        y: 2359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5380,11 +5449,11 @@ workflow:
       height: 54
       id: '17429798797920'
       position:
-        x: 2144
-        y: 2408
+        x: 2158
+        y: 2359
       positionAbsolute:
-        x: 2144
-        y: 2408
+        x: 2158
+        y: 2359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5551,11 +5620,11 @@ workflow:
       height: 54
       id: '17429835599060'
       position:
-        x: 2144
-        y: 2500
+        x: 2158
+        y: 2453
       positionAbsolute:
-        x: 2144
-        y: 2500
+        x: 2158
+        y: 2453
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5722,11 +5791,11 @@ workflow:
       height: 54
       id: '17429835940550'
       position:
-        x: 2144
-        y: 2592
+        x: 2158
+        y: 2547
       positionAbsolute:
-        x: 2144
-        y: 2592
+        x: 2158
+        y: 2547
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5895,11 +5964,11 @@ workflow:
       height: 54
       id: '1744093337863'
       position:
-        x: 1842
-        y: 2962
+        x: 1854
+        y: 3358
       positionAbsolute:
-        x: 1842
-        y: 2962
+        x: 1854
+        y: 3358
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5918,11 +5987,11 @@ workflow:
       height: 90
       id: '1744093385250'
       position:
-        x: 2748
-        y: 2944
+        x: 2766
+        y: 3521.5
       positionAbsolute:
-        x: 2748
-        y: 2944
+        x: 2766
+        y: 3521.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5969,11 +6038,11 @@ workflow:
       height: 90
       id: '1744093428286'
       position:
-        x: 2144
-        y: 2944
+        x: 2158
+        y: 3340
       positionAbsolute:
-        x: 2144
-        y: 2944
+        x: 2158
+        y: 3340
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5989,11 +6058,11 @@ workflow:
       height: 54
       id: '1744093531084'
       position:
-        x: 2446
-        y: 2962
+        x: 2462
+        y: 3539.5
       positionAbsolute:
-        x: 2446
-        y: 2962
+        x: 2462
+        y: 3539.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6220,11 +6289,11 @@ workflow:
       height: 54
       id: '1744339618961'
       position:
-        x: 3146.917656182187
-        y: 2982.1617777841084
+        x: 3070
+        y: 2753
       positionAbsolute:
-        x: 3146.917656182187
-        y: 2982.1617777841084
+        x: 3070
+        y: 2753
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6247,11 +6316,11 @@ workflow:
       height: 116
       id: '1744343454355'
       position:
-        x: 3701.829492661339
-        y: 3182.7384192889735
+        x: 3678
+        y: 2722
       positionAbsolute:
-        x: 3701.829492661339
-        y: 3182.7384192889735
+        x: 3678
+        y: 2722
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6404,11 +6473,11 @@ workflow:
       height: 54
       id: '1744599772545'
       position:
-        x: 2446
-        y: 3108
+        x: 2462
+        y: 2916.5
       positionAbsolute:
-        x: 2446
-        y: 3108
+        x: 2462
+        y: 2916.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6434,11 +6503,11 @@ workflow:
       height: 126
       id: '1744599891369'
       position:
-        x: 2726.602595388348
-        y: 3072
+        x: 2766
+        y: 2880.5
       positionAbsolute:
-        x: 2726.602595388348
-        y: 3072
+        x: 2766
+        y: 2880.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6461,11 +6530,11 @@ workflow:
       height: 116
       id: '1744599930141'
       position:
-        x: 3033.089109302272
-        y: 3197.8670859508925
+        x: 3070
+        y: 2977
       positionAbsolute:
-        x: 3033.089109302272
-        y: 3197.8670859508925
+        x: 3070
+        y: 2977
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6485,11 +6554,11 @@ workflow:
       height: 131
       id: '1744627472534'
       position:
-        x: 3412.4162012564284
-        y: 3112.6849392061613
+        x: 3374
+        y: 2746
       positionAbsolute:
-        x: 3412.4162012564284
-        y: 3112.6849392061613
+        x: 3374
+        y: 2746
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6661,11 +6730,11 @@ workflow:
       height: 54
       id: '1748272742118'
       position:
-        x: 1842
-        y: 2684
+        x: 1854
+        y: 2641
       positionAbsolute:
-        x: 1842
-        y: 2684
+        x: 1854
+        y: 2641
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6837,11 +6906,11 @@ workflow:
       height: 54
       id: '17482728139340'
       position:
-        x: 2144
-        y: 2684
+        x: 2158
+        y: 2641
       positionAbsolute:
-        x: 2144
-        y: 2684
+        x: 2158
+        y: 2641
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6857,11 +6926,11 @@ workflow:
       height: 54
       id: '1748340985944'
       position:
-        x: 1842
-        y: 2834
+        x: 1854
+        y: 3208
       positionAbsolute:
-        x: 1842
-        y: 2834
+        x: 1854
+        y: 3208
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6880,11 +6949,11 @@ workflow:
       height: 90
       id: '1748341014888'
       position:
-        x: 2144
-        y: 2816
+        x: 2158
+        y: 3190
       positionAbsolute:
-        x: 2144
-        y: 2816
+        x: 2158
+        y: 3190
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6905,10 +6974,11 @@ workflow:
           ),\n        (r\"cpu.*wait|cpu.*io.*wait\", \"cpu高io wait\"),\n        (r\"\
           file.*desc|fd.*use|文件.*描述符\", \"文件描述符使用量\"),\n        (r\"cont.*kill|容器.*终止\"\
           , \"容器被kill\"),\n        (r\"log.*err|日志.*错误\", \"日志错误数相关\"),\n        (r\"\
-          down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\", \"下游依赖耗时超过平均值\")\n   \
-          \ ]\n\n    result = \"其他\"\n    for pattern, category in rules:\n      \
-          \  if re.search(pattern, alert_name):\n            result = category\n \
-          \           break\n\n    return {\n        \"result\": result\n    }\n\n"
+          down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\", \"下游依赖耗时超过平均值\"),\n  \
+          \      (r\"进程.*不活跃|process.*inactive\", \"进程不活跃\")\n    ]\n\n    result\
+          \ = \"其他\"\n    for pattern, category in rules:\n        if re.search(pattern,\
+          \ alert_name):\n            result = category\n            break\n\n   \
+          \ return {\n        \"result\": result\n    }\n"
         code_language: python3
         desc: ''
         outputs:
@@ -6926,11 +6996,11 @@ workflow:
       height: 54
       id: '1750057744917'
       position:
-        x: 936
-        y: 637
+        x: 938.7097120976293
+        y: 638
       positionAbsolute:
-        x: 936
-        y: 637
+        x: 938.7097120976293
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6956,11 +7026,11 @@ workflow:
       height: 126
       id: '1750057811167'
       position:
-        x: 1238
-        y: 637
+        x: 1246
+        y: 638
       positionAbsolute:
-        x: 1238
-        y: 637
+        x: 1246
+        y: 638
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7155,18 +7225,28 @@ workflow:
             - result
           id: efc80f1c-953b-407c-b14b-789d63061a2e
           logical_operator: and
+        - case_id: f15918a3-b6a0-48a0-ab08-758f0862fd4c
+          conditions:
+          - comparison_operator: is
+            id: 3df516a6-67ba-4d99-a7d2-caab4fa18704
+            value: 进程不活跃
+            varType: string
+            variable_selector:
+            - '1750057744917'
+            - result
+          logical_operator: and
         desc: ''
         selected: false
         title: 条件分支 3
         type: if-else
-      height: 894
+      height: 942
       id: '1750058827536'
       position:
-        x: 1540
-        y: 1551
+        x: 1550
+        y: 1554
       positionAbsolute:
-        x: 1540
-        y: 1551
+        x: 1550
+        y: 1554
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7188,11 +7268,11 @@ workflow:
       height: 153
       id: '1750745724225'
       position:
-        x: 3352
-        y: 2040
+        x: 3374
+        y: 3133
       positionAbsolute:
-        x: 3352
-        y: 2040
+        x: 3374
+        y: 3133
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7259,11 +7339,11 @@ workflow:
       height: 90
       id: '1750745788772'
       position:
-        x: 3050
-        y: 2740
+        x: 3070
+        y: 3133
       positionAbsolute:
-        x: 3050
-        y: 2740
+        x: 3070
+        y: 3133
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7330,11 +7410,11 @@ workflow:
       height: 90
       id: '1751515586426'
       position:
-        x: 2994.2153979484565
-        y: 2505.498466761298
+        x: 3070
+        y: 3470
       positionAbsolute:
-        x: 2994.2153979484565
-        y: 2505.498466761298
+        x: 3070
+        y: 3470
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7385,17 +7465,434 @@ workflow:
       height: 90
       id: '1752138870713'
       position:
-        x: 3654
-        y: 2040
+        x: 3678
+        y: 3133
       positionAbsolute:
-        x: 3654
-        y: 2040
+        x: 3678
+        y: 3133
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Name of process, metirc's comm label.
+            ja_JP: Name of process, metirc's comm label.
+            pt_BR: Name of process, metirc's comm label.
+            zh_Hans: 进程名，指标comm标签
+          label:
+            en_US: Name of process.
+            ja_JP: Name of process.
+            pt_BR: Name of process.
+            zh_Hans: 进程名
+          llm_description: Name of process, metric's comm label.
+          max: null
+          min: null
+          name: comm
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Name of workload.
+            ja_JP: Name of workload.
+            pt_BR: Name of workload.
+            zh_Hans: 工作负载名
+          label:
+            en_US: Name of workload.
+            ja_JP: Name of workload.
+            pt_BR: Name of workload.
+            zh_Hans: 工作负载名
+          llm_description: Name of workload.
+          max: null
+          min: null
+          name: workloadName
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Whether to query historical data
+            ja_JP: Whether to query historical data
+            pt_BR: Whether to query historical data
+            zh_Hans: 是否查询历史数据
+          label:
+            en_US: Whether to query historical data
+            ja_JP: Whether to query historical data
+            pt_BR: Whether to query historical data
+            zh_Hans: 是否查询历史数据
+          llm_description: Whether to query historical data
+          max: null
+          min: null
+          name: isHistory
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          comm: ''
+          endTime: ''
+          isHistory: ''
+          startTime: ''
+          workloadName: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 过去一小时平均进程数
+        tool_configurations: {}
+        tool_label: 服务进程数量数量进程服务服务进程数量数量进程服务
+        tool_name: service_process_count
+        tool_parameters:
+          comm:
+            type: mixed
+            value: '{{#1742806924635.comm#}}'
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          isHistory:
+            type: mixed
+            value: 'true'
+          startTime:
+            type: constant
+            value: 2134
+          workloadName:
+            type: mixed
+            value: '{{#1742806924635.workloadName#}}'
+        type: tool
+      height: 54
+      id: '1753355666153'
+      position:
+        x: 1854
+        y: 3595
+      positionAbsolute:
+        x: 1854
+        y: 3595
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Name of process, metirc's comm label.
+            ja_JP: Name of process, metirc's comm label.
+            pt_BR: Name of process, metirc's comm label.
+            zh_Hans: 进程名，指标comm标签
+          label:
+            en_US: Name of process.
+            ja_JP: Name of process.
+            pt_BR: Name of process.
+            zh_Hans: 进程名
+          llm_description: Name of process, metric's comm label.
+          max: null
+          min: null
+          name: comm
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Name of workload.
+            ja_JP: Name of workload.
+            pt_BR: Name of workload.
+            zh_Hans: 工作负载名
+          label:
+            en_US: Name of workload.
+            ja_JP: Name of workload.
+            pt_BR: Name of workload.
+            zh_Hans: 工作负载名
+          llm_description: Name of workload.
+          max: null
+          min: null
+          name: workloadName
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Whether to query historical data
+            ja_JP: Whether to query historical data
+            pt_BR: Whether to query historical data
+            zh_Hans: 是否查询历史数据
+          label:
+            en_US: Whether to query historical data
+            ja_JP: Whether to query historical data
+            pt_BR: Whether to query historical data
+            zh_Hans: 是否查询历史数据
+          llm_description: Whether to query historical data
+          max: null
+          min: null
+          name: isHistory
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          comm: ''
+          endTime: ''
+          isHistory: ''
+          startTime: ''
+          workloadName: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 当前进程数
+        tool_configurations: {}
+        tool_label: 服务进程数量数量进程服务服务进程数量数量进程服务
+        tool_name: service_process_count
+        tool_parameters:
+          comm:
+            type: mixed
+            value: '{{#1742806924635.comm#}}'
+          endTime:
+            type: variable
+            value:
+            - '1741157526222'
+            - endTime
+          isHistory:
+            type: mixed
+            value: 'false'
+          startTime:
+            type: constant
+            value: 2134
+          workloadName:
+            type: mixed
+            value: '{{#1742806924635.workloadName#}}'
+        type: tool
+      height: 54
+      id: '17533586233540'
+      position:
+        x: 2158
+        y: 3595
+      positionAbsolute:
+        x: 2158
+        y: 3595
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\ndef main(history: str, current: str, rate_threshold:\
+          \ float = 0.8, num_threshold: int = 2) -> dict:\n    history_count = json.loads(history).get('data',\
+          \ 0)\n    current_count = json.loads(current).get('data', 0)\n    if history_count\
+          \ == 0:\n        return {\n            \"conclusion\": \"历史线程数为0，无法判断\"\
+          ,\n            \"valid\": \"false\"\n        }\n\n    rate = current_count\
+          \ / history_count\n    diff = history_count - current_count\n\n    if rate\
+          \ < rate_threshold and diff > num_threshold:\n        return {\n       \
+          \     \"conclusion\": (\n                f\"⚠️ 当前线程数 {current_count} 低于历史平均值\
+          \ {history_count}，\"\n                f\"比例 {rate:.2f} < 阈值 {rate_threshold:.2f}\
+          \ 且差值 {diff} > 阈值 {num_threshold}，判定线程有消失\"\n            ),\n          \
+          \  \"valid\": \"false\"\n        }\n    else:\n        return {\n      \
+          \      \"conclusion\": (\n                f\"✅ 当前线程数 {current_count} 与历史平均值\
+          \ {history_count} 差异在允许范围内，\"\n                f\"比例 {rate:.2f}，差值 {diff}，未检测到异常\"\
+          \n            ),\n            \"valid\": \"true\"\n        }"
+        code_language: python3
+        desc: ''
+        outputs:
+          conclusion:
+            children: null
+            type: string
+          valid:
+            children: null
+            type: string
+        selected: false
+        title: 判断进程是否恢复
+        type: code
+        variables:
+        - value_selector:
+          - '1753355666153'
+          - text
+          variable: history
+        - value_selector:
+          - '17533586233540'
+          - text
+          variable: current
+      height: 54
+      id: '1753358645238'
+      position:
+        x: 2462
+        y: 3774.9617444838555
+      positionAbsolute:
+        x: 2462
+        y: 3774.9617444838555
       selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1753358645238'
+          - conclusion
+          variable: conclusion
+        - value_selector:
+          - '1753358645238'
+          - valid
+          variable: valid
+        selected: false
+        title: 结束 6
+        type: end
+      height: 116
+      id: '1753358683010'
+      position:
+        x: 2766
+        y: 3745.5
+      positionAbsolute:
+        x: 2766
+        y: 3745.5
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     viewport:
-      x: -2588.0554099418837
-      y: -1511.855409177888
-      zoom: 0.8579464166744121
+      x: -245.6685087499718
+      y: -719.7995107312324
+      zoom: 0.32115062772829084

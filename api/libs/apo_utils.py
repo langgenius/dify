@@ -10,9 +10,7 @@ class APOUtils:
 
         step = SECOND  # default step is 1 second
 
-        if time_diff <= 15 * MINUTE:
-            step = 30 * SECOND
-        elif time_diff <= 30 * MINUTE:
+        if time_diff <= 30 * MINUTE:
             step = 1 * MINUTE
         elif time_diff <= 1 * HOUR:
             step = 2 * MINUTE

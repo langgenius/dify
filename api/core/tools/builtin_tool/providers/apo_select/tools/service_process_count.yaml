@@ -1,0 +1,73 @@
+identity:
+  name: service_process_count
+  author: APO
+  label:
+    zh_Hans: 服务进程数量
+    en_US: The number of processes of the service.
+description:
+  human:
+    zh_Hans: 查询服务（抽象概念，非真实服务）的进程数量。
+    en_US: The number of processes of the query service (abstract concept, not a real service).
+  llm: The number of processes of the query service (abstract concept, not a real service).
+display:
+  type: metric
+  title: The number of processes of the service.
+  unit: count
+parameters:
+  - name: comm
+    type: string
+    required: false
+    label:
+      en_US: Name of process.
+      zh_Hans: 进程名
+    human_description: 
+      en_US: Name of process, metirc's comm label.
+      zh_Hans: 进程名，指标comm标签
+    llm_description: Name of process, metric's comm label.
+    form: llm
+  - name: workloadName
+    type: string
+    required: false
+    label:
+      en_US: Name of workload.
+      zh_Hans: 工作负载名
+    human_description: 
+      en_US: Name of workload.
+      zh_Hans: 工作负载名
+    llm_description: Name of workload.
+    form: llm
+  - name: isHistory
+    type: boolean
+    required: true
+    label:
+      zh_Hans: 是否查询历史数据
+      en_US: Whether to query historical data
+    llm_description: Whether to query historical data
+    human_description: 
+      en_US: Whether to query historical data
+      zh_Hans: 是否查询历史数据
+    form: llm
+  - name: nodeName
+    type: string
+    required: true
+    label: 
+      en_US: Name of node.
+      zh_Hans: 主机名
+    llm_description: Name of node.
+    human_description:
+      en_US: Name of node.
+      zh_Hans: 主机名
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm

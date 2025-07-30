@@ -30,6 +30,13 @@ workflow:
       - local_file
       - remote_url
       enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
       image:
         enabled: false
         number_limits: 3
@@ -193,7 +200,7 @@ workflow:
           required: true
           type: paragraph
           variable: alertGroup
-      height: 114
+      height: 116
       id: '1745224781828'
       position:
         x: 30
@@ -205,15 +212,15 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "import re\n\nLATENCY = \"request_latency\"\nAVAILABILITY = \"service_availability\"\
           \nINFRASTRUCTURE = \"infrastructure\"\nUNKNOWN = \"unknown\"\n\nclass AlertClassifier:\n\
           \    def __init__(self):\n        \n        self.rules = {\n           \
           \ AVAILABILITY: [\n                r'\\b(downtime|unavailable|offline|crash|failure|服务不可用|无法访问|中断|停止|error\
           \ rate|error count|killed)\\b',\n                r'\\b.*(service|应用|系统|request|log|container|请求|日志|错误).*(不可用|失败|错误率|宕机|终止|错误|日志).*\\\
-          b',\n                r'\\b(5xx|503|502|404)\\b',\n            ],\n     \
-          \       INFRASTRUCTURE: [\n                r'\\b(network.*rtt|rtt.*latency)\\\
+          b',\n                r'\\b(5xx|503|502|404)\\b',\n                r'进程.*不活跃|process.*inactive'\n\
+          \            ],\n            INFRASTRUCTURE: [\n                r'\\b(network.*rtt|rtt.*latency)\\\
           b',  # match network rtt\n                r'\\b.*(cpu|memory|disk|network|bandwidth|storage|资源|rtt|cpu_cfs_throttled|硬件负载|容量|磁盘|吞吐量|文件描述符|throughput|read\
           \ speed|write speed|i/o|file descriptor|cfs_throttled|usage|utilization).*\\\
           b',\n                r'\\b(usage|utilization|exhausted|不足|过载|瓶颈|high|abnormal|low|less\
@@ -230,7 +237,7 @@ workflow:
           \                    return category\n        \n        return UNKNOWN\n\
           \ndef main(arg1: str, arg2: str) -> dict:\n    classifier = AlertClassifier()\n\
           \    category = classifier.classify_alert(arg1)\n    return {\n        \"\
-          result\": str(category),\n    }\n\n"
+          result\": str(category),\n    }\n"
         code_language: python3
         desc: ''
         outputs:
@@ -249,7 +256,7 @@ workflow:
           - '1745224781828'
           - alertGroup
           variable: arg2
-      height: 52
+      height: 54
       id: '1745224789961'
       position:
         x: 333
@@ -257,11 +264,11 @@ workflow:
       positionAbsolute:
         x: 333
         y: 264.5
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -280,7 +287,7 @@ workflow:
         selected: false
         title: end
         type: end
-      height: 140
+      height: 142
       id: '1745224862564'
       position:
         x: 1848
@@ -292,7 +299,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -310,7 +317,7 @@ workflow:
         selected: false
         title: classify succeed
         type: if-else
-      height: 124
+      height: 126
       id: '1745224899681'
       position:
         x: 636
@@ -322,7 +329,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -334,7 +341,7 @@ workflow:
           - class_name
         - - '1745224789961'
           - result
-      height: 129
+      height: 131
       id: '1745225185151'
       position:
         x: 1242
@@ -346,7 +353,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    res = \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\
           \n    apikey = \"app-JDtZH1DfQtQb1SjzC3as680C\"\n    match arg1:\n     \
@@ -365,7 +372,7 @@ workflow:
           result:
             children: null
             type: string
-        selected: true
+        selected: false
         title: get worflow_id
         type: code
         variables:
@@ -373,7 +380,7 @@ workflow:
           - '1745225185151'
           - output
           variable: arg1
-      height: 52
+      height: 54
       id: '1745304707998'
       position:
         x: 1557.7717573272403
@@ -381,11 +388,11 @@ workflow:
       positionAbsolute:
         x: 1557.7717573272403
         y: 264.5
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         classes:
         - id: '1'
@@ -414,7 +421,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 238
+      height: 240
       id: '1747310030413'
       position:
         x: 669.4535410854317
@@ -426,7 +433,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -437,7 +444,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 90
       id: '1748308923990'
       position:
         x: 1538.397216052539
@@ -449,7 +456,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -461,7 +468,7 @@ workflow:
           - '1745224781828'
           - alertName
           variable: alert
-      height: 52
+      height: 54
       id: '1748308934593'
       position:
         x: 1139.825941382076
@@ -473,8 +480,8 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 242
+      width: 244
     viewport:
-      x: -925.5766014054602
-      y: -62.88294380286851
-      zoom: 0.9424356123466737
+      x: -720.8339351175792
+      y: 157.88538820713308
+      zoom: 0.5547380381307508

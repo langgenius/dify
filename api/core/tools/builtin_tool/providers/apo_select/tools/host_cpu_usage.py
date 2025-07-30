@@ -19,14 +19,15 @@ class HostCpuUsageTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        node = tool_parameters.get("node", '.*')
+        key_map = {
+            "node": "node",
+        }        
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+        metric_params = APOUtils.get_and_build_metric_params(tool_parameters, key_map)
         params = {
           'metricName': "宿主机监控指标 - Quick CPU / Mem / Disk - CPU Busy",
-          'params': {
-            'node': node,
-          },
+          'params': metric_params,
           'startTime': start_time,
           'endTime': end_time,
           'step': APOUtils.get_step(start_time, end_time),
