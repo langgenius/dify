@@ -1,22 +1,14 @@
 import type { FC } from 'react'
 import {
   memo,
-  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
 import type {
-  CredentialFormSchema,
-  CredentialFormSchemaRadio,
-  CredentialFormSchemaSelect,
-  CredentialFormSchemaTextInput,
   CustomConfigurationModelFixedFields,
-  FormValue,
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
@@ -28,10 +20,8 @@ import {
 import {
   useLanguage,
 } from '../hooks'
-import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import { validateLoadBalancingCredentials } from '../utils'
-import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -41,6 +31,11 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -62,12 +57,6 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   onRemove,
 }) => {
   const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
-  // const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
-  //   provider.provider,
-  //   configurationMethod,
-  //   providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
-  //   currentCustomConfigurationModelFixedFields,
-  // )
   const isEditMode = !!entry
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -89,7 +78,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           en_US: 'Enter your Config Name here',
           zh_Hans: '输入配置名称',
         },
-      } as CredentialFormSchemaTextInput,
+      } as any,
       ...(
         providerFormSchemaPredefined
           ? provider.provider_credential_schema.credential_form_schemas
@@ -101,58 +90,20 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     provider.provider_credential_schema?.credential_form_schemas,
     provider.model_credential_schema?.credential_form_schemas,
   ])
+  const formRef = useRef<FormRefObject>(null)
 
   const [
-    requiredFormSchemas,
-    secretFormSchemas,
     defaultFormSchemaValue,
-    showOnVariableMap,
   ] = useMemo(() => {
-    const requiredFormSchemas: CredentialFormSchema[] = []
-    const secretFormSchemas: CredentialFormSchema[] = []
     const defaultFormSchemaValue: Record<string, string | number> = {}
-    const showOnVariableMap: Record<string, string[]> = {}
 
     formSchemas.forEach((formSchema) => {
-      if (formSchema.required)
-        requiredFormSchemas.push(formSchema)
-
-      if (formSchema.type === FormTypeEnum.secretInput)
-        secretFormSchemas.push(formSchema)
-
       if (formSchema.default)
         defaultFormSchemaValue[formSchema.variable] = formSchema.default
-
-      if (formSchema.show_on.length) {
-        formSchema.show_on.forEach((showOnItem) => {
-          if (!showOnVariableMap[showOnItem.variable])
-            showOnVariableMap[showOnItem.variable] = []
-
-          if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-            showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-        })
-      }
-
-      if (formSchema.type === FormTypeEnum.select || formSchema.type === FormTypeEnum.radio) {
-        (formSchema as (CredentialFormSchemaRadio | CredentialFormSchemaSelect)).options.forEach((option) => {
-          if (option.show_on.length) {
-            option.show_on.forEach((showOnItem) => {
-              if (!showOnVariableMap[showOnItem.variable])
-                showOnVariableMap[showOnItem.variable] = []
-
-              if (!showOnVariableMap[showOnItem.variable].includes(formSchema.variable))
-                showOnVariableMap[showOnItem.variable].push(formSchema.variable)
-            })
-          }
-        })
-      }
     })
 
     return [
-      requiredFormSchemas,
-      secretFormSchemas,
       defaultFormSchemaValue,
-      showOnVariableMap,
     ]
   }, [formSchemas])
   const [initialValue, setInitialValue] = useState<ModelLoadBalancingConfigEntry['credentials']>()
@@ -170,55 +121,28 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     ...currentCustomConfigurationModelFixedFields,
     ...initialValue,
   }), [currentCustomConfigurationModelFixedFields, initialValue])
-  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
-    return {
-      ...defaultFormSchemaValue,
-      ...formSchemasValue,
-    } as Record<string, string | number>
-  }, [formSchemasValue, defaultFormSchemaValue])
-  const [value, setValue] = useState(initialFormSchemasValue)
-  useEffect(() => {
-    setValue(initialFormSchemasValue)
-  }, [initialFormSchemasValue])
-  const [_, validating, validatedStatusState] = useValidate(value)
-  const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
-    if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
-      return true
 
-    if (!requiredFormSchema.show_on.length)
-      return true
-
-    return false
-  })
-  const getSecretValues = useCallback((v: FormValue) => {
-    return secretFormSchemas.reduce((prev, next) => {
-      if (isEditMode && v[next.variable] && v[next.variable] === initialFormSchemasValue[next.variable])
-        prev[next.variable] = '[__HIDDEN__]'
-
-      return prev
-    }, {} as Record<string, string>)
-  }, [initialFormSchemasValue, isEditMode, secretFormSchemas])
-
-  // const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
-  const handleValueChange = (v: FormValue) => {
-    setValue(v)
-  }
   const handleSave = async () => {
     try {
       setLoading(true)
-
+      const {
+        isCheckValidated,
+        values,
+      } = formRef.current?.getFormValues({
+        needCheckValidatedValues: true,
+        needTransformWhenSecretFieldIsPristine: true,
+      }) || { isCheckValidated: false, values: {} }
+      if (!isCheckValidated)
+        return
       const res = await validateLoadBalancingCredentials(
         providerFormSchemaPredefined,
         provider.provider,
-        {
-          ...value,
-          ...getSecretValues(value),
-        },
+        values,
         entry?.id,
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        const { __model_type, __model_name, name, ...credentials } = value
+        const { __model_type, __model_name, name, ...credentials } = values
         onSave({
           ...(entry || {}),
           name: name as string,
@@ -248,14 +172,17 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
               <div className='mb-2 flex items-center justify-between'>
                 <div className='text-xl font-semibold text-gray-900'>{t(isEditMode ? 'common.modelProvider.editConfig' : 'common.modelProvider.addConfig')}</div>
               </div>
-              <Form
-                value={value}
-                onChange={handleValueChange}
-                formSchemas={formSchemas}
-                validating={validating}
-                validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-                showOnVariableMap={showOnVariableMap}
-                isEditMode={isEditMode}
+              <AuthForm
+                formSchemas={formSchemas.map((formSchema) => {
+                  return {
+                    ...formSchema,
+                    name: formSchema.variable,
+                    showRadioUI: formSchema.type === FormTypeEnum.radio,
+                  }
+                }) as FormSchema[]}
+                defaultValues={formSchemasValue}
+                inputClassName='justify-start'
+                ref={formRef}
               />
               <div className='sticky bottom-0 flex flex-wrap items-center justify-between gap-y-2 bg-white py-6'>
                 {
@@ -296,7 +223,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                     size='large'
                     variant='primary'
                     onClick={handleSave}
-                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
+                    disabled={loading}
                   >
                     {t('common.operation.save')}
                   </Button>
@@ -304,29 +231,18 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
               </div>
             </div>
             <div className='border-t-[0.5px] border-t-black/5'>
-              {
-                (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
-                  ? (
-                    <div className='flex bg-[#FEF3F2] px-[10px] py-3 text-xs text-[#D92D20]'>
-                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
-                      {validatedStatusState.message}
-                    </div>
-                  )
-                  : (
-                    <div className='flex items-center justify-center bg-gray-50 py-3 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 h-3 w-3 text-gray-500' />
-                      {t('common.modelProvider.encrypted.front')}
-                      <a
-                        className='mx-1 text-primary-600'
-                        target='_blank' rel='noopener noreferrer'
-                        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                      >
-                        PKCS1_OAEP
-                      </a>
-                      {t('common.modelProvider.encrypted.back')}
-                    </div>
-                  )
-              }
+              <div className='flex items-center justify-center bg-gray-50 py-3 text-xs text-gray-500'>
+                <Lock01 className='mr-1 h-3 w-3 text-gray-500' />
+                {t('common.modelProvider.encrypted.front')}
+                <a
+                  className='mx-1 text-primary-600'
+                  target='_blank' rel='noopener noreferrer'
+                  href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                >
+                  PKCS1_OAEP
+                </a>
+                {t('common.modelProvider.encrypted.back')}
+              </div>
             </div>
           </div>
           {
