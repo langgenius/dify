@@ -34,7 +34,7 @@ const useContextMenu = (props: ContextMenuProps) => {
           name: t('workflow.versionHistory.nameThisVersion'),
         },
     ]
-  }, [isNamedVersion])
+  }, [isNamedVersion, t])
 
   return {
     deleteOperation,
