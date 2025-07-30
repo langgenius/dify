@@ -322,7 +322,7 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if enabled == True:
+        if enabled:
             try:
                 provider_config_map[tracing_provider]
             except KeyError:
