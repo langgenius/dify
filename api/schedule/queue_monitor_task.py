@@ -15,7 +15,7 @@ celery_redis = Redis(
     host=redis_config["hostname"],
     port=redis_config["port"],
     password=redis_config["password"],
-    db=int(redis_config["virtual_host"]) if redis_config["virtual_host"] else 0,
+    db=int(redis_config["virtual_host"]) if redis_config["virtual_host"] else 1,
 )
 
 
