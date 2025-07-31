@@ -10,7 +10,7 @@ import { TopBar } from './top-bar'
 import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, FileItem, createDocumentResponse } from '@/models/datasets'
 import { DataSourceProvider, type NotionPage } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
+import { useModalContextSelector } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
 import produce from 'immer'
@@ -33,7 +33,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
-  const { setShowAccountSettingModal } = useModalContext()
+  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 

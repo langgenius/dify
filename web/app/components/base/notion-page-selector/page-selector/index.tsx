@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
@@ -194,11 +194,10 @@ const PageSelector = ({
   onPreview,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
-  const [prevDataList, setPrevDataList] = useState(list)
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
   const [localPreviewPageId, setLocalPreviewPageId] = useState('')
-  if (prevDataList !== list) {
-    setPrevDataList(list)
+
+  useEffect(() => {
     setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
       return {
         ...item,
@@ -206,7 +205,8 @@ const PageSelector = ({
         depth: 0,
       }
     }))
-  }
+  }, [list])
+
   const searchDataList = list.filter((item) => {
     return item.page_name.includes(searchValue)
   }).map((item) => {
