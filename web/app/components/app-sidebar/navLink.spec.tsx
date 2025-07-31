@@ -57,8 +57,12 @@ describe('NavLink Text Animation Issues', () => {
     it('should show text squeeze effect when switching from collapse to expand', async () => {
       const { rerender } = render(<NavLink {...mockProps} mode="collapse" />)
 
-      // In collapse mode, text should not be visible
-      expect(screen.queryByText('Orchestrate')).not.toBeInTheDocument()
+      // In collapse mode, text should be in DOM but hidden via CSS
+      const textElement = screen.getByText('Orchestrate')
+      expect(textElement).toBeInTheDocument()
+      expect(textElement).toHaveClass('opacity-0')
+      expect(textElement).toHaveClass('w-0')
+      expect(textElement).toHaveClass('overflow-hidden')
 
       // Icon should still be present
       expect(screen.getByTestId('nav-icon')).toBeInTheDocument()
@@ -78,8 +82,8 @@ describe('NavLink Text Animation Issues', () => {
 
       // The bug: text appears abruptly without smooth transition
       // This test documents the current behavior that causes the squeeze effect
-      const textElement = screen.getByText('Orchestrate')
-      expect(textElement).toBeInTheDocument()
+      const expandedTextElement = screen.getByText('Orchestrate')
+      expect(expandedTextElement).toBeInTheDocument()
 
       // In a properly animated version, we would expect:
       // - Opacity transition from 0 to 1
@@ -112,8 +116,11 @@ describe('NavLink Text Animation Issues', () => {
     it('should document the abrupt text rendering issue', () => {
       const { rerender } = render(<NavLink {...mockProps} mode="collapse" />)
 
-      // Text is completely absent in DOM
-      expect(screen.queryByText('Orchestrate')).not.toBeInTheDocument()
+      // Text is present in DOM but hidden via CSS classes
+      const collapsedText = screen.getByText('Orchestrate')
+      expect(collapsedText).toBeInTheDocument()
+      expect(collapsedText).toHaveClass('opacity-0')
+      expect(collapsedText).toHaveClass('pointer-events-none')
 
       rerender(<NavLink {...mockProps} mode="expand" />)
 
