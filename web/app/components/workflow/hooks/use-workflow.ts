@@ -27,7 +27,6 @@ import {
 import { getParallelInfo } from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
-  PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
@@ -45,6 +44,8 @@ import {
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
+import { canFindTool } from '@/utils'
+import { MAX_PARALLEL_LIMIT } from '@/config'
 import { useNodesMetaData } from '.'
 
 export const useIsChatMode = () => {
@@ -257,8 +258,6 @@ export const useWorkflow = () => {
       })
       setNodes(newNodes)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
@@ -297,9 +296,9 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > PARALLEL_LIMIT - 1) {
+    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
       const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
+      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
       return false
     }
 

@@ -341,7 +341,6 @@ const translation = {
     keywords: '關鍵詞',
     addKeyWord: '新增關鍵詞',
     keywordError: '關鍵詞最大長度為 20',
-    characters: '字元',
     hitCount: '召回次數',
     vectorHash: '向量雜湊：',
     questionPlaceholder: '在這裡新增問題',

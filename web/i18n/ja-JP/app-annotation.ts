@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '質問',
-      match: 'マッチ',
-      response: '応答',
       answer: '回答',
       createdAt: '作成日時',
       hits: 'ヒット数',
@@ -71,7 +69,6 @@ const translation = {
     noHitHistory: 'ヒット履歴はありません',
   },
   hitHistoryTable: {
-    question: '質問',
     query: 'クエリ',
     match: '一致',
     response: '応答',
@@ -86,6 +83,16 @@ const translation = {
     configConfirmBtn: '保存',
   },
   embeddingModelSwitchTip: '注釈テキストのベクトル化モデルです。モデルを切り替えると再埋め込みが行われ、追加のコストが発生します。',
+  list: {
+    delete: {
+      title: '本当に削除しますか？',
+    },
+  },
+  batchAction: {
+    cancel: 'キャンセル',
+    delete: '削除する',
+    selected: '選択された',
+  },
 }
 
 export default translation

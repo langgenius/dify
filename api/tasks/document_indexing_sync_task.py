@@ -113,3 +113,5 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 logging.info(click.style(str(ex), fg="yellow"))
             except Exception:
                 logging.exception("document_indexing_sync_task failed, document_id: %s", document_id)
+            finally:
+                db.session.close()

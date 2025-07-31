@@ -267,6 +267,54 @@ class AppAnnotationService:
             )
 
     @classmethod
+    def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
+        # get app info
+        app = (
+            db.session.query(App)
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # Fetch annotations and their settings in a single query
+        annotations_to_delete = (
+            db.session.query(MessageAnnotation, AppAnnotationSetting)
+            .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
+            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .all()
+        )
+
+        if not annotations_to_delete:
+            return {"deleted_count": 0}
+
+        # Step 1: Extract IDs for bulk operations
+        annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
+
+        # Step 2: Bulk delete hit histories in a single query
+        db.session.query(AppAnnotationHitHistory).filter(
+            AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
+        ).delete(synchronize_session=False)
+
+        # Step 3: Trigger async tasks for search index deletion
+        for annotation, annotation_setting in annotations_to_delete:
+            if annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
+                )
+
+        # Step 4: Bulk delete annotations in a single query
+        deleted_count = (
+            db.session.query(MessageAnnotation)
+            .filter(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            .delete(synchronize_session=False)
+        )
+
+        db.session.commit()
+        return {"deleted_count": deleted_count}
+
+    @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
         app = (
@@ -280,7 +328,7 @@ class AppAnnotationService:
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype=str)
             result = []
             for index, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
@@ -452,6 +500,11 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
+        # if annotation reply is enabled, delete annotation index
+        app_annotation_setting = (
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        )
+
         annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
         for annotation in annotations_query.yield_per(100):
             annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
@@ -459,6 +512,12 @@ class AppAnnotationService:
             )
             for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
                 db.session.delete(annotation_hit_history)
+
+            # if annotation reply is enabled, delete annotation index
+            if app_annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, app_annotation_setting.collection_binding_id
+                )
 
             db.session.delete(annotation)
 

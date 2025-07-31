@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Araçlar',
     'allTool': 'Hepsi',
-    'builtInTool': 'Yerleşik',
     'customTool': 'Özel',
     'workflowTool': 'Workflow',
     'question-understand': 'Soruyu Anlama',
@@ -588,7 +587,6 @@ const translation = {
         'not empty': 'boş değil',
         'null': 'null',
         'not null': 'null değil',
-        'regex match': 'normal ifade maçı',
         'in': 'içinde',
         'not exists': 'mevcut değil',
         'all of': 'Tümü',

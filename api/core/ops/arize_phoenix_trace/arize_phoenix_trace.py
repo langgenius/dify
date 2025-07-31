@@ -4,6 +4,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
@@ -40,8 +41,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
     try:
         # Choose the appropriate exporter based on config type
         exporter: Union[GrpcOTLPSpanExporter, HttpOTLPSpanExporter]
+
+        # Inspect the provided endpoint to determine its structure
+        parsed = urlparse(arize_phoenix_config.endpoint)
+        base_endpoint = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path.rstrip("/")
+
         if isinstance(arize_phoenix_config, ArizeConfig):
-            arize_endpoint = f"{arize_phoenix_config.endpoint}/v1"
+            arize_endpoint = f"{base_endpoint}/v1"
             arize_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "space_id": arize_phoenix_config.space_id or "",
@@ -53,7 +60,7 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
                 timeout=30,
             )
         else:
-            phoenix_endpoint = f"{arize_phoenix_config.endpoint}/v1/traces"
+            phoenix_endpoint = f"{base_endpoint}{path}/v1/traces"
             phoenix_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "authorization": f"Bearer {arize_phoenix_config.api_key or ''}",
@@ -91,16 +98,21 @@ def datetime_to_nanos(dt: Optional[datetime]) -> int:
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def uuid_to_trace_id(string: Optional[str]) -> int:
-    """Convert UUID string to a valid trace ID (16-byte integer)."""
+def string_to_trace_id128(string: Optional[str]) -> int:
+    """
+    Convert any input string into a stable 128-bit integer trace ID.
+
+    This uses SHA-256 hashing and takes the first 16 bytes (128 bits) of the digest.
+    It's suitable for generating consistent, unique identifiers from strings.
+    """
     if string is None:
         string = ""
     hash_object = hashlib.sha256(string.encode())
 
-    # Take the first 16 bytes (128 bits) of the hash
+    # Take the first 16 bytes (128 bits) of the hash digest
     digest = hash_object.digest()[:16]
 
-    # Convert to integer (128 bits)
+    # Convert to a 128-bit integer
     return int.from_bytes(digest, byteorder="big")
 
 
@@ -153,8 +165,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        external_trace_id = trace_info.metadata.get("external_trace_id")
-        trace_id = external_trace_id or uuid_to_trace_id(trace_info.workflow_run_id)
+        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.workflow_run_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -310,7 +321,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
         }
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.message_id)
         message_span_id = RandomIdGenerator().generate_span_id()
         span_context = SpanContext(
             trace_id=trace_id,
@@ -406,7 +417,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -468,7 +479,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -521,7 +532,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -568,7 +579,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "tool_config": json.dumps(trace_info.tool_config, ensure_ascii=False),
         }
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         tool_span_id = RandomIdGenerator().generate_span_id()
         logger.info("[Arize/Phoenix] Creating tool trace with trace_id: %s, span_id: %s", trace_id, tool_span_id)
 
@@ -629,7 +640,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,

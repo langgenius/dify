@@ -95,8 +95,8 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 logging.info(click.style(str(ex), fg="yellow"))
                 redis_client.delete(retry_indexing_cache_key)
                 logging.exception("retry_document_indexing_task failed, document_id: %s", document_id)
-            end_at = time.perf_counter()
-            logging.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
+        end_at = time.perf_counter()
+        logging.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception(
             "retry_document_indexing_task failed, dataset_id: %s, document_ids: %s", dataset_id, document_ids
