@@ -46,7 +46,7 @@ const Empty = ({
       }
       <div className='absolute left-1/2 top-1/2 z-[2] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center'>
         <div className='relative mb-3 flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg'>
-          <Group className='h-5 w-5' />
+          <Group className='h-5 w-5 text-text-primary' />
           <Line className='absolute right-[-1px] top-1/2 -translate-y-1/2' />
           <Line className='absolute left-[-1px] top-1/2 -translate-y-1/2' />
           <Line className='absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90' />
