@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional, Dict, List
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -79,7 +79,7 @@ class ModelProviderService:
 
         return provider_responses
 
-    def _find_models_in_workflows(self, tenant_id: str, provider: str) -> dict:
+    def _find_models_in_workflows(self, tenant_id: str, provider: str) -> Dict[str, List[Dict[str, Any]]]:
         """Find model usages in workflows."""
         from models.model import App
         from models.workflow import Workflow
@@ -91,7 +91,7 @@ class ModelProviderService:
             .all()
         )
 
-        model_usages = {}
+        model_usages: Dict[str, List[Dict[str, Any]]] = {}
         for workflow, app_name in results:
             try:
                 graph = json.loads(workflow.graph)
@@ -110,7 +110,7 @@ class ModelProviderService:
 
         return model_usages
 
-    def _find_models_in_app_configs(self, tenant_id: str, provider: str) -> dict:
+    def _find_models_in_app_configs(self, tenant_id: str, provider: str) -> Dict[str, List[Dict[str, Any]]]:
         """Find model usages in app configurations."""
         from models.model import App
 
@@ -123,7 +123,7 @@ class ModelProviderService:
             .all()
         )
 
-        model_usages = {}
+        model_usages: Dict[str, List[Dict[str, Any]]] = {}
         for app_config, app_name in results:
             # find model in model_id
             if app_config.provider == provider and (model_name := app_config.model_id):
@@ -157,7 +157,7 @@ class ModelProviderService:
         app_config_usages = self._find_models_in_app_configs(tenant_id, provider)
 
         # Merge usages, removing duplicates by app_id
-        all_usages = {}
+        all_usages: Dict[str, Dict[str, Any]] = {}
         for source in [workflow_usages, app_config_usages]:
             for model_name, usages in source.items():
                 if model_name not in all_usages:
