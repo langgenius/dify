@@ -224,16 +224,16 @@ class AnswerStreamProcessor(StreamProcessor):
 
         def mask_secret(match):
             secret_value = match.group(0)
-            
+
             # Skip if this looks like an already masked string (contains many asterisks)
-            if '*' * 6 in secret_value:
+            if "*" * 6 in secret_value:
                 return secret_value
-                
+
             # Check if this looks like a secret (contains both letters and numbers, or is very long)
             has_digit = any(c.isdigit() for c in secret_value)
             has_alpha = any(c.isalpha() for c in secret_value)
             is_long_enough = len(secret_value) >= 6
-            
+
             if has_digit and has_alpha and is_long_enough:
                 # Use the encrypter's obfuscated_token function for consistent masking
                 return encrypter.obfuscated_token(secret_value)
