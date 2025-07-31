@@ -35,7 +35,9 @@ class Order(StrEnum):
 class FilterCondition(BaseModel):
     key: str = ""
     comparison_operator: FilterOperator = FilterOperator.CONTAINS
-    value: str | Sequence[str] = ""
+    # the value is bool if the filter operator is comparing with
+    # a boolean constant.
+    value: str | Sequence[str] | bool = ""
 
 
 class FilterBy(BaseModel):
