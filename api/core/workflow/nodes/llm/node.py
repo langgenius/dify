@@ -1006,21 +1006,6 @@ class LLMNode(BaseNode):
             )
         return saved_file
 
-    def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
-        """
-        Fetch model schema
-        """
-        model_name = self._node_data.model.name
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
-        )
-        model_type_instance = model_instance.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-        model_credentials = model_instance.credentials
-        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
-        return model_schema
-
     @staticmethod
     def fetch_structured_output_schema(
         *,
