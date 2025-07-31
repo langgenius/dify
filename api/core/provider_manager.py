@@ -272,9 +272,10 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        stmt = select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == tenant_id,
-                TenantDefaultModel.model_type == model_type.to_origin_model_type(),
-            )
+        stmt = select(TenantDefaultModel).where(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type.to_origin_model_type(),
+        )
         default_model = db.session.execute(stmt).scalars().first()
 
         # If it does not exist, get the first available provider model from get_configurations
@@ -358,9 +359,10 @@ class ProviderManager:
         model_names = [model.model for model in available_models]
         if model not in model_names:
             raise ValueError(f"Model {model} does not exist.")
-        stmt = select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == tenant_id,
-                TenantDefaultModel.model_type == model_type.to_origin_model_type(),
-            )
+        stmt = select(TenantDefaultModel).where(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type.to_origin_model_type(),
+        )
         default_model = db.session.execute(stmt).scalars().first()
 
         # create or update TenantDefaultModel record
@@ -528,11 +530,12 @@ class ProviderManager:
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
                             db.session.rollback()
-                            stmt = select(Provider).where(Provider.tenant_id == tenant_id,
-                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                    Provider.provider_type == ProviderType.SYSTEM.value,
-                                    Provider.quota_type == ProviderQuotaType.TRIAL.value,
-                                )
+                            stmt = select(Provider).where(
+                                Provider.tenant_id == tenant_id,
+                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                                Provider.provider_type == ProviderType.SYSTEM.value,
+                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+                            )
                             existed_provider_record = db.session.execute(stmt).scalars().first()
                             if not existed_provider_record:
                                 continue

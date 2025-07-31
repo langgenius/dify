@@ -3,6 +3,7 @@ from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
@@ -85,12 +86,13 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
         document_context_list = []
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
-        stmt = select(DocumentSegment).where(DocumentSegment.dataset_id.in_(self.dataset_ids),
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
-                DocumentSegment.index_node_id.in_(index_node_ids),
-            )
+        stmt = select(DocumentSegment).where(
+            DocumentSegment.dataset_id.in_(self.dataset_ids),
+            DocumentSegment.completed_at.isnot(None),
+            DocumentSegment.status == "completed",
+            DocumentSegment.enabled == True,
+            DocumentSegment.index_node_id.in_(index_node_ids),
+        )
         segments = db.session.execute(stmt).scalars().all()
 
         if segments:
@@ -108,10 +110,11 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 resource_number = 1
                 for segment in sorted_segments:
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                    stmt = select(Document).where(Document.id == segment.document_id,
-                            Document.enabled == True,
-                            Document.archived == False,
-                        )
+                    stmt = select(Document).where(
+                        Document.id == segment.document_id,
+                        Document.enabled == True,
+                        Document.archived == False,
+                    )
                     document = db.session.execute(stmt).scalars().first()
                     if dataset and document:
                         source = RetrievalSourceMetadata(

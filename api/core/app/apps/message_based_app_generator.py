@@ -3,6 +3,8 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from sqlalchemy import select
+
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -83,7 +85,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
     def _get_app_model_config(self, app_model: App, conversation: Optional[Conversation] = None) -> AppModelConfig:
         if conversation:
-            stmt = select(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
+            stmt = select(AppModelConfig).where(
+                AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
+            )
             app_model_config = db.session.execute(stmt).scalars().first()
 
             if not app_model_config:

@@ -20,6 +20,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from requests.auth import HTTPDigestAuth
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field

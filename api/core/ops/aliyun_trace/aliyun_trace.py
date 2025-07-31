@@ -5,6 +5,7 @@ from typing import Optional
 from urllib.parse import urljoin
 
 from opentelemetry.trace import Status, StatusCode
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (

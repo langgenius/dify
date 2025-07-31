@@ -7,6 +7,7 @@ from json import JSONDecodeError
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -188,10 +189,11 @@ class ProviderConfiguration(BaseModel):
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
-        stmt = select(Provider).where(Provider.tenant_id == self.tenant_id,
-                Provider.provider_type == ProviderType.CUSTOM.value,
-                Provider.provider_name.in_(provider_names),
-            )
+        stmt = select(Provider).where(
+            Provider.tenant_id == self.tenant_id,
+            Provider.provider_type == ProviderType.CUSTOM.value,
+            Provider.provider_name.in_(provider_names),
+        )
         provider_record = db.session.execute(stmt).scalars().first()
 
         return provider_record
@@ -343,11 +345,12 @@ class ProviderConfiguration(BaseModel):
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == self.tenant_id,
-                ProviderModel.provider_name.in_(provider_names),
-                ProviderModel.model_name == model,
-                ProviderModel.model_type == model_type.to_origin_model_type(),
-            )
+        stmt = select(ProviderModel).where(
+            ProviderModel.tenant_id == self.tenant_id,
+            ProviderModel.provider_name.in_(provider_names),
+            ProviderModel.model_name == model,
+            ProviderModel.model_type == model_type.to_origin_model_type(),
+        )
         provider_model_record = db.session.execute(stmt).scalars().first()
 
         return provider_model_record
@@ -614,11 +617,12 @@ class ProviderConfiguration(BaseModel):
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
-        stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == self.tenant_id,
-                ProviderModelSetting.provider_name.in_(provider_names),
-                ProviderModelSetting.model_type == model_type.to_origin_model_type(),
-                ProviderModelSetting.model_name == model,
-            )
+        stmt = select(ProviderModelSetting).where(
+            ProviderModelSetting.tenant_id == self.tenant_id,
+            ProviderModelSetting.provider_name.in_(provider_names),
+            ProviderModelSetting.model_type == model_type.to_origin_model_type(),
+            ProviderModelSetting.model_name == model,
+        )
         model_setting = db.session.execute(stmt).scalars().first()
 
         if model_setting:
@@ -675,9 +679,10 @@ class ProviderConfiguration(BaseModel):
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
             provider_names.append(model_provider_id.provider_name)
-        stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == self.tenant_id,
-                TenantPreferredModelProvider.provider_name.in_(provider_names),
-            )
+        stmt = select(TenantPreferredModelProvider).where(
+            TenantPreferredModelProvider.tenant_id == self.tenant_id,
+            TenantPreferredModelProvider.provider_name.in_(provider_names),
+        )
         preferred_model_provider = db.session.execute(stmt).scalars().first()
 
         if preferred_model_provider:

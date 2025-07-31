@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from core.agent.entities import AgentEntity

@@ -3,6 +3,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
+from sqlalchemy import select
+
 from configs import dify_config
 from controllers.web.passport import generate_session_id
 from core.app.app_config.entities import VariableEntity, VariableEntityType

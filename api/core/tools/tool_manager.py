@@ -8,6 +8,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from yarl import URL
 
 import contexts
@@ -196,9 +197,10 @@ class ToolManager:
                 # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
-                        stmt = select(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.id == credential_id,
-                            )
+                        stmt = select(BuiltinToolProvider).where(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
+                        )
                         builtin_provider = db.session.execute(stmt).scalars().first()
                     except Exception as e:
                         builtin_provider = None
@@ -311,7 +313,9 @@ class ToolManager:
                 ),
             )
         elif provider_type == ToolProviderType.WORKFLOW:
-            stmt = select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+            stmt = select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
+            )
             workflow_provider = db.session.execute(stmt).scalars().first()
 
             if workflow_provider is None:

@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Sequence
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
@@ -58,10 +60,11 @@ class DatasetIndexToolCallbackHandler:
                     )
                     continue
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                    stmt = select(ChildChunk).where(ChildChunk.index_node_id == document.metadata["doc_id"],
-                            ChildChunk.dataset_id == dataset_document.dataset_id,
-                            ChildChunk.document_id == dataset_document.id,
-                        )
+                    stmt = select(ChildChunk).where(
+                        ChildChunk.index_node_id == document.metadata["doc_id"],
+                        ChildChunk.dataset_id == dataset_document.dataset_id,
+                        ChildChunk.document_id == dataset_document.id,
+                    )
                     child_chunk = db.session.execute(stmt).scalars().first()
                     if child_chunk:
                         segment = (

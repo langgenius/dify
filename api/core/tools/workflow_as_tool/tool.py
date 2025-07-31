@@ -4,6 +4,7 @@ from collections.abc import Generator
 from typing import Any, Optional, cast
 
 from flask_login import current_user
+from sqlalchemy import select
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool

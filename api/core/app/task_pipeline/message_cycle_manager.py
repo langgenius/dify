@@ -3,6 +3,7 @@ from threading import Thread
 from typing import Optional, Union
 
 from flask import Flask, current_app
+from sqlalchemy import select
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -80,6 +81,7 @@ class MessageCycleManager:
 
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
+            # get conversation and message
             stmt = select(Conversation).where(Conversation.id == conversation_id)
             conversation = db.session.execute(stmt).scalars().first()
 

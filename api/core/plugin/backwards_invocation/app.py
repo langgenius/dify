@@ -1,6 +1,8 @@
 from collections.abc import Generator, Mapping
 from typing import Optional, Union
 
+from sqlalchemy import select
+
 from controllers.service_api.wraps import create_or_update_end_user_for_user_id
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator

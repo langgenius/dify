@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
@@ -377,11 +378,12 @@ class RetrievalService:
                     index_node_id = document.metadata.get("doc_id")
                     if not index_node_id:
                         continue
-                    stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_document.dataset_id,
-                            DocumentSegment.enabled == True,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.index_node_id == index_node_id,
-                        )
+                    stmt = select(DocumentSegment).where(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.index_node_id == index_node_id,
+                    )
                     segment = db.session.execute(stmt).scalars().first()
 
                     if not segment:

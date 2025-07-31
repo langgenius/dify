@@ -224,6 +224,7 @@ class OpsTraceManager:
 
         if not trace_config_data:
             return None
+        # decrypt_token
         stmt = select(App).where(App.id == app_id)
         app = db.session.execute(stmt).scalars().first()
         if not app:

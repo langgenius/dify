@@ -10,6 +10,7 @@ from typing import Any, Optional, cast
 
 from flask import current_app
 from flask_login import current_user
+from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -55,7 +56,10 @@ class IndexingRunner:
 
                 if not dataset:
                     raise ValueError("no dataset found")
-                stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                # get the process rule
+                stmt = select(DatasetProcessRule).where(
+                    DatasetProcessRule.id == dataset_document.dataset_process_rule_id
+                )
                 processing_rule = db.session.execute(stmt).scalars().first()
                 if not processing_rule:
                     raise ValueError("no process rule found")
@@ -116,6 +120,7 @@ class IndexingRunner:
                     # delete child chunks
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
+            # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
             processing_rule = db.session.execute(stmt).scalars().first()
             if not processing_rule:
@@ -198,6 +203,8 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
+            # build index
+            # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
             processing_rule = db.session.execute(stmt).scalars().first()
 

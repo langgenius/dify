@@ -15,6 +15,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.trace import SpanContext, TraceFlags, TraceState
+from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import ArizeConfig, PhoenixConfig
@@ -699,7 +700,20 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def _get_workflow_nodes(self, workflow_run_id: str):
         """Helper method to get workflow nodes"""
-        stmt = select(WorkflowNodeExecutionModel.id).where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+        stmt = select(
+            WorkflowNodeExecutionModel.id,
+            WorkflowNodeExecutionModel.tenant_id,
+            WorkflowNodeExecutionModel.app_id,
+            WorkflowNodeExecutionModel.title,
+            WorkflowNodeExecutionModel.node_type,
+            WorkflowNodeExecutionModel.status,
+            WorkflowNodeExecutionModel.inputs,
+            WorkflowNodeExecutionModel.outputs,
+            WorkflowNodeExecutionModel.created_at,
+            WorkflowNodeExecutionModel.elapsed_time,
+            WorkflowNodeExecutionModel.process_data,
+            WorkflowNodeExecutionModel.execution_metadata,
+        ).where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
         workflow_nodes = db.session.execute(stmt).scalars().all()
         return workflow_nodes
 

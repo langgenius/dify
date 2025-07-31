@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from sqlalchemy import Float, and_, func, or_, text
+from sqlalchemy import Float, and_, func, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
 from sqlalchemy.orm import Session
 
@@ -368,10 +368,11 @@ class KnowledgeRetrievalNode(BaseNode):
                 for record in records:
                     segment = record.segment
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
-                    stmt = select(Document).where(Document.id == segment.document_id,
-                            Document.enabled == True,
-                            Document.archived == False,
-                        )
+                    stmt = select(Document).where(
+                        Document.id == segment.document_id,
+                        Document.enabled == True,
+                        Document.archived == False,
+                    )
                     document = db.session.execute(stmt).scalars().first()
                     if dataset and document:
                         source = {
@@ -501,6 +502,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> list[dict[str, Any]]:
+        # get all metadata field
         stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = db.session.execute(stmt).scalars().all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]

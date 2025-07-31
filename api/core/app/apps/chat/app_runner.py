@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
