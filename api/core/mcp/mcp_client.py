@@ -69,13 +69,13 @@ class MCPClient:
 
         parsed_url = urlparse(self.server_url)
         path = parsed_url.path or ""
-        method_name = path.removesuffix("/").lower()
+        method_name = path.rstrip("/").split("/")[-1] if path else ""
         if method_name in connection_methods:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
         else:
             try:
-                logger.debug(f"Not supported method {method_name} found in URL path, trying default 'mcp' method.")
+                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
             except MCPConnectionError:
                 logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")

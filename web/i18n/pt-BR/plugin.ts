@@ -84,6 +84,16 @@ const translation = {
     configureTool: 'Ferramenta de configuração',
     endpointsDocLink: 'Veja o documento',
     endpointModalTitle: 'Ponto de extremidade de configuração',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'ajustes de negócios',
+        ownershipTransferred: 'propriedade transferida',
+        noMaintainer: 'sem mantenedor',
+      },
+      onlyReason: 'Este plugin foi descontinuado devido a {{deprecatedReason}} e não será mais atualizado.',
+      noReason: 'Este plugin foi descontinuado e não será mais atualizado.',
+      fullMessage: 'Este plugin foi descontinuado devido a {{deprecatedReason}}, e não receberá mais atualizações. Por favor, use <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> em vez disso.',
+    },
   },
   debugInfo: {
     title: 'Depuração',
@@ -236,6 +246,57 @@ const translation = {
     addOAuth: 'Adicionar OAuth',
     useApiAuthDesc: 'Após configurar as credenciais, todos os membros dentro do espaço de trabalho podem usar esta ferramenta ao orquestrar aplicações.',
     clientInfo: 'Como não foram encontrados segredos de cliente do sistema para este provedor de ferramentas, é necessário configurá-lo manualmente. Para redirect_uri, use',
+  },
+  deprecated: 'Obsoleto',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Desativado',
+        description: 'Os plugins não atualizarão automaticamente',
+      },
+      fixOnly: {
+        selectedDescription: 'Atualização automática apenas para versões de patch',
+        name: 'Reparar Apenas',
+        description: 'Atualização automática apenas para versões de patch (por exemplo, 1.0.1 → 1.0.2). Mudanças de versão menor não ativarão atualizações.',
+      },
+      latest: {
+        description: 'Sempre atualize para a versão mais recente',
+        selectedDescription: 'Sempre atualize para a versão mais recente',
+        name: 'Último',
+      },
+    },
+    upgradeMode: {
+      all: 'Atualizar tudo',
+      exclude: 'Excluir selecionados',
+      partial: 'Somente selecionado',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Plugins selecionados não serão atualizados automaticamente',
+      partial: 'Apenas plugins selecionados serão atualizados automaticamente. Nenhum plugin está atualmente selecionado, então nenhum plugin será atualizado automaticamente.',
+    },
+    operation: {
+      select: 'Selecionar plugins',
+      clearAll: 'Limpar tudo',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'Descer de nível de qualquer forma',
+      exclude: 'Excluir da atualização automática',
+      title: 'Rebaixamento do Plugin',
+      description: 'A atualização automática está atualmente habilitada para este plugin. Reverter a versão pode causar a sobrescrição de suas alterações durante a próxima atualização automática.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'Nenhum plugin foi encontrado.',
+      noInstalled: 'Nenhum plugin instalado',
+    },
+    updateTime: 'Atualizar hora',
+    automaticUpdates: 'Atualizações automáticas',
+    excludeUpdate: 'Os seguintes {{num}} plugins não serão atualizados automaticamente',
+    updateTimeTitle: 'Atualizar hora',
+    specifyPluginsToUpdate: 'Especifique os plugins a serem atualizados',
+    changeTimezone: 'Para mudar o fuso horário, vá para <setTimezone>Configurações</setTimezone>',
+    nextUpdateTime: 'Próxima atualização automática: {{time}}',
+    partialUPdate: 'Apenas os seguintes {{num}} plugins serão atualizados automaticamente',
+    updateSettings: 'Atualizar Configurações',
   },
 }
 

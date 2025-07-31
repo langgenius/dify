@@ -84,6 +84,16 @@ const translation = {
     endpointModalDesc: 'پس از پیکربندی، می توان از ویژگی های ارائه شده توسط افزونه از طریق نقاط پایانی API استفاده کرد.',
     switchVersion: 'نسخه سوئیچ',
     endpointDeleteContent: 'آیا می خواهید {{name}} را حذف کنید؟',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'مالکیت منتقل شد',
+        businessAdjustments: 'تنظیمات کسب و کار',
+        noMaintainer: 'بدون نگهدارنده',
+      },
+      noReason: 'این افزونه منسوخ شده است و دیگر به روز رسانی نخواهد شد.',
+      onlyReason: 'این افزونه به دلیل {{deprecatedReason}} منسوخ شده و دیگر به‌روزرسانی نخواهد شد.',
+      fullMessage: 'این افزونه به دلیل {{deprecatedReason}} منسوخ شده است و دیگر به‌روزرسانی نخواهد شد. لطفا به‌جای آن از <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> استفاده کنید.',
+    },
   },
   debugInfo: {
     title: 'اشکال زدایی',
@@ -236,6 +246,57 @@ const translation = {
     oauthClientSettings: 'تنظیمات کلاینت اوتور',
     clientInfo: 'از آنجایی که هیچ راز مشتری سیستم برای این ارائه‌دهنده ابزار پیدا نشد، تنظیم دستی آن ضروری است، لطفاً برای redirect_uri از',
     useApiAuthDesc: 'پس از پیکربندی اعتبارنامه‌ها، تمامی اعضای درون فضای کاری می‌توانند از این ابزار هنگام نظم‌دهی به برنامه‌ها استفاده کنند.',
+  },
+  deprecated: 'منسوخ شده',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'ناتوان',
+        description: 'پلاگین‌ها به‌طور خودکار به‌روزرسانی نخواهند شد',
+      },
+      fixOnly: {
+        name: 'فقط تعمیر کنید',
+        selectedDescription: 'به‌روزرسانی خودکار تنها برای نسخه‌های وصله',
+        description: 'به‌روزرسانی خودکار فقط برای نسخه‌های پچ (مانند ۱.۰.۱ → ۱.۰.۲). تغییرات جزئی نسخه باعث راه‌اندازی به‌روزرسانی‌ها نمی‌شود.',
+      },
+      latest: {
+        name: 'جدیدترین',
+        selectedDescription: 'همیشه به آخرین نسخه بروزرسانی کنید',
+        description: 'همیشه به آخرین نسخه بروزرسانی کنید',
+      },
+    },
+    upgradeMode: {
+      all: 'همه را بروزرسانی کن',
+      partial: 'فقط انتخاب شده',
+      exclude: 'انتخاب شده را استثنا کن',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'افزونه‌های انتخاب شده به‌صورت خودکار به‌روزرسانی نخواهند شد',
+      partial: 'فقط پلاگین‌های انتخاب شده به‌روزرسانی خودکار خواهند داشت. در حال حاضر هیچ پلاگینی انتخاب نشده است، بنابراین هیچ پلاگینی به‌روزرسانی خودکار نخواهد شد.',
+    },
+    operation: {
+      select: 'افزونه‌ها را انتخاب کنید',
+      clearAll: 'همه را پاک کن',
+    },
+    pluginDowngradeWarning: {
+      title: 'کاهش نسخه افزونه',
+      downgrade: 'به هر حال تنزل دهید',
+      exclude: 'از بروزرسانی خودکار مستثنی شود',
+      description: 'به‌روزرسانی خودکار برای این افزونه در حال حاضر فعال است. کاهش نسخه ممکن است باعث شود تغییرات شما در حین به‌روزرسانی خودکار بعدی نادیده گرفته شود.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'هیچ افزونه‌ای یافت نشد',
+      noInstalled: 'هیچ افزونه‌ای نصب نشده است',
+    },
+    updateTimeTitle: 'زمان به‌روزرسانی',
+    specifyPluginsToUpdate: 'ماژول‌هایی را برای به‌روزرسانی مشخص کنید',
+    updateTime: 'زمان به‌روزرسانی',
+    automaticUpdates: 'بروز رسانی خودکار',
+    updateSettings: 'تنظیمات را به‌روزرسانی کنید',
+    changeTimezone: 'برای تغییر منطقه زمانی، به <setTimezone>تنظیمات</setTimezone> بروید',
+    excludeUpdate: 'پلاگین‌های زیر {{num}} به‌طور خودکار به‌روزرسانی نخواهند شد',
+    nextUpdateTime: 'به‌روزرسانی خودکار بعدی: {{time}}',
+    partialUPdate: 'تنها {{num}} پلاگین زیر به‌طور خودکار به‌روزرسانی خواهد شد.',
   },
 }
 

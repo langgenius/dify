@@ -70,7 +70,6 @@ const translation = {
   activated: '지금 로그인하세요',
   adminInitPassword: '관리자 초기화 비밀번호',
   validate: '확인',
-  sso: 'SSO 로 계속하기',
   checkCode: {
     verify: '확인',
     verificationCode: '인증 코드',

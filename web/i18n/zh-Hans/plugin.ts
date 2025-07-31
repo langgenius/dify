@@ -29,6 +29,7 @@ const translation = {
   searchTools: '搜索工具...',
   installPlugin: '安装插件',
   installFrom: '安装源',
+  deprecated: '已弃用',
   list: {
     noInstalled: '无已安装的插件',
     notFound: '未找到插件',
@@ -99,6 +100,16 @@ const translation = {
     configureApp: '应用设置',
     configureModel: '模型设置',
     configureTool: '工具设置',
+    deprecation: {
+      fullMessage: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。请使用<CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>替代。',
+      onlyReason: '由于{{deprecatedReason}}，此插件已被弃用，将不再发布新版本。',
+      noReason: '此插件已被弃用，将不再发布新版本。',
+      reason: {
+        businessAdjustments: '业务调整',
+        ownershipTransferred: '所有权转移',
+        noMaintainer: '无人维护',
+      },
+    },
   },
   install: '{{num}} 次安装',
   installAction: '安装',
@@ -113,6 +124,56 @@ const translation = {
     everyone: '所有人',
     admins: '管理员',
     noone: '无人',
+  },
+  autoUpdate: {
+    automaticUpdates: '自动更新',
+    updateTime: '更新时间',
+    specifyPluginsToUpdate: '指定要更新的插件',
+    strategy: {
+      disabled: {
+        name: '禁用',
+        description: '插件将不会自动更新',
+      },
+      fixOnly: {
+        name: '仅修复',
+        description: '仅自动更新补丁版本（例如，1.0.1 → 1.0.2）。次要版本更改不会触发更新。',
+        selectedDescription: '仅自动更新补丁版本',
+      },
+      latest: {
+        name: '最新',
+        description: '始终更新到最新版本',
+        selectedDescription: '始终更新到最新版本',
+      },
+    },
+    updateTimeTitle: '更新时间',
+    upgradeMode: {
+      all: '更新全部',
+      exclude: '排除选定',
+      partial: '仅选定',
+    },
+    upgradeModePlaceholder: {
+      exclude: '选定的插件将不会自动更新',
+      partial: '仅选定的插件将自动更新。目前未选择任何插件，因此不会自动更新任何插件。',
+    },
+    excludeUpdate: '以下 {{num}} 个插件将不会自动更新',
+    partialUPdate: '仅以下 {{num}} 个插件将自动更新',
+    operation: {
+      clearAll: '清除所有',
+      select: '选择插件',
+    },
+    nextUpdateTime: '下次自动更新时间: {{time}}',
+    pluginDowngradeWarning: {
+      title: '插件降级',
+      description: '此插件目前已启用自动更新。降级版本可能会导致您的更改在下次自动更新时被覆盖。',
+      downgrade: '仍然降级',
+      exclude: '从自动更新中排除',
+    },
+    noPluginPlaceholder: {
+      noFound: '未找到插件',
+      noInstalled: '未安装插件',
+    },
+    updateSettings: '更新设置',
+    changeTimezone: '要更改时区，请前往<setTimezone>设置</setTimezone>',
   },
   pluginInfoModal: {
     title: '插件信息',

@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import type { CustomCollectionBackend } from '../types'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { createCustomCollection } from '@/service/tools'
 import Toast from '@/app/components/base/toast'

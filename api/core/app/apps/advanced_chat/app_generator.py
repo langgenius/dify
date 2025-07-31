@@ -7,7 +7,8 @@ from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -23,6 +24,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
+from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
@@ -112,7 +114,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", False)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", False),
+            **extract_external_trace_id_from_args(args),
+        }
 
         # get conversation
         conversation = None
@@ -482,21 +487,52 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
 
         with preserve_flask_contexts(flask_app, context_vars=context):
-            try:
-                # get conversation and message
-                conversation = self._get_conversation(conversation_id)
-                message = self._get_message(message_id)
+            # get conversation and message
+            conversation = self._get_conversation(conversation_id)
+            message = self._get_message(message_id)
 
-                # chatbot app
-                runner = AdvancedChatAppRunner(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message,
-                    dialogue_count=self._dialogue_count,
-                    variable_loader=variable_loader,
+            with Session(db.engine, expire_on_commit=False) as session:
+                workflow = session.scalar(
+                    select(Workflow).where(
+                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                        Workflow.app_id == application_generate_entity.app_config.app_id,
+                        Workflow.id == application_generate_entity.app_config.workflow_id,
+                    )
                 )
+                if workflow is None:
+                    raise ValueError("Workflow not found")
 
+                # Determine system_user_id based on invocation source
+                is_external_api_call = application_generate_entity.invoke_from in {
+                    InvokeFrom.WEB_APP,
+                    InvokeFrom.SERVICE_API,
+                }
+
+                if is_external_api_call:
+                    # For external API calls, use end user's session ID
+                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                    system_user_id = end_user.session_id if end_user else ""
+                else:
+                    # For internal calls, use the original user ID
+                    system_user_id = application_generate_entity.user_id
+
+                app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
+                if app is None:
+                    raise ValueError("App not found")
+
+            runner = AdvancedChatAppRunner(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                conversation=conversation,
+                message=message,
+                dialogue_count=self._dialogue_count,
+                variable_loader=variable_loader,
+                workflow=workflow,
+                system_user_id=system_user_id,
+                app=app,
+            )
+
+            try:
                 runner.run()
             except GenerateTaskStoppedError:
                 pass
@@ -564,5 +600,5 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(f"Failed to process generate task pipeline, conversation_id: {conversation.id}")
+                logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e

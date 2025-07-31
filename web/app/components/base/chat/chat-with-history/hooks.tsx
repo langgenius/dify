@@ -16,7 +16,7 @@ import type {
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
@@ -35,7 +35,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -181,6 +181,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
+  const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
@@ -210,7 +211,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
-          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.select.default,
           type: 'select',
         }
       }
@@ -249,7 +250,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     // init inputs from url params
     (async () => {
       const inputs = await getRawInputsFromUrlParams()
+      const userVariables = await getRawUserVariablesFromUrlParams()
       setInitInputs(inputs)
+      setInitUserVariables(userVariables)
     })()
   }, [])
 
@@ -520,5 +523,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   }
 }

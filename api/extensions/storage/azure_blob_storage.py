@@ -69,7 +69,7 @@ class AzureBlobStorage(BaseStorage):
         if self.account_key == "managedidentity":
             return BlobServiceClient(account_url=self.account_url, credential=self.credential)  # type: ignore
 
-        cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
+        cache_key = f"azure_blob_sas_token_{self.account_name}_{self.account_key}"
         cache_result = redis_client.get(cache_key)
         if cache_result is not None:
             sas_token = cache_result.decode("utf-8")

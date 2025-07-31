@@ -124,7 +124,7 @@ class GetProcessRuleApi(Resource):
             # get the latest process rule
             dataset_process_rule = (
                 db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.dataset_id == document.dataset_id)
+                .where(DatasetProcessRule.dataset_id == document.dataset_id)
                 .order_by(DatasetProcessRule.created_at.desc())
                 .limit(1)
                 .one_or_none()
@@ -176,7 +176,7 @@ class DatasetDocumentListApi(Resource):
 
         if search:
             search = f"%{search}%"
-            query = query.filter(Document.name.like(search))
+            query = query.where(Document.name.like(search))
 
         if sort.startswith("-"):
             sort_logic = desc
@@ -212,7 +212,7 @@ class DatasetDocumentListApi(Resource):
             for document in documents:
                 completed_segments = (
                     db.session.query(DocumentSegment)
-                    .filter(
+                    .where(
                         DocumentSegment.completed_at.isnot(None),
                         DocumentSegment.document_id == str(document.id),
                         DocumentSegment.status != "re_segment",
@@ -221,7 +221,7 @@ class DatasetDocumentListApi(Resource):
                 )
                 total_segments = (
                     db.session.query(DocumentSegment)
-                    .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                    .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                     .count()
                 )
                 document.completed_segments = completed_segments
@@ -417,7 +417,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 file = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
+                    .where(UploadFile.tenant_id == document.tenant_id, UploadFile.id == file_id)
                     .first()
                 )
 
@@ -492,7 +492,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 file_id = data_source_info["upload_file_id"]
                 file_detail = (
                     db.session.query(UploadFile)
-                    .filter(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id == file_id)
+                    .where(UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id == file_id)
                     .first()
                 )
 
@@ -568,7 +568,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         for document in documents:
             completed_segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
                     DocumentSegment.status != "re_segment",
@@ -577,7 +577,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
@@ -611,7 +611,7 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         completed_segments = (
             db.session.query(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.completed_at.isnot(None),
                 DocumentSegment.document_id == str(document_id),
                 DocumentSegment.status != "re_segment",
@@ -620,7 +620,7 @@ class DocumentIndexingStatusApi(DocumentResource):
         )
         total_segments = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
+            .where(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
             .count()
         )
 
@@ -970,7 +970,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception:
-                logging.exception(f"Failed to retry document, document id: {document_id}")
+                logging.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)

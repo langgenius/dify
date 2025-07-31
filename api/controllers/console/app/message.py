@@ -5,7 +5,6 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-import services
 from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -56,7 +55,7 @@ class ChatMessageListApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
+            .where(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -66,7 +65,7 @@ class ChatMessageListApi(Resource):
         if args["first_id"]:
             first_message = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id, Message.id == args["first_id"])
+                .where(Message.conversation_id == conversation.id, Message.id == args["first_id"])
                 .first()
             )
 
@@ -75,7 +74,7 @@ class ChatMessageListApi(Resource):
 
             history_messages = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
                     Message.id != first_message.id,
@@ -87,7 +86,7 @@ class ChatMessageListApi(Resource):
         else:
             history_messages = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id)
+                .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(args["limit"])
                 .all()
@@ -98,7 +97,7 @@ class ChatMessageListApi(Resource):
             current_page_first_message = history_messages[-1]
             rest_count = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < current_page_first_message.created_at,
                     Message.id != current_page_first_message.id,
@@ -133,7 +132,7 @@ class MessageFeedbackApi(Resource):
                 rating=args.get("rating"),
                 content=None,
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
@@ -167,7 +166,7 @@ class MessageAnnotationCountApi(Resource):
     @account_initialization_required
     @get_app_model
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 
         return {"count": count}
 
@@ -214,7 +213,7 @@ class MessageApi(Resource):
     def get(self, app_model, message_id):
         message_id = str(message_id)
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")

@@ -18,11 +18,11 @@ def handle(sender, **kwargs):
     documents = []
     start_at = time.perf_counter()
     for document_id in document_ids:
-        logging.info(click.style("Start process document: {}".format(document_id), fg="green"))
+        logging.info(click.style(f"Start process document: {document_id}", fg="green"))
 
         document = (
             db.session.query(Document)
-            .filter(
+            .where(
                 Document.id == document_id,
                 Document.dataset_id == dataset_id,
             )
@@ -42,7 +42,7 @@ def handle(sender, **kwargs):
         indexing_runner = IndexingRunner()
         indexing_runner.run(documents)
         end_at = time.perf_counter()
-        logging.info(click.style("Processed dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))
+        logging.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:

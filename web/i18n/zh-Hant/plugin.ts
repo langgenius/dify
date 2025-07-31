@@ -84,6 +84,16 @@ const translation = {
     configureModel: '配置模型',
     endpointModalTitle: '設置終端節點',
     endpointsDocLink: '查看文件',
+    deprecation: {
+      reason: {
+        businessAdjustments: '業務調整',
+        ownershipTransferred: '所有權轉移',
+        noMaintainer: '沒有維護者',
+      },
+      noReason: '此插件已被廢棄，將不再進行更新。',
+      onlyReason: '此插件因為 {{deprecatedReason}} 而被棄用，將不再更新。',
+      fullMessage: '由於 {{deprecatedReason}}，此插件已被棄用，將不再更新。請改用 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>。',
+    },
   },
   debugInfo: {
     viewDocs: '查看文件',
@@ -236,6 +246,57 @@ const translation = {
     useApi: '使用 API 金鑰',
     clientInfo: '由於未找到此工具提供者的系統客戶端秘密，因此需要手動設置，對於 redirect_uri，請使用',
     useApiAuthDesc: '配置完憑證後，工作區內的所有成員在協調應用程式時都可以使用此工具。',
+  },
+  deprecated: '不推薦使用的',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: '插件將不會自動更新',
+        name: '殘疾的',
+      },
+      fixOnly: {
+        name: '僅修理',
+        selectedDescription: '僅限於修補版本的自動更新',
+        description: '僅為補丁版本自動更新（例如：1.0.1 → 1.0.2）。次要版本變更不會觸發更新。',
+      },
+      latest: {
+        description: '始終更新至最新版本',
+        name: '最新',
+        selectedDescription: '始終更新至最新版本',
+      },
+    },
+    upgradeMode: {
+      all: '更新所有',
+      exclude: '排除選定的',
+      partial: '僅選擇',
+    },
+    upgradeModePlaceholder: {
+      partial: '只有選定的插件會自動更新。目前未選定任何插件，因此不會自動更新任何插件。',
+      exclude: '選定的插件將不會自動更新',
+    },
+    operation: {
+      select: '選擇插件',
+      clearAll: '清除所有',
+    },
+    pluginDowngradeWarning: {
+      downgrade: '無論如何降級',
+      title: '插件降級',
+      exclude: '排除自動更新',
+      description: '這個插件目前已啟用自動更新。降級版本可能會導致您的更改在下一次自動更新時被覆蓋。',
+    },
+    noPluginPlaceholder: {
+      noInstalled: '沒有安裝插件',
+      noFound: '未找到任何外掛',
+    },
+    automaticUpdates: '自動更新',
+    updateTime: '更新時間',
+    updateTimeTitle: '更新時間',
+    updateSettings: '更新設定',
+    partialUPdate: '只有以下 {{num}} 個插件將自動更新',
+    excludeUpdate: '以下 {{num}} 個插件將不會自動更新',
+    nextUpdateTime: '下次自動更新：{{time}}',
+    specifyPluginsToUpdate: '指定要更新的插件',
+    changeTimezone: '要更改時區，請前往<setTimezone>設定</setTimezone>',
   },
 }
 

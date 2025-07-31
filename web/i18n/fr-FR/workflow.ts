@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Outils',
     'allTool': 'Tous',
-    'builtInTool': 'Intégré',
     'customTool': 'Personnalisé',
     'workflowTool': 'Flux de travail',
     'question-understand': 'Compréhension des questions',
@@ -497,6 +496,7 @@ const translation = {
           title: 'Conditions de filtrage des métadonnées',
         },
         title: 'Filtrage des métadonnées',
+        tip: 'Le filtrage des métadonnées est le processus d\'utilisation des attributs de métadonnées (tels que les étiquettes, les catégories ou les autorisations d\'accès) pour affiner et contrôler la récupération d\'informations pertinentes au sein d\'un système.',
       },
     },
     http: {
@@ -586,7 +586,6 @@ const translation = {
         'not empty': 'n\'est pas vide',
         'null': 'est nul',
         'not null': 'n\'est pas nul',
-        'regex match': 'correspondance regex',
         'in': 'dans',
         'not in': 'pas dans',
         'exists': 'Existe',

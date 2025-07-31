@@ -42,9 +42,6 @@ from .types import EnumText, StringUUID
 
 _logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from models.model import AppMode
-
 
 class WorkflowType(Enum):
     """
@@ -343,7 +340,7 @@ class Workflow(Base):
 
         return (
             db.session.query(WorkflowToolProvider)
-            .filter(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
+            .where(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
             .count()
             > 0
         )
@@ -549,12 +546,12 @@ class WorkflowRun(Base):
         from models.model import Message
 
         return (
-            db.session.query(Message).filter(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
+            db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
         )
 
     @property
     def workflow(self):
-        return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+        return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
     def to_dict(self):
         return {

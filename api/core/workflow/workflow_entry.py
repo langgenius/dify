@@ -67,7 +67,7 @@ class WorkflowEntry:
         # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
-            raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
+            raise ValueError(f"Max workflow call depth {workflow_call_max_depth} reached.")
 
         # init workflow run state
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
@@ -163,6 +163,7 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
+        node.init_node_data(node_config_data)
 
         try:
             # variable selector to variable mapping
@@ -192,7 +193,13 @@ class WorkflowEntry:
             # run node
             generator = node.run()
         except Exception as e:
-            logger.exception(f"error while running node, {workflow.id=}, {node.id=}, {node.type_=}, {node.version()=}")
+            logger.exception(
+                "error while running node, workflow_id=%s, node_id=%s, node_type=%s, node_version=%s",
+                workflow.id,
+                node.id,
+                node.type_,
+                node.version(),
+            )
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
         return node, generator
 
@@ -273,6 +280,7 @@ class WorkflowEntry:
             graph=graph,
             graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
+        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping
@@ -295,7 +303,12 @@ class WorkflowEntry:
 
             return node, generator
         except Exception as e:
-            logger.exception(f"error while running node, {node.id=}, {node.type_=}, {node.version()=}")
+            logger.exception(
+                "error while running node, node_id=%s, node_type=%s, node_version=%s",
+                node.id,
+                node.type_,
+                node.version(),
+            )
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod

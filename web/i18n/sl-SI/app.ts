@@ -261,6 +261,7 @@ const translation = {
   noAccessPermission: 'Brez dovoljenja za dostop do spletne aplikacije',
   maxActiveRequestsPlaceholder: 'Vnesite 0 za neomejeno',
   maxActiveRequests: 'Maksimalno število hkratnih zahtevkov',
+  maxActiveRequestsTip: 'Največje število hkrati aktivnih zahtevkov na aplikacijo (0 za neomejeno)',
 }
 
 export default translation

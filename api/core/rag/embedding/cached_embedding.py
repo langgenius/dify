@@ -69,7 +69,7 @@ class CacheEmbedding(Embeddings):
                             # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
                             if np.isnan(normalized_embedding).any():
                                 # for issue #11827  float values are not json compliant
-                                logger.warning(f"Normalized embedding is nan: {normalized_embedding}")
+                                logger.warning("Normalized embedding is nan: %s", normalized_embedding)
                                 continue
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
@@ -122,7 +122,7 @@ class CacheEmbedding(Embeddings):
                 raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(f"Failed to embed query text '{text[:10]}...({len(text)} chars)'")
+                logging.exception("Failed to embed query text '%s...(%s chars)'", text[:10], len(text))
             raise ex
 
         try:
@@ -136,7 +136,9 @@ class CacheEmbedding(Embeddings):
             redis_client.setex(embedding_cache_key, 600, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(f"Failed to add embedding to redis for the text '{text[:10]}...({len(text)} chars)'")
+                logging.exception(
+                    "Failed to add embedding to redis for the text '%s...(%s chars)'", text[:10], len(text)
+                )
             raise ex
 
         return embedding_results  # type: ignore

@@ -66,6 +66,12 @@ Workflow applications offers non-session support and is ideal for translation, a
         Should be uniquely defined by the developer within the application.
         <br/>
         <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -690,11 +696,30 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) Whether it is enabled
-        - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+      - `document` (object) Document settings  
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Document number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `image` (object) Image settings  
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Image number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `audio` (object) Audio settings  
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Audio number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `video` (object) Video settings  
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Video number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `custom` (object) Custom settings  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Custom number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one. 
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)

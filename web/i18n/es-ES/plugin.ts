@@ -84,6 +84,16 @@ const translation = {
     endpointsDocLink: 'Ver el documento',
     endpointsEmpty: 'Haga clic en el botón \'+\' para agregar un punto de conexión',
     configureApp: 'Configurar la aplicación',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'propiedad transferida',
+        noMaintainer: 'sin mantenedor',
+        businessAdjustments: 'ajustes comerciales',
+      },
+      noReason: 'Este complemento ha sido descontinuado y ya no se actualizará.',
+      onlyReason: 'Este complemento ha sido desaprobado debido a {{deprecatedReason}} y ya no se actualizará.',
+      fullMessage: 'Este complemento ha sido descontinuado debido a {{deprecatedReason}}, y ya no será actualizado. Por favor, utilice <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> en su lugar.',
+    },
   },
   debugInfo: {
     title: 'Depuración',
@@ -235,6 +245,58 @@ const translation = {
     saveOnly: 'Guardar solo',
     clientInfo: 'Como no se encontraron secretos de cliente del sistema para este proveedor de herramientas, se requiere configurarlo manualmente. Para redirect_uri, por favor utiliza',
     oauthClientSettings: 'Configuración del cliente OAuth',
+    default: 'Predeterminado',
+  },
+  deprecated: 'Obsoleto',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Los plugins no se actualizarán automáticamente',
+        name: 'Discapacitado',
+      },
+      fixOnly: {
+        name: 'Arreglar Solo',
+        selectedDescription: 'Actualización automática solo para versiones de parches',
+        description: 'Actualización automática solo para versiones de parche (por ejemplo, 1.0.1 → 1.0.2). Los cambios de versión menor no activarán actualizaciones.',
+      },
+      latest: {
+        selectedDescription: 'Siempre actualiza a la última versión',
+        description: 'Siempre actualiza a la última versión',
+        name: 'último',
+      },
+    },
+    upgradeMode: {
+      partial: 'Solo seleccionado',
+      all: 'Actualizar todo',
+      exclude: 'Excluir seleccionado',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Los plugins seleccionados no se actualizarán automáticamente',
+      partial: 'Solo los plugins seleccionados se actualizarán automáticamente. Actualmente no hay plugins seleccionados, por lo que no se actualizarán automáticamente.',
+    },
+    operation: {
+      clearAll: 'Borrar todo',
+      select: 'Seleccionar complementos',
+    },
+    pluginDowngradeWarning: {
+      title: 'Degradar plugin',
+      exclude: 'Excluir de la actualización automática',
+      downgrade: 'De todas formas, degradar',
+      description: 'La actualización automática está actualmente habilitada para este complemento. Downgradear la versión puede hacer que tus cambios se sobrescriban durante la próxima actualización automática.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'No se encontraron complementos',
+      noInstalled: 'No hay plugins instalados',
+    },
+    updateTimeTitle: 'Hora de actualización',
+    nextUpdateTime: 'Próxima autoactualización: {{time}}',
+    specifyPluginsToUpdate: 'Especifique qué complementos actualizar',
+    updateTime: 'Actualizar tiempo',
+    updateSettings: 'Actualizar configuraciones',
+    excludeUpdate: 'Los siguientes {{num}} complementos no se actualizarán automáticamente',
+    partialUPdate: 'Solo los siguientes {{num}} complementos se actualizarán automáticamente',
+    changeTimezone: 'Para cambiar la zona horaria, ve a <setTimezone>Configuración</setTimezone>.',
+    automaticUpdates: 'Actualizaciones automáticas',
   },
 }
 

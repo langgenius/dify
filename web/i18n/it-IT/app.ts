@@ -232,6 +232,7 @@ const translation = {
     structuredTip: 'Le Uscite Strutturate sono una funzione che garantisce che il modello generi sempre risposte che aderiscano al tuo Schema JSON fornito.',
     notConfiguredTip: 'L\'output strutturato non è stato ancora configurato.',
     modelNotSupportedTip: 'Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.',
+    required: 'Necessario',
   },
   accessItemsDescription: {
     anyone: 'Chiunque può accedere all\'app web',
@@ -272,6 +273,7 @@ const translation = {
   noAccessPermission: 'Nessun permesso per accedere all\'app web',
   maxActiveRequestsPlaceholder: 'Inserisci 0 per illimitato',
   maxActiveRequests: 'Massimo numero di richieste concorrenti',
+  maxActiveRequestsTip: 'Numero massimo di richieste attive concorrenti per app (0 per illimitato)',
 }
 
 export default translation

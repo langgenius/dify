@@ -46,9 +46,11 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
-        if include_ids is not None:
+        # Check if include_ids is not None and not empty to avoid WHERE false condition
+        if include_ids is not None and len(include_ids) > 0:
             stmt = stmt.where(Conversation.id.in_(include_ids))
-        if exclude_ids is not None:
+        # Check if exclude_ids is not None and not empty to avoid WHERE false condition
+        if exclude_ids is not None and len(exclude_ids) > 0:
             stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
@@ -123,7 +125,7 @@ class ConversationService:
         # get conversation first message
         message = (
             db.session.query(Message)
-            .filter(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
+            .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
             .order_by(Message.created_at.asc())
             .first()
         )
@@ -148,7 +150,7 @@ class ConversationService:
     def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         conversation = (
             db.session.query(Conversation)
-            .filter(
+            .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
                 Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),

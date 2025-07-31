@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
-from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
@@ -141,13 +141,36 @@ class ToolNode(BaseNode):
                 tenant_id=self.tenant_id,
                 node_id=self.node_id,
             )
-        except (PluginDaemonClientSideError, ToolInvokeError) as e:
+        except ToolInvokeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to transform tool message: {str(e)}",
+                    error=f"Failed to invoke tool {node_data.provider_name}: {str(e)}",
+                    error_type=type(e).__name__,
+                )
+            )
+        except PluginInvokeError as e:
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
+                    error="An error occurred in the plugin, "
+                    f"please contact the author of {node_data.provider_name} for help, "
+                    f"error type: {e.get_error_type()}, "
+                    f"error details: {e.get_error_message()}",
+                    error_type=type(e).__name__,
+                )
+            )
+        except PluginDaemonClientSideError as e:
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
+                    error=f"Failed to invoke tool, error: {e.description}",
                     error_type=type(e).__name__,
                 )
             )
@@ -316,7 +339,14 @@ class ToolNode(BaseNode):
                     variables[variable_name] = variable_value
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                assert isinstance(message.meta, File)
+                assert isinstance(message.meta, dict)
+                # Validate that meta contains a 'file' key
+                if "file" not in message.meta:
+                    raise ToolNodeError("File message is missing 'file' key in meta")
+
+                # Validate that the file is an instance of File
+                if not isinstance(message.meta["file"], File):
+                    raise ToolNodeError(f"Expected File object but got {type(message.meta['file']).__name__}")
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)

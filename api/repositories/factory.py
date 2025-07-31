@@ -48,7 +48,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             RepositoryImportError: If the configured repository cannot be imported or instantiated
         """
         class_path = dify_config.API_WORKFLOW_NODE_EXECUTION_REPOSITORY
-        logger.debug(f"Creating DifyAPIWorkflowNodeExecutionRepository from: {class_path}")
+        logger.debug("Creating DifyAPIWorkflowNodeExecutionRepository from: %s", class_path)
 
         try:
             repository_class = cls._import_class(class_path)
@@ -86,7 +86,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             RepositoryImportError: If the configured repository cannot be imported or instantiated
         """
         class_path = dify_config.API_WORKFLOW_RUN_REPOSITORY
-        logger.debug(f"Creating APIWorkflowRunRepository from: {class_path}")
+        logger.debug("Creating APIWorkflowRunRepository from: %s", class_path)
 
         try:
             repository_class = cls._import_class(class_path)

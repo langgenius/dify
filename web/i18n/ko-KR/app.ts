@@ -26,29 +26,10 @@ const translation = {
   newApp: {
     startFromBlank: '빈 상태로 시작',
     startFromTemplate: '템플릿에서 시작',
-    captionAppType: '어떤 종류의 앱을 만들어 보시겠어요?',
-    chatbotDescription:
-      '대화형 어플리케이션을 만듭니다. 질문과 답변 형식을 사용하여 다단계 대화를 지원합니다.',
-    completionDescription:
-      '프롬프트를 기반으로 품질 높은 텍스트를 생성하는 어플리케이션을 만듭니다. 기사, 요약, 번역 등을 생성할 수 있습니다.',
-    completionWarning: '이 종류의 앱은 더 이상 지원되지 않습니다.',
-    agentDescription: '작업을 자동으로 완료하는 지능형 에이전트를 만듭니다.',
-    workflowDescription:
-      '고도로 사용자 지정 가능한 워크플로우에 기반한 고품질 텍스트 생성 어플리케이션을 만듭니다. 경험 있는 사용자를 위한 것입니다.',
-    workflowWarning: '현재 베타 버전입니다.',
-    chatbotType: '챗봇 오케스트레이션 방식',
-    basic: '기본',
-    basicTip: '초보자용. 나중에 Chatflow 로 전환할 수 있습니다.',
-    basicFor: '초보자용',
-    basicDescription:
-      '기본 오케스트레이션은 내장된 프롬프트를 수정할 수 없고 간단한 설정을 사용하여 챗봇 앱을 오케스트레이션합니다. 초보자용입니다.',
-    advanced: 'Chatflow',
-    advancedFor: '고급 사용자용',
-    advancedDescription:
-      '워크플로우 오케스트레이션은 워크플로우 형식으로 챗봇을 오케스트레이션하며 내장된 프롬프트를 편집할 수 있는 고급 사용자 정의 기능을 제공합니다. 경험이 많은 사용자용입니다.',
     captionName: '앱 아이콘과 이름',
     appNamePlaceholder: '앱 이름을 입력하세요',
     captionDescription: '설명',
+    workflowWarning: '현재 베타 버전입니다',
     appDescriptionPlaceholder: '앱 설명을 입력하세요',
     useTemplate: '이 템플릿 사용',
     previewDemo: '데모 미리보기',
@@ -286,6 +267,7 @@ const translation = {
   noAccessPermission: '웹 앱에 대한 접근 권한이 없습니다.',
   maxActiveRequests: '동시 최대 요청 수',
   maxActiveRequestsPlaceholder: '무제한 사용을 원하시면 0을 입력하세요.',
+  maxActiveRequestsTip: '앱당 최대 동시 활성 요청 수(무제한은 0)',
 }
 
 export default translation

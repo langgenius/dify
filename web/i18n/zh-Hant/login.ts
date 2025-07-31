@@ -70,7 +70,6 @@ const translation = {
   activated: '現在登入',
   adminInitPassword: '管理員初始化密碼',
   validate: '驗證',
-  sso: '繼續使用 SSO',
   checkCode: {
     verify: '驗證',
     resend: '發送',

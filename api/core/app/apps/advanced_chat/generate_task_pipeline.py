@@ -271,7 +271,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Failed to listen audio message, task_id: {task_id}")
+                logger.exception("Failed to listen audio message, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -559,6 +559,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 outputs=event.outputs,
                 conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -590,6 +591,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 exceptions_count=event.exceptions_count,
                 conversation_id=None,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -622,6 +624,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 conversation_id=self._conversation_id,
                 trace_manager=trace_manager,
                 exceptions_count=event.exceptions_count,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 session=session,
@@ -653,6 +656,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     error_message=event.get_stop_reason(),
                     conversation_id=self._conversation_id,
                     trace_manager=trace_manager,
+                    external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
                 )
                 workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                     session=session,

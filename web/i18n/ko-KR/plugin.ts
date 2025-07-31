@@ -84,6 +84,16 @@ const translation = {
     endpoints: '끝점',
     serviceOk: '서비스 정상',
     endpointDisableTip: '엔드포인트 비활성화',
+    deprecation: {
+      reason: {
+        ownershipTransferred: '소유권 이전',
+        businessAdjustments: '사업 조정',
+        noMaintainer: '유지보수자 없음',
+      },
+      noReason: '이 플러그인은 더 이상 지원되지 않으며 업데이트되지 않을 것입니다.',
+      onlyReason: '이 플러그인은 {{deprecatedReason}}로 인해 사용 중단되었으며 더 이상 업데이트되지 않습니다.',
+      fullMessage: '이 플러그인은 {{deprecatedReason}}로 인해 사용 중단되었으며 더 이상 업데이트되지 않습니다. 대신 <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>를 사용하십시오.',
+    },
   },
   debugInfo: {
     title: '디버깅',
@@ -236,6 +246,57 @@ const translation = {
     useOAuthAuth: 'OAuth 인증 사용하기',
     useApiAuthDesc: '자격증명을 구성한 후에는 작업 공간 내의 모든 구성원이 애플리케이션을 조정할 때 이 도구를 사용할 수 있습니다.',
     clientInfo: '이 도구 공급자에 대한 시스템 클라이언트 비밀이 발견되지 않았으므로 수동으로 설정해야 하며, redirect_uri는 다음을 사용하십시오.',
+  },
+  deprecated: '사용 중단됨',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: '장애인',
+        description: '플러그인이 자동으로 업데이트되지 않습니다.',
+      },
+      fixOnly: {
+        name: '수정만 하기',
+        selectedDescription: '패치 버전만 자동 업데이트',
+        description: '패치 버전만 자동 업데이트 (예: 1.0.1 → 1.0.2). 마이너 버전 변경은 업데이트를 유발하지 않습니다.',
+      },
+      latest: {
+        name: '최신',
+        description: '항상 최신 버전으로 업데이트하세요.',
+        selectedDescription: '항상 최신 버전으로 업데이트하세요.',
+      },
+    },
+    upgradeMode: {
+      partial: '선택된 것만',
+      all: '모두 업데이트하기',
+      exclude: '선택한 항목 제외',
+    },
+    upgradeModePlaceholder: {
+      partial: '선택된 플러그인만 자동 업데이트됩니다. 현재 선택된 플러그인이 없으므로 자동 업데이트되는 플러그인은 없습니다.',
+      exclude: '선택한 플러그인은 자동으로 업데이트되지 않습니다.',
+    },
+    operation: {
+      clearAll: '모두 지우기',
+      select: '플러그인을 선택하세요',
+    },
+    pluginDowngradeWarning: {
+      exclude: '자동 업데이트에서 제외',
+      title: '플러그인 다운그레이드',
+      downgrade: '어쨌든 다운그레이드',
+      description: '이 플러그인은 현재 자동 업데이트가 활성화되어 있습니다. 버전을 다운그레이드하면 다음 자동 업데이트 중에 변경 사항이 덮어써질 수 있습니다.',
+    },
+    noPluginPlaceholder: {
+      noFound: '플러그인이 없습니다.',
+      noInstalled: '설치된 플러그인이 없습니다.',
+    },
+    updateTimeTitle: '업데이트 시간',
+    automaticUpdates: '자동 업데이트',
+    updateTime: '업데이트 시간',
+    nextUpdateTime: '다음 자동 업데이트: {{time}}',
+    updateSettings: '설정 업데이트',
+    partialUPdate: '다음 {{num}} 플러그인만 자동 업데이트됩니다.',
+    changeTimezone: '시간대를 변경하려면 <setTimezone>설정</setTimezone>으로 이동하세요.',
+    specifyPluginsToUpdate: '업데이트할 플러그인을 지정하십시오.',
+    excludeUpdate: '다음 {{num}} 플러그인은 자동 업데이트되지 않습니다.',
   },
 }
 

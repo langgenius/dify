@@ -2,7 +2,6 @@ const translation = {
   createApp: 'Neue App erstellen',
   types: {
     all: 'Alle',
-    assistant: 'Assistent',
     completion: 'Vervollständigung',
     workflow: 'Arbeitsablauf',
     agent: 'Agent',
@@ -11,8 +10,6 @@ const translation = {
     advanced: 'Chatflow',
   },
   modes: {
-    completion: 'Textgenerator',
-    chat: 'Basisassistent',
   },
   createFromConfigFile: 'App aus Konfigurationsdatei erstellen',
   deleteAppConfirmTitle: 'Diese App löschen?',
@@ -24,11 +21,8 @@ const translation = {
   communityIntro:
     'Diskutieren Sie mit Teammitgliedern, Mitwirkenden und Entwicklern auf verschiedenen Kanälen.',
   roadmap: 'Sehen Sie unseren Fahrplan',
-  appNamePlaceholder: 'Bitte geben Sie den Namen der App ein',
   newApp: {
-    startToCreate: 'Lassen Sie uns mit Ihrer neuen App beginnen',
     captionName: 'App-Symbol & Name',
-    captionAppType: 'Welchen Typ von App möchten Sie erstellen?',
     previewDemo: 'Vorschau-Demo',
     chatApp: 'Assistent',
     chatAppIntro:
@@ -46,25 +40,12 @@ const translation = {
     appTypeRequired: 'Bitte wählen Sie einen App-Typ',
     appCreated: 'App erstellt',
     appCreateFailed: 'Erstellen der App fehlgeschlagen',
-    basic: 'Grundlegend',
-    chatbotType: 'Chatbot-Orchestrierungsmethode',
-    workflowDescription: 'Erstellen Sie eine Anwendung, die qualitativ hochwertigen Text auf der Grundlage von Workflow-Orchestrierungen mit einem hohen Maß an Anpassung generiert. Es ist für erfahrene Benutzer geeignet.',
-    advancedFor: 'Für Fortgeschrittene',
     startFromTemplate: 'Aus Vorlage erstellen',
     appNamePlaceholder: 'Geben Sie Ihrer App einen Namen',
     startFromBlank: 'Aus Leer erstellen',
-    basicTip: 'Für Anfänger können Sie später zu Chatflow wechseln',
-    basicDescription: 'Basic Orchestrate ermöglicht die Orchestrierung einer Chatbot-App mit einfachen Einstellungen, ohne die Möglichkeit, integrierte Eingabeaufforderungen zu ändern. Es ist für Anfänger geeignet.',
     workflowWarning: 'Derzeit in der Beta-Phase',
-    advancedDescription: 'Workflow Orchestrate orchestriert Chatbots in Form von Workflows und bietet ein hohes Maß an Individualisierung, einschließlich der Möglichkeit, integrierte Eingabeaufforderungen zu bearbeiten. Es ist für erfahrene Benutzer geeignet.',
-    basicFor: 'FÜR ANFÄNGER',
-    completionWarning: 'Diese Art von App wird nicht mehr unterstützt.',
-    chatbotDescription: 'Erstellen Sie eine chatbasierte Anwendung. Diese App verwendet ein Frage-und-Antwort-Format, das mehrere Runden kontinuierlicher Konversation ermöglicht.',
     captionDescription: 'Beschreibung',
-    advanced: 'Chatflow',
     useTemplate: 'Diese Vorlage verwenden',
-    agentDescription: 'Erstellen Sie einen intelligenten Agenten, der autonom Werkzeuge auswählen kann, um die Aufgaben zu erledigen',
-    completionDescription: 'Erstellen Sie eine Anwendung, die qualitativ hochwertigen Text auf der Grundlage von Eingabeaufforderungen generiert, z. B. zum Generieren von Artikeln, Zusammenfassungen, Übersetzungen und mehr.',
     appDescriptionPlaceholder: 'Geben Sie die Beschreibung der App ein',
     caution: 'Vorsicht',
     Confirm: 'Bestätigen',
@@ -268,6 +249,7 @@ const translation = {
   noAccessPermission: 'Keine Berechtigung zum Zugriff auf die Webanwendung',
   maxActiveRequests: 'Maximale gleichzeitige Anfragen',
   maxActiveRequestsPlaceholder: 'Geben Sie 0 für unbegrenzt ein',
+  maxActiveRequestsTip: 'Maximale Anzahl gleichzeitiger aktiver Anfragen pro App (0 für unbegrenzt)',
 }
 
 export default translation

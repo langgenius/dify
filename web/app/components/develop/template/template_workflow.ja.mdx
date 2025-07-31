@@ -66,6 +66,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
         アプリケーション内で開発者によって一意に定義される必要があります。
       - `files` (array[object]) オプション
+      - `trace_id` (string) オプション
+        トレースID。既存の業務システムのトレースコンポーネントと連携し、エンドツーエンドの分散トレーシングを実現するために使用します。指定がない場合、システムが自動的に trace_id を生成します。以下の3つの方法で渡すことができ、優先順位は次のとおりです：
+        1. Header：HTTPヘッダー `X-Trace-Id` で渡す（最優先）。
+        2. クエリパラメータ：URLクエリパラメータ `trace_id` で渡す。
+        3. リクエストボディ：リクエストボディの `trace_id` フィールドで渡す（本フィールド）。
         
 
     ### 応答
@@ -691,11 +696,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `default` (string) デフォルト値
         - `options` (array[string]) オプション値
     - `file_upload` (object) ファイルアップロード設定
-      - `image` (object) 画像設定
-        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 有効かどうか
-        - `number_limits` (int) 画像数の制限、デフォルトは3
-        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+      - `document` (object) ドキュメント設定  
+        現在サポートされているドキュメントタイプ：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) ドキュメント数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `image` (object) 画像設定  
+        現在サポートされている画像タイプ：`png`, `jpg`, `jpeg`, `webp`, `gif`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) 画像数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `audio` (object) オーディオ設定  
+        現在サポートされているオーディオタイプ：`mp3`, `m4a`, `wav`, `webm`, `amr`。 
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) オーディオ数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `video` (object) ビデオ設定  
+        現在サポートされているビデオタイプ：`mp4`, `mov`, `mpeg`, `mpga`。
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) ビデオ数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
+      - `custom` (object) カスタム設定  
+        - `enabled` (bool) 有効かどうか  
+        - `number_limits` (int) カスタム数の上限。デフォルトは 3  
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。  
     - `system_parameters` (object) システムパラメータ
       - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
       - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）

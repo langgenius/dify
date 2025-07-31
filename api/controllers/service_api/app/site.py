@@ -16,7 +16,7 @@ class AppSiteApi(Resource):
     @marshal_with(fields.site_fields)
     def get(self, app_model: App):
         """Retrieve app site info."""
-        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:
             raise Forbidden()

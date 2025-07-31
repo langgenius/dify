@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Tải lên tệp',
+      description: 'Hộp nhập chat cho phép tải lên hình ảnh, tài liệu và các tệp khác.',
+      supportedTypes: 'Các loại tệp được hỗ trợ',
+      numberLimit: 'Số lượng tối đa có thể tải lên',
+      modalTitle: 'Cài đặt tải lên tệp',
+    },
+    imageUpload: {
+      title: 'Tải lên hình ảnh',
+      description: 'Cho phép tải lên hình ảnh.',
+      supportedTypes: 'Các loại tệp được hỗ trợ',
+      numberLimit: 'Số lượng tối đa có thể tải lên',
+      modalTitle: 'Cài đặt tải lên hình ảnh',
+    },
+    bar: {
+      empty: 'Bật tính năng để cải thiện trải nghiệm người dùng ứng dụng web',
+      enableText: 'Tính năng đã được bật',
+      manage: 'Quản lý',
+    },
+    documentUpload: {
+      title: 'Tài liệu',
+      description: 'Bật tài liệu sẽ cho phép mô hình nhận tài liệu và trả lời các câu hỏi về chúng.',
+    },
+    audioUpload: {
+      title: 'Âm thanh',
+      description: 'Bật âm thanh sẽ cho phép mô hình xử lý các tệp âm thanh để phiên âm và phân tích.',
+    },
   },
   automatic: {
     title: 'Tự động hóa triển khai ứng dụng',
@@ -281,12 +308,14 @@ const translation = {
     'required': 'Bắt buộc',
     'hide': 'Ẩn',
     'errorMsg': {
-      varNameRequired: 'Tên biến là bắt buộc',
       labelNameRequired: 'Tên nhãn là bắt buộc',
       varNameCanBeRepeat: 'Tên biến không được trùng lặp',
       atLeastOneOption: 'Cần ít nhất một tùy chọn',
       optionRepeat: 'Có các tùy chọn trùng lặp',
     },
+    'defaultValue': 'Giá trị mặc định',
+    'noDefaultValue': 'Không có giá trị mặc định',
+    'selectDefaultValue': 'Chọn giá trị mặc định',
   },
   vision: {
     name: 'Thị giác',

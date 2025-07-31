@@ -552,11 +552,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `default` (string) 默认值
         - `options` (array[string]) 选项值
     - `file_upload` (object) 文件上传配置
-      - `image` (object) 图片设置
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 是否开启
-        - `number_limits` (int) 图片数量限制，默认 3
-        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+      - `document` (object) 文档设置  
+        当前仅支持文档类型：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 文档数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `image` (object) 图片设置  
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 图片数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `audio` (object) 音频设置  
+        当前仅支持音频类型：`mp3`, `m4a`, `wav`, `webm`, `amr`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 音频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `video` (object) 视频设置  
+        当前仅支持视频类型：`mp4`, `mov`, `mpeg`, `mpga`。  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 视频数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。  
+      - `custom` (object) 自定义设置  
+        - `enabled` (bool) 是否启用  
+        - `number_limits` (int) 自定义数量限制，默认为 3  
+        - `transfer_methods` (array[string]) 传输方式列表：`remote_url`, `local_file`，必须选择一个。 
     - `system_parameters` (object) 系统参数
       - `file_size_limit` (int) 文档上传大小限制 (MB)
       - `image_file_size_limit` (int) 图片文件上传大小限制（MB）

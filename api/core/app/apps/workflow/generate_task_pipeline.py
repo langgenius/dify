@@ -246,7 +246,7 @@ class WorkflowAppGenerateTaskPipeline:
                 else:
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Fails to get audio trunk, task_id: {task_id}")
+                logger.exception("Fails to get audio trunk, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -490,6 +490,7 @@ class WorkflowAppGenerateTaskPipeline:
                 outputs=event.outputs,
                 conversation_id=None,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
 
             # save workflow app log
@@ -524,6 +525,7 @@ class WorkflowAppGenerateTaskPipeline:
                 exceptions_count=event.exceptions_count,
                 conversation_id=None,
                 trace_manager=trace_manager,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
 
             # save workflow app log
@@ -561,6 +563,7 @@ class WorkflowAppGenerateTaskPipeline:
                 conversation_id=None,
                 trace_manager=trace_manager,
                 exceptions_count=event.exceptions_count if isinstance(event, QueueWorkflowFailedEvent) else 0,
+                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
             )
 
             # save workflow app log
