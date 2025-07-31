@@ -9,6 +9,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.variables.types import SegmentType
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
+from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import ConversationVariable
@@ -21,7 +22,6 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
-from factories import variable_factory
 
 
 class ConversationService:
