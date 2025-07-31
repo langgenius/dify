@@ -94,15 +94,15 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
       const oldNode = oldNodesMap.get(newNode.id)
       if (!oldNode) {
         // add
-        nodesMap.set(newNode.id, getPersistentNodeData(newNode))
+        nodesMap.set(newNode.id, newNode)
       }
- else {
+      else {
         const oldPersistentData = getPersistentNodeData(oldNode)
         const newPersistentData = getPersistentNodeData(newNode)
 
         if (!isEqual(oldPersistentData, newPersistentData)) {
           // update
-          nodesMap.set(newNode.id, newPersistentData)
+          nodesMap.set(newNode.id, newNode)
         }
       }
     })

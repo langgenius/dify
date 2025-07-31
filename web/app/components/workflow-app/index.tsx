@@ -23,6 +23,7 @@ import {
 } from '@/app/components/workflow/context'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
+import { useCollaborationStore } from '@/app/components/workflow/store/collaboration-store'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -32,15 +33,26 @@ const WorkflowAppWithAdditionalContext = () => {
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
   const nodesData = useMemo(() => {
-    if (data)
-      return initialNodes(data.graph.nodes, data.graph.edges)
+    if (data) {
+      const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
 
+      const { setNodes } = useCollaborationStore.getState()
+      setNodes(processedNodes)
+
+      return processedNodes
+    }
     return []
   }, [data])
-  const edgesData = useMemo(() => {
-    if (data)
-      return initialEdges(data.graph.edges, data.graph.nodes)
 
+  const edgesData = useMemo(() => {
+    if (data) {
+      const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
+
+      const { setEdges } = useCollaborationStore.getState()
+      setEdges(processedEdges)
+
+      return processedEdges
+    }
     return []
   }, [data])
 

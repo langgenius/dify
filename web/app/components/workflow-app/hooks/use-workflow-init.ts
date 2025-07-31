@@ -56,20 +56,6 @@ export const useWorkflowInit = () => {
     })
   }
 
-  const populateCollaborationWithServerData = async (serverData: any) => {
-    const { nodesMap, edgesMap, loroDoc } = useCollaborationStore.getState()
-    serverData.graph.nodes?.forEach((node: any) => {
-        console.log('Setting node:', node.id, node)
-        nodesMap.set(node.id, node)
-      })
-
-    serverData.graph.edges?.forEach((edge: any) => {
-      console.log('Setting edge:', edge.id, edge)
-      edgesMap.set(edge.id, edge)
-    })
-    loroDoc.commit()
-  }
-
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const [res] = await Promise.all([
@@ -85,7 +71,6 @@ export const useWorkflowInit = () => {
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
       })
-      await populateCollaborationWithServerData(res)
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
