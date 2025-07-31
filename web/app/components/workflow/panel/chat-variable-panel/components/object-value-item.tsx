@@ -18,6 +18,7 @@ type Props = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Secret,
 ]
 
 export const DEFAULT_OBJECT_VALUE = {

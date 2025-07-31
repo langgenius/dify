@@ -218,6 +218,18 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item.secret) {
+        let value = initInputs[item.secret.variable]
+        if (value && item.secret.max_length && value.length > item.secret.max_length)
+          value = value.slice(0, item.secret.max_length)
+
+        return {
+          ...item.secret,
+          default: value || item.default,
+          type: 'secret',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)

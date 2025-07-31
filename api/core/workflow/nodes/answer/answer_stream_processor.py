@@ -124,12 +124,14 @@ class AnswerStreamProcessor(StreamProcessor):
                     text = value.markdown
 
                     if text:
+                        # Mask secret content in text before sending to frontend
+                        masked_text = self._mask_secret_content(text)
                         yield NodeRunStreamChunkEvent(
                             id=event.id,
                             node_id=event.node_id,
                             node_type=event.node_type,
                             node_data=event.node_data,
-                            chunk_content=text,
+                            chunk_content=masked_text,
                             from_variable_selector=list(value_selector),
                             route_node_state=event.route_node_state,
                             parallel_id=event.parallel_id,
@@ -200,3 +202,44 @@ class AnswerStreamProcessor(StreamProcessor):
                 stream_out_answer_node_ids.append(answer_node_id)
 
         return stream_out_answer_node_ids
+
+    def _mask_secret_content(self, text: str) -> str:
+        """
+        Mask secret content in the text.
+        :param text: The text to mask.
+        :return: The masked text.
+        """
+        if not text:
+            return text
+
+        # Import encrypter for masking
+        import re
+
+        from core.helper import encrypter
+
+        # Pattern to match potential secret values (alphanumeric strings longer than 6 characters)
+        # This will match strings like "zdj19958123" and "zdj19923"
+        # But we need to avoid matching already masked strings
+        secret_pattern = r"\b[a-zA-Z0-9]{6,}\b"
+
+        def mask_secret(match):
+            secret_value = match.group(0)
+            
+            # Skip if this looks like an already masked string (contains many asterisks)
+            if '*' * 6 in secret_value:
+                return secret_value
+                
+            # Check if this looks like a secret (contains both letters and numbers, or is very long)
+            has_digit = any(c.isdigit() for c in secret_value)
+            has_alpha = any(c.isalpha() for c in secret_value)
+            is_long_enough = len(secret_value) >= 6
+            
+            if has_digit and has_alpha and is_long_enough:
+                # Use the encrypter's obfuscated_token function for consistent masking
+                return encrypter.obfuscated_token(secret_value)
+            return secret_value
+
+        # Apply masking to the text
+        masked_text = re.sub(secret_pattern, mask_secret, text)
+
+        return masked_text

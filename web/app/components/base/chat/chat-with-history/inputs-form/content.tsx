@@ -70,6 +70,14 @@ const InputsFormContent = ({ showTip }: Props) => {
               placeholder={form.label}
             />
           )}
+          {form.type === InputVarType.secret && (
+            <Input
+              type="password"
+              value={inputsFormValue?.[form.variable] || ''}
+              onChange={e => handleFormChange(form.variable, e.target.value)}
+              placeholder={form.label}
+            />
+          )}
           {form.type === InputVarType.select && (
             <PortalSelect
               popupClassName='w-[200px]'

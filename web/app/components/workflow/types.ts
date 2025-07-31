@@ -186,6 +186,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  secret = 'secret', // secret input
 }
 
 export type InputVar = {
@@ -447,6 +448,6 @@ export enum VersionHistoryContextMenuOptions {
   delete = 'delete',
 }
 
-export interface ChildNodeTypeCount {
+export type ChildNodeTypeCount = {
   [key: string]: number;
 }
