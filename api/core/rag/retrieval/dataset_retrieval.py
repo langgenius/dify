@@ -513,7 +513,9 @@ class DatasetRetrieval:
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document.metadata["document_id"])
+                dataset_document_stmt = select(DatasetDocument).where(
+                    DatasetDocument.id == document.metadata["document_id"]
+                )
                 dataset_document = db.session.execute(dataset_document_stmt).scalars().first()
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
