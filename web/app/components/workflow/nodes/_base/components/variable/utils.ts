@@ -517,7 +517,40 @@ const formatItem = (
     }
 
     case BlockEnum.DataSource: {
-      res.vars = DataSourceNodeDefault.getOutputVars?.(data as DataSourceNodeType, ragVars) || []
+      const payload = data as DataSourceNodeType
+      const baseVars = DataSourceNodeDefault.getOutputVars?.(payload, ragVars) || []
+      if (payload.output_schema?.properties) {
+        const dynamicOutputSchema: any[] = []
+        Object.keys(payload.output_schema.properties).forEach((outputKey) => {
+          const output = payload.output_schema!.properties[outputKey]
+          const dataType = output.type
+          dynamicOutputSchema.push({
+            variable: outputKey,
+            type: dataType === 'array'
+              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
+            description: output.description,
+            children: output.type === 'object' ? {
+              schema: {
+                type: 'object',
+                properties: output.properties,
+              },
+            } : undefined,
+          })
+        })
+        res.vars = [
+          ...baseVars,
+          ...dynamicOutputSchema,
+          {
+            variable: 'output',
+            type: VarType.object,
+            children: dynamicOutputSchema,
+          },
+        ]
+      }
+      else {
+        res.vars = baseVars
+      }
       break
     }
 

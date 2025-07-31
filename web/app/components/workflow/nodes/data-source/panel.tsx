@@ -11,15 +11,13 @@ import {
   BoxGroupField,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import TagInput from '@/app/components/base/tag-input'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useConfig } from './hooks/use-config'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   COMMON_OUTPUT,
-  LOCAL_FILE_OUTPUT,
-  ONLINE_DOCUMENT_OUTPUT,
-  ONLINE_DRIVE_OUTPUT,
-  WEBSITE_CRAWL_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -38,13 +36,12 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const {
     handleFileExtensionsChange,
     handleParametersChange,
-  } = useConfig(id)
+    outputSchema,
+    hasObjectOutput,
+  } = useConfig(id, dataSourceList)
   const isLocalFile = provider_type === DataSourceClassification.localFile
-  const isWebsiteCrawl = provider_type === DataSourceClassification.websiteCrawl
-  const isOnlineDocument = provider_type === DataSourceClassification.onlineDocument
-  const isOnlineDrive = provider_type === DataSourceClassification.onlineDrive
   const currentDataSource = dataSourceList?.find(ds => ds.plugin_id === plugin_id)
-  const currentDataSourceItem: any = currentDataSource?.tools.find(tool => tool.name === data.datasource_name)
+  const currentDataSourceItem: any = currentDataSource?.tools?.find((tool: any) => tool.name === data.datasource_name)
   const formSchemas = useMemo(() => {
     return currentDataSourceItem ? toolParametersToFormSchemas(currentDataSourceItem.parameters) : []
   }, [currentDataSourceItem])
@@ -116,57 +113,34 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               name={item.name}
               type={item.type}
               description={item.description}
+              isIndent={hasObjectOutput}
             />
           ))
         }
         {
-          isLocalFile && LOCAL_FILE_OUTPUT.map((item, index) => (
-            <VarItem
-              key={index}
-              name={item.name}
-              type={item.type}
-              description={item.description}
-              subItems={item.subItems.map(item => ({
-                name: item.name,
-                type: item.type,
-                description: item.description,
-              }))}
-            />
-          ))
-        }
-        {
-          isWebsiteCrawl && WEBSITE_CRAWL_OUTPUT.map((item, index) => (
-            <VarItem
-              key={index}
-              name={item.name}
-              type={item.type}
-              description={item.description}
-            />
-          ))
-        }
-        {
-          isOnlineDocument && ONLINE_DOCUMENT_OUTPUT.map((item, index) => (
-            <VarItem
-              key={index}
-              name={item.name}
-              type={item.type}
-              description={item.description}
-            />
-          ))
-        }
-        {
-          isOnlineDrive && ONLINE_DRIVE_OUTPUT.map((item, index) => (
-            <VarItem
-              key={index}
-              name={item.name}
-              type={item.type}
-              description={item.description}
-              subItems={item.subItems.map(item => ({
-                name: item.name,
-                type: item.type,
-                description: item.description,
-              }))}
-            />
+          outputSchema.map(outputItem => (
+            <div key={outputItem.name}>
+              {outputItem.value?.type === 'object' ? (
+                <StructureOutputItem
+                  rootClassName='code-sm-semibold text-text-secondary'
+                  payload={{
+                    schema: {
+                      type: Type.object,
+                      properties: {
+                        [outputItem.name]: outputItem.value,
+                      },
+                      additionalProperties: false,
+                    },
+                  }} />
+              ) : (
+                <VarItem
+                  name={outputItem.name}
+                  type={outputItem.type.toLocaleLowerCase()}
+                  description={outputItem.description}
+                  isIndent={hasObjectOutput}
+                />
+              )}
+            </div>
           ))
         }
       </OutputVars>
