@@ -62,7 +62,7 @@ class ToolLabelManager:
         )
         labels = db.session.execute(stmt).scalars().all()
 
-        return [label.label_name for label in labels]
+        return labels
 
     @classmethod
     def get_tools_labels(cls, tool_providers: list[ToolProviderController]) -> dict[str, list[str]]:

@@ -325,8 +325,8 @@ class DatasetRetrieval:
 
         if dataset_id:
             # get retrieval model config
-            stmt = select(Dataset).where(Dataset.id == dataset_id)
-            dataset = db.session.execute(stmt).scalars().first()
+            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+            dataset = db.session.execute(dataset_stmt).scalars().first()
             if dataset:
                 results = []
                 if dataset.provider == "external":
@@ -513,16 +513,16 @@ class DatasetRetrieval:
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                stmt = select(DatasetDocument).where(DatasetDocument.id == document.metadata["document_id"])
-                dataset_document = db.session.execute(stmt).scalars().first()
+                dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document.metadata["document_id"])
+                dataset_document = db.session.execute(dataset_document_stmt).scalars().first()
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                        stmt = select(ChildChunk).where(
+                        child_chunk_stmt = select(ChildChunk).where(
                             ChildChunk.index_node_id == document.metadata["doc_id"],
                             ChildChunk.dataset_id == dataset_document.dataset_id,
                             ChildChunk.document_id == dataset_document.id,
                         )
-                        child_chunk = db.session.execute(stmt).scalars().first()
+                        child_chunk = db.session.execute(child_chunk_stmt).scalars().first()
                         if child_chunk:
                             segment = (
                                 db.session.query(DocumentSegment)
@@ -593,8 +593,8 @@ class DatasetRetrieval:
     ):
         with flask_app.app_context():
             with Session(db.engine) as session:
-                stmt = select(Dataset).where(Dataset.id == dataset_id)
-                dataset = db.session.execute(stmt).scalars().first()
+                dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+                dataset = db.session.execute(dataset_stmt).scalars().first()
 
             if not dataset:
                 return []
@@ -679,8 +679,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.execute(stmt).scalars().first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.execute(dataset_stmt).scalars().first()
 
             # pass if dataset is not available
             if not dataset:
@@ -953,8 +953,8 @@ class DatasetRetrieval:
         self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> Optional[list[dict[str, Any]]]:
         # get all metadata field
-        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = db.session.execute(stmt).scalars().all()
+        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.execute(metadata_stmt).scalars().all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         # get metadata model config
         if metadata_model_config is None:

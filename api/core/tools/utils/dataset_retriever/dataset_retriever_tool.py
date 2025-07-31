@@ -193,7 +193,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = db.session.execute(dataset_document_stmt).scalars().first()
+                            document = db.session.execute(dataset_document_stmt).scalars().first() # type: ignore
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
