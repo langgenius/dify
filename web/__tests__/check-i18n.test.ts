@@ -49,9 +49,9 @@ describe('check-i18n script functionality', () => {
             }
 
             vm.runInNewContext(transpile(content), context)
-            const translationObj = moduleExports.default || moduleExports
+            const translationObj = (context.module.exports as any).default || context.module.exports
 
-            if(!translationObj || typeof translationObj !== 'object')
+            if (!translationObj || typeof translationObj !== 'object')
               throw new Error(`Error parsing file: ${filePath}`)
 
             const nestedKeys: string[] = []
@@ -62,7 +62,7 @@ describe('check-i18n script functionality', () => {
                   // This is an object (but not array), recurse into it but don't add it as a key
                   iterateKeys(obj[key], nestedKey)
                 }
- else {
+                else {
                   // This is a leaf node (string, number, boolean, array, etc.), add it as a key
                   nestedKeys.push(nestedKey)
                 }
@@ -73,7 +73,7 @@ describe('check-i18n script functionality', () => {
             const fileKeys = nestedKeys.map(key => `${camelCaseFileName}.${key}`)
             allKeys.push(...fileKeys)
           }
- catch (error) {
+          catch (error) {
             reject(error)
           }
         })
@@ -270,9 +270,6 @@ export default translation
       // Test file filtering logic
       const targetFile = 'components'
       const filteredEnKeys = allEnKeys.filter(key =>
-        key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())),
-      )
-      const filteredZhKeys = allZhKeys.filter(key =>
         key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())),
       )
 
