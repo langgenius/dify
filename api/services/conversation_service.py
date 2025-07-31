@@ -21,6 +21,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from factories import variable_factory
 
 
 class ConversationService:
@@ -288,9 +289,6 @@ class ConversationService:
                 "value": new_value,
                 "selector": current_variable.selector,
             }
-
-            # Create a new Variable object from the updated data
-            from factories import variable_factory
 
             updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
