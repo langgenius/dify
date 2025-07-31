@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -589,7 +589,7 @@ class ModelProviderService:
 
         # Filter workflows to keep only latest published version per app (plus drafts)
         filtered_workflows_and_apps = []
-        app_latest_versions = {}
+        app_latest_versions: dict[str, Any] = {}
 
         # First pass: collect all workflows grouped by app_id
         for workflow, app in workflows_and_apps:
@@ -630,7 +630,7 @@ class ModelProviderService:
         )
 
         # Dictionary to store model references
-        model_references = {}
+        model_references: dict[str, dict[str, Any]] = {}
 
         # Process workflow applications
         for workflow, app in filtered_workflows_and_apps:
