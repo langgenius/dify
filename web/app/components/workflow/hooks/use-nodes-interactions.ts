@@ -1471,11 +1471,10 @@ export const useNodesInteractions = () => {
 
     const {
       getNodes,
-      setNodes,
       edges,
-      setEdges,
     } = store.getState()
     const nodes = getNodes()
+    const { setNodes, setEdges } = useCollaborationStore.getState()
     const currentNode = nodes.find(node => node.id === nodeId)!
     const connectedEdges = getConnectedEdges([currentNode], edges)
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -1497,18 +1496,6 @@ export const useNodesInteractions = () => {
       return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
     setEdges(newEdges)
-
-    const { nodesMap, edgesMap, loroDoc } = useCollaborationStore.getState()
-    if (nodesMap && edgesMap && loroDoc) {
-      // newNodes.forEach((node) => {
-      //   nodesMap.set(node.id, node)
-      // })
-      connectedEdges.forEach((edge) => {
-        edgesMap.delete(edge.id)
-      })
-      loroDoc.commit()
-    }
-
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
   }, [store, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory])

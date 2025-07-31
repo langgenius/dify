@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import { LoroDoc } from 'loro-crdt'
+import { isEqual } from 'lodash-es'
 import type { Edge, Node } from '../types'
 import { useWebSocketStore } from './websocket-store'
 
@@ -48,6 +49,9 @@ type CollaborationStore = {
   edges: Edge[]
   updateNodes?: () => void
   updateEdges?: () => void
+
+  setNodes: (newNodes: Node[]) => void
+  setEdges: (newEdges: Edge[]) => void
   initCollaboration: (appId: string) => void
   destroyCollaboration: () => void
 }
@@ -59,6 +63,78 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
   edgesMap: null,
   nodes: [],
   edges: [],
+
+  setNodes: (newNodes: Node[]) => {
+    const { nodes: oldNodes, nodesMap, loroDoc } = get()
+
+    const oldNodesMap = new Map(oldNodes.map(node => [node.id, node]))
+    const newNodesMap = new Map(newNodes.map(node => [node.id, node]))
+
+    const getPersistentNodeData = (node: Node) => {
+    const { data, ...rest } = node
+    const filteredData = Object.fromEntries(
+      Object.entries(data).filter(([key]) =>
+        !key.startsWith('_') && key !== 'selected',
+      ),
+    )
+
+      return {
+        ...rest,
+        data: filteredData,
+      }
+    }
+
+    // delete
+    oldNodes.forEach((oldNode) => {
+      if (!newNodesMap.has(oldNode.id))
+        nodesMap.delete(oldNode.id)
+    })
+
+    newNodes.forEach((newNode) => {
+      const oldNode = oldNodesMap.get(newNode.id)
+      if (!oldNode) {
+        // add
+        nodesMap.set(newNode.id, getPersistentNodeData(newNode))
+      }
+ else {
+        const oldPersistentData = getPersistentNodeData(oldNode)
+        const newPersistentData = getPersistentNodeData(newNode)
+
+        if (!isEqual(oldPersistentData, newPersistentData)) {
+          // update
+          nodesMap.set(newNode.id, newPersistentData)
+        }
+      }
+    })
+    loroDoc.commit()
+  },
+
+  setEdges: (newEdges: Edge[]) => {
+    const { edges: oldEdges, edgesMap, loroDoc } = get()
+
+    const oldEdgesMap = new Map(oldEdges.map(edge => [edge.id, edge]))
+    const newEdgesMap = new Map(newEdges.map(edge => [edge.id, edge]))
+
+    // delete
+    oldEdges.forEach((oldEdge) => {
+      if (!newEdgesMap.has(oldEdge.id))
+        edgesMap.delete(oldEdge.id)
+    })
+
+    newEdges.forEach((newEdge) => {
+      const oldEdge = oldEdgesMap.get(newEdge.id)
+      if (!oldEdge) {
+        // add
+        edgesMap.set(newEdge.id, newEdge)
+      }
+ else if (!isEqual(oldEdge, newEdge)) {
+        // update
+        edgesMap.set(newEdge.id, newEdge)
+      }
+    })
+
+    loroDoc.commit()
+  },
 
   initCollaboration: (appId: string) => {
     const { getSocket } = useWebSocketStore.getState()
