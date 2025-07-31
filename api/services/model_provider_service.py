@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Optional
 
@@ -5,6 +6,8 @@ from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, P
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
+from models import AppModelConfig
+from models.engine import db
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
@@ -76,24 +79,112 @@ class ModelProviderService:
 
         return provider_responses
 
+    def _find_models_in_workflows(self, tenant_id: str, provider: str) -> dict:
+        """Find model usages in workflows."""
+        from models.model import App
+        from models.workflow import Workflow
+
+        results = db.session.query(
+            Workflow,
+            App.name
+        ).join(
+            App, Workflow.app_id == App.id
+        ).filter(
+            Workflow.tenant_id == tenant_id,
+            Workflow.graph.isnot(None)
+        ).all()
+
+        model_usages = {}
+        for workflow, app_name in results:
+            try:
+                graph = json.loads(workflow.graph)
+                for node in graph.get('nodes', []):
+                    node_data = node.get('data', {})
+                    if node_data.get('type') in {'llm', 'knowledge-retrieval', 'agent'}:
+                        model_info = node_data.get('model', {})
+                        if model_info.get('provider') == provider:
+                            if model_name := model_info.get('name'):
+                                model_usages.setdefault(model_name, []).append({
+                                    'app_id': workflow.app_id,
+                                    'name': app_name,
+                                    'type': 'workflow'
+                                })
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse workflow graph")
+                continue
+
+        return model_usages
+
+    def _find_models_in_app_configs(self, tenant_id: str, provider: str) -> dict:
+        """Find model usages in app configurations."""
+        from models.model import App
+
+        results = db.session.query(
+            AppModelConfig,
+            App.name
+        ).join(
+            App, AppModelConfig.app_id == App.id
+        ).filter(
+            App.tenant_id == tenant_id,
+        ).all()
+
+        model_usages = {}
+        for app_config, app_name in results:
+            # find model in model_id
+            if app_config.provider == provider and (model_name := app_config.model_id):
+                model_usages.setdefault(model_name, []).append({
+                    'app_id': app_config.app_id,
+                    'name': app_name,
+                    'type': 'app'
+                })
+
+            # find model in model -> configs
+            if model_config := app_config.model_dict:
+                if model_config.get('provider') == provider:
+                    if model_name := model_config.get('name'):
+                        model_usages.setdefault(model_name, []).append({
+                            'app_id': app_config.app_id,
+                            'name': app_name,
+                            'type': 'app'
+                        })
+
+        return model_usages
+
     def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
         """
-        get provider models.
-        For the model provider page,
-        only supports passing in a single provider to query the list of supported models.
+        Get provider models with their usage information.
 
-        :param tenant_id:
-        :param provider:
-        :return:
+        :param tenant_id: ID of the tenant/workspace
+        :param provider: Provider name to get models for
+        :return: List of models with usage information
         """
-        # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
+        models = provider_configurations.get_models(provider=provider)
 
-        # Get provider available models
-        return [
-            ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
-            for model in provider_configurations.get_models(provider=provider)
-        ]
+        # Get model usages from both workflows and app configurations
+        workflow_usages = self._find_models_in_workflows(tenant_id, provider)
+        app_config_usages = self._find_models_in_app_configs(tenant_id, provider)
+
+        # Merge usages, removing duplicates by app_id
+        all_usages = {}
+        for source in [workflow_usages, app_config_usages]:
+            for model_name, usages in source.items():
+                if model_name not in all_usages:
+                    all_usages[model_name] = {}
+                for usage in usages:
+                    all_usages[model_name][usage['app_id']] = usage
+
+        # Prepare response
+        response = []
+        for model in models:
+            model_response = ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
+            # Get the usage list for the current model, default to an empty dict if not found
+            model_specific_usages = all_usages.get(model.model, {})
+            # Assign the list of usage values to the response object
+            model_response.used_by_workflows = list(model_specific_usages.values())
+            response.append(model_response)
+
+        return response
 
     def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
         """

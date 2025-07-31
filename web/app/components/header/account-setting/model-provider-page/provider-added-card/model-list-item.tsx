@@ -72,6 +72,21 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
           </ModelBadge>
         )}
       </ModelName>
+     {model.used_by_workflows && model.used_by_workflows.length > 0 && (
+        <Tooltip
+          popupContent={
+            <div className='text-xs text-gray-500'>
+              <p>{t('common.modelProvider.usedByWorkflows')}:</p>
+              {model.used_by_workflows.map((workflow, index) => (
+                <p key={index} className='ml-2'>- {workflow.name}</p>
+              ))}
+            </div>
+          }
+          offset={{ mainAxis: 4 }}
+        >
+          <span className='ml-2 text-xs text-gray-400'>({model.used_by_workflows.length})</span>
+        </Tooltip>
+      )}
       <div className='flex shrink-0 items-center'>
         {
           model.fetch_from === ConfigurationMethodEnum.customizableModel

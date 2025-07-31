@@ -486,6 +486,7 @@ const translation = {
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
+    usedByWorkflows: 'Used by App',
   },
   dataSource: {
     add: 'Add a data source',
