@@ -368,15 +368,11 @@ class KnowledgeRetrievalNode(BaseNode):
                 for record in records:
                     segment = record.segment
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
-                    document = (
-                        db.session.query(Document)
-                        .where(
-                            Document.id == segment.document_id,
+                    stmt = select(Document).where(Document.id == segment.document_id,
                             Document.enabled == True,
                             Document.archived == False,
                         )
-                        .first()
-                    )
+                    document = db.session.execute(stmt).scalars().first()
                     if dataset and document:
                         source = {
                             "metadata": {
@@ -505,8 +501,8 @@ class KnowledgeRetrievalNode(BaseNode):
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> list[dict[str, Any]]:
-        # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.execute(stmt).scalars().all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         if node_data.metadata_model_config is None:
             raise ValueError("metadata_model_config is required")

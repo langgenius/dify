@@ -45,11 +45,8 @@ class Vector:
             vector_type = self._dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                whitelist = (
-                    db.session.query(Whitelist)
-                    .where(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
-                    .one_or_none()
-                )
+                stmt = select(Whitelist).where(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
+                whitelist = db.session.execute(stmt).scalars().one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 

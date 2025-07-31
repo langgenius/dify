@@ -212,11 +212,8 @@ class Jieba(BaseKeyword):
         return sorted_chunk_indices[:k]
 
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
-        document_segment = (
-            db.session.query(DocumentSegment)
-            .where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
-            .first()
-        )
+        stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
+        document_segment = db.session.execute(stmt).scalars().first()
         if document_segment:
             document_segment.keywords = keywords
             db.session.add(document_segment)

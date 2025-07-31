@@ -71,8 +71,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     def run(self) -> None:
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
-
-        app_record = db.session.query(App).where(App.id == app_config.app_id).first()
+        stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.execute(stmt).scalars().first()
         if not app_record:
             raise ValueError("App not found")
 

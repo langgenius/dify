@@ -246,17 +246,13 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        message = (
-            db.session.query(Message)
-            .where(
-                Message.id == message_id,
+        stmt = select(Message).where(Message.id == message_id,
                 Message.app_id == app_model.id,
                 Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
                 Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
                 Message.from_account_id == (user.id if isinstance(user, Account) else None),
             )
-            .first()
-        )
+        message = db.session.execute(stmt).scalars().first()
 
         if not message:
             raise MessageNotExistsError()

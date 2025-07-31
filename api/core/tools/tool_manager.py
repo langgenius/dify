@@ -196,14 +196,10 @@ class ToolManager:
                 # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
-                        builtin_provider = (
-                            db.session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
+                        stmt = select(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id,
                                 BuiltinToolProvider.id == credential_id,
                             )
-                            .first()
-                        )
+                        builtin_provider = db.session.execute(stmt).scalars().first()
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
@@ -315,11 +311,8 @@ class ToolManager:
                 ),
             )
         elif provider_type == ToolProviderType.WORKFLOW:
-            workflow_provider = (
-                db.session.query(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
-            )
+            stmt = select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+            workflow_provider = db.session.execute(stmt).scalars().first()
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")

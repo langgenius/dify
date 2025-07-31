@@ -25,9 +25,8 @@ class AnnotationReplyFeature:
         :param invoke_from: invoke from
         :return:
         """
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id).first()
-        )
+        stmt = select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id)
+        annotation_setting = db.session.execute(stmt).scalars().first()
 
         if not annotation_setting:
             return None
