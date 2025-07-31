@@ -486,6 +486,13 @@ const translation = {
     discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
+    modelReferences: 'Model References',
+    showModelReferences: 'Show Model References',
+    noModelReferences: 'No model references found',
+    totalModelsUsed: '{{count}} models used',
+    totalWorkflows: '{{count}} workflows',
+    workflowsCount: 'workflows',
+    modelUsedInWorkflows: 'Used in {{count}} workflows',
   },
   dataSource: {
     add: 'Add a data source',

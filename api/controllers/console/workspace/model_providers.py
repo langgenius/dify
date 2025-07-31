@@ -184,6 +184,19 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         return data
 
 
+class ModelProviderReferencesApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider: str):
+        tenant_id = current_user.current_tenant_id
+
+        model_provider_service = ModelProviderService()
+        references = model_provider_service.get_model_references(tenant_id=tenant_id, provider=provider)
+
+        return jsonable_encoder({"data": references})
+
+
 api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
 
 api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<path:provider>/credentials")
@@ -198,3 +211,4 @@ api.add_resource(
     ModelProviderIconApi,
     "/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>",
 )
+api.add_resource(ModelProviderReferencesApi, "/workspaces/current/model-references/<path:provider>")

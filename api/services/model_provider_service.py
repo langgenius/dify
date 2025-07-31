@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Optional
 
@@ -5,7 +6,9 @@ from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, P
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
+from models.model import App
 from models.provider import ProviderType
+from models.workflow import Workflow
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -94,6 +97,81 @@ class ModelProviderService:
             ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
             for model in provider_configurations.get_models(provider=provider)
         ]
+
+    def _process_workflow_models_generic(self, workflow, app, provider, provider_short_name, callback):
+        """Generic workflow model processing that accepts a callback for adding references."""
+        try:
+            if not workflow.graph:
+                return
+
+            graph_data = json.loads(workflow.graph)
+            nodes = graph_data.get("nodes", [])
+
+            for node in nodes:
+                node_data = node.get("data", {})
+                node_type = node_data.get("type", "")
+
+                # Check if this node uses models (LLM, agent, etc.)
+                if node_type in ["llm", "agent", "question-classifier", "parameter-extractor"]:
+                    model_config = node_data.get("model", {})
+                    node_provider = model_config.get("provider", "")
+                    model_name = model_config.get("name", "")
+                    model_mode = model_config.get("mode", "chat")
+
+                    # Support both full and short provider names
+                    node_provider_short = node_provider.split("/")[-1] if "/" in node_provider else node_provider
+
+                    # If this node uses the specified provider
+                    provider_matches = {provider, provider_short_name, node_provider_short}
+                    if node_provider in provider_matches and model_name:
+                        callback(
+                            model_name,
+                            model_mode,
+                            workflow,
+                            app,
+                            node_data.get("title", "Untitled Node"),
+                            "workflow",
+                        )
+
+        except (json.JSONDecodeError, KeyError, AttributeError) as e:
+            logger.warning("Error parsing workflow graph for workflow %s: %s", workflow.id, e)
+
+    def _process_chat_app_models_generic(self, app, provider, provider_short_name, callback):
+        """Generic chat app model processing that accepts a callback for adding references."""
+        try:
+            # Check if app has model configuration
+            if hasattr(app, "app_model_config") and app.app_model_config:
+                model_config_data = app.app_model_config
+                if hasattr(model_config_data, "model") and model_config_data.model:
+                    model_dict = model_config_data.model
+
+                    # Parse JSON string if needed
+                    if isinstance(model_dict, str):
+                        try:
+                            model_dict = json.loads(model_dict)
+                        except (json.JSONDecodeError, ValueError) as e:
+                            logger.warning("Failed to parse model dict for app %s: %s", app.id, e)
+                            return
+
+                    # Ensure model_dict is a dictionary
+                    if not isinstance(model_dict, dict):
+                        logger.warning("model_dict is not a dictionary for app %s, got %s", app.id, type(model_dict))
+                        return
+
+                    node_provider = model_dict.get("provider", "")
+                    model_name = model_dict.get("name", "")
+                    model_mode = model_dict.get("mode", "chat")
+
+                    # Support both full and short provider names
+                    node_provider_short = node_provider.split("/")[-1] if "/" in node_provider else node_provider
+
+                    # If this app uses the specified provider
+                    provider_matches = {provider, provider_short_name, node_provider_short}
+                    if node_provider in provider_matches and model_name:
+                        callback(model_name, model_mode, None, app, app.name, "chat_app")
+
+        except (AttributeError, KeyError) as e:
+            logger.warning("Error processing chat app model config for app %s: %s", app.id, e)
 
     def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
         """
@@ -479,3 +557,152 @@ class ModelProviderService:
 
         # Enable model
         provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))
+
+    def _query_workflows_and_apps(self, tenant_id: str):
+        """
+        Shared method to query workflows and apps for model usage analysis.
+        Returns filtered workflows and chat apps.
+        """
+        from extensions.ext_database import db
+
+        # Query workflows and apps in the tenant
+        workflows_and_apps = (
+            db.session.query(Workflow, App)
+            .join(App, Workflow.app_id == App.id)
+            .filter(
+                Workflow.tenant_id == tenant_id,
+                App.tenant_id == tenant_id,
+                db.or_(
+                    Workflow.version == "draft",
+                    Workflow.version != "draft",
+                ),
+            )
+            .all()
+        )
+
+        # Also query chat applications without workflows
+        chat_apps = (
+            db.session.query(App)
+            .filter(App.tenant_id == tenant_id, App.mode.in_(["chat", "agent-chat", "completion"]))
+            .all()
+        )
+
+        # Filter workflows to keep only latest published version per app (plus drafts)
+        filtered_workflows_and_apps = []
+        app_latest_versions = {}
+
+        # First pass: collect all workflows grouped by app_id
+        for workflow, app in workflows_and_apps:
+            app_id = workflow.app_id
+            if app_id not in app_latest_versions:
+                app_latest_versions[app_id] = {"draft": None, "published": []}
+
+            if workflow.version == "draft":
+                app_latest_versions[app_id]["draft"] = (workflow, app)
+            else:
+                app_latest_versions[app_id]["published"].append((workflow, app))
+
+        # Second pass: add draft and latest published version for each app
+        for app_id, versions in app_latest_versions.items():
+            if versions["draft"]:
+                filtered_workflows_and_apps.append(versions["draft"])
+            if versions["published"]:
+                latest_published = max(versions["published"], key=lambda x: x[0].created_at)
+                filtered_workflows_and_apps.append(latest_published)
+
+        return filtered_workflows_and_apps, chat_apps
+
+    def get_model_references(self, tenant_id: str, provider: str) -> dict:
+        """
+        Get model references for a specific provider.
+        Returns all models from the provider and their usage in workflows and chat apps.
+        """
+        provider_short_name = provider.split("/")[-1] if "/" in provider else provider
+        logger.info("Searching model references for provider: %s (short name: %s)", provider, provider_short_name)
+
+        # Use shared query method
+        filtered_workflows_and_apps, chat_apps = self._query_workflows_and_apps(tenant_id)
+
+        logger.info(
+            "Found %d workflows (after filtering) and %d chat apps to analyze",
+            len(filtered_workflows_and_apps),
+            len(chat_apps),
+        )
+
+        # Dictionary to store model references
+        model_references = {}
+
+        # Process workflow applications
+        for workflow, app in filtered_workflows_and_apps:
+            self._process_workflow_models(workflow, app, provider, provider_short_name, model_references)
+
+        # Process chat applications
+        for app in chat_apps:
+            self._process_chat_app_models(app, provider, provider_short_name, model_references)
+
+        # Convert to list format for easier frontend consumption
+        result = []
+        for model_data in model_references.values():
+            if model_data["workflows"]:  # Only include models that are actually used
+                result.append(model_data)
+
+        logger.info("Found %d models with references for provider %s", len(result), provider)
+
+        return {
+            "provider": provider,
+            "models": result,
+            "total_models": len(result),
+            "total_workflows": sum(len(model["workflows"]) for model in result),
+        }
+
+    def _process_workflow_models(self, workflow, app, provider, provider_short_name, model_references):
+        """Process models from workflow graph data."""
+
+        def add_model_reference(model_name, model_mode, workflow, app, node_title, app_type):
+            self._add_model_reference(model_references, model_name, model_mode, workflow, app, node_title, app_type)
+
+        # Delegate to shared generic processing method
+        self._process_workflow_models_generic(workflow, app, provider, provider_short_name, add_model_reference)
+
+    def _process_chat_app_models(self, app, provider, provider_short_name, model_references):
+        """Process models from chat application model_config."""
+
+        def add_model_reference(model_name, model_mode, workflow, app, node_title, app_type):
+            self._add_model_reference(model_references, model_name, model_mode, workflow, app, node_title, app_type)
+
+        # Delegate to shared generic processing method
+        self._process_chat_app_models_generic(app, provider, provider_short_name, add_model_reference)
+
+    def _add_model_reference(self, model_references, model_name, model_mode, workflow, app, node_title, app_type):
+        """Add a model reference to the collection."""
+        model_key = f"{model_name}_{model_mode}"
+
+        if model_key not in model_references:
+            model_references[model_key] = {
+                "model_name": model_name,
+                "model_mode": model_mode,
+                "model_type": "text-generation",  # Default type
+                "workflows": [],
+            }
+
+        # Add workflow/app info - simplified to only show app name
+        workflow_info = {
+            "workflow_id": str(workflow.id) if workflow else None,
+            "app_id": str(app.id),
+            "app_name": app.name,
+            "workflow_name": app.name,  # Simplified to use app name
+            "node_title": node_title,
+            "app_type": app_type,
+        }
+
+        # Avoid duplicates - group by app_id for the same model
+        # Since we only show app names, no need to combine workflow names
+        existing_for_app = None
+        for existing_workflow in model_references[model_key]["workflows"]:
+            if existing_workflow["app_id"] == workflow_info["app_id"]:
+                existing_for_app = existing_workflow
+                break
+
+        if not existing_for_app:
+            # New app for this model
+            model_references[model_key]["workflows"].append(workflow_info)
