@@ -61,8 +61,6 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
-  const session = searchParams.get('session')
-  const sysUserId = searchParams.get('sys.user_id')
   const [shareCode, setShareCode] = useState<string | null>(null)
   useEffect(() => {
     const shareCodeFromRedirect = getShareCodeFromRedirectUrl(redirectUrlParam)
@@ -86,7 +84,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
         setIsFetchingAccessToken(false)
       }
     }
-  }, [accessModeResult, updateWebAppAccessMode, setIsFetchingAccessToken, shareCode, session, sysUserId])
+  }, [accessModeResult, updateWebAppAccessMode, setIsFetchingAccessToken, shareCode])
   if (isFetching || isFetchingAccessToken) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
