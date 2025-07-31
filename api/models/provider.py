@@ -1,12 +1,12 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
-from .engine import db
 from .types import StringUUID
 
 

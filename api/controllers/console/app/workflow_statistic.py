@@ -2,10 +2,11 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytz
+import sqlalchemy as sa
 from flask import jsonify
 from flask_login import current_user
 from flask_restful import Resource, reqparse
-import sqlalchemy as sa
+
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required

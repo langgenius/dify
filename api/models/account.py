@@ -2,6 +2,7 @@ import enum
 import json
 from datetime import datetime
 from typing import Optional, cast
+
 import sqlalchemy as sa
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import DateTime, String, func, select

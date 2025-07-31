@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+
 import sqlalchemy as sa
 from celery import states  # type: ignore
 from sqlalchemy import DateTime, String

@@ -1,8 +1,9 @@
 import logging
 import time
 from collections.abc import Callable
-import sqlalchemy as sa
+
 import click
+import sqlalchemy as sa
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError

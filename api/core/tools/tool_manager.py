@@ -6,6 +6,7 @@ from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+
 import sqlalchemy as sa
 from pydantic import TypeAdapter
 from yarl import URL

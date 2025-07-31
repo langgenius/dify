@@ -5,9 +5,9 @@ import secrets
 from typing import Any, Optional
 
 import click
+import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
-import sqlalchemy as sa
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 

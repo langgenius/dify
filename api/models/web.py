@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
