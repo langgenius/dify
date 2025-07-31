@@ -110,6 +110,7 @@ const InputFieldDialog = ({
         show={!!showInputFieldDialog}
         onClose={closePanel}
         outerWrapperClassName='overflow-y-auto'
+        panelWrapperClassName='justify-start'
         className='grow rounded-l-2xl border-y-[0.5px] border-l-[0.5px]'
       >
         <div className='flex shrink-0 items-center p-4 pb-0'>
