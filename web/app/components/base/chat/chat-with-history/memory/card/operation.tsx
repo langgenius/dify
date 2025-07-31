@@ -13,9 +13,11 @@ import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 
 type Props = {
+  onEdit: () => void
 }
 
 const OperationDropdown: FC<Props> = ({
+  onEdit,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
@@ -49,7 +51,7 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemContent className='z-50'>
         <div className='w-[220px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
           <div className='p-1'>
-            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('share.chat.memory.operations.edit')}</div>
+            <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={onEdit}>{t('share.chat.memory.operations.edit')}</div>
             <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('share.chat.memory.operations.reset')}</div>
             <div className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive'>{t('share.chat.memory.operations.clear')}</div>
           </div>
