@@ -19,6 +19,7 @@ import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
+import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
 
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
@@ -51,6 +52,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IfElse]: useIfElseSingleRunFormParams,
   [BlockEnum.VariableAggregator]: useVariableAggregatorSingleRunFormParams,
   [BlockEnum.Assigner]: useVariableAssignerSingleRunFormParams,
+  [BlockEnum.KnowledgeBase]: useKnowledgeBaseSingleRunFormParams,
   [BlockEnum.VariableAssigner]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
@@ -60,7 +62,6 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LoopEnd]: undefined,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
-  [BlockEnum.KnowledgeBase]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
