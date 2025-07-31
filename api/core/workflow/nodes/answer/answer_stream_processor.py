@@ -120,7 +120,7 @@ class AnswerStreamProcessor(StreamProcessor):
                 for state in self.node_run_state.node_state_mapping.values():
                     if state.node_id == parent_node_id:
                         parent_node_run_state = state
-                        break # Assume the last found state is the latest for simplicity
+                        break  # Assume the last found state is the latest for simplicity
 
                 if not parent_node_run_state or parent_node_run_state.status == RouteNodeState.Status.RUNNING:
                     return False
@@ -130,9 +130,9 @@ class AnswerStreamProcessor(StreamProcessor):
 
                 # If the parent is a branch node, check if the executed branch leads to the current node
                 parent_node_config = self.graph.node_id_config_mapping.get(parent_node_id, {})
-                parent_node_type = parent_node_config.get('data', {}).get('type')
+                parent_node_type = parent_node_config.get("data", {}).get("type")
 
-                is_branch_node = parent_node_type in ['if-else', 'question-classifier'] # Example branch types
+                is_branch_node = parent_node_type in ["if-else", "question-classifier"]  # Example branch types
 
                 if is_branch_node:
                     run_result = parent_node_run_state.node_run_result
@@ -141,7 +141,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
                     # If the chosen branch does not match the path we are traversing, this dependency path is irrelevant
                     if chosen_handle and required_handle and chosen_handle != required_handle:
-                        continue # This path was not taken, so it's not a dependency
+                        continue  # This path was not taken, so it's not a dependency
 
                 # If all checks pass, add the parent to the queue to continue traversing up
                 queue.append(parent_node_id)
@@ -160,7 +160,7 @@ class AnswerStreamProcessor(StreamProcessor):
             # all depends on answer node id not in rest node ids
             if event.route_node_state.node_id != answer_node_id and (
                 answer_node_id not in self.rest_node_ids
-                or not self._is_dynamic_dependencies_met(answer_node_id) # Using dynamic check for final output as well
+                or not self._is_dynamic_dependencies_met(answer_node_id)  # Using dynamic check for final output as well
             ):
                 continue
 

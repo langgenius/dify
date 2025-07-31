@@ -33,9 +33,7 @@ class AnswerStreamGeneratorRouter:
             generate_route = cls._extract_generate_route_selectors(node_config)
             answer_generate_route[answer_node_id] = generate_route
 
-        return AnswerStreamGenerateRoute(
-            answer_generate_route=answer_generate_route
-        )
+        return AnswerStreamGenerateRoute(answer_generate_route=answer_generate_route)
 
     @classmethod
     def extract_generate_route_from_node_data(cls, node_data: AnswerNodeData) -> list[GenerateRouteChunk]:
