@@ -38,6 +38,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder,
     sidebarCollapseState,
     showChatMemory,
+    setShowChatMemory,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
@@ -84,7 +85,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
         <div className={cn(
           'flex h-full grow flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg',
           isMobile ? 'rounded-t-2xl' : 'rounded-2xl',
-          showChatMemory && 'mr-1',
+          showChatMemory && !isMobile && 'mr-1',
         )}>
           {!isMobile && <Header />}
           {appChatListDataLoading && (
@@ -94,7 +95,18 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             <ChatWrapper key={chatShouldReloadKey} />
           )}
         </div>
-        <MemoryPanel showChatMemory={showChatMemory} />
+        {!isMobile && (
+          <MemoryPanel showChatMemory={showChatMemory} />
+        )}
+        {isMobile && showChatMemory && (
+          <div className='fixed inset-0 z-50 flex flex-row-reverse bg-background-overlay p-1 backdrop-blur-sm'
+            onClick={() => setShowChatMemory(false)}
+          >
+            <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
+              <MemoryPanel showChatMemory={showChatMemory} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

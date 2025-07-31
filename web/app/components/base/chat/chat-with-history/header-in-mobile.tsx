@@ -28,6 +28,8 @@ const HeaderInMobile = () => {
     handleRenameConversation,
     conversationRenaming,
     inputsForms,
+    showChatMemory,
+    setShowChatMemory,
   } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const isPin = pinnedConversationList.some(item => item.id === currentConversationId)
@@ -60,6 +62,9 @@ const HeaderInMobile = () => {
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
+  const handleChatMemoryToggle = useCallback(() => {
+    setShowChatMemory(!showChatMemory)
+  }, [setShowChatMemory, showChatMemory])
   const [showSidebar, setShowSidebar] = useState(false)
   const [showChatSettings, setShowChatSettings] = useState(false)
 
@@ -98,6 +103,7 @@ const HeaderInMobile = () => {
           )}
         </div>
         <MobileOperationDropdown
+          handleChatMemoryToggle={handleChatMemoryToggle}
           handleResetChat={handleNewConversation}
           handleViewChatSettings={() => setShowChatSettings(true)}
           hideViewChatSettings={inputsForms.length < 1}

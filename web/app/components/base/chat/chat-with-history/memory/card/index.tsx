@@ -15,9 +15,10 @@ import cn from '@/utils/classnames'
 
 type Props = {
   memory: MemoryItem
+  isMobile?: boolean
 }
 
-const MemoryCard: React.FC<Props> = ({ memory }) => {
+const MemoryCard: React.FC<Props> = ({ memory, isMobile }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = React.useState(false)
   const [showEditModal, setShowEditModal] = React.useState(false)
@@ -39,7 +40,10 @@ const MemoryCard: React.FC<Props> = ({ memory }) => {
             <div className='hover:bg-components-actionbar-bg-hover flex items-center gap-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md'>
               <ActionButton><RiArrowUpSLine className='h-4 w-4' /></ActionButton>
               <ActionButton><RiArrowDownSLine className='h-4 w-4' /></ActionButton>
-              <Operation onEdit={() => setShowEditModal(true)} />
+              <Operation onEdit={() => {
+                setShowEditModal(true)
+                setIsHovering(false)
+              }} />
             </div>
           )}
         </div>
@@ -59,6 +63,7 @@ const MemoryCard: React.FC<Props> = ({ memory }) => {
       </div>
       {showEditModal && (
         <MemoryEditModal
+          isMobile={isMobile}
           show={showEditModal}
           memory={memory}
           onConfirm={async (info) => {

@@ -21,6 +21,7 @@ type Props = {
 const MemoryPanel: React.FC<Props> = ({ showChatMemory }) => {
   const { t } = useTranslation()
   const {
+    isMobile,
     setShowChatMemory,
   } = useChatWithHistoryContext()
 
@@ -37,7 +38,7 @@ const MemoryPanel: React.FC<Props> = ({ showChatMemory }) => {
       </div>
       <div className='h-0 grow overflow-y-auto px-3 pt-2'>
         {mockMemoryList.map(memory => (
-          <MemoryCard key={memory.name} memory={memory} />
+          <MemoryCard key={memory.name} memory={memory} isMobile={isMobile} />
         ))}
         <div className='flex items-center justify-center'>
           <Button variant='ghost'>

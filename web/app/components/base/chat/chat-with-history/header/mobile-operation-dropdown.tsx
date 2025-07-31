@@ -9,12 +9,14 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 type Props = {
   handleResetChat: () => void
   handleViewChatSettings: () => void
+  handleChatMemoryToggle?: () => void
   hideViewChatSettings?: boolean
 }
 
 const MobileOperationDropdown = ({
   handleResetChat,
   handleViewChatSettings,
+  handleChatMemoryToggle,
   hideViewChatSettings = false,
 }: Props) => {
   const { t } = useTranslation()
@@ -43,6 +45,9 @@ const MobileOperationDropdown = ({
         >
           <div className='system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={handleResetChat}>
             <span className='grow'>{t('share.chat.resetChat')}</span>
+          </div>
+          <div className='system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={handleChatMemoryToggle}>
+            <span className='grow'>{t('share.chat.memory.actionButton')}</span>
           </div>
           {!hideViewChatSettings && (
             <div className='system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover' onClick={handleViewChatSettings}>
