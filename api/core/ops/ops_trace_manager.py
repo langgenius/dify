@@ -293,19 +293,19 @@ class OpsTraceManager:
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
-        stmt = select(Message).where(Message.id == message_id)
-        message_data = db.session.execute(stmt).scalars().first()
+        message_stmt = select(Message).where(Message.id == message_id)
+        message_data = db.session.execute(message_stmt).scalars().first()
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
-        stmt = select(Conversation).where(Conversation.id == conversation_id)
-        conversation_data = db.session.execute(stmt).scalars().first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation_id)
+        conversation_data = db.session.execute(conversation_stmt).scalars().first()
         if not conversation_data:
             return None
 
         if conversation_data.app_model_config_id:
-            stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
-            app_model_config = db.session.execute(stmt).scalars().first()
+            config_stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
+            app_model_config = db.session.execute(config_stmt).scalars().first()
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
             app_model_config = conversation_data.override_model_configs
 

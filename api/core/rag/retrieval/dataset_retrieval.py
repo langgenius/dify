@@ -135,8 +135,8 @@ class DatasetRetrieval:
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
-            stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.execute(stmt).scalars().first()
+            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+            dataset = db.session.execute(dataset_stmt).scalars().first()
 
             # pass if dataset is not available
             if not dataset:
@@ -241,12 +241,12 @@ class DatasetRetrieval:
                     for record in records:
                         segment = record.segment
                         dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        stmt = select(DatasetDocument).where(
+                        dataset_document_stmt = select(DatasetDocument).where(
                             DatasetDocument.id == segment.document_id,
                             DatasetDocument.enabled == True,
                             DatasetDocument.archived == False,
                         )
-                        document = db.session.execute(stmt).scalars().first()
+                        document = db.session.execute(dataset_document_stmt).scalars().first()
                         if dataset and document:
                             source = RetrievalSourceMetadata(
                                 dataset_id=dataset.id,

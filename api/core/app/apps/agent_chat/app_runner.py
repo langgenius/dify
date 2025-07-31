@@ -46,8 +46,8 @@ class AgentChatAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(AgentChatAppConfig, app_config)
-        stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.execute(stmt).scalars().first()
+        app_stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.execute(app_stmt).scalars().first()
         if not app_record:
             raise ValueError("App not found")
 
@@ -184,12 +184,12 @@ class AgentChatAppRunner(AppRunner):
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
-        stmt = select(Conversation).where(Conversation.id == conversation.id)
-        conversation_result = db.session.execute(stmt).scalars().first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation.id)
+        conversation_result = db.session.execute(conversation_stmt).scalars().first()
         if conversation_result is None:
             raise ValueError("Conversation not found")
-        stmt = select(Message).where(Message.id == message.id)
-        message_result = db.session.execute(stmt).scalars().first()
+        msg_stmt = select(Message).where(Message.id == message.id)
+        message_result = db.session.execute(msg_stmt).scalars().first()
         if message_result is None:
             raise ValueError("Message not found")
         db.session.close()

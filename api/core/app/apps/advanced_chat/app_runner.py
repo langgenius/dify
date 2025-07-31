@@ -71,8 +71,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     def run(self) -> None:
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
-        stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.execute(stmt).scalars().first()
+        app_stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.execute(app_stmt).scalars().first()
         if not app_record:
             raise ValueError("App not found")
 
@@ -119,12 +119,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 return
 
             # Init conversation variables
-            stmt = select(ConversationVariable).where(
+            conversation_variables_stmt = select(ConversationVariable).where(
                 ConversationVariable.app_id == self.conversation.app_id,
                 ConversationVariable.conversation_id == self.conversation.id,
             )
             with Session(db.engine) as session:
-                db_conversation_variables = session.scalars(stmt).all()
+                db_conversation_variables = session.scalars(conversation_variables_stmt).all()
                 if not db_conversation_variables:
                     # Create conversation variables if they don't exist.
                     db_conversation_variables = [

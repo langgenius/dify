@@ -318,8 +318,8 @@ class RetrievalService:
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # Handle parent-child documents
                     child_index_node_id = document.metadata.get("doc_id")
-                    stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
-                    child_chunk = db.session.execute(stmt).scalars().first()
+                    child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
+                    child_chunk = db.session.execute(child_chunk_stmt).scalars().first()
 
                     if not child_chunk:
                         continue
@@ -378,13 +378,13 @@ class RetrievalService:
                     index_node_id = document.metadata.get("doc_id")
                     if not index_node_id:
                         continue
-                    stmt = select(DocumentSegment).where(
+                    document_segment_stmt = select(DocumentSegment).where(
                         DocumentSegment.dataset_id == dataset_document.dataset_id,
                         DocumentSegment.enabled == True,
                         DocumentSegment.status == "completed",
                         DocumentSegment.index_node_id == index_node_id,
                     )
-                    segment = db.session.execute(stmt).scalars().first()
+                    segment = db.session.execute(document_segment_stmt).scalars().first()
 
                     if not segment:
                         continue
