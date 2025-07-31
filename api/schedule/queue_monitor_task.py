@@ -12,10 +12,10 @@ from libs.email_i18n import EmailType, get_email_i18n_service
 
 redis_config = parse_url(dify_config.CELERY_BROKER_URL)
 celery_redis = Redis(
-    host=redis_config["hostname"],
-    port=redis_config["port"],
-    password=redis_config["password"],
-    db=int(redis_config["virtual_host"]) if redis_config["virtual_host"] else 1,
+    host=redis_config.get("hostname") or "localhost",
+    port=redis_config.get("port") or 6379,
+    password=redis_config.get("password") or None,
+    db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
 )
 
 
