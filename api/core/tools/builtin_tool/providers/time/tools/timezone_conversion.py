@@ -27,7 +27,7 @@ class TimezoneConversionTool(BuiltinTool):
         target_time = self.timezone_convert(current_time, current_timezone, target_timezone)  # type: ignore
         if not target_time:
             yield self.create_text_message(
-                f"Invalid datatime and timezone: {current_time},{current_timezone},{target_timezone}"
+                f"Invalid datetime and timezone: {current_time},{current_timezone},{target_timezone}"
             )
             return
 
