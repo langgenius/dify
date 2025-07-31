@@ -84,31 +84,26 @@ class ModelProviderService:
         from models.model import App
         from models.workflow import Workflow
 
-        results = db.session.query(
-            Workflow,
-            App.name
-        ).join(
-            App, Workflow.app_id == App.id
-        ).filter(
-            Workflow.tenant_id == tenant_id,
-            Workflow.graph.isnot(None)
-        ).all()
+        results = (
+            db.session.query(Workflow, App.name)
+            .join(App, Workflow.app_id == App.id)
+            .filter(Workflow.tenant_id == tenant_id, Workflow.graph.isnot(None))
+            .all()
+        )
 
         model_usages = {}
         for workflow, app_name in results:
             try:
                 graph = json.loads(workflow.graph)
-                for node in graph.get('nodes', []):
-                    node_data = node.get('data', {})
-                    if node_data.get('type') in {'llm', 'knowledge-retrieval', 'agent'}:
-                        model_info = node_data.get('model', {})
-                        if model_info.get('provider') == provider:
-                            if model_name := model_info.get('name'):
-                                model_usages.setdefault(model_name, []).append({
-                                    'app_id': workflow.app_id,
-                                    'name': app_name,
-                                    'type': 'workflow'
-                                })
+                for node in graph.get("nodes", []):
+                    node_data = node.get("data", {})
+                    if node_data.get("type") in {"llm", "knowledge-retrieval", "agent"}:
+                        model_info = node_data.get("model", {})
+                        if model_info.get("provider") == provider:
+                            if model_name := model_info.get("name"):
+                                model_usages.setdefault(model_name, []).append(
+                                    {"app_id": workflow.app_id, "name": app_name, "type": "workflow"}
+                                )
             except json.JSONDecodeError:
                 logger.warning("Failed to parse workflow graph")
                 continue
@@ -119,34 +114,30 @@ class ModelProviderService:
         """Find model usages in app configurations."""
         from models.model import App
 
-        results = db.session.query(
-            AppModelConfig,
-            App.name
-        ).join(
-            App, AppModelConfig.app_id == App.id
-        ).filter(
-            App.tenant_id == tenant_id,
-        ).all()
+        results = (
+            db.session.query(AppModelConfig, App.name)
+            .join(App, AppModelConfig.app_id == App.id)
+            .filter(
+                App.tenant_id == tenant_id,
+            )
+            .all()
+        )
 
         model_usages = {}
         for app_config, app_name in results:
             # find model in model_id
             if app_config.provider == provider and (model_name := app_config.model_id):
-                model_usages.setdefault(model_name, []).append({
-                    'app_id': app_config.app_id,
-                    'name': app_name,
-                    'type': 'app'
-                })
+                model_usages.setdefault(model_name, []).append(
+                    {"app_id": app_config.app_id, "name": app_name, "type": "app"}
+                )
 
             # find model in model -> configs
             if model_config := app_config.model_dict:
-                if model_config.get('provider') == provider:
-                    if model_name := model_config.get('name'):
-                        model_usages.setdefault(model_name, []).append({
-                            'app_id': app_config.app_id,
-                            'name': app_name,
-                            'type': 'app'
-                        })
+                if model_config.get("provider") == provider:
+                    if model_name := model_config.get("name"):
+                        model_usages.setdefault(model_name, []).append(
+                            {"app_id": app_config.app_id, "name": app_name, "type": "app"}
+                        )
 
         return model_usages
 
@@ -172,7 +163,7 @@ class ModelProviderService:
                 if model_name not in all_usages:
                     all_usages[model_name] = {}
                 for usage in usages:
-                    all_usages[model_name][usage['app_id']] = usage
+                    all_usages[model_name][usage["app_id"]] = usage
 
         # Prepare response
         response = []
