@@ -9,7 +9,10 @@ import Button from '@/app/components/base/button'
 import {
   useChatWithHistoryContext,
 } from '../context'
+import MemoryCard from './card'
 import cn from '@/utils/classnames'
+
+import { mockMemoryList } from './mock'
 
 type Props = {
   showChatMemory?: boolean
@@ -32,8 +35,10 @@ const MemoryPanel: React.FC<Props> = ({ showChatMemory }) => {
           <RiCloseLine className='h-[18px] w-[18px]' />
         </ActionButton>
       </div>
-      {/* Memory content goes here */}
       <div className='h-0 grow overflow-y-auto px-3 pt-2'>
+        {mockMemoryList.map(memory => (
+          <MemoryCard key={memory.name} memory={memory} />
+        ))}
         <div className='flex items-center justify-center'>
           <Button variant='ghost'>
             <RiDeleteBinLine className='mr-1 h-3.5 w-3.5' />
