@@ -265,9 +265,9 @@ class Executor:
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
-            if self.auth.config.type == "bearer":
+            if self.auth.config.type == "bearer" and authorization.config.api_key:
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
-            elif self.auth.config.type == "basic":
+            elif self.auth.config.type == "basic" and authorization.config.api_key:
                 credentials = authorization.config.api_key
                 if ":" in credentials:
                     encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")

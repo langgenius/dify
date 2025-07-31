@@ -47,6 +47,9 @@ class CompletionApi(Resource):
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
 
         args = parser.parse_args()
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         streaming = args["response_mode"] == "streaming"
 

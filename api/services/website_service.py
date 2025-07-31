@@ -98,20 +98,16 @@ class WebsiteCrawlStatusApiRequest:
 
     provider: str
     job_id: str
-    credential_id: Optional[str] = None
-
     @classmethod
     def from_args(cls, args: dict, job_id: str) -> "WebsiteCrawlStatusApiRequest":
         """Create from Flask-RESTful parsed arguments."""
         provider = args.get("provider")
-        credential_id = args.get("credential_id")
-
         if not provider:
             raise ValueError("Provider is required")
         if not job_id:
             raise ValueError("Job ID is required")
 
-        return cls(provider=provider, job_id=job_id, credential_id=credential_id)
+        return cls(provider=provider, job_id=job_id)
 
 
 class WebsiteService:
@@ -134,7 +130,12 @@ class WebsiteService:
             provider=provider,
             plugin_id=plugin_id,
         )
-        return credential.get("api_key"), credential
+        if provider == "firecrawl":
+            return credential.get("firecrawl_api_key"), credential
+        elif provider in {"watercrawl", "jinareader"}:
+            return credential.get("api_key"), credential
+        else:
+            raise ValueError("Invalid provider")
 
     @classmethod
     def _get_decrypted_api_key(cls, tenant_id: str, config: dict) -> str:
@@ -221,7 +222,7 @@ class WebsiteService:
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
             if response.json().get("code") != 200:
-                raise ValueError("Failed to crawl")
+                raise ValueError(f"Failed to crawl:")
             return {"status": "active", "data": response.json().get("data")}
         else:
             response = requests.post(

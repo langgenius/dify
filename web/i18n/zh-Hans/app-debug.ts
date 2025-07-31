@@ -254,7 +254,6 @@ const translation = {
     noDataLine1: '在左侧描述您的用例，',
     noDataLine2: '编排预览将在此处显示。',
     apply: '应用',
-    noData: '在左侧描述您的用例，编排预览将在此处显示。',
     loading: '为您编排应用程序中…',
     overwriteTitle: '覆盖现有配置？',
     overwriteMessage: '应用此提示将覆盖现有配置。',
