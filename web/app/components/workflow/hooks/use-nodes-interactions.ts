@@ -1498,18 +1498,15 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
 
-    const { yNodesMap, yEdgesMap, ydoc } = useCollaborationStore.getState()
-    if (yNodesMap && yEdgesMap && ydoc) {
-      ydoc.transact(() => {
-        newNodes.forEach((node) => {
-          yNodesMap.set(node.id, node)
-        })
-        console.log('Before edge delete, yEdgesMap size:', yEdgesMap?.size)
-        connectedEdges.forEach((edge) => {
-          yEdgesMap.delete(edge.id)
-        })
-        console.log('After edge delete, yEdgesMap size:', yEdgesMap?.size)
+    const { nodesMap, edgesMap, loroDoc } = useCollaborationStore.getState()
+    if (nodesMap && edgesMap && loroDoc) {
+      // newNodes.forEach((node) => {
+      //   nodesMap.set(node.id, node)
+      // })
+      connectedEdges.forEach((edge) => {
+        edgesMap.delete(edge.id)
       })
+      loroDoc.commit()
     }
 
     handleSyncWorkflowDraft()

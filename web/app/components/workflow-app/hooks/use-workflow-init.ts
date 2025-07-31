@@ -40,14 +40,14 @@ export const useWorkflowInit = () => {
   }, [workflowStore])
   useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
 
-    const initializeCollaboration = async (appId: string) => {
+  const initializeCollaboration = async (appId: string) => {
     const { initCollaboration } = useCollaborationStore.getState()
     initCollaboration(appId)
 
     return new Promise<void>((resolve) => {
       const checkInitialized = () => {
-        const { yNodesMap, yEdgesMap } = useCollaborationStore.getState()
-        if (yNodesMap && yEdgesMap)
+        const { nodesMap, edgesMap } = useCollaborationStore.getState()
+        if (nodesMap && edgesMap)
           resolve()
          else
           setTimeout(checkInitialized, 50)
@@ -56,21 +56,18 @@ export const useWorkflowInit = () => {
     })
   }
 
-  const populateYjsWithServerData = async (serverData: any) => {
-    const { yNodesMap, yEdgesMap } = useCollaborationStore.getState()
-
-    if (yNodesMap && yEdgesMap && serverData.graph) {
-      const { ydoc } = useCollaborationStore.getState()
-      ydoc?.transact(() => {
-        serverData.graph.nodes?.forEach((node: any) => {
-          yNodesMap.set(node.id, node)
-        })
-
-        serverData.graph.edges?.forEach((edge: any) => {
-          yEdgesMap.set(edge.id, edge)
-        })
+  const populateCollaborationWithServerData = async (serverData: any) => {
+    const { nodesMap, edgesMap, loroDoc } = useCollaborationStore.getState()
+    serverData.graph.nodes?.forEach((node: any) => {
+        console.log('Setting node:', node.id, node)
+        nodesMap.set(node.id, node)
       })
-    }
+
+    serverData.graph.edges?.forEach((edge: any) => {
+      console.log('Setting edge:', edge.id, edge)
+      edgesMap.set(edge.id, edge)
+    })
+    loroDoc.commit()
   }
 
   const handleGetInitialWorkflowData = useCallback(async () => {
@@ -88,7 +85,7 @@ export const useWorkflowInit = () => {
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
       })
-      await populateYjsWithServerData(res)
+      await populateCollaborationWithServerData(res)
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }

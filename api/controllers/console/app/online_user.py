@@ -140,10 +140,10 @@ def handle_collaboration_event(sid, data):
     return {"msg": "event_broadcasted"}
 
 
-@sio.on("yjs_update")
-def handle_yjs_update(sid, data):
+@sio.on("graph_update")
+def handle_graph_update(sid, data):
     """
-    Handle Y.js document updates - simple broadcast relay.
+    Handle graph updates - simple broadcast relay.
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")
 
@@ -152,8 +152,7 @@ def handle_yjs_update(sid, data):
 
     mapping_data = json.loads(mapping)
     workflow_id = mapping_data["workflow_id"]
-    user_id = mapping_data["user_id"]
 
-    sio.emit("yjs_update", data, room=workflow_id, skip_sid=sid)
+    sio.emit("graph_update", data, room=workflow_id, skip_sid=sid)
 
-    return {"msg": "yjs_update_broadcasted"}
+    return {"msg": "graph_update_broadcasted"}

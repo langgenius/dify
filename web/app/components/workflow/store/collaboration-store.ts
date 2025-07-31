@@ -1,132 +1,118 @@
 import { create } from 'zustand'
-import * as Y from 'yjs'
+
+import { LoroDoc } from 'loro-crdt'
 import type { Edge, Node } from '../types'
 import { useWebSocketStore } from './websocket-store'
 
-let globalYDoc: Y.Doc | null = null
-let globalYNodesMap: Y.Map<any> | null = null
-let globalYEdgesMap: Y.Map<any> | null = null
-
-class YjsSocketIOProvider {
-  private doc: Y.Doc
+class LoroSocketIOProvider {
+  private doc: any
   private socket: any
-  private isDestroyed = false
-  private onRemoteUpdate?: () => void
 
-  constructor(socket: any, doc: Y.Doc, onRemoteUpdate?: () => void) {
+  constructor(socket: any, doc: any) {
     this.socket = socket
     this.doc = doc
-    this.onRemoteUpdate = onRemoteUpdate
 
     this.setupEventListeners()
   }
 
   private setupEventListeners() {
-    this.doc.on('update', (update: Uint8Array, origin: any) => {
-      if (origin !== 'remote')
-        this.socket.emit('yjs_update', update)
+    this.doc.subscribe((event: any) => {
+      if (event.origin !== 'remote') {
+        const update = this.doc.export({ mode: 'update' })
+        this.socket.emit('graph_update', update)
+      }
     })
 
-    this.socket.on('yjs_update', (updateData: Uint8Array) => {
-      Y.applyUpdate(this.doc, new Uint8Array(updateData), 'remote')
-
-      if (this.onRemoteUpdate)
-        this.onRemoteUpdate()
+    this.socket.on('graph_update', (updateData: Uint8Array) => {
+      try {
+        const data = new Uint8Array(updateData)
+        this.doc.import(data)
+      }
+ catch (error) {
+        console.error('Error importing graph update:', error)
+      }
     })
   }
 
   destroy() {
-    this.isDestroyed = true
+    this.socket.off('graph_update')
   }
 }
 
 type CollaborationStore = {
-  ydoc: Y.Doc | null
-  provider: YjsSocketIOProvider | null
-
-  yNodesMap: Y.Map<any> | null
-  yEdgesMap: Y.Map<any> | null
-
-  yTestMap: Y.Map<any> | null
-  yTestArray: Y.Array<any> | null
-
+  loroDoc: any | null
+  provider: LoroSocketIOProvider | null
+  nodesMap: any | null
+  edgesMap: any | null
   nodes: Node[]
   edges: Edge[]
-
+  updateNodes?: () => void
+  updateEdges?: () => void
   initCollaboration: (appId: string) => void
   destroyCollaboration: () => void
-
 }
 
 export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
-  ydoc: null,
+  loroDoc: null,
   provider: null,
-  yNodesMap: null,
-  yEdgesMap: null,
-  yTestMap: null,
-  yTestArray: null,
+  nodesMap: null,
+  edgesMap: null,
   nodes: [],
   edges: [],
 
   initCollaboration: (appId: string) => {
-    if (!globalYDoc) {
-      console.log('Creating new global Y.Doc instance')
-      globalYDoc = new Y.Doc()
-      globalYNodesMap = globalYDoc.getMap<any>('nodes')
-      globalYEdgesMap = globalYDoc.getMap<any>('edges')
-    }
- else {
-      console.log('Reusing existing global Y.Doc instance')
-    }
-    const ydoc = globalYDoc
-    const yNodesMap = globalYNodesMap!
-    const yEdgesMap = globalYEdgesMap!
-
     const { getSocket } = useWebSocketStore.getState()
     const socket = getSocket(appId)
+    const doc = new LoroDoc()
+    const nodesMap = doc.getMap('nodes')
+    const edgesMap = doc.getMap('edges')
 
-    const updateReactState = () => {
-      console.log('updateReactState called')
-
-      const nodes = Array.from(yNodesMap.values())
-      const edges = Array.from(yEdgesMap.values())
-      console.log('Y.js data - nodes:', nodes.length, 'edges:', edges.length)
-
-      set({
-        nodes: [...nodes] as Node[],
-        edges: [...edges] as Edge[],
-      })
+    const updateNodes = () => {
+      const nodes = Array.from(nodesMap.values())
+      set({ nodes })
     }
 
-    const provider = new YjsSocketIOProvider(socket, globalYDoc, updateReactState)
+    const updateEdges = () => {
+      const edges = Array.from(edgesMap.values())
+      set({ edges })
+    }
 
-    yNodesMap.observe((event) => {
-      console.log('yNodesMap changed:', event)
-      updateReactState()
-    })
-    yEdgesMap.observe((event) => {
-      console.log('yEdgesMap changed:', event)
-      updateReactState()
-    })
-
-    updateReactState()
+    const provider = new LoroSocketIOProvider(socket, doc)
 
     set({
-      ydoc,
+      loroDoc: doc,
       provider,
-      yNodesMap,
-      yEdgesMap,
+      nodesMap,
+      edgesMap,
+      nodes: [],
+      edges: [],
+      updateNodes,
+      updateEdges,
+    })
+
+    nodesMap.subscribe((event: any) => {
+      console.log('NodesMap changed:', event)
+      updateNodes()
+    })
+
+    edgesMap.subscribe((event: any) => {
+      console.log('EdgesMap changed:', event)
+      updateEdges()
     })
   },
 
   destroyCollaboration: () => {
     const { provider } = get()
-    provider?.destroy()
-    set({
-      ydoc: null,
-      provider: null,
-      yNodesMap: null,
-      yEdgesMap: null,
-    })
+    if (provider) {
+      provider.destroy()
+      set({
+        loroDoc: null,
+        provider: null,
+        nodesMap: null,
+        edgesMap: null,
+        nodes: [],
+        edges: [],
+      })
+    }
   },
 }))

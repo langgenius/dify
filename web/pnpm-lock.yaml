@@ -198,6 +198,9 @@ importers:
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      loro-crdt:
+        specifier: ^1.5.9
+        version: 1.5.9
       mermaid:
         specifier: 11.4.1
         version: 11.4.1
@@ -345,9 +348,6 @@ importers:
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
-      yjs:
-        specifier: ^13.6.27
-        version: 13.6.27
       zod:
         specifier: ^3.23.8
         version: 3.24.2
@@ -6417,6 +6417,9 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
+
+  loro-crdt@1.5.9:
+    resolution: {integrity: sha512-edkfCYh5W42O7EmNVCx6iPrI0yTAhn0DRbEAk6tmiKaL42IpUoqyDREvtFDmdVVgofxKNgceDBQx8fIIjMdr2Q==}
 
   loupe@3.1.3:
     resolution: {integrity: sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug==}
@@ -16132,6 +16135,8 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  loro-crdt@1.5.9: {}
 
   loupe@3.1.3: {}
 

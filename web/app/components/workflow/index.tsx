@@ -140,7 +140,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   }, [collaborationNodes, setNodes])
 
   useEffect(() => {
-    console.log('collaborationEdges changed:', collaborationEdges, 122112)
     setEdges(collaborationEdges)
   }, [collaborationEdges, setEdges])
 

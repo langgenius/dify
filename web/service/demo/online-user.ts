@@ -24,7 +24,6 @@ export function connectOnlineUserWebSocket(appId: string): Socket {
 
   lastAppId = appId
 
-  // Add your event listeners here
   socket.on('connect', () => {
     socket?.emit('user_connect', { workflow_id: appId })
     console.log('WebSocket connected')
@@ -41,9 +40,6 @@ export function connectOnlineUserWebSocket(appId: string): Socket {
   return socket
 }
 
-/**
- * Disconnect the websocket connection.
- */
 export function disconnectOnlineUserWebSocket() {
   if (socket) {
     socket.disconnect()

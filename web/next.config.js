@@ -25,6 +25,15 @@ const nextConfig = {
   assetPrefix,
   webpack: (config, { dev, isServer }) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true,
+    }
+    config.output.environment = {
+      asyncFunction: true,
+    }
+
     return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
