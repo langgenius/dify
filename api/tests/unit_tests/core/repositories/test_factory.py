@@ -77,6 +77,7 @@ class TestRepositoryFactory:
         class IncompleteRepository:
             def save(self):
                 pass
+
             # Missing get_by_id method
 
         # Create a mock interface that requires both methods
