@@ -6,10 +6,10 @@ from constants import DEFAULT_FILE_NUMBER_LIMITS
 
 
 def get_parameters_from_feature_dict(
-    *, 
-    features_dict: Mapping[str, Any], 
-    user_input_form: list[dict[str, Any]], 
-    workflow_output_form: list[dict[str, Any]] = None
+    *,
+    features_dict: Mapping[str, Any],
+    user_input_form: list[dict[str, Any]],
+    workflow_output_form: list[dict[str, Any]] = None,
 ) -> Mapping[str, Any]:
     """
     Mapping from feature dict to webapp parameters
