@@ -16,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
+import MemoryPanel from './memory'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -30,6 +31,8 @@ const Chatbot = () => {
     chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
+    showChatMemory,
+    setShowChatMemory,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -90,6 +93,15 @@ const Chatbot = () => {
           )}
         </div>
       )}
+      {showChatMemory && (
+          <div className='fixed inset-0 z-50 flex flex-row-reverse bg-background-overlay p-1 backdrop-blur-sm'
+            onClick={() => setShowChatMemory(false)}
+          >
+            <div className='flex h-full w-[360px] rounded-xl shadow-lg' onClick={e => e.stopPropagation()}>
+              <MemoryPanel showChatMemory={showChatMemory} />
+            </div>
+          </div>
+        )}
     </div>
   )
 }
@@ -132,6 +144,8 @@ const EmbeddedChatbotWrapper = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    showChatMemory,
+    setShowChatMemory,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
@@ -169,6 +183,8 @@ const EmbeddedChatbotWrapper = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    showChatMemory,
+    setShowChatMemory,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>

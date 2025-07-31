@@ -56,6 +56,8 @@ export type EmbeddedChatbotContextValue = {
     name?: string
     avatar_url?: string
   }
+  showChatMemory?: boolean
+  setShowChatMemory: (state: boolean) => void
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -86,5 +88,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
   initUserVariables: {},
+  showChatMemory: false,
+  setShowChatMemory: noop,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

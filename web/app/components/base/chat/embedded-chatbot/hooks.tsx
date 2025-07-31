@@ -380,6 +380,8 @@ export const useEmbeddedChatbot = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }, [isInstalledApp, appId, t, notify])
 
+  const [showChatMemory, setShowChatMemory] = useState(false)
+
   return {
     appInfoError,
     appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
@@ -422,5 +424,7 @@ export const useEmbeddedChatbot = () => {
     setCurrentConversationInputs,
     allInputsHidden,
     initUserVariables,
+    showChatMemory,
+    setShowChatMemory,
   }
 }

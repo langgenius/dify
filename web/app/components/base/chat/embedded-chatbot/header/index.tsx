@@ -7,8 +7,9 @@ import { CssTransform } from '../theme/utils'
 import {
   useEmbeddedChatbotContext,
 } from '../context'
+import { Memory } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
-import ActionButton from '@/app/components/base/action-button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
@@ -36,6 +37,8 @@ const Header: FC<IHeaderProps> = ({
     appData,
     currentConversationId,
     inputsForms,
+    showChatMemory,
+    setShowChatMemory,
   } = useEmbeddedChatbotContext()
 
   const isClient = typeof window !== 'undefined'
@@ -75,6 +78,10 @@ const Header: FC<IHeaderProps> = ({
       type: 'dify-chatbot-expand-change',
     }, parentOrigin)
   }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
+
+  const handleChatMemoryToggle = useCallback(() => {
+    setShowChatMemory(!showChatMemory)
+  }, [setShowChatMemory, showChatMemory])
 
   if (!isMobile) {
     return (
@@ -127,6 +134,15 @@ const Header: FC<IHeaderProps> = ({
           {currentConversationId && inputsForms.length > 0 && (
             <ViewFormDropdown />
           )}
+          {currentConversationId && (
+            <Tooltip
+              popupContent={t('share.chat.memory.actionButton')}
+            >
+              <ActionButton size='l' state={showChatMemory ? ActionButtonState.Active : ActionButtonState.Default} onClick={handleChatMemoryToggle}>
+                <Memory className='h-[18px] w-[18px]' />
+              </ActionButton>
+            </Tooltip>
+          )}
         </div>
       </div>
     )
@@ -174,6 +190,15 @@ const Header: FC<IHeaderProps> = ({
         {currentConversationId && inputsForms.length > 0 && (
           <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
         )}
+        {currentConversationId && (
+            <Tooltip
+              popupContent={t('share.chat.memory.actionButton')}
+            >
+              <ActionButton size='l' onClick={handleChatMemoryToggle}>
+                <Memory className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+              </ActionButton>
+            </Tooltip>
+          )}
       </div>
     </div>
   )
