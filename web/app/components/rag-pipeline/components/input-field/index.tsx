@@ -109,80 +109,79 @@ const InputFieldDialog = ({
       <DialogWrapper
         show={!!showInputFieldDialog}
         onClose={closePanel}
-        className='grow rounded-l-2xl border-y-[0.5px] border-l-[0.5px]'
+        outerWrapperClassName='overflow-y-auto'
+        className='rounded-l-2xl border-y-[0.5px] border-l-[0.5px]'
       >
-        <div className='flex grow flex-col'>
-          <div className='flex items-center p-4 pb-0'>
-            <div className='system-xl-semibold grow'>
-              {t('datasetPipeline.inputFieldPanel.title')}
-            </div>
-            <Button
-              variant={'ghost'}
-              size='small'
-              className={cn(
-                'shrink-0 gap-x-px px-1.5',
-                previewPanelOpen && 'bg-state-accent-active text-text-accent',
-              )}
-              onClick={togglePreviewPanel}
-            >
-              <RiEyeLine className='size-3.5' />
-              <span className='px-[3px]'>{t('datasetPipeline.operations.preview')}</span>
-            </Button>
-            <Divider type='vertical' className='mx-1 h-3' />
-            <button
-              type='button'
-              className='flex size-6 shrink-0 items-center justify-center p-0.5'
-              onClick={closePanel}
-            >
-              <RiCloseLine className='size-4 text-text-tertiary' />
-            </button>
+        <div className='flex shrink-0 items-center p-4 pb-0'>
+          <div className='system-xl-semibold grow'>
+            {t('datasetPipeline.inputFieldPanel.title')}
           </div>
-          <div className='system-sm-regular px-4 pb-2 pt-1 text-text-tertiary'>
-            {t('datasetPipeline.inputFieldPanel.description')}
-          </div>
-          <div className='flex grow flex-col overflow-y-auto'>
-            {/* Unique Inputs for Each Entrance */}
-            <div className='flex h-6 items-center gap-x-0.5 px-4 pt-2'>
-              <span className='system-sm-semibold-uppercase text-text-secondary'>
-                {t('datasetPipeline.inputFieldPanel.uniqueInputs.title')}
-              </span>
-              <Tooltip
-                popupContent={t('datasetPipeline.inputFieldPanel.uniqueInputs.tooltip')}
-                popupClassName='max-w-[240px]'
-              />
-            </div>
-            <div className='flex flex-col gap-y-1 py-1'>
-              {
-                Object.keys(datasourceNodeDataMap).map((key) => {
-                  const inputFields = inputFieldsMap.current[key] || []
-                  return (
-                    <FieldList
-                      key={key}
-                      nodeId={key}
-                      LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
-                      inputFields={inputFields}
-                      readonly={readonly}
-                      labelClassName='pt-1 pb-1'
-                      handleInputFieldsChange={updateInputFields}
-                      allVariableNames={allVariableNames}
-                    />
-                  )
-                })
-              }
-            </div>
-            {/* Global Inputs */}
-            <FieldList
-              nodeId='shared'
-              LabelRightContent={<GlobalInputs />}
-              inputFields={inputFieldsMap.current.shared || []}
-              readonly={readonly}
-              labelClassName='pt-2 pb-1'
-              handleInputFieldsChange={updateInputFields}
-              allVariableNames={allVariableNames}
+          <Button
+            variant={'ghost'}
+            size='small'
+            className={cn(
+              'shrink-0 gap-x-px px-1.5',
+              previewPanelOpen && 'bg-state-accent-active text-text-accent',
+            )}
+            onClick={togglePreviewPanel}
+          >
+            <RiEyeLine className='size-3.5' />
+            <span className='px-[3px]'>{t('datasetPipeline.operations.preview')}</span>
+          </Button>
+          <Divider type='vertical' className='mx-1 h-3' />
+          <button
+            type='button'
+            className='flex size-6 shrink-0 items-center justify-center p-0.5'
+            onClick={closePanel}
+          >
+            <RiCloseLine className='size-4 text-text-tertiary' />
+          </button>
+        </div>
+        <div className='system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary'>
+          {t('datasetPipeline.inputFieldPanel.description')}
+        </div>
+        <div className='flex grow flex-col overflow-hidden'>
+          {/* Unique Inputs for Each Entrance */}
+          <div className='flex h-6 items-center gap-x-0.5 px-4 pt-2'>
+            <span className='system-sm-semibold-uppercase text-text-secondary'>
+              {t('datasetPipeline.inputFieldPanel.uniqueInputs.title')}
+            </span>
+            <Tooltip
+              popupContent={t('datasetPipeline.inputFieldPanel.uniqueInputs.tooltip')}
+              popupClassName='max-w-[240px]'
             />
           </div>
-          <FooterTip />
+          <div className='flex flex-col gap-y-1 py-1'>
+            {
+              Object.keys(datasourceNodeDataMap).map((key) => {
+                const inputFields = inputFieldsMap.current[key] || []
+                return (
+                  <FieldList
+                    key={key}
+                    nodeId={key}
+                    LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
+                    inputFields={inputFields}
+                    readonly={readonly}
+                    labelClassName='pt-1 pb-1'
+                    handleInputFieldsChange={updateInputFields}
+                    allVariableNames={allVariableNames}
+                  />
+                )
+              })
+            }
+          </div>
+          {/* Global Inputs */}
+          <FieldList
+            nodeId='shared'
+            LabelRightContent={<GlobalInputs />}
+            inputFields={inputFieldsMap.current.shared || []}
+            readonly={readonly}
+            labelClassName='pt-2 pb-1'
+            handleInputFieldsChange={updateInputFields}
+            allVariableNames={allVariableNames}
+          />
         </div>
+        <FooterTip />
       </DialogWrapper>
       {previewPanelOpen && (
         <PreviewPanel
