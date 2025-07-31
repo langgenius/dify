@@ -5,7 +5,7 @@ import pytz
 from flask import jsonify
 from flask_login import current_user
 from flask_restful import Resource, reqparse
-
+import sqlalchemy as sa
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -71,7 +71,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "runs": i.runs})
 
@@ -133,7 +133,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
 
@@ -195,7 +195,7 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {
@@ -277,7 +277,7 @@ GROUP BY
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
+            rs = conn.execute(sa.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append(
                     {"date": str(i.date), "interactions": float(i.interactions.quantize(Decimal("0.01")))}
