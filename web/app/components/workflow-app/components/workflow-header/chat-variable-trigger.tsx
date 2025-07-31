@@ -12,8 +12,6 @@ const ChatVariableTrigger = () => {
   if (!isChatMode)
     return null
 
-  return <div className='rounded-lg bg-components-actionbar-bg'>
-    <ChatVariableButton disabled={nodesReadOnly} />
-  </div>
+  return <ChatVariableButton disabled={nodesReadOnly} />
 }
 export default memo(ChatVariableTrigger)
