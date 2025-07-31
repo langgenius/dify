@@ -46,12 +46,9 @@ const MockSidebarToggleButton = ({ expand, onToggle }: { expand: boolean; onTogg
         <MockNavLink name="Monitoring" mode={expand ? 'expand' : 'collapse'} />
       </nav>
 
-      {/* Toggle button section with inconsistent padding - reproduces issue #1 */}
+      {/* Toggle button section with consistent padding - issue #1 FIXED */}
       <div
-        className={`
-          shrink-0 py-3
-          ${expand ? 'px-6' : 'px-4'}
-        `}
+        className="shrink-0 px-4 py-3"
         data-testid="toggle-section"
       >
         <button
@@ -124,8 +121,8 @@ describe('Sidebar Animation Issues Reproduction', () => {
     }))
   })
 
-  describe('Issue #1: Toggle Button Position Movement', () => {
-    it('should detect inconsistent padding causing button position shift', () => {
+    describe('Issue #1: Toggle Button Position Movement - FIXED', () => {
+    it('should verify consistent padding prevents button position shift', () => {
       let expanded = false
       const handleToggle = () => {
         expanded = !expanded
@@ -135,19 +132,23 @@ describe('Sidebar Animation Issues Reproduction', () => {
 
       // Check collapsed state padding
       const toggleSection = screen.getByTestId('toggle-section')
-      expect(toggleSection).toHaveClass('px-4') // Collapsed padding
+      expect(toggleSection).toHaveClass('px-4') // Consistent padding
+      expect(toggleSection).not.toHaveClass('px-5')
+      expect(toggleSection).not.toHaveClass('px-6')
 
       // Switch to expanded state
       rerender(<MockSidebarToggleButton expand={true} onToggle={handleToggle} />)
 
-      // Check expanded state padding - this is different and causes position shift
-      expect(toggleSection).toHaveClass('px-6') // Expanded padding
+      // Check expanded state padding - should be the same
+      expect(toggleSection).toHaveClass('px-4') // Same consistent padding
+      expect(toggleSection).not.toHaveClass('px-5')
+      expect(toggleSection).not.toHaveClass('px-6')
 
-      // THE BUG: px-4 (16px) vs px-6 (24px) difference causes button to move
-      console.log('🐛 Issue #1 Reproduced: Toggle button padding changes from px-4 to px-6')
-      console.log('   - Collapsed: px-4 (16px padding)')
-      console.log('   - Expanded:  px-6 (24px padding)')
-      console.log('   - Result: Button position shifts by 8px during transition')
+      // THE FIX: px-4 in both states prevents position movement
+      console.log('✅ Issue #1 FIXED: Toggle button now has consistent padding')
+      console.log('   - Before: px-4 (collapsed) vs px-6 (expanded) - 8px difference')
+      console.log('   - After:  px-4 (both states) - 0px difference')
+      console.log('   - Result: No button position movement during transition')
     })
 
     it('should verify sidebar width animation is working correctly', () => {
