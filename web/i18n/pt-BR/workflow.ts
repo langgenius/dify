@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Ferramentas',
     'allTool': 'Todos',
-    'builtInTool': 'Integrado',
     'customTool': 'Personalizado',
     'workflowTool': 'Fluxo de trabalho',
     'question-understand': 'Compreensão de perguntas',
@@ -497,6 +496,7 @@ const translation = {
           placeholder: 'Insira o valor',
         },
         title: 'Filtragem de Metadados',
+        tip: 'A filtragem de metadados é o processo de usar atributos de metadados (como etiquetas, categorias ou permissões de acesso) para refinar e controlar a recuperação de informações relevantes dentro de um sistema.',
       },
     },
     http: {
@@ -586,7 +586,6 @@ const translation = {
         'not empty': 'não está vazio',
         'null': 'é nulo',
         'not null': 'não é nulo',
-        'regex match': 'partida regex',
         'in': 'em',
         'not in': 'não em',
         'exists': 'Existe',

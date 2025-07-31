@@ -25,7 +25,7 @@ const translation = {
     debugConfig: '除錯',
     addFeature: '新增功能',
     automatic: '產生',
-    stopResponding: '停止響應',
+    stopResponding: '停止回應',
     agree: '贊同',
     disagree: '反對',
     cancelAgree: '取消贊同',
@@ -197,6 +197,33 @@ const translation = {
           after: '中配置 OpenAI API 金鑰。',
         },
       },
+    },
+    fileUpload: {
+      title: '檔案上傳',
+      description: '聊天輸入框支援上傳檔案。類型包括圖片、文件以及其它類型',
+      supportedTypes: '支援的檔案類型',
+      numberLimit: '最大上傳數',
+      modalTitle: '檔案上傳設定',
+    },
+    imageUpload: {
+      title: '圖片上傳',
+      description: '支援上傳圖片',
+      supportedTypes: '支援的檔案類型',
+      numberLimit: '最大上傳數',
+      modalTitle: '圖片上傳設定',
+    },
+    bar: {
+      empty: '開啟功能增強 web app 使用者體驗',
+      enableText: '功能已開啟',
+      manage: '管理',
+    },
+    documentUpload: {
+      title: '文件',
+      description: '啟用文件後，模型可以接收文件並回答關於它們的問題。',
+    },
+    audioUpload: {
+      title: '音訊',
+      description: '啟用音訊後，模型可以處理音訊檔案進行轉錄和分析。',
     },
   },
   resetConfig: {

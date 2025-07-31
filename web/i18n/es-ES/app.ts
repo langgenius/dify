@@ -27,21 +27,7 @@ const translation = {
   newApp: {
     startFromBlank: 'Crear desde cero',
     startFromTemplate: 'Crear desde plantilla',
-    captionAppType: '¿Qué tipo de app quieres crear?',
-    chatbotDescription: 'Crea una aplicación basada en chat. Esta app utiliza un formato de pregunta y respuesta, permitiendo múltiples rondas de conversación continua.',
-    completionDescription: 'Crea una aplicación que genera texto de alta calidad basado en prompts, como la generación de artículos, resúmenes, traducciones y más.',
-    completionWarning: 'Este tipo de app ya no será compatible.',
-    agentDescription: 'Crea un Agente inteligente que puede elegir herramientas de forma autónoma para completar tareas',
-    workflowDescription: 'Crea una aplicación que genera texto de alta calidad basado en flujos de trabajo con un alto grado de personalización. Es adecuado para usuarios experimentados.',
     workflowWarning: 'Actualmente en beta',
-    chatbotType: 'Método de orquestación del Chatbot',
-    basic: 'Básico',
-    basicTip: 'Para principiantes, se puede cambiar a Chatflow más adelante',
-    basicFor: 'PARA PRINCIPIANTES',
-    basicDescription: 'La Orquestación Básica permite la orquestación de una app de Chatbot utilizando configuraciones simples, sin la capacidad de modificar los prompts incorporados. Es adecuado para principiantes.',
-    advanced: 'Chatflow',
-    advancedFor: 'Para usuarios avanzados',
-    advancedDescription: 'La Orquestación de Flujo de Trabajo orquesta Chatbots en forma de flujos de trabajo, ofreciendo un alto grado de personalización, incluida la capacidad de editar los prompts incorporados. Es adecuado para usuarios experimentados.',
     captionName: 'Icono y nombre de la app',
     appNamePlaceholder: 'Asigna un nombre a tu app',
     captionDescription: 'Descripción',
@@ -261,6 +247,7 @@ const translation = {
   noAccessPermission: 'No se permite el acceso a la aplicación web',
   maxActiveRequestsPlaceholder: 'Introduce 0 para ilimitado',
   maxActiveRequests: 'Máximas solicitudes concurrentes',
+  maxActiveRequestsTip: 'Número máximo de solicitudes activas concurrentes por aplicación (0 para ilimitado)',
 }
 
 export default translation

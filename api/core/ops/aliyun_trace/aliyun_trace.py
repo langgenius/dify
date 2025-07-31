@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.ops.aliyun_trace.data_exporter.traceclient import (
     TraceClient,
     convert_datetime_to_nanoseconds,
+    convert_string_to_id,
     convert_to_span_id,
     convert_to_trace_id,
     generate_span_id,
@@ -101,8 +102,9 @@ class AliyunDataTrace(BaseTraceInstance):
             raise ValueError(f"Aliyun get run url failed: {str(e)}")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        external_trace_id = trace_info.metadata.get("external_trace_id")
-        trace_id = external_trace_id or convert_to_trace_id(trace_info.workflow_run_id)
+        trace_id = convert_to_trace_id(trace_info.workflow_run_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
         workflow_span_id = convert_to_span_id(trace_info.workflow_run_id, "workflow")
         self.add_workflow_span(trace_id, workflow_span_id, trace_info)
 
@@ -130,6 +132,9 @@ class AliyunDataTrace(BaseTraceInstance):
             status = Status(StatusCode.ERROR, trace_info.error)
 
         trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         message_span_id = convert_to_span_id(message_id, "message")
         message_span = SpanData(
             trace_id=trace_id,
@@ -186,9 +191,13 @@ class AliyunDataTrace(BaseTraceInstance):
             return
         message_id = trace_info.message_id
 
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         documents_data = extract_retrieval_documents(trace_info.documents)
         dataset_retrieval_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=generate_span_id(),
             name="dataset_retrieval",
@@ -214,8 +223,12 @@ class AliyunDataTrace(BaseTraceInstance):
         if trace_info.error:
             status = Status(StatusCode.ERROR, trace_info.error)
 
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         tool_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=generate_span_id(),
             name=trace_info.tool_name,
@@ -451,8 +464,13 @@ class AliyunDataTrace(BaseTraceInstance):
         status: Status = Status(StatusCode.OK)
         if trace_info.error:
             status = Status(StatusCode.ERROR, trace_info.error)
+
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         suggested_question_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=convert_to_span_id(message_id, "suggested_question"),
             name="suggested_question",

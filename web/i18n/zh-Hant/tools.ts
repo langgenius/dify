@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'HTTP 頭部名稱，如果你不知道是什麼，可以將其保留為 Authorization 或設定為自定義值',
       types: {
         none: '無',
-        api_key: 'API Key',
         apiKeyPlaceholder: 'HTTP 頭部名稱，用於傳遞 API Key',
         apiValuePlaceholder: '輸入 API Key',
         api_key_query: '查詢參數',
