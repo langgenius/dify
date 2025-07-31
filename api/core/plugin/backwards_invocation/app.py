@@ -193,9 +193,9 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         get the user by user id
         """
 
-        user = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+        user = db.session.query(EndUser).where(EndUser.id == user_id).first()
         if not user:
-            user = db.session.query(Account).filter(Account.id == user_id).first()
+            user = db.session.query(Account).where(Account.id == user_id).first()
 
         if not user:
             raise ValueError("user not found")
@@ -208,7 +208,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         get app
         """
         try:
-            app = db.session.query(App).filter(App.id == app_id).filter(App.tenant_id == tenant_id).first()
+            app = db.session.query(App).where(App.id == app_id).where(App.tenant_id == tenant_id).first()
         except Exception:
             raise ValueError("app not found")
 

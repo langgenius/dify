@@ -24,7 +24,7 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
             keyword_table = self._get_dataset_keyword_table()
@@ -43,7 +43,7 @@ class Jieba(BaseKeyword):
             return self
 
     def add_texts(self, texts: list[Document], **kwargs):
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table_handler = JiebaKeywordTableHandler()
 
@@ -76,7 +76,7 @@ class Jieba(BaseKeyword):
         return id in set.union(*keyword_table.values())
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             keyword_table = self._get_dataset_keyword_table()
             if keyword_table is not None:
@@ -93,11 +93,11 @@ class Jieba(BaseKeyword):
 
         documents = []
         for chunk_index in sorted_chunk_indices:
-            segment_query = db.session.query(DocumentSegment).filter(
+            segment_query = db.session.query(DocumentSegment).where(
                 DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index
             )
             if document_ids_filter:
-                segment_query = segment_query.filter(DocumentSegment.document_id.in_(document_ids_filter))
+                segment_query = segment_query.where(DocumentSegment.document_id.in_(document_ids_filter))
             segment = segment_query.first()
 
             if segment:
@@ -116,7 +116,7 @@ class Jieba(BaseKeyword):
         return documents
 
     def delete(self) -> None:
-        lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
+        lock_name = f"keyword_indexing_lock_{self.dataset.id}"
         with redis_client.lock(lock_name, timeout=600):
             dataset_keyword_table = self.dataset.dataset_keyword_table
             if dataset_keyword_table:
@@ -214,7 +214,7 @@ class Jieba(BaseKeyword):
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
         document_segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
+            .where(DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id)
             .first()
         )
         if document_segment:

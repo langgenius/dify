@@ -172,7 +172,10 @@ const translation = {
       title: 'Tisser',
       description: 'Weave est une plateforme open-source pour évaluer, tester et surveiller les applications LLM.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Surveillance Cloud',
+      description: 'La plateforme d\'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l\'emploi des applications Dify.',
+    },
   },
   answerIcon: {
     description: 'S’il faut utiliser l’icône web app pour remplacer 🤖 dans l’application partagée',
@@ -256,6 +259,9 @@ const translation = {
   },
   accessControl: 'Contrôle d\'accès à l\'application Web',
   noAccessPermission: 'Pas de permission d\'accéder à l\'application web',
+  maxActiveRequestsPlaceholder: 'Entrez 0 pour illimité',
+  maxActiveRequests: 'Nombre maximal de requêtes simultanées',
+  maxActiveRequestsTip: 'Nombre maximum de requêtes actives concurrentes par application (0 pour illimité)',
 }
 
 export default translation

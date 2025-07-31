@@ -3,6 +3,7 @@ from functools import wraps
 
 from flask import request
 from flask_restful import Resource
+from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
@@ -48,8 +49,8 @@ def decode_jwt_token():
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        app_model = db.session.query(App).filter(App.id == app_id).first()
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        app_model = db.session.scalar(select(App).where(App.id == app_id))
+        site = db.session.scalar(select(Site).where(Site.code == app_code))
         if not app_model:
             raise NotFound()
         if not app_code or not site:
@@ -57,7 +58,7 @@ def decode_jwt_token():
         if app_model.enable_site is False:
             raise BadRequest("Site is disabled.")
         end_user_id = decoded.get("end_user_id")
-        end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
+        end_user = db.session.scalar(select(EndUser).where(EndUser.id == end_user_id))
         if not end_user:
             raise NotFound()
 

@@ -17,7 +17,7 @@ class OpsService:
         """
         trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -25,7 +25,7 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -65,9 +65,7 @@ class OpsService:
                     }
                 )
             except Exception:
-                new_decrypt_tracing_config.update(
-                    {"project_url": "{host}/".format(host=decrypt_tracing_config.get("host"))}
-                )
+                new_decrypt_tracing_config.update({"project_url": f"{decrypt_tracing_config.get('host')}/"})
 
         if tracing_provider == "langsmith" and (
             "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
@@ -139,7 +137,7 @@ class OpsService:
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         elif tracing_provider == "langfuse":
             project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
-            project_url = "{host}/project/{key}".format(host=tracing_config.get("host"), key=project_key)
+            project_url = f"{tracing_config.get('host')}/project/{project_key}"
         elif tracing_provider in ("langsmith", "opik"):
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         else:
@@ -148,7 +146,7 @@ class OpsService:
         # check if trace config already exists
         trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -156,7 +154,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -190,7 +188,7 @@ class OpsService:
         # check if trace config already exists
         current_trace_config = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
@@ -198,7 +196,7 @@ class OpsService:
             return None
 
         # get tenant id
-        app = db.session.query(App).filter(App.id == app_id).first()
+        app = db.session.query(App).where(App.id == app_id).first()
         if not app:
             return None
         tenant_id = app.tenant_id
@@ -227,7 +225,7 @@ class OpsService:
         """
         trace_config = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 

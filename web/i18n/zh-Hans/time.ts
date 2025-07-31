@@ -31,7 +31,6 @@ const translation = {
   title: {
     pickTime: '选择时间',
   },
-  pickDate: '选择日期',
   defaultPlaceholder: '请选择时间...',
 }
 

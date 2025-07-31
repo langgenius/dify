@@ -9,8 +9,8 @@ import Modal from '@/app/components/base/modal'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import { useStore } from '@/app/components/workflow/store'
 import type {
@@ -122,10 +122,10 @@ const ConversationVariableModal = ({
                     <div className='flex items-center p-1'>
                       {!isCopied
                         ? (
-                          <Clipboard className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={handleCopy} />
+                          <Copy className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={handleCopy} />
                         )
                         : (
-                          <ClipboardCheck className='h-4 w-4 text-text-tertiary' />
+                          <CopyCheck className='h-4 w-4 text-text-tertiary' />
                         )
                       }
                     </div>

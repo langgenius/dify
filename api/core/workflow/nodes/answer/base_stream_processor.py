@@ -36,7 +36,7 @@ class StreamProcessor(ABC):
             reachable_node_ids: list[str] = []
             unreachable_first_node_ids: list[str] = []
             if finished_node_id not in self.graph.edge_mapping:
-                logger.warning(f"node {finished_node_id} has no edge mapping")
+                logger.warning("node %s has no edge mapping", finished_node_id)
                 return
             for edge in self.graph.edge_mapping[finished_node_id]:
                 if (

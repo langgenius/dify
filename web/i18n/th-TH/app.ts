@@ -73,7 +73,7 @@ const translation = {
     appCreateDSLErrorPart4: 'เวอร์ชัน DSL ที่ระบบรองรับ:',
     appCreateFailed: 'สร้างโปรเจกต์ไม่สําเร็จ',
     learnMore: 'ศึกษาเพิ่มเติม',
-    foundResults: '{{นับ}} ผลลัพธ์',
+    foundResults: '{{count}} ผลลัพธ์',
     noTemplateFoundTip: 'ลองค้นหาโดยใช้คีย์เวิร์ดอื่น',
     chatbotShortDescription: 'แชทบอทที่ใช้ LLM พร้อมการตั้งค่าที่ง่ายดาย',
     optional: 'เสริม',
@@ -83,7 +83,7 @@ const translation = {
     completionShortDescription: 'ผู้ช่วย AI สําหรับงานสร้างข้อความ',
     agentUserDescription: 'ตัวแทนอัจฉริยะที่สามารถให้เหตุผลซ้ําๆ และใช้เครื่องมืออัตโนมัติเพื่อให้บรรลุเป้าหมายของงาน',
     noIdeaTip: 'ไม่มีความคิด? ดูเทมเพลตของเรา',
-    foundResult: '{{นับ}} ผล',
+    foundResult: '{{count}} ผล',
     noAppsFound: 'ไม่พบแอป',
     workflowShortDescription: 'โฟลว์อัตโนมัติสำหรับระบบอัจฉริยะ',
     forAdvanced: 'สําหรับผู้ใช้ขั้นสูง',
@@ -177,7 +177,10 @@ const translation = {
       title: 'ทอ',
       description: 'Weave เป็นแพลตฟอร์มโอเพนซอร์สสำหรับการประเมินผล ทดสอบ และตรวจสอบแอปพลิเคชัน LLM',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'การตรวจสอบคลาวด์',
+      description: 'แพลตฟอร์มการสังเกตการณ์ที่จัดการโดย Alibaba Cloud ซึ่งไม่ต้องดูแลและบำรุงรักษา ช่วยให้สามารถติดตาม ตรวจสอบ และประเมินแอปพลิเคชัน Dify ได้ทันที',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',
@@ -252,6 +255,9 @@ const translation = {
   },
   accessControl: 'การควบคุมการเข้าถึงเว็บแอปพลิเคชัน',
   noAccessPermission: 'ไม่มีสิทธิ์เข้าถึงเว็บแอป',
+  maxActiveRequestsPlaceholder: 'ใส่ 0 สำหรับไม่จำกัด',
+  maxActiveRequests: 'จำนวนคำขอพร้อมกันสูงสุด',
+  maxActiveRequestsTip: 'จำนวนการร้องขอที่ใช้งานพร้อมกันสูงสุดต่อแอป (0 หมายถึงไม่จำกัด)',
 }
 
 export default translation

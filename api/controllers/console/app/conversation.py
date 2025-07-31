@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytz  # pip install pytz
 from flask_login import current_user
@@ -19,6 +19,7 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
 from libs.login import login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
@@ -48,10 +49,10 @@ class CompletionConversationApi(Resource):
         query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
 
         if args["keyword"]:
-            query = query.join(Message, Message.conversation_id == Conversation.id).filter(
+            query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
-                    Message.query.ilike("%{}%".format(args["keyword"])),
-                    Message.answer.ilike("%{}%".format(args["keyword"])),
+                    Message.query.ilike(f"%{args['keyword']}%"),
+                    Message.answer.ilike(f"%{args['keyword']}%"),
                 )
             )
 
@@ -120,7 +121,7 @@ class CompletionConversationDetailApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -173,14 +174,14 @@ class ChatConversationApi(Resource):
         query = db.select(Conversation).where(Conversation.app_id == app_model.id)
 
         if args["keyword"]:
-            keyword_filter = "%{}%".format(args["keyword"])
+            keyword_filter = f"%{args['keyword']}%"
             query = (
                 query.join(
                     Message,
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .filter(
+                .where(
                     or_(
                         Message.query.ilike(keyword_filter),
                         Message.answer.ilike(keyword_filter),
@@ -285,7 +286,7 @@ class ChatConversationDetailApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+            .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -307,7 +308,7 @@ api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversati
 def _get_conversation(app_model, conversation_id):
     conversation = (
         db.session.query(Conversation)
-        .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
         .first()
     )
 
@@ -315,7 +316,7 @@ def _get_conversation(app_model, conversation_id):
         raise NotFound("Conversation Not Exists.")
 
     if not conversation.read_at:
-        conversation.read_at = datetime.now(UTC).replace(tzinfo=None)
+        conversation.read_at = naive_utc_now()
         conversation.read_account_id = current_user.id
         db.session.commit()
 

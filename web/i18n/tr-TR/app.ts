@@ -72,11 +72,11 @@ const translation = {
     appCreateDSLErrorPart3: 'Geçerli uygulama DSL sürümü:',
     appCreateDSLErrorTitle: 'Sürüm Uyumsuzluğu',
     Confirm: 'Onaylamak',
-    foundResults: '{{sayı}} Sonuç -ları',
+    foundResults: '{{count}} Sonuç -ları',
     noAppsFound: 'Uygulama bulunamadı',
     chatbotUserDescription: 'Basit yapılandırmayla hızlı bir şekilde LLM tabanlı bir sohbet botu oluşturun. Daha sonra Chatflow\'a geçebilirsiniz.',
     optional: 'Opsiyonel',
-    foundResult: '{{sayı}} Sonuç',
+    foundResult: '{{count}} Sonuç',
     noTemplateFound: 'Şablon bulunamadı',
     workflowUserDescription: 'Sürükle-bırak kolaylığıyla görsel olarak otonom yapay zeka iş akışları oluşturun.',
     advancedUserDescription: 'Ek bellek özellikleri ve sohbet robotu arayüzü ile iş akışı.',
@@ -172,7 +172,10 @@ const translation = {
       title: 'Dokuma',
       description: 'Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Bulut İzleyici',
+      description: 'Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',
@@ -252,6 +255,9 @@ const translation = {
   },
   accessControl: 'Web Uygulaması Erişim Kontrolü',
   noAccessPermission: 'Web uygulamasına erişim izni yok',
+  maxActiveRequestsPlaceholder: 'Sınırsız için 0 girin',
+  maxActiveRequests: 'Maksimum eş zamanlı istekler',
+  maxActiveRequestsTip: 'Her uygulama için maksimum eşzamanlı aktif istek sayısı (sınırsız için 0)',
 }
 
 export default translation

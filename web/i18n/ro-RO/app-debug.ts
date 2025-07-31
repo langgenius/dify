@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Încărcare fișier',
+      description: 'Caseta de intrare chat permite încărcarea de imagini, documente și alte fișiere.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare fișier',
+    },
+    imageUpload: {
+      title: 'Încărcare imagine',
+      description: 'Permite încărcarea imaginilor.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare imagine',
+    },
+    bar: {
+      empty: 'Activează funcții pentru a îmbunătăți experiența utilizatorilor aplicației web',
+      enableText: 'Funcții activate',
+      manage: 'Gestionează',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Activarea Documentului va permite modelului să primească documente și să răspundă la întrebări despre ele.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Activarea Audio va permite modelului să proceseze fișiere audio pentru transcriere și analiză.',
+    },
   },
   automatic: {
     title: 'Orchestrarea automată a aplicațiilor',
@@ -287,12 +314,14 @@ const translation = {
     'required': 'Obligatoriu',
     'hide': 'Ascundeți',
     'errorMsg': {
-      varNameRequired: 'Numele variabilei este obligatoriu',
       labelNameRequired: 'Numele etichetei este obligatoriu',
       varNameCanBeRepeat: 'Numele variabilei nu poate fi repetat',
       atLeastOneOption: 'Este necesară cel puțin o opțiune',
       optionRepeat: 'Există opțiuni repetate',
     },
+    'defaultValue': 'Valoare implicită',
+    'noDefaultValue': 'Fără valoare implicită',
+    'selectDefaultValue': 'Selectați valoarea implicită',
   },
   vision: {
     name: 'Viziune',

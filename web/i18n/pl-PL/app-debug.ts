@@ -214,6 +214,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Przesyłanie plików',
+      description: 'Pole wprowadzania czatu umożliwia przesyłanie obrazów, dokumentów i innych plików.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania plików',
+    },
+    imageUpload: {
+      title: 'Przesyłanie obrazów',
+      description: 'Umożliwia przesyłanie obrazów.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania obrazów',
+    },
+    bar: {
+      empty: 'Włącz funkcje aby poprawić doświadczenie użytkownika aplikacji webowej',
+      enableText: 'Funkcje włączone',
+      manage: 'Zarządzaj',
+    },
+    documentUpload: {
+      title: 'Dokument',
+      description: 'Włączenie Dokumentu pozwoli modelowi na przyjmowanie dokumentów i odpowiadanie na pytania o nich.',
+    },
+    audioUpload: {
+      title: 'Dźwięk',
+      description: 'Włączenie Dźwięku pozwoli modelowi na przetwarzanie plików audio do transkrypcji i analizy.',
+    },
   },
   automatic: {
     title: 'Zautomatyzowana orkiestracja aplikacji',
@@ -311,12 +338,14 @@ const translation = {
     'required': 'Wymagane',
     'hide': 'Ukryj',
     'errorMsg': {
-      varNameRequired: 'Wymagana nazwa zmiennej',
       labelNameRequired: 'Wymagana nazwa etykiety',
       varNameCanBeRepeat: 'Nazwa zmiennej nie może się powtarzać',
       atLeastOneOption: 'Wymagana jest co najmniej jedna opcja',
       optionRepeat: 'Powtarzają się opcje',
     },
+    'defaultValue': 'Wartość domyślna',
+    'noDefaultValue': 'Brak wartości domyślnej',
+    'selectDefaultValue': 'Wybierz wartość domyślną',
   },
   vision: {
     name: 'Wizja',

@@ -70,7 +70,6 @@ const translation = {
   activated: '지금 로그인하세요',
   adminInitPassword: '관리자 초기화 비밀번호',
   validate: '확인',
-  sso: 'SSO 로 계속하기',
   checkCode: {
     verify: '확인',
     verificationCode: '인증 코드',
@@ -109,6 +108,7 @@ const translation = {
     noLoginMethod: '웹 애플리케이션에 대한 인증 방법이 구성되어 있지 않습니다.',
     disabled: '웹앱 인증이 비활성화되었습니다. 이를 활성화하려면 시스템 관리자에게 문의하십시오. 앱을 직접 사용해 볼 수 있습니다.',
     noLoginMethodTip: '인증 방법을 추가하려면 시스템 관리자에게 연락하십시오.',
+    login: '로그인',
   },
 }
 

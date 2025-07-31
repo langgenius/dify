@@ -154,7 +154,6 @@ export const StatusItem: FC<{
           <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='text-text-secondary system-xs-medium'
-            needsDelay
             disabled={!archived}
           >
             <Switch
@@ -285,7 +284,6 @@ export const OperationAction: FC<{
           ? <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='!font-semibold'
-            needsDelay
           >
             <div>
               <Switch defaultValue={false} onChange={noop} disabled={true} size='md' />
@@ -460,7 +458,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     handleSave,
   } = useBatchEditDocumentMetadata({
     datasetId,
-    docList: documents.filter(item => selectedIds.includes(item.id)),
+    docList: documents.filter(doc => selectedIds.includes(doc.id)),
+    selectedDocumentIds: selectedIds, // Pass all selected IDs separately
     onUpdate,
   })
 

@@ -56,7 +56,7 @@ const List = ({
 
                 return (
                   <CardWrapper
-                    key={plugin.name}
+                    key={`${plugin.org}/${plugin.name}`}
                     plugin={plugin}
                     showInstallButton={showInstallButton}
                     locale={locale}

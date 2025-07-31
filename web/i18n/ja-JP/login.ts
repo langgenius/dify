@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'ユーザー名を入力してください',
   forget: 'パスワードをお忘れですか？',
   signBtn: 'サインイン',
-  sso: 'SSO に続ける',
   installBtn: 'セットアップ',
   setAdminAccount: '管理者アカウントの設定',
   setAdminAccountDesc: 'アプリケーションの作成や LLM プロバイダの管理など、管理者アカウントの最大権限を設定します。',
@@ -106,6 +105,7 @@ const translation = {
   licenseExpired: 'ライセンスの有効期限が切れています',
   licenseLostTip: 'Dify ライセンスサーバーへの接続に失敗しました。続けて Dify を使用するために管理者に連絡してください。',
   webapp: {
+    login: 'ログイン',
     noLoginMethod: 'Web アプリに対して認証方法が構成されていません',
     noLoginMethodTip: 'システム管理者に連絡して、認証方法を追加してください。',
     disabled: 'Web アプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。',

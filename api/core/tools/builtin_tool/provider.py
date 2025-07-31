@@ -7,7 +7,13 @@ from core.helper.module_import_helper import load_single_subclass_from_source
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolEntity, ToolProviderEntity, ToolProviderType
+from core.tools.entities.tool_entities import (
+    CredentialType,
+    OAuthSchema,
+    ToolEntity,
+    ToolProviderEntity,
+    ToolProviderType,
+)
 from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolProviderNotFoundError,
@@ -39,10 +45,18 @@ class BuiltinToolProviderController(ToolProviderController):
             credential_dict = provider_yaml.get("credentials_for_provider", {}).get(credential, {})
             credentials_schema.append(credential_dict)
 
+        oauth_schema = None
+        if provider_yaml.get("oauth_schema", None) is not None:
+            oauth_schema = OAuthSchema(
+                client_schema=provider_yaml.get("oauth_schema", {}).get("client_schema", []),
+                credentials_schema=provider_yaml.get("oauth_schema", {}).get("credentials_schema", []),
+            )
+
         super().__init__(
             entity=ToolProviderEntity(
                 identity=provider_yaml["identity"],
                 credentials_schema=credentials_schema,
+                oauth_schema=oauth_schema,
             ),
         )
 
@@ -97,10 +111,39 @@ class BuiltinToolProviderController(ToolProviderController):
 
         :return: the credentials schema
         """
-        if not self.entity.credentials_schema:
-            return []
+        return self.get_credentials_schema_by_type(CredentialType.API_KEY.value)
 
-        return self.entity.credentials_schema.copy()
+    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+        """
+        returns the credentials schema of the provider
+
+        :param credential_type: the type of the credential
+        :return: the credentials schema of the provider
+        """
+        if credential_type == CredentialType.OAUTH2.value:
+            return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
+        if credential_type == CredentialType.API_KEY.value:
+            return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        raise ValueError(f"Invalid credential type: {credential_type}")
+
+    def get_oauth_client_schema(self) -> list[ProviderConfig]:
+        """
+        returns the oauth client schema of the provider
+
+        :return: the oauth client schema
+        """
+        return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
+
+    def get_supported_credential_types(self) -> list[str]:
+        """
+        returns the credential support type of the provider
+        """
+        types = []
+        if self.entity.credentials_schema is not None and len(self.entity.credentials_schema) > 0:
+            types.append(CredentialType.API_KEY.value)
+        if self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) > 0:
+            types.append(CredentialType.OAUTH2.value)
+        return types
 
     def get_tools(self) -> list[BuiltinTool]:
         """
@@ -123,7 +166,11 @@ class BuiltinToolProviderController(ToolProviderController):
 
         :return: whether the provider needs credentials
         """
-        return self.entity.credentials_schema is not None and len(self.entity.credentials_schema) != 0
+        return (
+            self.entity.credentials_schema is not None
+            and len(self.entity.credentials_schema) != 0
+            or (self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) != 0)
+        )
 
     @property
     def provider_type(self) -> ToolProviderType:

@@ -103,7 +103,7 @@ class ModelLoadBalancingService:
         # Get load balancing configurations
         load_balancing_configs = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -219,7 +219,7 @@ class ModelLoadBalancingService:
         # Get load balancing configurations
         load_balancing_model_config = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -307,7 +307,7 @@ class ModelLoadBalancingService:
 
         current_load_balancing_configs = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
                 LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
@@ -340,7 +340,7 @@ class ModelLoadBalancingService:
                 config_id = str(config_id)
 
                 if config_id not in current_load_balancing_configs_dict:
-                    raise ValueError("Invalid load balancing config id: {}".format(config_id))
+                    raise ValueError(f"Invalid load balancing config id: {config_id}")
 
                 updated_config_ids.add(config_id)
 
@@ -349,7 +349,7 @@ class ModelLoadBalancingService:
                 # check duplicate name
                 for current_load_balancing_config in current_load_balancing_configs:
                     if current_load_balancing_config.id != config_id and current_load_balancing_config.name == name:
-                        raise ValueError("Load balancing config name {} already exists".format(name))
+                        raise ValueError(f"Load balancing config name {name} already exists")
 
                 if credentials:
                     if not isinstance(credentials, dict):
@@ -383,7 +383,7 @@ class ModelLoadBalancingService:
                 # check duplicate name
                 for current_load_balancing_config in current_load_balancing_configs:
                     if current_load_balancing_config.name == name:
-                        raise ValueError("Load balancing config name {} already exists".format(name))
+                        raise ValueError(f"Load balancing config name {name} already exists")
 
                 if not credentials:
                     raise ValueError("Invalid load balancing config credentials")
@@ -457,7 +457,7 @@ class ModelLoadBalancingService:
             # Get load balancing config
             load_balancing_model_config = (
                 db.session.query(LoadBalancingModelConfig)
-                .filter(
+                .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
                     LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),

@@ -79,8 +79,8 @@ const translation = {
     advancedShortDescription: 'Potek dela izboljšan za večkratne pogovore',
     noAppsFound: 'Ni bilo najdenih aplikacij',
     agentShortDescription: 'Inteligentni agent z razmišljanjem in avtonomno uporabo orodij',
-    foundResult: '{{štetje}} Rezultat',
-    foundResults: '{{štetje}} Rezultati',
+    foundResult: '{{count}} Rezultat',
+    foundResults: '{{count}} Rezultati',
     noTemplateFoundTip: 'Poskusite iskati z različnimi ključnimi besedami.',
     optional: 'Neobvezno',
     forBeginners: 'Bolj osnovne vrste aplikacij',
@@ -181,7 +181,10 @@ const translation = {
       title: 'Tkanje',
       description: 'Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Oblačni nadzor',
+      description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',
@@ -256,6 +259,9 @@ const translation = {
   },
   accessControl: 'Nadzor dostopa do spletne aplikacije',
   noAccessPermission: 'Brez dovoljenja za dostop do spletne aplikacije',
+  maxActiveRequestsPlaceholder: 'Vnesite 0 za neomejeno',
+  maxActiveRequests: 'Maksimalno število hkratnih zahtevkov',
+  maxActiveRequestsTip: 'Največje število hkrati aktivnih zahtevkov na aplikacijo (0 za neomejeno)',
 }
 
 export default translation
