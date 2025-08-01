@@ -24,6 +24,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { t } = useTranslation()
   const {
     inputs,
+    handleUserActionAdd,
     handleUserActionChange,
     handleUserActionDelete,
     handleTimeoutChange,
@@ -41,7 +42,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           <div className='flex items-center px-1'>
             <ActionButton
               onClick={() => {
-                inputs.userActions.push({
+                handleUserActionAdd({
                   id: uuid4(),
                   name: 'Action',
                   text: 'Button Text',
