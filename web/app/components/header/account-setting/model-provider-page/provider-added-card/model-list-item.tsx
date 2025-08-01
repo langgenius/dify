@@ -84,7 +84,9 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
           }
           offset={{ mainAxis: 4 }}
         >
-          <span className='ml-2 text-xs text-gray-400'>({model.used_by_workflows.length})</span>
+          <span className='ml-2'>
+            <ModelBadge className='text-xs text-gray-400'>{model.used_by_workflows.length}</ModelBadge>
+          </span>
         </Tooltip>
       )}
       <div className='flex shrink-0 items-center'>
