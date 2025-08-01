@@ -36,23 +36,39 @@ export const useTracingSearch = ({ treeNodes }: UseTracingSearchProps): UseTraci
     const query = searchQuery.toLowerCase().trim()
 
     // Deep search object content with proper typing
-    const searchInObject = (obj: unknown): boolean => {
-      if (!obj) return false
+    const MAX_SEARCH_DEPTH = 10
+    const searchInObject = (obj: unknown, depth = MAX_SEARCH_DEPTH): boolean => {
+      if (!obj || depth <= 0)
+        return false
 
-      if (typeof obj === 'string') return obj.toLowerCase().includes(query)
-      if (typeof obj === 'number') return obj.toString().includes(query)
-      if (typeof obj === 'boolean') return obj.toString().includes(query)
+      if (typeof obj === 'string')
+        return obj.toLowerCase().includes(query)
+      if (typeof obj === 'number')
+        return obj.toString().includes(query)
+      if (typeof obj === 'boolean')
+        return obj.toString().includes(query)
 
       if (Array.isArray(obj))
-        return obj.some(item => searchInObject(item))
+        return obj.some(item => searchInObject(item, depth - 1))
 
       if (typeof obj === 'object' && obj !== null)
-        return Object.values(obj as Record<string, unknown>).some(value => searchInObject(value))
+        return Object.values(obj).some(value => searchInObject(value, depth - 1))
 
       return false
     }
 
     // Search all content in a single node with safe property access
+    // Type guards for optional properties
+    const hasStatus = (node: NodeTracing): node is NodeTracing & { status: string } => {
+      return typeof (node as any).status === 'string'
+    }
+    const hasProcessData = (node: NodeTracing): node is NodeTracing & { process_data: unknown } => {
+      return 'process_data' in node
+    }
+    const hasExecutionMetadata = (node: NodeTracing): node is NodeTracing & { execution_metadata: unknown } => {
+      return 'execution_metadata' in node
+    }
+
     const searchInNode = (node: NodeTracing): boolean => {
       // Safe string search with nullish coalescing
       const titleMatch = node.title?.toLowerCase().includes(query) ?? false
@@ -62,8 +78,8 @@ export const useTracingSearch = ({ treeNodes }: UseTracingSearchProps): UseTraci
       // Search in node data with proper type checking
       const inputsMatch = searchInObject(node.inputs)
       const outputsMatch = searchInObject(node.outputs)
-      const processDataMatch = searchInObject((node as NodeTracing & { process_data?: unknown }).process_data)
-      const metadataMatch = searchInObject((node as NodeTracing & { execution_metadata?: unknown }).execution_metadata)
+      const processDataMatch = hasProcessData(node) ? searchInObject(node.process_data) : false
+      const metadataMatch = hasExecutionMetadata(node) ? searchInObject(node.execution_metadata) : false
 
       return titleMatch || nodeTypeMatch || statusMatch || inputsMatch || outputsMatch || processDataMatch || metadataMatch
     }

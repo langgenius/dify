@@ -216,7 +216,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('workflow.common.searchNodes') || 'Search nodes, types, inputs, outputs...'}
+              placeholder={t('workflow.common.searchNodes')}
               className="system-sm-regular block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder"
               autoComplete="off"
             />
