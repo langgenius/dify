@@ -102,9 +102,14 @@ class TestPhoenixConfig:
         assert config.project == "default"
 
     def test_endpoint_validation_with_path(self):
-        """Test endpoint validation normalizes URL by removing path"""
-        config = PhoenixConfig(endpoint="https://custom.phoenix.com/api/v1")
-        assert config.endpoint == "https://custom.phoenix.com"
+        """Test endpoint validation with path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        assert config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+
+    def test_endpoint_validation_without_path(self):
+        """Test endpoint validation without path"""
+        config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
+        assert config.endpoint == "https://app.phoenix.arize.com"
 
 
 class TestLangfuseConfig:
@@ -118,7 +123,7 @@ class TestLangfuseConfig:
         assert config.host == "https://custom.langfuse.com"
 
     def test_valid_config_with_path(self):
-        host = host = "https://custom.langfuse.com/api/v1"
+        host = "https://custom.langfuse.com/api/v1"
         config = LangfuseConfig(public_key="public_key", secret_key="secret_key", host=host)
         assert config.public_key == "public_key"
         assert config.secret_key == "secret_key"
@@ -368,13 +373,15 @@ class TestConfigIntegration:
         """Test that URL normalization works consistently across configs"""
         # Test that paths are removed from endpoints
         arize_config = ArizeConfig(endpoint="https://arize.com/api/v1/test")
-        phoenix_config = PhoenixConfig(endpoint="https://phoenix.com/api/v2/")
+        phoenix_with_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
+        phoenix_without_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com")
         aliyun_config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
 
         assert arize_config.endpoint == "https://arize.com"
-        assert phoenix_config.endpoint == "https://phoenix.com"
+        assert phoenix_with_path_config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
+        assert phoenix_without_path_config.endpoint == "https://app.phoenix.arize.com"
         assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com"
 
     def test_project_default_values(self):

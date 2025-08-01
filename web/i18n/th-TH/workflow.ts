@@ -223,7 +223,6 @@ const translation = {
     'searchTool': 'เครื่องมือค้นหา',
     'tools': 'เครื่อง มือ',
     'allTool': 'ทั้งหมด',
-    'builtInTool': 'ในตัว',
     'customTool': 'ธรรมเนียม',
     'workflowTool': 'เวิร์กโฟลว์',
     'question-understand': 'คําถาม: เข้าใจ',

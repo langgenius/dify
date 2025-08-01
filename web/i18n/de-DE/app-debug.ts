@@ -276,7 +276,6 @@ const translation = {
     queryNoBeEmpty: 'Anfrage muss im Prompt gesetzt sein',
   },
   variableConfig: {
-    modalTitle: 'Feldeinstellungen',
     description: 'Einstellung für Variable {{varName}}',
     fieldType: 'Feldtyp',
     string: 'Kurztext',

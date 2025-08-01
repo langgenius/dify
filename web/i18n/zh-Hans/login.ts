@@ -77,7 +77,6 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
-  sso: '使用 SSO 继续',
   checkCode: {
     checkYourEmail: '验证您的电子邮件',
     tips: '验证码已经发送到您的邮箱 <strong>{{email}}</strong>',

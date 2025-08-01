@@ -1,4 +1,6 @@
-from sqlalchemy import func
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
@@ -19,10 +21,10 @@ class SavedMessage(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     message_id = mapped_column(StringUUID, nullable=False)
     created_by_role = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'end_user'::character varying")
+        String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def message(self):
@@ -40,7 +42,7 @@ class PinnedConversation(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role = mapped_column(
-        db.String(255), nullable=False, server_default=db.text("'end_user'::character varying")
+        String(255), nullable=False, server_default=db.text("'end_user'::character varying")
     )
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

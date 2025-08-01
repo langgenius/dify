@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Instrumente',
     'allTool': 'Toate',
-    'builtInTool': 'Integrat',
     'customTool': 'Personalizat',
     'workflowTool': 'Flux de lucru',
     'question-understand': 'Înțelegerea întrebărilor',
@@ -587,7 +586,6 @@ const translation = {
         'not empty': 'nu este gol',
         'null': 'este null',
         'not null': 'nu este null',
-        'regex match': 'potrivire regex',
         'in': 'în',
         'not in': 'nu în',
         'exists': 'Există',
