@@ -3,7 +3,7 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useDebounceFn } from 'ahooks'
+import { useDebounceFn, useLocalStorageState } from 'ahooks'
 import { useSearchParams } from 'next/navigation'
 import type { SearchParams } from './types'
 import {
@@ -76,10 +76,12 @@ const isExpired = (expireAt?: number, timezone?: string) => {
 export const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
-  // const [hasNoticed, setHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
-  //   defaultValue: false,
-  // })
-  const [hasNoticed, setHasNoticed] = useState<boolean | undefined>(false) // For testing purposes, we set it to false
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
+    defaultValue: false,
+  })
+  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
+    defaultValue: false,
+  })
   const { userProfile: { timezone } } = useAppContext()
   const {
     data,
@@ -90,12 +92,19 @@ export const useEducationReverifyNotice = ({
     if(isLoading || !data || !timezone)
       return
     const { expireAt, shouldNotice } = data
-    if(shouldNotice && !hasNoticed) {
-        setHasNoticed(true)
-        onNotice({
-          expireAt,
-          expired: isExpired(expireAt, timezone),
-        })
+    if(shouldNotice) {
+        const expired = isExpired(expireAt, timezone)
+        const shouldNotice = expired ? !expiredHasNoticed : !reverifyHasNoticed
+        if(shouldNotice) {
+          onNotice({
+            expireAt,
+            expired,
+          })
+          if(expired)
+            setExpiredHasNoticed(true)
+          else
+            setReverifyHasNoticed(true)
+        }
     }
   }, [data, timezone])
 
