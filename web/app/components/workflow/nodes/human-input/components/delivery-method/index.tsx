@@ -2,10 +2,15 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import MethodSelector from './method-selector'
+import type { DeliveryMethod } from '../../types'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
-const DeliveryMethod: React.FC = () => {
+type Props = {
+  value: DeliveryMethod[]
+}
+
+const DeliveryMethodForm: React.FC<Props> = ({ value }) => {
   const { t } = useTranslation()
 
   return (
@@ -19,7 +24,7 @@ const DeliveryMethod: React.FC = () => {
           </div>
           <div className='flex items-center px-1'>
             <MethodSelector
-              onEdit={() => { /* Add edit action logic here */ }}
+              data={value}
             />
           </div>
         </div>
@@ -28,4 +33,4 @@ const DeliveryMethod: React.FC = () => {
   )
 }
 
-export default DeliveryMethod
+export default DeliveryMethodForm

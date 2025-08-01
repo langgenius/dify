@@ -33,7 +33,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   return (
     <div className='py-2'>
       {/* delivery methods */}
-      <DeliveryMethod />
+      <DeliveryMethod value={inputs.deliveryMethod || []} />
       <div className='px-4 py-2'>
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
       </div>
