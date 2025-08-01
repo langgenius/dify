@@ -11,8 +11,8 @@ import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
-  list: any[]
-  onChange: (list: string[]) => void
+  list: boolean[]
+  onChange: (list: boolean[]) => void
 }
 
 const ArrayValueList: FC<Props> = ({
@@ -23,7 +23,7 @@ const ArrayValueList: FC<Props> = ({
   const { t } = useTranslation()
 
   const handleChange = useCallback((index: number) => {
-    return (value: string) => {
+    return (value: boolean) => {
       const newList = produce(list, (draft: any[]) => {
         draft[index] = value
       })
@@ -42,7 +42,7 @@ const ArrayValueList: FC<Props> = ({
 
   const handleItemAdd = useCallback(() => {
     const newList = produce(list, (draft: any[]) => {
-      draft.push('false')
+      draft.push(false)
     })
     onChange(newList)
   }, [list, onChange])

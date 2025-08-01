@@ -150,7 +150,7 @@ const ChatVariableModal = ({
     if(v === ChatVarType.Boolean)
       setValue(true)
     if (v === ChatVarType.ArrayBoolean)
-      setValue([true])
+      setValue([false])
     setType(v)
   }
 

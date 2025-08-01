@@ -229,7 +229,7 @@ const ConditionItem = ({
     if(condition.varType === VarType.boolean)
       return true
     // eslint-disable-next-line sonarjs/prefer-single-boolean-return
-    if(condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator))
+    if(condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
       return true
     return false
   }, [condition])
