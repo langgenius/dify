@@ -29,7 +29,6 @@ class AppParameterApi(WebApiResource):
             user_input_form = workflow.user_input_form(to_old_structure=True)
             # Get workflow output form
             workflow_output_form = workflow.output_form()
-            print(workflow_output_form)
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
