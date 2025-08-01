@@ -19,6 +19,7 @@ type NotionPageSelectorProps = {
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
   credentialList: DataSourceCredential[]
+  onSelectCredential?: (credentialId: string) => void
 }
 
 const NotionPageSelector = ({
@@ -29,9 +30,12 @@ const NotionPageSelector = ({
   onPreview,
   datasetId = '',
   credentialList,
+  onSelectCredential,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+
+  const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
 
   const notionCredentials = useMemo((): NotionCredential[] => {
     return credentialList.map((item) => {
@@ -47,8 +51,16 @@ const NotionPageSelector = ({
 
   useEffect(() => {
     const credential = notionCredentials.find(item => item.credentialId === currentCredential?.credentialId)
-    if (!credential)
+    if (!credential) {
+      const firstCredential = notionCredentials[0]
+      invalidPreImportNotionPages({ datasetId, credentialId: firstCredential.credentialId })
       setCurrentCredential(notionCredentials[0])
+      onSelect([]) // Clear selected pages when changing credential
+      onSelectCredential?.(firstCredential.credentialId)
+    }
+    else {
+      onSelectCredential?.(credential?.credentialId || '')
+    }
   }, [notionCredentials])
 
   const {
@@ -91,14 +103,13 @@ const NotionPageSelector = ({
     setSearchValue(value)
   }, [])
 
-  const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
-
   const handleSelectCredential = useCallback((credentialId: string) => {
     const credential = notionCredentials.find(item => item.credentialId === credentialId)!
     invalidPreImportNotionPages({ datasetId, credentialId: credential.credentialId })
     setCurrentCredential(credential)
     onSelect([]) // Clear selected pages when changing credential
-  }, [onSelect])
+    onSelectCredential?.(credential.credentialId)
+  }, [invalidPreImportNotionPages, onSelect, onSelectCredential])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])

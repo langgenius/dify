@@ -44,13 +44,24 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
+  const [notionCredentialId, setNotionCredentialId] = useState<string>('')
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
   const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.fireCrawl)
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
+  const {
+    data: dataSourceList,
+    isLoading: isLoadingAuthedDataSourceList,
+    isError: fetchingAuthedDataSourceListError,
+  } = useGetDefaultDataSourceListAuth()
+
   const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)
+  }, [])
+
+  const updateNotionCredentialId = useCallback((credentialId: string) => {
+    setNotionCredentialId(credentialId)
   }, [])
 
   const updateFileList = useCallback((preparedFiles: FileItem[]) => {
@@ -88,12 +99,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setStep(step + delta)
   }, [step, setStep])
 
-  const {
-    data: dataSourceList,
-    isLoading: isLoadingAuthedDataSourceList,
-    isError: fetchingAuthedDataSourceListError,
-  } = useGetDefaultDataSourceListAuth()
-
   if (fetchingAuthedDataSourceListError)
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
@@ -121,7 +126,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
                   updateFile={updateFile}
                   updateFileList={updateFileList}
                   notionPages={notionPages}
+                  notionCredentialId={notionCredentialId}
                   updateNotionPages={updateNotionPages}
+                  updateNotionCredentialId={updateNotionCredentialId}
                   onStepChange={nextStep}
                   websitePages={websitePages}
                   updateWebsitePages={setWebsitePages}
@@ -140,6 +147,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
                   dataSourceType={dataSourceType}
                   files={fileList.map(file => file.file)}
                   notionPages={notionPages}
+                  notionCredentialId={notionCredentialId}
                   websitePages={websitePages}
                   websiteCrawlProvider={websiteCrawlProvider}
                   websiteCrawlJobId={websiteCrawlJobId}

@@ -24,6 +24,7 @@ const PreviewPanel = ({
     <DialogWrapper
       show={show}
       onClose={onClose}
+      outerWrapperClassName='overflow-y-auto'
       panelWrapperClassName='pr-[424px] justify-start'
       className='w-[480px] grow rounded-2xl border-[0.5px] bg-components-panel-bg'
     >

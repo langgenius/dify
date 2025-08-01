@@ -32,7 +32,9 @@ type IStepOneProps = {
   updateFileList: (files: FileItem[]) => void
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   notionPages?: NotionPage[]
+  notionCredentialId: string
   updateNotionPages: (value: NotionPage[]) => void
+  updateNotionCredentialId: (credentialId: string) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
@@ -55,7 +57,9 @@ const StepOne = ({
   updateFileList,
   updateFile,
   notionPages = [],
+  notionCredentialId,
   updateNotionPages,
+  updateNotionCredentialId,
   websitePages = [],
   updateWebsitePages,
   onWebsiteCrawlProviderChange,
@@ -253,6 +257,7 @@ const StepOne = ({
                           onSelect={updateNotionPages}
                           onPreview={updateCurrentPage}
                           credentialList={notionCredentialList}
+                          onSelectCredential={updateNotionCredentialId}
                           datasetId={datasetId}
                         />
                       </div>
@@ -317,7 +322,13 @@ const StepOne = ({
         </div>
         <div className='h-full w-1/2 overflow-y-auto'>
           {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-          {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+          {currentNotionPage && (
+            <NotionPagePreview
+              currentPage={currentNotionPage}
+              hidePreview={hideNotionPagePreview}
+              notionCredentialId={notionCredentialId}
+            />
+          )}
           {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
         </div>
       </div>

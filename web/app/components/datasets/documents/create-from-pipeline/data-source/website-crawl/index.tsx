@@ -1,9 +1,9 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CrawlResultItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
-import Header from '@/app/components/datasets/create/website/base/header'
+import Header from '../base/header'
 import Options from './base/options'
 import Crawling from './base/crawling'
 import ErrorMessage from './base/error-message'
@@ -24,6 +24,8 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
+import { noop } from 'lodash-es'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -157,14 +159,6 @@ const WebsiteCrawl = ({
     handleRun(value)
   }, [handleRun])
 
-  const headerInfo = useMemo(() => {
-    return {
-      title: nodeData.title,
-      docTitle: 'How to use?',
-      docLink: 'https://docs.dify.ai',
-    }
-  }, [nodeData])
-
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
       payload: 'data-source',
@@ -174,9 +168,23 @@ const WebsiteCrawl = ({
   return (
     <div className='flex flex-col'>
       <Header
-        isInPipeline
+        // todo: delete mock data
+        docTitle='How to use?'
+        docLink='https://docs.dify.ai'
         onClickConfiguration={handleSetting}
-        {...headerInfo}
+        pluginName={nodeData.datasource_label}
+        currentCredentialId={'12345678'}
+        onCredentialChange={noop}
+        credentials={[{
+          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
+          credential: {
+            credentials: '......',
+          },
+          id: '12345678',
+          is_default: true,
+          name: 'test123',
+          type: CredentialTypeEnum.API_KEY,
+        }]}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options

@@ -183,8 +183,12 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, In
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
-export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
-  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; credentialID: string; }> = ({ workspaceID, pageID, credentialID }) => {
+  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/preview`, {
+    params: {
+      credential_id: credentialID,
+    },
+  })
 }
 
 export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {

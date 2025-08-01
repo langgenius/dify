@@ -119,6 +119,7 @@ export const useFetchFileIndexingEstimateForFile = (
 type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: DataSourceType.NOTION
   notionPages: NotionPage[]
+  credential_id: string
 }
 
 const getFileIndexingEstimateParamsForNotion = ({

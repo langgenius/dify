@@ -17,6 +17,8 @@ type MixedVariableTextInputProps = {
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 const MixedVariableTextInput = ({
   readOnly = false,
@@ -24,6 +26,8 @@ const MixedVariableTextInput = ({
   availableNodes = [],
   value = '',
   onChange,
+  showManageInputField,
+  onManageInputField,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
   return (
@@ -52,6 +56,8 @@ const MixedVariableTextInput = ({
           }
           return acc
         }, {} as any),
+        showManageInputField,
+        onManageInputField,
       }}
       placeholder={<Placeholder />}
       onChange={onChange}

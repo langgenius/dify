@@ -79,6 +79,7 @@ type StepTwoProps = {
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
+  notionCredentialId: string
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
@@ -134,6 +135,7 @@ const StepTwo = ({
   dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
+  notionCredentialId,
   websitePages = [],
   crawlOptions,
   websiteCrawlProvider = DataSourceProvider.fireCrawl,
@@ -282,6 +284,7 @@ const StepTwo = ({
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
     dataset_id: datasetId || '',
+    credential_id: notionCredentialId,
   })
 
   const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
