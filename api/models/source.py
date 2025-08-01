@@ -42,7 +42,7 @@ class DataSourceApiKeyAuthBinding(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    credentials = mapped_column(sa.text, nullable=True)  # JSON
+    credentials = mapped_column(sa.Text, nullable=True)  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     disabled: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))

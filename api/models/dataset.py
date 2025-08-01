@@ -50,12 +50,12 @@ class Dataset(Base):
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(sa.text, nullable=True)
+    description = mapped_column(sa.Text, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'::character varying"))
     data_source_type = mapped_column(String(255))
     indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
-    index_struct = mapped_column(sa.text, nullable=True)
+    index_struct = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -270,7 +270,7 @@ class DatasetProcessRule(Base):
     id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
     mode = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'::character varying"))
-    rules = mapped_column(sa.text, nullable=True)
+    rules = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -316,7 +316,7 @@ class Document(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     data_source_type: Mapped[str] = mapped_column(String(255), nullable=False)
-    data_source_info = mapped_column(sa.text, nullable=True)
+    data_source_info = mapped_column(sa.Text, nullable=True)
     dataset_process_rule_id = mapped_column(StringUUID, nullable=True)
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -329,7 +329,7 @@ class Document(Base):
     processing_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # parsing
-    file_id = mapped_column(sa.text, nullable=True)
+    file_id = mapped_column(sa.Text, nullable=True)
     word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
     parsing_completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -350,7 +350,7 @@ class Document(Base):
     paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # error
-    error = mapped_column(sa.text, nullable=True)
+    error = mapped_column(sa.Text, nullable=True)
     stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # basic fields
@@ -659,8 +659,8 @@ class DocumentSegment(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content = mapped_column(sa.text, nullable=False)
-    answer = mapped_column(sa.text, nullable=True)
+    content = mapped_column(sa.Text, nullable=False)
+    answer = mapped_column(sa.Text, nullable=True)
     word_count: Mapped[int]
     tokens: Mapped[int]
 
@@ -681,7 +681,7 @@ class DocumentSegment(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    error = mapped_column(sa.text, nullable=True)
+    error = mapped_column(sa.Text, nullable=True)
     stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     @property
@@ -808,7 +808,7 @@ class ChildChunk(Base):
     document_id = mapped_column(StringUUID, nullable=False)
     segment_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    content = mapped_column(sa.text, nullable=False)
+    content = mapped_column(sa.Text, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
@@ -824,7 +824,7 @@ class ChildChunk(Base):
     )
     indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    error = mapped_column(sa.text, nullable=True)
+    error = mapped_column(sa.Text, nullable=True)
 
     @property
     def dataset(self):
@@ -865,7 +865,7 @@ class DatasetQuery(Base):
 
     id = mapped_column(StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
-    content = mapped_column(sa.text, nullable=False)
+    content = mapped_column(sa.Text, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id = mapped_column(StringUUID, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
@@ -882,7 +882,7 @@ class DatasetKeywordTable(Base):
 
     id = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False, unique=True)
-    keyword_table = mapped_column(sa.text, nullable=False)
+    keyword_table = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(
         String(255), nullable=False, server_default=sa.text("'database'::character varying")
     )
@@ -1018,7 +1018,7 @@ class ExternalKnowledgeApis(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     tenant_id = mapped_column(StringUUID, nullable=False)
-    settings = mapped_column(sa.text, nullable=True)
+    settings = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -1073,7 +1073,7 @@ class ExternalKnowledgeBindings(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     external_knowledge_api_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
-    external_knowledge_id = mapped_column(sa.text, nullable=False)
+    external_knowledge_id = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)

@@ -74,7 +74,7 @@ class App(Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str] = mapped_column(sa.text, server_default=sa.text("''::character varying"))
+    description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
     mode: Mapped[str] = mapped_column(String(255))
     icon_type: Mapped[Optional[str]] = mapped_column(String(255))  # image, emoji
     icon = db.Column(String(255))

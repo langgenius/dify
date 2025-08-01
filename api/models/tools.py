@@ -33,7 +33,7 @@ class ToolOAuthSystemClient(Base):
     plugin_id = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
-    encrypted_oauth_params: Mapped[str] = mapped_column(sa.text, nullable=False)
+    encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
 
 # tenant level tool oauth client params (client_id, client_secret, etc.)
@@ -51,7 +51,7 @@ class ToolOAuthTenantClient(Base):
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     # oauth params of the tool provider
-    encrypted_oauth_params: Mapped[str] = mapped_column(sa.text, nullable=False)
+    encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     @property
     def oauth_params(self) -> dict:
@@ -81,7 +81,7 @@ class BuiltinToolProvider(Base):
     # name of the tool provider
     provider: Mapped[str] = mapped_column(String(256), nullable=False)
     # credential of the tool provider
-    encrypted_credentials: Mapped[str] = mapped_column(sa.text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
@@ -117,18 +117,18 @@ class ApiToolProvider(Base):
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
-    schema = mapped_column(sa.text, nullable=False)
+    schema = mapped_column(sa.Text, nullable=False)
     schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
     # who created this tool
     user_id = mapped_column(StringUUID, nullable=False)
     # tenant id
     tenant_id = mapped_column(StringUUID, nullable=False)
     # description of the provider
-    description = mapped_column(sa.text, nullable=False)
+    description = mapped_column(sa.Text, nullable=False)
     # json format tools
-    tools_str = mapped_column(sa.text, nullable=False)
+    tools_str = mapped_column(sa.Text, nullable=False)
     # json format credentials
-    credentials_str = mapped_column(sa.text, nullable=False)
+    credentials_str = mapped_column(sa.Text, nullable=False)
     # privacy policy
     privacy_policy = mapped_column(String(255), nullable=True)
     # custom_disclaimer
@@ -208,9 +208,9 @@ class WorkflowToolProvider(Base):
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # description of the provider
-    description: Mapped[str] = mapped_column(sa.text, nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # parameter configuration
-    parameter_configuration: Mapped[str] = mapped_column(sa.text, nullable=False, server_default="[]")
+    parameter_configuration: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="[]")
     # privacy policy
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=True, server_default="")
 
@@ -257,7 +257,7 @@ class MCPToolProvider(Base):
     # server identifier of the mcp provider
     server_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
     # encrypted url of the mcp provider
-    server_url: Mapped[str] = mapped_column(sa.text, nullable=False)
+    server_url: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # hash of server_url for uniqueness check
     server_url_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     # icon of the mcp provider
@@ -267,11 +267,11 @@ class MCPToolProvider(Base):
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # encrypted credentials
-    encrypted_credentials: Mapped[str] = mapped_column(sa.text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
     # authed
     authed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # tools
-    tools: Mapped[str] = mapped_column(sa.text, nullable=False, default="[]")
+    tools: Mapped[str] = mapped_column(sa.Text, nullable=False, default="[]")
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
@@ -361,11 +361,11 @@ class ToolModelInvoke(Base):
     # tool name
     tool_name = mapped_column(String(128), nullable=False)
     # invoke parameters
-    model_parameters = mapped_column(sa.text, nullable=False)
+    model_parameters = mapped_column(sa.Text, nullable=False)
     # prompt messages
-    prompt_messages = mapped_column(sa.text, nullable=False)
+    prompt_messages = mapped_column(sa.Text, nullable=False)
     # invoke response
-    model_response = mapped_column(sa.text, nullable=False)
+    model_response = mapped_column(sa.Text, nullable=False)
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -400,7 +400,7 @@ class ToolConversationVariables(Base):
     # conversation id
     conversation_id = mapped_column(StringUUID, nullable=False)
     # variables pool
-    variables_str = mapped_column(sa.text, nullable=False)
+    variables_str = mapped_column(sa.Text, nullable=False)
 
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -458,12 +458,12 @@ class DeprecatedPublishedAppTool(Base):
 
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who published this tool
-    description = mapped_column(sa.text, nullable=False)
+    description = mapped_column(sa.Text, nullable=False)
     # llm_description of the tool, for LLM
-    llm_description = mapped_column(sa.text, nullable=False)
+    llm_description = mapped_column(sa.Text, nullable=False)
     # query description, query will be seem as a parameter of the tool,
     # to describe this parameter to llm, we need this field
-    query_description = mapped_column(sa.text, nullable=False)
+    query_description = mapped_column(sa.Text, nullable=False)
     # query name, the name of the query parameter
     query_name = mapped_column(String(40), nullable=False)
     # name of the tool provider

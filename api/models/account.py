@@ -200,7 +200,7 @@ class Tenant(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(String(255))
-    encrypt_public_key = db.Column(sa.text)
+    encrypt_public_key = db.Column(sa.Text)
     plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'::character varying"))
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
     custom_config: Mapped[Optional[str]] = mapped_column(sa.Text)

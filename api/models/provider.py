@@ -60,7 +60,7 @@ class Provider(Base):
     provider_type: Mapped[str] = mapped_column(
         String(40), nullable=False, server_default=text("'custom'::character varying")
     )
-    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.text, nullable=True)
+    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     last_used: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -116,7 +116,7 @@ class ProviderModel(Base):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.text, nullable=True)
+    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -219,7 +219,7 @@ class LoadBalancingModelConfig(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.text, nullable=True)
+    encrypted_config: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
