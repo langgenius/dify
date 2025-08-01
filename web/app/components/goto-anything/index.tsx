@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useKeyPress } from 'ahooks'
@@ -32,6 +32,7 @@ const GotoAnything: FC<Props> = ({
 }) => {
   const [show, setShow] = useState(false)
   const [text, setText] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
   // Handle key press for opening the modal
 
   useKeyPress(['esc'], (e) => {
@@ -52,6 +53,14 @@ const GotoAnything: FC<Props> = ({
     })
   }
 
+  useEffect(() => {
+    if (show) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+      })
+    }
+  }, [show])
+
   return (
     <Modal
       isShow={show}
@@ -63,6 +72,7 @@ const GotoAnything: FC<Props> = ({
 
         <div className='flex flex-col items-start justify-center gap-4 self-stretch px-2 py-2'>
           <Input
+            ref={inputRef}
             value={text}
             placeholder='Type to search...'
             onChange={handleChange}
