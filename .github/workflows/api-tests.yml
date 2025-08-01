@@ -46,6 +46,7 @@ jobs:
 
       - name: Run Unit tests
         run: |
+          cp api/tests/unit_tests/.env.example api/tests/unit_tests/.env
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
 
       - name: Coverage Summary

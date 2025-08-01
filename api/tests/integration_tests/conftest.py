@@ -8,10 +8,6 @@ from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from app_factory import create_app
-from models import Account, DifySetup, Tenant, TenantAccountJoin, db
-from services.account_service import AccountService, RegisterService
-
 
 # Loading the .env file if it exists
 def _load_env() -> None:
@@ -31,6 +27,10 @@ def _load_env() -> None:
 
 
 _load_env()
+
+from app_factory import create_app
+from models import Account, DifySetup, Tenant, TenantAccountJoin, db
+from services.account_service import AccountService, RegisterService
 
 _CACHED_APP = create_app()
 
