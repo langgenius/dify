@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: '僅修理',
         selectedDescription: '僅限於修補版本的自動更新',
+        description: '僅為補丁版本自動更新（例如：1.0.1 → 1.0.2）。次要版本變更不會觸發更新。',
       },
       latest: {
         description: '始終更新至最新版本',

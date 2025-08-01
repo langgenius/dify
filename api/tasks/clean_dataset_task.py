@@ -42,7 +42,7 @@ def clean_dataset_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
-    logging.info(click.style("Start clean dataset when dataset deleted: {}".format(dataset_id), fg="green"))
+    logging.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -57,9 +57,9 @@ def clean_dataset_task(
         segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
 
         if documents is None or len(documents) == 0:
-            logging.info(click.style("No documents found for dataset: {}".format(dataset_id), fg="green"))
+            logging.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
         else:
-            logging.info(click.style("Cleaning documents for dataset: {}".format(dataset_id), fg="green"))
+            logging.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
             # Specify the index type before initializing the index processor
             if doc_form is None:
                 raise ValueError("Index type must be specified.")
@@ -80,7 +80,8 @@ def clean_dataset_task(
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
@@ -115,9 +116,7 @@ def clean_dataset_task(
         db.session.commit()
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                "Cleaned dataset when dataset deleted: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"
-            )
+            click.style(f"Cleaned dataset when dataset deleted: {dataset_id} latency: {end_at - start_at}", fg="green")
         )
     except Exception:
         logging.exception("Cleaned dataset when dataset deleted failed")

@@ -102,4 +102,4 @@ class APIBasedExtensionService:
             if resp.get("result") != "pong":
                 raise ValueError(resp)
         except Exception as e:
-            raise ValueError("connection error: {}".format(e))
+            raise ValueError(f"connection error: {e}")

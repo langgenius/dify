@@ -108,9 +108,7 @@ const translation = {
     exitVersions: 'Versiones de salida',
     exportJPEG: 'Exportar como JPEG',
     exportPNG: 'Exportar como PNG',
-    referenceVar: 'Variable de referencia',
     publishUpdate: 'Publicar actualización',
-    noExist: 'No existe tal variable',
     exportImage: 'Exportar imagen',
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
     needEndNode: 'Se debe agregar el nodo Final',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Herramientas',
     'allTool': 'Todos',
-    'builtInTool': 'Incorporadas',
     'customTool': 'Personalizadas',
     'workflowTool': 'Flujo de trabajo',
     'question-understand': 'Entender pregunta',
@@ -497,6 +494,7 @@ const translation = {
           search: 'Buscar metadatos',
         },
         title: 'Filtrado de Metadatos',
+        tip: 'El filtrado de metadatos es el proceso de utilizar atributos de metadatos (como etiquetas, categorías o permisos de acceso) para refinar y controlar la recuperación de información relevante dentro de un sistema.',
       },
     },
     http: {
@@ -586,7 +584,6 @@ const translation = {
         'not empty': 'no está vacío',
         'null': 'es nulo',
         'not null': 'no es nulo',
-        'regex match': 'Coincidencia de expresiones regulares',
         'not in': 'no en',
         'in': 'en',
         'exists': 'Existe',
@@ -609,7 +606,6 @@ const translation = {
       },
       select: 'Escoger',
       addSubVariable: 'Sub Variable',
-      condition: 'Condición',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -770,9 +766,6 @@ const translation = {
         showAuthor: 'Mostrar autor',
       },
     },
-    tracing: {
-      stopBy: 'Detenido por {{user}}',
-    },
     docExtractor: {
       outputVars: {
         text: 'Texto extraído',
@@ -904,7 +897,7 @@ const translation = {
     },
   },
   tracing: {
-    stopBy: 'Pásate por {{usuario}}',
+    stopBy: 'Pásate por {{user}}',
   },
   variableReference: {
     noAvailableVars: 'No hay variables disponibles',

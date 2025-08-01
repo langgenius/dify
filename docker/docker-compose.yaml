@@ -12,6 +12,9 @@ x-shared-env: &shared-api-worker-env
   APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
   INTERNAL_FILES_URL: ${INTERNAL_FILES_URL:-}
+  LANG: ${LANG:-en_US.UTF-8}
+  LC_ALL: ${LC_ALL:-en_US.UTF-8}
+  PYTHONIOENCODING: ${PYTHONIOENCODING:-utf-8}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-/app/logs/server.log}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
@@ -258,6 +261,14 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
   KIBANA_PORT: ${KIBANA_PORT:-5601}
+  ELASTICSEARCH_USE_CLOUD: ${ELASTICSEARCH_USE_CLOUD:-false}
+  ELASTICSEARCH_CLOUD_URL: ${ELASTICSEARCH_CLOUD_URL:-YOUR-ELASTICSEARCH_CLOUD_URL}
+  ELASTICSEARCH_API_KEY: ${ELASTICSEARCH_API_KEY:-YOUR-ELASTICSEARCH_API_KEY}
+  ELASTICSEARCH_VERIFY_CERTS: ${ELASTICSEARCH_VERIFY_CERTS:-False}
+  ELASTICSEARCH_CA_CERTS: ${ELASTICSEARCH_CA_CERTS:-}
+  ELASTICSEARCH_REQUEST_TIMEOUT: ${ELASTICSEARCH_REQUEST_TIMEOUT:-100000}
+  ELASTICSEARCH_RETRY_ON_TIMEOUT: ${ELASTICSEARCH_RETRY_ON_TIMEOUT:-True}
+  ELASTICSEARCH_MAX_RETRIES: ${ELASTICSEARCH_MAX_RETRIES:-10}
   BAIDU_VECTOR_DB_ENDPOINT: ${BAIDU_VECTOR_DB_ENDPOINT:-http://127.0.0.1:5287}
   BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS: ${BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS:-30000}
   BAIDU_VECTOR_DB_ACCOUNT: ${BAIDU_VECTOR_DB_ACCOUNT:-root}
@@ -539,7 +550,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.7.0
+    image: langgenius/dify-api:1.7.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -568,7 +579,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.7.0
+    image: langgenius/dify-api:1.7.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -595,7 +606,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.7.0
+    image: langgenius/dify-api:1.7.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -613,7 +624,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.7.0
+    image: langgenius/dify-web:1.7.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

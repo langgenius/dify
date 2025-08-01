@@ -142,7 +142,7 @@ class TableStoreVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logging.info(f"Collection {self._collection_name} already exists.")
+                logging.info("Collection %s already exists.", self._collection_name)
                 return
 
             self._create_table_if_not_exist()

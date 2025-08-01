@@ -1050,6 +1050,121 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables/:variable_id'
+  method='PUT'
+  title='更新对话变量'
+  name='#update-conversation-variable'
+/>
+<Row>
+  <Col>
+    更新特定对话变量的值。此端点允许您修改在对话过程中捕获的变量值，同时保留其名称、类型和描述。
+
+    ### 路径参数
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        包含要更新变量的对话ID。
+      </Property>
+      <Property name='variable_id' type='string' key='variable_id'>
+        要更新的变量ID。
+      </Property>
+    </Properties>
+
+    ### 请求体
+
+    <Properties>
+      <Property name='value' type='any' key='value'>
+        变量的新值。必须匹配变量的预期类型（字符串、数字、对象等）。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识符，由开发人员定义的规则，在应用程序内必须唯一。
+      </Property>
+    </Properties>
+
+    ### 响应
+
+    返回包含以下内容的更新变量对象：
+    - `id` (string) 变量ID
+    - `name` (string) 变量名称
+    - `value_type` (string) 变量类型（字符串、数字、对象等）
+    - `value` (any) 更新后的变量值
+    - `description` (string) 变量描述
+    - `created_at` (int) 创建时间戳
+    - `updated_at` (int) 最后更新时间戳
+
+    ### 错误
+    - 400, `Type mismatch: variable expects {expected_type}, but got {actual_type} type`, 值类型与变量的预期类型不匹配
+    - 404, `conversation_not_exists`, 对话不存在
+    - 404, `conversation_variable_not_exists`, 变量不存在
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="PUT" label="/conversations/:conversation_id/variables/:variable_id" targetCode={`curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n  "value": "Updated Value",\n  "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "value": "Updated Value",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="使用不同值类型更新">
+    ```bash {{ title: '字符串值' }}
+    curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "value": "新的字符串值",
+        "user": "abc-123"
+    }'
+    ```
+
+    ```bash {{ title: '数字值' }}
+    curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "value": 42,
+        "user": "abc-123"
+    }'
+    ```
+
+    ```bash {{ title: '对象值' }}
+    curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "value": {"product": "Widget", "quantity": 10, "price": 29.99},
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "variable-uuid-1",
+      "name": "customer_name",
+      "value_type": "string",
+      "value": "Updated Value",
+      "description": "客户名称（从对话中提取）",
+      "created_at": 1650000000000,
+      "updated_at": 1650000001000
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='语音转文字'

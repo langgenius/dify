@@ -11,6 +11,7 @@ import PureSelect from '@/app/components/base/select/pure'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import RadioE from '@/app/components/base/radio/ui'
 
 export type BaseFieldProps = {
   fieldClassName?: string
@@ -57,8 +58,27 @@ const BaseField = ({
     if (typeof placeholder === 'object' && placeholder !== null)
       return renderI18nObject(placeholder as Record<string, string>)
   }, [placeholder, renderI18nObject])
+  const optionValues = useStore(field.form.store, (s) => {
+    const result: Record<string, any> = {}
+    options?.forEach((option) => {
+      if (option.show_on?.length) {
+        option.show_on.forEach((condition) => {
+          result[condition.variable] = s.values[condition.variable]
+        })
+      }
+    })
+    return result
+  })
   const memorizedOptions = useMemo(() => {
-    return options?.map((option) => {
+    return options?.filter((option) => {
+      if (!option.show_on?.length)
+        return true
+
+      return option.show_on.every((condition) => {
+        const conditionValue = optionValues[condition.variable]
+        return conditionValue === condition.value
+      })
+    }).map((option) => {
       return {
         label: typeof option.label === 'string' ? option.label : renderI18nObject(option.label),
         value: option.value,
@@ -151,17 +171,28 @@ const BaseField = ({
         }
         {
           formSchema.type === FormTypeEnum.radio && (
-            <div className='flex items-center space-x-2'>
+            <div className={cn(
+              memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+            )}>
               {
                 memorizedOptions.map(option => (
                   <div
                     key={option.value}
                     className={cn(
-                      'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
+                      'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                       value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                      inputClassName,
                     )}
                     onClick={() => field.handleChange(option.value)}
                   >
+                    {
+                      formSchema.showRadioUI && (
+                        <RadioE
+                          className='mr-2'
+                          isChecked={value === option.value}
+                        />
+                      )
+                    }
                     {option.label}
                   </div>
                 ))

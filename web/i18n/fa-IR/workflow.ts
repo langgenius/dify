@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'ابزارها',
     'allTool': 'همه',
-    'builtInTool': 'درون‌ساخت',
     'customTool': 'سفارشی',
     'workflowTool': 'جریان کار',
     'question-understand': 'درک سوال',
@@ -497,6 +496,7 @@ const translation = {
           conditions: 'شرایط',
         },
         title: 'فیلتر کردن فراداده',
+        tip: 'فیلتر کردن متاداده فرایند استفاده از ویژگی‌های متاداده (مانند برچسب‌ها، دسته‌ها یا مجوزهای دسترسی) برای تصفیه و کنترل بازیابی اطلاعات مرتبط در یک سیستم است.',
       },
     },
     http: {
@@ -586,7 +586,6 @@ const translation = {
         'not empty': 'خالی نیست',
         'null': 'خالی',
         'not null': 'خالی نیست',
-        'regex match': 'مسابقه regex',
         'in': 'در',
         'not exists': 'وجود ندارد',
         'all of': 'همه از',

@@ -275,7 +275,7 @@ class ToolTransformService:
 
             username = user.name
         except Exception:
-            logger.exception(f"failed to get user name for api provider {db_provider.id}")
+            logger.exception("failed to get user name for api provider %s", db_provider.id)
         # add provider into providers
         credentials = db_provider.credentials
         result = ToolProviderApiEntity(

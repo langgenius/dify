@@ -216,6 +216,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Caricamento File',
+      description: 'La casella di input della chat consente di caricare immagini, documenti e altri file.',
+      supportedTypes: 'Tipi di File Supportati',
+      numberLimit: 'Caricamenti massimi',
+      modalTitle: 'Impostazione Caricamento File',
+    },
+    imageUpload: {
+      title: 'Caricamento Immagine',
+      description: 'Consente di caricare immagini.',
+      supportedTypes: 'Tipi di File Supportati',
+      numberLimit: 'Caricamenti massimi',
+      modalTitle: 'Impostazione Caricamento Immagine',
+    },
+    bar: {
+      empty: 'Abilita funzionalità per migliorare l\'esperienza utente dell\'app web',
+      enableText: 'Funzionalità Abilitate',
+      manage: 'Gestisci',
+    },
+    documentUpload: {
+      title: 'Documento',
+      description: 'Abilitare Documento consentirà al modello di accettare documenti e rispondere a domande su di essi.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Abilitare Audio consentirà al modello di elaborare file audio per trascrizione e analisi.',
+    },
   },
   automatic: {
     title: 'Orchestrazione automatizzata delle applicazioni',
@@ -316,12 +343,14 @@ const translation = {
     'required': 'Richiesto',
     'hide': 'Nascondi',
     'errorMsg': {
-      varNameRequired: 'Il nome della variabile è richiesto',
       labelNameRequired: 'Il nome dell\'etichetta è richiesto',
       varNameCanBeRepeat: 'Il nome della variabile non può essere ripetuto',
       atLeastOneOption: 'È richiesta almeno un\'opzione',
       optionRepeat: 'Ci sono opzioni ripetute',
     },
+    'defaultValue': 'Valore predefinito',
+    'noDefaultValue': 'Nessun valore predefinito',
+    'selectDefaultValue': 'Seleziona valore predefinito',
   },
   vision: {
     name: 'Visione',

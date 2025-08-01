@@ -24,9 +24,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
     if not mail.is_inited():
         return
 
-    logging.info(
-        click.style("Start send invite member mail to {} in workspace {}".format(to, workspace_name), fg="green")
-    )
+    logging.info(click.style(f"Start send invite member mail to {to} in workspace {workspace_name}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -46,9 +44,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                "Send invite member mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green"
-            )
+            click.style(f"Send invite member mail to {to} succeeded: latency: {end_at - start_at}", fg="green")
         )
     except Exception:
-        logging.exception("Send invite member mail to {} failed".format(to))
+        logging.exception("Send invite member mail to %s failed", to)

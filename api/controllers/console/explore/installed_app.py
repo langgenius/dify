@@ -74,7 +74,7 @@ class InstalledAppsListApi(Resource):
                 ):
                     res.append(installed_app)
             installed_app_list = res
-            logger.debug(f"installed_app_list: {installed_app_list}, user_id: {user_id}")
+            logger.debug("installed_app_list: %s, user_id: %s", installed_app_list, user_id)
 
         installed_app_list.sort(
             key=lambda app: (

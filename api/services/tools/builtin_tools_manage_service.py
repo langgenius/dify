@@ -337,7 +337,7 @@ class BuiltinToolManageService:
             max_number = max(numbers)
             return f"{default_pattern} {max_number + 1}"
         except Exception as e:
-            logger.warning(f"Error generating next provider name for {provider}: {str(e)}")
+            logger.warning("Error generating next provider name for %s: %s", provider, str(e))
             # fallback
             return f"{credential_type.get_name()} 1"
 
@@ -508,10 +508,10 @@ class BuiltinToolManageService:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
                 return oauth_params
 
-            # only verified provider can use custom oauth client
-            is_verified = not isinstance(provider, PluginToolProviderController) or PluginService.is_plugin_verified(
-                tenant_id, provider.plugin_unique_identifier
-            )
+            # only verified provider can use official oauth client
+            is_verified = not isinstance(
+                provider_controller, PluginToolProviderController
+            ) or PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if not is_verified:
                 return oauth_params
 

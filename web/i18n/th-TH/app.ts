@@ -257,6 +257,7 @@ const translation = {
   noAccessPermission: 'ไม่มีสิทธิ์เข้าถึงเว็บแอป',
   maxActiveRequestsPlaceholder: 'ใส่ 0 สำหรับไม่จำกัด',
   maxActiveRequests: 'จำนวนคำขอพร้อมกันสูงสุด',
+  maxActiveRequestsTip: 'จำนวนการร้องขอที่ใช้งานพร้อมกันสูงสุดต่อแอป (0 หมายถึงไม่จำกัด)',
 }
 
 export default translation

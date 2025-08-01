@@ -116,7 +116,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
-                        f"Created a chunk of size {total}, which is longer than the specified {self._chunk_size}"
+                        "Created a chunk of size %s, which is longer than the specified %s", total, self._chunk_size
                     )
                 if len(current_doc) > 0:
                     doc = self._join_docs(current_doc, separator)

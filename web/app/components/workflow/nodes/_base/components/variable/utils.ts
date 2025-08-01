@@ -49,6 +49,13 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
+export const hasValidChildren = (children: any): boolean => {
+  return children && (
+    (Array.isArray(children) && children.length > 0)
+    || (!Array.isArray(children) && Object.keys((children as StructuredOutput)?.schema?.properties || {}).length > 0)
+  )
+}
+
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
@@ -139,19 +146,57 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   if (isStructuredOutput) {
     childrenResult = findExceptVarInStructuredOutput(children, filterVar)
   }
- else if (Array.isArray(children)) {
-    childrenResult = children.filter((item: Var) => {
-      const { children: itemChildren } = item
-      const currSelector = [...value_selector, item.variable]
+  else if (Array.isArray(children)) {
+    childrenResult = children
+      .map((item: Var) => {
+        const { children: itemChildren } = item
+        const currSelector = [...value_selector, item.variable]
 
-      if (!itemChildren)
-        return filterVar(item, currSelector)
+        if (!itemChildren) {
+          return {
+            item,
+            filteredObj: null,
+            passesFilter: filterVar(item, currSelector),
+          }
+        }
 
-      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
-      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
-    })
+        const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
+        const itemHasValidChildren = hasValidChildren(filteredObj.children)
+
+        let passesFilter
+        if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
+          passesFilter = itemHasValidChildren || filterVar(item, currSelector)
+        else
+          passesFilter = itemHasValidChildren
+
+        return {
+          item,
+          filteredObj,
+          passesFilter,
+        }
+      })
+      .filter(({ passesFilter }) => passesFilter)
+      .map(({ item, filteredObj }) => {
+        const { children: itemChildren } = item
+        if (!itemChildren || !filteredObj)
+          return item
+
+        return {
+          ...item,
+          children: filteredObj.children,
+        }
+      })
+
+    if (isFile && Array.isArray(childrenResult)) {
+      if (childrenResult.length === 0) {
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
+          variable: key,
+          type: key === 'size' ? VarType.number : VarType.string,
+        }))
+      }
+    }
   }
- else {
+  else {
     childrenResult = []
   }
 
