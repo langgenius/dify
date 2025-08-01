@@ -57,7 +57,7 @@ export const useTracingSearch = ({ treeNodes }: UseTracingSearchProps): UseTraci
       // Safe string search with nullish coalescing
       const titleMatch = node.title?.toLowerCase().includes(query) ?? false
       const nodeTypeMatch = node.node_type?.toLowerCase().includes(query) ?? false
-      const statusMatch = (node as NodeTracing & { status?: string }).status?.toLowerCase().includes(query) ?? false
+      const statusMatch = hasStatus(node) ? node.status.toLowerCase().includes(query) : false
 
       // Search in node data with proper type checking
       const inputsMatch = searchInObject(node.inputs)
