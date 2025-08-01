@@ -6,6 +6,7 @@ allowing users to configure different repository backends through string paths.
 """
 
 import importlib
+import inspect
 import logging
 from typing import Protocol, Union
 
