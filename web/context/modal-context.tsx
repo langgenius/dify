@@ -64,6 +64,10 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
   ssr: false,
 })
 
+const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
+  ssr: false,
+})
+
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
@@ -102,6 +106,7 @@ export type ModalContextState = {
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
+  setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<string> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
@@ -116,6 +121,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowModelLoadBalancingEntryModal: noop,
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
+  setShowEducationExpireNoticeModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -145,6 +151,7 @@ export const ModalContextProvider = ({
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
+  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<string> | null>(null)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -272,6 +279,7 @@ export const ModalContextProvider = ({
       setShowModelLoadBalancingEntryModal,
       setShowOpeningModal,
       setShowUpdatePluginModal,
+      setShowEducationExpireNoticeModal,
     }}>
       <>
         {children}
@@ -398,6 +406,15 @@ export const ModalContextProvider = ({
             />
           )
         }
+        {
+          !!showEducationExpireNoticeModal && (
+            <ExpireNoticeModal
+              onClose={() => setShowEducationExpireNoticeModal(null)}
+              onConfirm={() => {
+                setShowEducationExpireNoticeModal(null)
+              }}
+            />
+          )}
       </>
     </ModalContext.Provider>
   )
