@@ -58,20 +58,6 @@ class ParameterConfig(BaseModel):
     description: str
     required: bool
 
-    _is_old_select_type: bool = PrivateAttr(default=False)
-
-    @model_validator(mode="wrap")
-    @classmethod
-    def log_failed_validation(cls, data: Any, handler: ModelWrapValidatorHandler[Self]) -> Self:
-        if not isinstance(data, dict):
-            return handler(data)
-
-        original_type = data.get("type")
-        instance = handler(data)
-        if original_type == _OLD_SELECT_TYPE_NAME:
-            instance._is_old_select_type = True
-        return instance
-
     @field_validator("name", mode="before")
     @classmethod
     def validate_name(cls, value) -> str:
@@ -138,7 +124,7 @@ class ParameterExtractorNodeData(BaseNodeData):
             else:
                 parameter_schema["type"] = parameter.type
 
-            if parameter._is_old_select_type:
+            if parameter.options:
                 parameter_schema["enum"] = parameter.options
 
             parameters["properties"][parameter.name] = parameter_schema
