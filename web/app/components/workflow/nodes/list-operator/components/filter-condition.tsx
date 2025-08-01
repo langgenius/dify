@@ -109,7 +109,7 @@ const FilterCondition: FC<Props> = ({
       <div className='flex space-x-1'>
         <ConditionOperator
           className='h-8 bg-components-input-bg-normal'
-          varType={expectedVarType ?? VarType.string}
+          varType={expectedVarType ?? varType ?? VarType.string}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}
           file={hasSubVariable ? { key: condition.key } : undefined}
