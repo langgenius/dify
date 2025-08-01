@@ -50,6 +50,8 @@ dependencies = [
     "opentelemetry-instrumentation-celery==0.48b0",
     "opentelemetry-instrumentation-flask==0.48b0",
     "opentelemetry-instrumentation-sqlalchemy==0.48b0",
+    "opentelemetry-instrumentation-requests==0.48b0",
+    "opentelemetry-instrumentation-httpx==0.48b0",
     "opentelemetry-propagator-b3==1.27.0",
     # opentelemetry-proto1.28.0 depends on protobuf (>=5.0,<6.0),
     # which is conflict with googleapis-common-protos (1.63.0)
