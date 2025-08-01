@@ -88,7 +88,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       draft.filter_by.conditions = [{
         key: (isFileArray && !draft.filter_by.conditions[0]?.key) ? 'name' : '',
         comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],
-        value: '',
+        value: itemVarType === VarType.boolean ? false : '',
       }]
       if (isFileArray && draft.order_by.enabled && !draft.order_by.key)
         draft.order_by.key = 'name'
