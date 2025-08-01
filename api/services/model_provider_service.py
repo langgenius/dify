@@ -97,7 +97,12 @@ class ModelProviderService:
                 graph = json.loads(workflow.graph)
                 for node in graph.get("nodes", []):
                     node_data = node.get("data", {})
-                    if node_data.get("type") in {"llm", "knowledge-retrieval", "agent"}:
+                    if node_data.get("type") in {"llm",
+                                                 "knowledge-retrieval",
+                                                 "agent",
+                                                 "question-classifier",
+                                                 "parameter-extractor"
+                                                 }:
                         model_info = node_data.get("model", {})
                         if model_info.get("provider") == provider:
                             if model_name := model_info.get("name"):
