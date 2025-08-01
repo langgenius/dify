@@ -127,7 +127,26 @@ class EnterpriseWorkspaceUpdateToolCredential(Resource):
         return result
 
 
+class EnterpriseWorkspaceDeleteToolCredential(Resource):
+    @setup_required
+    @enterprise_inner_api_only
+    def delete(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("tenant_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        result = BuiltinToolManageService.delete_builtin_tool_provider(
+            tenant_id=args["tenant_id"],
+            provider=args["provider"],
+            credential_id=args["credential_id"],
+        )
+        return result
+
+
 api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")
 api.add_resource(EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless")
 api.add_resource(EnterpriseWorkspaceCreateToolCredential, "/enterprise/workspace/tool/credential")
 api.add_resource(EnterpriseWorkspaceUpdateToolCredential, "/enterprise/workspace/tool/credential/update")
+api.add_resource(EnterpriseWorkspaceDeleteToolCredential, "/enterprise/workspace/tool/credential/delete")
