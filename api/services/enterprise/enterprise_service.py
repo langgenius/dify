@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
+
 from services.enterprise.base import EnterpriseRequest
 
 
@@ -52,7 +53,7 @@ class EnterpriseService:
             return data.get("result", False)
 
         @classmethod
-        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_codes: list[str]) -> dict[str, bool]:
+        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_codes: list[str]):
             if not app_codes:
                 return {}
             body = {"userId": user_id, "appCodes": app_codes}
