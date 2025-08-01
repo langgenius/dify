@@ -87,4 +87,4 @@ def clean_messages():
                 db.session.query(Message).where(Message.id == message.id).delete()
                 db.session.commit()
     end_at = time.perf_counter()
-    click.echo(click.style("Cleaned messages from db success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Cleaned messages from db success latency: {end_at - start_at}", fg="green"))

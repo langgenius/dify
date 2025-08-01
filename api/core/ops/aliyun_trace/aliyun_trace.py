@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.ops.aliyun_trace.data_exporter.traceclient import (
     TraceClient,
     convert_datetime_to_nanoseconds,
+    convert_string_to_id,
     convert_to_span_id,
     convert_to_trace_id,
     generate_span_id,
@@ -97,12 +98,13 @@ class AliyunDataTrace(BaseTraceInstance):
         try:
             return self.trace_client.get_project_url()
         except Exception as e:
-            logger.info(f"Aliyun get run url failed: {str(e)}", exc_info=True)
+            logger.info("Aliyun get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"Aliyun get run url failed: {str(e)}")
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        external_trace_id = trace_info.metadata.get("external_trace_id")
-        trace_id = external_trace_id or convert_to_trace_id(trace_info.workflow_run_id)
+        trace_id = convert_to_trace_id(trace_info.workflow_run_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
         workflow_span_id = convert_to_span_id(trace_info.workflow_run_id, "workflow")
         self.add_workflow_span(trace_id, workflow_span_id, trace_info)
 
@@ -130,6 +132,9 @@ class AliyunDataTrace(BaseTraceInstance):
             status = Status(StatusCode.ERROR, trace_info.error)
 
         trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         message_span_id = convert_to_span_id(message_id, "message")
         message_span = SpanData(
             trace_id=trace_id,
@@ -139,7 +144,7 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                 GEN_AI_USER_ID: str(user_id),
                 GEN_AI_SPAN_KIND: GenAISpanKind.CHAIN.value,
                 GEN_AI_FRAMEWORK: "dify",
@@ -161,12 +166,12 @@ class AliyunDataTrace(BaseTraceInstance):
             start_time=convert_datetime_to_nanoseconds(trace_info.start_time),
             end_time=convert_datetime_to_nanoseconds(trace_info.end_time),
             attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                 GEN_AI_USER_ID: str(user_id),
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: "dify",
-                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name", ""),
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider", ""),
+                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
+                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
@@ -186,9 +191,13 @@ class AliyunDataTrace(BaseTraceInstance):
             return
         message_id = trace_info.message_id
 
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         documents_data = extract_retrieval_documents(trace_info.documents)
         dataset_retrieval_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=generate_span_id(),
             name="dataset_retrieval",
@@ -214,8 +223,12 @@ class AliyunDataTrace(BaseTraceInstance):
         if trace_info.error:
             status = Status(StatusCode.ERROR, trace_info.error)
 
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         tool_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=generate_span_id(),
             name=trace_info.tool_name,
@@ -286,7 +299,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 node_span = self.build_workflow_task_span(trace_id, workflow_span_id, trace_info, node_execution)
             return node_span
         except Exception as e:
-            logging.debug(f"Error occurred in build_workflow_node_span: {e}", exc_info=True)
+            logging.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
             return None
 
     def get_workflow_node_status(self, node_execution: WorkflowNodeExecution) -> Status:
@@ -386,14 +399,14 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id") or "",
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: "dify",
-                GEN_AI_MODEL_NAME: process_data.get("model_name", ""),
-                GEN_AI_SYSTEM: process_data.get("model_provider", ""),
+                GEN_AI_MODEL_NAME: process_data.get("model_name") or "",
+                GEN_AI_SYSTEM: process_data.get("model_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
                 GEN_AI_PROMPT: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
                 GEN_AI_COMPLETION: str(outputs.get("text", "")),
-                GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason", ""),
+                GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason") or "",
                 INPUT_VALUE: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
                 OUTPUT_VALUE: str(outputs.get("text", "")),
             },
@@ -421,7 +434,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     GEN_AI_USER_ID: str(user_id),
                     GEN_AI_SPAN_KIND: GenAISpanKind.CHAIN.value,
                     GEN_AI_FRAMEWORK: "dify",
-                    INPUT_VALUE: trace_info.workflow_run_inputs.get("sys.query", ""),
+                    INPUT_VALUE: trace_info.workflow_run_inputs.get("sys.query") or "",
                     OUTPUT_VALUE: json.dumps(trace_info.workflow_run_outputs, ensure_ascii=False),
                 },
                 status=status,
@@ -451,8 +464,13 @@ class AliyunDataTrace(BaseTraceInstance):
         status: Status = Status(StatusCode.OK)
         if trace_info.error:
             status = Status(StatusCode.ERROR, trace_info.error)
+
+        trace_id = convert_to_trace_id(message_id)
+        if trace_info.trace_id:
+            trace_id = convert_string_to_id(trace_info.trace_id)
+
         suggested_question_span = SpanData(
-            trace_id=convert_to_trace_id(message_id),
+            trace_id=trace_id,
             parent_span_id=convert_to_span_id(message_id, "message"),
             span_id=convert_to_span_id(message_id, "suggested_question"),
             name="suggested_question",
@@ -461,8 +479,8 @@ class AliyunDataTrace(BaseTraceInstance):
             attributes={
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: "dify",
-                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name", ""),
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider", ""),
+                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
+                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_PROMPT: json.dumps(trace_info.inputs, ensure_ascii=False),
                 GEN_AI_COMPLETION: json.dumps(trace_info.suggested_question, ensure_ascii=False),
                 INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),

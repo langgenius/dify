@@ -111,11 +111,9 @@ const translation = {
     exportJPEG: 'JPEG 로 내보내기',
     exitVersions: '종료 버전',
     exportImage: '이미지 내보내기',
-    noExist: '해당 변수가 없습니다.',
     exportSVG: 'SVG 로 내보내기',
     versionHistory: '버전 기록',
     exportPNG: 'PNG 로 내보내기',
-    referenceVar: '참조 변수',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
@@ -231,7 +229,6 @@ const translation = {
   tabs: {
     'tools': '도구',
     'allTool': '전체',
-    'builtInTool': '내장',
     'customTool': '사용자 정의',
     'workflowTool': '워크플로우',
     'question-understand': '질문 이해',
@@ -525,6 +522,7 @@ const translation = {
           conditions: '조건',
         },
         title: '메타데이터 필터링',
+        tip: '메타데이터 필터링은 시스템 내에서 관련 정보를 검색하는 과정을 정제하고 제어하기 위해 메타데이터 속성(예: 태그, 카테고리 또는 접근 권한)을 사용하는 과정입니다.',
       },
     },
     http: {
@@ -616,7 +614,6 @@ const translation = {
         'not empty': '비어 있지 않음',
         'null': 'null 임',
         'not null': 'null 이 아님',
-        'regex match': '정규식 일치',
         'in': '안으로',
         'exists': '존재',
         'all of': '모두의',
@@ -639,7 +636,6 @@ const translation = {
       },
       select: '고르다',
       addSubVariable: '하위 변수',
-      condition: '조건',
     },
     variableAssigner: {
       title: '변수 할당',
@@ -760,8 +756,6 @@ const translation = {
       reasoningMode: '추론 모드',
       reasoningModeTip:
         '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
-      isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
-      errorReason: '오류 원인',
     },
     iteration: {
       deleteTitle: '반복 노드를 삭제하시겠습니까?',

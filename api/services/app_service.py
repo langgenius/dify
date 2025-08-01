@@ -53,9 +53,10 @@ class AppService:
         if args.get("name"):
             name = args["name"][:30]
             filters.append(App.name.ilike(f"%{name}%"))
-        if args.get("tag_ids"):
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if args.get("tag_ids") and len(args["tag_ids"]) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, args["tag_ids"])
-            if target_ids:
+            if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
@@ -94,7 +95,7 @@ class AppService:
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
             except Exception as e:
-                logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
+                logging.exception("Get default model instance failed, tenant_id: %s", tenant_id)
                 model_instance = None
 
             if model_instance:

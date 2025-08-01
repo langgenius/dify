@@ -110,7 +110,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 
@@ -183,7 +183,7 @@ limit 1000"""
                             )
                         )
                         logger.exception(
-                            f"[{processed_count}] Failed to migrate [{table_name}] {record_id} ({provider_name})"
+                            "[%s] Failed to migrate [%s] %s (%s)", processed_count, table_name, record_id, provider_name
                         )
                         continue
 

@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Mise à jour automatique uniquement pour les versions de correctif',
         name: 'Réparer seulement',
+        description: 'Mise à jour automatique uniquement pour les versions de correctif (par exemple, 1.0.1 → 1.0.2). Les changements de version mineure ne déclencheront pas de mises à jour.',
       },
       latest: {
         name: 'Dernier',

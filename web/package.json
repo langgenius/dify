@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "private": true,
   "engines": {
     "node": ">=v22.11.0"
@@ -30,8 +30,8 @@
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",
-    "check-i18n": "node ./i18n/check-i18n.js",
-    "auto-gen-i18n": "node ./i18n/auto-gen-i18n.js",
+    "check-i18n": "node ./i18n-config/check-i18n.js",
+    "auto-gen-i18n": "node ./i18n-config/auto-gen-i18n.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
@@ -152,7 +152,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.1.1",
+    "@antfu/eslint-config": "^5.0.0",
     "@chromatic-com/storybook": "^3.1.0",
     "@eslint-react/eslint-plugin": "^1.15.0",
     "@eslint/eslintrc": "^3.1.0",
@@ -160,7 +160,7 @@
     "@faker-js/faker": "^9.0.3",
     "@happy-dom/jest-environment": "^17.4.4",
     "@next/bundle-analyzer": "^15.4.1",
-    "@next/eslint-plugin-next": "~15.3.5",
+    "@next/eslint-plugin-next": "~15.4.5",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "8.5.0",
     "@storybook/addon-interactions": "8.5.0",
@@ -196,8 +196,8 @@
     "bing-translate-api": "^4.0.2",
     "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
-    "eslint": "^9.20.1",
-    "eslint-config-next": "~15.3.5",
+    "eslint": "^9.32.0",
+    "eslint-config-next": "~15.4.5",
     "eslint-plugin-oxlint": "^1.6.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
@@ -216,7 +216,7 @@
     "tailwindcss": "^3.4.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0",
+    "typescript-eslint": "^8.38.0",
     "uglify-js": "^3.19.3"
   },
   "resolutions": {
@@ -234,6 +234,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@eslint/plugin-kit@<0.3.4": "0.3.4",
       "esbuild@<0.25.0": "0.25.0",
       "pbkdf2@<3.1.3": "3.1.3",
       "vite@<6.2.7": "6.2.7",

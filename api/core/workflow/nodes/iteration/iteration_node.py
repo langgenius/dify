@@ -616,7 +616,7 @@ class IterationNode(BaseNode):
             )
 
         except IterationNodeError as e:
-            logger.warning(f"Iteration run failed:{str(e)}")
+            logger.warning("Iteration run failed:%s", str(e))
             yield IterationRunFailedEvent(
                 iteration_id=self.id,
                 iteration_node_id=self.node_id,

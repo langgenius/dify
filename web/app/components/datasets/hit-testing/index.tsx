@@ -70,7 +70,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
-    <div className='flex h-full flex-col rounded-t-2xl bg-background-body px-4 py-3'>
+    <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
       <div className='mb-2 shrink-0 pl-2 font-semibold leading-6 text-text-primary'>
         {t('datasetHitTesting.hit.title', { num: results.length })}
       </div>
@@ -93,7 +93,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    <div className='flex h-full flex-col items-center justify-center rounded-t-2xl bg-background-body px-4 py-3'>
+    <div className='flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3'>
       <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!h-14 !w-14 !bg-text-quaternary')} />
       <div className='mt-3 text-[13px] text-text-quaternary'>
         {t('datasetHitTesting.hit.emptyTip')}
@@ -180,7 +180,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         <div className='flex flex-col pt-3'>
           {/* {renderHitResults(generalResultData)} */}
           {submitLoading
-            ? <div className='flex h-full flex-col rounded-t-2xl bg-background-body px-4 py-3'>
+            ? <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
               <CardSkelton />
             </div>
             : (

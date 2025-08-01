@@ -41,5 +41,5 @@ class SendGridClient:
             )
             raise
         except Exception as e:
-            logging.exception(f"SendGridClient Unexpected error occurred while sending email to {_to}")
+            logging.exception("SendGridClient Unexpected error occurred while sending email to %s", _to)
             raise

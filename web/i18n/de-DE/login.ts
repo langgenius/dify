@@ -70,7 +70,6 @@ const translation = {
   activated: 'Jetzt anmelden',
   adminInitPassword: 'Admin-Initialpasswort',
   validate: 'Validieren',
-  sso: 'Mit SSO fortfahren',
   checkCode: {
     didNotReceiveCode: 'Sie haben den Code nicht erhalten?',
     verificationCodePlaceholder: 'Geben Sie den 6-stelligen Code ein',

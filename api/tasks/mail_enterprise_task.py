@@ -15,7 +15,7 @@ def send_enterprise_email_task(to: list[str], subject: str, body: str, substitut
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start enterprise mail to {} with subject {}".format(to, subject), fg="green"))
+    logging.info(click.style(f"Start enterprise mail to {to} with subject {subject}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -25,8 +25,6 @@ def send_enterprise_email_task(to: list[str], subject: str, body: str, substitut
         email_service.send_raw_email(to=to, subject=subject, html_content=html_content)
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style("Send enterprise mail to {} succeeded: latency: {}".format(to, end_at - start_at), fg="green")
-        )
+        logging.info(click.style(f"Send enterprise mail to {to} succeeded: latency: {end_at - start_at}", fg="green"))
     except Exception:
-        logging.exception("Send enterprise mail to {} failed".format(to))
+        logging.exception("Send enterprise mail to %s failed", to)

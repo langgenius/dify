@@ -34,21 +34,7 @@ const translation = {
   newApp: {
     startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
-    captionAppType: 'どのタイプのアプリを作成しますか？',
-    chatbotDescription: 'チャット形式のアプリケーションを構築します。このアプリは質問と回答の形式を使用し、複数のラウンドの継続的な会話を可能にします。',
-    completionDescription: 'プロンプトに基づいて高品質のテキストを生成するアプリケーションを構築します。記事、要約、翻訳などを生成します。',
-    completionWarning: 'この種類のアプリはもうサポートされなくなります。',
-    agentDescription: 'タスクを自動的に完了するためのツールを選択できるインテリジェント エージェントを構築します',
-    workflowDescription: '高度なカスタマイズが可能なワークフローに基づいて高品質のテキストを生成するアプリケーションを構築します。経験豊富なユーザー向けです。',
     workflowWarning: '現在ベータ版です',
-    chatbotType: 'チャットボットのオーケストレーション方法',
-    basic: '基本',
-    basicTip: '初心者向け。後で「チャットフロー」に切り替えることができます',
-    basicFor: '初心者向け',
-    basicDescription: '基本オーケストレートは、組み込みのプロンプトを変更する機能がなく、簡単な設定を使用してチャットボット アプリをオーケストレートします。初心者向けです。',
-    advanced: 'チャットフロー',
-    advancedFor: '上級ユーザー向け',
-    advancedDescription: 'ワークフロー オーケストレートは、ワークフロー形式でチャットボットをオーケストレートし、組み込みのプロンプトを編集する機能を含む高度なカスタマイズを提供します。経験豊富なユーザー向けです。',
     captionName: 'アプリのアイコンと名前',
     appNamePlaceholder: 'アプリ名を入力してください',
     captionDescription: '説明',
@@ -260,6 +246,7 @@ const translation = {
   noAccessPermission: 'Web アプリにアクセス権限がありません',
   maxActiveRequestsPlaceholder: '無制限のために0を入力してください',
   maxActiveRequests: '最大同時リクエスト数',
+  maxActiveRequestsTip: 'アプリごとの同時アクティブリクエストの最大数（無制限の場合は0）',
 }
 
 export default translation

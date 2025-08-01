@@ -446,3 +446,7 @@ export enum VersionHistoryContextMenuOptions {
   edit = 'edit',
   delete = 'delete',
 }
+
+export type ChildNodeTypeCount = {
+  [key: string]: number;
+}

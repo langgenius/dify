@@ -305,7 +305,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
 
 
-def paser_docx_part(block, doc: Document, content_items, i):
+def parser_docx_part(block, doc: Document, content_items, i):
     if isinstance(block, CT_P):
         content_items.append((i, "paragraph", Paragraph(block, doc)))
     elif isinstance(block, CT_Tbl):
@@ -329,7 +329,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         part = next(it, None)
         i = 0
         while part is not None:
-            paser_docx_part(part, doc, content_items, i)
+            parser_docx_part(part, doc, content_items, i)
             i = i + 1
             part = next(it, None)
 
@@ -363,7 +363,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
+                    logger.warning("Failed to extract table from DOC: %s", e)
                     continue
 
         return "\n".join(text)
@@ -597,7 +597,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
-            if spk == None:
+            if spk is None:
                 merged_results.append((None, current_text))
                 continue
 

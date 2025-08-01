@@ -16,7 +16,8 @@ const translation = {
       addAnnotation: 'Add Annotation',
       bulkImport: 'Bulk Import',
       bulkExport: 'Bulk Export',
-      clearAll: 'Clear All Annotation',
+      clearAll: 'Delete All',
+      clearAllConfirm: 'Delete all annotations?',
     },
   },
   editModal: {
@@ -55,6 +56,16 @@ const translation = {
     completed: 'Import completed',
     error: 'Import Error',
     ok: 'OK',
+  },
+  list: {
+    delete: {
+      title: 'Are you sure Delete?',
+    },
+  },
+  batchAction: {
+    selected: 'Selected',
+    delete: 'Delete',
+    cancel: 'Cancel',
   },
   errorMessage: {
     answerRequired: 'Answer is required',
