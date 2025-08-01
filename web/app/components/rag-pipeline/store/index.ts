@@ -6,13 +6,18 @@ import type {
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import type { IconInfo } from '@/models/datasets'
+import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
 
 export type RagPipelineSliceShape = {
   pipelineId: string
   knowledgeName: string
   knowledgeIcon?: IconInfo
-  showInputFieldDialog: boolean
-  setShowInputFieldDialog: (showInputFieldPanel: boolean) => void
+  showInputFieldPanel: boolean
+  setShowInputFieldPanel: (showInputFieldPanel: boolean) => void
+  showInputFieldPreviewPanel: boolean
+  setShowInputFieldPreviewPanel: (showInputFieldPreviewPanel: boolean) => void
+  inputFieldEditPanelProps: InputFieldEditorProps | null
+  setInputFieldEditPanelProps: (showInputFieldEditPanel: InputFieldEditorProps | null) => void
   nodesDefaultConfigs: Record<string, any>
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   ragPipelineVariables: RAGPipelineVariables
@@ -25,8 +30,12 @@ export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
 export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = set => ({
   pipelineId: '',
   knowledgeName: '',
-  showInputFieldDialog: false,
-  setShowInputFieldDialog: showInputFieldDialog => set(() => ({ showInputFieldDialog })),
+  showInputFieldPanel: false,
+  setShowInputFieldPanel: showInputFieldPanel => set(() => ({ showInputFieldPanel })),
+  showInputFieldPreviewPanel: false,
+  setShowInputFieldPreviewPanel: showInputFieldPreviewPanel => set(() => ({ showInputFieldPreviewPanel })),
+  inputFieldEditPanelProps: null,
+  setInputFieldEditPanelProps: inputFieldEditPanelProps => set(() => ({ inputFieldEditPanelProps })),
   nodesDefaultConfigs: {},
   setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
   ragPipelineVariables: [],

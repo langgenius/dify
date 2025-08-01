@@ -10,8 +10,9 @@ import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
 import Toast from '@/app/components/base/toast'
-import { usePipeline } from '../../../hooks/use-pipeline'
+import { usePipeline } from '../../../../hooks/use-pipeline'
 import { useTranslation } from 'react-i18next'
+import { useStore } from '@/app/components/workflow/store'
 
 const VARIABLE_PREFIX = 'rag'
 
@@ -29,6 +30,7 @@ export const useFieldList = ({
   allVariableNames,
 }: useFieldListProps) => {
   const { t } = useTranslation()
+  const setInputFieldEditPanelProps = useStore(s => s.setInputFieldEditPanelProps)
   const [inputFields, setInputFields] = useState<InputVar[]>(initialInputFields)
   const inputFieldsRef = useRef<InputVar[]>(inputFields)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
@@ -55,20 +57,12 @@ export const useFieldList = ({
     handleInputFieldsChange(newInputFields)
   }, [handleInputFieldsChange])
 
-  const [editingField, setEditingField] = useState<InputVar | undefined>()
-  const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
   const editingFieldIndex = useRef<number>(-1)
-  const handleOpenInputFieldEditor = useCallback((id?: string) => {
-    const index = inputFieldsRef.current.findIndex(field => field.variable === id)
-    editingFieldIndex.current = index
-    setEditingField(inputFieldsRef.current[index])
-    setShowInputFieldEditor(true)
-  }, [])
+
   const handleCloseInputFieldEditor = useCallback(() => {
-    setShowInputFieldEditor(false)
+    setInputFieldEditPanelProps?.(null)
     editingFieldIndex.current = -1
-    setEditingField(undefined)
-  }, [])
+  }, [setInputFieldEditPanelProps])
 
   const handleRemoveField = useCallback((index: number) => {
     const itemToRemove = inputFieldsRef.current[index]
@@ -92,7 +86,7 @@ export const useFieldList = ({
 
   const handleSubmitField = useCallback((data: InputVar, moreInfo?: MoreInfo) => {
     const isDuplicate = allVariableNames.some(name =>
-      name === data.variable && name !== editingField?.variable)
+      name === data.variable && name !== inputFieldsRef.current[editingFieldIndex.current]?.variable)
     if (isDuplicate) {
       Toast.notify({
         type: 'error',
@@ -113,18 +107,23 @@ export const useFieldList = ({
     if (moreInfo?.type === ChangeType.changeVarName)
       handleInputVarRename(nodeId, [VARIABLE_PREFIX, nodeId, moreInfo.payload?.beforeKey || ''], [VARIABLE_PREFIX, nodeId, moreInfo.payload?.afterKey || ''])
     handleCloseInputFieldEditor()
-  }, [allVariableNames, editingField?.variable, handleCloseInputFieldEditor, handleInputFieldsChange, handleInputVarRename, nodeId, t])
+  }, [allVariableNames, handleCloseInputFieldEditor, handleInputFieldsChange, handleInputVarRename, nodeId, t])
+
+  const handleOpenInputFieldEditor = useCallback((id?: string) => {
+    const index = inputFieldsRef.current.findIndex(field => field.variable === id)
+    editingFieldIndex.current = index
+    setInputFieldEditPanelProps?.({
+      onClose: handleCloseInputFieldEditor,
+      onSubmit: handleSubmitField,
+      initialData: inputFieldsRef.current[index],
+    })
+  }, [])
 
   return {
     inputFields,
-    handleInputFieldsChange,
     handleListSortChange,
     handleRemoveField,
-    handleSubmitField,
-    editingField,
-    showInputFieldEditor,
     handleOpenInputFieldEditor,
-    handleCloseInputFieldEditor,
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,

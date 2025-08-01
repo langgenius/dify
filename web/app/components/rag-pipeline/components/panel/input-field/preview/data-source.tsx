@@ -1,8 +1,8 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import DataSourceOptions from '../../panel/test-run/data-source-options'
+import DataSourceOptions from '../../test-run/data-source-options'
 import Form from './form'
-import type { Datasource } from '../../panel/test-run/types'
+import type { Datasource } from '../../test-run/types'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
 

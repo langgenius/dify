@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 
 const InputFieldButton = () => {
   const { t } = useTranslation()
-  const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
+  const setShowInputFieldPanel = useStore(state => state.setShowInputFieldPanel)
   const handleClick = useCallback(() => {
-    setShowInputFieldDialog?.(true)
-  }, [setShowInputFieldDialog])
+    setShowInputFieldPanel?.(true)
+  }, [setShowInputFieldPanel])
 
   return (
     <Button

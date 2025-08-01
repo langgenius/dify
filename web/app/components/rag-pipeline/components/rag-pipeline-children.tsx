@@ -3,7 +3,6 @@ import {
   useState,
 } from 'react'
 import { useStore } from '../../workflow/store'
-import InputField from './input-field'
 import PluginDependency from '../../workflow/plugin-dependency'
 import RagPipelinePanel from './panel'
 import RagPipelineHeader from './rag-pipeline-header'
@@ -21,7 +20,6 @@ import PublishToast from './publish-toast'
 const RagPipelineChildren = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-  const showInputFieldDialog = useStore(state => state.showInputFieldDialog)
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const {
@@ -60,9 +58,6 @@ const RagPipelineChildren = () => {
       }
       <RagPipelineHeader />
       <RagPipelinePanel />
-      {
-        showInputFieldDialog && (<InputField />)
-      }
       <PublishToast />
     </>
   )

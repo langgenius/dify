@@ -39,7 +39,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   const [collapsed, setCollapsed] = React.useState(false)
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -65,7 +65,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 currentProvider={currCollection}
                 currentTool={currTool}
                 showManageInputField={!!pipelineId}
-                onManageInputField={() => setShowInputFieldDialog?.(true)}
+                onManageInputField={() => setShowInputFieldPanel?.(true)}
               />
             </Field>
           )}

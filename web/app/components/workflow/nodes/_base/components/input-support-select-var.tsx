@@ -54,11 +54,10 @@ const Editor: FC<Props> = ({
 
   useEffect(() => {
     onFocusChange?.(isFocus)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocus])
 
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <div className={cn(className, 'relative')}>
@@ -108,7 +107,7 @@ const Editor: FC<Props> = ({
               return acc
             }, {} as any),
             showManageInputField: !!pipelineId,
-            onManageInputField: () => setShowInputFieldDialog?.(true),
+            onManageInputField: () => setShowInputFieldPanel?.(true),
           }}
           onChange={onChange}
           editable={!readOnly}

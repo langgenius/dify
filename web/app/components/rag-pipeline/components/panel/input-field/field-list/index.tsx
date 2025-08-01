@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import InputFieldEditor from '../editor'
 import type { InputVar } from '@/models/pipeline'
 import ActionButton from '@/app/components/base/action-button'
 import { useFieldList } from './hooks'
@@ -33,13 +32,9 @@ const FieldList = ({
 
   const {
     inputFields,
-    handleSubmitField,
     handleListSortChange,
     handleRemoveField,
-    handleCloseInputFieldEditor,
     handleOpenInputFieldEditor,
-    showInputFieldEditor,
-    editingField,
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
@@ -59,6 +54,7 @@ const FieldList = ({
         <ActionButton
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
+          className={cn(readonly && 'cursor-not-allowed')}
         >
           <RiAddLine className='h-4 w-4 text-text-tertiary' />
         </ActionButton>
@@ -71,14 +67,6 @@ const FieldList = ({
         onListSortChange={handleListSortChange}
         readonly={readonly}
       />
-      {showInputFieldEditor && (
-        <InputFieldEditor
-          show={showInputFieldEditor}
-          initialData={editingField}
-          onSubmit={handleSubmitField}
-          onClose={handleCloseInputFieldEditor}
-        />
-      )}
       <RemoveEffectVarConfirm
         isShow={isShowRemoveVarConfirm}
         onCancel={hideRemoveVarConfirm}

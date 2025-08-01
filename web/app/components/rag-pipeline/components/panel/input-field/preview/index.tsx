@@ -1,33 +1,24 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from '../dialog-wrapper'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import DataSource from './data-source'
 import Divider from '@/app/components/base/divider'
 import ProcessDocuments from './process-documents'
-import type { Datasource } from '../../panel/test-run/types'
+import type { Datasource } from '../../test-run/types'
+import { useStore } from '@/app/components/workflow/store'
 
-type PreviewPanelProps = {
-  show: boolean
-  onClose: () => void
-}
-
-const PreviewPanel = ({
-  show,
-  onClose,
-}: PreviewPanelProps) => {
+const PreviewPanel = () => {
   const { t } = useTranslation()
   const [datasource, setDatasource] = useState<Datasource>()
+  const setShowInputFieldPreviewPanel = useStore(state => state.setShowInputFieldPreviewPanel)
+
+  const handleClosePreviewPanel = useCallback(() => {
+    setShowInputFieldPreviewPanel(false)
+  }, [setShowInputFieldPreviewPanel])
 
   return (
-    <DialogWrapper
-      show={show}
-      onClose={onClose}
-      outerWrapperClassName='overflow-y-auto'
-      panelWrapperClassName='pr-[424px] justify-start'
-      className='w-[480px] grow rounded-2xl border-[0.5px] bg-components-panel-bg'
-    >
+    <div className='mr-1 flex h-full w-[480px] flex-col overflow-y-auto rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
       <div className='flex items-center gap-x-2 px-4 pt-1'>
         <div className='grow py-1'>
           <Badge className='border-text-accent-secondary bg-components-badge-bg-dimm text-text-accent-secondary'>
@@ -37,7 +28,7 @@ const PreviewPanel = ({
         <button
           type='button'
           className='flex size-6 shrink-0 items-center justify-center'
-          onClick={onClose}
+          onClick={handleClosePreviewPanel}
         >
           <RiCloseLine className='size-4 text-text-tertiary' />
         </button>
@@ -52,7 +43,7 @@ const PreviewPanel = ({
       </div>
       {/* Process documents form Preview */}
       <ProcessDocuments dataSourceNodeId={datasource?.nodeId || ''} />
-    </DialogWrapper>
+    </div>
   )
 }
 

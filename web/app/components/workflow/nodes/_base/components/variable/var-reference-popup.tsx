@@ -27,7 +27,7 @@ const VarReferencePopup: FC<Props> = ({
   const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
   const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
-  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const docLink = useDocLink()
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
@@ -68,7 +68,7 @@ const VarReferencePopup: FC<Props> = ({
           isSupportFileVar={isSupportFileVar}
           zIndex={zIndex}
           showManageInputField={showManageRagInputFields}
-          onManageInputField={() => setShowInputFieldDialog?.(true)}
+          onManageInputField={() => setShowInputFieldPanel?.(true)}
         />
       }
     </div >

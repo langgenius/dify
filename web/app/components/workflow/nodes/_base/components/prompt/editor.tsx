@@ -147,7 +147,7 @@ const Editor: FC<Props> = ({
 
   const getVarType = useWorkflowVariableType()
   const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
@@ -273,7 +273,7 @@ const Editor: FC<Props> = ({
                         return acc
                       }, {} as any),
                       showManageInputField: !!pipelineId,
-                      onManageInputField: () => setShowInputFieldDialog?.(true),
+                      onManageInputField: () => setShowInputFieldPanel?.(true),
                     }}
                     onChange={onChange}
                     onBlur={setBlur}

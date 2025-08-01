@@ -1,5 +1,4 @@
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from '../dialog-wrapper'
 import InputFieldForm from './form'
 import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
 import { useCallback } from 'react'
@@ -8,15 +7,13 @@ import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 
-type InputFieldEditorProps = {
-  show: boolean
+export type InputFieldEditorProps = {
   onClose: () => void
   onSubmit: (data: InputVar, moreInfo?: MoreInfo) => void
   initialData?: InputVar
 }
 
-const InputFieldEditor = ({
-  show,
+const InputFieldEditorPanel = ({
   onClose,
   onSubmit,
   initialData,
@@ -30,13 +27,7 @@ const InputFieldEditor = ({
   }, [onSubmit])
 
   return (
-    <DialogWrapper
-      show={show}
-      onClose={onClose}
-      outerWrapperClassName='overflow-y-auto'
-      panelWrapperClassName='pr-[424px] justify-start'
-      className='w-[400px] rounded-2xl border-[0.5px] bg-components-panel-bg shadow-shadow-shadow-9'
-    >
+    <div className='relative mr-1 flex h-fit max-h-full w-[400px] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
       <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
         {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
       </div>
@@ -53,8 +44,8 @@ const InputFieldEditor = ({
         onCancel={onClose}
         onSubmit={handleSubmit}
       />
-    </DialogWrapper>
+    </div>
   )
 }
 
-export default InputFieldEditor
+export default InputFieldEditorPanel
