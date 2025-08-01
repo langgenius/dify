@@ -152,8 +152,8 @@ class MetadataService:
                     doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
-            db.session.commit()
             dataset.built_in_field_enabled = True
+            db.session.commit()
         except Exception:
             logging.exception("Enable built-in field failed")
         finally:
@@ -180,8 +180,8 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
-            db.session.commit()
             dataset.built_in_field_enabled = False
+            db.session.commit()
         except Exception:
             logging.exception("Disable built-in field failed")
         finally:
