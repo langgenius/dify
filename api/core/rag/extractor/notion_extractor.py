@@ -376,7 +376,7 @@ class NotionExtractor(BaseExtractor):
         credential = datasource_provider_service.get_real_credential_by_id(
             tenant_id=tenant_id,
             credential_id=credential_id,
-            provider="notion",
+            provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
         if not credential:
