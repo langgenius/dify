@@ -907,6 +907,8 @@ const translation = {
     humanInput: {
       deliveryMethod: {
         title: 'Delivery Method',
+        tooltip: 'How the human input form is delivered to the user.',
+        emptyTip: 'No delivery method added, the operation cannot be triggered.',
       },
       formContent: 'form content',
       userActions: {

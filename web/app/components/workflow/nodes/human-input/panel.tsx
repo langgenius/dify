@@ -11,6 +11,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
+import DeliveryMethod from './components/delivery-method'
 import UserActionItem from './components/user-action'
 import TimeoutInput from './components/timeout'
 import { v4 as uuid4 } from 'uuid'
@@ -31,6 +32,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   } = useConfig(id, data)
   return (
     <div className='py-2'>
+      {/* delivery methods */}
+      <DeliveryMethod />
+      <div className='px-4 py-2'>
+        <Divider className='!my-0 !h-px !bg-divider-subtle' />
+      </div>
+      {/* user actions */}
       <div className='px-4 py-2'>
         <div className='mb-1 flex items-center justify-between'>
           <div className='flex items-center gap-0.5'>
@@ -73,6 +80,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       <div className='px-4 py-2'>
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
       </div>
+      {/* timeout */}
       <div className='flex items-center justify-between px-4 py-2'>
         <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.timeout.title`)}</div>
         <TimeoutInput

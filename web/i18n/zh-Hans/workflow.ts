@@ -908,6 +908,8 @@ const translation = {
     humanInput: {
       deliveryMethod: {
         title: '提交方式',
+        tooltip: '人类输入表单如何传递给用户。',
+        emptyTip: '未添加提交方式，无法触发操作。',
       },
       formContent: '表单内容',
       userActions: {
