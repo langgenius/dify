@@ -909,6 +909,21 @@ const translation = {
         title: 'Delivery Method',
         tooltip: 'How the human input form is delivered to the user.',
         emptyTip: 'No delivery method added, the operation cannot be triggered.',
+        types: {
+          webapp: {
+            title: 'Webapp',
+            description: 'Display to end-user in webapp',
+          },
+          email: {
+            title: 'Email',
+            description: 'Send request for input via email',
+          },
+          slack: {
+            title: 'Slack',
+            description: 'Send request for input via Slack',
+          },
+        },
+        added: 'Added',
       },
       formContent: 'form content',
       userActions: {

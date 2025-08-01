@@ -1,10 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
-import ActionButton from '@/app/components/base/action-button'
+import MethodSelector from './method-selector'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -21,11 +18,9 @@ const DeliveryMethod: React.FC = () => {
             />
           </div>
           <div className='flex items-center px-1'>
-            <ActionButton
-              onClick={() => { /* Add new user action logic here */ }}
-            >
-              <RiAddLine className='h-4 w-4' />
-            </ActionButton>
+            <MethodSelector
+              onEdit={() => { /* Add edit action logic here */ }}
+            />
           </div>
         </div>
         <div className='system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emptyTip`)}</div>

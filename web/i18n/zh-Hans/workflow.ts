@@ -910,6 +910,21 @@ const translation = {
         title: '提交方式',
         tooltip: '人类输入表单如何传递给用户。',
         emptyTip: '未添加提交方式，无法触发操作。',
+        types: {
+          webapp: {
+            title: 'Webapp',
+            description: '在 Web 应用中显示给最终用户',
+          },
+          email: {
+            title: 'Email',
+            description: '通过电子邮件发送输入请求',
+          },
+          slack: {
+            title: 'Slack',
+            description: '通过 Slack 发送输入请求',
+          },
+        },
+        added: '已添加',
       },
       formContent: '表单内容',
       userActions: {
