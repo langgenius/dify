@@ -5,6 +5,7 @@ import { useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useKeyPress } from 'ahooks'
+import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 
 type Props = {
   onHide?: () => void
@@ -37,7 +38,8 @@ const GotoAnything: FC<Props> = ({
     e.preventDefault()
     setShow(false)
   })
-  useKeyPress(['meta.g'], (e) => {
+
+  useKeyPress([`${getKeyboardKeyCodeBySystem('ctrl')}.g`], (e) => {
     e.preventDefault()
     setShow(!show)
   })
