@@ -148,7 +148,7 @@ const ChatVariableModal = ({
     if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
       setEditInJSON(false)
     if(v === ChatVarType.Boolean)
-      setValue(true)
+      setValue(false)
     if (v === ChatVarType.ArrayBoolean)
       setValue([false])
     setType(v)
