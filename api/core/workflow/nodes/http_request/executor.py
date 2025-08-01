@@ -400,20 +400,24 @@ class Executor:
         # '__multipart_placeholder__' is inserted to force multipart encoding but is not a real file.
         # This prevents logging meaningless placeholder entries.
         if self.files and not all(f[0] == "__multipart_placeholder__" for f in self.files):
-            for key, (filename, content, mime_type) in self.files:
+            for file_entry in self.files:
+                # file_entry should be (key, (filename, content, mime_type)), but handle edge cases
+                if len(file_entry) != 2 or not isinstance(file_entry[1], tuple) or len(file_entry[1]) < 2:
+                    continue  # skip malformed entries
+                key = file_entry[0]
+                content = file_entry[1][1]
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                try:
-                    # Try UTF-8 first, then fallback to other encodings
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
+                if isinstance(content, bytes):
                     try:
-                        # Try with error handling
-                        body_string += content.decode("utf-8", errors="replace")
+                        body_string += content.decode("utf-8")
                     except UnicodeDecodeError:
-                        # For binary content, show a placeholder
-                        body_string += f"[Binary content: {len(content)} bytes]"
+                        body_string += content.decode("utf-8", errors="replace")
+                elif isinstance(content, str):
+                    body_string += content
+                else:
+                    body_string += f"[Unsupported content type: {type(content).__name__}]"
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
