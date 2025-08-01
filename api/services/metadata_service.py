@@ -137,7 +137,6 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            dataset.built_in_field_enabled = True
             db.session.add(dataset)
             documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
             if documents:
@@ -154,6 +153,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
+            dataset.built_in_field_enabled = True
         except Exception:
             logging.exception("Enable built-in field failed")
         finally:
@@ -166,7 +166,6 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            dataset.built_in_field_enabled = False
             db.session.add(dataset)
             documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
             document_ids = []
@@ -182,6 +181,7 @@ class MetadataService:
                     db.session.add(document)
                     document_ids.append(document.id)
             db.session.commit()
+            dataset.built_in_field_enabled = False
         except Exception:
             logging.exception("Disable built-in field failed")
         finally:
