@@ -3,6 +3,7 @@ from typing import Any, Literal, Union
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
+from core.variables.segments import BooleanSegment
 from core.workflow.entities.variable_pool import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
@@ -51,6 +52,9 @@ class ConditionProcessor:
                 expected_value = condition.value
                 if isinstance(expected_value, str):
                     expected_value = variable_pool.convert_template(expected_value).text
+                # Here we need to explicit convet the input string to boolean.
+                if isinstance(variable, BooleanSegment) and not variable.value_type.is_valid(expected_value):
+                    raise TypeError(f"unexpected value: type={type(expected_value)}, value={expected_value}")
                 input_conditions.append(
                     {
                         "actual_value": actual_value,
@@ -77,7 +81,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: Union[str, Sequence[str], None],
+    expected: Union[str, Sequence[str], bool, None],
 ) -> bool:
     match operator:
         case "contains":
