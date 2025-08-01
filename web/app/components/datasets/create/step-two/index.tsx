@@ -138,7 +138,7 @@ const StepTwo = ({
   notionCredentialId,
   websitePages = [],
   crawlOptions,
-  websiteCrawlProvider = DataSourceProvider.fireCrawl,
+  websiteCrawlProvider = DataSourceProvider.jinaReader,
   websiteCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,

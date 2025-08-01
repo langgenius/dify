@@ -47,7 +47,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [notionCredentialId, setNotionCredentialId] = useState<string>('')
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
-  const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.fireCrawl)
+  const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.jinaReader)
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
   const {
