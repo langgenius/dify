@@ -472,7 +472,7 @@ const StepTwo = ({
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
-        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages)
+        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages, notionCredentialId)
 
       if (dataSourceType === DataSourceType.WEB) {
         params.data_source.info_list.website_info_list = getWebsiteInfo({

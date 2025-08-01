@@ -410,6 +410,7 @@ export type DataSource = {
 export type NotionInfo = {
   workspace_id: string
   pages: DataSourceNotionPage[]
+  credential_id: string
 }
 export type NotionPage = {
   page_id: string
