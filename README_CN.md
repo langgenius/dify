@@ -233,6 +233,9 @@ docker compose up -d
 
 使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云
 
+#### 使用 Azure Devops Pipeline 部署到AKS
+
+使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 将 Dify 一键部署到 AKS
 
 ## Star History
 
