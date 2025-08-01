@@ -215,7 +215,7 @@ class DatabaseConfig(BaseSettings):
 
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
-        description="Backend for Celery task results. Options: 'database', 'redis'.",
+        description="Backend for Celery task results. Options: 'database', 'redis', 'rabbitmq'.",
         default="redis",
     )
 
@@ -245,7 +245,12 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     def CELERY_RESULT_BACKEND(self) -> str | None:
-        return f"db+{self.SQLALCHEMY_DATABASE_URI}" if self.CELERY_BACKEND == "database" else self.CELERY_BROKER_URL
+        if self.CELERY_BACKEND in ("database", "rabbitmq"):
+            return f"db+{self.SQLALCHEMY_DATABASE_URI}"
+        elif self.CELERY_BACKEND == "redis":
+            return self.CELERY_BROKER_URL
+        else:
+            return None
 
     @property
     def BROKER_USE_SSL(self) -> bool:

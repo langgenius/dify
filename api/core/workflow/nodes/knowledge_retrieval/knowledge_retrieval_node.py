@@ -602,6 +602,28 @@ class KnowledgeRetrievalNode(BaseNode):
                         **{key: metadata_name, key_value: f"%{value}"}
                     )
                 )
+            case "in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} = any(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
+                    )
+                )
+            case "not in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} != all(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
+                    )
+                )
             case "=" | "is":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')

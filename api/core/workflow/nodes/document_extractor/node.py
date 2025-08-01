@@ -597,7 +597,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
-            if spk == None:
+            if spk is None:
                 merged_results.append((None, current_text))
                 continue
 

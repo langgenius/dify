@@ -46,6 +46,12 @@ const OPTION_MAP = {
           ? `,
   baseUrl: '${url}${basePath}'`
           : ''},
+  inputs: {
+    // You can define the inputs from the Start node here
+    // key is the variable name
+    // e.g.
+    // name: "NAME"
+  },
   systemVariables: {
     // user_id: 'YOU CAN DEFINE USER ID HERE',
     // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
