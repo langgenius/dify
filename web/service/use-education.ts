@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query'
 import { useInvalid } from './use-base'
 import type { EducationAddParams } from '@/app/education-apply/types'
+import { sleep } from '@/utils'
 
 const NAME_SPACE = 'education'
 
@@ -64,4 +65,18 @@ export const useEducationStatus = (disable?: boolean) => {
 
 export const useInvalidateEducationStatus = () => {
   return useInvalid([NAME_SPACE, 'education-status'])
+}
+
+export const useEducationExpireAt = () => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'education-expire-at'],
+    queryFn: async () => {
+      await sleep(1000) // Simulate network delay
+      return Promise.resolve({
+        expireAt: 1785390027,
+        shouldNotice: true,
+      })
+    },
+    retry: false,
+  })
 }

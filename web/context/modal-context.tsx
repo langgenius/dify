@@ -26,6 +26,7 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import { removeSpecificQueryParam } from '@/utils'
 import { noop } from 'lodash-es'
 import dynamic from 'next/dynamic'
+import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -106,7 +107,7 @@ export type ModalContextState = {
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
-  setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<string> | null>>
+  setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
@@ -151,7 +152,7 @@ export const ModalContextProvider = ({
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
-  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<string> | null>(null)
+  const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -409,6 +410,7 @@ export const ModalContextProvider = ({
         {
           !!showEducationExpireNoticeModal && (
             <ExpireNoticeModal
+              {...showEducationExpireNoticeModal.payload}
               onClose={() => setShowEducationExpireNoticeModal(null)}
               onConfirm={() => {
                 setShowEducationExpireNoticeModal(null)

@@ -7,23 +7,27 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { RiExternalLinkLine } from '@remixicon/react'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
+import useTimestamp from '@/hooks/use-timestamp'
 
-type Props = {
+export type ExpireNoticeModalPayloadProps = {
+  expireAt: number
+  expired: boolean
+}
+export type Props = {
   onClose: () => void
   onConfirm: () => void
-}
+} & ExpireNoticeModalPayloadProps
 
-const ExpireNoticeModal: React.FC<Props> = ({ onClose, onConfirm }) => {
+const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConfirm }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const eduDocLink = docLink('/getting-started/dify-for-education')
-  const date = '2025/03/14'
-  const expired = false
+  const { formatTime } = useTimestamp()
   return (
     <Modal
       isShow
       onClose={onClose}
-      title={expired ? 'Your education status has expired' : `Your education status will expire on ${date}`}
+      title={expired ? 'Your education status has expired' : `Your education status will expire on ${formatTime(expireAt, t('appLog.dateFormat') as string)}`}
       closable
       className='max-w-[600px]'
     >
