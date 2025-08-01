@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Optional, TypeAlias, TypeVar
 
@@ -173,13 +172,9 @@ class ListOperatorNode(BaseNode):
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayBooleanSegment):
-                if not isinstance(condition.value, str):
+                if not isinstance(condition.value, bool):
                     raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
-                value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
-                value = json.loads(value)
-                if not isinstance(value, bool):
-                    raise ValueError(f"value for boolean filter should be boolean values, got {value}")
-                filter_func = _get_boolean_filter_func(condition=condition.comparison_operator, value=value)
+                filter_func = _get_boolean_filter_func(condition=condition.comparison_operator, value=condition.value)
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             else:
