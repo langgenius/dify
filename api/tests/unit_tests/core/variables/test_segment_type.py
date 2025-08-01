@@ -24,6 +24,7 @@ class TestSegmentTypeIsArrayType:
             SegmentType.ARRAY_NUMBER,
             SegmentType.ARRAY_OBJECT,
             SegmentType.ARRAY_FILE,
+            SegmentType.ARRAY_BOOLEAN,
         ]
         expected_non_array_types = [
             SegmentType.INTEGER,
@@ -35,6 +36,7 @@ class TestSegmentTypeIsArrayType:
             SegmentType.FILE,
             SegmentType.NONE,
             SegmentType.GROUP,
+            SegmentType.BOOLEAN,
         ]
 
         for seg_type in expected_array_types:

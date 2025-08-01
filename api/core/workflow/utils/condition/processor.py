@@ -1,12 +1,25 @@
+import json
 from collections.abc import Sequence
 from typing import Any, Literal, Union
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
-from core.variables.segments import BooleanSegment
+from core.variables.segments import ArrayBooleanSegment, BooleanSegment
 from core.workflow.entities.variable_pool import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
+
+
+def _convert_to_bool(value: Any) -> bool:
+    if isinstance(value, int):
+        return bool(value)
+
+    if isinstance(value, str):
+        loaded = json.loads(value)
+        if isinstance(loaded, (int, bool)):
+            return bool(loaded)
+
+    raise TypeError(f"unexpected value: type={type(value)}, value={value}")
 
 
 class ConditionProcessor:
@@ -53,8 +66,12 @@ class ConditionProcessor:
                 if isinstance(expected_value, str):
                     expected_value = variable_pool.convert_template(expected_value).text
                 # Here we need to explicit convet the input string to boolean.
-                if isinstance(variable, BooleanSegment) and not variable.value_type.is_valid(expected_value):
-                    raise TypeError(f"unexpected value: type={type(expected_value)}, value={expected_value}")
+                if isinstance(variable, (BooleanSegment, ArrayBooleanSegment)) and expected_value is not None:
+                    # The following two lines is for compatibility with existing workflows.
+                    if isinstance(expected_value, list):
+                        expected_value = [_convert_to_bool(i) for i in expected_value]
+                    else:
+                        expected_value = _convert_to_bool(expected_value)
                 input_conditions.append(
                     {
                         "actual_value": actual_value,
@@ -81,7 +98,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: Union[str, Sequence[str], bool, None],
+    expected: Union[str, Sequence[str], bool | Sequence[bool], None],
 ) -> bool:
     match operator:
         case "contains":
