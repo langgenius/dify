@@ -28,6 +28,7 @@ export enum Type {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  file = 'file',
 }
 
 export enum ArrayType {

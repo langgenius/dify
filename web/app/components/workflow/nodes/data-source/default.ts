@@ -6,9 +6,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
-  ONLINE_DOCUMENT_OUTPUT,
-  ONLINE_DRIVE_OUTPUT,
-  WEBSITE_CRAWL_OUTPUT,
 } from './constants'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
@@ -61,29 +58,11 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       provider_type,
     } = payload
     const isLocalFile = provider_type === DataSourceClassification.localFile
-    const isWebsiteCrawl = provider_type === DataSourceClassification.websiteCrawl
-    const isOnlineDocument = provider_type === DataSourceClassification.onlineDocument
-    const isOnlineDrive = provider_type === DataSourceClassification.onlineDrive
     return [
       ...COMMON_OUTPUT.map(item => ({ variable: item.name, type: item.type })),
       ...(
         isLocalFile
           ? LOCAL_FILE_OUTPUT.map(item => ({ variable: item.name, type: item.type }))
-          : []
-      ),
-      ...(
-        isWebsiteCrawl
-          ? WEBSITE_CRAWL_OUTPUT.map(item => ({ variable: item.name, type: item.type }))
-          : []
-      ),
-      ...(
-        isOnlineDocument
-          ? ONLINE_DOCUMENT_OUTPUT.map(item => ({ variable: item.name, type: item.type }))
-          : []
-      ),
-      ...(
-        isOnlineDrive
-          ? ONLINE_DRIVE_OUTPUT.map(item => ({ variable: item.name, type: item.type }))
           : []
       ),
       ...ragVars,

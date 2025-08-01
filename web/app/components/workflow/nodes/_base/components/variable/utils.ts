@@ -523,17 +523,19 @@ const formatItem = (
         const dynamicOutputSchema: any[] = []
         Object.keys(payload.output_schema.properties).forEach((outputKey) => {
           const output = payload.output_schema!.properties[outputKey]
-          const dataType = output.type
+          const dataType = output?.properties?.dify_builtin_type ? output.properties.dify_builtin_type.enum[0] : output.type
           dynamicOutputSchema.push({
             variable: outputKey,
             type: dataType === 'array'
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
+              : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
             description: output.description,
             children: output.type === 'object' ? {
               schema: {
                 type: 'object',
-                properties: output.properties,
+                properties: Object.fromEntries(
+                  Object.entries(output.properties).filter(([key]) => key !== 'dify_builtin_type'),
+                ),
               },
             } : undefined,
           })
