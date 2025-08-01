@@ -69,6 +69,19 @@ class Storage:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
+            case StorageType.CLICKZETTA_VOLUME:
+                from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+                    ClickZettaVolumeConfig,
+                    ClickZettaVolumeStorage,
+                )
+
+                def create_clickzetta_volume_storage():
+                    # ClickZettaVolumeConfig will automatically read from environment variables
+                    # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
+                    volume_config = ClickZettaVolumeConfig()
+                    return ClickZettaVolumeStorage(volume_config)
+
+                return create_clickzetta_volume_storage
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 

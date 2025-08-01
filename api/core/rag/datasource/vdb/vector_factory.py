@@ -172,6 +172,10 @@ class Vector:
                 from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
 
                 return MatrixoneVectorFactory
+            case VectorType.CLICKZETTA:
+                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+                return ClickzettaVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

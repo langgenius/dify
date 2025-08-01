@@ -191,6 +191,7 @@ vdb = [
     "alibabacloud_tea_openapi~=0.3.9",
     "chromadb==0.5.20",
     "clickhouse-connect~=0.7.16",
+    "clickzetta-connector-python>=0.8.102",
     "couchbase~=4.3.0",
     "elasticsearch==8.14.0",
     "opensearch-py==2.4.0",
@@ -210,3 +211,4 @@ vdb = [
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
 ]
+

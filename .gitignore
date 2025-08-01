@@ -215,3 +215,10 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+
+# Clickzetta test credentials
+.env.clickzetta
+.env.clickzetta.test
+
+# Clickzetta plugin development folder (keep local, ignore for PR)
+clickzetta/
