@@ -11,6 +11,7 @@ import Loading from '@/app/components/base/loading'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../llm/types'
+import { useStore } from '@/app/components/workflow/store'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -37,6 +38,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   } = useConfig(id, data)
 
   const [collapsed, setCollapsed] = React.useState(false)
+  const pipelineId = useStore(s => s.pipelineId)
+  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -61,6 +64,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 onChange={setInputVar}
                 currentProvider={currCollection}
                 currentTool={currTool}
+                showManageInputField={!!pipelineId}
+                onManageInputField={() => setShowInputFieldDialog?.(true)}
               />
             </Field>
           )}
