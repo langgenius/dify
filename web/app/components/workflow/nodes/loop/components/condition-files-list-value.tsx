@@ -73,6 +73,7 @@ const ConditionValue = ({
     <div className='rounded-md bg-workflow-block-parma-bg'>
       <div className='flex h-6 items-center px-1 '>
         <VariableLabelInNode
+          className='w-0 grow'
           variables={variableSelector}
           notShowFullPath
         />

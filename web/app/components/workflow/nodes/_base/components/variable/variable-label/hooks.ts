@@ -1,34 +1,39 @@
 import { useMemo } from 'react'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import {
   isConversationVar,
   isENV,
   isSystemVar,
 } from '../utils'
+import { VarInInspectType } from '@/types/workflow'
 
-export const useVarIcon = (variables: string[]) => {
-  const isEnvVariable = isENV(variables)
-  const isConversationVariable = isConversationVar(variables)
+export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
+  if (variableCategory === 'loop')
+    return Loop
 
-  if (isEnvVariable)
+  if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
     return Env
 
-  if (isConversationVariable)
+  if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
     return BubbleX
 
   return Variable02
 }
 
-export const useVarColor = (variables: string[], isExceptionVariable?: boolean) => {
+export const useVarColor = (variables: string[], isExceptionVariable?: boolean, variableCategory?: VarInInspectType | string) => {
   return useMemo(() => {
     if (isExceptionVariable)
       return 'text-text-warning'
 
-    if (isENV(variables))
+    if (variableCategory === 'loop')
+      return 'text-util-colors-cyan-cyan-500'
+
+    if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
       return 'text-util-colors-violet-violet-600'
 
-    if (isConversationVar(variables))
+    if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
       return 'text-util-colors-teal-teal-700'
 
     return 'text-text-accent'

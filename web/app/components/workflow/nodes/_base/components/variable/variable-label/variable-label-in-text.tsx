@@ -3,15 +3,15 @@ import type { VariablePayload } from './types'
 import VariableLabel from './base/variable-label'
 import cn from '@/utils/classnames'
 
-const VariableLabelInNode = (variablePayload: VariablePayload) => {
+const VariableLabelInText = (variablePayload: VariablePayload) => {
   return (
     <VariableLabel
       className={cn(
-        'w-full space-x-[1px] bg-workflow-block-parma-bg px-1 shadow-none',
+        'h-[18px] space-x-[1px] rounded-[5px] px-1 shadow-xs',
       )}
       {...variablePayload}
     />
   )
 }
 
-export default memo(VariableLabelInNode)
+export default memo(VariableLabelInText)

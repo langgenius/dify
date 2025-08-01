@@ -1,18 +1,21 @@
 import { memo } from 'react'
 import cn from '@/utils/classnames'
 import { useVarIcon } from '../hooks'
+import type { VarInInspectType } from '@/types/workflow'
 
-type VariableIconProps = {
+export type VariableIconProps = {
   className?: string
-  variables: string[]
+  variables?: string[]
+  variableCategory?: VarInInspectType | string
 }
 const VariableIcon = ({
   className,
-  variables,
+  variables = [],
+  variableCategory,
 }: VariableIconProps) => {
-  const VarIcon = useVarIcon(variables)
+  const VarIcon = useVarIcon(variables, variableCategory)
 
-  return (
+  return VarIcon && (
     <VarIcon
       className={cn(
         'size-3.5 shrink-0',

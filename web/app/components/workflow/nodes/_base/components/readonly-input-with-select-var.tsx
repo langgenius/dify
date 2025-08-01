@@ -6,7 +6,7 @@ import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { getNodeInfoById, isSystemVar } from './variable/utils'
 import {
-  VariableLabelInNode,
+  VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 type Props = {
   nodeId: string
@@ -45,7 +45,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       return (<span key={index}>
         <span className='relative top-[-3px] leading-[16px]'>{str}</span>
-        <VariableLabelInNode
+        <VariableLabelInText
           nodeTitle={node?.title}
           nodeType={node?.type}
           notShowFullPath={isShowAPart}

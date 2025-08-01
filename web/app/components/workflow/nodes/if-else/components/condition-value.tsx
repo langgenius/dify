@@ -17,7 +17,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import {
-  VariableLabelInNode,
+  VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type ConditionValueProps = {
@@ -74,7 +74,8 @@ const ConditionValue = ({
 
   return (
     <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
-      <VariableLabelInNode
+      <VariableLabelInText
+        className='w-0 grow'
         variables={variableSelector}
         nodeTitle={node?.data.title}
         nodeType={node?.data.type}

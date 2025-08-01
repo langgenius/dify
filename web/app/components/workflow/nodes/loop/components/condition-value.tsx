@@ -65,6 +65,7 @@ const ConditionValue = ({
   return (
     <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
       <VariableLabelInNode
+        className='w-0 grow'
         variables={variableSelector}
         notShowFullPath
       />

@@ -23,6 +23,7 @@ const VariableLabel = ({
   isExceptionVariable,
   ref,
   notShowFullPath,
+  rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
   return (
@@ -71,6 +72,9 @@ const VariableLabel = ({
             <RiErrorWarningFill className='h-3 w-3 shrink-0 text-text-destructive' />
           </Tooltip>
         )
+      }
+      {
+        rightSlot
       }
     </div>
   )

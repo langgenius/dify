@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type {
   BlockEnum,
   VarType,
@@ -14,4 +15,5 @@ export type VariablePayload = {
   isExceptionVariable?: boolean
   ref?: React.Ref<HTMLDivElement>
   notShowFullPath?: boolean
+  rightSlot?: ReactNode
 }
