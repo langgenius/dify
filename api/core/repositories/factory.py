@@ -89,6 +89,43 @@ class DifyCoreRepositoryFactory:
                 f"{missing_methods} from interface '{expected_interface.__name__}'"
             )
 
+    @staticmethod
+    def _validate_constructor_signature(repository_class: type, required_params: list[str]) -> None:
+        """
+        Validate that a repository class constructor accepts required parameters.
+        Args:
+            repository_class: The class to validate
+            required_params: List of required parameter names
+        Raises:
+            RepositoryImportError: If the constructor doesn't accept required parameters
+        """
+
+        try:
+            # MyPy may flag the line below with the following error:
+            #
+            # > Accessing "__init__" on an instance is unsound, since
+            # > instance.__init__ could be from an incompatible subclass.
+            #
+            # Despite this, we need to ensure that the constructor of `repository_class`
+            # has a compatible signature.
+            signature = inspect.signature(repository_class.__init__)  # type: ignore[misc]
+            param_names = list(signature.parameters.keys())
+
+            # Remove 'self' parameter
+            if "self" in param_names:
+                param_names.remove("self")
+
+            missing_params = [param for param in required_params if param not in param_names]
+            if missing_params:
+                raise RepositoryImportError(
+                    f"Repository class '{repository_class.__name__}' constructor does not accept required parameters: "
+                    f"{missing_params}. Expected parameters: {required_params}"
+                )
+        except Exception as e:
+            raise RepositoryImportError(
+                f"Failed to validate constructor signature for '{repository_class.__name__}': {e}"
+            ) from e
+
     @classmethod
     def create_workflow_execution_repository(
         cls,
