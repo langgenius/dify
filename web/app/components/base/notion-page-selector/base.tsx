@@ -73,15 +73,15 @@ const NotionPageSelector = ({
     const selectedPagesId = new Set<string>()
     const boundPagesId = new Set<string>()
     const notionWorkspaces = notionsPages?.notion_info || []
-    const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
+    const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, cur: DataSourceNotionWorkspace) => {
+      cur.pages.forEach((page) => {
         if (page.is_bound) {
           selectedPagesId.add(page.page_id)
           boundPagesId.add(page.page_id)
         }
         prev[page.page_id] = {
           ...page,
-          workspace_id: next.workspace_id,
+          workspace_id: cur.workspace_id,
         }
       })
 
