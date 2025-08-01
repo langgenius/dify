@@ -103,7 +103,7 @@ class DatasourceProviderService:
         """
         with Session(db.engine) as session:
             datasource_provider = (
-                session.query(DatasourceProvider.id)
+                session.query(DatasourceProvider)
                 .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
                 .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
                 .first()
