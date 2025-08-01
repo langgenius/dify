@@ -29,36 +29,21 @@ class TestAppParameterApi:
     def mock_workflow(self):
         """Create a mock workflow with output form."""
         workflow = MagicMock(spec=Workflow)
-        
+
         # Mock the output_form method to return test data
         workflow.output_form.return_value = [
-            {
-                "name": "output1",
-                "type": "string",
-                "description": "First output variable"
-            },
-            {
-                "name": "output2", 
-                "type": "number",
-                "description": "Second output variable"
-            }
+            {"name": "output1", "type": "string", "description": "First output variable"},
+            {"name": "output2", "type": "number", "description": "Second output variable"},
         ]
-        
+
         # Mock the user_input_form method
         workflow.user_input_form.return_value = [
-            {
-                "name": "input1",
-                "type": "string",
-                "description": "First input variable"
-            }
+            {"name": "input1", "type": "string", "description": "First input variable"}
         ]
-        
+
         # Mock the features_dict property
-        workflow.features_dict = {
-            "feature1": "value1",
-            "feature2": "value2"
-        }
-        
+        workflow.features_dict = {"feature1": "value1", "feature2": "value2"}
+
         return workflow
 
     @pytest.fixture
@@ -70,12 +55,12 @@ class TestAppParameterApi:
         """Test that workflow_output_form is correctly retrieved for workflow mode."""
         # Arrange
         mock_app_model.workflow = mock_workflow
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             result = api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         assert result is not None
         # Verify that output_form was called
@@ -87,7 +72,7 @@ class TestAppParameterApi:
         """Test that AppUnavailableError is raised when workflow is None."""
         # Arrange
         mock_app_model.workflow = None
-        
+
         # Act & Assert
         with app.app_context():
             api = AppParameterApi()
@@ -99,12 +84,12 @@ class TestAppParameterApi:
         # Arrange
         mock_app_model.mode = AppMode.ADVANCED_CHAT.value
         mock_app_model.workflow = mock_workflow
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             result = api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         assert result is not None
         # Verify that output_form was called
@@ -117,22 +102,17 @@ class TestAppParameterApi:
         mock_app_model_config = MagicMock()
         mock_app_model_config.to_dict.return_value = {
             "feature1": "value1",
-            "user_input_form": [
-                {
-                    "name": "input1",
-                    "type": "string"
-                }
-            ]
+            "user_input_form": [{"name": "input1", "type": "string"}],
         }
         mock_app_model.app_model_config = mock_app_model_config
         # Ensure workflow is None for non-workflow modes
         mock_app_model.workflow = None
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             result = api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         assert result is not None
         # Verify that workflow.output_form was not called
@@ -143,7 +123,7 @@ class TestAppParameterApi:
         # Arrange
         mock_app_model.mode = AppMode.CHAT.value
         mock_app_model.app_model_config = None
-        
+
         # Act & Assert
         with app.app_context():
             api = AppParameterApi()
@@ -155,12 +135,12 @@ class TestAppParameterApi:
         # Arrange
         mock_workflow.output_form.return_value = []
         mock_app_model.workflow = mock_workflow
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             result = api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         assert result is not None
         mock_workflow.output_form.assert_called_once()
@@ -169,74 +149,63 @@ class TestAppParameterApi:
         """Test that multiple outputs in workflow_output_form are handled correctly."""
         # Arrange
         mock_workflow.output_form.return_value = [
-            {
-                "name": "output1",
-                "type": "string",
-                "description": "First output"
-            },
-            {
-                "name": "output2",
-                "type": "number", 
-                "description": "Second output"
-            },
-            {
-                "name": "output3",
-                "type": "boolean",
-                "description": "Third output"
-            }
+            {"name": "output1", "type": "string", "description": "First output"},
+            {"name": "output2", "type": "number", "description": "Second output"},
+            {"name": "output3", "type": "boolean", "description": "Third output"},
         ]
         mock_app_model.workflow = mock_workflow
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             result = api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         assert result is not None
         mock_workflow.output_form.assert_called_once()
 
-    @patch('controllers.web.app.get_parameters_from_feature_dict')
-    def test_get_parameters_from_feature_dict_called_with_output_form(self, mock_get_params, app, mock_app_model, mock_workflow, mock_end_user):
+    @patch("controllers.web.app.get_parameters_from_feature_dict")
+    def test_get_parameters_from_feature_dict_called_with_output_form(
+        self, mock_get_params, app, mock_app_model, mock_workflow, mock_end_user
+    ):
         """Test that get_parameters_from_feature_dict is called with workflow_output_form."""
         # Arrange
         mock_app_model.workflow = mock_workflow
         mock_get_params.return_value = {"parameters": "test"}
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         mock_get_params.assert_called_once()
         call_args = mock_get_params.call_args
-        assert 'workflow_output_form' in call_args.kwargs
-        assert call_args.kwargs['workflow_output_form'] == mock_workflow.output_form.return_value
+        assert "workflow_output_form" in call_args.kwargs
+        assert call_args.kwargs["workflow_output_form"] == mock_workflow.output_form.return_value
 
-    @patch('controllers.web.app.get_parameters_from_feature_dict')
-    def test_get_parameters_from_feature_dict_called_without_output_form(self, mock_get_params, app, mock_app_model, mock_end_user):
+    @patch("controllers.web.app.get_parameters_from_feature_dict")
+    def test_get_parameters_from_feature_dict_called_without_output_form(
+        self, mock_get_params, app, mock_app_model, mock_end_user
+    ):
         """Test that get_parameters_from_feature_dict is called with empty workflow_output_form for non-workflow modes."""
         # Arrange
         mock_app_model.mode = AppMode.CHAT.value
         mock_app_model_config = MagicMock()
-        mock_app_model_config.to_dict.return_value = {
-            "feature1": "value1",
-            "user_input_form": []
-        }
+        mock_app_model_config.to_dict.return_value = {"feature1": "value1", "user_input_form": []}
         mock_app_model.app_model_config = mock_app_model_config
         mock_get_params.return_value = {"parameters": "test"}
-        
+
         # Act
         with app.app_context():
             api = AppParameterApi()
             api.get(mock_app_model, mock_end_user)
-        
+
         # Assert
         mock_get_params.assert_called_once()
         call_args = mock_get_params.call_args
-        assert 'workflow_output_form' in call_args.kwargs
-        assert call_args.kwargs['workflow_output_form'] == []
+        assert "workflow_output_form" in call_args.kwargs
+        assert call_args.kwargs["workflow_output_form"] == []
 
 
 class TestWorkflowOutputForm:
@@ -247,82 +216,47 @@ class TestWorkflowOutputForm:
         # Arrange
         workflow = Workflow(
             tenant_id="tenant_id",
-            app_id="app_id", 
+            app_id="app_id",
             type="workflow",
             version="draft",
-            graph=json.dumps({
-                "nodes": [
-                    {
-                        "id": "start",
-                        "data": {
-                            "type": "start",
-                            "variables": [
-                                {
-                                    "name": "input1",
-                                    "type": "string"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "id": "end1",
-                        "data": {
-                            "type": "end",
-                            "outputs": [
-                                {
-                                    "name": "output1",
-                                    "type": "string",
-                                    "description": "First output"
-                                },
-                                {
-                                    "name": "output2",
-                                    "type": "number",
-                                    "description": "Second output"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "id": "end2", 
-                        "data": {
-                            "type": "end",
-                            "outputs": [
-                                {
-                                    "name": "output3",
-                                    "type": "boolean",
-                                    "description": "Third output"
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }),
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "variables": [{"name": "input1", "type": "string"}]}},
+                        {
+                            "id": "end1",
+                            "data": {
+                                "type": "end",
+                                "outputs": [
+                                    {"name": "output1", "type": "string", "description": "First output"},
+                                    {"name": "output2", "type": "number", "description": "Second output"},
+                                ],
+                            },
+                        },
+                        {
+                            "id": "end2",
+                            "data": {
+                                "type": "end",
+                                "outputs": [{"name": "output3", "type": "boolean", "description": "Third output"}],
+                            },
+                        },
+                    ]
+                }
+            ),
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act
         result = workflow.output_form()
-        
+
         # Assert
         expected_outputs = [
-            {
-                "name": "output1",
-                "type": "string", 
-                "description": "First output"
-            },
-            {
-                "name": "output2",
-                "type": "number",
-                "description": "Second output"
-            },
-            {
-                "name": "output3",
-                "type": "boolean",
-                "description": "Third output"
-            }
+            {"name": "output1", "type": "string", "description": "First output"},
+            {"name": "output2", "type": "number", "description": "Second output"},
+            {"name": "output3", "type": "boolean", "description": "Third output"},
         ]
         assert result == expected_outputs
 
@@ -332,18 +266,18 @@ class TestWorkflowOutputForm:
         workflow = Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow", 
+            type="workflow",
             version="draft",
             graph="",
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act
         result = workflow.output_form()
-        
+
         # Assert
         assert result == []
 
@@ -354,17 +288,17 @@ class TestWorkflowOutputForm:
             tenant_id="tenant_id",
             app_id="app_id",
             type="workflow",
-            version="draft", 
+            version="draft",
             graph=json.dumps({}),
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act
         result = workflow.output_form()
-        
+
         # Assert
         assert result == []
 
@@ -376,33 +310,23 @@ class TestWorkflowOutputForm:
             app_id="app_id",
             type="workflow",
             version="draft",
-            graph=json.dumps({
-                "nodes": [
-                    {
-                        "id": "start",
-                        "data": {
-                            "type": "start",
-                            "variables": []
-                        }
-                    },
-                    {
-                        "id": "llm",
-                        "data": {
-                            "type": "llm",
-                            "outputs": []
-                        }
-                    }
-                ]
-            }),
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "variables": []}},
+                        {"id": "llm", "data": {"type": "llm", "outputs": []}},
+                    ]
+                }
+            ),
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act
         result = workflow.output_form()
-        
+
         # Assert
         assert result == []
 
@@ -414,26 +338,16 @@ class TestWorkflowOutputForm:
             app_id="app_id",
             type="workflow",
             version="draft",
-            graph=json.dumps({
-                "nodes": [
-                    {
-                        "id": "end1",
-                        "data": {
-                            "type": "end",
-                            "outputs": []
-                        }
-                    }
-                ]
-            }),
+            graph=json.dumps({"nodes": [{"id": "end1", "data": {"type": "end", "outputs": []}}]}),
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act
         result = workflow.output_form()
-        
+
         # Assert
         assert result == []
 
@@ -449,10 +363,10 @@ class TestWorkflowOutputForm:
             features="{}",
             created_by="account_id",
             environment_variables=[],
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Act & Assert
         # The output_form method calls graph_dict which will raise JSONDecodeError for invalid JSON
         with pytest.raises(json.JSONDecodeError):
-            workflow.output_form() 
+            workflow.output_form()
