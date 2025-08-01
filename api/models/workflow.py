@@ -140,10 +140,10 @@ class Workflow(Base):
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", sa.text, nullable=False, server_default="{}"
+        "environment_variables", sa.Text, nullable=False, server_default="{}"
     )
     _conversation_variables: Mapped[str] = mapped_column(
-        "conversation_variables", sa.text, nullable=False, server_default="{}"
+        "conversation_variables", sa.Text, nullable=False, server_default="{}"
     )
 
     VERSION_DRAFT = "draft"
