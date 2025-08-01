@@ -31,6 +31,7 @@ const InputFieldPanel = () => {
   const showInputFieldPreviewPanel = useStore(state => state.showInputFieldPreviewPanel)
   const setShowInputFieldPreviewPanel = useStore(state => state.setShowInputFieldPreviewPanel)
   const inputFieldEditPanelProps = useStore(state => state.inputFieldEditPanelProps)
+  const setInputFieldEditPanelProps = useStore(state => state.setInputFieldEditPanelProps)
 
   const getInputFieldsMap = () => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
@@ -86,11 +87,13 @@ const InputFieldPanel = () => {
 
   const closePanel = useCallback(() => {
     setShowInputFieldPanel?.(false)
-  }, [setShowInputFieldPanel])
+    setShowInputFieldPreviewPanel?.(false)
+    setInputFieldEditPanelProps?.(null)
+  }, [setShowInputFieldPanel, setShowInputFieldPreviewPanel, setInputFieldEditPanelProps])
 
   const togglePreviewPanel = useCallback(() => {
-    setShowInputFieldPreviewPanel?.(true)
-  }, [setShowInputFieldPreviewPanel])
+    setShowInputFieldPreviewPanel?.(!showInputFieldPreviewPanel)
+  }, [showInputFieldPreviewPanel, setShowInputFieldPreviewPanel])
 
   const allVariableNames = useMemo(() => {
     return ragPipelineVariables?.map(variable => variable.variable) || []
@@ -110,6 +113,7 @@ const InputFieldPanel = () => {
             showInputFieldPreviewPanel && 'bg-state-accent-active text-text-accent',
           )}
           onClick={togglePreviewPanel}
+          disabled={!!inputFieldEditPanelProps}
         >
           <RiEyeLine className='size-3.5' />
           <span className='px-[3px]'>{t('datasetPipeline.operations.preview')}</span>
