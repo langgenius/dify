@@ -937,7 +937,7 @@ const translation = {
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
       copyIdSuccess: 'ID 已复制到剪贴板',
-      },
+    },
   },
   debug: {
     settingsTab: '设置',

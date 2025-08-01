@@ -1,9 +1,12 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
 import useTimestamp from '@/hooks/use-timestamp'
+import Toast from '@/app/components/base/toast'
 
 const RestoringTitle = () => {
   const { t } = useTranslation()
@@ -38,6 +41,20 @@ const RestoringTitle = () => {
               <span>{`${formatTimeFromNow((isDraft ? currentVersion.updated_at : currentVersion.created_at) * 1000)} ${formatTime(currentVersion.created_at, 'HH:mm:ss')}`}</span>
               <span>·</span>
               <span>{currentVersion?.created_by?.name || ''}</span>
+              <span>·</span>
+              <span>{currentVersion.id}</span>
+              <button
+                className='flex h-3 w-3 items-center justify-center rounded hover:bg-state-base-hover'
+                onClick={() => {
+                  copy(currentVersion.id)
+                  Toast.notify({
+                    type: 'success',
+                    message: t('workflow.versionHistory.action.copyIdSuccess'),
+                  })
+                }}
+              >
+                <RiClipboardLine className='h-2.5 w-2.5 text-text-quaternary' />
+              </button>
             </>
           )
         }
