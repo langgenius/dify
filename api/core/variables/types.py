@@ -6,7 +6,12 @@ from core.file.models import File
 
 
 class ArrayValidation(StrEnum):
-    """Strategy for validating array elements"""
+    """Strategy for validating array elements.
+
+    Note:
+        The `NONE` and `FIRST` strategies are primarily for compatibility purposes.
+        Avoid using them in new code whenever possible.
+    """
 
     # Skip element validation (only check array container)
     NONE = "none"
@@ -117,9 +122,9 @@ class SegmentType(StrEnum):
         elif array_validation == ArrayValidation.FIRST:
             return element_type.is_valid(value[0])
         else:
-            return all([element_type.is_valid(i, array_validation=ArrayValidation.NONE)] for i in value)
+            return all(element_type.is_valid(i, array_validation=ArrayValidation.NONE) for i in value)
 
-    def is_valid(self, value: Any, array_validation: ArrayValidation = ArrayValidation.FIRST) -> bool:
+    def is_valid(self, value: Any, array_validation: ArrayValidation = ArrayValidation.ALL) -> bool:
         """
         Check if a value matches the segment type.
         Users of `SegmentType` should call this method, instead of using
@@ -182,6 +187,20 @@ class SegmentType(StrEnum):
         if self in (SegmentType.INTEGER, SegmentType.FLOAT):
             return SegmentType.NUMBER
         return self
+
+    def element_type(self) -> "SegmentType | None":
+        """Return the element type of the current segment type, or `None` if the element type is undefined.
+
+        Raises:
+            ValueError: If the current segment type is not an array type.
+
+        Note:
+            For certain array types, such as `SegmentType.ARRAY_ANY`, their element types are not defined
+            by the runtime system. In such cases, this method will return `None`.
+        """
+        if not self.is_array_type():
+            raise ValueError(f"element_type is only supported by array type, got {self}")
+        return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
 
 
 _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {
