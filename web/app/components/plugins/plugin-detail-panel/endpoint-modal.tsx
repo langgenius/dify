@@ -47,19 +47,18 @@ const EndpointModal: FC<Props> = ({
         return
       }
     }
-    
+
     // Fix: Process boolean fields to ensure they are sent as proper boolean values
     const processedCredential = { ...tempCredential }
     formSchemas.forEach((field) => {
       if (field.type === 'boolean' && processedCredential[field.name] !== undefined) {
         const value = processedCredential[field.name]
-        if (typeof value === 'string') {
+        if (typeof value === 'string')
           processedCredential[field.name] = value === 'true' || value === '1' || value === 'True'
-        } else if (typeof value === 'number') {
+         else if (typeof value === 'number')
           processedCredential[field.name] = value === 1
-        } else if (typeof value === 'boolean') {
+         else if (typeof value === 'boolean')
           processedCredential[field.name] = value
-        }
       }
     })
 
