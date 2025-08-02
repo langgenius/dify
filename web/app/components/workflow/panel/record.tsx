@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react'
-import type { WorkflowDataUpdater } from '../types'
+import type { WorkflowRunDetailResponse } from '@/models/log'
 import Run from '../run'
 import { useStore } from '../store'
 import { useWorkflowUpdate } from '../hooks'
@@ -9,12 +9,12 @@ const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
-  const handleResultCallback = useCallback((res: any) => {
-    const graph: WorkflowDataUpdater = res.graph
+  const handleResultCallback = useCallback((res: WorkflowRunDetailResponse) => {
+    const graph = res.graph
     handleUpdateWorkflowCanvas({
       nodes: graph.nodes,
       edges: graph.edges,
-      viewport: graph.viewport,
+      viewport: graph.viewport || { x: 0, y: 0, zoom: 1 },
     })
   }, [handleUpdateWorkflowCanvas])
 
