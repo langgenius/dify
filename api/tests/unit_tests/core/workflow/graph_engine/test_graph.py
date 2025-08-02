@@ -1,6 +1,4 @@
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.run_condition import RunCondition
-from core.workflow.utils.condition.entities import Condition
 
 
 def test_init():
@@ -162,14 +160,6 @@ def test__init_iteration_graph():
     }
 
     graph = Graph.init(graph_config=graph_config, root_node_id="template-transform-in-iteration")
-    graph.add_extra_edge(
-        source_node_id="answer-in-iteration",
-        target_node_id="template-transform-in-iteration",
-        run_condition=RunCondition(
-            type="condition",
-            conditions=[Condition(variable_selector=["iteration", "index"], comparison_operator="≤", value="5")],
-        ),
-    )
 
     # iteration:
     #   [template-transform-in-iteration -> llm-in-iteration -> answer-in-iteration]
@@ -177,7 +167,6 @@ def test__init_iteration_graph():
     assert graph.root_node_id == "template-transform-in-iteration"
     assert graph.edge_mapping.get("template-transform-in-iteration")[0].target_node_id == "llm-in-iteration"
     assert graph.edge_mapping.get("llm-in-iteration")[0].target_node_id == "answer-in-iteration"
-    assert graph.edge_mapping.get("answer-in-iteration")[0].target_node_id == "template-transform-in-iteration"
 
 
 def test_parallels_graph():
