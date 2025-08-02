@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
+import { RiClipboardLine, RiMoreLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import ContextMenu from './context-menu'
 import cn from '@/utils/classnames'
 import type { VersionHistory } from '@/types/workflow'
 import { type VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
+import Toast from '@/app/components/base/toast'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
@@ -45,6 +48,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isIdExpanded, setIsIdExpanded] = useState(false)
+  const idRef = useRef<HTMLDivElement>(null)
+  const [isIdTruncated, setIsIdTruncated] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
   const formattedVersion = formatVersion(item, latestVersionId)
@@ -55,8 +61,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   useEffect(() => {
     if (isDraft)
       onClick(item)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Check if ID is truncated
+  useEffect(() => {
+    if (idRef.current) {
+      const element = idRef.current
+      setIsIdTruncated(element.scrollWidth > element.clientWidth)
+    }
+  }, [item.id])
 
   const handleClickItem = () => {
     if (isSelected)
@@ -114,6 +127,43 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           !isDraft && (
             <div className='system-xs-regular truncate text-text-tertiary'>
               {`${formatTime(item.created_at)} · ${item.created_by.name}`}
+            </div>
+          )
+        }
+        {
+          !isDraft && (
+            <div className='flex items-center gap-x-1'>
+              <div
+                ref={idRef}
+                className={cn(
+                  'system-xs-regular text-text-tertiary',
+                  isIdExpanded ? 'break-all' : 'truncate',
+                  isIdTruncated ? 'cursor-pointer' : 'cursor-default',
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isIdTruncated)
+                    setIsIdExpanded(!isIdExpanded)
+                }}
+              >
+                ID: {item.id}
+              </div>
+              {isIdTruncated && !isIdExpanded && (
+                <RiMoreLine className='h-2.5 w-2.5 text-text-quaternary' />
+              )}
+              <button
+                className='flex h-3 w-3 items-center justify-center rounded hover:bg-state-base-hover'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  copy(item.id)
+                  Toast.notify({
+                    type: 'success',
+                    message: t('workflow.versionHistory.action.copyIdSuccess'),
+                  })
+                }}
+              >
+                <RiClipboardLine className='h-2.5 w-2.5 text-text-quaternary' />
+              </button>
             </div>
           )
         }

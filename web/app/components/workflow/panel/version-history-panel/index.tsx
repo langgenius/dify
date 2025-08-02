@@ -100,7 +100,7 @@ const VersionHistoryPanel = () => {
         setDeleteConfirmOpen(true)
         break
     }
-  }, [])
+  }, [t])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
