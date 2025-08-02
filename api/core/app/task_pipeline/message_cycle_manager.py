@@ -3,6 +3,7 @@ from threading import Thread
 from typing import Optional, Union
 
 from flask import Flask, current_app
+from sqlalchemy import select
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -81,7 +82,8 @@ class MessageCycleManager:
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
             # get conversation and message
-            conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = db.session.execute(stmt).scalars().first()
 
             if not conversation:
                 return
@@ -140,7 +142,8 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        message_file = db.session.query(MessageFile).where(MessageFile.id == event.message_file_id).first()
+        stmt = select(MessageFile).where(MessageFile.id == event.message_file_id)
+        message_file = db.session.execute(stmt).scalars().first()
 
         if message_file and message_file.url is not None:
             # get tool file id
