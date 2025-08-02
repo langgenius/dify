@@ -59,6 +59,7 @@ export const hasValidChildren = (children: any): boolean => {
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
+    [InputVarType.secret]: VarType.secret,
     [InputVarType.singleFile]: VarType.file,
     [InputVarType.multiFiles]: VarType.arrayFile,
   } as any)[type] || VarType.string
@@ -85,6 +86,7 @@ export const varTypeToStructType = (type: VarType): Type => {
   return ({
     [VarType.string]: Type.string,
     [VarType.number]: Type.number,
+    [VarType.secret]: Type.string,
     [VarType.boolean]: Type.boolean,
     [VarType.object]: Type.object,
     [VarType.array]: Type.array,
@@ -694,6 +696,8 @@ const getIterationItemType = ({
       return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
+    case VarType.secret:
+      return VarType.secret
     default:
       return VarType.string
   }
@@ -745,6 +749,8 @@ const getLoopItemType = ({
       return VarType.any
     case VarType.arrayFile:
       return VarType.file
+    case VarType.secret:
+      return VarType.secret
     default:
       return VarType.string
   }

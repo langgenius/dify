@@ -359,6 +359,7 @@ const translation = {
     'paragraph': 'Paragraph',
     'select': 'Select',
     'number': 'Number',
+    'secret': 'Secret',
     'single-file': 'Single File',
     'multi-files': 'File List',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',

@@ -186,6 +186,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  secret = 'secret', // secret input
 }
 
 export type InputVar = {

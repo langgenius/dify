@@ -112,6 +112,15 @@ const RunOnce: FC<IRunOnceProps> = ({
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
+                  {item.type === 'secret' && (
+                    <Input
+                      type="password"
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                      maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                    />
+                  )}
                   {item.type === 'number' && (
                     <Input
                       type="number"

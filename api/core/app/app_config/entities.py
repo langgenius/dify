@@ -94,6 +94,7 @@ class VariableEntityType(StrEnum):
     SELECT = "select"
     PARAGRAPH = "paragraph"
     NUMBER = "number"
+    SECRET = "secret"
     EXTERNAL_DATA_TOOL = "external_data_tool"
     FILE = "file"
     FILE_LIST = "file-list"

@@ -61,6 +61,16 @@ const AppInputsForm = ({
         />
       )
     }
+    if (form.type === InputVarType.secret) {
+      return (
+        <Input
+          type="password"
+          value={inputs[variable] || ''}
+          onChange={e => handleFormChange(variable, e.target.value)}
+          placeholder={label}
+        />
+      )
+    }
     if (form.type === InputVarType.select) {
       return (
         <PortalSelect

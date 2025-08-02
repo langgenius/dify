@@ -25,6 +25,9 @@ const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
     number: (
       <InputVarTypeIcon type={InputVarType.number} className={classNames} />
     ),
+    secret: (
+      <InputVarTypeIcon type={InputVarType.secret} className={classNames} />
+    ),
     api: (
       <ApiConnection className={classNames} />
     ),

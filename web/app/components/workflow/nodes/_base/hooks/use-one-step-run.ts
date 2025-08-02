@@ -94,6 +94,8 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.paragraph
   if (type === VarType.number)
     return InputVarType.number
+  if (type === VarType.secret)
+    return InputVarType.secret
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
   if (type === VarType.file)
@@ -251,7 +253,6 @@ const useOneStepRun = <T>({
       const { isValid } = checkValidWrap()
       setCanShowSingleRun(isValid)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
   useEffect(() => {

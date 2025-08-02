@@ -33,6 +33,7 @@ type ObjectValueItem = {
 const typeList = [
   ChatVarType.String,
   ChatVarType.Number,
+  ChatVarType.Secret,
   ChatVarType.Object,
   ChatVarType.ArrayString,
   ChatVarType.ArrayNumber,
@@ -122,6 +123,8 @@ const ChatVariableModal = ({
         return value || ''
       case ChatVarType.Number:
         return value || 0
+      case ChatVarType.Secret:
+        return value || ''
       case ChatVarType.Object:
         return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
@@ -155,7 +158,7 @@ const ChatVariableModal = ({
     setEditorContent(undefined)
     if (v === ChatVarType.ArrayObject)
       setEditInJSON(true)
-    if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
+    if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Secret || v === ChatVarType.Object)
       setEditInJSON(false)
     setType(v)
   }
@@ -343,6 +346,14 @@ const ChatVariableModal = ({
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}
                 type='number'
+              />
+            )}
+            {type === ChatVarType.Secret && (
+              <Input
+                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                type='password'
               />
             )}
             {type === ChatVarType.Object && !editInJSON && (
