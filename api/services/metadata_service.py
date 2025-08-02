@@ -79,7 +79,10 @@ class MetadataService:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     value = doc_metadata.pop(old_name, None)
                     doc_metadata[name] = value
                     document.doc_metadata = doc_metadata
@@ -109,7 +112,10 @@ class MetadataService:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata.pop(metadata.name, None)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
@@ -172,7 +178,10 @@ class MetadataService:
             document_ids = []
             if documents:
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata.pop(BuiltInField.document_name.value, None)
                     doc_metadata.pop(BuiltInField.uploader.value, None)
                     doc_metadata.pop(BuiltInField.upload_date.value, None)
