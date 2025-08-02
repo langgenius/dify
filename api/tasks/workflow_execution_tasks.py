@@ -12,7 +12,7 @@ from celery import shared_task  # type: ignore[import-untyped]
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from models import CreatorUserRole, WorkflowRun
