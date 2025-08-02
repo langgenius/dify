@@ -15,12 +15,12 @@
 
 .actionIcon {
   @apply bg-gray-500;
-  mask-image: url(~@/assets/action.svg);
+  mask-image: url(/assets/action.svg);
 }
 
 body .btn.open,
 body .btn:hover {
-  background: url(~@/assets/action.svg) center center no-repeat transparent;
+  background: url(/assets/action.svg) center center no-repeat transparent;
   background-size: 16px 16px;
 }
 

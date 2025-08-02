@@ -65,7 +65,6 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
         ...defaultConfig,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((template: string) => {

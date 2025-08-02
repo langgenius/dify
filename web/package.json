@@ -18,7 +18,7 @@
     "and_qq >= 14.9"
   ],
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
+    "dev": "cross-env NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "pnpx oxlint && pnpm eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
@@ -194,7 +194,6 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "bing-translate-api": "^4.0.2",
-    "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.32.0",
     "eslint-config-next": "~15.4.5",

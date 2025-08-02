@@ -53,16 +53,27 @@
             "type": "node",
             "request": "launch",
             "program": "${workspaceFolder}/web/node_modules/next/dist/bin/next",
-            "runtimeArgs": ["--inspect"],
-            "skipFiles": ["<node_internals>/**"],
+            "sourceMaps": true,
+            "runtimeArgs": [
+                "--inspect"
+            ],
+            "sourceMapPathOverrides": {
+                "turbopack:///[project]/app/*": "${webRoot}/web/app/*"
+            },
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "args": [
+                "--turbopack"
+            ],
             "serverReadyAction": {
-              "action": "debugWithChrome",
-              "killOnServerStop": true,
-              "pattern": "- Local:.+(https?://.+)",
-              "uriFormat": "%s",
-              "webRoot": "${workspaceFolder}/web"
+                "action": "debugWithChrome",
+                "killOnServerStop": true,
+                "pattern": "- Local:.+(https?://.+)",
+                "uriFormat": "%s",
+                "webRoot": "${workspaceFolder}/web"
             },
             "cwd": "${workspaceFolder}/web"
-          }
+        }
     ]
 }
