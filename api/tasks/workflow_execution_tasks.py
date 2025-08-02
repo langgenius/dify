@@ -134,24 +134,3 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
     workflow_run.finished_at = execution.finished_at
-
-
-def _create_execution_from_workflow_run(workflow_run: WorkflowRun) -> WorkflowExecution:
-    """
-    Create a WorkflowExecution domain entity from a WorkflowRun database model.
-    """
-    return WorkflowExecution(
-        id_=workflow_run.id,
-        workflow_id=workflow_run.workflow_id,
-        workflow_type=WorkflowType(workflow_run.type),
-        workflow_version=workflow_run.version,
-        graph=json.loads(workflow_run.graph or "{}"),
-        inputs=json.loads(workflow_run.inputs or "{}"),
-        outputs=json.loads(workflow_run.outputs or "{}"),
-        status=WorkflowExecutionStatus(workflow_run.status),
-        error_message=workflow_run.error or "",
-        total_tokens=workflow_run.total_tokens,
-        total_steps=workflow_run.total_steps,
-        started_at=workflow_run.created_at,
-        finished_at=workflow_run.finished_at,
-    )
