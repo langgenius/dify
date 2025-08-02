@@ -87,11 +87,6 @@ const translation = {
   agentLog: 'Registro do agente',
   viewLog: 'Ver Registro',
   agenteLogDetail: {
-    agentMode: 'Modo Agente',
-    toolUsed: 'Ferramenta usada',
-    iterations: 'Iterações',
-    iteration: 'Iteração',
-    finalProcessing: 'Processamento Final',
   },
   agentLogDetail: {
     iterations: 'Iterações',
