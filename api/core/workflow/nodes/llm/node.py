@@ -2,8 +2,9 @@ import base64
 import io
 import json
 import logging
+import re
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -33,10 +34,12 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
     ModelFeature,
     ModelPropertyKey,
     ModelType,
 )
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -98,6 +101,9 @@ class LLMNode(BaseNode):
     _node_type = NodeType.LLM
 
     _node_data: LLMNodeData
+
+    # Compiled regex for extracting <think> blocks (with compatibility for attributes)
+    _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
@@ -167,6 +173,7 @@ class LLMNode(BaseNode):
         result_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
+        reasoning_content = None
         variable_pool = self.graph_runtime_state.variable_pool
 
         try:
@@ -256,6 +263,7 @@ class LLMNode(BaseNode):
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self.node_id,
+                reasoning_format=self._node_data.reasoning_format,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -264,9 +272,20 @@ class LLMNode(BaseNode):
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
                 elif isinstance(event, ModelInvokeCompletedEvent):
+                    # Raw text
                     result_text = event.text
                     usage = event.usage
                     finish_reason = event.finish_reason
+                    reasoning_content = event.reasoning_content or ""
+
+                    # For downstream nodes, determine clean text based on reasoning_format
+                    if self._node_data.reasoning_format == "tagged":
+                        # Keep <think> tags for backward compatibility
+                        clean_text = result_text
+                    else:
+                        # Extract clean text from <think> tags
+                        clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
+
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
@@ -284,7 +303,12 @@ class LLMNode(BaseNode):
                 "model_name": model_config.model,
             }
 
-            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+            outputs = {
+                "text": clean_text,
+                "reasoning_content": reasoning_content,
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
+            }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
             if self._file_outputs is not None:
@@ -338,6 +362,7 @@ class LLMNode(BaseNode):
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
@@ -374,6 +399,7 @@ class LLMNode(BaseNode):
             file_saver=file_saver,
             file_outputs=file_outputs,
             node_id=node_id,
+            reasoning_format=reasoning_format,
         )
 
     @staticmethod
@@ -383,6 +409,7 @@ class LLMNode(BaseNode):
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
         # For blocking mode
         if isinstance(invoke_result, LLMResult):
@@ -390,6 +417,7 @@ class LLMNode(BaseNode):
                 invoke_result=invoke_result,
                 saver=file_saver,
                 file_outputs=file_outputs,
+                reasoning_format=reasoning_format,
             )
             yield event
             return
@@ -430,12 +458,65 @@ class LLMNode(BaseNode):
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
-        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
+        # Extract reasoning content from <think> tags in the main text
+        full_text = full_text_buffer.getvalue()
+
+        if reasoning_format == "tagged":
+            # Keep <think> tags in text for backward compatibility
+            clean_text = full_text
+            reasoning_content = ""
+        else:
+            # Extract clean text and reasoning from <think> tags
+            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+
+        yield ModelInvokeCompletedEvent(
+            # Use clean_text for separated mode, full_text for tagged mode
+            text=clean_text if reasoning_format == "separated" else full_text,
+            usage=usage,
+            finish_reason=finish_reason,
+            # Reasoning content for workflow variables and downstream nodes
+            reasoning_content=reasoning_content,
+        )
 
     @staticmethod
     def _image_file_to_markdown(file: "File", /):
         text_chunk = f"![]({file.generate_url()})"
         return text_chunk
+
+    @classmethod
+    def _split_reasoning(
+        cls, text: str, reasoning_format: Literal["separated", "tagged"] = "tagged"
+    ) -> tuple[str, str]:
+        """
+        Split reasoning content from text based on reasoning_format strategy.
+
+        Args:
+            text: Full text that may contain <think> blocks
+            reasoning_format: Strategy for handling reasoning content
+                - "separated": Remove <think> tags and return clean text + reasoning_content field
+                - "tagged": Keep <think> tags in text, return empty reasoning_content
+
+        Returns:
+            tuple of (clean_text, reasoning_content)
+        """
+
+        if reasoning_format == "tagged":
+            return text, ""
+
+        # Find all <think>...</think> blocks (case-insensitive)
+        matches = cls._THINK_PATTERN.findall(text)
+
+        # Extract reasoning content from all <think> blocks
+        reasoning_content = "\n".join(match.strip() for match in matches) if matches else ""
+
+        # Remove all <think>...</think> blocks from original text
+        clean_text = cls._THINK_PATTERN.sub("", text)
+
+        # Clean up extra whitespace
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+
+        # Separated mode: always return clean text and reasoning_content
+        return clean_text, reasoning_content or ""
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
@@ -964,6 +1045,7 @@ class LLMNode(BaseNode):
         invoke_result: LLMResult,
         saver: LLMFileSaver,
         file_outputs: list["File"],
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> ModelInvokeCompletedEvent:
         buffer = io.StringIO()
         for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
@@ -973,10 +1055,24 @@ class LLMNode(BaseNode):
         ):
             buffer.write(text_part)
 
+        # Extract reasoning content from <think> tags in the main text
+        full_text = buffer.getvalue()
+
+        if reasoning_format == "tagged":
+            # Keep <think> tags in text for backward compatibility
+            clean_text = full_text
+            reasoning_content = ""
+        else:
+            # Extract clean text and reasoning from <think> tags
+            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+
         return ModelInvokeCompletedEvent(
-            text=buffer.getvalue(),
+            # Use clean_text for separated mode, full_text for tagged mode
+            text=clean_text if reasoning_format == "separated" else full_text,
             usage=invoke_result.usage,
             finish_reason=None,
+            # Reasoning content for workflow variables and downstream nodes
+            reasoning_content=reasoning_content,
         )
 
     @staticmethod
@@ -1003,6 +1099,21 @@ class LLMNode(BaseNode):
                 file_type=FileType.IMAGE,
             )
         return saved_file
+
+    def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
+        """
+        Fetch model schema
+        """
+        model_name = self._node_data.model.name
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
+        )
+        model_type_instance = model_instance.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        model_credentials = model_instance.credentials
+        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
+        return model_schema
 
     @staticmethod
     def fetch_structured_output_schema(
