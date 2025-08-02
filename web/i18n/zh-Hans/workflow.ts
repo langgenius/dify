@@ -435,6 +435,7 @@ const translation = {
         variable: '变量',
       },
       sysQueryInUser: 'user message 中必须包含 sys.query',
+      llmUsage: 'LLM 使用情况信息',
       jsonSchema: {
         title: '结构化输出 Schema',
         instruction: '指令',

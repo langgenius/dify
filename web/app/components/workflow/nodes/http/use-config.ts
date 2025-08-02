@@ -51,7 +51,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
       setInputs(newInputs)
       setIsDataReady(true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleMethodChange = useCallback((method: Method) => {
@@ -121,7 +120,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    return [VarType.string, VarType.number, VarType.secret, VarType.object].includes(varPayload.type)
   }, [])
 
   // curl import panel

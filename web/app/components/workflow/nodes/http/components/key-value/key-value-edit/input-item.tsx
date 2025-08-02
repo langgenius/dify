@@ -43,7 +43,7 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
+      const supportVarTypes = [VarType.string, VarType.number, VarType.secret, VarType.object]
       if (isSupportFile)
         supportVarTypes.push(...[VarType.file, VarType.arrayFile])
 

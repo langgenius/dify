@@ -14,9 +14,12 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
     BaseAgentEvent,
@@ -754,6 +757,26 @@ class GraphEngine:
                                 if run_result.llm_usage:
                                     # use the latest usage
                                     self.graph_runtime_state.llm_usage += run_result.llm_usage
+
+                                    # Update system variable with current LLM usage
+                                    if self.graph_runtime_state.variable_pool.system_variables.llm_usage is None:
+                                        self.graph_runtime_state.variable_pool.system_variables.llm_usage = (
+                                            LLMUsage.empty_usage()
+                                        )
+                                    self.graph_runtime_state.variable_pool.system_variables.llm_usage += (
+                                        run_result.llm_usage
+                                    )
+
+                                    # Update the system variable in the variable pool
+                                    # Convert LLMUsage to dict for variable pool storage, converting Decimal to float
+                                    llm_usage_dict = (
+                                        self.graph_runtime_state.variable_pool.system_variables.llm_usage.model_dump(
+                                            mode="json"
+                                        )
+                                    )
+                                    self.graph_runtime_state.variable_pool.add(
+                                        (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.LLM_USAGE), llm_usage_dict
+                                    )
 
                                 # append node output variables to variable pool
                                 if run_result.outputs:

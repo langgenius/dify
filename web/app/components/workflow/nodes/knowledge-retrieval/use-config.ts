@@ -172,7 +172,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
     })
     setInputs(newInput)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProvider?.provider, currentModel, currentRerankModel, rerankDefaultModel])
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
@@ -229,7 +228,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -241,7 +239,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(produce(inputs, (draft) => {
       draft.query_variable_selector = query_variable_selector
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
@@ -276,7 +273,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.string
+    return [VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
@@ -363,7 +360,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [setInputs])
 
   const filterStringVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
+    return [VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const {

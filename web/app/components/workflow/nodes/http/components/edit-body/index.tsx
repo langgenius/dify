@@ -57,7 +57,7 @@ const EditBody: FC<Props> = ({
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayNumber, VarType.arrayString, VarType.object].includes(varPayload.type)
     },
   })
 

@@ -148,7 +148,7 @@ export const useGetAvailableVars = () => {
       })
         .map(node => ({
           ...node,
-          vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
+          vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.') || v.variable === 'sys.llm_usage') : node.vars,
         }))
         .filter(item => item.vars.length > 0)
     }

@@ -371,8 +371,19 @@ class WorkflowService:
                 )
 
         else:
+            # For non-START nodes, we still need system variables like sys.llm_usage
+            from core.model_runtime.entities.llm_entities import LLMUsage
+
+            system_variable = SystemVariable(
+                user_id=account.id,
+                app_id=draft_workflow.app_id,
+                workflow_id=draft_workflow.id,
+                files=files or [],
+                workflow_execution_id=str(uuid.uuid4()),
+                llm_usage=LLMUsage.empty_usage(),
+            )
             variable_pool = VariablePool(
-                system_variables=SystemVariable.empty(),
+                system_variables=system_variable,
                 user_inputs=user_inputs,
                 environment_variables=draft_workflow.environment_variables,
                 conversation_variables=[],
@@ -688,12 +699,15 @@ def _setup_variable_pool(
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
+        from core.model_runtime.entities.llm_entities import LLMUsage
+
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),
+            llm_usage=LLMUsage.empty_usage(),
         )
 
         # Only add chatflow-specific variables for non-workflow types
@@ -702,7 +716,17 @@ def _setup_variable_pool(
             system_variable.conversation_id = conversation_id
             system_variable.dialogue_count = 0
     else:
-        system_variable = SystemVariable.empty()
+        # For non-START nodes, we still need system variables like sys.llm_usage
+        from core.model_runtime.entities.llm_entities import LLMUsage
+
+        system_variable = SystemVariable(
+            user_id=user_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            files=files or [],
+            workflow_execution_id=str(uuid.uuid4()),
+            llm_usage=LLMUsage.empty_usage(),
+        )
 
     # init variable pool
     variable_pool = VariablePool(

@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from core.file.models import File
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import SystemVariableKey
 
 
@@ -43,6 +44,9 @@ class SystemVariable(BaseModel):
     query: str | None = None
     conversation_id: str | None = None
     dialogue_count: int | None = None
+
+    # LLM usage tracking for workflow execution
+    llm_usage: LLMUsage | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -86,4 +90,6 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.CONVERSATION_ID] = self.conversation_id
         if self.dialogue_count is not None:
             d[SystemVariableKey.DIALOGUE_COUNT] = self.dialogue_count
+        if self.llm_usage is not None:
+            d[SystemVariableKey.LLM_USAGE] = self.llm_usage.model_dump(mode="json")
         return d

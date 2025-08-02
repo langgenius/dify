@@ -47,7 +47,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   }, [doSetInputs, defaultRolePrefix])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
+    return [VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const handleInputVarChange = useCallback((newInputVar: ValueSelector | string) => {
@@ -155,7 +155,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const {
@@ -170,7 +169,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.object].includes(varPayload.type)
   }, [])
 
   const {

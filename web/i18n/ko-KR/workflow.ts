@@ -453,6 +453,7 @@ const translation = {
         variable: '변수',
       },
       sysQueryInUser: '사용자 메시지에 sys.query 가 필요합니다',
+      llmUsage: 'LLM 사용 정보',
       jsonSchema: {
         warningTips: {
           saveSchema: '현재 필드의 편집을 완료한 후 스키마를 저장하세요.',
