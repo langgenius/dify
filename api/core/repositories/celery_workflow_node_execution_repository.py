@@ -110,7 +110,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         Save or update a WorkflowNodeExecution instance to cache and asynchronously to database.
 
-        This method stores the execution in cache immediately for fast reads and queues 
+        This method stores the execution in cache immediately for fast reads and queues
         the save operation as a Celery task without tracking the task status.
 
         Args:
@@ -166,7 +166,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         try:
             # Get execution IDs for this workflow run from cache
             execution_ids = self._workflow_execution_mapping.get(workflow_run_id, [])
-            
+
             # Retrieve executions from cache
             result = []
             for execution_id in execution_ids:
@@ -177,7 +177,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if order_config and result:
                 # Sort based on the order configuration
                 reverse = order_config.order_direction == "desc"
-                
+
                 # Sort by multiple fields if specified
                 for field_name in reversed(order_config.order_by):
                     result.sort(key=lambda x: getattr(x, field_name, 0), reverse=reverse)
@@ -188,5 +188,3 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         except Exception as e:
             logger.exception("Failed to get workflow node executions for run %s from cache", workflow_run_id)
             return []
-
-

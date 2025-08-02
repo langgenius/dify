@@ -88,7 +88,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert repo._app_id == app_id
         assert repo._triggered_from == triggered_from
         assert repo._creator_user_id == mock_account.id
-        assert repo._async_timeout == 30  # default timeout
+        assert repo._creator_user_role is not None
 
     def test_init_with_cache_initialized(self, mock_session_factory, mock_account):
         """Test repository initialization with cache properly initialized."""
@@ -155,10 +155,13 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # Verify execution is cached
         assert sample_workflow_node_execution.id in repo._execution_cache
         assert repo._execution_cache[sample_workflow_node_execution.id] == sample_workflow_node_execution
-        
+
         # Verify workflow execution mapping is updated
         assert sample_workflow_node_execution.workflow_execution_id in repo._workflow_execution_mapping
-        assert sample_workflow_node_execution.id in repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id]
+        assert (
+            sample_workflow_node_execution.id
+            in repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id]
+        )
 
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_handles_celery_failure(
@@ -177,7 +180,10 @@ class TestCeleryWorkflowNodeExecutionRepository:
         with pytest.raises(Exception, match="Celery is down"):
             repo.save(sample_workflow_node_execution)
 
-    def test_get_by_workflow_run_from_cache(self, mock_session_factory, mock_account, sample_workflow_node_execution):
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_get_by_workflow_run_from_cache(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
         """Test that get_by_workflow_run retrieves executions from cache."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
@@ -213,7 +219,8 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # Should return empty list since nothing in cache
         assert len(result) == 0
 
-    def test_cache_operations(self, mock_session_factory, mock_account, sample_workflow_node_execution):
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_cache_operations(self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution):
         """Test cache operations work correctly."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
@@ -224,16 +231,17 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
         # Test saving to cache
         repo.save(sample_workflow_node_execution)
-        
+
         # Verify cache contains the execution
         assert sample_workflow_node_execution.id in repo._execution_cache
-        
+
         # Test retrieving from cache
         result = repo.get_by_workflow_run(sample_workflow_node_execution.workflow_execution_id)
         assert len(result) == 1
         assert result[0].id == sample_workflow_node_execution.id
 
-    def test_multiple_executions_same_workflow(self, mock_session_factory, mock_account):
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_multiple_executions_same_workflow(self, mock_task, mock_session_factory, mock_account):
         """Test multiple executions for the same workflow."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
@@ -278,12 +286,13 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # Verify both are cached and mapped
         assert len(repo._execution_cache) == 2
         assert len(repo._workflow_execution_mapping[workflow_run_id]) == 2
-        
+
         # Test retrieval
         result = repo.get_by_workflow_run(workflow_run_id)
         assert len(result) == 2
 
-    def test_ordering_functionality(self, mock_session_factory, mock_account):
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_ordering_functionality(self, mock_task, mock_session_factory, mock_account):
         """Test ordering functionality works correctly."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,

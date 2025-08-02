@@ -579,8 +579,6 @@ class RepositoryConfig(BaseSettings):
     )
 
 
-
-
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth

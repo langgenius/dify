@@ -144,7 +144,7 @@ class TestCeleryWorkflowExecutionRepository:
         assert call_args["creator_user_id"] == mock_account.id
 
         # Verify no task tracking occurs (no _pending_saves attribute)
-        assert not hasattr(repo, '_pending_saves')
+        assert not hasattr(repo, "_pending_saves")
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
     def test_save_handles_celery_failure(
@@ -163,7 +163,10 @@ class TestCeleryWorkflowExecutionRepository:
         with pytest.raises(Exception, match="Celery is down"):
             repo.save(sample_workflow_execution)
 
-    def test_save_operation_fire_and_forget(self, mock_session_factory, mock_account, sample_workflow_execution):
+    @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
+    def test_save_operation_fire_and_forget(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_execution
+    ):
         """Test that save operation works in fire-and-forget mode."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
@@ -174,11 +177,12 @@ class TestCeleryWorkflowExecutionRepository:
 
         # Test that save doesn't block or maintain state
         repo.save(sample_workflow_execution)
-        
-        # Verify no pending saves are tracked (no _pending_saves attribute)
-        assert not hasattr(repo, '_pending_saves')
 
-    def test_multiple_save_operations(self, mock_session_factory, mock_account):
+        # Verify no pending saves are tracked (no _pending_saves attribute)
+        assert not hasattr(repo, "_pending_saves")
+
+    @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
+    def test_multiple_save_operations(self, mock_task, mock_session_factory, mock_account):
         """Test multiple save operations work correctly."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
@@ -210,9 +214,9 @@ class TestCeleryWorkflowExecutionRepository:
         # Save both executions
         repo.save(exec1)
         repo.save(exec2)
-        
+
         # Should work without issues and not maintain state (no _pending_saves attribute)
-        assert not hasattr(repo, '_pending_saves')
+        assert not hasattr(repo, "_pending_saves")
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
     def test_save_with_different_user_types(self, mock_task, mock_session_factory, mock_end_user):

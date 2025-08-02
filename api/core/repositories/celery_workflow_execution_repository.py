@@ -124,5 +124,3 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
-
-
