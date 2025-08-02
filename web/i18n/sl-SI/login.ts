@@ -81,6 +81,7 @@ const translation = {
     didNotReceiveCode: 'Niste prejeli kode?',
     invalidCode: 'Neveljavna koda',
     useAnotherMethod: 'Uporabite drug način',
+    tipsPrefix: 'Pošljemo kodo za preverjanje na',
   },
   useVerificationCode: 'Uporaba kode za preverjanje',
   licenseInactive: 'Licenca je neaktivna',

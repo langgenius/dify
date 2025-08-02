@@ -91,6 +91,7 @@ const translation = {
     didNotReceiveCode: 'Non hai ricevuto il codice?',
     checkYourEmail: 'Controlla la tua email',
     useAnotherMethod: 'Usa un altro metodo',
+    tipsPrefix: 'Inviamo un codice di verifica a',
   },
   or: 'O',
   back: 'Indietro',

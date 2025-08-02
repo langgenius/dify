@@ -81,6 +81,7 @@ const translation = {
     validTime: '請記住，該代碼的有效期為 5 分鐘',
     verificationCode: '驗證碼',
     invalidCode: '無效代碼',
+    tipsPrefix: '我們發送一個驗證碼到',
   },
   continueWithCode: 'Continue With Code',
   or: '或',

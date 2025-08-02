@@ -81,6 +81,7 @@ const translation = {
     useAnotherMethod: 'Başka bir yöntem kullanın',
     didNotReceiveCode: 'Kodu almadınız mı?',
     resend: 'Tekrar Gönder',
+    tipsPrefix: 'Bir doğrulama kodu gönderiyoruz',
   },
   enterYourName: 'Lütfen kullanıcı adınızı giriniz',
   resetPassword: 'Şifre Sıfırlama',

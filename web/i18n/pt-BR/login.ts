@@ -81,6 +81,7 @@ const translation = {
     resend: 'Reenviar',
     didNotReceiveCode: 'Não recebeu o código?',
     validTime: 'Lembre-se de que o código é válido por 5 minutos',
+    tipsPrefix: 'Enviamos um código de verificação para',
   },
   resetPassword: 'Redefinir senha',
   or: 'OU',

@@ -81,6 +81,7 @@ const translation = {
     useAnotherMethod: '다른 방법 사용',
     didNotReceiveCode: '코드를 받지 못하셨나요?',
     resend: '재전송',
+    tipsPrefix: '우리는 확인 코드를 보냅니다',
   },
   back: '뒤로',
   or: '또는',

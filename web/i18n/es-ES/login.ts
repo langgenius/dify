@@ -81,6 +81,7 @@ const translation = {
     verificationCode: 'Código de verificación',
     validTime: 'Ten en cuenta que el código es válido durante 5 minutos',
     invalidCode: 'Código no válido',
+    tipsPrefix: 'Enviamos un código de verificación a',
   },
   or: 'O',
   back: 'Atrás',

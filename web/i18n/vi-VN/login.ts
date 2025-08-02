@@ -81,6 +81,7 @@ const translation = {
     useAnotherMethod: 'Sử dụng phương pháp khác',
     emptyCode: 'Mã là bắt buộc',
     verificationCodePlaceholder: 'Nhập mã gồm 6 chữ số',
+    tipsPrefix: 'Chúng tôi gửi mã xác minh đến',
   },
   back: 'Lưng',
   withSSO: 'Tiếp tục với SSO',

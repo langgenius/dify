@@ -81,6 +81,7 @@ const translation = {
     emptyCode: 'Code ist erforderlich',
     invalidCode: 'Ungültiger Code',
     resend: 'Wieder senden',
+    tipsPrefix: 'Wir senden einen Bestätigungscode an',
   },
   or: 'ODER',
   back: 'Zurück',

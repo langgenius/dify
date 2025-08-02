@@ -81,6 +81,7 @@ const translation = {
     verify: 'Verifica',
     useAnotherMethod: 'Utilizați o altă metodă',
     resend: 'Retrimite',
+    tipsPrefix: 'Trimitem un cod de verificare la',
   },
   usePassword: 'Utilizați parola',
   useVerificationCode: 'Utilizarea codului de verificare',

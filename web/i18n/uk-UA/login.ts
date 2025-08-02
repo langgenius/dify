@@ -81,6 +81,7 @@ const translation = {
     verificationCode: 'Код підтвердження',
     useAnotherMethod: 'Використовуйте інший спосіб',
     validTime: 'Майте на увазі, що код дійсний протягом 5 хвилин',
+    tipsPrefix: 'Ми відправляємо код підтвердження на',
   },
   back: 'Задній',
   backToLogin: 'Назад до входу',

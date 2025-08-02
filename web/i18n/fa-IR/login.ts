@@ -81,6 +81,7 @@ const translation = {
     checkYourEmail: 'ایمیل خود را بررسی کنید',
     validTime: 'به خاطر داشته باشید که کد 5 دقیقه اعتبار دارد',
     resend: 'ارسال مجدد',
+    tipsPrefix: 'ما یک کد تأیید به',
   },
   or: 'یا',
   back: 'بازگشت',

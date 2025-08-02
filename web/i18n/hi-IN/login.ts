@@ -86,6 +86,7 @@ const translation = {
     checkYourEmail: 'अपना ईमेल जांचें',
     validTime: 'ध्यान रखें कि कोड 5 मिनट के लिए वैध है',
     verificationCodePlaceholder: '6-अंक कोड दर्ज करें',
+    tipsPrefix: 'हम एक सत्यापन कोड भेजते हैं',
   },
   sendVerificationCode: 'पुष्टि कोड भेजें',
   or: 'नहीं तो',

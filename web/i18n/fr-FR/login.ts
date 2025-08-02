@@ -81,6 +81,7 @@ const translation = {
     invalidCode: 'Code non valide',
     checkYourEmail: 'Vérifiez vos e-mails',
     validTime: 'Gardez à l’esprit que le code est valable 5 minutes',
+    tipsPrefix: 'Nous envoyons un code de vérification à',
   },
   sendVerificationCode: 'Envoyer le code de vérification',
   or: 'OU',

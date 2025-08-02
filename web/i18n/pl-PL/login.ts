@@ -86,6 +86,7 @@ const translation = {
     didNotReceiveCode: 'Nie otrzymałeś kodu?',
     verificationCode: 'Kod weryfikacyjny',
     emptyCode: 'Kod jest wymagany',
+    tipsPrefix: 'Wysyłamy kod weryfikacyjny do',
   },
   continueWithCode: 'Kontynuuj z kodem',
   setYourAccount: 'Ustaw swoje konto',

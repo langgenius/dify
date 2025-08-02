@@ -81,6 +81,7 @@ const translation = {
     validTime: 'Имейте в виду, что код действителен в течение 5 минут',
     verificationCodePlaceholder: 'Введите 6-значный код',
     useAnotherMethod: 'Используйте другой метод',
+    tipsPrefix: 'Мы отправляем код проверки на',
   },
   back: 'Назад',
   changePasswordBtn: 'Установите пароль',

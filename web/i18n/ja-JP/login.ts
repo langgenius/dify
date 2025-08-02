@@ -81,6 +81,7 @@ const translation = {
     validTime: 'コードは 5 分間有効であることに注意してください',
     emptyCode: 'コードが必要です',
     checkYourEmail: 'メールをチェックしてください',
+    tipsPrefix: '私たちは確認コードを送信します',
   },
   useVerificationCode: '確認コードを使用する',
   or: '又は',

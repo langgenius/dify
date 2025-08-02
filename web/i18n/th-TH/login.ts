@@ -88,6 +88,7 @@ const translation = {
     useAnotherMethod: 'ใช้วิธีอื่น',
     emptyCode: 'ต้องใช้รหัส',
     invalidCode: 'รหัสไม่ถูกต้อง',
+    tipsPrefix: 'เราส่งรหัสตรวจสอบไปยัง',
   },
   resetPassword: 'รีเซ็ตรหัสผ่าน',
   resetPasswordDesc: 'พิมพ์อีเมลที่คุณใช้ลงทะเบียนบน Dify แล้วเราจะส่งอีเมลรีเซ็ตรหัสผ่านให้คุณ',
