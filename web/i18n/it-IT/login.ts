@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Il tuo nome utente',
   forget: 'Hai dimenticato la password?',
   signBtn: 'Accedi',
-  sso: 'Continua con SSO',
   installBtn: 'Configura',
   setAdminAccount: 'Impostazione di un account amministratore',
   setAdminAccountDesc:
@@ -91,8 +90,8 @@ const translation = {
     validTime: 'Tieni presente che il codice è valido per 5 minuti',
     didNotReceiveCode: 'Non hai ricevuto il codice?',
     checkYourEmail: 'Controlla la tua email',
-    tips: 'Inviamo un codice di verifica a <strong>{{email}}</strong>',
     useAnotherMethod: 'Usa un altro metodo',
+    tipsPrefix: 'Inviamo un codice di verifica a',
   },
   or: 'O',
   back: 'Indietro',

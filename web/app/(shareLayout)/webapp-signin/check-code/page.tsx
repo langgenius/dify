@@ -93,7 +93,10 @@ export default function CheckCode() {
     <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='body-md-regular mt-2 text-text-secondary'>
-        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
+        <span>
+          {t('login.checkCode.tipsPrefix')}
+          <strong>{email}</strong>
+        </span>
         <br />
         {t('login.checkCode.validTime')}
       </p>
