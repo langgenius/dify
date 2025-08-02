@@ -8,7 +8,6 @@ providing improved performance by offloading database operations to background w
 import logging
 from typing import Optional, Union
 
-from celery.result import AsyncResult  # type: ignore[import-untyped]
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -34,10 +33,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     Key features:
     - Asynchronous save operations using Celery tasks
-    - Fallback to synchronous operations for read operations when immediate results are needed
     - Support for multi-tenancy through tenant/app filtering
     - Automatic retry and error handling through Celery
-    - Configurable timeouts for async operations
     """
 
     _session_factory: sessionmaker
@@ -46,8 +43,6 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
     _triggered_from: Optional[WorkflowRunTriggeredFrom]
     _creator_user_id: str
     _creator_user_role: CreatorUserRole
-    _async_timeout: int
-    _pending_saves: dict[str, AsyncResult]
 
     def __init__(
         self,
@@ -55,7 +50,6 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         user: Union[Account, EndUser],
         app_id: Optional[str],
         triggered_from: Optional[WorkflowRunTriggeredFrom],
-        async_timeout: int = 30,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -65,7 +59,6 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
-            async_timeout: Timeout in seconds for async operations (default: 30)
         """
         # Store session factory for fallback operations
         if isinstance(session_factory, Engine):
@@ -93,12 +86,6 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
-        # Async operation timeout
-        self._async_timeout = async_timeout
-
-        # Cache for pending async operations
-        self._pending_saves: dict[str, AsyncResult] = {}
-
         logger.info(
             "Initialized CeleryWorkflowExecutionRepository for tenant %s, app %s, triggered_from %s",
             self._tenant_id,
@@ -120,8 +107,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             # Serialize execution for Celery task
             execution_data = execution.model_dump()
 
-            # Queue the save operation as a Celery task
-            task_result = save_workflow_execution_task.delay(
+            # Queue the save operation as a Celery task (fire and forget)
+            save_workflow_execution_task.delay(
                 execution_data=execution_data,
                 tenant_id=self._tenant_id,
                 app_id=self._app_id or "",
@@ -129,9 +116,6 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
                 creator_user_id=self._creator_user_id,
                 creator_user_role=self._creator_user_role.value,
             )
-
-            # Store the task result for potential status checking
-            self._pending_saves[execution.id_] = task_result
 
             logger.debug("Queued async save for workflow execution: %s", execution.id_)
 
@@ -141,51 +125,4 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             # For now, we'll re-raise the exception
             raise
 
-    def wait_for_pending_saves(self, timeout: Optional[int] = None) -> None:
-        """
-        Wait for all pending save operations to complete.
 
-        This method is useful for ensuring data consistency when immediate
-        persistence is required (e.g., during testing or critical operations).
-
-        Args:
-            timeout: Maximum time to wait for all operations (uses instance timeout if None)
-        """
-        wait_timeout = timeout or self._async_timeout
-
-        for execution_id, task_result in list(self._pending_saves.items()):
-            try:
-                if not task_result.ready():
-                    logger.debug("Waiting for save operation to complete: %s", execution_id)
-                    task_result.get(timeout=wait_timeout)
-                # Remove completed task
-                del self._pending_saves[execution_id]
-            except Exception as e:
-                logger.exception("Failed to wait for save operation %s", execution_id)
-
-    def get_pending_save_count(self) -> int:
-        """
-        Get the number of pending save operations.
-
-        Returns:
-            Number of save operations still in progress
-        """
-        # Clean up completed tasks
-        completed_ids = []
-        for execution_id, task_result in self._pending_saves.items():
-            if task_result.ready():
-                completed_ids.append(execution_id)
-
-        for execution_id in completed_ids:
-            del self._pending_saves[execution_id]
-
-        return len(self._pending_saves)
-
-    def clear_pending_saves(self) -> None:
-        """
-        Clear all pending save operations without waiting for completion.
-
-        This method is useful for cleanup operations or when canceling workflows.
-        """
-        self._pending_saves.clear()
-        logger.debug("Cleared all pending save operations")

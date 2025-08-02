@@ -578,11 +578,7 @@ class RepositoryConfig(BaseSettings):
         default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
     )
 
-    # Celery repository configuration
-    CELERY_REPOSITORY_ASYNC_TIMEOUT: int = Field(
-        description="Timeout in seconds for Celery repository async operations",
-        default=30,
-    )
+
 
 
 class AuthConfig(BaseSettings):
