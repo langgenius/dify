@@ -8,7 +8,7 @@ import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
 import Input from '@/app/components/base/input'
 import type { VarType } from '@/app/components/workflow/types'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import type { ToastHandle } from '@/app/components/base/toast'
 import Toast from '@/app/components/base/toast'
 import { useDebounceFn } from 'ahooks'
@@ -62,7 +62,7 @@ const OutputVarList: FC<Props> = ({
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
 
-      replaceSpaceWithUnderscreInVarNameInput(e.target)
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const newKey = e.target.value
 
       toastHandler?.clear?.()
