@@ -159,9 +159,21 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     return currentConversationId
   }, [currentConversationId, newConversationId])
 
-  const { data: appPinnedConversationData, mutate: mutateAppPinnedConversationData } = useSWR(['appConversationData', isInstalledApp, appId, true], () => fetchConversations(isInstalledApp, appId, undefined, true, 100))
-  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
+  const { data: appPinnedConversationData, mutate: mutateAppPinnedConversationData } = useSWR(
+    appId ? ['appConversationData', isInstalledApp, appId, true] : null,
+    () => fetchConversations(isInstalledApp, appId, undefined, true, 100),
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  )
+  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(
+    appId ? ['appConversationData', isInstalledApp, appId, false] : null,
+    () => fetchConversations(isInstalledApp, appId, undefined, false, 100),
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  )
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
+    chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
+    () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  )
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
