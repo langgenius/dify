@@ -188,7 +188,9 @@ class TestAppParameterApi:
     def test_get_parameters_from_feature_dict_called_without_output_form(
         self, mock_get_params, app, mock_app_model, mock_end_user
     ):
-        """Test that get_parameters_from_feature_dict is called with empty workflow_output_form for non-workflow modes."""
+        """
+        Test that get_parameters_from_feature_dict is called with empty workflow_output_form for non-workflow modes.
+        """
         # Arrange
         mock_app_model.mode = AppMode.CHAT.value
         mock_app_model_config = MagicMock()
