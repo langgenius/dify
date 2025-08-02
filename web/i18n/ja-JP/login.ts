@@ -78,7 +78,6 @@ const translation = {
     didNotReceiveCode: 'コードが届きませんか？',
     resend: '再送',
     verificationCode: '認証コード',
-    tips: '<strong>確認コードを{{email}}に送信します。</strong>',
     validTime: 'コードは 5 分間有効であることに注意してください',
     emptyCode: 'コードが必要です',
     checkYourEmail: 'メールをチェックしてください',

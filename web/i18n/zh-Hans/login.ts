@@ -79,7 +79,6 @@ const translation = {
   validate: '验证',
   checkCode: {
     checkYourEmail: '验证您的电子邮件',
-    tips: '验证码已经发送到您的邮箱 <strong>{{email}}</strong>',
     validTime: '请注意验证码 5 分钟内有效',
     verificationCode: '验证码',
     verificationCodePlaceholder: '输入 6 位验证码',

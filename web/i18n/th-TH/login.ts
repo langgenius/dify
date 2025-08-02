@@ -79,7 +79,6 @@ const translation = {
   validate: 'ตรวจ สอบ',
   checkCode: {
     checkYourEmail: 'ตรวจสอบอีเมลของคุณ',
-    tips: 'เราส่งรหัสยืนยันไปที่ <strong>{{email}}</strong>',
     validTime: 'โปรดทราบว่ารหัสนี้ใช้ได้นาน 5 นาที',
     verificationCode: 'รหัสยืนยัน',
     verificationCodePlaceholder: 'ป้อนรหัส 6 หลัก',

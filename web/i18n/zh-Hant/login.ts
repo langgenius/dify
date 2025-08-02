@@ -76,7 +76,6 @@ const translation = {
     didNotReceiveCode: '沒有收到驗證碼？',
     emptyCode: '驗證碼是必需的',
     checkYourEmail: '檢查您的電子郵件',
-    tips: '我們將驗證碼發送到 <strong>{{email}}</strong>',
     verificationCodePlaceholder: '輸入 6 位代碼',
     useAnotherMethod: '使用其他方法',
     validTime: '請記住，該代碼的有效期為 5 分鐘',

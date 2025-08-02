@@ -70,13 +70,11 @@ const translation = {
   activated: 'Entrar agora',
   adminInitPassword: 'Senha de inicialização do administrador',
   validate: 'Validar',
-  sso: 'Continuar com SSO',
   checkCode: {
     useAnotherMethod: 'Use outro método',
     invalidCode: 'Código inválido',
     verificationCodePlaceholder: 'Digite o código de 6 dígitos',
     checkYourEmail: 'Verifique seu e-mail',
-    tips: 'Enviamos um código de verificação para <strong>{{email}}</strong>',
     emptyCode: 'O código é necessário',
     verify: 'Verificar',
     verificationCode: 'Código de verificação',

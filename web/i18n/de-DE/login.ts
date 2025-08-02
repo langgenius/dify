@@ -79,7 +79,6 @@ const translation = {
     useAnotherMethod: 'Verwenden Sie eine andere Methode',
     validTime: 'Beachten Sie, dass der Code 5 Minuten lang gültig ist',
     emptyCode: 'Code ist erforderlich',
-    tips: 'Wir senden einen Verifizierungscode an <strong>{{email}}</strong>',
     invalidCode: 'Ungültiger Code',
     resend: 'Wieder senden',
   },
