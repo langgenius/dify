@@ -237,7 +237,7 @@ async function main() {
 
     // Filter target keys by file if specified
     const targetKeys = targetFile
-      ? allTargetKeys.filter(key => key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())))
+      ? allTargetKeys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`))
       : allTargetKeys
 
     // Filter languages by target language if specified
@@ -247,7 +247,7 @@ async function main() {
 
     // Filter language keys by file if specified
     const languagesKeys = targetFile
-      ? allLanguagesKeys.map(keys => keys.filter(key => key.startsWith(targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase()))))
+      ? allLanguagesKeys.map(keys => keys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`)))
       : allLanguagesKeys
 
     const keysCount = languagesKeys.map(keys => keys.length)
