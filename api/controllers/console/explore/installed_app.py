@@ -58,21 +58,38 @@ class InstalledAppsListApi(Resource):
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
             user_id = current_user.id
-            res = []
             app_ids = [installed_app["app"].id for installed_app in installed_app_list]
             webapp_settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
+
+            # Pre-filter out apps without setting or with sso_verified
+            filtered_installed_apps = []
+            app_id_to_app_code = {}
+
             for installed_app in installed_app_list:
-                webapp_setting = webapp_settings.get(installed_app["app"].id)
-                if not webapp_setting:
+                app_id = installed_app["app"].id
+                webapp_setting = webapp_settings.get(app_id)
+                if not webapp_setting or webapp_setting.access_mode == "sso_verified":
                     continue
-                if webapp_setting.access_mode == "sso_verified":
-                    continue
-                app_code = AppService.get_app_code_by_id(str(installed_app["app"].id))
-                if EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-                    user_id=user_id,
-                    app_code=app_code,
-                ):
+                app_code = AppService.get_app_code_by_id(str(app_id))
+                app_id_to_app_code[app_id] = app_code
+                filtered_installed_apps.append(installed_app)
+
+            app_codes = list(app_id_to_app_code.values())
+
+            # Batch permission check
+            permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
+                user_id=user_id,
+                app_codes=app_codes,
+            )
+
+            # Keep only allowed apps
+            res = []
+            for installed_app in filtered_installed_apps:
+                app_id = installed_app["app"].id
+                app_code = app_id_to_app_code[app_id]
+                if permissions.get(app_code):
                     res.append(installed_app)
+
             installed_app_list = res
             logger.debug("installed_app_list: %s, user_id: %s", installed_app_list, user_id)
 

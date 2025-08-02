@@ -53,6 +53,16 @@ class EnterpriseService:
             return data.get("result", False)
 
         @classmethod
+        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_codes: list[str]):
+            if not app_codes:
+                return {}
+            body = {"userId": user_id, "appCodes": app_codes}
+            data = EnterpriseRequest.send_request("POST", "/webapp/permission/batch", json=body)
+            if not data:
+                raise ValueError("No data found.")
+            return data.get("permissions", {})
+
+        @classmethod
         def get_app_access_mode_by_id(cls, app_id: str) -> WebAppSettings:
             if not app_id:
                 raise ValueError("app_id must be provided.")
