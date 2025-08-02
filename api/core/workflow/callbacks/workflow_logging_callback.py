@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.graph_engine.entities.event import (
+from core.workflow.events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,

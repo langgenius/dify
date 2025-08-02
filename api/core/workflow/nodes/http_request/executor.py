@@ -14,7 +14,7 @@ from configs import dify_config
 from core.file import file_manager
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 
 from .entities import (
     HttpRequestNodeAuthorization,

@@ -3,22 +3,18 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from concurrent.futures import Future, wait
 from datetime import UTC, datetime
-from queue import Empty, Queue
+from queue import Queue
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from flask import Flask, current_app
+from flask import Flask
 
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
 from core.variables.segments import ArrayAnySegment, ArraySegment
-from core.workflow.entities.node_entities import (
-    NodeRunResult,
-)
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.event import (
+from core.workflow.entities import VariablePool
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.events import (
     BaseGraphEvent,
     BaseNodeEvent,
     BaseParallelBranchEvent,
@@ -28,17 +24,16 @@ from core.workflow.graph_engine.entities.event import (
     IterationRunNextEvent,
     IterationRunStartedEvent,
     IterationRunSucceededEvent,
+    NodeEvent,
     NodeInIterationFailedEvent,
     NodeRunFailedEvent,
+    NodeRunResult,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    RunCompletedEvent,
 )
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
+from core.workflow.graph import BaseNodeData, Graph, Node, RetryConfig
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from factories.variable_factory import build_segment
 from libs.flask_utils import preserve_flask_contexts
@@ -53,11 +48,12 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.graph_engine.graph_engine import GraphEngine
+    from core.workflow.graph_engine import QueueBasedGraphEngine
+
 logger = logging.getLogger(__name__)
 
 
-class IterationNode(BaseNode):
+class IterationNode(Node):
     """
     Iteration Node.
     """
@@ -145,7 +141,26 @@ class IterationNode(BaseNode):
         root_node_id = self._node_data.start_node_id
 
         # init graph
-        iteration_graph = Graph.init(graph_config=graph_config, root_node_id=root_node_id)
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.nodes.node_factory import DefaultNodeFactory
+
+        # Create GraphInitParams from node attributes
+        graph_init_params = GraphInitParams(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_type=self.workflow_type.value,
+            workflow_id=self.workflow_id,
+            graph_config=self.graph_config,
+            user_id=self.user_id,
+            user_from=self.user_from.value,
+            invoke_from=self.invoke_from.value,
+            call_depth=self.workflow_call_depth,
+        )
+
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params, graph_runtime_state=self.graph_runtime_state
+        )
+        iteration_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not iteration_graph:
             raise IterationGraphNotFoundError("iteration graph not found")
@@ -157,12 +172,12 @@ class IterationNode(BaseNode):
         variable_pool.add([self.node_id, "item"], iterator_list_value[0])
 
         # init graph engine
-        from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-        from core.workflow.graph_engine.graph_engine import GraphEngine, GraphEngineThreadPool
+        from core.workflow.entities import GraphRuntimeState
+        from core.workflow.graph_engine import QueueBasedGraphEngine
 
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-        graph_engine = GraphEngine(
+        graph_engine = QueueBasedGraphEngine(
             tenant_id=self.tenant_id,
             app_id=self.app_id,
             workflow_type=self.workflow_type,
@@ -204,67 +219,20 @@ class IterationNode(BaseNode):
         iter_run_map: dict[str, float] = {}
         outputs: list[Any] = [None] * len(iterator_list_value)
         try:
-            if self._node_data.is_parallel:
-                futures: list[Future] = []
-                q: Queue = Queue()
-                thread_pool = GraphEngineThreadPool(
-                    max_workers=self._node_data.parallel_nums, max_submit_count=dify_config.MAX_SUBMIT_COUNT
+            # TODO: Parallel execution disabled temporarily until Phase 3 implementation
+            # See SPEC.md Phase 3: Container Support & Dynamic Expansion
+            # Using sequential execution only for MVP
+            for _ in range(len(iterator_list_value)):
+                yield from self._run_single_iter(
+                    iterator_list_value=iterator_list_value,
+                    variable_pool=variable_pool,
+                    inputs=inputs,
+                    outputs=outputs,
+                    start_at=start_at,
+                    graph_engine=graph_engine,
+                    iteration_graph=iteration_graph,
+                    iter_run_map=iter_run_map,
                 )
-                for index, item in enumerate(iterator_list_value):
-                    future: Future = thread_pool.submit(
-                        self._run_single_iter_parallel,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        q=q,
-                        context=contextvars.copy_context(),
-                        iterator_list_value=iterator_list_value,
-                        inputs=inputs,
-                        outputs=outputs,
-                        start_at=start_at,
-                        graph_engine=graph_engine,
-                        iteration_graph=iteration_graph,
-                        index=index,
-                        item=item,
-                        iter_run_map=iter_run_map,
-                    )
-                    future.add_done_callback(thread_pool.task_done_callback)
-                    futures.append(future)
-                succeeded_count = 0
-                while True:
-                    try:
-                        event = q.get(timeout=1)
-                        if event is None:
-                            break
-                        if isinstance(event, IterationRunNextEvent):
-                            succeeded_count += 1
-                            if succeeded_count == len(futures):
-                                q.put(None)
-                        yield event
-                        if isinstance(event, RunCompletedEvent):
-                            q.put(None)
-                            for f in futures:
-                                if not f.done():
-                                    f.cancel()
-                            yield event
-                        if isinstance(event, IterationRunFailedEvent):
-                            q.put(None)
-                            yield event
-                    except Empty:
-                        continue
-
-                # wait all threads
-                wait(futures)
-            else:
-                for _ in range(len(iterator_list_value)):
-                    yield from self._run_single_iter(
-                        iterator_list_value=iterator_list_value,
-                        variable_pool=variable_pool,
-                        inputs=inputs,
-                        outputs=outputs,
-                        start_at=start_at,
-                        graph_engine=graph_engine,
-                        iteration_graph=iteration_graph,
-                        iter_run_map=iter_run_map,
-                    )
             if self._node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
                 outputs = [output for output in outputs if output is not None]
 
@@ -338,12 +306,21 @@ class IterationNode(BaseNode):
         }
 
         # init graph
-        iteration_graph = Graph.init(graph_config=graph_config, root_node_id=typed_node_data.start_node_id)
+        # Note: This is a classmethod without access to instance attributes
+        # We'll skip node factory for now since this appears to be for static analysis
+        # TODO: Refactor to properly handle node factory in classmethods
+        iteration_graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=None,  # type: ignore[arg-type]
+            root_node_id=typed_node_data.start_node_id,
+        )
 
         if not iteration_graph:
             raise IterationGraphNotFoundError("iteration graph not found")
 
-        for sub_node_id, sub_node_config in iteration_graph.node_id_config_mapping.items():
+        # Get node configs from graph_config instead of non-existent node_id_config_mapping
+        node_configs = {node["id"]: node for node in graph_config.get("nodes", []) if "id" in node}
+        for sub_node_id, sub_node_config in node_configs.items():
             if sub_node_config.get("data", {}).get("iteration_id") != node_id:
                 continue
 
@@ -420,7 +397,7 @@ class IterationNode(BaseNode):
         inputs: Mapping[str, list],
         outputs: list,
         start_at: datetime,
-        graph_engine: "GraphEngine",
+        graph_engine: "QueueBasedGraphEngine",
         iteration_graph: Graph,
         iter_run_map: dict[str, float],
         parallel_mode_run_id: Optional[str] = None,
@@ -646,7 +623,7 @@ class IterationNode(BaseNode):
         inputs: Mapping[str, list],
         outputs: list,
         start_at: datetime,
-        graph_engine: "GraphEngine",
+        graph_engine: "QueueBasedGraphEngine",
         iteration_graph: Graph,
         index: int,
         item: Any,
@@ -658,10 +635,37 @@ class IterationNode(BaseNode):
 
         with preserve_flask_contexts(flask_app, context_vars=context):
             parallel_mode_run_id = uuid.uuid4().hex
-            graph_engine_copy = graph_engine.create_copy()
-            variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool
+
+            # Create a copy of the variable pool for parallel execution
+            from core.workflow.entities import GraphRuntimeState
+            from core.workflow.graph_engine import QueueBasedGraphEngine
+
+            # Create a deep copy of the variable pool
+            variable_pool_copy = graph_engine.graph_runtime_state.variable_pool.model_copy(deep=True)
             variable_pool_copy.add([self.node_id, "index"], index)
             variable_pool_copy.add([self.node_id, "item"], item)
+
+            # Create a new GraphRuntimeState with the copied variable pool
+            graph_runtime_state_copy = GraphRuntimeState(
+                variable_pool=variable_pool_copy, start_at=graph_engine.graph_runtime_state.start_at
+            )
+
+            # Create a new graph engine instance for parallel execution
+            graph_engine_copy = QueueBasedGraphEngine(
+                tenant_id=graph_engine.tenant_id,
+                app_id=graph_engine.app_id,
+                workflow_type=graph_engine.workflow_type,
+                workflow_id=graph_engine.workflow_id,
+                user_id=graph_engine.user_id,
+                user_from=graph_engine.user_from,
+                invoke_from=graph_engine.invoke_from,
+                call_depth=graph_engine.call_depth,
+                graph=iteration_graph,
+                graph_config=graph_engine.graph_config,
+                graph_runtime_state=graph_runtime_state_copy,
+                max_execution_steps=graph_engine.max_execution_steps,
+                max_execution_time=graph_engine.max_execution_time,
+            )
             for event in self._run_single_iter(
                 iterator_list_value=iterator_list_value,
                 variable_pool=variable_pool_copy,

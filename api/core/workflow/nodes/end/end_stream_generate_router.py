@@ -1,5 +1,10 @@
+from typing import TYPE_CHECKING
+
+from core.workflow.enums import NodeType
 from core.workflow.nodes.end.entities import EndNodeData, EndStreamParam
-from core.workflow.nodes.enums import NodeType
+
+if TYPE_CHECKING:
+    from core.workflow.graph import Edge
 
 
 class EndStreamGeneratorRouter:
@@ -7,7 +12,7 @@ class EndStreamGeneratorRouter:
     def init(
         cls,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
         node_parallel_mapping: dict[str, str],
     ) -> EndStreamParam:
         """
@@ -88,7 +93,7 @@ class EndStreamGeneratorRouter:
     def _fetch_ends_dependencies(
         cls,
         end_node_ids: list[str],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
         node_id_config_mapping: dict[str, dict],
     ) -> dict[str, list[str]]:
         """
@@ -119,7 +124,7 @@ class EndStreamGeneratorRouter:
         current_node_id: str,
         end_node_id: str,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
         end_dependencies: dict[str, list[str]],
     ) -> None:
         """
@@ -133,7 +138,7 @@ class EndStreamGeneratorRouter:
         """
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
         for edge in reverse_edges:
-            source_node_id = edge.source_node_id
+            source_node_id = edge.tail
             if source_node_id not in node_id_config_mapping:
                 continue
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")

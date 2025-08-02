@@ -1,5 +1,5 @@
 from core.variables.segments import ObjectSegment, Segment
-from core.workflow.entities.variable_pool import VariablePool, VariableValue
+from core.workflow.entities import VariablePool, VariableValue
 
 
 def append_variables_recursively(

@@ -45,8 +45,8 @@ from core.app.entities.task_entities import (
 from core.file import FILE_MODEL_IDENTITY, File
 from core.tools.tool_manager import ToolManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
-from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from core.workflow.entities import WorkflowExecution, WorkflowNodeExecution
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter

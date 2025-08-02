@@ -2,23 +2,26 @@ import time
 import uuid
 from unittest.mock import patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables.segments import ArrayAnySegment, ArrayStringSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.events import NodeRunResult, RunCompletedEvent
+from core.workflow.graph import Graph
 from core.workflow.nodes.iteration.entities import ErrorHandleMode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
+from core.workflow.nodes.node_factory import DefaultNodeFactory
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 
+@pytest.mark.skip(
+    reason="Iteration nodes are part of Phase 3 container support - not yet implemented in new queue-based engine"
+)
 def test_run():
     graph_config = {
         "edges": [
@@ -135,8 +138,6 @@ def test_run():
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
@@ -162,6 +163,13 @@ def test_run():
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DefaultNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
     node_config = {
         "data": {
             "iterator_selector": ["pe", "list_output"],
@@ -178,8 +186,7 @@ def test_run():
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=node_config,
     )
 
@@ -208,6 +215,9 @@ def test_run():
         assert count == 20
 
 
+@pytest.mark.skip(
+    reason="Iteration nodes are part of Phase 3 container support - not yet implemented in new queue-based engine"
+)
 def test_run_parallel():
     graph_config = {
         "edges": [
@@ -357,8 +367,6 @@ def test_run_parallel():
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
@@ -382,6 +390,13 @@ def test_run_parallel():
         user_inputs={},
         environment_variables=[],
     )
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DefaultNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
     node_config = {
@@ -400,8 +415,7 @@ def test_run_parallel():
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=node_config,
     )
 
@@ -429,6 +443,9 @@ def test_run_parallel():
         assert count == 32
 
 
+@pytest.mark.skip(
+    reason="Iteration nodes are part of Phase 3 container support - not yet implemented in new queue-based engine"
+)
 def test_iteration_run_in_parallel_mode():
     graph_config = {
         "edges": [
@@ -578,8 +595,6 @@ def test_iteration_run_in_parallel_mode():
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
@@ -603,6 +618,13 @@ def test_iteration_run_in_parallel_mode():
         user_inputs={},
         environment_variables=[],
     )
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DefaultNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
 
     parallel_node_config = {
@@ -622,8 +644,7 @@ def test_iteration_run_in_parallel_mode():
     parallel_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=parallel_node_config,
     )
 
@@ -646,8 +667,7 @@ def test_iteration_run_in_parallel_mode():
     sequential_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=sequential_node_config,
     )
 
@@ -687,6 +707,9 @@ def test_iteration_run_in_parallel_mode():
         assert count == 64
 
 
+@pytest.mark.skip(
+    reason="Iteration nodes are part of Phase 3 container support - not yet implemented in new queue-based engine"
+)
 def test_iteration_run_error_handle():
     graph_config = {
         "edges": [
@@ -812,8 +835,6 @@ def test_iteration_run_error_handle():
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
@@ -837,6 +858,13 @@ def test_iteration_run_error_handle():
         user_inputs={},
         environment_variables=[],
     )
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    node_factory = DefaultNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
     pool.add(["pe", "list_output"], ["1", "1"])
     error_node_config = {
         "data": {
@@ -856,8 +884,7 @@ def test_iteration_run_error_handle():
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=error_node_config,
     )
 

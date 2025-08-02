@@ -25,11 +25,9 @@ from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import ArrayStringSegment, FileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.events import NodeRunResult
+from core.workflow.graph import BaseNodeData, Node, RetryConfig
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
@@ -37,7 +35,7 @@ from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError,
 logger = logging.getLogger(__name__)
 
 
-class DocumentExtractorNode(BaseNode):
+class DocumentExtractorNode(Node):
     """
     Extracts text content from various file types.
     Supports plain text, PDF, and DOC/DOCX files.

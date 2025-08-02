@@ -24,7 +24,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -162,7 +162,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=self._workflow.graph_dict)
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+            )
 
         db.session.close()
 

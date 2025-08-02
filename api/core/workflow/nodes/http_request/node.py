@@ -7,12 +7,10 @@ from configs import dify_config
 from core.file import File, FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.segments import ArrayFileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.events import NodeRunResult
+from core.workflow.graph import BaseNodeData, Node, RetryConfig
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
 from factories import file_factory
@@ -33,7 +31,7 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
 logger = logging.getLogger(__name__)
 
 
-class HttpRequestNode(BaseNode):
+class HttpRequestNode(Node):
     _node_type = NodeType.HTTP_REQUEST
 
     _node_data: HttpRequestNodeData

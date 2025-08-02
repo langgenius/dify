@@ -2,17 +2,19 @@ import datetime
 import enum
 import re
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 from werkzeug.exceptions import NotFound
 
-from core.agent.plugin_entities import AgentStrategyProviderEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
-from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderEntity
+
+if TYPE_CHECKING:
+    from core.agent.plugin_entities import AgentStrategyProviderEntity
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_entities import ToolProviderEntity
 
 
 class PluginInstallationSource(enum.StrEnum):
@@ -77,10 +79,10 @@ class PluginDeclaration(BaseModel):
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
-    description: I18nObject
+    description: "I18nObject"
     icon: str
     icon_dark: Optional[str] = Field(default=None)
-    label: I18nObject
+    label: "I18nObject"
     category: PluginCategory
     created_at: datetime.datetime
     resource: PluginResourceRequirements
@@ -88,10 +90,10 @@ class PluginDeclaration(BaseModel):
     tags: list[str] = Field(default_factory=list)
     repo: Optional[str] = Field(default=None)
     verified: bool = Field(default=False)
-    tool: Optional[ToolProviderEntity] = None
+    tool: Optional["ToolProviderEntity"] = None
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
-    agent_strategy: Optional[AgentStrategyProviderEntity] = None
+    agent_strategy: Optional["AgentStrategyProviderEntity"] = None
     meta: Meta
 
     @model_validator(mode="before")

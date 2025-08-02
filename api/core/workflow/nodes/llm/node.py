@@ -50,22 +50,25 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.event import InNodeEvent
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import (
+from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeType,
+    SystemVariableKey,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from core.workflow.events import (
+    InNodeEvent,
     ModelInvokeCompletedEvent,
     NodeEvent,
+    NodeRunResult,
     RunCompletedEvent,
     RunRetrieverResourceEvent,
     RunStreamChunkEvent,
 )
+from core.workflow.graph import BaseNodeData, Node, RetryConfig
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 from . import llm_utils
@@ -89,12 +92,12 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 
-class LLMNode(BaseNode):
+class LLMNode(Node):
     _node_type = NodeType.LLM
 
     _node_data: LLMNodeData
@@ -110,7 +113,6 @@ class LLMNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
@@ -121,7 +123,6 @@ class LLMNode(BaseNode):
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
             previous_node_id=previous_node_id,
             thread_pool_id=thread_pool_id,
@@ -811,6 +812,8 @@ class LLMNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
+        _ = graph_config  # Explicitly mark as unused
         # Create typed NodeData from dict
         typed_node_data = LLMNodeData.model_validate(node_data)
 

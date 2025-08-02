@@ -3,19 +3,19 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import UserFrom
-from models.workflow import WorkflowType
-
 
 class GraphInitParams(BaseModel):
     # init params
     tenant_id: str = Field(..., description="tenant / workspace id")
     app_id: str = Field(..., description="app id")
-    workflow_type: WorkflowType = Field(..., description="workflow type")
+    workflow_type: str = Field(..., description="workflow type")  # Should be WorkflowType enum: 'workflow' | 'chat'
     workflow_id: str = Field(..., description="workflow id")
     graph_config: Mapping[str, Any] = Field(..., description="graph config")
     user_id: str = Field(..., description="user id")
-    user_from: UserFrom = Field(..., description="user from, account or end-user")
-    invoke_from: InvokeFrom = Field(..., description="invoke from, service-api, web-app, explore or debugger")
+    user_from: str = Field(
+        ..., description="user from, account or end-user"
+    )  # Should be UserFrom enum: 'account' | 'end-user'
+    invoke_from: str = Field(
+        ..., description="invoke from, service-api, web-app, explore or debugger"
+    )  # Should be InvokeFrom enum: 'service-api' | 'web-app' | 'explore' | 'debugger'
     call_depth: int = Field(..., description="call depth")

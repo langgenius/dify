@@ -10,7 +10,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -93,7 +93,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=self._workflow.graph_dict)
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+            )
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(

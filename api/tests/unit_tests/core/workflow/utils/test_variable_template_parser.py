@@ -1,6 +1,6 @@
 import dataclasses
 
-from core.workflow.entities.variable_entities import VariableSelector
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.utils import variable_template_parser
 
 

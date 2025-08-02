@@ -6,10 +6,8 @@ from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import sign_tool_file
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -163,6 +161,8 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list:
+        from core.plugin.entities.plugin import GenericProviderID
+        from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
         from services.plugin.plugin_service import PluginService
 
@@ -178,6 +178,7 @@ class App(Base):
         tools = agent_mode.get("tools", [])
 
         api_provider_ids: list[str] = []
+
         builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:

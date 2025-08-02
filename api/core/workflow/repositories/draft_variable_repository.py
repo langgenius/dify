@@ -4,7 +4,7 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 
 
 class DraftVariableSaver(Protocol):

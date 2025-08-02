@@ -10,16 +10,13 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.graph_engine.graph_engine import GraphEngine
+from core.workflow.events import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent, NodeEvent
+from core.workflow.graph import Graph, Node
+from core.workflow.graph_engine import QueueBasedGraphEngine
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import NodeEvent
+from core.workflow.nodes.node_factory import DefaultNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
@@ -71,7 +68,7 @@ class WorkflowEntry:
 
         # init workflow run state
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-        self.graph_engine = GraphEngine(
+        self.graph_engine = QueueBasedGraphEngine(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_type=workflow_type,
@@ -125,7 +122,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
+    ) -> tuple[Node, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -142,26 +139,35 @@ class WorkflowEntry:
         node_version = node_config_data.get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
+        # init graph init params and runtime state
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_type=WorkflowType.value_of(workflow.type),
+            workflow_id=workflow.id,
+            graph_config=workflow.graph_dict,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+        # init node factory
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=workflow.graph_dict)
+        graph = Graph.init(graph_config=workflow.graph_dict, node_factory=node_factory)
 
         # init workflow run state
         node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
-            graph_init_params=GraphInitParams(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                workflow_type=WorkflowType.value_of(workflow.type),
-                workflow_id=workflow.id,
-                graph_config=workflow.graph_dict,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-                call_depth=0,
-            ),
-            graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
         node.init_node_data(node_config_data)
 
@@ -203,10 +209,56 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
         return node, generator
 
+    @staticmethod
+    def _create_single_node_graph(
+        node_id: str,
+        node_data: dict[str, Any],
+        node_width: int = 114,
+        node_height: int = 514,
+    ) -> dict[str, Any]:
+        """
+        Create a minimal graph structure for testing a single node in isolation.
+
+        :param node_id: ID of the target node
+        :param node_data: configuration data for the target node
+        :param node_width: width for UI layout (default: 200)
+        :param node_height: height for UI layout (default: 100)
+        :return: graph dictionary with start node and target node
+        """
+        node_config = {
+            "id": node_id,
+            "width": node_width,
+            "height": node_height,
+            "type": "custom",
+            "data": node_data,
+        }
+        start_node_config = {
+            "id": "start",
+            "width": node_width,
+            "height": node_height,
+            "type": "custom",
+            "data": {
+                "type": NodeType.START.value,
+                "title": "Start",
+                "desc": "Start",
+            },
+        }
+        return {
+            "nodes": [start_node_config, node_config],
+            "edges": [
+                {
+                    "source": "start",
+                    "target": node_id,
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                }
+            ],
+        }
+
     @classmethod
     def run_free_node(
         cls, node_data: dict, node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
+    ) -> tuple[Node, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Run free node
 
@@ -219,30 +271,8 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        # generate a fake graph
-        node_config = {"id": node_id, "width": 114, "height": 514, "type": "custom", "data": node_data}
-        start_node_config = {
-            "id": "start",
-            "width": 114,
-            "height": 514,
-            "type": "custom",
-            "data": {
-                "type": NodeType.START.value,
-                "title": "Start",
-                "desc": "Start",
-            },
-        }
-        graph_dict = {
-            "nodes": [start_node_config, node_config],
-            "edges": [
-                {
-                    "source": "start",
-                    "target": node_id,
-                    "sourceHandle": "source",
-                    "targetHandle": "target",
-                }
-            ],
-        }
+        # Create a minimal graph for single node execution
+        graph_dict = cls._create_single_node_graph(node_id, node_data)
 
         node_type = NodeType(node_data.get("type", ""))
         if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
@@ -252,8 +282,6 @@ class WorkflowEntry:
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
-        graph = Graph.init(graph_config=graph_dict)
-
         # init variable pool
         variable_pool = VariablePool(
             system_variables=SystemVariable.empty(),
@@ -261,24 +289,40 @@ class WorkflowEntry:
             environment_variables=[],
         )
 
-        node_cls = cast(type[BaseNode], node_cls)
+        # init graph init params and runtime state
+        graph_init_params = GraphInitParams(
+            tenant_id=tenant_id,
+            app_id="",
+            workflow_type=WorkflowType.WORKFLOW,
+            workflow_id="",
+            graph_config=graph_dict,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+        # init node factory
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
+        # init graph
+        graph = Graph.init(graph_config=graph_dict, node_factory=node_factory)
+
+        node_cls = cast(type[Node], node_cls)
         # init workflow run state
-        node: BaseNode = node_cls(
+        node_config = {
+            "id": node_id,
+            "data": node_data,
+        }
+        node: Node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
-            graph_init_params=GraphInitParams(
-                tenant_id=tenant_id,
-                app_id="",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="",
-                graph_config=graph_dict,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-                call_depth=0,
-            ),
-            graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
         node.init_node_data(node_data)
 

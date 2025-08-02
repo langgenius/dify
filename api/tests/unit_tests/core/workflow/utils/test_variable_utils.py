@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.variables.segments import ObjectSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.utils.variable_utils import append_variables_recursively
 
 

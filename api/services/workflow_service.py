@@ -15,16 +15,12 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from core.workflow.entities import VariablePool, WorkflowNodeExecution
+from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import InNodeEvent
+from core.workflow.events import InNodeEvent, NodeEvent, NodeRunResult, RunCompletedEvent
+from core.workflow.graph import Node
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy
-from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.system_variable import SystemVariable
@@ -462,7 +458,7 @@ class WorkflowService:
 
     def _handle_node_run_result(
         self,
-        invoke_node_fn: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
+        invoke_node_fn: Callable[[], tuple[Node, Generator[NodeEvent | InNodeEvent, None, None]]],
         start_at: float,
         node_id: str,
     ) -> WorkflowNodeExecution:

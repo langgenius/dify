@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.tools.entities.tool_entities import ToolSelector
-from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.graph import BaseNodeData
 
 
 class AgentNodeData(BaseNodeData):

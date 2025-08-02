@@ -1,7 +1,9 @@
+import time
 from collections.abc import Mapping
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -28,9 +30,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_engine.entities.event import (
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowType
+from core.workflow.events import (
     AgentLogEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
@@ -58,12 +60,14 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
 )
-from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph import Graph
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.node_factory import DefaultNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from models.enums import UserFrom
 from models.workflow import Workflow
 
 
@@ -79,7 +83,7 @@ class WorkflowBasedAppRunner:
         self._variable_loader = variable_loader
         self._app_id = app_id
 
-    def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
+    def _init_graph(self, graph_config: Mapping[str, Any], workflow_id: str = "", tenant_id: str = "") -> Graph:
         """
         Init graph
         """
@@ -91,8 +95,32 @@ class WorkflowBasedAppRunner:
 
         if not isinstance(graph_config.get("edges"), list):
             raise ValueError("edges in workflow graph must be a list")
+
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=tenant_id or "",
+            app_id=self._app_id,
+            workflow_type=WorkflowType.WORKFLOW.value,
+            workflow_id=workflow_id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.empty(),
+            start_at=time.time(),
+        )
+
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -145,8 +173,31 @@ class WorkflowBasedAppRunner:
 
         graph_config["edges"] = edge_configs
 
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            workflow_type=WorkflowType.WORKFLOW.value,
+            workflow_id=workflow.id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.empty(),
+            start_at=time.time(),
+        )
+
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config, root_node_id=node_id)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -242,8 +293,31 @@ class WorkflowBasedAppRunner:
 
         graph_config["edges"] = edge_configs
 
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            workflow_type=WorkflowType.WORKFLOW.value,
+            workflow_id=workflow.id,
+            graph_config=graph_config,
+            user_id="",
+            user_from=UserFrom.ACCOUNT.value,
+            invoke_from=InvokeFrom.SERVICE_API.value,
+            call_depth=0,
+        )
+
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.empty(),
+            start_at=time.time(),
+        )
+
+        node_factory = DefaultNodeFactory(
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
         # init graph
-        graph = Graph.init(graph_config=graph_config, root_node_id=node_id)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")

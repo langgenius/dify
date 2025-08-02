@@ -3,28 +3,27 @@ from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
+from core.app.entities.app_invoke_entities import InvokeFrom
+from models.enums import UserFrom
+from models.workflow import WorkflowType
+
+from .base_entities import BaseNodeData, RetryConfig
 
 if TYPE_CHECKING:
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-    from core.workflow.graph_engine.entities.event import InNodeEvent
-
+    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.enums import ErrorStrategy, NodeType
+    from core.workflow.events import InNodeEvent, NodeEvent, NodeRunResult
 logger = logging.getLogger(__name__)
 
 
-class BaseNode:
-    _node_type: ClassVar[NodeType]
+class Node:
+    _node_type: ClassVar["NodeType"]
 
     def __init__(
         self,
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
@@ -32,14 +31,13 @@ class BaseNode:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
-        self.workflow_type = graph_init_params.workflow_type
+        self.workflow_type = WorkflowType(graph_init_params.workflow_type)
         self.workflow_id = graph_init_params.workflow_id
         self.graph_config = graph_init_params.graph_config
         self.user_id = graph_init_params.user_id
-        self.user_from = graph_init_params.user_from
-        self.invoke_from = graph_init_params.invoke_from
+        self.user_from = UserFrom(graph_init_params.user_from)
+        self.invoke_from = InvokeFrom(graph_init_params.invoke_from)
         self.workflow_call_depth = graph_init_params.call_depth
-        self.graph = graph
         self.graph_runtime_state = graph_runtime_state
         self.previous_node_id = previous_node_id
         self.thread_pool_id = thread_pool_id
@@ -54,14 +52,17 @@ class BaseNode:
     def init_node_data(self, data: Mapping[str, Any]) -> None: ...
 
     @abstractmethod
-    def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
+    def _run(self) -> "NodeRunResult | Generator[Union[NodeEvent, InNodeEvent], None, None]":
         """
         Run node
         :return:
         """
         raise NotImplementedError
 
-    def run(self) -> Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
+    def run(self) -> "Generator[Union[NodeEvent, InNodeEvent], None, None]":
+        from core.workflow.enums import WorkflowNodeExecutionStatus
+        from core.workflow.events import NodeRunResult, RunCompletedEvent
+
         try:
             result = self._run()
         except Exception as e:
@@ -145,7 +146,7 @@ class BaseNode:
         return {}
 
     @property
-    def type_(self) -> NodeType:
+    def type_(self) -> "NodeType":
         return self._node_type
 
     @classmethod
@@ -170,7 +171,7 @@ class BaseNode:
     # to BaseNodeData properties in a type-safe way
 
     @abstractmethod
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> Optional["ErrorStrategy"]:
         """Get the error strategy for this node."""
         ...
 
@@ -201,7 +202,7 @@ class BaseNode:
 
     # Public interface properties that delegate to abstract methods
     @property
-    def error_strategy(self) -> Optional[ErrorStrategy]:
+    def error_strategy(self) -> Optional["ErrorStrategy"]:
         """Get the error strategy for this node."""
         return self._get_error_strategy()
 

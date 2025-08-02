@@ -1,5 +1,5 @@
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
+from core.workflow.graph.node import Node
 
 # Ensures that all node classes are imported.
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
@@ -7,7 +7,7 @@ from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 _ = NODE_TYPE_CLASSES_MAPPING
 
 
-def _get_all_subclasses(root: type[BaseNode]) -> list[type[BaseNode]]:
+def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:
     subclasses = []
     queue = [root]
     while queue:
@@ -20,7 +20,7 @@ def _get_all_subclasses(root: type[BaseNode]) -> list[type[BaseNode]]:
 
 
 def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined():
-    classes = _get_all_subclasses(BaseNode)  # type: ignore
+    classes = _get_all_subclasses(Node)  # type: ignore
     type_version_set: set[tuple[NodeType, str]] = set()
 
     for cls in classes:
