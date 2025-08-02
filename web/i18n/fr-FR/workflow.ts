@@ -430,6 +430,7 @@ const translation = {
         variable: 'Variable',
       },
       sysQueryInUser: 'sys.query dans le message utilisateur est requis',
+      llmUsage: 'Informations d\'utilisation LLM',
       jsonSchema: {
         warningTips: {
           saveSchema: 'Veuillez terminer la modification du champ actuel avant d\'enregistrer le schéma.',

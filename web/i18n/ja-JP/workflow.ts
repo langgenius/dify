@@ -435,6 +435,7 @@ const translation = {
         variable: '変数',
       },
       sysQueryInUser: 'ユーザーメッセージに sys.query を含めてください',
+      llmUsage: 'LLM 使用情報',
       jsonSchema: {
         title: '構造化データスキーマ',
         instruction: '指示',
