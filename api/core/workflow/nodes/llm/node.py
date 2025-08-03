@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -34,12 +34,10 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
-    AIModelEntity,
     ModelFeature,
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -1099,21 +1097,6 @@ class LLMNode(BaseNode):
                 file_type=FileType.IMAGE,
             )
         return saved_file
-
-    def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
-        """
-        Fetch model schema
-        """
-        model_name = self._node_data.model.name
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
-        )
-        model_type_instance = model_instance.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-        model_credentials = model_instance.credentials
-        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
-        return model_schema
 
     @staticmethod
     def fetch_structured_output_schema(
