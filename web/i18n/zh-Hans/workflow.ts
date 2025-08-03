@@ -920,6 +920,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',

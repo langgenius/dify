@@ -2,6 +2,7 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import { useNodesSyncDraft, useWorkflowRun } from '../../hooks'
 import { useStore, useWorkflowStore } from '../../store'
 import { VersionHistoryContextMenuOptions, WorkflowVersionFilterOptions } from '../../types'
@@ -98,6 +99,13 @@ const VersionHistoryPanel = () => {
         break
       case VersionHistoryContextMenuOptions.delete:
         setDeleteConfirmOpen(true)
+        break
+      case VersionHistoryContextMenuOptions.copyId:
+        copy(item.id)
+        Toast.notify({
+          type: 'success',
+          message: t('workflow.versionHistory.action.copyIdSuccess'),
+        })
         break
     }
   }, [t])

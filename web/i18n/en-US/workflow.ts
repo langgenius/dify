@@ -920,6 +920,7 @@ const translation = {
     defaultName: 'Untitled Version',
     nameThisVersion: 'Name this version',
     editVersionInfo: 'Edit version info',
+    copyId: 'Copy ID',
     editField: {
       title: 'Title',
       releaseNotes: 'Release Notes',
