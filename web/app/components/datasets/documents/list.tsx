@@ -7,13 +7,13 @@ import { pick, uniq } from 'lodash-es'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
+  RiDownloadLine,
   RiEditLine,
   RiEqualizer2Line,
   RiLoopLeftLine,
   RiMoreFill,
   RiPauseCircleLine,
   RiPlayCircleLine,
-  RiDownloadLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
@@ -191,7 +191,7 @@ export const OperationAction: FC<{
   scene?: 'list' | 'detail'
   className?: string
 }> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const downloadDocument = useDocumentDownload();
+  const downloadDocument = useDocumentDownload()
   const { id, enabled = false, archived = false, data_source_type, display_status } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -307,17 +307,17 @@ export const OperationAction: FC<{
           <button
             className={cn('mr-2 cursor-pointer rounded-lg',
               !isListScene
-                ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
+                ? 'shadow-shadow-3 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
                 : 'p-0.5 hover:bg-state-base-hover')}
             onClick={() => {
               downloadDocument.mutateAsync({
                 datasetId,
-                documentId: detail.id
-              }).then(response => {
-                if (response.download_url) {
+                documentId: detail.id,
+              }).then((response) => {
+                if (response.download_url)
                   window.location.href = response.download_url
-                }
-              }).catch(error => {
+              }).catch((error) => {
+                console.error(error)
                 notify({ type: 'error', message: t('common.actionMsg.downloadFailed') })
               })
             }}
