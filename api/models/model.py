@@ -306,8 +306,8 @@ class AppModelConfig(Base):
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id = mapped_column(StringUUID, nullable=False)
-    provider = mapped_column(String(255), nullable=True)
-    model_id = mapped_column(String(255), nullable=True)
+    provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     configs = mapped_column(sa.JSON, nullable=True)
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -621,9 +621,9 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
-    model_provider = mapped_column(String(255), nullable=True)
+    model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(sa.Text)
-    model_id = mapped_column(String(255), nullable=True)
+    model_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     mode: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(sa.Text)
@@ -637,7 +637,7 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # ref: ConversationSource.
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -898,8 +898,8 @@ class Message(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id = mapped_column(StringUUID, nullable=False)
-    model_provider = mapped_column(String(255), nullable=True)
-    model_id = mapped_column(String(255), nullable=True)
+    model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(sa.Text)
     conversation_id = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
     _inputs: Mapped[dict] = mapped_column("inputs", sa.JSON)
@@ -1440,7 +1440,7 @@ class EndUser(Base, UserMixin):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    external_user_id = mapped_column(String(255), nullable=True)
+    external_user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
     is_anonymous: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     session_id: Mapped[str] = mapped_column()
@@ -1494,7 +1494,7 @@ class Site(Base):
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    icon_type = mapped_column(String(255), nullable=True)
+    icon_type: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     icon = mapped_column(String(255))
     icon_background = mapped_column(String(255))
     description = mapped_column(sa.Text)
@@ -1846,7 +1846,7 @@ class TraceAppConfig(Base):
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id = mapped_column(StringUUID, nullable=False)
-    tracing_provider = mapped_column(String(255), nullable=True)
+    tracing_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tracing_config = mapped_column(sa.JSON, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(

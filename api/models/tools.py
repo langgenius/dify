@@ -132,7 +132,7 @@ class ApiToolProvider(Base):
     # json format credentials
     credentials_str = mapped_column(sa.Text, nullable=False)
     # privacy policy
-    privacy_policy = mapped_column(String(255), nullable=True)
+    privacy_policy: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 

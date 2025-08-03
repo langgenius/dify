@@ -60,8 +60,8 @@ class Dataset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    embedding_model = mapped_column(String(255), nullable=True)
-    embedding_model_provider = mapped_column(String(255), nullable=True)
+    embedding_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    embedding_model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
@@ -363,7 +363,7 @@ class Document(Base):
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    archived_reason = mapped_column(String(255), nullable=True)
+    archived_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     archived_by = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -372,7 +372,7 @@ class Document(Base):
     doc_form: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text_model'::character varying")
     )
-    doc_language = mapped_column(String(255), nullable=True)
+    doc_language: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -672,8 +672,8 @@ class DocumentSegment(Base):
 
     # indexing fields
     keywords = mapped_column(sa.JSON, nullable=True)
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
+    index_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    index_node_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -817,8 +817,8 @@ class ChildChunk(Base):
     content = mapped_column(sa.Text, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
+    index_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    index_node_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     type: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'automatic'::character varying")
     )
