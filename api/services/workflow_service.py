@@ -444,9 +444,9 @@ class WorkflowService:
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
         """
-        Run draft workflow node
+        Run free workflow node
         """
-        # run draft workflow node
+        # run free workflow node
         start_at = time.perf_counter()
 
         node_execution = self._handle_node_run_result(
