@@ -17,7 +17,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, fetchAppList, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppWithTags, updateAppInfo } from '@/service/apps'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -86,14 +86,10 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         setTags(appDetail.tags)
       }
  else {
-        // Fallback: fetch from app list API to get tags - this is the key difference
+        // Fallback: use dedicated function to get app with tags
         try {
-          const appListResponse = await fetchAppList({
-            url: '/apps',
-            params: { page: 1, limit: 100 },
-          })
-          const appWithTags = appListResponse.data.find((app: any) => app.id === appDetail.id)
-          if (appWithTags && appWithTags.tags)
+          const appWithTags = await fetchAppWithTags(appDetail.id)
+          if (appWithTags?.tags)
             setTags(appWithTags.tags)
            else
             setTags([])

@@ -60,6 +60,21 @@ export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
   return del<CommonResponse>(`apps/${appID}`)
 }
 
+export const fetchAppWithTags = async (appID: string) => {
+  try {
+    const appListResponse = await fetchAppList({
+      url: '/apps',
+      params: { page: 1, limit: 100 },
+    })
+    const appWithTags = appListResponse.data.find(app => app.id === appID)
+    return appWithTags || null
+  }
+ catch (error) {
+    console.warn('Failed to fetch app with tags:', error)
+    return null
+  }
+}
+
 export const updateAppSiteStatus: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<AppDetailResponse>(url, { body })
 }
