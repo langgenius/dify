@@ -326,7 +326,9 @@ class AppModelConfig(Base):
     agent_mode = mapped_column(sa.Text)
     sensitive_word_avoidance = mapped_column(sa.Text)
     retriever_resource = mapped_column(sa.Text)
-    prompt_type = mapped_column(String(255), nullable=False, server_default=sa.text("'simple'::character varying"))
+    prompt_type: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'simple'::character varying")
+    )
     chat_prompt_config = mapped_column(sa.Text)
     completion_prompt_config = mapped_column(sa.Text)
     dataset_configs = mapped_column(sa.Text)
@@ -568,7 +570,9 @@ class RecommendedApp(Base):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
+    language: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'en-US'::character varying")
+    )
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -912,7 +916,9 @@ class Message(Base):
     provider_response_latency = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_price = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     error = mapped_column(sa.Text)
     message_metadata = mapped_column(sa.Text)
     invoke_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -1455,7 +1461,9 @@ class AppMCPServer(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     parameters = mapped_column(sa.Text, nullable=False)
 
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1501,7 +1509,9 @@ class Site(Base):
     customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
+    )
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)

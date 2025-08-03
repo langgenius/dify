@@ -269,7 +269,9 @@ class DatasetProcessRule(Base):
 
     id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
-    mode = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'::character varying"))
+    mode: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'automatic'::character varying")
+    )
     rules = mapped_column(sa.Text, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -354,7 +356,9 @@ class Document(Base):
     stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # basic fields
-    indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'::character varying"))
+    indexing_status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'waiting'::character varying")
+    )
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
@@ -365,7 +369,9 @@ class Document(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
-    doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'::character varying"))
+    doc_form: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'text_model'::character varying")
+    )
     doc_language = mapped_column(String(255), nullable=True)
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
@@ -813,7 +819,9 @@ class ChildChunk(Base):
     # indexing fields
     index_node_id = mapped_column(String(255), nullable=True)
     index_node_hash = mapped_column(String(255), nullable=True)
-    type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'::character varying"))
+    type: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'automatic'::character varying")
+    )
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
@@ -933,7 +941,9 @@ class Embedding(Base):
     hash = mapped_column(String(64), nullable=False)
     embedding = mapped_column(sa.LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    provider_name = mapped_column(String(255), nullable=False, server_default=sa.text("''::character varying"))
+    provider_name: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("''::character varying")
+    )
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
@@ -971,7 +981,9 @@ class TidbAuthBinding(Base):
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
-    status = mapped_column(String(255), nullable=False, server_default=db.text("'CREATING'::character varying"))
+    status: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=db.text("'CREATING'::character varying")
+    )
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

@@ -113,7 +113,9 @@ class ApiToolProvider(Base):
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # name of the api provider
-    name = mapped_column(String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying"))
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying")
+    )
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
