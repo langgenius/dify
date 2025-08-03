@@ -361,9 +361,9 @@ const VarReferencePicker: FC<Props> = ({
     // If we don't have dynamic options but we have a selected value, create a temporary option to preserve the selection during loading
     if (isLoading && value && typeof value === 'string') {
       const preservedOptions = [{
-        value: value,
+        value,
         label: { en_US: value, zh_Hans: value },
-        show_on: []
+        show_on: [],
       }]
       return {
         ...schema,
@@ -374,7 +374,7 @@ const VarReferencePicker: FC<Props> = ({
     // Default case: return schema with empty options
     return {
       ...schema,
-      options: []
+      options: [],
     }
   }, [schema, dynamicOptions, isLoading, value])
 
