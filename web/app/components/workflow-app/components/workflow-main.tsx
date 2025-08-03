@@ -22,6 +22,8 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 import { useCollaborativeCursors } from '../hooks'
 import type { OnlineUser } from '@/service/demo/online-user'
+import { collaborationManager } from '@/app/components/workflow/collaboration/manage'
+import { useStoreApi } from 'reactflow'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -35,6 +37,12 @@ const WorkflowMain = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const lastEmitTimeRef = useRef<number>(0)
   const lastPositionRef = useRef<{ x: number; y: number } | null>(null)
+
+  const store = useStoreApi()
+
+  useEffect(() => {
+    collaborationManager.init(appId, store)
+  }, [appId, store])
 
   const { emit, getSocket } = useWebSocketStore()
 
@@ -87,7 +95,6 @@ const WorkflowMain = ({
     }
   }, [emit])
 
-  // Add mouse move event listener
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -132,7 +139,6 @@ const WorkflowMain = ({
       setOnlineUsers(usersMap)
     }
     socket.on('online_users', handleOnlineUsersUpdate)
-    // clean up
     return () => {
       socket.off('online_users', handleOnlineUsersUpdate)
     }

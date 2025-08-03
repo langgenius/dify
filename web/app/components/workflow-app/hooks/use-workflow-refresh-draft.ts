@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 
 export const useWorkflowRefreshDraft = () => {
@@ -19,7 +18,8 @@ export const useWorkflowRefreshDraft = () => {
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
+      // TODO: hjlarry test collaboration
+      // handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
         acc[env.id] = env.value

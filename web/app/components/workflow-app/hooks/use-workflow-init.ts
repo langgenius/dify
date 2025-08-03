@@ -17,7 +17,6 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import { useCollaborationStore } from '@/app/components/workflow/store/collaboration-store'
 
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
@@ -40,28 +39,9 @@ export const useWorkflowInit = () => {
   }, [workflowStore])
   useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
 
-  const initializeCollaboration = async (appId: string) => {
-    const { initCollaboration } = useCollaborationStore.getState()
-    initCollaboration(appId)
-
-    return new Promise<void>((resolve) => {
-      const checkInitialized = () => {
-        const { nodesMap, edgesMap } = useCollaborationStore.getState()
-        if (nodesMap && edgesMap)
-          resolve()
-         else
-          setTimeout(checkInitialized, 50)
-      }
-      checkInitialized()
-    })
-  }
-
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
-      const [res] = await Promise.all([
-        fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`),
-        initializeCollaboration(appDetail.id),
-      ])
+      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       setData(res)
       workflowStore.setState({
         envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {

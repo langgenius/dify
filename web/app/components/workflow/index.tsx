@@ -83,7 +83,6 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
-import { useCollaborationStore } from '@/app/components/workflow/store/collaboration-store'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -127,21 +126,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       return '100%'
     return workflowCanvasHeight - bottomPanelHeight
   }, [workflowCanvasHeight, bottomPanelHeight])
-
-  const collaborationNodes = useCollaborationStore((state) => {
-    return state.nodes
-  })
-  const collaborationEdges = useCollaborationStore((state) => {
-    return state.edges
-  })
-
-  useEffect(() => {
-    setNodes(collaborationNodes)
-  }, [collaborationNodes, setNodes])
-
-  useEffect(() => {
-    setEdges(collaborationEdges)
-  }, [collaborationEdges, setEdges])
 
   // update workflow Canvas width and height
   useEffect(() => {
