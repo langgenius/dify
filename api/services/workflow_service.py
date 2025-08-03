@@ -129,7 +129,10 @@ class WorkflowService:
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise IsDraftWorkflowError(f"Workflow is draft version, id={workflow_id}")
+            raise IsDraftWorkflowError(
+                f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+                f"Please use a published workflow version or leave workflow_id empty."
+            )
         return workflow
 
     def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
