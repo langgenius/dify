@@ -930,6 +930,7 @@ const translation = {
       restoreFailure: 'Falha ao restaurar versão',
       restoreSuccess: 'Versão restaurada',
       deleteFailure: 'Falha ao deletar versão',
+      copyIdSuccess: 'ID copiado para a área de transferência',
     },
     title: 'Versões',
     latest: 'Último',
@@ -940,6 +941,7 @@ const translation = {
     restorationTip: 'Após a restauração da versão, o rascunho atual será substituído.',
     currentDraft: 'Rascunho Atual',
     deletionTip: 'A exclusão é irreversível, por favor confirme.',
+    copyId: 'Copiar ID',
   },
   debug: {
     noData: {

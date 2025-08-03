@@ -930,6 +930,7 @@ const translation = {
       deleteSuccess: 'Wersja usunięta',
       restoreSuccess: 'Wersja przywrócona',
       restoreFailure: 'Nie udało się przywrócić wersji',
+      copyIdSuccess: 'Identyfikator skopiowany do schowka',
     },
     currentDraft: 'Aktualny szkic',
     nameThisVersion: 'Nazwij tę wersję',
@@ -940,6 +941,7 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+    copyId: 'Kopiuj ID',
   },
   debug: {
     noData: {
