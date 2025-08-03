@@ -534,7 +534,6 @@ class DocumentApi(DatasetApiResource):
 
         return response
 
-
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, tenant_id, dataset_id, document_id):
         """Delete document."""
