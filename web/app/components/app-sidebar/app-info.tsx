@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -17,7 +17,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppList, updateAppInfo } from '@/service/apps'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+import TagSelector from '@/app/components/base/tag-management/selector'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -72,6 +74,39 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
+
+  // Tags state management - identical to AppCard pattern with fallback
+  const [tags, setTags] = useState<Tag[]>(appDetail?.tags || [])
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!appDetail?.id) return
+
+      if (appDetail.tags && appDetail.tags.length > 0) {
+        // Use appDetail.tags if available - same as AppCard
+        setTags(appDetail.tags)
+      }
+ else {
+        // Fallback: fetch from app list API to get tags - this is the key difference
+        try {
+          const appListResponse = await fetchAppList({
+            url: '/apps',
+            params: { page: 1, limit: 100 },
+          })
+          const appWithTags = appListResponse.data.find((app: any) => app.id === appDetail.id)
+          if (appWithTags && appWithTags.tags)
+            setTags(appWithTags.tags)
+           else
+            setTags([])
+        }
+ catch (error) {
+          console.warn('Failed to fetch app tags from list:', error)
+          setTags([])
+        }
+      }
+    }
+
+    loadTags()
+  }, [appDetail?.id, appDetail?.tags])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -310,6 +345,25 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           {/* description */}
           {appDetail.description && (
             <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
+          )}
+          {/* tags - identical to AppCard pattern */}
+          {isCurrentWorkspaceEditor && (
+            <div className='w-full' onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}>
+              <TagSelector
+                position='br'
+                type='app'
+                targetID={appDetail.id}
+                value={tags.map(tag => tag.id)}
+                selectedTags={tags}
+                onCacheUpdate={setTags}
+                onChange={() => {
+                  // Optional: could trigger a refresh if needed
+                }}
+              />
+            </div>
           )}
           {/* operations */}
           <AppOperations
