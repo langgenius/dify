@@ -927,6 +927,7 @@ const translation = {
       updateSuccess: '版本已更新',
       deleteSuccess: '版本已刪除',
       deleteFailure: '無法刪除版本',
+      copyIdSuccess: 'ID 已複製到剪貼板',
     },
     nameThisVersion: '給這個版本命名',
     latest: '最新',
@@ -937,6 +938,7 @@ const translation = {
     deletionTip: '刪除是不可逆的，請確認。',
     releaseNotesPlaceholder: '描述發生了什麼變化',
     defaultName: '未命名版本',
+    copyId: '複製ID',
   },
   debug: {
     noData: {

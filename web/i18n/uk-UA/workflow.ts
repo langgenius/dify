@@ -930,6 +930,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -940,6 +941,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {

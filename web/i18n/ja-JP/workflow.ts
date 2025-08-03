@@ -936,7 +936,9 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
   },
   debug: {
     noData: {

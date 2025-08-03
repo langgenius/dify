@@ -931,6 +931,7 @@ const translation = {
       updateFailure: 'Sürüm güncellenemedi',
       updateSuccess: 'Sürüm güncellendi',
       deleteSuccess: 'Sürüm silindi',
+      copyIdSuccess: 'Kimlik panoya kopyalandı',
     },
     latest: 'Sonuncu',
     currentDraft: 'Mevcut Taslak',
@@ -941,6 +942,7 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+    copyId: 'ID Kopyala',
   },
   debug: {
     noData: {
