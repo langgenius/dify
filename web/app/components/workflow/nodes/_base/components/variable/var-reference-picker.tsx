@@ -357,8 +357,26 @@ const VarReferencePicker: FC<Props> = ({
         options: dynamicOptions,
       }
     }
-    return schema
-  }, [dynamicOptions])
+
+    // If we don't have dynamic options but we have a selected value, create a temporary option to preserve the selection during loading
+    if (isLoading && value && typeof value === 'string') {
+      const preservedOptions = [{
+        value,
+        label: { en_US: value, zh_Hans: value },
+        show_on: [],
+      }]
+      return {
+        ...schema,
+        options: preservedOptions,
+      }
+    }
+
+    // Default case: return schema with empty options
+    return {
+      ...schema,
+      options: [],
+    }
+  }, [schema, dynamicOptions, isLoading, value])
 
   const variableCategory = useMemo(() => {
     if (isEnv) return 'environment'
