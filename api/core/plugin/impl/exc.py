@@ -45,24 +45,15 @@ class PluginInvokeError(PluginDaemonClientSideError):
 
     def _get_error_object(self) -> Mapping:
         try:
-            import logging
-
-            logging.error("zz1")
             return TypeAdapter(Mapping).validate_json(self.description)
         except Exception:
             return {}
 
     def get_error_type(self) -> str:
-        import logging
-
-        logging.error("zz2")
         return self._get_error_object().get("error_type", "unknown")
 
     def get_error_message(self) -> str:
         try:
-            import logging
-
-            logging.error("zz3")
             return self._get_error_object().get("message", "unknown")
         except Exception:
             return self.description
