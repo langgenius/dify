@@ -214,7 +214,7 @@ export const useNodesInteractions = () => {
               n.data._isEntering = true
           })
         })
-        setNodes(newNodes)
+        setNodes(newNodes, false)
       }
     }
     const newEdges = produce(edges, (draft) => {
@@ -226,7 +226,7 @@ export const useNodesInteractions = () => {
           currentEdge.data._connectedNodeIsHovering = true
       })
     })
-    setEdges(newEdges)
+    setEdges(newEdges, false)
     const connectedEdges = getConnectedEdges([node], edges).filter(edge => edge.target === node.id)
 
     const targetNodes: Node[] = []
@@ -242,7 +242,7 @@ export const useNodesInteractions = () => {
             n.data._inParallelHovering = true
         })
       })
-      setNodes(newNodes)
+      setNodes(newNodes, false)
     }
   }, [store, workflowStore, getNodesReadOnly])
 
@@ -268,14 +268,14 @@ export const useNodesInteractions = () => {
         node.data._inParallelHovering = false
       })
     })
-    setNodes(newNodes)
+    setNodes(newNodes, false)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
         if (edge.data)
           edge.data._connectedNodeIsHovering = false
       })
     })
-    setEdges(newEdges)
+    setEdges(newEdges, false)
   }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
@@ -483,7 +483,7 @@ export const useNodesInteractions = () => {
             }
           })
         })
-        setNodes(newNodes)
+        setNodes(newNodes, false)
         setShowAssignVariablePopup({
           nodeId: fromNode.id,
           nodeData: fromNode.data,

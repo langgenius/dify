@@ -7,16 +7,20 @@ export const useCollaborativeWorkflow = () => {
   const store = useStoreApi()
   const { setNodes: collabSetNodes, setEdges: collabSetEdges } = collaborationManager
 
-  const setNodes = useCallback((newNodes: Node[]) => {
+  const setNodes = useCallback((newNodes: Node[], shouldBroadcast: boolean = true) => {
     const { getNodes, setNodes: reactFlowSetNodes } = store.getState()
-    const oldNodes = getNodes()
-    collabSetNodes(oldNodes, newNodes)
+    if (shouldBroadcast) {
+      const oldNodes = getNodes()
+      collabSetNodes(oldNodes, newNodes)
+    }
     reactFlowSetNodes(newNodes)
   }, [store, collabSetNodes])
 
-  const setEdges = useCallback((newEdges: Edge[]) => {
+  const setEdges = useCallback((newEdges: Edge[], shouldBroadcast: boolean = true) => {
     const { edges, setEdges: reactFlowSetEdges } = store.getState()
-    collabSetEdges(edges, newEdges)
+    if (shouldBroadcast)
+      collabSetEdges(edges, newEdges)
+
     reactFlowSetEdges(newEdges)
   }, [store, collabSetEdges])
 
