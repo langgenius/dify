@@ -312,28 +312,30 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             <div className='flex w-full grow flex-col items-start justify-center'>
               <div className='flex w-full items-center justify-between'>
                 <div className='flex min-w-0 flex-1 flex-col'>
-                  <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
+                  <div className='flex items-center gap-2'>
+                    <div className='system-md-semibold truncate text-text-secondary'>{appDetail.name}</div>
+                    {isCurrentWorkspaceEditor && (
+                      <div className='flex shrink-0' onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                      }}>
+                        <TagSelector
+                          position='br'
+                          type='app'
+                          targetID={appDetail.id}
+                          value={tags.map(tag => tag.id)}
+                          selectedTags={tags}
+                          onCacheUpdate={setTags}
+                          onChange={() => {
+                            // Optional: could trigger a refresh if needed
+                          }}
+                          minWidth='true'
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
                 </div>
-                {isCurrentWorkspaceEditor && (
-                  <div className='ml-2 flex shrink-0' onClick={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
-                  }}>
-                    <TagSelector
-                      position='br'
-                      type='app'
-                      targetID={appDetail.id}
-                      value={tags.map(tag => tag.id)}
-                      selectedTags={tags}
-                      onCacheUpdate={setTags}
-                      onChange={() => {
-                        // Optional: could trigger a refresh if needed
-                      }}
-                      minWidth='true'
-                    />
-                  </div>
-                )}
               </div>
             </div>
           </div>
