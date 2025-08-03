@@ -1,7 +1,8 @@
 from collections.abc import Mapping
-from extensions.ext_logging import get_request_id
 
 from pydantic import TypeAdapter
+
+from extensions.ext_logging import get_request_id
 
 
 class PluginDaemonError(Exception):
@@ -45,6 +46,7 @@ class PluginInvokeError(PluginDaemonClientSideError):
     def _get_error_object(self) -> Mapping:
         try:
             import logging
+
             logging.error("zz1")
             return TypeAdapter(Mapping).validate_json(self.description)
         except Exception:
@@ -52,12 +54,14 @@ class PluginInvokeError(PluginDaemonClientSideError):
 
     def get_error_type(self) -> str:
         import logging
+
         logging.error("zz2")
         return self._get_error_object().get("error_type", "unknown")
 
     def get_error_message(self) -> str:
         try:
             import logging
+
             logging.error("zz3")
             return self._get_error_object().get("message", "unknown")
         except Exception:
