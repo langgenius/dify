@@ -20,7 +20,7 @@ import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetail } from '@/service/apps'
+import { fetchAppDetail, fetchAppWithTags } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -111,7 +111,17 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     setIsLoadingAppDetail(true)
-    fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
+      if (!res.tags || res.tags.length === 0) {
+        try {
+          const appWithTags = await fetchAppWithTags(appId)
+          if (appWithTags?.tags)
+            res.tags = appWithTags.tags
+        }
+ catch (error) {
+          // Fallback failed, continue with empty tags
+        }
+      }
       setAppDetailRes(res)
     }).catch((e: any) => {
       if (e.status === 404)

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
@@ -220,9 +220,19 @@ const TagSelector: FC<TagSelectorProps> = ({
   const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
-    const res = await fetchTagList(type)
-    setTagList(res)
+    try {
+      const res = await fetchTagList(type)
+      setTagList(res)
+    }
+ catch (error) {
+      setTagList([])
+    }
   }
+
+  useEffect(() => {
+    if (tagList.length === 0)
+      getTagList()
+  }, [type])
 
   const triggerContent = useMemo(() => {
     if (selectedTags?.length)
