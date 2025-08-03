@@ -315,22 +315,24 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
                   <div className='flex items-center gap-2'>
                     <div className='system-md-semibold truncate text-text-secondary'>{appDetail.name}</div>
                     {isCurrentWorkspaceEditor && (
-                      <div className='flex shrink-0' onClick={(e) => {
+                      <div className='flex w-0 grow items-center' onClick={(e) => {
                         e.stopPropagation()
                         e.preventDefault()
                       }}>
-                        <TagSelector
-                          position='br'
-                          type='app'
-                          targetID={appDetail.id}
-                          value={tags.map(tag => tag.id)}
-                          selectedTags={tags}
-                          onCacheUpdate={setTags}
-                          onChange={() => {
-                            // Optional: could trigger a refresh if needed
-                          }}
-                          minWidth='true'
-                        />
+                        <div className='w-full'>
+                          <TagSelector
+                            position='br'
+                            type='app'
+                            targetID={appDetail.id}
+                            value={tags.map(tag => tag.id)}
+                            selectedTags={tags}
+                            onCacheUpdate={setTags}
+                            onChange={() => {
+                              // Optional: could trigger a refresh if needed
+                            }}
+                            minWidth='true'
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
