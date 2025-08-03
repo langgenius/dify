@@ -310,32 +310,36 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               imageUrl={appDetail.icon_url}
             />
             <div className='flex w-full grow flex-col items-start justify-center'>
-              <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='flex w-full items-center justify-between'>
+                <div className='flex min-w-0 flex-1 flex-col'>
+                  <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
+                  <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+                </div>
+                {isCurrentWorkspaceEditor && (
+                  <div className='ml-2 flex shrink-0' onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                  }}>
+                    <TagSelector
+                      position='br'
+                      type='app'
+                      targetID={appDetail.id}
+                      value={tags.map(tag => tag.id)}
+                      selectedTags={tags}
+                      onCacheUpdate={setTags}
+                      onChange={() => {
+                        // Optional: could trigger a refresh if needed
+                      }}
+                      minWidth='true'
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           {/* description */}
           {appDetail.description && (
             <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
-          )}
-          {/* tags */}
-          {isCurrentWorkspaceEditor && (
-            <div className='w-full' onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}>
-              <TagSelector
-                position='br'
-                type='app'
-                targetID={appDetail.id}
-                value={tags.map(tag => tag.id)}
-                selectedTags={tags}
-                onCacheUpdate={setTags}
-                onChange={() => {
-                  // Optional: could trigger a refresh if needed
-                }}
-              />
-            </div>
           )}
           {/* operations */}
           <AppOperations
