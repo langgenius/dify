@@ -359,9 +359,9 @@ class EducationApi(Resource):
         account = current_user
 
         res = BillingService.EducationIdentity.status(account.id)
-        # convert expireAt to UTC timestamp from isoformat
-        if res and "expireAt" in res:
-            res["expireAt"] = datetime.fromisoformat(res["expireAt"]).astimezone(pytz.utc)
+        # convert expire_at to UTC timestamp from isoformat
+        if res and "expire_at" in res:
+            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
         return res
 
 
