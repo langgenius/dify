@@ -197,6 +197,7 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Đã bật nội dung kiểm duyệt',
     },
     fileUpload: {
       title: 'Tải lên tệp',
@@ -255,6 +256,7 @@ const translation = {
     waitForBatchResponse: 'Vui lòng đợi phản hồi của tác vụ hàng loạt để hoàn thành.',
     notSelectModel: 'Vui lòng chọn một mô hình',
     waitForImgUpload: 'Vui lòng đợi hình ảnh được tải lên',
+    waitForFileUpload: 'Vui lòng đợi tệp / tệp tải lên',
   },
   chatSubTitle: 'Hướng dẫn',
   completionSubTitle: 'Tiền tố lời nhắc',
@@ -316,6 +318,33 @@ const translation = {
     'defaultValue': 'Giá trị mặc định',
     'noDefaultValue': 'Không có giá trị mặc định',
     'selectDefaultValue': 'Chọn giá trị mặc định',
+    'file': {
+      image: {
+        name: 'Ảnh',
+      },
+      audio: {
+        name: 'Âm thanh',
+      },
+      document: {
+        name: 'Tài liệu',
+      },
+      video: {
+        name: 'Video',
+      },
+      custom: {
+        description: 'Chỉ định các loại tệp khác.',
+        name: 'Các loại tệp khác',
+        createPlaceholder: '  Phần mở rộng tệp, ví dụ: .doc',
+      },
+      supportFileTypes: 'Các loại tệp hỗ trợ',
+    },
+    'both': 'Cả hai',
+    'uploadFileTypes': 'Tải lên các loại tệp',
+    'localUpload': 'Tải lên cục bộ',
+    'single-file': 'Tệp đơn',
+    'content': 'Nội dung',
+    'multi-files': 'Danh sách tập tin',
+    'maxNumberOfUploads': 'Số lượt tải lên tối đa',
   },
   vision: {
     name: 'Thị giác',
@@ -335,6 +364,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Giới hạn tải lên',
     },
+    onlySupportVisionModelTip: 'Chỉ hỗ trợ các mô hình thị giác',
   },
   voice: {
     name: 'Giọng nói',
@@ -403,6 +433,7 @@ const translation = {
     score_threshold: 'Ngưỡng điểm',
     score_thresholdTip: 'Sử dụng để thiết lập ngưỡng tương đồng cho việc lọc các phần.',
     retrieveChangeTip: 'Thay đổi chế độ chỉ mục và chế độ truy xuất có thể ảnh hưởng đến các ứng dụng liên quan đến kiến thức này.',
+    embeddingModelRequired: 'Cần có Mô hình nhúng được định cấu hình',
   },
   debugAsSingleModel: 'Gỡ lỗi như một mô hình',
   debugAsMultipleModel: 'Gỡ lỗi như nhiều mô hình',
@@ -444,6 +475,79 @@ const translation = {
       enabled: 'Đã kích hoạt',
     },
   },
+  codegen: {
+    generate: 'Đẻ ra',
+    instruction: 'Chỉ thị',
+    generatedCodeTitle: 'Mã được tạo',
+    loading: 'Đang tạo mã...',
+    title: 'Trình tạo mã',
+    instructionPlaceholder: 'Nhập mô tả chi tiết về mã bạn muốn tạo.',
+    overwriteConfirmMessage: 'Hành động này sẽ ghi đè lên mã hiện có. Bạn có muốn tiếp tục không?',
+    description: 'Trình tạo mã sử dụng các mô hình đã định cấu hình để tạo mã chất lượng cao dựa trên hướng dẫn của bạn. Vui lòng cung cấp hướng dẫn rõ ràng và chi tiết.',
+    resTitle: 'Mã được tạo',
+    apply: 'Áp dụng',
+    overwriteConfirmTitle: 'Ghi đè mã hiện có?',
+    applyChanges: 'Áp dụng thay đổi',
+    noDataLine1: 'Mô tả trường hợp sử dụng của bạn ở bên trái,',
+    noDataLine2: 'Bản xem trước mã sẽ hiển thị ở đây.',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        instruction: 'Một bot có thể tạo và gỡ lỗi mã của bạn dựa trên hướng dẫn của bạn',
+        name: 'Trình gỡ lỗi Python',
+      },
+      translation: {
+        name: 'Dịch',
+        instruction: 'Một dịch giả có thể dịch nhiều ngôn ngữ',
+      },
+      professionalAnalyst: {
+        name: 'Chuyên viên phân tích chuyên nghiệp',
+        instruction: 'Trích xuất thông tin chi tiết, xác định rủi ro và chắt lọc thông tin quan trọng từ các báo cáo dài thành một bản ghi nhớ duy nhất',
+      },
+      excelFormulaExpert: {
+        name: 'Chuyên gia công thức Excel',
+        instruction: 'Một chatbot có thể giúp người dùng mới hiểu, sử dụng và tạo công thức Excel dựa trên hướng dẫn của người dùng',
+      },
+      travelPlanning: {
+        instruction: 'Trợ lý lập kế hoạch du lịch là một công cụ thông minh được thiết kế để giúp người dùng dễ dàng lên kế hoạch cho các chuyến đi của họ',
+        name: 'Lập kế hoạch du lịch',
+      },
+      SQLSorcerer: {
+        instruction: 'Chuyển đổi ngôn ngữ hàng ngày thành truy vấn SQL',
+        name: 'SQL sorcerer',
+      },
+      GitGud: {
+        name: 'Git gud',
+        instruction: 'Tạo các lệnh Git thích hợp dựa trên các hành động kiểm soát phiên bản được người dùng mô tả',
+      },
+      meetingTakeaways: {
+        name: 'Bài học rút ra trong cuộc họp',
+        instruction: 'Chắt lọc các cuộc họp thành các bản tóm tắt ngắn gọn bao gồm các chủ đề thảo luận, bài học chính và các mục hành động',
+      },
+      writingsPolisher: {
+        name: 'Máy đánh bóng viết',
+        instruction: 'Sử dụng các kỹ thuật chỉnh sửa nội dung nâng cao để cải thiện bài viết của bạn',
+      },
+    },
+    generate: 'Đẻ ra',
+    tryIt: 'Dùng thử',
+    noDataLine2: 'Bản xem trước Orchestration sẽ hiển thị ở đây.',
+    apply: 'Áp dụng',
+    instruction: 'Chỉ thị',
+    title: 'Trình tạo nhắc nhở',
+    resTitle: 'Lời nhắc được tạo',
+    loading: 'Sắp xếp ứng dụng cho bạn...',
+    noDataLine1: 'Mô tả trường hợp sử dụng của bạn ở bên trái,',
+    description: 'Trình tạo lời nhắc sử dụng mô hình được định cấu hình để tối ưu hóa lời nhắc cho chất lượng cao hơn và cấu trúc tốt hơn. Vui lòng viết hướng dẫn rõ ràng và chi tiết.',
+    overwriteMessage: 'Áp dụng lời nhắc này sẽ ghi đè cấu hình hiện có.',
+    overwriteTitle: 'Ghi đè cấu hình hiện có?',
+    instructionPlaceHolder: 'Viết hướng dẫn rõ ràng và cụ thể.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ.',
+  },
+  noResult: 'Đầu ra sẽ được hiển thị ở đây.',
 }
 
 export default translation
