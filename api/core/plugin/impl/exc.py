@@ -13,7 +13,7 @@ class PluginDaemonError(Exception):
 
     def __str__(self) -> str:
         # returns the class name and description
-        return f"{get_request_id()} {self.__class__.__name__}: {self.description}"
+        return f"req_id: {get_request_id()} {self.__class__.__name__}: {self.description}"
 
 
 class PluginDaemonInternalError(PluginDaemonError):
