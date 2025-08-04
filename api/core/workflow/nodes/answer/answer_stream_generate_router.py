@@ -25,15 +25,27 @@ class AnswerStreamGeneratorRouter:
         """
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
+        answer_node_ids = []
         for answer_node_id, node_config in node_id_config_mapping.items():
             if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
-
+                
+            answer_node_ids.append(answer_node_id)
             # get generate route for stream output
             generate_route = cls._extract_generate_route_selectors(node_config)
             answer_generate_route[answer_node_id] = generate_route
+            
+        # Calculate answer dependencies
+        answer_dependencies = cls._fetch_answer_dependencies(
+            answer_node_ids=answer_node_ids,
+            reverse_edge_mapping=reverse_edge_mapping,
+            node_id_config_mapping=node_id_config_mapping,
+        )
 
-        return AnswerStreamGenerateRoute(answer_generate_route=answer_generate_route)
+        return AnswerStreamGenerateRoute(
+            answer_generate_route=answer_generate_route,
+            answer_dependencies=answer_dependencies
+        )
 
     @classmethod
     def extract_generate_route_from_node_data(cls, node_data: AnswerNodeData) -> list[GenerateRouteChunk]:
@@ -88,6 +100,33 @@ class AnswerStreamGeneratorRouter:
         return cls.extract_generate_route_from_node_data(node_data)
 
     @classmethod
+    def _fetch_answer_dependencies(cls, answer_node_ids: list[str], reverse_edge_mapping: dict, node_id_config_mapping: dict) -> dict[str, list[str]]:
+        """
+        Fetch answer dependencies.
+        :param answer_node_ids: answer node ids
+        :param reverse_edge_mapping: reverse edge mapping
+        :param node_id_config_mapping: node id config mapping
+        :return: answer dependencies (answer node id -> dependent answer node ids)
+        """
+        answer_dependencies: dict[str, list[str]] = {}
+        
+        # Initialize dependencies for all answer nodes
+        for answer_node_id in answer_node_ids:
+            answer_dependencies[answer_node_id] = []
+        
+        # For each answer node, check if it has incoming edges from other answer nodes
+        for answer_node_id in answer_node_ids:
+            if answer_node_id not in reverse_edge_mapping:
+                continue
+                
+            for edge in reverse_edge_mapping[answer_node_id]:
+                source_node_id = edge.source_node_id
+                if source_node_id in answer_node_ids and source_node_id != answer_node_id:
+                    answer_dependencies[answer_node_id].append(source_node_id)
+        
+        return answer_dependencies
+
+    @classmethod
     def _is_variable(cls, part, variable_keys):
-        cleaned_part = part.replace("{{", "").replace("}}", "")
-        return part.startswith("{{") and cleaned_part in variable_keys
+        cleaned_part = part.replace("{{" , "").replace("}}", "")
+        return part.startswith("{{" ) and cleaned_part in variable_keys
