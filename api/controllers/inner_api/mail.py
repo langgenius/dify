@@ -1,8 +1,8 @@
+from flask_restful import Resource, reqparse
+
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
-from controllers.inner_api.wraps import (billing_inner_api_only,
-                                         enterprise_inner_api_only)
-from flask_restful import Resource, reqparse
+from controllers.inner_api.wraps import billing_inner_api_only, enterprise_inner_api_only
 from tasks.mail_inner_task import send_inner_email_task
 
 _mail_parser = reqparse.RequestParser()
@@ -35,4 +35,4 @@ class BillingMail(BaseMail):
 
 
 api.add_resource(EnterpriseMail, "/enterprise/mail")
-api.add_resource(BillingMail,    "/billing/mail")
+api.add_resource(BillingMail, "/billing/mail")
