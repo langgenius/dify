@@ -5,7 +5,7 @@ WORKDIR /app/api
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources \
-#  && pip config set global.index-url https://mirrors.cloud.aliyuncs.com/pypi/simple/
+#  && pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 
 # Install uv
 ENV UV_VERSION=0.7.11
