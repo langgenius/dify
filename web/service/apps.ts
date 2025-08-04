@@ -9,7 +9,12 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
+export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
+  return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+// Direct API call function for non-SWR usage
+export const fetchAppDetailDirect = async ({ url, id }: { url: string; id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
@@ -58,21 +63,6 @@ export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: s
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
   return del<CommonResponse>(`apps/${appID}`)
-}
-
-export const fetchAppWithTags = async (appID: string) => {
-  try {
-    const appListResponse = await fetchAppList({
-      url: '/apps',
-      params: { page: 1, limit: 100 },
-    })
-    const appWithTags = appListResponse.data.find(app => app.id === appID)
-    return appWithTags || null
-  }
- catch (error) {
-    console.warn('Failed to fetch app with tags:', error)
-    return null
-  }
 }
 
 export const updateAppSiteStatus: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
