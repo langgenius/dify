@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import requests
 from elasticsearch import Elasticsearch
 from flask import current_app
+from packaging.version import parse as parse_version
 from pydantic import BaseModel, model_validator
 
 from core.rag.datasource.vdb.field import Field
@@ -149,7 +150,7 @@ class ElasticSearchVector(BaseVector):
         return cast(str, info["version"]["number"])
 
     def _check_version(self):
-        if self._version < "8.0.0":
+        if parse_version(self._version) < parse_version("8.0.0"):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
     def get_type(self) -> str:
