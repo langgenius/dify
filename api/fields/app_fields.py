@@ -59,6 +59,8 @@ model_config_fields = {
     "updated_at": TimestampField,
 }
 
+tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+
 app_detail_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -77,6 +79,7 @@ app_detail_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "access_mode": fields.String,
+    "tags": fields.List(fields.Nested(tag_fields)),
 }
 
 prompt_config_fields = {
@@ -91,8 +94,6 @@ model_config_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
 }
-
-tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
 app_partial_fields = {
     "id": fields.String,
@@ -177,24 +178,21 @@ app_detail_fields_with_site = {
     "name": fields.String,
     "description": fields.String,
     "mode": fields.String(attribute="mode_compatible_with_agent"),
-    "icon_type": fields.String,
     "icon": fields.String,
     "icon_background": fields.String,
-    "icon_url": AppIconUrlField,
     "enable_site": fields.Boolean,
     "enable_api": fields.Boolean,
     "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "site": fields.Nested(site_fields),
-    "api_base_url": fields.String,
+    "tracing": fields.Raw,
     "use_icon_as_answer_icon": fields.Boolean,
-    "max_active_requests": fields.Integer,
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
-    "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
     "access_mode": fields.String,
+    "tags": fields.List(fields.Nested(tag_fields)),
+    "site": fields.Nested(site_fields),
 }
 
 
