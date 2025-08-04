@@ -14,7 +14,6 @@ import {
   getConnectedEdges,
   getOutgoers,
   useReactFlow,
-  useStoreApi,
 } from 'reactflow'
 import { unionBy } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
@@ -65,7 +64,6 @@ import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
-  const store = useStoreApi()
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -151,7 +149,7 @@ export const useNodesInteractions = () => {
         currentNode.position.y = node.position.y
     })
     setNodes(newNodes)
-  }, [getNodesReadOnly, store, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline])
+  }, [getNodesReadOnly, collaborativeWorkflow, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>((_, node) => {
     const {
@@ -244,7 +242,7 @@ export const useNodesInteractions = () => {
       })
       setNodes(newNodes, false)
     }
-  }, [store, workflowStore, getNodesReadOnly])
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
     if (getNodesReadOnly())
@@ -276,7 +274,7 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges, false)
-  }, [store, workflowStore, getNodesReadOnly])
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
     if(initShowLastRunTab)
@@ -318,7 +316,7 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
 
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [collaborativeWorkflow, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     if (node.type === CUSTOM_ITERATION_START_NODE)
@@ -408,7 +406,7 @@ export const useNodesInteractions = () => {
       setConnectingNodePayload(undefined)
       setEnteringNodePayload(undefined)
     }
-  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -434,7 +432,7 @@ export const useNodesInteractions = () => {
         handleId,
       })
     }
-  }, [store, workflowStore, getNodesReadOnly])
+  }, [collaborativeWorkflow, workflowStore, getNodesReadOnly])
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>((e: any) => {
     if (getNodesReadOnly())
@@ -504,7 +502,7 @@ export const useNodesInteractions = () => {
     }
     setConnectingNodePayload(undefined)
     setEnteringNodePayload(undefined)
-  }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
+  }, [collaborativeWorkflow, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
@@ -627,7 +625,7 @@ export const useNodesInteractions = () => {
 
     else
       saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
-  }, [getNodesReadOnly, store, deleteNodeInspectorVars, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
+  }, [getNodesReadOnly, collaborativeWorkflow, deleteNodeInspectorVars, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {
@@ -1059,7 +1057,7 @@ export const useNodesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
+  }, [getNodesReadOnly, collaborativeWorkflow, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -1135,7 +1133,7 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
 
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, t, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodesCancelSelected = useCallback(() => {
     const { nodes, setNodes } = collaborativeWorkflow.getState()
@@ -1145,7 +1143,7 @@ export const useNodesInteractions = () => {
       })
     })
     setNodes(newNodes)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const handleNodeContextMenu = useCallback((e: MouseEvent, node: Node) => {
     if (node.type === CUSTOM_NOTE_NODE || node.type === CUSTOM_ITERATION_START_NODE)
@@ -1197,7 +1195,7 @@ export const useNodesInteractions = () => {
       if (selectedNode)
         setClipboardElements([selectedNode])
     }
-  }, [getNodesReadOnly, store, workflowStore])
+  }, [getNodesReadOnly, collaborativeWorkflow, workflowStore])
 
   const handleNodesPaste = useCallback(() => {
     if (getNodesReadOnly())
@@ -1306,7 +1304,7 @@ export const useNodesInteractions = () => {
       saveStateToHistory(WorkflowHistoryEvent.NodePaste)
       handleSyncWorkflowDraft()
     }
-  }, [getNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy, handleNodeLoopChildrenCopy])
+  }, [getNodesReadOnly, workflowStore, collaborativeWorkflow, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy, handleNodeLoopChildrenCopy])
 
   const handleNodesDuplicate = useCallback((nodeId?: string) => {
     if (getNodesReadOnly())
@@ -1338,7 +1336,7 @@ export const useNodesInteractions = () => {
 
     if (selectedNode)
       handleNodeDelete(selectedNode.id)
-  }, [store, getNodesReadOnly, handleNodeDelete])
+  }, [collaborativeWorkflow, getNodesReadOnly, handleNodeDelete])
 
   const handleNodeResize = useCallback((nodeId: string, params: ResizeParamsWithDirection) => {
     if (getNodesReadOnly())
@@ -1393,7 +1391,7 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeResize)
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, collaborativeWorkflow, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodeDisconnect = useCallback((nodeId: string) => {
     if (getNodesReadOnly())
@@ -1423,7 +1421,7 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
-  }, [store, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [collaborativeWorkflow, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleHistoryBack = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
@@ -1438,7 +1436,7 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [store, undo, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
+  }, [collaborativeWorkflow, undo, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   const handleHistoryForward = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
@@ -1453,7 +1451,7 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [redo, store, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
+  }, [redo, collaborativeWorkflow, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   return {
     handleNodeDragStart,
