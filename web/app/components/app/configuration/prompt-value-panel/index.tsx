@@ -110,7 +110,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 className='mb-4 last-of-type:mb-0'
               >
                 <div>
-                  {type !== 'boolean' && (
+                  {type !== 'checkbox' && (
                     <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
                       <div className='truncate'>{name || key}</div>
                       {!required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
@@ -154,7 +154,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
                       />
                     )}
-                    {type === 'boolean' && (
+                    {type === 'checkbox' && (
                       <BoolInput
                         name={name || key}
                         value={!!inputs[key]}
