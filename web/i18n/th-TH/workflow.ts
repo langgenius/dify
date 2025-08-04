@@ -115,6 +115,7 @@ const translation = {
     needAnswerNode: 'ต้องเพิ่มโหนดคำตอบ',
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
+    tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -222,7 +223,6 @@ const translation = {
     'searchTool': 'เครื่องมือค้นหา',
     'tools': 'เครื่อง มือ',
     'allTool': 'ทั้งหมด',
-    'builtInTool': 'ในตัว',
     'customTool': 'ธรรมเนียม',
     'workflowTool': 'เวิร์กโฟลว์',
     'question-understand': 'คําถาม: เข้าใจ',
@@ -234,6 +234,8 @@ const translation = {
     'plugin': 'ปลั๊กอิน',
     'searchBlock': 'ค้นหาโหนด',
     'blocks': 'โหนด',
+    'allAdded': 'ทั้งหมดที่เพิ่มเข้ามา',
+    'addAll': 'เพิ่มทั้งหมด',
   },
   blocks: {
     'start': 'เริ่ม',
@@ -364,7 +366,10 @@ const translation = {
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'ค่าป้อนข้อมูล',
+        variable: 'ใช้ตัวแปร',
+      },
     },
     start: {
       required: 'ต้องระบุ',
@@ -491,6 +496,7 @@ const translation = {
           placeholder: 'ใส่ค่า',
         },
         title: 'การกรองข้อมูลเมตา',
+        tip: 'การกรองข้อมูลเมตาดาต้าเป็นกระบวนการที่ใช้คุณลักษณะของเมตาดาต้า (เช่น แท็ก หมวดหมู่ หรือสิทธิการเข้าถึง) เพื่อปรับแต่งและควบคุมการดึงข้อมูลที่เกี่ยวข้องภายในระบบ.',
       },
     },
     http: {
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'การพึ่งพาขั้นสูง',
       advancedDependenciesTip: 'เพิ่มการพึ่งพาที่โหลดไว้ล่วงหน้าซึ่งใช้เวลามากขึ้นในการใช้หรือไม่ใช่ค่าเริ่มต้นในตัวที่นี่',
       searchDependencies: 'การพึ่งพาการค้นหา',
+      syncFunctionSignature: 'ซิงก์ลายเซ็นฟังก์ชันให้ตรงกับโค้ด',
     },
     templateTransform: {
       inputVars: 'ตัวแปรอินพุต',
@@ -669,6 +676,9 @@ const translation = {
         json: 'เครื่องมือสร้าง JSON',
       },
       authorize: 'อนุญาต',
+      insertPlaceholder2: 'แทรกตัวแปร',
+      insertPlaceholder1: 'พิมพ์หรือลงทะเบียน',
+      settings: 'การตั้งค่า',
     },
     questionClassifiers: {
       model: 'แบบ',
@@ -853,6 +863,8 @@ const translation = {
       tools: 'เครื่อง มือ',
       modelNotSelected: 'ไม่ได้เลือกรุ่น',
       linkToPlugin: 'ลิงก์ไปยังปลั๊กอิน',
+      parameterSchema: 'แบบจำลองพารามิเตอร์',
+      clickToViewParameterSchema: 'คลิกเพื่อดูโครงร่างพารามิเตอร์',
     },
     loop: {
       ErrorMethod: {
@@ -918,6 +930,7 @@ const translation = {
       restoreSuccess: 'เวอร์ชันที่กู้คืน',
       restoreFailure: 'ไม่สามารถกู้คืนเวอร์ชันได้',
       updateSuccess: 'อัปเดตเวอร์ชัน',
+      copyIdSuccess: 'คัดลอกรหัสไปยังคลิปบอร์ด',
     },
     releaseNotesPlaceholder: 'อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร',
     currentDraft: 'ร่างปัจจุบัน',
@@ -928,6 +941,7 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+    copyId: 'คัดลอก ID',
   },
   debug: {
     noData: {

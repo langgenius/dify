@@ -107,14 +107,13 @@ const translation = {
     loadMore: '載入更多工作流',
     noHistory: '無歷史記錄',
     publishUpdate: '發布更新',
-    referenceVar: '參考變量',
     exportSVG: '匯出為 SVG',
     exportPNG: '匯出為 PNG',
-    noExist: '沒有這個變數',
     versionHistory: '版本歷史',
     exitVersions: '退出版本',
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
+    tagBound: '使用此標籤的應用程式數量',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -223,7 +222,6 @@ const translation = {
     'blocks': '節點',
     'tools': '工具',
     'allTool': '全部',
-    'builtInTool': '內置',
     'customTool': '自定義',
     'workflowTool': '工作流',
     'question-understand': '問題理解',
@@ -234,6 +232,8 @@ const translation = {
     'searchTool': '搜索工具',
     'agent': '代理策略',
     'plugin': '插件',
+    'allAdded': '所有已添加的',
+    'addAll': '全部添加',
   },
   blocks: {
     'start': '開始',
@@ -364,7 +364,10 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}}重試',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '輸入值',
+        variable: '使用變數',
+      },
     },
     start: {
       required: '必填',
@@ -491,6 +494,7 @@ const translation = {
           placeholder: '輸入數值',
         },
         title: '元數據過濾',
+        tip: '元數據過濾是使用元數據屬性（如標籤、類別或訪問權限）來精煉和控制在系統內檢索相關信息的過程。',
       },
     },
     http: {
@@ -580,7 +584,6 @@ const translation = {
         'not empty': '不為空',
         'null': '空',
         'not null': '不為空',
-        'regex match': '正則表達式匹配',
         'all of': '全部',
         'exists': '存在',
         'in': '在',
@@ -603,7 +606,6 @@ const translation = {
       },
       select: '選擇',
       addSubVariable: '子變數',
-      condition: '條件',
     },
     variableAssigner: {
       title: '變量賦值',
@@ -671,6 +673,9 @@ const translation = {
         },
         json: '工具生成的 JSON',
       },
+      insertPlaceholder2: '插入變量',
+      insertPlaceholder1: '輸入或按壓',
+      settings: '設定',
     },
     questionClassifiers: {
       model: '模型',
@@ -855,6 +860,8 @@ const translation = {
       linkToPlugin: '連結到插件',
       pluginNotInstalled: '此插件未安裝',
       notAuthorized: '未授權',
+      clickToViewParameterSchema: '點擊查看參數架構',
+      parameterSchema: '參數架構',
     },
     loop: {
       ErrorMethod: {
@@ -920,6 +927,7 @@ const translation = {
       updateSuccess: '版本已更新',
       deleteSuccess: '版本已刪除',
       deleteFailure: '無法刪除版本',
+      copyIdSuccess: 'ID 已複製到剪貼板',
     },
     nameThisVersion: '給這個版本命名',
     latest: '最新',
@@ -930,6 +938,7 @@ const translation = {
     deletionTip: '刪除是不可逆的，請確認。',
     releaseNotesPlaceholder: '描述發生了什麼變化',
     defaultName: '未命名版本',
+    copyId: '複製ID',
   },
   debug: {
     noData: {

@@ -91,6 +91,7 @@ const VarList: FC<Props> = ({
               onChange={handleVarChange(index)}
               onRemove={handleVarRemove(index)}
               varKeys={list.map(item => item.variable)}
+              canDrag={canDrag}
             />
             {canDrag && <RiDraggable className={cn(
               'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',

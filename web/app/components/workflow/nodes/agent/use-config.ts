@@ -13,8 +13,8 @@ import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
-import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export type StrategyStatus = {
@@ -95,11 +95,20 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     )
     return res
   }, [inputs.agent_parameters, currentStrategy?.parameters])
+
+  const getParamVarType = useCallback((paramName: string) => {
+    const isVariable = currentStrategy?.parameters.some(
+      param => param.name === paramName && param.type === FormTypeEnum.any,
+    )
+    if (isVariable) return VarType.variable
+    return VarType.constant
+  }, [currentStrategy?.parameters])
+
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
     Object.entries(value).forEach(([key, val]) => {
       res[key] = {
-        type: VarType.constant,
+        type: getParamVarType(key),
         value: val,
       }
     })
@@ -120,7 +129,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   }
 
   const formattingLegacyData = () => {
-    if (inputs.version)
+    if (inputs.version || inputs.tool_node_version)
       return inputs
     const newData = produce(inputs, (draft) => {
       const schemas = currentStrategy?.parameters || []
@@ -131,7 +140,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
         if (targetSchema?.type === FormTypeEnum.multiToolSelector)
           draft.agent_parameters![key].value = draft.agent_parameters![key].value.map((tool: any) => formattingToolData(tool))
       })
-      draft.version = '2'
+      draft.tool_node_version = '2'
     })
     return newData
   }
@@ -142,7 +151,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       return
     const newData = formattingLegacyData()
     setInputs(newData)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStrategy])
 
   // vars

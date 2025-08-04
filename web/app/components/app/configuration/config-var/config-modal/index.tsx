@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -11,7 +11,7 @@ import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
+import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
@@ -20,6 +20,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { SimpleSelect } from '@/app/components/base/select'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -108,6 +109,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }
     })
   }, [checkVariableName, tempPayload.label])
+
+  const handleVarNameChange = useCallback((e: ChangeEvent<any>) => {
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
+    const value = e.target.value
+    const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+      })
+      return
+    }
+    handlePayloadChange('variable')(e.target.value)
+  }, [handlePayloadChange, t])
 
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
@@ -200,7 +215,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           <Field title={t('appDebug.variableConfig.varName')}>
             <Input
               value={variable}
-              onChange={e => handlePayloadChange('variable')(e.target.value)}
+              onChange={handleVarNameChange}
               onBlur={handleVarKeyBlur}
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
@@ -220,9 +235,31 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           )}
           {type === InputVarType.select && (
-            <Field title={t('appDebug.variableConfig.options')}>
-              <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
-            </Field>
+            <>
+              <Field title={t('appDebug.variableConfig.options')}>
+                <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
+              </Field>
+              {options && options.length > 0 && (
+                <Field title={t('appDebug.variableConfig.defaultValue')}>
+                  <SimpleSelect
+                    key={`default-select-${options.join('-')}`}
+                    className="w-full"
+                    optionWrapClassName="max-h-[140px] overflow-y-auto"
+                    items={[
+                      { value: '', name: t('appDebug.variableConfig.noDefaultValue') },
+                      ...options.filter(opt => opt.trim() !== '').map(option => ({
+                        value: option,
+                        name: option,
+                      })),
+                    ]}
+                    defaultValue={tempPayload.default || ''}
+                    onSelect={item => handlePayloadChange('default')(item.value === '' ? undefined : item.value)}
+                    placeholder={t('appDebug.variableConfig.selectDefaultValue')}
+                    allowSearch={false}
+                  />
+                </Field>
+              )}
+            </>
           )}
 
           {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (

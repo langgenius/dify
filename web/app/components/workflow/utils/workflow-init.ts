@@ -286,8 +286,8 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       }
     }
 
-    if (node.data.type === BlockEnum.Tool && !(node as Node<ToolNodeType>).data.version) {
-      (node as Node<ToolNodeType>).data.version = '2'
+    if (node.data.type === BlockEnum.Tool && !(node as Node<ToolNodeType>).data.version && !(node as Node<ToolNodeType>).data.tool_node_version) {
+      (node as Node<ToolNodeType>).data.tool_node_version = '2'
 
       const toolConfigurations = (node as Node<ToolNodeType>).data.tool_configurations
       if (toolConfigurations && Object.keys(toolConfigurations).length > 0) {

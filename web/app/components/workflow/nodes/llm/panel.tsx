@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
-    filterJinjia2InputVar,
+    filterJinja2InputVar,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -166,7 +166,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               list={inputs.prompt_config?.jinja2_variables || []}
               onChange={handleVarListChange}
               onVarNameChange={handleVarNameChange}
-              filterVar={filterJinjia2InputVar}
+              filterVar={filterJinja2InputVar}
               isSupportFileVar={false}
             />
           </Field>

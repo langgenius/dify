@@ -121,7 +121,7 @@ export function getMarketplaceUrl(path: string, params?: Record<string, string |
   return `${MARKETPLACE_URL_PREFIX}${path}?${searchParams.toString()}`
 }
 
-export const replaceSpaceWithUnderscreInVarNameInput = (input: HTMLInputElement) => {
+export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {
   const start = input.selectionStart
   const end = input.selectionEnd
 
