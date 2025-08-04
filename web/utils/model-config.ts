@@ -134,7 +134,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
       } as any)
       return
     }
-    if (item.type === 'number' || item.type === 'boolean') {
+    if (item.type === 'number' || item.type === 'checkbox') {
       userInputs.push({
         [item.type]: {
           label: item.name,
