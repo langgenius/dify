@@ -9,10 +9,6 @@ dependencies:
 - current_identifier: null
   type: package
   value:
-    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
-- current_identifier: null
-  type: package
-  value:
     plugin_unique_identifier: langgenius/openai_api_compatible:0.0.7@f20c7275bbcf055ec5d170dd5128e341986e2dcba5266d08fd080d4bdf2288f6
 kind: app
 version: 0.1.5
@@ -1473,15 +1469,14 @@ workflow:
 
             或{{#1742807803325.pod#}}
 
-            的影响。最后结合日志和常见排查思路为用户提出解决方案。
-
+            的影响，最后推测是内部问题还是外部问题。
 
 
             # 数据
 
             数据包括：
 
-            1. 对应时间内的error日志{{#1744901266309.logs#}}
+            1. 对应时间内的error日志{{#1744901266309.result#}}
 
 
             # 分析思路
@@ -1712,20 +1707,19 @@ workflow:
           language\": \"general\",\n                \"case_sensitive\": False,\n \
           \               \"description\": \"Authentication and authorization errors\
           \ - mixed source\"\n            })\n        \n        # 通用错误模式（英文/数字）\n\
-          \        generic_error_patterns = [\n            r\"\\bERROR\\b\",\n   \
-          \         r\"\\bERR\\b\",\n            r\"\\bEXCEPTION\\b\",\n         \
-          \   r\"\\bPANIC\\b\",\n            r\"\\bFAIL(?:ED)?\\b\",\n           \
-          \ r\"\\bWRONG\\b\",\n            r\"\\bFATAL\\b\",\n            r\"\\bCRITICAL\\\
-          b\",\n            r\"\\bBUG\\b\",\n            r\"\\bCRASH\\b\",\n     \
-          \       r\"\\bINTERNAL\\s+ERROR\\b\",\n            r\"\\bNOT\\s+WORKING\\\
-          b\",\n            r\"\\bBROKEN\\b\",\n            r\"\\b5\\d{2}\\b\",  #\
-          \ HTTP 5xx 错误码\n            r\"\\b4\\d{2}\\b\",  # HTTP 4xx 错误码\n      \
-          \  ]\n\n        for pattern in generic_error_patterns:\n            patterns.append({\n\
-          \                \"pattern\": pattern,\n                \"category\": \"\
-          generic_error\",\n                \"source\": \"unknown\",\n           \
-          \     \"language\": \"english\",\n                \"case_sensitive\": False,\n\
-          \                \"description\": \"Generic catch-all English error patterns\"\
-          \n            })\n\n        # 通用错误模式（中文）\n        generic_error_patterns_cn\
+          \        generic_error_patterns = [\n            r\"ERROR\",\n         \
+          \   r\"ERR\",\n            r\"EXCEPTION\",\n            r\"PANIC\",\n  \
+          \          r\"FAIL(?:ED)?\",\n            r\"WRONG\",\n            r\"FATAL\"\
+          ,\n            r\"CRITICAL\",\n            r\"BUG\",\n            r\"CRASH(?:ED)?\"\
+          ,\n            r\"INTERNAL\\s+ERROR\",\n            r\"NOT\\s+WORKING\"\
+          ,\n            r\"BROKEN\",\n            r\"5\\d{2}\",  # HTTP 5xx 错误码\n\
+          \            r\"4\\d{2}\",  # HTTP 4xx 错误码\n        ]\n\n        for pattern\
+          \ in generic_error_patterns:\n            patterns.append({\n          \
+          \      \"pattern\": pattern,\n                \"category\": \"generic_error\"\
+          ,\n                \"source\": \"unknown\",\n                \"language\"\
+          : \"english\",\n                \"case_sensitive\": False,\n           \
+          \     \"description\": \"Generic catch-all English error patterns\"\n  \
+          \          })\n\n        # 通用错误模式（中文）\n        generic_error_patterns_cn\
           \ = [\n            r\"错误\",           # e.g., 系统错误\n            r\"失败\"\
           ,           # e.g., 操作失败\n            r\"异常\",           # e.g., 程序异常\n\
           \            r\"崩溃\",           # e.g., 系统崩溃\n            r\"致命\",     \
@@ -1746,24 +1740,20 @@ workflow:
           ] else 0\n            regex = re.compile(pattern_obj[\"pattern\"], flags)\n\
           \            compiled[category].append((regex, pattern_obj))\n        \n\
           \        return compiled\n    \n    def detect_line(self, line: str, line_number:\
-          \ int = 0) -> List[Dict]:\n        \"\"\"检测单行日志\"\"\"\n        matches =\
-          \ []\n        \n        for category, pattern_list in self.compiled_patterns.items():\n\
-          \            for regex, pattern_obj in pattern_list:\n                if\
-          \ regex.search(line):\n                    match = {\n                 \
-          \       \"content\": line.strip(),\n                        \"category\"\
-          : category,\n                        \"source\": pattern_obj[\"source\"\
-          ],\n                    }\n                    matches.append(match)\n \
-          \       \n        return matches\n    \n    def detect_logs(self, logs:\
-          \ List[str]) -> List[Dict]:\n        \"\"\"检测多行日志\"\"\"\n        all_matches\
-          \ = []\n        \n        for i, log in enumerate(logs):\n            line\
-          \ = log[\"body\"]\n            matches = self.detect_line(line, i + 1)\n\
-          \            all_matches.extend(matches)\n        \n        return all_matches\n\
-          \    \n    def _calculate_confidence(self, line: str, pattern: Dict) ->\
-          \ float:\n        \"\"\"计算匹配置信度\"\"\"\n        base_confidence = 1.0\n \
-          \       \n        # 根据上下文关键词调整置信度\n        context_keywords = {\n      \
-          \      \"error\": 0.1,\n            \"failed\": 0.1,\n            \"exception\"\
-          : 0.1,\n            \"错误\": 0.1,\n            \"失败\": 0.1,\n           \
-          \ \"异常\": 0.1,\n        }\n        \n        line_lower = line.lower()\n\
+          \ int = 0) -> bool:\n        \"\"\"检测单行日志\"\"\"        \n        for category,\
+          \ pattern_list in self.compiled_patterns.items():\n            for regex,\
+          \ pattern_obj in pattern_list:\n                if regex.search(line):\n\
+          \                   return True\n        \n        return False\n    \n\
+          \    def detect_logs(self, logs: List[str]) -> List[Dict]:\n        \"\"\
+          \"检测多行日志\"\"\"\n        all_matches = []\n        \n        for i, log in\
+          \ enumerate(logs):\n            line = log[\"body\"]\n            if self.detect_line(line,\
+          \ i + 1):\n                all_matches.append(log)\n        \n        return\
+          \ all_matches\n    \n    def _calculate_confidence(self, line: str, pattern:\
+          \ Dict) -> float:\n        \"\"\"计算匹配置信度\"\"\"\n        base_confidence\
+          \ = 1.0\n        \n        # 根据上下文关键词调整置信度\n        context_keywords = {\n\
+          \            \"error\": 0.1,\n            \"failed\": 0.1,\n           \
+          \ \"exception\": 0.1,\n            \"错误\": 0.1,\n            \"失败\": 0.1,\n\
+          \            \"异常\": 0.1,\n        }\n        \n        line_lower = line.lower()\n\
           \        for keyword, boost in context_keywords.items():\n            if\
           \ keyword in line_lower:\n                base_confidence += boost\n   \
           \     \n        return min(base_confidence, 2.0)  # 最大置信度2.0\n    \n   \
@@ -1816,11 +1806,11 @@ workflow:
           \ logs = json.loads(log_json).get(\"data\", {}).get(\"logContents\", {}).get(\"\
           contents\", [])\n    detector = ServiceUnavailableDetector()\n    matches\
           \ = detector.detect_logs(logs)\n    matches = matches[:30]\n    return {\"\
-          result\": matches}"
+          result\": json.dumps({\"logs\": matches})}"
         code_language: python3
         desc: ''
         outputs:
-          logs:
+          result:
             children: null
             type: string
         selected: false
@@ -1830,7 +1820,7 @@ workflow:
         - value_selector:
           - '1744878296971'
           - text
-          variable: data_json
+          variable: log_json
       height: 54
       id: '1744901266309'
       position:
@@ -1839,7 +1829,7 @@ workflow:
       positionAbsolute:
         x: 6168
         y: 1076
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -2220,8 +2210,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: d21add02-97db-4fa3-a6e8-d4387617ce2a
           role: system
@@ -2409,7 +2399,7 @@ workflow:
         type: variable-aggregator
         variables:
         - - '1744901266309'
-          - logs
+          - result
         - - '1753687345334'
           - error_logs_str
       height: 131
@@ -2434,8 +2424,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 7694ae43-c744-4e62-9a51-fb4b8d8fe597
           role: system
@@ -2476,8 +2466,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 0e0b95f4-141c-413e-8a29-1b17b745495f
           role: system
@@ -2515,7 +2505,7 @@ workflow:
       positionAbsolute:
         x: 9126
         y: 1223
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -2605,8 +2595,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 45ec55b5-ae91-45b8-989c-83f81cee1712
           role: system
@@ -2614,7 +2604,7 @@ workflow:
         - id: 2832e05f-6966-49d9-9697-77bde92736a9
           role: user
           text: "#目的\n根据应用的结论生成当前情况的描述\n使用结论内的数据，回答简洁易懂\n#结论数据\n告警事件{{#1742807803325.alertName#}}\n\
-            告警事件分析结论{{#1744878466157.output#}}\n受影响服务总结{{#1753684009639.text#}}，如果受影响服务总结为空则忽略，不需要描述受影响服务相关内容，也无需提示用户该数据为空。\n\
+            告警事件分析结论{{#1744878466157.output#}}\n受影响服务总结{{#1753760065732.output#}}，如果受影响服务总结为空则忽略，不需要描述受影响服务相关内容，也无需提示用户该数据为空。\n\
             # 时间\n{{#1741227526517.endTime#}}\n#格式模版参考\n告警报事件结论 \n**事件概述**：\n服务XXX在XX时间短内出现XXX告警\
             \ (简洁，不要有其他内容)\n**受影响服务**\n简单描述受影响的服务，如果没有相关数据不需要输出“受影响服务”这部分。xx服务成功率下降了xx，xx服务请求量下降了xx，链路中的xx出现错误。\n\
             **问题分析**\n初步分析是XXX方向（如果有具体是自身还是下游方向，请给出方向描述），不要有其他内容，给出方向即可\n**解决措施**：\n\
@@ -2647,8 +2637,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: d33542e3-ac5c-48f1-970b-fa7ab0ffd0ef
           role: system
@@ -2699,8 +2689,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: d3326874-756a-4db9-9634-3725cf97b6e7
           role: system
@@ -4088,8 +4078,8 @@ workflow:
           \            \"startTime\": current_start,\n            \"endTime\": current_end\n\
           \        })\n        current_start = current_end\n    return {'result':\
           \ intervals}\n\ndef main(start_time: int, end_time: int, max_interval: int\
-          \ = 60 * 1000000) -> dict:\n    return split_time_range(start_time, end_time,\
-          \ max_interval)"
+          \ = 60 * 1000000 * 2) -> dict:\n    return split_time_range(start_time,\
+          \ end_time, max_interval)"
         code_language: python3
         desc: ''
         outputs:
@@ -4200,237 +4190,146 @@ workflow:
       width: 244
       zIndex: 1002
     - data:
-        code: "import re\nimport json\nfrom typing import List, Dict, Tuple, Set,\
-          \ Optional\n\n\nclass ServiceUnavailableDetector:\n    \"\"\"服务不可用日志检测器\"\
-          \"\"\n    \n    def __init__(self):\n        self.patterns = self._initialize_patterns()\n\
-          \        self.compiled_patterns = self._compile_patterns()\n    \n    def\
-          \ _initialize_patterns(self) -> List[Dict]:\n        \"\"\"初始化错误模式库\"\"\"\
-          \n        patterns = []\n        \n        # 连接错误 - 英文 (外部问题)\n        connection_patterns_en\
-          \ = [\n            r\"connection\\s+refused\",\n            r\"connection\\\
-          s+reset\",\n            r\"connection\\s+closed\",\n            r\"connection\\\
-          s+aborted\",\n            r\"connection\\s+failed\",\n            r\"connection\\\
-          s+timeout\",\n            r\"can['\\s]*t\\s+connect\",\n            r\"\
-          unable\\s+to\\s+connect\",\n            r\"failed\\s+to\\s+connect\",\n\
-          \            r\"connect\\s+error\",\n            r\"network\\s+unreachable\"\
-          ,\n            r\"host\\s+unreachable\",\n            r\"no\\s+route\\s+to\\\
-          s+host\",\n            r\"connection\\s+timed\\s+out\",\n        ]\n   \
-          \     \n        for pattern in connection_patterns_en:\n            patterns.append({\n\
-          \                \"pattern\": pattern,\n                \"category\": \"\
-          connection_error\",\n                \"source\": \"external\",\n       \
-          \         \"language\": \"english\",\n                \"case_sensitive\"\
-          : False,\n                \"description\": \"Connection related errors -\
-          \ external\"\n            })\n        \n        # 连接错误 - 中文 (外部问题)\n   \
-          \     connection_patterns_cn = [\n            r\"连接被拒绝\",\n            r\"\
-          连接失败\",\n            r\"连接超时\",\n            r\"连接被重置\",\n            r\"\
-          连接中断\",\n            r\"无法连接\",\n            r\"拒绝连接\",\n            r\"\
-          网络不可达\",\n            r\"主机不可达\",\n        ]\n        \n        for pattern\
-          \ in connection_patterns_cn:\n            patterns.append({\n          \
-          \      \"pattern\": pattern,\n                \"category\": \"connection_error\"\
-          ,\n                \"source\": \"external\",\n                \"language\"\
-          : \"chinese\",\n                \"case_sensitive\": False,\n           \
-          \     \"description\": \"Connection related errors in Chinese - external\"\
-          \n            })\n        \n        # 超时错误 (混合问题 - 可能是内部也可能是外部)\n      \
-          \  timeout_patterns = [\n            r\"timeout\",\n            r\"timed\\\
-          s+out\",\n            r\"time\\s+out\",\n            r\"超时\",\n        \
-          \    r\"请求超时\",\n            r\"响应超时\",\n            r\"read\\s+timeout\"\
-          ,\n            r\"write\\s+timeout\",\n            r\"connect\\s+timeout\"\
-          ,\n            r\"socket\\s+timeout\",\n            r\"request\\s+timeout\"\
-          ,\n            r\"response\\s+timeout\",\n            r\"execution\\s+timeout\"\
-          ,\n            r\"operation\\s+timeout\",\n        ]\n        \n       \
-          \ for pattern in timeout_patterns:\n            patterns.append({\n    \
-          \            \"pattern\": pattern,\n                \"category\": \"timeout_error\"\
-          ,\n                \"source\": \"mixed\",\n                \"language\"\
-          : \"general\",\n                \"case_sensitive\": False,\n           \
-          \     \"description\": \"Timeout related errors - mixed source\"\n     \
-          \       })\n        \n        # 服务不可用错误 (外部问题)\n        unavailable_patterns\
-          \ = [\n            r\"service\\s+unavailable\",\n            r\"server\\\
-          s+unavailable\",\n            r\"unavailable\",\n            r\"not\\s+available\"\
-          ,\n            r\"服务不可用\",\n            r\"服务器不可用\",\n            r\"暂时不可用\"\
-          ,\n            r\"temporary\\s+unavailable\",\n            r\"temporarily\\\
-          s+unavailable\",\n            r\"503\\s+service\\s+unavailable\",\n    \
-          \        r\"backend\\s+unavailable\",\n            r\"upstream\\s+unavailable\"\
-          ,\n        ]\n        \n        for pattern in unavailable_patterns:\n \
-          \           patterns.append({\n                \"pattern\": pattern,\n \
-          \               \"category\": \"unavailable_error\",\n                \"\
-          source\": \"external\",\n                \"language\": \"general\",\n  \
-          \              \"case_sensitive\": False,\n                \"description\"\
-          : \"Service unavailable errors - external\"\n            })\n        \n\
-          \        # Panic错误 (内部问题)\n        panic_patterns = [\n            r\"panic:\"\
-          ,\n            r\"panic\\s+error\",\n            r\"fatal\\s+error\",\n\
-          \            r\"critical\\s+error\",\n            r\"严重错误\",\n         \
-          \   r\"致命错误\",\n            r\"崩溃\",\n            r\"crash\",\n        \
-          \    r\"segmentation\\s+fault\",\n            r\"stack\\s+overflow\",\n\
-          \            r\"out\\s+of\\s+memory\",\n            r\"内存不足\",\n       \
-          \     r\"栈溢出\",\n        ]\n        \n        for pattern in panic_patterns:\n\
-          \            patterns.append({\n                \"pattern\": pattern,\n\
-          \                \"category\": \"panic_error\",\n                \"source\"\
-          : \"internal\",\n                \"language\": \"general\",\n          \
-          \      \"case_sensitive\": False,\n                \"description\": \"Panic\
-          \ and critical errors - internal\"\n            })\n        \n        #\
-          \ HTTP错误 (混合问题)\n        http_patterns = [\n            r\"5\\d{2}\\s+\\\
-          w+\",  # 5xx errors\n            r\"502\\s+bad\\s+gateway\",\n         \
-          \   r\"503\\s+service\\s+unavailable\",\n            r\"504\\s+gateway\\\
-          s+timeout\",\n            r\"500\\s+internal\\s+server\\s+error\",\n   \
-          \         r\"bad\\s+gateway\",\n            r\"gateway\\s+timeout\",\n \
-          \           r\"internal\\s+server\\s+error\",\n            r\"网关错误\",\n\
-          \            r\"内部服务器错误\",\n        ]\n        \n        for pattern in\
-          \ http_patterns:\n            # 根据具体错误码判断来源\n            if any(code in\
-          \ pattern for code in [\"500\", \"internal\"]):\n                source\
-          \ = \"internal\"\n            elif any(code in pattern for code in [\"502\"\
-          , \"503\", \"504\", \"gateway\"]):\n                source = \"external\"\
-          \n            else:\n                source = \"mixed\"\n              \
-          \  \n            patterns.append({\n                \"pattern\": pattern,\n\
-          \                \"category\": \"http_error\",\n                \"source\"\
-          : source,\n                \"language\": \"general\",\n                \"\
-          case_sensitive\": False,\n                \"description\": \"HTTP error\
-          \ codes and messages\"\n            })\n        \n        # 网络错误 (外部问题)\n\
-          \        network_patterns = [\n            r\"network\\s+error\",\n    \
-          \        r\"network\\s+is\\s+unreachable\",\n            r\"dns\\s+resolution\\\
-          s+failed\",\n            r\"name\\s+resolution\\s+failed\",\n          \
-          \  r\"网络错误\",\n            r\"网络不可达\",\n            r\"dns解析失败\",\n    \
-          \        r\"域名解析失败\",\n            r\"socket\\s+error\",\n            r\"\
-          tcp\\s+error\",\n            r\"udp\\s+error\",\n        ]\n        \n \
-          \       for pattern in network_patterns:\n            patterns.append({\n\
-          \                \"pattern\": pattern,\n                \"category\": \"\
-          network_error\",\n                \"source\": \"external\",\n          \
-          \      \"language\": \"general\",\n                \"case_sensitive\": False,\n\
-          \                \"description\": \"Network related errors - external\"\n\
-          \            })\n        \n        # 数据库错误 (混合问题)\n        database_patterns\
-          \ = [\n            r\"database\\s+connection\\s+failed\",\n            r\"\
-          database\\s+unavailable\",\n            r\"database\\s+timeout\",\n    \
-          \        r\"sql\\s+error\",\n            r\"database\\s+error\",\n     \
-          \       r\"数据库连接失败\",\n            r\"数据库不可用\",\n            r\"数据库超时\"\
-          ,\n            r\"sql错误\",\n            r\"connection\\s+pool\\s+exhausted\"\
-          ,\n            r\"too\\s+many\\s+connections\",\n            r\"max\\s+connections\\\
-          s+reached\",\n        ]\n        \n        for pattern in database_patterns:\n\
-          \            patterns.append({\n                \"pattern\": pattern,\n\
-          \                \"category\": \"database_error\",\n                \"source\"\
-          : \"mixed\",\n                \"language\": \"general\",\n             \
-          \   \"case_sensitive\": False,\n                \"description\": \"Database\
-          \ related errors - mixed source\"\n            })\n        \n        # 资源错误\
-          \ (内部问题)\n        resource_patterns = [\n            r\"out\\s+of\\s+memory\"\
-          ,\n            r\"memory\\s+exhausted\",\n            r\"disk\\s+full\"\
-          ,\n            r\"no\\s+space\\s+left\",\n            r\"resource\\s+exhausted\"\
-          ,\n            r\"内存不足\",\n            r\"磁盘空间不足\",\n            r\"资源耗尽\"\
-          ,\n            r\"cpu\\s+limit\\s+exceeded\",\n            r\"memory\\s+limit\\\
-          s+exceeded\",\n        ]\n        \n        for pattern in resource_patterns:\n\
-          \            patterns.append({\n                \"pattern\": pattern,\n\
-          \                \"category\": \"resource_error\",\n                \"source\"\
-          : \"internal\",\n                \"language\": \"general\",\n          \
-          \      \"case_sensitive\": False,\n                \"description\": \"Resource\
-          \ exhaustion errors - internal\"\n            })\n        \n        # 认证错误\
-          \ (混合问题)\n        auth_patterns = [\n            r\"authentication\\s+failed\"\
-          ,\n            r\"authorization\\s+failed\",\n            r\"access\\s+denied\"\
-          ,\n            r\"permission\\s+denied\",\n            r\"unauthorized\"\
-          ,\n            r\"forbidden\",\n            r\"认证失败\",\n            r\"\
-          授权失败\",\n            r\"访问被拒绝\",\n            r\"权限不足\",\n            r\"\
-          401\\s+unauthorized\",\n            r\"403\\s+forbidden\",\n        ]\n\
-          \        \n        for pattern in auth_patterns:\n            patterns.append({\n\
-          \                \"pattern\": pattern,\n                \"category\": \"\
-          auth_error\",\n                \"source\": \"mixed\",\n                \"\
-          language\": \"general\",\n                \"case_sensitive\": False,\n \
-          \               \"description\": \"Authentication and authorization errors\
-          \ - mixed source\"\n            })\n        \n        # 通用错误模式（英文/数字）\n\
-          \        generic_error_patterns = [\n            r\"ERROR\",\n         \
-          \   r\"ERR\",\n            r\"EXCEPTION\",\n            r\"PANIC\",\n  \
-          \          r\"FAIL(?:ED)?\",\n            r\"WRONG\",\n            r\"FATAL\"\
-          ,\n            r\"CRITICAL\",\n            r\"BUG\",\n            r\"CRASH(?:ED)?\"\
-          ,\n            r\"INTERNAL\\s+ERROR\",\n            r\"NOT\\s+WORKING\"\
-          ,\n            r\"BROKEN\",\n            r\"5\\d{2}\",  # HTTP 5xx 错误码\n\
-          \            r\"4\\d{2}\",  # HTTP 4xx 错误码\n        ]\n\n        for pattern\
-          \ in generic_error_patterns:\n            patterns.append({\n          \
-          \      \"pattern\": pattern,\n                \"category\": \"generic_error\"\
-          ,\n                \"source\": \"unknown\",\n                \"language\"\
-          : \"english\",\n                \"case_sensitive\": False,\n           \
-          \     \"description\": \"Generic catch-all English error patterns\"\n  \
-          \          })\n\n        # 通用错误模式（中文）\n        generic_error_patterns_cn\
-          \ = [\n            r\"错误\",           # e.g., 系统错误\n            r\"失败\"\
-          ,           # e.g., 操作失败\n            r\"异常\",           # e.g., 程序异常\n\
-          \            r\"崩溃\",           # e.g., 系统崩溃\n            r\"致命\",     \
-          \      # e.g., 致命错误\n            r\"拒绝\",           # e.g., 拒绝访问\n     \
-          \       r\"无效\",           # e.g., 无效参数\n            r\"未知错误\",       #\
-          \ e.g., 未知错误\n            r\"未定义\",         # e.g., 调用未定义\n        ]\n\n\
-          \        for pattern in generic_error_patterns_cn:\n            patterns.append({\n\
-          \                \"pattern\": pattern,\n                \"category\": \"\
-          generic_error\",\n                \"source\": \"unknown\",\n           \
-          \     \"language\": \"chinese\",\n                \"case_sensitive\": False,\n\
-          \                \"description\": \"Generic catch-all Chinese error patterns\"\
-          \n            })  \n\n        return patterns\n\n    \n    def _compile_patterns(self)\
-          \ -> Dict[str, List[Tuple[re.Pattern, Dict]]]:\n        \"\"\"编译正则表达式模式\"\
-          \"\"\n        compiled = {}\n        \n        for pattern_obj in self.patterns:\n\
-          \            category = pattern_obj[\"category\"]\n            if category\
-          \ not in compiled:\n                compiled[category] = []\n          \
-          \  \n            flags = re.IGNORECASE if not pattern_obj[\"case_sensitive\"\
-          ] else 0\n            regex = re.compile(pattern_obj[\"pattern\"], flags)\n\
-          \            compiled[category].append((regex, pattern_obj))\n        \n\
-          \        return compiled\n    \n    def detect_line(self, line: str, line_number:\
-          \ int = 0) -> bool:\n        \"\"\"检测单行日志\"\"\"        \n        for category,\
-          \ pattern_list in self.compiled_patterns.items():\n            for regex,\
-          \ pattern_obj in pattern_list:\n                if regex.search(line):\n\
-          \                   return True\n        \n        return False\n    \n\
-          \    def detect_logs(self, logs: List[str]) -> List[Dict]:\n        \"\"\
-          \"检测多行日志\"\"\"\n        all_matches = []\n        \n        for i, log in\
-          \ enumerate(logs):\n            line = log[\"body\"]\n            if self.detect_line(line,\
-          \ i + 1):\n                all_matches.append(log)\n        \n        return\
-          \ all_matches\n    \n    def _calculate_confidence(self, line: str, pattern:\
-          \ Dict) -> float:\n        \"\"\"计算匹配置信度\"\"\"\n        base_confidence\
-          \ = 1.0\n        \n        # 根据上下文关键词调整置信度\n        context_keywords = {\n\
-          \            \"error\": 0.1,\n            \"failed\": 0.1,\n           \
-          \ \"exception\": 0.1,\n            \"错误\": 0.1,\n            \"失败\": 0.1,\n\
-          \            \"异常\": 0.1,\n        }\n        \n        line_lower = line.lower()\n\
-          \        for keyword, boost in context_keywords.items():\n            if\
-          \ keyword in line_lower:\n                base_confidence += boost\n   \
-          \     \n        return min(base_confidence, 2.0)  # 最大置信度2.0\n    \n   \
-          \ def get_statistics(self, matches: List[Dict]) -> Dict:\n        \"\"\"\
-          获取检测统计信息\"\"\"\n        if not matches:\n            return {\"total\":\
-          \ 0, \"by_category\": {}, \"by_language\": {}, \"by_source\": {}}\n    \
-          \    \n        stats = {\n            \"total\": len(matches),\n       \
-          \     \"by_category\": {},\n            \"by_language\": {},\n         \
-          \   \"by_source\": {}\n        }\n        \n        for match in matches:\n\
-          \            # 按类别统计\n            category = match[\"category\"]\n     \
-          \       stats[\"by_category\"][category] = stats[\"by_category\"].get(category,\
-          \ 0) + 1\n            \n            # 按语言统计\n            language = match[\"\
-          language\"]\n            stats[\"by_language\"][language] = stats[\"by_language\"\
-          ].get(language, 0) + 1\n            \n            # 按错误来源统计\n          \
-          \  source = match[\"source\"]\n            stats[\"by_source\"][source]\
-          \ = stats[\"by_source\"].get(source, 0) + 1\n        \n        return stats\n\
-          \    \n    def format_results(self, matches: List[Dict], show_details: bool\
-          \ = True, group_by: str = \"category\") -> str:\n        \"\"\"\n      \
-          \  格式化检测结果\n        \n        Args:\n            matches: 匹配结果列表\n     \
-          \       show_details: 是否显示详细信息\n            group_by: 分组方式 (\"category\"\
-          , \"source\")\n        \"\"\"\n        if not matches:\n            return\
-          \ \"未检测到服务不可用相关日志\"\n        \n        result = f\"检测到 {len(matches)} 条服务不可用相关日志:\\\
-          n\\n\"\n        \n        if group_by == \"source\":\n            # 按错误来源分组显示\n\
-          \            by_source = {}\n            for match in matches:\n       \
-          \         source = match[\"source\"]\n                if source not in by_source:\n\
-          \                    by_source[source] = []\n                by_source[source].append(match)\n\
-          \            \n            # 定义来源显示名称\n            source_names = {\n  \
-          \              \"internal\": \"内部问题 (自身服务)\",\n                \"external\"\
-          : \"外部问题 (依赖服务)\",\n                \"mixed\": \"混合问题 (需进一步判断)\"\n     \
-          \       }\n            \n            for source, source_matches in by_source.items():\n\
-          \                source_name = source_names.get(source, source)\n      \
-          \          result += f\"=== {source_name} ({len(source_matches)} 条) ===\\\
-          n\"\n                \n                if show_details:\n              \
-          \      for match in source_matches:\n                        result += f\"\
-          \  日志内容: {match['content']}\\n\"\n                        result += f\"\
-          \  错误类型: {match['category']}\\n\"\n                else:\n             \
-          \       result += f\"  包含 {len(source_matches)} 条相关日志\\n\\n\"\n        \n\
-          \        else:\n            # 按类别分组显示\n            by_category = {}\n  \
-          \          for match in matches:\n                category = match[\"category\"\
-          ]\n                if category not in by_category:\n                   \
-          \ by_category[category] = []\n                by_category[category].append(match)\n\
-          \            \n            for category, category_matches in by_category.items():\n\
-          \                result += f\"=== {category.upper()} ({len(category_matches)}\
-          \ 条) ===\\n\"\n                \n                if show_details:\n    \
-          \                for match in category_matches:\n                      \
-          \  result += f\"  日志内容: {match['line_number']}: {match['content']}\\n\"\n\
-          \                        result += f\"  错误来源: {match['source']}\\n\"\n \
-          \               else:\n                    result += f\"  包含 {len(category_matches)}\
-          \ 条相关日志\\n\\n\"\n        return result\n\ndef main(log_json: str):\n   \
-          \ logs = json.loads(log_json).get(\"data\", {}).get(\"logContents\", {}).get(\"\
-          contents\", [])\n    detector = ServiceUnavailableDetector()\n    matches\
-          \ = detector.detect_logs(logs)\n    matches = matches[:30]\n    return {\"\
-          result\": matches}"
+        code: "import re\nimport json\nfrom typing import List, Dict, Tuple, Optional\n\
+          \n\nclass OptimizedServiceUnavailableDetector:\n    \"\"\"优化的服务不可用日志检测器\
+          \ - 仅使用原生库\"\"\"\n    \n    def __init__(self):\n        # 预编译所有正则表达式\n\
+          \        self.compiled_patterns = self._compile_optimized_patterns()\n \
+          \       # 快速过滤器 - 包含常见错误关键词\n        self.quick_filter = re.compile(\n \
+          \           r'(?:error|fail|timeout|unavailable|panic|crash|connection|refused|reset|'\n\
+          \            r'5\\d{2}|4\\d{2}|exception|critical|fatal|'\n            r'错误|失败|超时|不可用|崩溃|异常|致命|拒绝|连接)',\n\
+          \            re.IGNORECASE\n        )\n    \n    def _compile_optimized_patterns(self)\
+          \ -> List[Tuple[re.Pattern, str, str]]:\n        \"\"\"编译优化的模式列表 - 合并相似模式减少正则数量\"\
+          \"\"\n        patterns = []\n        \n        # 1. 连接错误 - 外部问题 (合并多个相关模式)\n\
+          \        connection_pattern = (\n            r'(?:connection\\s+(?:refused|reset|closed|aborted|failed|timeout)|'\n\
+          \            r'can[\\'\"\\s]*t\\s+connect|unable\\s+to\\s+connect|failed\\\
+          s+to\\s+connect|'\n            r'connect\\s+error|network\\s+unreachable|host\\\
+          s+unreachable|'\n            r'no\\s+route\\s+to\\s+host|connection\\s+timed\\\
+          s+out|'\n            r'连接(?:被拒绝|失败|超时|被重置|中断)|无法连接|拒绝连接|网络不可达|主机不可达)'\n\
+          \        )\n        patterns.append((re.compile(connection_pattern, re.IGNORECASE),\
+          \ \"connection_error\", \"external\"))\n        \n        # 2. 超时错误 - 混合问题\n\
+          \        timeout_pattern = (\n            r'(?:timeout|timed\\s+out|time\\\
+          s+out|超时|请求超时|响应超时|'\n            r'(?:read|write|connect|socket|request|response|execution|operation)\\\
+          s+timeout)'\n        )\n        patterns.append((re.compile(timeout_pattern,\
+          \ re.IGNORECASE), \"timeout_error\", \"mixed\"))\n        \n        # 3.\
+          \ 服务不可用 - 外部问题\n        unavailable_pattern = (\n            r'(?:(?:service|server|backend|upstream)\\\
+          s+unavailable|not\\s+available|'\n            r'服务(?:不可用|器不可用)|暂时不可用|temporar(?:y|ily)\\\
+          s+unavailable|'\n            r'503\\s+service\\s+unavailable)'\n       \
+          \ )\n        patterns.append((re.compile(unavailable_pattern, re.IGNORECASE),\
+          \ \"unavailable_error\", \"external\"))\n        \n        # 4. Panic/崩溃错误\
+          \ - 内部问题\n        panic_pattern = (\n            r'(?:panic[:\\s]|(?:fatal|critical)\\\
+          s+error|严重错误|致命错误|崩溃|crash|'\n            r'segmentation\\s+fault|stack\\\
+          s+overflow|out\\s+of\\s+memory|内存不足|栈溢出)'\n        )\n        patterns.append((re.compile(panic_pattern,\
+          \ re.IGNORECASE), \"panic_error\", \"internal\"))\n        \n        # 5.\
+          \ HTTP 5xx错误 - 内部问题\n        http_5xx_pattern = r'(?:5\\d{2}(?:\\s+\\w+)?|500\\\
+          s+internal\\s+server\\s+error|内部服务器错误)'\n        patterns.append((re.compile(http_5xx_pattern,\
+          \ re.IGNORECASE), \"http_error\", \"internal\"))\n        \n        # 6.\
+          \ HTTP网关错误 - 外部问题\n        http_gateway_pattern = (\n            r'(?:502\\\
+          s+bad\\s+gateway|503\\s+service\\s+unavailable|504\\s+gateway\\s+timeout|'\n\
+          \            r'bad\\s+gateway|gateway\\s+timeout|网关错误)'\n        )\n   \
+          \     patterns.append((re.compile(http_gateway_pattern, re.IGNORECASE),\
+          \ \"http_error\", \"external\"))\n        \n        # 7. 网络错误 - 外部问题\n \
+          \       network_pattern = (\n            r'(?:network\\s+(?:error|is\\s+unreachable)|dns\\\
+          s+resolution\\s+failed|'\n            r'name\\s+resolution\\s+failed|网络(?:错误|不可达)|dns解析失败|域名解析失败|'\n\
+          \            r'(?:socket|tcp|udp)\\s+error)'\n        )\n        patterns.append((re.compile(network_pattern,\
+          \ re.IGNORECASE), \"network_error\", \"external\"))\n        \n        #\
+          \ 8. 数据库错误 - 混合问题\n        database_pattern = (\n            r'(?:database\\\
+          s+(?:connection\\s+failed|unavailable|timeout|error)|sql\\s+error|'\n  \
+          \          r'数据库(?:连接失败|不可用|超时)|sql错误|connection\\s+pool\\s+exhausted|'\n\
+          \            r'too\\s+many\\s+connections|max\\s+connections\\s+reached)'\n\
+          \        )\n        patterns.append((re.compile(database_pattern, re.IGNORECASE),\
+          \ \"database_error\", \"mixed\"))\n        \n        # 9. 资源错误 - 内部问题\n\
+          \        resource_pattern = (\n            r'(?:memory\\s+exhausted|disk\\\
+          s+full|no\\s+space\\s+left|resource\\s+exhausted|'\n            r'内存不足|磁盘空间不足|资源耗尽|(?:cpu|memory)\\\
+          s+limit\\s+exceeded)'\n        )\n        patterns.append((re.compile(resource_pattern,\
+          \ re.IGNORECASE), \"resource_error\", \"internal\"))\n        \n       \
+          \ # 10. 认证错误 - 混合问题\n        auth_pattern = (\n            r'(?:(?:authentication|authorization)\\\
+          s+failed|access\\s+denied|'\n            r'permission\\s+denied|unauthorized|forbidden|认证失败|授权失败|'\n\
+          \            r'访问被拒绝|权限不足|401\\s+unauthorized|403\\s+forbidden)'\n     \
+          \   )\n        patterns.append((re.compile(auth_pattern, re.IGNORECASE),\
+          \ \"auth_error\", \"mixed\"))\n        \n        # 11. 通用错误模式 - 放在最后，避免过度匹配\n\
+          \        generic_pattern = (\n            r'(?:\\b(?:ERROR|ERR|EXCEPTION|FAIL(?:ED)?|FATAL|CRITICAL|CRASH(?:ED)?|BROKEN)\\\
+          b|'\n            r'错误|失败|异常|崩溃|致命|未知错误)'\n        )\n        patterns.append((re.compile(generic_pattern,\
+          \ re.IGNORECASE), \"generic_error\", \"unknown\"))\n        \n        return\
+          \ patterns\n    \n    def detect_line(self, line: str, line_number: int\
+          \ = 0) -> Optional[Dict]:\n        \"\"\"检测单行日志 - 优化版本\"\"\"\n        #\
+          \ 快速预过滤，避免不必要的详细匹配\n        if not self.quick_filter.search(line):\n   \
+          \         return None\n        \n        # 按优先级顺序匹配（具体错误优先于通用错误）\n     \
+          \   for regex, category, source in self.compiled_patterns:\n           \
+          \ if regex.search(line):\n                return {\n                   \
+          \ \"line_number\": line_number,\n                    \"content\": line,\n\
+          \                    \"category\": category,\n                    \"source\"\
+          : source\n                }\n        \n        return None\n    \n    def\
+          \ detect_logs(self, logs: List[Dict], max_results: int = 30) -> List[Dict]:\n\
+          \        \"\"\"检测多行日志 - 优化版本\"\"\"\n        if not logs:\n            return\
+          \ []\n        \n        matches = []\n        \n        # 直接遍历，避免额外的数据结构开销\n\
+          \        for i, log in enumerate(logs):\n            if len(matches) >=\
+          \ max_results:\n                break\n                \n            line\
+          \ = log.get(\"body\", \"\")\n            if not line:  # 跳过空行\n        \
+          \        continue\n                \n            match_info = self.detect_line(line,\
+          \ i)\n            if match_info:\n                # 复制原始日志并添加匹配信息\n    \
+          \            result_log = log.copy()\n                result_log.update({\n\
+          \                    \"category\": match_info[\"category\"],\n         \
+          \           \"source\": match_info[\"source\"]\n                })\n   \
+          \             matches.append(result_log)\n        \n        return matches\n\
+          \    \n    def get_statistics(self, matches: List[Dict]) -> Dict:\n    \
+          \    \"\"\"获取检测统计信息 - 使用原生方法\"\"\"\n        if not matches:\n          \
+          \  return {\"total\": 0, \"by_category\": {}, \"by_source\": {}}\n     \
+          \   \n        # 使用原生字典统计\n        by_category = {}\n        by_source =\
+          \ {}\n        \n        for match in matches:\n            # 统计类别\n    \
+          \        category = match.get(\"category\", \"unknown\")\n            by_category[category]\
+          \ = by_category.get(category, 0) + 1\n            \n            # 统计来源\n\
+          \            source = match.get(\"source\", \"unknown\") \n            by_source[source]\
+          \ = by_source.get(source, 0) + 1\n        \n        return {\n         \
+          \   \"total\": len(matches),\n            \"by_category\": by_category,\n\
+          \            \"by_source\": by_source\n        }\n    \n    def format_results(self,\
+          \ matches: List[Dict], show_details: bool = True, group_by: str = \"source\"\
+          ) -> str:\n        \"\"\"格式化检测结果\"\"\"\n        if not matches:\n      \
+          \      return \"未检测到服务不可用相关日志\"\n        \n        result = f\"检测到 {len(matches)}\
+          \ 条服务不可用相关日志:\\n\\n\"\n        \n        # 手动分组\n        groups = {}\n \
+          \       for match in matches:\n            key = match.get(group_by, \"\
+          unknown\")\n            if key not in groups:\n                groups[key]\
+          \ = []\n            groups[key].append(match)\n        \n        if group_by\
+          \ == \"source\":\n            source_names = {\n                \"internal\"\
+          : \"内部问题 (自身服务)\",\n                \"external\": \"外部问题 (依赖服务)\", \n  \
+          \              \"mixed\": \"混合问题 (需进一步判断)\",\n                \"unknown\"\
+          : \"未知来源\"\n            }\n            \n            # 按优先级排序显示\n      \
+          \      priority_order = [\"internal\", \"external\", \"mixed\", \"unknown\"\
+          ]\n            for source in priority_order:\n                if source\
+          \ in groups:\n                    source_matches = groups[source]\n    \
+          \                source_name = source_names[source]\n                  \
+          \  result += f\"=== {source_name} ({len(source_matches)} 条) ===\\n\"\n \
+          \                   \n                    if show_details:\n           \
+          \             # 只显示前3条详细信息，避免输出过长\n                        for match in\
+          \ source_matches[:3]:\n                            content = match.get(\"\
+          body\", \"\")\n                            # 截断过长的内容\n                 \
+          \           if len(content) > 100:\n                                content\
+          \ = content[:100] + \"...\"\n                            result += f\" \
+          \ 日志内容: {content}\\n\"\n                            result += f\"  错误类型:\
+          \ {match.get('category', 'unknown')}\\n\\n\"\n                        \n\
+          \                        if len(source_matches) > 3:\n                 \
+          \           result += f\"  ... 还有 {len(source_matches) - 3} 条同类日志\\n\\n\"\
+          \n                    else:\n                        result += f\"  包含 {len(source_matches)}\
+          \ 条相关日志\\n\\n\"\n        else:\n            # 按类别分组\n            for category,\
+          \ category_matches in groups.items():\n                result += f\"===\
+          \ {category.upper()} ({len(category_matches)} 条) ===\\n\"\n            \
+          \    \n                if show_details:\n                    for match in\
+          \ category_matches[:3]:\n                        content = match.get(\"\
+          body\", \"\")\n                        if len(content) > 100:\n        \
+          \                    content = content[:100] + \"...\"\n               \
+          \         result += f\"  日志内容: {content}\\n\"\n                        result\
+          \ += f\"  错误来源: {match.get('source', 'unknown')}\\n\\n\"\n             \
+          \       \n                    if len(category_matches) > 3:\n          \
+          \              result += f\"  ... 还有 {len(category_matches) - 3} 条同类日志\\\
+          n\\n\"\n                else:\n                    result += f\"  包含 {len(category_matches)}\
+          \ 条相关日志\\n\\n\"\n        \n        return result\n\n\ndef main(log_json:\
+          \ str):\n    \"\"\"主函数 - 优化版本\"\"\"\n    try:\n        # 解析JSON\n      \
+          \  data = json.loads(log_json)\n        logs = data.get(\"data\", {}).get(\"\
+          logContents\", {}).get(\"contents\", [])\n        \n        # 创建检测器并处理\n\
+          \        detector = OptimizedServiceUnavailableDetector()\n        matches\
+          \ = detector.detect_logs(logs, max_results=30)\n        \n        return\
+          \ {\"result\": matches}\n        \n    except json.JSONDecodeError as e:\n\
+          \        return {\"error\": f\"JSON解析错误: {str(e)}\"}\n    except Exception\
+          \ as e:\n        return {\"error\": f\"处理错误: {str(e)}\"}"
         code_language: python3
         desc: ''
         isInIteration: true
@@ -4855,8 +4754,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: /models/qwen2.5-32B
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: 1a251b76-1e32-4905-b8d1-859a76bf6237
           role: system
@@ -5446,10 +5345,10 @@ workflow:
         code: "import json\n\ndef main(all_logs):\n    detected = \"false\"\n    error_logs\
           \ = []\n    for logs in all_logs:\n        error_logs.append(logs)\n   \
           \     if len(logs) > 0:\n            detected = \"true\"\n    error_logs\
-          \ = error_logs[:15]\n    res = json.dumps({\"logs\": error_logs})\n    MAX_LENGTH\
-          \ = 40000\n    while len(res) > MAX_LENGTH and len(error_logs) > 0:\n  \
-          \      remove_count = max(1, len(error_logs) // 10)\n        error_logs\
-          \ = error_logs[:-remove_count]\n        res = json.dumps({\"logs\": error_logs})\n\
+          \ = error_logs[:20]\n    res = json.dumps({\"logs\": error_logs})\n    MAX_LENGTH\
+          \ = 5000\n    while len(res) > MAX_LENGTH and len(error_logs) > 0:\n   \
+          \     remove_count = max(1, len(error_logs) // 10)\n        error_logs =\
+          \ error_logs[:-remove_count]\n        res = json.dumps({\"logs\": error_logs})\n\
           \    return {\n        \"result\": detected,\n        \"error_logs_str\"\
           : res\n    }"
         code_language: python3
@@ -6176,8 +6075,8 @@ workflow:
       type: custom
       width: 244
     - data:
-        code: "\ndef main() -> dict:\n    return {\n        \"result\": \"\",\n  \
-          \  }\n"
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": \"{}\",\n\
+          \    }\n"
         code_language: python3
         desc: ''
         outputs:
@@ -6196,6 +6095,7 @@ workflow:
       positionAbsolute:
         x: 7302
         y: 1096.5
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -6225,6 +6125,6 @@ workflow:
       type: custom
       width: 244
     viewport:
-      x: -1985.536463048818
-      y: -90.38482561587472
-      zoom: 0.3007828955608487
+      x: -2780.0992543752186
+      y: -360.52073427742823
+      zoom: 0.5366858134987545

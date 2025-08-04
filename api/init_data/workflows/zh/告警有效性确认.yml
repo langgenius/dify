@@ -4427,16 +4427,19 @@ workflow:
         code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
           import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg)\n\
-          \  raw_tags = data.get('raw_tags')\n  return { \n  \"node\": get_value(data,\
-          \ [\"svc_node\", \"node\", \"nodename\", \"node_name\"]),      \n  \"service\"\
-          : get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\": get_value(data,[\"\
-          endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"pod\", \"\
-          src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"namespace\"\
-          , \"src_namespace\"]), \n  \"pid\": get_value(data,[\"pid\"]),\n  \"containerId\"\
-          : get_value(data,[\"container_id\", \"containerID\"]),\n  \"instanceName\"\
+          \  raw_tags = data.get('raw_tags', {})\n  comm = get_value(raw_tags, [\"\
+          comm\"])\n  if not comm:\n    comm = get_value(data, [\"comm\"])\n  workload_name\
+          \ = get_value(raw_tags, [\"workload_name\"])\n  if not workload_name:\n\
+          \    workload_name = get_value(data, [\"workload_name\"])\n  return { \n\
+          \  \"node\": get_value(data, [\"svc_node\", \"node\", \"nodename\", \"node_name\"\
+          ]),      \n  \"service\": get_value(data, [\"svc_name\", \"service\"]),\
+          \ \n  \"endpoint\": get_value(data,[\"endpoint\", \"content_key\"]), \n\
+          \  \"pod\": get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n  \"\
+          namespace\": get_value(data,[\"namespace\", \"src_namespace\"]), \n  \"\
+          pid\": get_value(data,[\"pid\"]),\n  \"containerId\": get_value(data,[\"\
+          container_id\", \"containerID\", \"containerId\"]),\n  \"instanceName\"\
           : get_value(data, [\"instance_name\", \"instanceName\"]),\n  \"workloadName\"\
-          : get_value(raw_tags, [\"workload_name\"]),\n  \"comm\": get_value(raw_tags,\
-          \ [\"comm\"])\n}"
+          : workload_name,\n  \"comm\": comm\n}"
         code_language: python3
         desc: ''
         outputs:
@@ -4486,7 +4489,7 @@ workflow:
       positionAbsolute:
         x: 334
         y: 638
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -7626,6 +7629,9 @@ workflow:
           isHistory:
             type: mixed
             value: 'true'
+          nodeName:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: constant
             value: 2134
@@ -7797,6 +7803,9 @@ workflow:
           isHistory:
             type: mixed
             value: 'false'
+          nodeName:
+            type: mixed
+            value: '{{#1742806924635.node#}}'
           startTime:
             type: constant
             value: 2134
@@ -7861,7 +7870,7 @@ workflow:
       positionAbsolute:
         x: 2462
         y: 3774.9617444838555
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -7876,7 +7885,7 @@ workflow:
         - value_selector:
           - '1753358645238'
           - valid
-          variable: valid
+          variable: text
         selected: false
         title: 结束 6
         type: end
@@ -7888,11 +7897,12 @@ workflow:
       positionAbsolute:
         x: 2766
         y: 3745.5
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: -245.6685087499718
-      y: -719.7995107312324
-      zoom: 0.32115062772829084
+      x: 14.479106220962876
+      y: -136.44434232948117
+      zoom: 0.25
