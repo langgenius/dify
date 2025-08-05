@@ -145,7 +145,6 @@ export const useEducationInit = () => {
   const router = useRouter()
   const { mutateAsync } = useEducationVerify()
   const handleVerify = async () => {
-    debugger
     const { token } = await mutateAsync()
     if(token)
       router.push(`/education-apply?token=${token}`)
