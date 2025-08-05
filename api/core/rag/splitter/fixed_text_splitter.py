@@ -12,7 +12,6 @@ from core.rag.splitter.text_splitter import (
     Literal,
     RecursiveCharacterTextSplitter,
     Set,
-    TokenTextSplitter,
     Union,
 )
 
