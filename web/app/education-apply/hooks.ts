@@ -7,6 +7,7 @@ import { useDebounceFn, useLocalStorageState } from 'ahooks'
 import { useSearchParams } from 'next/navigation'
 import type { SearchParams } from './types'
 import {
+  EDUCATION_PRICING,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from './constants'
@@ -127,6 +128,7 @@ const useEducationReverifyNotice = ({
 
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
   const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
   const searchParams = useSearchParams()
@@ -145,5 +147,7 @@ export const useEducationInit = () => {
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
         localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
     }
+    if(educationVerifyAction === EDUCATION_PRICING)
+      setShowPricingModal()
   }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
 }
