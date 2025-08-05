@@ -1532,7 +1532,7 @@ export const useNodesInteractions = () => {
   }, [redo, store, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   const [isDimming, setIsDimming] = useState(false)
-  /** 让除 nodeId 以外的节点都加上 opacity-30 */
+  /** Add opacity-30 to all nodes except the nodeId */
   const dimOtherNodes = useCallback(() => {
     if (isDimming)
       return
@@ -1583,13 +1583,11 @@ export const useNodesInteractions = () => {
     const dimNodes = [...dependencyNodes, ...dependentNodes, selectedNode]
 
     const newNodes = produce(nodes, (draft) => {
-      console.log('==========selecteds: ')
       draft.forEach((n) => {
         const dimNode = dimNodes.find(v => v.id === n.id)
         if (!dimNode)
           n.data._dimmed = true
       })
-      console.log('====================end of selecteds')
     })
 
     setNodes(newNodes)
@@ -1617,8 +1615,8 @@ export const useNodesInteractions = () => {
     dependentNodes.forEach((n) => {
       tempEdges.push({
         id: `tmp_${selectedNode.id}-source-${n.id}-target`,
-        type: CUSTOM_EDGE, // 复用自定义 Edge，也可以写一个 DIM_EDGE
-        source: selectedNode.id, // 依赖 → 选中
+        type: CUSTOM_EDGE,
+        source: selectedNode.id,
         sourceHandle: 'source_tmp',
         target: n.id,
         targetHandle: 'target_tmp',
@@ -1641,7 +1639,7 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [isDimming, store])
 
-  /** 把所有节点恢复为不透明 */
+  /** Restore all nodes to full opacity */
   const undimAllNodes = useCallback(() => {
     const { getNodes, setNodes, edges, setEdges } = store.getState()
     const nodes = getNodes()

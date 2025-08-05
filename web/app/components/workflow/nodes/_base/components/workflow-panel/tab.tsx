@@ -25,7 +25,6 @@ const Tab: FC<Props> = ({
       items={[
         { id: TabType.settings, name: t('workflow.debug.settingsTab').toLocaleUpperCase() },
         { id: TabType.lastRun, name: t('workflow.debug.lastRunTab').toLocaleUpperCase() },
-        { id: TabType.relations, name: t('workflow.debug.relationsTab').toLocaleUpperCase() },
       ]}
       itemClassName='ml-0'
       value={value}
