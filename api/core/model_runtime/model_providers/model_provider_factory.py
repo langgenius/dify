@@ -97,7 +97,7 @@ class ModelProviderFactory:
             plugin_providers_data = self.plugin_model_manager.fetch_model_providers(self.tenant_id)
         except Exception as e:
             # Handle potential exceptions from the HTTP request
-            logger.exception(f"Failed to fetch plugin model providers for tenant {self.tenant_id}")
+            logger.exception("Failed to fetch plugin model providers for tenant %s", self.tenant_id)
             return []
 
         # 3. Acquire lock ONLY to write to the shared cache
@@ -121,7 +121,7 @@ class ModelProviderFactory:
 
         except Exception as e:
             # Fallback to original implementation if Redis is not available
-            logger.warning(f"Redis lock failed, falling back to thread-local lock: {e}")
+            logger.warning("Redis lock failed, falling back to thread-local lock: %s", e)
 
             try:
                 with contexts.plugin_model_providers_lock.get():
@@ -142,7 +142,7 @@ class ModelProviderFactory:
                     return plugin_model_providers
             except Exception as fallback_error:
                 # If fallback also fails, log and return empty list
-                logger.exception(f"Both Redis lock and thread-local lock failed for tenant {self.tenant_id}")
+                logger.exception("Both Redis lock and thread-local lock failed for tenant %s", self.tenant_id)
                 return []
 
     def get_provider_schema(self, provider: str) -> ProviderEntity:
