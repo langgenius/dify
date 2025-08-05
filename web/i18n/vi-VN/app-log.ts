@@ -84,10 +84,8 @@ const translation = {
     fileListLabel: 'Chi tiết tệp',
   },
   promptLog: 'Nhật ký lời nhắc',
-  AgentLog: 'Nhật ký tác nhân',
   viewLog: 'Xem nhật ký',
   agentLogDetail: {
-    AgentMode: 'Chế độ tác nhân',
     toolUsed: 'Công cụ đã sử dụng',
     iterations: 'Số lần lặp',
     iteration: 'Lần lặp',

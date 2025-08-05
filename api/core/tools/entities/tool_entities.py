@@ -370,10 +370,18 @@ class ToolEntity(BaseModel):
         return v or []
 
 
+class OAuthSchema(BaseModel):
+    client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
+    credentials_schema: list[ProviderConfig] = Field(
+        default_factory=list, description="The schema of the OAuth credentials"
+    )
+
+
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: Optional[str] = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
+    oauth_schema: Optional[OAuthSchema] = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
@@ -453,6 +461,7 @@ class ToolSelector(BaseModel):
         options: Optional[list[PluginParameterOption]] = None
 
     provider_id: str = Field(..., description="The id of the provider")
+    credential_id: Optional[str] = Field(default=None, description="The id of the credential")
     tool_name: str = Field(..., description="The name of the tool")
     tool_description: str = Field(..., description="The description of the tool")
     tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
@@ -460,3 +469,36 @@ class ToolSelector(BaseModel):
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
+
+
+class CredentialType(enum.StrEnum):
+    API_KEY = "api-key"
+    OAUTH2 = "oauth2"
+
+    def get_name(self):
+        if self == CredentialType.API_KEY:
+            return "API KEY"
+        elif self == CredentialType.OAUTH2:
+            return "AUTH"
+        else:
+            return self.value.replace("-", " ").upper()
+
+    def is_editable(self):
+        return self == CredentialType.API_KEY
+
+    def is_validate_allowed(self):
+        return self == CredentialType.API_KEY
+
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def of(cls, credential_type: str) -> "CredentialType":
+        type_name = credential_type.lower()
+        if type_name == "api-key":
+            return cls.API_KEY
+        elif type_name == "oauth2":
+            return cls.OAUTH2
+        else:
+            raise ValueError(f"Invalid credential type: {credential_type}")

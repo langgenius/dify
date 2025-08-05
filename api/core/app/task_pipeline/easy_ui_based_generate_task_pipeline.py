@@ -471,7 +471,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :return:
         """
         agent_thought: Optional[MessageAgentThought] = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == event.agent_thought_id).first()
+            db.session.query(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).first()
         )
 
         if agent_thought:

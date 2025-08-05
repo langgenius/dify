@@ -82,12 +82,16 @@ const translation = {
       keyTooltip: 'HTTP 헤더 키입니다. 생각이 없으면 "Authorization"으로 남겨둘 수 있습니다. 또는 사용자 정의 값을 설정할 수 있습니다.',
       types: {
         none: '없음',
-        api_key: 'API 키',
         apiKeyPlaceholder: 'API 키의 HTTP 헤더 이름',
         apiValuePlaceholder: 'API 키를 입력하세요',
+        api_key_query: '쿼리 매개변수',
+        queryParamPlaceholder: 'API 키에 대한 쿼리 매개변수 이름',
+        api_key_header: '헤더',
       },
       key: '키',
       value: '값',
+      queryParam: '쿼리 매개변수',
+      queryParamTooltip: '전달할 API 키 쿼리 매개변수의 이름, 예: "https://example.com/test?key=API_KEY"에서의 "key".',
     },
     authHeaderPrefix: {
       title: '인증 유형',

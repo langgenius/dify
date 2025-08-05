@@ -1,4 +1,4 @@
-from core.variables.types import SegmentType
+from core.variables.types import ArrayValidation, SegmentType
 
 
 class TestSegmentTypeIsArrayType:
@@ -17,7 +17,6 @@ class TestSegmentTypeIsArrayType:
         value is tested for the is_array_type method.
         """
         # Arrange
-        all_segment_types = set(SegmentType)
         expected_array_types = [
             SegmentType.ARRAY_ANY,
             SegmentType.ARRAY_STRING,
@@ -58,3 +57,27 @@ class TestSegmentTypeIsArrayType:
         for seg_type in enum_values:
             is_array = seg_type.is_array_type()
             assert isinstance(is_array, bool), f"is_array_type does not return a boolean for segment type {seg_type}"
+
+
+class TestSegmentTypeIsValidArrayValidation:
+    """
+    Test SegmentType.is_valid with array types using different validation strategies.
+    """
+
+    def test_array_validation_all_success(self):
+        value = ["hello", "world", "foo"]
+        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+
+    def test_array_validation_all_fail(self):
+        value = ["hello", 123, "world"]
+        # Should return False, since 123 is not a string
+        assert not SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.ALL)
+
+    def test_array_validation_first(self):
+        value = ["hello", 123, None]
+        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.FIRST)
+
+    def test_array_validation_none(self):
+        value = [1, 2, 3]
+        # validation is None, skip
+        assert SegmentType.ARRAY_STRING.is_valid(value, array_validation=ArrayValidation.NONE)

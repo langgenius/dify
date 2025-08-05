@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from typing import Any
 
 from flask import request
@@ -13,6 +12,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
@@ -34,11 +34,11 @@ class InstalledAppsListApi(Resource):
         if app_id:
             installed_apps = (
                 db.session.query(InstalledApp)
-                .filter(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
+                .where(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
                 .all()
             )
         else:
-            installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+            installed_apps = db.session.query(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id).all()
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_app_list: list[dict[str, Any]] = [
@@ -74,7 +74,7 @@ class InstalledAppsListApi(Resource):
                 ):
                     res.append(installed_app)
             installed_app_list = res
-            logger.debug(f"installed_app_list: {installed_app_list}, user_id: {user_id}")
+            logger.debug("installed_app_list: %s, user_id: %s", installed_app_list, user_id)
 
         installed_app_list.sort(
             key=lambda app: (
@@ -94,12 +94,12 @@ class InstalledAppsListApi(Resource):
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
-        recommended_app = db.session.query(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"]).first()
+        recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
             raise NotFound("App not found")
 
         current_tenant_id = current_user.current_tenant_id
-        app = db.session.query(App).filter(App.id == args["app_id"]).first()
+        app = db.session.query(App).where(App.id == args["app_id"]).first()
 
         if app is None:
             raise NotFound("App not found")
@@ -109,7 +109,7 @@ class InstalledAppsListApi(Resource):
 
         installed_app = (
             db.session.query(InstalledApp)
-            .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
+            .where(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
             .first()
         )
 
@@ -122,7 +122,7 @@ class InstalledAppsListApi(Resource):
                 tenant_id=current_tenant_id,
                 app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
-                last_used_at=datetime.now(UTC).replace(tzinfo=None),
+                last_used_at=naive_utc_now(),
             )
             db.session.add(new_installed_app)
             db.session.commit()

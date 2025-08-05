@@ -31,6 +31,15 @@ class SecurityConfig(BaseSettings):
         description="Duration in minutes for which a password reset token remains valid",
         default=5,
     )
+    CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a change email token remains valid",
+        default=5,
+    )
+
+    OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a owner transfer token remains valid",
+        default=5,
+    )
 
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
@@ -614,6 +623,16 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    CHANGE_EMAIL_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying change email after exceeding the rate limit.",
+        default=86400,
+    )
+
+    OWNER_TRANSFER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying owner transfer after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -813,6 +832,41 @@ class CeleryBeatConfig(BaseSettings):
     )
 
 
+class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
+        description="Enable clean embedding cache task",
+        default=False,
+    )
+    ENABLE_CLEAN_UNUSED_DATASETS_TASK: bool = Field(
+        description="Enable clean unused datasets task",
+        default=False,
+    )
+    ENABLE_CREATE_TIDB_SERVERLESS_TASK: bool = Field(
+        description="Enable create tidb service job task",
+        default=False,
+    )
+    ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: bool = Field(
+        description="Enable update tidb service job status task",
+        default=False,
+    )
+    ENABLE_CLEAN_MESSAGES: bool = Field(
+        description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
+        description="Enable mail clean document notify task",
+        default=False,
+    )
+    ENABLE_DATASETS_QUEUE_MONITOR: bool = Field(
+        description="Enable queue monitor task",
+        default=False,
+    )
+    ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
+        description="Enable check upgradable plugin task",
+        default=True,
+    )
+
+
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
         description="Comma-separated list of pinned model providers",
@@ -942,5 +996,6 @@ class FeatureConfig(
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
+    CeleryScheduleTasksConfig,
 ):
     pass

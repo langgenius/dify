@@ -115,6 +115,7 @@ const translation = {
     needEndNode: 'باید گره پایان اضافه شود',
     needAnswerNode: 'باید گره پاسخ اضافه شود',
     addBlock: 'نود اضافه کنید',
+    tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -221,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'ابزارها',
     'allTool': 'همه',
-    'builtInTool': 'درون‌ساخت',
     'customTool': 'سفارشی',
     'workflowTool': 'جریان کار',
     'question-understand': 'درک سوال',
@@ -234,6 +234,8 @@ const translation = {
     'agent': 'استراتژی نمایندگی',
     'blocks': 'گره‌ها',
     'searchBlock': 'گره جستجو',
+    'addAll': 'همه را اضافه کنید',
+    'allAdded': 'همه اضافه شده است',
   },
   blocks: {
     'start': 'شروع',
@@ -364,7 +366,10 @@ const translation = {
         retrySuccessful: 'امتحان مجدد با موفقیت انجام دهید',
         retryFailedTimes: '{{بار}} تلاش های مجدد ناموفق بود',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'مقدار ورودی',
+        variable: 'از متغیر استفاده کن',
+      },
     },
     start: {
       required: 'الزامی',
@@ -491,6 +496,7 @@ const translation = {
           conditions: 'شرایط',
         },
         title: 'فیلتر کردن فراداده',
+        tip: 'فیلتر کردن متاداده فرایند استفاده از ویژگی‌های متاداده (مانند برچسب‌ها، دسته‌ها یا مجوزهای دسترسی) برای تصفیه و کنترل بازیابی اطلاعات مرتبط در یک سیستم است.',
       },
     },
     http: {
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'وابستگی‌های پیشرفته',
       advancedDependenciesTip: 'برخی وابستگی‌های پیش‌بارگذاری شده که زمان بیشتری برای مصرف نیاز دارند یا به طور پیش‌فرض در اینجا موجود نیستند، اضافه کنید',
       searchDependencies: 'جستجوی وابستگی‌ها',
+      syncFunctionSignature: 'امضای تابع همگام‌سازی را به کد متصل کنید',
     },
     templateTransform: {
       inputVars: 'متغیرهای ورودی',
@@ -579,7 +586,6 @@ const translation = {
         'not empty': 'خالی نیست',
         'null': 'خالی',
         'not null': 'خالی نیست',
-        'regex match': 'مسابقه regex',
         'in': 'در',
         'not exists': 'وجود ندارد',
         'all of': 'همه از',
@@ -670,6 +676,9 @@ const translation = {
         json: 'json تولید شده توسط ابزار',
       },
       authorize: 'مجوز دادن',
+      settings: 'تنظیمات',
+      insertPlaceholder2: 'متغیر را وارد کنید',
+      insertPlaceholder1: 'نوع کنید یا فشار دهید',
     },
     questionClassifiers: {
       model: 'مدل',
@@ -854,6 +863,8 @@ const translation = {
       strategyNotFoundDesc: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد.',
       strategyNotFoundDescAndSwitchVersion: 'نسخه افزونه نصب شده این استراتژی را ارائه نمی دهد. برای تغییر نسخه کلیک کنید.',
       model: 'مدل',
+      parameterSchema: 'طرح پارامتر',
+      clickToViewParameterSchema: 'برای مشاهده طرح پارامتر کلیک کنید',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +930,7 @@ const translation = {
       deleteFailure: 'حذف نسخه موفق نبود',
       restoreFailure: 'بازگرداندن نسخه ناموفق بود',
       updateFailure: 'به‌روزرسانی نسخه ناموفق بود',
+      copyIdSuccess: 'شناسه در کلیپ بورد کپی شده است',
     },
     latest: 'آخرین',
     editVersionInfo: 'ویرایش اطلاعات نسخه',
@@ -929,6 +941,7 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+    copyId: 'شناسه کپی',
   },
   debug: {
     noData: {

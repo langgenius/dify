@@ -152,7 +152,6 @@ class VariablePool(BaseModel):
             self.variable_dictionary[selector[0]] = {}
             return
         key, hash_key = self._selector_to_keys(selector)
-        hash_key = hash(tuple(selector[1:]))
         self.variable_dictionary[key].pop(hash_key, None)
 
     def convert_template(self, template: str, /):

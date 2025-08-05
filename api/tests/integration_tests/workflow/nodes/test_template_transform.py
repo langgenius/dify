@@ -76,6 +76,7 @@ def test_execute_code(setup_code_executor_mock):
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
     )
+    node.init_node_data(config.get("data", {}))
 
     # execute node
     result = node._run()

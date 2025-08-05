@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
@@ -8,12 +8,14 @@ import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import type { ToastHandle } from '@/app/components/base/toast'
 import Toast from '@/app/components/base/toast'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import { RiDraggable } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { useDebounceFn } from 'ahooks'
 
 type Props = {
   nodeId: string
@@ -39,6 +41,7 @@ const VarList: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
+  const [toastHandle, setToastHandle] = useState<ToastHandle>()
 
   const listWithIds = useMemo(() => list.map((item) => {
     const id = uuid4()
@@ -48,27 +51,35 @@ const VarList: FC<Props> = ({
     }
   }), [list])
 
-  const handleVarNameChange = useCallback((index: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      replaceSpaceWithUnderscreInVarNameInput(e.target)
-
-      const newKey = e.target.value
-      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-      if (!isValid) {
-        Toast.notify({
+  const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
+    const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
+    if (!isValid) {
+      setToastHandle(Toast.notify({
           type: 'error',
           message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        })
+        }))
         return
       }
+    if (list.some(item => item.variable?.trim() === newKey.trim())) {
+      console.log('new key', newKey.trim())
+      setToastHandle(Toast.notify({
+        type: 'error',
+        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+      }))
+    }
+    else {
+      toastHandle?.clear?.()
+    }
+  }, { wait: 500 })
 
-      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
-        Toast.notify({
-          type: 'error',
-          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
-        })
-        return
-      }
+  const handleVarNameChange = useCallback((index: number) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      replaceSpaceWithUnderscoreInVarNameInput(e.target)
+
+      const newKey = e.target.value
+
+      toastHandle?.clear?.()
+      validateVarInput(list.toSpliced(index, 1), newKey)
 
       onVarNameChange?.(list[index].variable, newKey)
       const newList = produce(list, (draft) => {
@@ -76,7 +87,7 @@ const VarList: FC<Props> = ({
       })
       onChange(newList)
     }
-  }, [list, onVarNameChange, onChange])
+  }, [list, onVarNameChange, onChange, validateVarInput])
 
   const handleVarReferenceChange = useCallback((index: number) => {
     return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
