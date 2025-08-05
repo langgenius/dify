@@ -48,7 +48,7 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
   let variableFullPathName = variables.slice(1).join('.')
 
-  if (isRagVariableVar(variables) && variables[1] === 'shared')
+  if (isRagVariableVar(variables))
     variableFullPathName = variables.slice(2).join('.')
 
   const variablesLength = variables.length
