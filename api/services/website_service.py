@@ -222,7 +222,7 @@ class WebsiteService:
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
             )
             if response.json().get("code") != 200:
-                raise ValueError(f"Failed to crawl:")
+                raise ValueError("Failed to crawl:")
             return {"status": "active", "data": response.json().get("data")}
         else:
             response = requests.post(
