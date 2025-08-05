@@ -7,17 +7,19 @@ import { useDebounceFn, useLocalStorageState } from 'ahooks'
 import { useSearchParams } from 'next/navigation'
 import type { SearchParams } from './types'
 import {
-  EDUCATION_PRICING,
+  EDUCATION_PRICING_SHOW_ACTION,
+  EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from './constants'
-import { useEducationAutocomplete } from '@/service/use-education'
+import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useRouter } from 'next/navigation'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -140,6 +142,15 @@ export const useEducationInit = () => {
     },
   })
 
+  const router = useRouter()
+  const { mutateAsync } = useEducationVerify()
+  const handleVerify = async () => {
+    debugger
+    const { token } = await mutateAsync()
+    if(token)
+      router.push(`/education-apply?token=${token}`)
+  }
+
   useEffect(() => {
     if (educationVerifying === 'yes' || educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION) {
       setShowAccountSettingModal({ payload: 'billing' })
@@ -147,7 +158,9 @@ export const useEducationInit = () => {
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
         localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
     }
-    if(educationVerifyAction === EDUCATION_PRICING)
+    if(educationVerifyAction === EDUCATION_PRICING_SHOW_ACTION)
       setShowPricingModal()
+    if(educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
+      handleVerify()
   }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
 }
