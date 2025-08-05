@@ -98,12 +98,54 @@ class ClickzettaVector(BaseVector):
             schema=self._config.schema_name
         )
 
-        # Set session parameters for better string handling
+        # Set session parameters for better string handling and performance optimization
         if self._connection is not None:
             with self._connection.cursor() as cursor:
                 # Use quote mode for string literal escaping to handle quotes better
                 cursor.execute("SET cz.sql.string.literal.escape.mode = 'quote'")
                 logger.info("Set string literal escape mode to 'quote' for better quote handling")
+
+                # Performance optimization hints for vector operations
+                self._set_performance_hints(cursor)
+
+    def _set_performance_hints(self, cursor):
+        """Set ClickZetta performance optimization hints for vector operations."""
+        try:
+            # Performance optimization hints for vector operations and query processing
+            performance_hints = [
+                # Vector index optimization
+                "SET cz.storage.parquet.vector.index.read.memory.cache = true",
+                "SET cz.storage.parquet.vector.index.read.local.cache = false",
+
+                # Query optimization
+                "SET cz.sql.table.scan.push.down.filter = true",
+                "SET cz.sql.table.scan.enable.ensure.filter = true",
+                "SET cz.storage.always.prefetch.internal = true",
+                "SET cz.optimizer.generate.columns.always.valid = true",
+                "SET cz.sql.index.prewhere.enabled = true",
+
+                # Storage optimization
+                "SET cz.storage.parquet.enable.io.prefetch = false",
+                "SET cz.optimizer.enable.mv.rewrite = false",
+                "SET cz.sql.dump.as.lz4 = true",
+                "SET cz.optimizer.limited.optimization.naive.query = true",
+                "SET cz.sql.table.scan.enable.push.down.log = false",
+                "SET cz.storage.use.file.format.local.stats = false",
+                "SET cz.storage.local.file.object.cache.level = all",
+
+                # Job execution optimization
+                "SET cz.sql.job.fast.mode = true",
+                "SET cz.storage.parquet.non.contiguous.read = true",
+                "SET cz.sql.compaction.after.commit = true"
+            ]
+
+            for hint in performance_hints:
+                cursor.execute(hint)
+
+            logger.info("Applied %d performance optimization hints for ClickZetta vector operations", len(performance_hints))
+
+        except Exception as e:
+            logger.warning("Failed to set some performance hints, continuing with default settings: %s", e)
 
     @classmethod
     def _init_write_queue(cls):
@@ -387,6 +429,12 @@ class ClickzettaVector(BaseVector):
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
             try:
+                # Set session-level hints for batch insert operations
+                # Note: executemany doesn't support hints parameter, so we set them as session variables
+                cursor.execute("SET cz.sql.job.fast.mode = true")
+                cursor.execute("SET cz.sql.compaction.after.commit = true")
+                cursor.execute("SET cz.storage.always.prefetch.internal = true")
+
                 cursor.executemany(insert_sql, data_rows)
                 logger.info(
                     f"Inserted batch {batch_index // batch_size + 1}/{total_batches} "
@@ -509,7 +557,15 @@ class ClickzettaVector(BaseVector):
         documents = []
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
-            cursor.execute(search_sql)
+            # Use hints parameter for vector search optimization
+            search_hints = {
+                'hints': {
+                    'sdk.job.timeout': 60,  # Increase timeout for vector search
+                    'cz.sql.job.fast.mode': True,
+                    'cz.storage.parquet.vector.index.read.memory.cache': True
+                }
+            }
+            cursor.execute(search_sql, parameters=search_hints)
             results = cursor.fetchall()
 
             for row in results:
@@ -595,7 +651,15 @@ class ClickzettaVector(BaseVector):
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
             try:
-                cursor.execute(search_sql)
+                # Use hints parameter for full-text search optimization
+                fulltext_hints = {
+                    'hints': {
+                        'sdk.job.timeout': 30,  # Timeout for full-text search
+                        'cz.sql.job.fast.mode': True,
+                        'cz.sql.index.prewhere.enabled': True
+                    }
+                }
+                cursor.execute(search_sql, parameters=fulltext_hints)
                 results = cursor.fetchall()
 
                 for row in results:
@@ -672,7 +736,14 @@ class ClickzettaVector(BaseVector):
         documents = []
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
-            cursor.execute(search_sql)
+            # Use hints parameter for LIKE search optimization
+            like_hints = {
+                'hints': {
+                    'sdk.job.timeout': 20,  # Timeout for LIKE search
+                    'cz.sql.job.fast.mode': True
+                }
+            }
+            cursor.execute(search_sql, parameters=like_hints)
             results = cursor.fetchall()
 
             for row in results:
