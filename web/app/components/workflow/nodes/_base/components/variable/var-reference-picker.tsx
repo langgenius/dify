@@ -390,8 +390,9 @@ const VarReferencePicker: FC<Props> = ({
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
     if (isLoopVar) return 'loop'
+    if (isRagVar) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isLoopVar])
+  }, [isEnv, isChatVar, isLoopVar, isRagVar])
 
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
