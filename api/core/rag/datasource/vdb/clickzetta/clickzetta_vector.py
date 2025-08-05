@@ -144,8 +144,9 @@ class ClickzettaVector(BaseVector):
 
             logger.info("Applied %d performance optimization hints for ClickZetta vector operations", len(performance_hints))
 
-        except Exception as e:
-            logger.warning("Failed to set some performance hints, continuing with default settings: %s", e)
+        except Exception:
+            # Catch any errors setting performance hints but continue with defaults
+            logger.exception("Failed to set some performance hints, continuing with default settings")
 
     @classmethod
     def _init_write_queue(cls):
@@ -173,7 +174,7 @@ class ClickzettaVector(BaseVector):
                     try:
                         result = func(*args, **kwargs)
                         result_queue.put((True, result))
-                    except Exception as e:
+                    except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
                         logger.exception("Write task failed")
                         result_queue.put((False, e))
                     finally:
@@ -182,7 +183,7 @@ class ClickzettaVector(BaseVector):
                     break
             except queue.Empty:
                 continue
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
                 logger.exception("Write worker error")
 
     def _execute_write(self, func, *args, **kwargs):
@@ -216,7 +217,7 @@ class ClickzettaVector(BaseVector):
             with connection.cursor() as cursor:
                 cursor.execute(f"DESC {self._config.schema_name}.{self._table_name}")
                 return True
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             if "table or view not found" in str(e).lower():
                 return False
             else:
@@ -279,7 +280,7 @@ class ClickzettaVector(BaseVector):
                 if Field.VECTOR.value in str(idx).lower():
                     logger.info("Vector index already exists on column %s", Field.VECTOR.value)
                     return
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
@@ -295,7 +296,7 @@ class ClickzettaVector(BaseVector):
         try:
             cursor.execute(index_sql)
             logger.info("Created vector index: %s", index_name)
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             error_msg = str(e).lower()
             if ("already exists" in error_msg or
                 "already has index" in error_msg or
@@ -322,7 +323,7 @@ class ClickzettaVector(BaseVector):
                     (index_name.lower() in idx_str or f"idx_{self._table_name}_text" in idx_str)):
                     logger.info("Inverted index already exists on column %s: %s", Field.CONTENT_KEY.value, idx)
                     return
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             logger.warning("Failed to check existing indexes: %s", e)
 
         index_sql = f"""
@@ -336,7 +337,7 @@ class ClickzettaVector(BaseVector):
         try:
             cursor.execute(index_sql)
             logger.info("Created inverted index: %s", index_name)
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             error_msg = str(e).lower()
             # Handle ClickZetta specific error messages
             if (("already exists" in error_msg or
@@ -353,7 +354,7 @@ class ClickzettaVector(BaseVector):
                         if "inverted" in str(idx).lower() and Field.CONTENT_KEY.value.lower() in str(idx).lower():
                             logger.info("Found existing inverted index: %s", idx)
                             break
-                except Exception:
+                except (RuntimeError, ValueError):
                     pass
             else:
                 logger.warning("Failed to create inverted index: %s", e)
@@ -440,7 +441,7 @@ class ClickzettaVector(BaseVector):
                     f"Inserted batch {batch_index // batch_size + 1}/{total_batches} "
                     f"({len(data_rows)} valid docs using parameterized query with VECTOR({vector_dimension}) cast)"
                 )
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
                 logger.exception("Parameterized SQL execution failed for %d documents: %s", len(data_rows), e)
                 logger.exception("SQL template: %s", insert_sql)
                 logger.exception("Sample data row: %s", data_rows[0] if data_rows else 'None')
@@ -694,7 +695,7 @@ class ClickzettaVector(BaseVector):
                     metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
                     doc = Document(page_content=row[1], metadata=metadata)
                     documents.append(doc)
-            except Exception as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
                 logger.exception("Full-text search failed")
                 # Fallback to LIKE search if full-text search fails
                 return self._search_by_like(query, **kwargs)
