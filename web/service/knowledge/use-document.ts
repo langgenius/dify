@@ -8,7 +8,7 @@ import type { MetadataType, SortType } from '../datasets'
 import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
+import type { CommonResponse, FileDownloadResponse } from '@/models/common'
 // Download document with authentication (sends Authorization header)
 import Toast from '@/app/components/base/toast'
 
@@ -102,7 +102,7 @@ export const useDocumentDownload = () => {
   return useMutation({
     mutationFn: async ({ datasetId, documentId }: { datasetId: string; documentId: string }) => {
       // The get helper automatically adds the Authorization header from localStorage
-      return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/upload-file`)
+      return get<FileDownloadResponse>(`/datasets/${datasetId}/documents/${documentId}/upload-file`)
     },
     onError: (error: any) => {
       // Show a toast notification if download fails

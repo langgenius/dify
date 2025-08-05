@@ -1,0 +1,27 @@
+name: "✨ Refactor"
+description: Refactor existing code for improved readability and maintainability.
+title: "[Chore/Refactor] "
+labels:
+  - refactor
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: "Describe the refactor you are proposing."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      placeholder: "Explain why this refactor is necessary."
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      placeholder: "Add any other context or screenshots about the request here."
+    validations:
+      required: false

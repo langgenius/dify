@@ -968,6 +968,15 @@ const translation = {
     },
     settingsTab: 'Nastavitve',
     lastRunTab: 'Zadnji zagon',
+    relations: {
+      dependencies: 'Odvisnosti',
+      dependents: 'Odvisnim',
+      noDependents: 'Brez vzdrževanih oseb',
+      dependentsDescription: 'Vozlišča, ki se zanašajo na to vozlišče',
+      dependenciesDescription: 'Vozlišča, na katera se zanaša to vozlišče',
+      noDependencies: 'Brez odvisnosti',
+    },
+    relationsTab: 'Odnose',
   },
 }
 
