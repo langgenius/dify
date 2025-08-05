@@ -8,23 +8,16 @@ from core.mcp.mcp_client import MCPClient
 from core.mcp.types import ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 
 
 class MCPTool(Tool):
-    tenant_id: str
-    icon: str
-    runtime_parameters: Optional[list[ToolParameter]]
-    server_url: str
-    provider_id: str
-
     def __init__(
         self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, server_url: str, provider_id: str
     ) -> None:
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
         self.icon = icon
-        self.runtime_parameters = None
         self.server_url = server_url
         self.provider_id = provider_id
 
