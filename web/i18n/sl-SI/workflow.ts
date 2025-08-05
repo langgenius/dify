@@ -927,6 +927,7 @@ const translation = {
       restoreSuccess: 'Obnovljena različica',
       restoreFailure: 'Obnavljanje različice ni uspelo',
       updateSuccess: 'Različica posodobljena',
+      copyIdSuccess: 'ID kopiran v odložišče',
     },
     defaultName: 'Nepodpisana različica',
     deletionTip: 'Izbris je nepovraten, prosim potrdite.',
@@ -937,6 +938,7 @@ const translation = {
     nameThisVersion: 'Poimenujte to različico',
     releaseNotesPlaceholder: 'Opisujte, kaj se je spremenilo',
     restorationTip: 'Po obnovitvi različice bo trenutni osnutek prepisan.',
+    copyId: 'Kopiraj ID',
   },
   debug: {
     noData: {

@@ -930,6 +930,7 @@ const translation = {
       deleteSuccess: 'Версия удалена',
       updateFailure: 'Не удалось обновить версию',
       restoreFailure: 'Не удалось восстановить версию',
+      copyIdSuccess: 'ID скопирован в буфер обмена',
     },
     latest: 'Последний',
     restorationTip: 'После восстановления версии текущий черновик будет перезаписан.',
@@ -940,6 +941,7 @@ const translation = {
     currentDraft: 'Текущий проект',
     releaseNotesPlaceholder: 'Опишите, что изменилось',
     defaultName: 'Без названия версия',
+    copyId: 'Копировать ID',
   },
   debug: {
     noData: {

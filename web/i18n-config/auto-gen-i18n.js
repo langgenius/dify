@@ -42,6 +42,13 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
             return
           }
 
+          // Skip template literal placeholders
+          if (source === 'TEMPLATE_LITERAL_PLACEHOLDER') {
+            console.log(`⏭️  Skipping template literal key: "${key}"`)
+            skippedKeys.push(`${key}: ${source}`)
+            return
+          }
+
           // Only skip obvious code patterns, not normal text with parentheses
           const codePatterns = [
             /\{\{.*\}\}/, // Template variables like {{key}}
@@ -102,6 +109,15 @@ async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
   try {
     const content = fs.readFileSync(fullKeyFilePath, 'utf8')
 
+    // Temporarily replace template literals with regular strings for AST parsing
+    // This allows us to process other keys while skipping problematic ones
+    let processedContent = content
+    const templateLiteralPattern = /(resolutionTooltip):\s*`([^`]*)`/g
+    processedContent = processedContent.replace(templateLiteralPattern, (match, key, value) => {
+      console.log(`⏭️  Temporarily replacing template literal for key: ${key}`)
+      return `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`
+    })
+
     // Create a safer module environment for vm
     const moduleExports = {}
     const context = {
@@ -114,7 +130,7 @@ async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
     }
 
     // Use vm.runInNewContext instead of eval for better security
-    vm.runInNewContext(transpile(content), context)
+    vm.runInNewContext(transpile(processedContent), context)
 
     const fullKeyContent = moduleExports.default || moduleExports
 
@@ -132,7 +148,14 @@ export default translation
     // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
     const readContent = await loadFile(toGenLanguageFilePath)
     const { code: toGenContent } = generateCode(readContent)
-    const mod = await parseModule(`export default ${toGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
+
+    // Also handle template literals in target file content
+    let processedToGenContent = toGenContent
+    processedToGenContent = processedToGenContent.replace(templateLiteralPattern, (match, key, value) => {
+      console.log(`⏭️  Temporarily replacing template literal in target file for key: ${key}`)
+      return `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`
+    })
+    const mod = await parseModule(`export default ${processedToGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
     const toGenOutPut = mod.exports.default
 
     console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
@@ -151,10 +174,25 @@ export default translation
     }
 
     const { code } = generateCode(mod)
-    const res = `const translation =${code.replace('export default', '')}
+    let res = `const translation =${code.replace('export default', '')}
 
 export default translation
 `.replace(/,\n\n/g, ',\n').replace('};', '}')
+
+    // Restore original template literals by reading from the original target file if it exists
+    if (fs.existsSync(toGenLanguageFilePath)) {
+      const originalContent = fs.readFileSync(toGenLanguageFilePath, 'utf8')
+      // Extract original template literal content for resolutionTooltip
+      const originalMatch = originalContent.match(/(resolutionTooltip):\s*`([^`]*)`/s)
+      if (originalMatch) {
+        const [fullMatch, key, value] = originalMatch
+        res = res.replace(
+          `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`,
+          `${key}: \`${value}\``,
+        )
+        console.log(`🔄 Restored original template literal for key: ${key}`)
+      }
+    }
 
     if (!isDryRun) {
       fs.writeFileSync(toGenLanguageFilePath, res)
@@ -190,7 +228,7 @@ async function main() {
     .readdirSync(path.resolve(__dirname, i18nFolder, targetLanguage))
     .filter(file => /\.ts$/.test(file)) // Only process .ts files
     .map(file => file.replace(/\.ts$/, ''))
-    .filter(f => f !== 'app-debug') // ast parse error in app-debug
+    // Removed app-debug exclusion, now only skip specific problematic keys
 
   // Filter by target file if specified
   const filesToProcess = targetFile ? files.filter(f => f === targetFile) : files

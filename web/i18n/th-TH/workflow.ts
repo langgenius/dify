@@ -930,6 +930,7 @@ const translation = {
       restoreSuccess: 'เวอร์ชันที่กู้คืน',
       restoreFailure: 'ไม่สามารถกู้คืนเวอร์ชันได้',
       updateSuccess: 'อัปเดตเวอร์ชัน',
+      copyIdSuccess: 'คัดลอกรหัสไปยังคลิปบอร์ด',
     },
     releaseNotesPlaceholder: 'อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร',
     currentDraft: 'ร่างปัจจุบัน',
@@ -940,6 +941,7 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+    copyId: 'คัดลอก ID',
   },
   debug: {
     noData: {

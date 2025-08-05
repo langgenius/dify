@@ -930,6 +930,7 @@ const translation = {
       deleteFailure: 'Ștergerea versiunii a eșuat',
       updateSuccess: 'Versiune actualizată',
       updateFailure: 'Actualizarea versiunii a eșuat',
+      copyIdSuccess: 'ID copiat în clipboard',
     },
     latest: 'Cea mai recentă',
     title: 'Versiuni',
@@ -940,6 +941,7 @@ const translation = {
     releaseNotesPlaceholder: 'Descrie ce s-a schimbat',
     deletionTip: 'Ștergerea este irreversibilă, vă rugăm să confirmați.',
     currentDraft: 'Draftul curent',
+    copyId: 'Copiază ID',
   },
   debug: {
     noData: {

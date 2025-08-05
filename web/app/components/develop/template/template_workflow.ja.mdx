@@ -339,6 +339,235 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/workflows/:workflow_id/run'
+  method='POST'
+  title='特定バージョンのワークフローを実行'
+  name='#Execute-Specific-Workflow'
+/>
+<Row>
+  <Col>
+    パスパラメータでワークフローIDを指定して、特定バージョンのワークフローを実行します。
+
+    ### パス
+    - `workflow_id` (string) 必須 特定バージョンのワークフローを指定するためのワークフローID
+      
+      取得方法：バージョン履歴で特定バージョンのワークフローIDを照会できます。
+
+    ### リクエストボディ
+      - `inputs` (object) 必須
+        App で定義された各変数値を入力できます。
+        inputs パラメータには複数のキー/値ペアが含まれており、各キーは特定の変数に対応し、各値はその変数の具体的な値です。変数はファイルリスト型にすることができます。
+        ファイルリスト型変数は、ファイルをテキスト理解と組み合わせて質問に答えるために入力するのに適しており、モデルがファイル解析機能をサポートしている場合のみ使用できます。変数がファイルリスト型の場合、その変数に対応する値はリスト形式である必要があり、各要素には以下の内容が含まれます：
+          - `type` (string) サポートされるタイプ：
+            - `document` 具体的なタイプには以下が含まれます：'TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` 具体的なタイプには以下が含まれます：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` 具体的なタイプには以下が含まれます：'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'
+            - `video` 具体的なタイプには以下が含まれます：'MP4', 'MOV', 'MPEG', 'MPGA'
+            - `custom` 具体的なタイプには以下が含まれます：その他のファイルタイプ
+          - `transfer_method` (string) 転送方法、`remote_url` 画像URL / `local_file` ファイルアップロード
+          - `url` (string) 画像URL（転送方法が `remote_url` の場合のみ）
+          - `upload_file_id` (string) アップロードされたファイルID（転送方法が `local_file` の場合のみ）
+      - `response_mode` (string) 必須
+        応答返却モード、以下をサポート：
+        - `streaming` ストリーミングモード（推奨）。SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）をベースにタイプライター風の出力を実現。
+        - `blocking` ブロッキングモード、実行完了後に結果を返却。（プロセスが長い場合、リクエストが中断される可能性があります）。
+        <i>Cloudflare の制限により、100秒後に応答がない場合、リクエストは中断されます。</i>
+      - `user` (string) 必須
+        ユーザー識別子、エンドユーザーのアイデンティティを定義し、検索・統計を容易にするために使用されます。
+        開発者が定義するルールで、アプリケーション内でユーザー識別子が一意である必要があります。API は WebApp で作成されたセッションにアクセスできません。
+      - `files` (array[object]) オプション
+      - `trace_id` (string) オプション
+        トレースID。既存のビジネスシステムのトレースコンポーネントと統合して、エンドツーエンドの分散トレーシングを実現するために使用されます。指定されていない場合、システムは自動的に `trace_id` を生成します。以下の3つの方法で渡すことができ、優先順位は以下の通りです：
+        1. ヘッダー：HTTP ヘッダー `X-Trace-Id` で渡すことを推奨、最高優先度。
+        2. クエリパラメータ：URL クエリパラメータ `trace_id` で渡す。
+        3. リクエストボディ：リクエストボディフィールド `trace_id` で渡す（つまり、このフィールド）。
+
+    ### 応答
+    `response_mode` が `blocking` の場合、CompletionResponse オブジェクトを返します。
+    `response_mode` が `streaming` の場合、ChunkCompletionResponse オブジェクトのストリーミングシーケンスを返します。
+
+    ### CompletionResponse
+    完全な App 結果を返し、`Content-Type` は `application/json` です。
+    - `workflow_run_id` (string) ワークフロー実行ID
+    - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+    - `data` (object) 詳細内容
+      - `id` (string) ワークフロー実行ID
+      - `workflow_id` (string) 関連するワークフローID
+      - `status` (string) 実行ステータス、`running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) オプション 出力内容
+      - `error` (string) オプション エラー理由
+      - `elapsed_time` (float) オプション 使用時間(s)
+      - `total_tokens` (int) オプション 使用されるトークンの総数
+      - `total_steps` (int) 総ステップ数（冗長）、デフォルト 0
+      - `created_at` (timestamp) 開始時間
+      - `finished_at` (timestamp) 終了時間
+
+    ### ChunkCompletionResponse
+    App の出力ストリーミングチャンクを返し、`Content-Type` は `text/event-stream` です。
+    各ストリーミングチャンクは `data:` で始まり、チャンク間は `\n\n` つまり2つの改行文字で区切られます。以下のようになります：
+    <CodeGroup>
+    ```streaming {{ title: '応答' }}
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
+    ```
+    </CodeGroup>
+    ストリーミングチャンクは `event` によって構造が異なり、以下のタイプが含まれます：
+    - `event: workflow_started` ワークフロー実行開始
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `workflow_run_id` (string) ワークフロー実行ID
+      - `event` (string) `workflow_started` に固定
+      - `data` (object) 詳細内容
+        - `id` (string) ワークフロー実行ID
+        - `workflow_id` (string) 関連するワークフローID
+        - `created_at` (timestamp) 開始時間
+    - `event: node_started` ノード実行開始
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `workflow_run_id` (string) ワークフロー実行ID
+      - `event` (string) `node_started` に固定
+      - `data` (object) 詳細内容
+        - `id` (string) ワークフロー実行ID
+        - `node_id` (string) ノードID
+        - `node_type` (string) ノードタイプ
+        - `title` (string) ノード名
+        - `index` (int) 実行シーケンス番号、Tracing Node シーケンスの表示に使用
+        - `predecessor_node_id` (string) 前置ノードID、キャンバス表示実行パスに使用
+        - `inputs` (object) ノードで使用されるすべての前置ノード変数の内容
+        - `created_at` (timestamp) 開始時間
+    - `event: text_chunk` テキストフラグメント
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `workflow_run_id` (string) ワークフロー実行ID
+      - `event` (string) `text_chunk` に固定
+      - `data` (object) 詳細内容
+        - `text` (string) テキスト内容
+        - `from_variable_selector` (array) テキストソースパス、開発者がテキストがどのノードのどの変数から生成されたかを理解するのに役立ちます
+    - `event: node_finished` ノード実行終了、成功と失敗は同じイベント内の異なる状態
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `workflow_run_id` (string) ワークフロー実行ID
+      - `event` (string) `node_finished` に固定
+      - `data` (object) 詳細内容
+        - `id` (string) ノード実行ID
+        - `node_id` (string) ノードID
+        - `index` (int) 実行シーケンス番号、Tracing Node シーケンスの表示に使用
+        - `predecessor_node_id` (string) オプション 前置ノードID、キャンバス表示実行パスに使用
+        - `inputs` (object) ノードで使用されるすべての前置ノード変数の内容
+        - `process_data` (json) オプション ノードプロセスデータ
+        - `outputs` (json) オプション 出力内容
+        - `status` (string) 実行ステータス `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) オプション エラー理由
+        - `elapsed_time` (float) オプション 使用時間(s)
+        - `execution_metadata` (json) メタデータ
+          - `total_tokens` (int) オプション 使用されるトークンの総数
+          - `total_price` (decimal) オプション 総費用
+          - `currency` (string) オプション 通貨、例：`USD` / `RMB`
+        - `created_at` (timestamp) 開始時間
+    - `event: workflow_finished` ワークフロー実行終了、成功と失敗は同じイベント内の異なる状態
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `workflow_run_id` (string) ワークフロー実行ID
+      - `event` (string) `workflow_finished` に固定
+      - `data` (object) 詳細内容
+        - `id` (string) ワークフロー実行ID
+        - `workflow_id` (string) 関連するワークフローID
+        - `status` (string) 実行ステータス `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) オプション 出力内容
+        - `error` (string) オプション エラー理由
+        - `elapsed_time` (float) オプション 使用時間(s)
+        - `total_tokens` (int) オプション 使用されるトークンの総数
+        - `total_steps` (int) 総ステップ数（冗長）、デフォルト 0
+        - `created_at` (timestamp) 開始時間
+        - `finished_at` (timestamp) 終了時間
+    - `event: tts_message` TTS オーディオストリームイベント、つまり：音声合成出力。内容はMp3形式のオーディオブロックで、base64エンコードされた文字列として、再生時に直接デコードできます。（自動再生が有効な場合のみこのメッセージがあります）
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) メッセージ一意ID
+      - `audio` (string) 音声合成後のオーディオブロックはbase64エンコードされたテキスト内容として、再生時に直接base64デコードしてプレーヤーに送信できます
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: tts_message_end` TTS オーディオストリーム終了イベント、このイベントを受信すると、オーディオストリームの返却が終了したことを示します。
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) メッセージ一意ID
+      - `audio` (string) 終了イベントにはオーディオがないため、ここは空文字列です
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: ping` 10秒ごとのpingイベント、接続を維持します。
+
+    ### エラー
+    - 400，`invalid_param`，入力パラメータ異常
+    - 400，`app_unavailable`，App 設定が利用できません
+    - 400，`provider_not_initialize`，利用可能なモデル認証情報設定がありません
+    - 400，`provider_quota_exceeded`，モデル呼び出しクォータが不足しています
+    - 400，`model_currently_not_support`，現在のモデルが利用できません
+    - 400，`workflow_not_found`，指定されたワークフローバージョンが見つかりません
+    - 400，`draft_workflow_error`，ドラフトワークフローバージョンを使用できません
+    - 400，`workflow_id_format_error`，ワークフローID形式エラー、UUID形式が必要です
+    - 400，`workflow_request_error`，ワークフロー実行に失敗しました
+    - 500，サービス内部異常
+
+  </Col>
+  <Col sticky>
+    <CodeGroup title="リクエスト" tag="POST" label="/workflows/:workflow_id/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="例：入力変数としてのファイル配列">
+      ```json {{ title: 'ファイル変数の例' }}
+      {
+        "inputs": {
+          "{variable_name}": 
+          [
+            {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+            }
+          ]
+        }
+      }
+      ```
+    </CodeGroup>
+    ### ブロッキングモード
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### ストリーミングモード
+    <CodeGroup title="応答">
+    ```streaming {{ title: '応答' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/workflows/run/:workflow_run_id'
   method='GET'
   title='ワークフロー実行詳細を取得'

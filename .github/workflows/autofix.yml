@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   autofix:
+    if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

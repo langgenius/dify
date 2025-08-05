@@ -26,6 +26,7 @@ type TagSelectorProps = {
   selectedTags: Tag[]
   onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
+  minWidth?: string
 }
 
 type PanelProps = {
@@ -213,6 +214,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   selectedTags,
   onCacheUpdate,
   onChange,
+  minWidth,
 }) => {
   const { t } = useTranslation()
 
@@ -220,8 +222,13 @@ const TagSelector: FC<TagSelectorProps> = ({
   const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
-    const res = await fetchTagList(type)
-    setTagList(res)
+    try {
+      const res = await fetchTagList(type)
+      setTagList(res)
+    }
+ catch (error) {
+      setTagList([])
+    }
   }
 
   const triggerContent = useMemo(() => {
@@ -266,7 +273,7 @@ const TagSelector: FC<TagSelectorProps> = ({
               '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
             )
           }
-          popupClassName='!w-full !ring-0'
+          popupClassName={cn('!w-full !ring-0', minWidth && '!min-w-80')}
           className={'!z-20 h-fit !w-full'}
         />
       )}
