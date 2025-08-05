@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { RiErrorWarningFill } from '@remixicon/react'
+import { matchCond } from '@/utils/var'
 
 type StatusIndicatorsProps = {
   needsConfiguration: boolean
@@ -46,16 +47,18 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
       {/* plugin installed from github/local and model is not in model list */}
       {!needsConfiguration && modelProvider && disabled && (
         <>
-          {inModelList ? (
-            <Tooltip
+        {
+          matchCond(
+            inModelList,
+            [
+              [true, <Tooltip
               popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
               asChild={false}
               needsDelay={false}
             >
               <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
-            </Tooltip>
-          ) : !pluginInfo ? (
-            <Tooltip
+            </Tooltip>],
+            [() => !pluginInfo, <Tooltip
               popupContent={renderTooltipContent(
                 t('workflow.nodes.agent.modelNotSupport.title'),
                 t('workflow.nodes.agent.modelNotSupport.desc'),
@@ -65,16 +68,17 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
               asChild={false}
             >
               <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
-            </Tooltip>
-          ) : (
+            </Tooltip>],
+            ],
             <SwitchPluginVersion
               tooltip={renderTooltipContent(
                 t('workflow.nodes.agent.modelNotSupport.title'),
                 t('workflow.nodes.agent.modelNotSupport.descForVersionSwitch'),
               )}
               uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''}
-            />
-          )}
+            />,
+          )
+        }
         </>
       )}
       {!modelProvider && !pluginInfo && (

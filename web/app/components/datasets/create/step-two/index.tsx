@@ -30,6 +30,7 @@ import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 
@@ -166,7 +167,10 @@ const StepTwo = ({
   )
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
-    doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
+    doSetSegmentIdentifier(matchCond(value, [
+      [Boolean, escape(value)],
+      [() => canEmpty, ''],
+    ], DEFAULT_SEGMENT_IDENTIFIER))
   }, [])
   const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXIMUM_CHUNK_LENGTH) // default chunk length
   const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(MAXIMUM_CHUNK_TOKEN_LENGTH)
@@ -222,7 +226,10 @@ const StepTwo = ({
   }
 
   const [docLanguage, setDocLanguage] = useState<string>(
-    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese Simplified'),
+    matchCond(locale, [
+      [() => datasetId && documentDetail, documentDetail!.doc_language],
+      [LanguagesSupported[1], 'Chinese Simplified'],
+    ], 'English'),
   )
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
@@ -297,11 +304,14 @@ const StepTwo = ({
     dataset_id: datasetId || '',
   })
 
-  const currentEstimateMutation = dataSourceType === DataSourceType.FILE
-    ? fileIndexingEstimateQuery
-    : dataSourceType === DataSourceType.NOTION
-      ? notionIndexingEstimateQuery
-      : websiteIndexingEstimateQuery
+  const currentEstimateMutation = matchCond(
+    dataSourceType,
+    [
+      [DataSourceType.FILE, fileIndexingEstimateQuery],
+      [DataSourceType.NOTION, notionIndexingEstimateQuery],
+    ],
+    websiteIndexingEstimateQuery,
+  )
 
   const fetchEstimate = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE)
@@ -314,12 +324,14 @@ const StepTwo = ({
       websiteIndexingEstimateQuery.mutate()
   }, [dataSourceType, fileIndexingEstimateQuery, notionIndexingEstimateQuery, websiteIndexingEstimateQuery])
 
-  const estimate
-    = dataSourceType === DataSourceType.FILE
-      ? fileIndexingEstimateQuery.data
-      : dataSourceType === DataSourceType.NOTION
-        ? notionIndexingEstimateQuery.data
-        : websiteIndexingEstimateQuery.data
+  const estimate = matchCond(
+    dataSourceType,
+    [
+      [DataSourceType.FILE, fileIndexingEstimateQuery.data],
+      [DataSourceType.NOTION, notionIndexingEstimateQuery.data],
+    ],
+    websiteIndexingEstimateQuery.data,
+  )
 
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
@@ -507,7 +519,7 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
-                              || (rules.parent_mode && rules.subchunk_segmentation)
+        || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)

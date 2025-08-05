@@ -23,6 +23,7 @@ import PluginList, { type ListProps } from '@/app/components/workflow/block-sele
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { matchCond } from '@/utils/var'
 
 const DEFAULT_TAGS: ListProps['tags'] = []
 
@@ -172,17 +173,20 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             size={'small'}
             uniqueIdentifier={value.plugin_unique_identifier}
           />}
-          {showPluginNotInstalledWarn
-            ? <NotFoundWarn
+          {
+            matchCond(showPluginNotInstalledWarn,
+              [
+                [true, <NotFoundWarn
               title={t('workflow.nodes.agent.pluginNotInstalled')}
               description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
-            />
-            : showUnsupportedStrategy
-              ? <NotFoundWarn
+            />],
+            [() => showUnsupportedStrategy, <NotFoundWarn
                 title={t('workflow.nodes.agent.unsupportedStrategy')}
                 description={t('workflow.nodes.agent.strategyNotFoundDesc')}
-              />
-              : <RiArrowDownSLine className='size-4 text-text-tertiary' />
+              />],
+              ],
+              <RiArrowDownSLine className='size-4 text-text-tertiary' />,
+            )
           }
           {showSwitchVersion && <SwitchPluginVersion
             uniqueIdentifier={value.plugin_unique_identifier}

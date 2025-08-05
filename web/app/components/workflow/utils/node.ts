@@ -19,6 +19,7 @@ import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
+import { matchCond } from '@/utils/var'
 
 export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
   newNode: Node
@@ -32,7 +33,13 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
-    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : (data.type === BlockEnum.Loop ? LOOP_NODE_Z_INDEX : zIndex),
+    zIndex: matchCond(data.type,
+      [
+        [BlockEnum.Iteration, ITERATION_NODE_Z_INDEX],
+        [BlockEnum.Loop, LOOP_NODE_Z_INDEX],
+      ],
+      zIndex,
+    ),
     ...rest,
   } as Node
 

@@ -19,6 +19,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import Button from '@/app/components/base/button'
 import type { DatasetConfigs } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   payload: {
@@ -72,17 +73,19 @@ const RetrievalConfig: FC<Props> = ({
     onMultipleRetrievalConfigChange({
       top_k: configs.top_k,
       score_threshold: configs.score_threshold_enabled ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold) : null,
-      reranking_model: payload.retrieval_mode === RETRIEVE_TYPE.oneWay
-        ? undefined
-        : (!configs.reranking_model?.reranking_provider_name
-          ? {
+      reranking_model: matchCond(payload.retrieval_mode,
+        [
+          [RETRIEVE_TYPE.oneWay, undefined],
+          [() => !configs.reranking_model?.reranking_provider_name, {
             provider: validRerankDefaultProvider?.provider || '',
             model: validRerankDefaultModel?.model || '',
-          }
-          : {
-            provider: configs.reranking_model?.reranking_provider_name,
-            model: configs.reranking_model?.reranking_model_name,
-          }),
+          }],
+        ],
+        {
+          provider: configs.reranking_model?.reranking_provider_name,
+          model: configs.reranking_model?.reranking_model_name,
+        },
+      ),
       reranking_mode: configs.reranking_mode,
       weights: configs.weights,
       reranking_enable: configs.reranking_enable,

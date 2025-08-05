@@ -11,6 +11,7 @@ import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
@@ -97,7 +98,10 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: WorkflowAppLogDetail) => {
-            const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
+            const endUser = matchCond(log.created_by_end_user, [
+              [Boolean, log.created_by_end_user!.session_id],
+              [() => log.created_by_account, log.created_by_account!.name],
+            ], defaultValue)
             return <tr
               key={log.id}
               className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentLog?.id !== log.id ? '' : 'bg-background-default-hover')}

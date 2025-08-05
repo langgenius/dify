@@ -8,6 +8,7 @@ import NavSelector from './nav-selector'
 import classNames from '@/utils/classnames'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { matchCond } from '@/utils/var'
 
 type INavProps = {
   icon: React.ReactNode
@@ -63,11 +64,14 @@ const Nav = ({
         >
           <div>
             {
-              (hovered && curNav)
-                ? <ArrowNarrowLeft className='h-4 w-4' />
-                : isActivated
-                  ? activeIcon
-                  : icon
+              matchCond<boolean, React.ReactNode>(
+                !!(hovered && curNav),
+                [
+                  [true, <ArrowNarrowLeft className='h-4 w-4' />],
+                  [() => isActivated, activeIcon],
+                ],
+                icon,
+              )
             }
           </div>
           <div className='ml-2 max-[1024px]:hidden'>

@@ -37,6 +37,7 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -447,11 +448,11 @@ const TextGeneration: FC<IMainProps> = ({
       className={cn(
         'relative flex h-full flex-col',
         !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
-        !isPC
-          ? isShowResultPanel
-            ? 'bg-background-default-burn'
-            : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
-          : 'bg-chatbot-bg',
+        matchCond(
+          isPC,
+          [[false, isShowResultPanel ? 'bg-background-default-burn' : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg']],
+          'bg-chatbot-bg',
+        ),
       )}
     >
       {isCallBatchAPI && (
@@ -508,7 +509,13 @@ const TextGeneration: FC<IMainProps> = ({
       {/* Left */}
       <div className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
+        matchCond({ isPC, resultExisted },
+          [
+            [{ isPC: true }, 'w-[600px] max-w-[50%]'],
+            [{ resultExisted: true }, 'h-[calc(100%_-_64px)]'],
+          ],
+          '',
+        ),
         isInstalledApp && 'rounded-l-2xl',
       )}>
         {/* header */}
@@ -595,24 +602,28 @@ const TextGeneration: FC<IMainProps> = ({
           )}>
             <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
             {
-              systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
-                : customConfig?.replace_webapp_logo
-                  ? <img src={`${customConfig?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                  : <DifyLogo size='small' />
+              matchCond(
+                systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo,
+                [
+                  [true, <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />],
+                  [() => customConfig?.replace_webapp_logo, <img src={`${customConfig?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />],
+                ],
+                <DifyLogo size='small' />,
+              )
             }
           </div>
         )}
       </div>
       {/* Result */}
       <div className={cn(
-        isPC
-          ? 'h-full w-0 grow'
-          : isShowResultPanel
-            ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-sm'
-            : resultExisted
-              ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
-              : '',
+        matchCond(isPC,
+          [
+            [true, 'h-full w-0 grow'],
+            [() => isShowResultPanel, 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-sm'],
+            [() => resultExisted, 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'],
+          ],
+          '',
+        ),
       )}>
         {!isPC && (
           <div

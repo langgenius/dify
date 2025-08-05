@@ -1,3 +1,5 @@
+import { matchCond } from '@/utils/var'
+
 type IterationInfo = { iterationId: string; iterationIndex: number }
 type LoopInfo = { loopId: string; loopIndex: number }
 type NodePlain = { nodeType: 'plain'; nodeId: string; } & (Partial<IterationInfo> & Partial<LoopInfo>)
@@ -181,13 +183,19 @@ function convertRetryNode(node: Node): NodeData[] {
       id: nodeId,
       node_id: nodeId,
       title: nodeId,
-      execution_metadata: iterationId ? {
-        iteration_id: iterationId,
-        iteration_index: iterationIndex || 0,
-      } : loopId ? {
-        loop_id: loopId,
-        loop_index: loopIndex || 0,
-      } : {},
+      execution_metadata: matchCond(iterationId,
+        [
+          [Boolean, {
+            iteration_id: iterationId,
+            iteration_index: iterationIndex || 0,
+          }],
+          [() => loopId, {
+            loop_id: loopId,
+            loop_index: loopIndex || 0,
+          }],
+        ],
+        {},
+      ),
       status: 'retry',
     })
   }

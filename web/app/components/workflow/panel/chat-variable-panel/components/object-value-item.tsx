@@ -51,7 +51,7 @@ const ObjectValueItem: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index].type = type
         if (type === ChatVarType.Number)
-          draft[index].value = isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
+          draft[index].value = Number.isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
         else
           draft[index].value = draft[index].value ? String(draft[index].value) : undefined
       })
@@ -62,7 +62,12 @@ const ObjectValueItem: FC<Props> = ({
   const handleValueChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const newList = produce(list, (draft: any[]) => {
-        draft[index].value = draft[index].type === ChatVarType.String ? e.target.value : isNaN(Number(e.target.value)) ? undefined : Number(e.target.value)
+        if (draft[index].type === ChatVarType.String)
+          draft[index].value = e.target.value
+        else if (Number.isNaN(Number(e.target.value)))
+          draft[index].value = undefined
+        else
+          draft[index].value = Number(e.target.value)
       })
       onChange(newList)
     }

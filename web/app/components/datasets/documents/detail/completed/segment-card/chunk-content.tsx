@@ -1,5 +1,6 @@
 import React, { type FC } from 'react'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import { useSegmentListContext } from '..'
 import { Markdown } from '@/app/components/base/markdown'
 
@@ -46,7 +47,10 @@ const ChunkContent: FC<ChunkContentProps> = ({
   }
   return <Markdown
     className={cn('!mt-0.5 !text-text-secondary',
-      isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+      matchCond(isFullDocMode, [
+        [true, 'line-clamp-3'],
+        [() => isCollapsed, 'line-clamp-2'],
+      ], 'line-clamp-20'),
       className,
     )}
     content={sign_content || content || ''}

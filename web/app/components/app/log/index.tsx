@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
-import { basePath } from '@/utils/var'
+import { basePath, matchCond } from '@/utils/var'
 import { Trans, useTranslation } from 'react-i18next'
 import List from './list'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
@@ -106,11 +106,14 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
       <div className='flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4'>
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
-        {total === undefined
-          ? <Loading type='app' />
-          : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+        {
+          matchCond(total,
+            [
+              [undefined, <Loading type='app' />],
+              [Boolean, <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />],
+            ],
+            <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />,
+          )
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

@@ -33,6 +33,7 @@ import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { useDocLink } from '@/context/i18n'
+import { matchCond } from '@/utils/var'
 
 const rowClass = 'flex'
 const labelClass = `
@@ -260,8 +261,13 @@ const Form = () => {
         </>
       )}
       {/* Retrieval Method Config */}
-      {currentDataset?.provider === 'external'
-        ? <>
+      {
+        matchCond(
+          currentDataset?.provider,
+          [
+            [
+              'external',
+              <>
           <div className='my-1 h-0 w-full border-b border-divider-subtle' />
           <div className={rowClass}>
             <div className={labelClass}>
@@ -301,9 +307,11 @@ const Form = () => {
               </div>
             </div>
           </div>
-        </>
-        : indexMethod
-          ? <>
+        </>,
+            ],
+            [
+              () => !!indexMethod,
+              <>
             <div className='my-1 h-0 w-full border-b border-divider-subtle' />
             <div className={rowClass}>
               <div className={labelClass}>
@@ -340,8 +348,11 @@ const Form = () => {
                   )}
               </div>
             </div>
-          </>
-          : null
+          </>,
+            ],
+          ],
+          null,
+        )
       }
       <div className='my-1 h-0 w-full border-b border-divider-subtle' />
       <div className={rowClass}>

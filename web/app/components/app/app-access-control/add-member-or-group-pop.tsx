@@ -16,6 +16,7 @@ import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { SubjectType } from '@/models/access-control'
 import { useSelector } from '@/context/app-context'
+import { matchCond } from '@/utils/var'
 
 export default function AddMemberOrGroupDialog() {
   const { t } = useTranslation()
@@ -58,10 +59,11 @@ export default function AddMemberOrGroupDialog() {
           <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         {
-          isLoading
-            ? <div className='p-1'><Loading /></div>
-            : (data?.pages?.length ?? 0) > 0
-              ? <>
+          matchCond(
+            isLoading,
+            [
+              [true, <div className='p-1'><Loading /></div>],
+              [() => data?.pages?.length, <>
                 <div className='flex h-7 items-center px-2 py-0.5'>
                   <SelectedGroupsBreadCrumb />
                 </div>
@@ -70,10 +72,12 @@ export default function AddMemberOrGroupDialog() {
                   {isFetchingNextPage && <Loading />}
                 </div>
                 <div ref={anchorRef} className='h-0'> </div>
-              </>
-              : <div className='flex h-7 items-center justify-center px-2 py-0.5'>
-                <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.noResult')}</span>
-              </div>
+              </>],
+            ],
+            <div className='flex h-7 items-center justify-center px-2 py-0.5'>
+              <span className='system-xs-regular text-text-tertiary'>{t('app.accessControlDialog.operateGroupAndMember.noResult')}</span>
+            </div>,
+          )
         }
       </div>
     </PortalToFollowElemContent>

@@ -1,3 +1,4 @@
+import { matchCond } from '@/utils/var'
 import { useEffect, useState } from 'react'
 
 type Params = {
@@ -9,10 +10,9 @@ type Params = {
 const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [isExpand, setIsExpand] = useState(false)
   const [wrapHeight, setWrapHeight] = useState(ref.current?.clientHeight)
-  const editorExpandHeight = isExpand ? wrapHeight! - (hasFooter ? 56 : 29) : 0
+  const editorExpandHeight = matchCond(isExpand, [[true, wrapHeight! - (hasFooter ? 56 : 29)]], 0)
   useEffect(() => {
     setWrapHeight(ref.current?.clientHeight)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpand])
 
   const wrapClassName = (() => {

@@ -13,6 +13,7 @@ import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
 import { getAppDailyConversations, getAppDailyEndUsers, getAppDailyMessages, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
+import { matchCond } from '@/utils/var'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
@@ -215,8 +216,8 @@ const Chart: React.FC<IChartProps> = ({
             return `<div style='color:#6B7280;font-size:12px'>${params.name}</div>
                           <div style='font-size:14px;color:#1F2A37'>${valueFormatter((params.data as any)[yField])}
                               ${!CHART_TYPE_CONFIG[chartType].showTokens
-                                ? ''
-                                : `<span style='font-size:12px'>
+                ? ''
+                : `<span style='font-size:12px'>
                                   <span style='margin-left:4px;color:#6B7280'>(</span>
                                   <span style='color:#FF8A4C'>~$${get(params.data, 'total_price', 0)}</span>
                                   <span style='color:#6B7280'>)</span>
@@ -237,7 +238,14 @@ const Chart: React.FC<IChartProps> = ({
       <div className='mb-4 flex-1'>
         <Basic
           isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
-          name={chartType !== 'costs' ? (`${sumData.toLocaleString()} ${unit}`) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
+          name={
+            matchCond(chartType !== 'costs',
+              [
+                [true, `${sumData.toLocaleString()} ${unit}`],
+              ],
+              `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`,
+            )
+          }
           type={!CHART_TYPE_CONFIG[chartType].showTokens
             ? ''
             : <span>{t('appOverview.analysis.tokenUsage.consumed')} Tokens<span className='text-sm'>

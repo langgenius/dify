@@ -34,6 +34,7 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
+import { matchCond } from '@/utils/var'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -49,7 +50,10 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
 }
 
 export function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
-  return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
+  return matchCond(isInstalledApp,
+    [[true, `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}`]],
+    url,
+  )
 }
 
 export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {

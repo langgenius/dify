@@ -13,6 +13,7 @@ import {
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
+import { matchCond } from '@/utils/var'
 
 export const checkNodeValid = () => {
   return true
@@ -131,20 +132,24 @@ export const getMultipleRetrievalConfig = (
   const setDefaultWeights = () => {
     result.weights = {
       vector_setting: {
-        vector_weight: allHighQualityVectorSearch
-          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
-          : allHighQualityFullTextSearch
-            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
-            : DEFAULT_WEIGHTED_SCORE.other.semantic,
+        vector_weight: matchCond(allHighQualityVectorSearch,
+          [
+            [Boolean, DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic],
+            [() => allHighQualityFullTextSearch, DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic],
+          ],
+          DEFAULT_WEIGHTED_SCORE.other.semantic,
+        ),
         embedding_provider_name: selectedDatasets[0].embedding_model_provider,
         embedding_model_name: selectedDatasets[0].embedding_model,
       },
       keyword_setting: {
-        keyword_weight: allHighQualityVectorSearch
-          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword
-          : allHighQualityFullTextSearch
-            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword
-            : DEFAULT_WEIGHTED_SCORE.other.keyword,
+        keyword_weight: matchCond(allHighQualityVectorSearch,
+          [
+            [Boolean, DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword],
+            [() => allHighQualityFullTextSearch, DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword],
+          ],
+          DEFAULT_WEIGHTED_SCORE.other.keyword,
+        ),
       },
     }
   }

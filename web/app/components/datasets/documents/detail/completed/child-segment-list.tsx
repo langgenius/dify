@@ -12,6 +12,7 @@ import Input from '@/app/components/base/input'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
+import { matchCond } from '@/utils/var'
 
 type IChildSegmentCardProps = {
   childChunks: ChildChunkDetail[]
@@ -67,16 +68,16 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const totalText = useMemo(() => {
     const isSearch = inputValue !== '' && isFullDocMode
     if (!isSearch) {
-      const text = isFullDocMode
-        ? !total
-          ? '--'
-          : formatNumber(total)
-        : formatNumber(childChunks.length)
-      const count = isFullDocMode
-        ? text === '--'
-          ? 0
-          : total
-        : childChunks.length
+      const text = matchCond(
+        isFullDocMode,
+        [[true, !total ? '--' : formatNumber(total)]],
+        formatNumber(childChunks.length),
+      )
+      const count = matchCond(
+        isFullDocMode,
+        [[true, text === '--' ? 0 : total]],
+        childChunks.length,
+      )
       return `${text} ${t('datasetDocuments.segment.childChunks', { count })}`
     }
     else {
@@ -101,19 +102,19 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg',
           isFullDocMode && 'pl-0',
         )}
-        onClick={(event) => {
-          event.stopPropagation()
-          toggleCollapse()
-        }}
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleCollapse()
+          }}
         >
           {
-            isParagraphMode
-              ? collapsed
-                ? (
-                  <RiArrowRightSLine className='mr-0.5 h-4 w-4 text-text-secondary opacity-50' />
-                )
-                : (<RiArrowDownSLine className='mr-0.5 h-4 w-4 text-text-secondary' />)
-              : null
+            matchCond(
+              isParagraphMode,
+              [[true, collapsed
+                ? <RiArrowRightSLine className='mr-0.5 h-4 w-4 text-text-secondary opacity-50' />
+                : (<RiArrowDownSLine className='mr-0.5 h-4 w-4 text-text-secondary' />)]],
+              null,
+            )
           }
           <span className='system-sm-semibold-uppercase text-text-secondary'>{totalText}</span>
           <span className={classNames('pl-1.5 text-xs font-medium text-text-quaternary', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
@@ -152,38 +153,41 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
               <Divider type='vertical' className='mx-[7px] w-[2px] bg-text-accent-secondary' />
             </div>
           )}
-          {childChunks.length > 0
-            ? <FormattedText className={classNames('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
-              {childChunks.map((childChunk) => {
-                const edited = childChunk.updated_at !== childChunk.created_at
-                const focused = currChildChunk?.childChunkInfo?.id === childChunk.id
-                return <EditSlice
-                  key={childChunk.id}
-                  label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
-                  text={childChunk.content}
-                  onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                  labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
-                  labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
-                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
-                  showDivider={false}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onClickSlice?.(childChunk)
-                  }}
-                  offsetOptions={({ rects }) => {
-                    return {
-                      mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
-                      crossAxis: (20 - rects.floating.height) / 2,
-                    }
-                  }}
-                />
-              })}
-            </FormattedText>
-            : inputValue !== ''
-              ? <div className='h-full w-full'>
+          {
+            matchCond(
+              !!childChunks.length,
+              [[true, <FormattedText className={classNames('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+                {childChunks.map((childChunk) => {
+                  const edited = childChunk.updated_at !== childChunk.created_at
+                  const focused = currChildChunk?.childChunkInfo?.id === childChunk.id
+                  return <EditSlice
+                    key={childChunk.id}
+                    label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
+                    text={childChunk.content}
+                    onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+                    labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
+                    labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
+                    contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
+                    showDivider={false}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClickSlice?.(childChunk)
+                    }}
+                    offsetOptions={({ rects }) => {
+                      return {
+                        mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
+                        crossAxis: (20 - rects.floating.height) / 2,
+                      }
+                    }}
+                  />
+                })}
+              </FormattedText>],
+              [() => inputValue, <div className='h-full w-full'>
                 <Empty onClearFilter={onClearFilter!} />
-              </div>
-              : null
+              </div>],
+              ],
+              null,
+            )
           }
         </div>
         : null}

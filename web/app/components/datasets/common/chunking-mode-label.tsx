@@ -4,6 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   isGeneralMode: boolean
@@ -21,7 +22,15 @@ const ChunkingModeLabel: FC<Props> = ({
     <Badge>
       <div className='flex h-full items-center space-x-0.5 text-text-tertiary'>
         <TypeIcon className='h-3 w-3' />
-        <span className='system-2xs-medium-uppercase'>{isGeneralMode ? `${t('dataset.chunkingMode.general')}${isQAMode ? ' · QA' : ''}` : t('dataset.chunkingMode.parentChild')}</span>
+        <span className='system-2xs-medium-uppercase'>{
+          matchCond(
+            isGeneralMode,
+            [
+              [true, `${t('dataset.chunkingMode.general')}${isQAMode ? ' · QA' : ''}`],
+            ],
+            t('dataset.chunkingMode.parentChild'),
+          )
+        }</span>
       </div>
     </Badge>
   )

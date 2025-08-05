@@ -62,6 +62,7 @@ import {
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { matchCond } from '@/utils/var'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -291,7 +292,7 @@ export const useNodesInteractions = () => {
   }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
-    if(initShowLastRunTab)
+    if (initShowLastRunTab)
       workflowStore.setState({ initShowLastRunTab: true })
     const {
       getNodes,
@@ -395,7 +396,7 @@ export const useNodesInteractions = () => {
         isInLoop,
         loop_id: isInLoop ? targetNode?.parentId : undefined,
       },
-      zIndex: targetNode?.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+      zIndex: matchCond(!!targetNode?.parentId, [[true, isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX]], 0),
     }
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -764,7 +765,7 @@ export const useNodesInteractions = () => {
           loop_id: isInLoop ? prevNode.parentId : undefined,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+        zIndex: matchCond(!!prevNode.parentId, [[true, isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX]], 0),
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [
@@ -879,7 +880,7 @@ export const useNodesInteractions = () => {
             loop_id: isInLoop ? nextNode.parentId : undefined,
             _connectedNodeIsSelected: true,
           },
-          zIndex: nextNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+          zIndex: matchCond(!!nextNode.parentId, [[true, isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX]], 0),
         }
       }
 
@@ -1005,7 +1006,7 @@ export const useNodesInteractions = () => {
           loop_id: isInLoop ? prevNode.parentId : undefined,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+        zIndex: matchCond(!!prevNode.parentId, [[true, isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX]], 0),
       }
       let newNextEdge: Edge | null = null
 
@@ -1030,7 +1031,7 @@ export const useNodesInteractions = () => {
             loop_id: isNextNodeInLoop ? nextNode.parentId : undefined,
             _connectedNodeIsSelected: true,
           },
-          zIndex: nextNode.parentId ? (isNextNodeInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+          zIndex: matchCond(!!nextNode.parentId, [[true, isNextNodeInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX]], 0),
         }
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(

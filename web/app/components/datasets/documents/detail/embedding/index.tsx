@@ -25,6 +25,7 @@ import {
   pauseDocIndexing,
   resumeDocIndexing,
 } from '@/service/datasets'
+import { matchCond } from '@/utils/var'
 
 type IEmbeddingDetailProps = {
   datasetId?: string
@@ -78,20 +79,26 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
       : value
     switch (field) {
       case 'mode':
-        value = !sourceData?.mode
-          ? value
-          : sourceData.mode === ProcessMode.general
-            ? (t('datasetDocuments.embedding.custom') as string)
-            : `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('dataset.parentMode.paragraph')
-              : t('dataset.parentMode.fullDoc')}`
+        value = matchCond(
+          !sourceData?.mode,
+          [
+            [true, value],
+            [() => sourceData?.mode === ProcessMode.general, t('datasetDocuments.embedding.custom') as string],
+          ],
+          `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
+            ? t('dataset.parentMode.paragraph')
+            : t('dataset.parentMode.fullDoc')}`,
+        )
         break
       case 'segmentLength':
-        value = !sourceData?.mode
-          ? value
-          : sourceData.mode === ProcessMode.general
-            ? maxTokens
-            : `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`
+        value = matchCond(
+          !sourceData?.mode,
+          [
+            [true, value],
+            [() => sourceData?.mode === ProcessMode.general, maxTokens],
+          ],
+          `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`,
+        )
         break
       default:
         value = !sourceData?.mode
@@ -136,11 +143,14 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
         <Image
           className='size-4'
           src={
-            retrievalMethod === RETRIEVE_METHOD.fullText
-              ? retrievalIcon.fullText
-              : retrievalMethod === RETRIEVE_METHOD.hybrid
-                ? retrievalIcon.hybrid
-                : retrievalIcon.vector
+            matchCond(
+              retrievalMethod,
+              [
+                [RETRIEVE_METHOD.fullText, retrievalIcon.fullText],
+                [RETRIEVE_METHOD.hybrid, retrievalIcon.hybrid],
+              ],
+              retrievalIcon.vector,
+            )
           }
           alt=''
         />

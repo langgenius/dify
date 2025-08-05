@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import {
@@ -17,6 +17,7 @@ import NavLink from './navLink'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { NavIcon } from './navLink'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   navigation: Array<{
@@ -42,6 +43,16 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const appTypeName = useMemo(() => matchCond(appDetail,
+    [
+      [{ mode: 'advanced-chat' }, t('app.types.advanced')],
+      [{ mode: 'agent-chat' }, t('app.types.agent')],
+      [{ mode: 'chat' }, t('app.types.chatbot')],
+      [{ mode: 'completion' }, t('app.types.completion')],
+    ],
+    t('app.types.workflow'),
+  ), [t])
 
   if (!appDetail)
     return null
@@ -97,7 +108,7 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                     <div className='flex w-full'>
                       <div className='system-md-semibold truncate text-text-secondary'>{appDetail.name}</div>
                     </div>
-                    <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+                    <div className='system-2xs-medium-uppercase text-text-tertiary'>{appTypeName}</div>
                   </div>
                 </div>
               </div>

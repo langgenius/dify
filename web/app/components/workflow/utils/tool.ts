@@ -6,6 +6,7 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { canFindTool } from '@/utils'
+import { matchCond } from '@/utils/var'
 
 export const getToolCheckParams = (
   toolData: ToolNodeType,
@@ -16,7 +17,13 @@ export const getToolCheckParams = (
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
+  const currentTools = matchCond(provider_type,
+    [
+      [CollectionType.builtIn, buildInTools],
+      [CollectionType.custom, customTools],
+    ],
+    workflowTools,
+  )
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []

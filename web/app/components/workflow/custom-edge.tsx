@@ -26,6 +26,7 @@ import { getEdgeColor } from './utils'
 import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const CustomEdge = ({
@@ -134,7 +135,10 @@ const CustomEdge = ({
         style={{
           stroke,
           strokeWidth: 2,
-          opacity: data._dimmed ? 0.3 : (data._waitingRun ? 0.7 : 1),
+          opacity: matchCond(data._dimmed, [
+            [Boolean, 0.3],
+            [() => data._waitingRun, 0.7],
+          ], 1),
           strokeDasharray: data._isTemp ? '8 8' : undefined,
         }}
       />
@@ -142,7 +146,7 @@ const CustomEdge = ({
         <div
           className={cn(
             'nopan nodrag hover:scale-125',
-            data?._hovering ? 'block' : 'hidden',
+            matchCond(data?._hovering, [[Boolean, 'block']], 'hidden'),
             open && '!block',
             data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
             data.isInLoop && `z-[${LOOP_CHILDREN_Z_INDEX}]`,

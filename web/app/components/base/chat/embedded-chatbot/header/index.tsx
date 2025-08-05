@@ -14,6 +14,7 @@ import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { matchCond } from '@/utils/var'
 
 export type IHeaderProps = {
   isMobile?: boolean
@@ -88,11 +89,14 @@ const Header: FC<IHeaderProps> = ({
               )}>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
                 {
-                  systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
-                    : appData?.custom_config?.replace_webapp_logo
-                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                      : <DifyLogo size='small' />
+                  matchCond(
+                    systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo,
+                    [
+                      [Boolean, <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />],
+                      [() => appData?.custom_config?.replace_webapp_logo, <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />],
+                    ],
+                    <DifyLogo size='small' />,
+                  )
                 }
               </div>
             )}

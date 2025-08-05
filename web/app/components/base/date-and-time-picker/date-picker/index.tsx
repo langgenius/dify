@@ -25,6 +25,7 @@ import YearAndMonthPickerFooter from '../year-and-month-picker/footer'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
 import { useTranslation } from 'react-i18next'
+import { matchCond } from '@/utils/var'
 
 const DatePicker = ({
   value,
@@ -78,7 +79,6 @@ const DatePicker = ({
       setCurrentDate(prev => getDateWithTimezone({ date: prev, timezone }))
       setSelectedDate(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timezone])
 
   const handleClickTrigger = (e: React.MouseEvent) => {
@@ -240,45 +240,49 @@ const DatePicker = ({
       <PortalToFollowElemContent className={popupZIndexClassname}>
         <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
           {/* Header */}
-          {view === ViewType.date ? (
-            <DatePickerHeader
-              handleOpenYearMonthPicker={handleOpenYearMonthPicker}
-              currentDate={currentDate}
-              onClickNextMonth={handleClickNextMonth}
-              onClickPrevMonth={handleClickPrevMonth}
-            />
-          ) : view === ViewType.yearMonth ? (
-            <YearAndMonthPickerHeader
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              onClick={handleCloseYearMonthPicker}
-            />
-          ) : (
-            <TimePickerHeader />
-          )}
+          {
+            matchCond(
+              view,
+              [
+                [ViewType.date, <DatePickerHeader
+                  handleOpenYearMonthPicker={handleOpenYearMonthPicker}
+                  currentDate={currentDate}
+                  onClickNextMonth={handleClickNextMonth}
+                  onClickPrevMonth={handleClickPrevMonth}
+                />],
+                [ViewType.yearMonth, <YearAndMonthPickerHeader
+                  selectedYear={selectedYear}
+                  selectedMonth={selectedMonth}
+                  onClick={handleCloseYearMonthPicker}
+                />],
+              ],
+              <TimePickerHeader />,
+            )
+          }
 
           {/* Content */}
           {
-            view === ViewType.date ? (
-              <Calendar
-                days={days}
-                selectedDate={selectedDate}
-                onDateClick={handleDateSelect}
-              />
-            ) : view === ViewType.yearMonth ? (
-              <YearAndMonthPickerOptions
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                handleMonthSelect={handleMonthSelect}
-                handleYearSelect={handleYearSelect}
-              />
-            ) : (
+            matchCond(
+              view,
+              [
+                [ViewType.date, <Calendar
+                  days={days}
+                  selectedDate={selectedDate}
+                  onDateClick={handleDateSelect}
+                />],
+                [ViewType.yearMonth, <YearAndMonthPickerOptions
+                  selectedMonth={selectedMonth}
+                  selectedYear={selectedYear}
+                  handleMonthSelect={handleMonthSelect}
+                  handleYearSelect={handleYearSelect}
+                />],
+              ],
               <TimePickerOptions
                 selectedTime={selectedDate}
                 handleSelectHour={handleSelectHour}
                 handleSelectMinute={handleSelectMinute}
                 handleSelectPeriod={handleSelectPeriod}
-              />
+              />,
             )
           }
 

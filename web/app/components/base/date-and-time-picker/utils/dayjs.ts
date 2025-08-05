@@ -3,6 +3,7 @@ import type { Day } from '../types'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import tz from '@/utils/timezone.json'
+import { matchCond } from '@/utils/var'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -73,7 +74,7 @@ export const clearMonthMapCache = () => {
 
 export const getHourIn12Hour = (date: Dayjs) => {
   const hour = date.hour()
-  return hour === 0 ? 12 : hour >= 12 ? hour - 12 : hour
+  return matchCond(hour, [[0, 12], [() => hour >= 12, hour - 12]], hour)
 }
 
 export const getDateWithTimezone = (props: { date?: Dayjs, timezone?: string }) => {
@@ -86,7 +87,7 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
   if (!timezone)
     return DEFAULT_OFFSET_STR
   const tzItem = tz.find(item => item.value === timezone)
-  if(!tzItem)
+  if (!tzItem)
     return DEFAULT_OFFSET_STR
   return `UTC${tzItem.name.charAt(0)}${tzItem.name.charAt(2)}`
 }
