@@ -10,12 +10,13 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from './constants'
-import { useEducationAutocomplete, useEducationExpireAt } from '@/service/use-education'
+import { useEducationAutocomplete } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -73,9 +74,11 @@ const isExpired = (expireAt?: number, timezone?: string) => {
   const expiredDay = dayjs.unix(expireAt).tz(timezone).startOf('day')
   return today.isSame(expiredDay) || today.isAfter(expiredDay)
 }
-export const useEducationReverifyNotice = ({
+const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
+  const { allowRefreshEducationVerify, educationAccountExpireAt, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
+  // todo: expiredAt changed then reset reverifyHasNoticed and expiredHasNoticed
   const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
     defaultValue: false,
   })
@@ -83,21 +86,16 @@ export const useEducationReverifyNotice = ({
     defaultValue: false,
   })
   const { userProfile: { timezone } } = useAppContext()
-  const {
-    data,
-    isLoading,
-  } = useEducationExpireAt()
 
   useEffect(() => {
-    if(isLoading || !data || !timezone)
+    if(isLoading || !timezone)
       return
-    const { expireAt, shouldNotice } = data
-    if(shouldNotice) {
-        const expired = isExpired(expireAt, timezone)
+    if(allowRefreshEducationVerify) {
+        const expired = isExpired(educationAccountExpireAt!, timezone)
         const shouldNotice = expired ? !expiredHasNoticed : !reverifyHasNoticed
         if(shouldNotice) {
           onNotice({
-            expireAt,
+            expireAt: educationAccountExpireAt!,
             expired,
           })
           if(expired)
@@ -106,12 +104,12 @@ export const useEducationReverifyNotice = ({
             setReverifyHasNoticed(true)
         }
     }
-  }, [data, timezone])
+  }, [allowRefreshEducationVerify, timezone])
 
   return {
     isLoading,
-    expireAt: data?.expireAt,
-    expired: isExpired(data?.expireAt, timezone),
+    expireAt: educationAccountExpireAt!,
+    expired: isExpired(educationAccountExpireAt!, timezone),
   }
 }
 

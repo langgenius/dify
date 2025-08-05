@@ -50,6 +50,7 @@ type ProviderContextState = {
   isEducationAccount: boolean
   allowRefreshEducationVerify: boolean
   educationAccountExpireAt: number | null
+  isLoadingEducationAccountInfo: boolean
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -94,6 +95,7 @@ const ProviderContext = createContext<ProviderContextState>({
   isEducationAccount: false,
   allowRefreshEducationVerify: false,
   educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
@@ -139,7 +141,7 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: educationAccountInfo } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
 
   const fetchPlan = async () => {
@@ -230,6 +232,7 @@ export const ProviderContextProvider = ({
       isEducationAccount: educationAccountInfo?.result || false,
       allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
       educationAccountExpireAt: educationAccountInfo?.expireAt || null,
+      isLoadingEducationAccountInfo,
       webappCopyrightEnabled,
       licenseLimit,
       refreshLicenseLimit: fetchPlan,

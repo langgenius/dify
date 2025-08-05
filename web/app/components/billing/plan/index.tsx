@@ -36,7 +36,7 @@ const PlanComp: FC<Props> = ({
   const router = useRouter()
   const { userProfile } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
-  const isAboutToExpire = isEducationAccount && allowRefreshEducationVerify
+  const isAboutToExpire = allowRefreshEducationVerify
   const {
     type,
   } = plan
