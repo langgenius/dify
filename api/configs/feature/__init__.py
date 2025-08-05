@@ -74,6 +74,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of requests per app per day",
         default=5000,
     )
+    AGENT_MAX_ITERATION_STEPS: PositiveInt = Field(
+        description="Maximum number of allowed iterations for the agent application",
+        default=100,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
