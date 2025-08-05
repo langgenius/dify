@@ -123,22 +123,27 @@ class ModelProviderFactory:
             # Fallback to original implementation if Redis is not available
             logger.warning(f"Redis lock failed, falling back to thread-local lock: {e}")
 
-            with contexts.plugin_model_providers_lock.get():
-                plugin_model_providers = contexts.plugin_model_providers.get()
-                if plugin_model_providers is not None:
+            try:
+                with contexts.plugin_model_providers_lock.get():
+                    plugin_model_providers = contexts.plugin_model_providers.get()
+                    if plugin_model_providers is not None:
+                        return plugin_model_providers
+
+                    plugin_model_providers = []
+                    contexts.plugin_model_providers.set(plugin_model_providers)
+
+                    # Fetch plugin model providers
+                    plugin_providers = self.plugin_model_manager.fetch_model_providers(self.tenant_id)
+
+                    for provider in plugin_providers:
+                        provider.declaration.provider = provider.plugin_id + "/" + provider.declaration.provider
+                        plugin_model_providers.append(provider)
+
                     return plugin_model_providers
-
-                plugin_model_providers = []
-                contexts.plugin_model_providers.set(plugin_model_providers)
-
-                # Fetch plugin model providers
-                plugin_providers = self.plugin_model_manager.fetch_model_providers(self.tenant_id)
-
-                for provider in plugin_providers:
-                    provider.declaration.provider = provider.plugin_id + "/" + provider.declaration.provider
-                    plugin_model_providers.append(provider)
-
-                return plugin_model_providers
+            except Exception as fallback_error:
+                # If fallback also fails, log and return empty list
+                logger.exception(f"Both Redis lock and thread-local lock failed for tenant {self.tenant_id}")
+                return []
 
     def get_provider_schema(self, provider: str) -> ProviderEntity:
         """
