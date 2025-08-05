@@ -36,13 +36,13 @@ const Footer = () => {
     return null
 
   return (
-    <footer className='shrink-0 grow-0 px-12 py-2 relative'>
+    <footer className='relative shrink-0 grow-0 px-12 py-2'>
       <button
         onClick={handleClose}
-        className='absolute top-2 right-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-800'
+        className='absolute right-2 top-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out hover:bg-components-main-nav-nav-button-bg-active'
         aria-label="Close footer"
       >
-        <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        <RiCloseLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
       </button>
       <h3 className='text-gradient text-xl font-semibold leading-tight'>{t('app.join')}</h3>
       <p className='system-sm-regular mt-1 text-text-tertiary'>{t('app.communityIntro')}</p>
