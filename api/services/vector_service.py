@@ -83,6 +83,7 @@ class VectorService:
         # update segment index task
 
         # format new index
+        assert segment.index_node_id is not None
         document = Document(
             page_content=segment.content,
             metadata={
@@ -212,8 +213,10 @@ class VectorService:
                 },
             )
             documents.append(child_document)
+            assert update_child_chunk.index_node_id is not None
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert update_child_chunk.index_node_id is not None
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == "high_quality":
             # update vector index
@@ -226,4 +229,5 @@ class VectorService:
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
+        assert child_chunk.index_node_id is not None
         vector.delete_by_ids([child_chunk.index_node_id])

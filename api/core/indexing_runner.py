@@ -70,6 +70,7 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
 
                 # transform
+                assert dataset_document.doc_language is not None
                 documents = self._transform(
                     index_processor, dataset, text_docs, dataset_document.doc_language, processing_rule.to_dict()
                 )
@@ -526,6 +527,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset.indexing_technique == "high_quality":
+            assert dataset.embedding_model_provider is not None
             embedding_model_instance = self.model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
                 provider=dataset.embedding_model_provider,
