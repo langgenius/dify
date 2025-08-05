@@ -80,8 +80,8 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 class DatasetService:
     @staticmethod
     def get_datasets(
-        page:int,
-        per_page:int,
+        page: int,
+        per_page: int,
         tenant_id: Optional[str] = None,
         user=None,
         search=None,
