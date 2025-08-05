@@ -1,13 +1,13 @@
 import { LoroDoc } from 'loro-crdt'
 import { isEqual } from 'lodash-es'
-import { useWebSocketStore } from '../store/websocket-store'
+import { type WebSocketInstance, useWebSocketStore } from '../store/websocket-store'
 import type { Edge, Node } from '../types'
 
 class LoroSocketIOProvider {
-  private doc: any
-  private socket: any
+  private doc: LoroDoc
+  private socket: WebSocketInstance
 
-  constructor(socket: any, doc: any) {
+  constructor(socket: WebSocketInstance, doc: LoroDoc) {
     this.socket = socket
     this.doc = doc
     this.setupEventListeners()
@@ -15,9 +15,9 @@ class LoroSocketIOProvider {
 
   private setupEventListeners() {
     this.doc.subscribe((event: any) => {
-      if (event.origin !== 'remote') {
+      if (event.by === 'local') {
         const update = this.doc.export({ mode: 'update' })
-        this.socket.emit('graph_update', update)
+        this.socket.emit('graph_event', update)
       }
     })
 
@@ -59,9 +59,9 @@ class CollaborationManager {
       console.log('nodesMap', event)
       if (event.by === 'import') {
         requestAnimationFrame(() => {
-          const { setNodes } = reactFlowStore.getState()
+          const { setNodes: reactFlowSetNodes } = reactFlowStore.getState()
           const updatedNodes = Array.from(this.nodesMap.values())
-          setNodes(updatedNodes)
+          reactFlowSetNodes(updatedNodes)
         })
       }
     })
@@ -69,9 +69,9 @@ class CollaborationManager {
     this.edgesMap?.subscribe((event: any) => {
       if (event.by === 'import') {
         requestAnimationFrame(() => {
-          const { setEdges } = reactFlowStore.getState()
+          const { setEdges: reactFlowSetEdges } = reactFlowStore.getState()
           const updatedEdges = Array.from(this.edgesMap.values())
-          setEdges(updatedEdges)
+          reactFlowSetEdges(updatedEdges)
         })
       }
     })

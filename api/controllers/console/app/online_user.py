@@ -140,10 +140,10 @@ def handle_collaboration_event(sid, data):
     return {"msg": "event_broadcasted"}
 
 
-@sio.on("graph_update")
-def handle_graph_update(sid, data):
+@sio.on("graph_event")
+def handle_graph_event(sid, data):
     """
-    Handle graph updates - simple broadcast relay.
+    Handle graph events - simple broadcast relay.
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")
 

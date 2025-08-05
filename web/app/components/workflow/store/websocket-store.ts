@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { connectOnlineUserWebSocket } from '@/service/demo/online-user'
 
-type WebSocketInstance = ReturnType<typeof connectOnlineUserWebSocket>
+export type WebSocketInstance = ReturnType<typeof connectOnlineUserWebSocket>
 
 type WebSocketStore = {
   socket: WebSocketInstance | null
@@ -35,7 +35,7 @@ export const useWebSocketStore = create<WebSocketStore>((set, get) => ({
             try {
               handler(update)
             }
- catch (error) {
+            catch (error) {
               console.error(`Error in collaboration event handler for ${update.type}:`, error)
             }
           })
