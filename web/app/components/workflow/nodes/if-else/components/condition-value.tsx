@@ -10,15 +10,15 @@ import {
   isComparisonOperatorNeedTranslate,
 } from '../utils'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-import cn from '@/utils/classnames'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import type {
   CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
+import {
+  VariableLabelInText,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type ConditionValueProps = {
   variableSelector: string[]
@@ -37,8 +37,6 @@ const ConditionValue = ({
   const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
-  const isEnvVar = isENV(variableSelector)
-  const isChatVar = isConversationVar(variableSelector)
   const node: Node<CommonNodeType> | undefined = nodes.find(n => n.id === variableSelector[0]) as Node<CommonNodeType>
   const isException = isExceptionVariable(variableName, node?.data.type)
   const formatValue = useMemo(() => {
@@ -76,20 +74,14 @@ const ConditionValue = ({
 
   return (
     <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
-      {!isEnvVar && !isChatVar && <Variable02 className={cn('mr-1 h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
-      {isEnvVar && <Env className='mr-1 h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-      {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
-
-      <div
-        className={cn(
-          'ml-0.5 shrink-[2] truncate text-xs font-medium text-text-accent',
-          !notHasValue && 'max-w-[70px]',
-          isException && 'text-text-warning',
-        )}
-        title={variableName}
-      >
-        {variableName}
-      </div>
+      <VariableLabelInText
+        className='w-0 grow'
+        variables={variableSelector}
+        nodeTitle={node?.data.title}
+        nodeType={node?.data.type}
+        isExceptionVariable={isException}
+        notShowFullPath
+      />
       <div
         className='mx-1 shrink-0 text-xs font-medium text-text-primary'
         title={operatorName}

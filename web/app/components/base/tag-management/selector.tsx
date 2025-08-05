@@ -17,6 +17,7 @@ export type TagSelectorProps = {
   selectedTags: Tag[]
   onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
+  minWidth?: string
 }
 
 const TagSelector: FC<TagSelectorProps> = ({
@@ -28,6 +29,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   selectedTags,
   onCacheUpdate,
   onChange,
+  minWidth,
 }) => {
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
@@ -67,7 +69,7 @@ const TagSelector: FC<TagSelectorProps> = ({
               '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
             )
           }
-          popupClassName='!w-full !ring-0'
+          popupClassName={cn('!w-full !ring-0', minWidth && '!min-w-80')}
           className={'!z-20 h-fit !w-full'}
         />
       )}

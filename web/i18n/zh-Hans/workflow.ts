@@ -955,6 +955,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
@@ -971,6 +972,7 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+      copyIdSuccess: 'ID 已复制到剪贴板',
     },
   },
   debug: {

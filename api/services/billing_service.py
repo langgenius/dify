@@ -159,9 +159,9 @@ class BillingService:
     ):
         limiter_key = f"{account_id}:{tenant_id}"
         if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            from controllers.console.error import CompilanceRateLimitError
+            from controllers.console.error import ComplianceRateLimitError
 
-            raise CompilanceRateLimitError()
+            raise ComplianceRateLimitError()
 
         json = {
             "doc_name": doc_name,

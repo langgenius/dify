@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'आपका उपयोगकर्ता नाम',
   forget: 'क्या आप पासवर्ड भूल गए?',
   signBtn: 'साइन इन करें',
-  sso: 'SSO के साथ जारी रखें',
   installBtn: 'सेट अप करें',
   setAdminAccount: 'एडमिन खाता सेट कर रहे हैं',
   setAdminAccountDesc:
@@ -86,8 +85,8 @@ const translation = {
     resend: 'भेजें',
     checkYourEmail: 'अपना ईमेल जांचें',
     validTime: 'ध्यान रखें कि कोड 5 मिनट के लिए वैध है',
-    tips: 'हम <strong>{{email}}</strong> को एक सत्यापन कोड भेजते हैं',
     verificationCodePlaceholder: '6-अंक कोड दर्ज करें',
+    tipsPrefix: 'हम एक सत्यापन कोड भेजते हैं',
   },
   sendVerificationCode: 'पुष्टि कोड भेजें',
   or: 'नहीं तो',

@@ -2,10 +2,12 @@ import type { FC } from 'react'
 import React from 'react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import NodeVariableItem from '../variable-assigner/components/node-variable-item'
 import type { ListFilterNodeType } from './types'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 const i18nPrefix = 'workflow.nodes.listFilter'
 
@@ -25,10 +27,10 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
   return (
     <div className='relative px-3'>
       <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
-      <NodeVariableItem
-        node={node as Node}
-        variable={variable}
-        className='bg-workflow-block-parma-bg'
+      <VariableLabelInNode
+        variables={variable}
+        nodeType={node?.data.type}
+        nodeTitle={node?.data.title}
       />
     </div>
   )

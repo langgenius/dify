@@ -31,6 +31,7 @@ const translation = {
       sync: 'Sincronizar',
       resume: 'Reanudar',
       pause: 'Pausa',
+      download: 'Descargar archivo',
     },
     index: {
       enable: 'Habilitar',

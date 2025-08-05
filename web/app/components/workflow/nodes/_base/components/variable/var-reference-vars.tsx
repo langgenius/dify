@@ -5,7 +5,6 @@ import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import {
   PortalToFollowElem,
@@ -13,7 +12,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 import type { StructuredOutput } from '../../../llm/types'
 import { Type } from '../../../llm/types'
@@ -21,10 +19,9 @@ import PickerStructurePanel from '@/app/components/workflow/nodes/_base/componen
 import { isSpecialVar, varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
-import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { noop } from 'lodash-es'
-import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import ManageInputField from './manage-input-field'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -121,7 +118,6 @@ const Item: FC<ItemProps> = ({
   const open = (isObj || isStructureOutput) && isHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -135,6 +131,12 @@ const Item: FC<ItemProps> = ({
       onChange([nodeId, ...objPath, itemData.variable], itemData)
     }
   }
+  const variableCategory = useMemo(() => {
+    if (isEnv) return 'environment'
+    if (isChatVar) return 'conversation'
+    if (isLoopVar) return 'loop'
+    return 'system'
+  }, [isEnv, isChatVar, isSys, isLoopVar])
   return (
     <PortalToFollowElem
       open={open}
@@ -153,12 +155,11 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && !isLoopVar && !isRagVariable && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
-            {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-            {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
-            {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
-            {isRagVariable && <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />}
-            {!isEnv && !isChatVar && !isRagVariable && (
+            <VariableIconWithColor
+              variableCategory={variableCategory}
+              isExceptionVariable={isException}
+            />
+            {!isEnv && !isChatVar && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
             {isEnv && (
@@ -226,11 +227,9 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   const isHovering = isItemHovering || isChildrenHovering
   useEffect(() => {
     onHovering && onHovering(isHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHovering])
   useEffect(() => {
     onHovering && onHovering(isItemHovering)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isItemHovering])
   // absolute top-[-2px]
   return (

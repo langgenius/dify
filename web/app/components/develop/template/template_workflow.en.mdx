@@ -339,6 +339,240 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
+  url='/workflows/:workflow_id/run'
+  method='POST'
+  title='Execute Specific Workflow'
+  name='#Execute-Specific-Workflow'
+/>
+<Row>
+  <Col>
+    Execute a specific version of workflow by specifying the workflow ID in the path parameter.
+
+    ### Path
+          - `workflow_id` (string) Required Workflow ID to specify a specific version of workflow
+      
+      How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID. Each version entry contains a copyable ID field.
+
+    ### Request Body
+      - `inputs` (object) Required
+        Allows the entry of various variable values defined by the App.
+        The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions: 
+          - `type` (string) Supported type: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (Other file types)
+          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
+          - `url` (string) Image URL (when the transfer method is `remote_url`)
+          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
+
+    ### Response
+    When `response_mode` is `blocking`, return a CompletionResponse object.
+    When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
+
+    ### CompletionResponse
+    Returns the App result, `Content-Type` is `application/json`.
+    - `workflow_run_id` (string) Unique ID of workflow execution
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `data` (object) detail of result
+      - `id` (string) ID of workflow execution
+      - `workflow_id` (string) ID of related workflow
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional content of output
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) Optional total seconds to be used
+      - `total_tokens` (int) Optional tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+
+    ### ChunkCompletionResponse
+    Returns the stream chunks outputted by the App, `Content-Type` is `text/event-stream`.
+    Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
+    ```
+    </CodeGroup>
+    The structure of the streaming chunks varies depending on the `event`:
+    - `event: workflow_started` workflow starts execution
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `event: node_started` node execution started
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: text_chunk` Text fragment  
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API 
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `text_chunk`
+      - `data` (object) detail
+        - `text` (string) Text content
+        - `from_variable_selector` (array) Text source path, helps developers understand which variable of which node the text is generated from
+    - `event: node_finished` node execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of node execution
+        - `node_id` (string) ID of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `process_data` (json) Optional Process data of node
+        - `outputs` (json) Optional content of output
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `execution_metadata` (json) metadata
+          - `total_tokens` (int) optional tokens to be used
+          - `total_price` (decimal) optional total cost
+          - `currency` (string) optional currency, such as `USD` / `RMB`
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: workflow_finished` workflow execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional content of output
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `total_tokens` (int) Optional tokens to be used
+        - `total_steps` (int) default 0
+        - `created_at` (timestamp) start time
+        - `finished_at` (timestamp) end time
+    - `event: tts_message` TTS audio stream event, i.e., speech synthesis output. The content is an audio block in Mp3 format, encoded as a base64 string, which can be decoded directly when playing. (Only available when auto-play is enabled)
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The audio block after speech synthesis is encoded as base64 text content, which can be directly base64 decoded and sent to the player when playing
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: tts_message_end` TTS audio stream end event, receiving this event indicates the end of audio stream return.
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The end event has no audio, so this is an empty string
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: ping` Ping event every 10s to keep the connection alive.
+
+    ### Errors
+    - 400, `invalid_param`, Invalid input parameters
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, No available model credentials configured
+    - 400, `provider_quota_exceeded`, Insufficient model call quota
+    - 400, `model_currently_not_support`, Current model unavailable
+    - 400, `workflow_not_found`, Specified workflow version not found
+    - 400, `draft_workflow_error`, Cannot use draft workflow version
+    - 400, `workflow_id_format_error`, Workflow ID format error, UUID format required
+    - 400, `workflow_request_error`, Workflow execution failed
+    - 500, Internal service error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="POST" label="/workflows/:workflow_id/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Example: file array as an input variable">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}": 
+          [
+            {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+            }
+          ]
+        }
+      }
+      ```
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/workflows/run/:workflow_run_id'
   method='GET'
   title='Get Workflow Run Detail'

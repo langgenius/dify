@@ -956,6 +956,7 @@ const translation = {
       updateSuccess: 'Versione aggiornata',
       deleteFailure: 'Impossibile eliminare la versione',
       updateFailure: 'Impossibile aggiornare la versione',
+      copyIdSuccess: 'ID copiato negli appunti',
     },
     latest: 'Ultimo',
     defaultName: 'Versione senza titolo',
@@ -966,6 +967,7 @@ const translation = {
     currentDraft: 'Bozza attuale',
     restorationTip: 'Dopo il ripristino della versione, la bozza attuale verrà sovrascritta.',
     title: 'Versioni',
+    copyId: 'Copia ID',
   },
   debug: {
     noData: {
