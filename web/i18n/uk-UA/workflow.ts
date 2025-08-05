@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -971,6 +968,15 @@ const translation = {
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
   },
 }
 

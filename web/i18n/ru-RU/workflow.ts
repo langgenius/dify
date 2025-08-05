@@ -103,12 +103,10 @@ const translation = {
     addFailureBranch: 'Добавить ветвь Fail',
     noHistory: 'Без истории',
     loadMore: 'Загрузите больше рабочих процессов',
-    noExist: 'Такой переменной не существует',
     versionHistory: 'История версий',
     exportPNG: 'Экспортировать как PNG',
     exportImage: 'Экспортировать изображение',
     exportJPEG: 'Экспортировать как JPEG',
-    referenceVar: 'Ссылочная переменная',
     exitVersions: 'Выходные версии',
     exportSVG: 'Экспортировать как SVG',
     publishUpdate: 'Опубликовать обновление',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'Выбирать',
       addSubVariable: 'Подпеременная',
-      condition: 'Условие',
     },
     variableAssigner: {
       title: 'Назначить переменные',
@@ -971,6 +968,15 @@ const translation = {
     },
     lastRunTab: 'Последний запуск',
     settingsTab: 'Настройки',
+    relations: {
+      dependencies: 'Зависимости',
+      dependents: 'Иждивенцев',
+      noDependencies: 'Нет зависимостей',
+      dependentsDescription: 'Узлы, которые полагаются на этот узел',
+      noDependents: 'Отсутствие иждивенцев',
+      dependenciesDescription: 'Узлы, на которые опирается этот узел',
+    },
+    relationsTab: 'Отношения',
   },
 }
 

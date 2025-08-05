@@ -968,6 +968,15 @@ const translation = {
     },
     settingsTab: 'Einstellungen',
     lastRunTab: 'Letzte Ausführung',
+    relations: {
+      dependents: 'Angehörige',
+      dependenciesDescription: 'Knoten, auf die sich dieser Knoten stützt',
+      dependencies: 'Abhängigkeiten',
+      noDependencies: 'Keine Abhängigkeiten',
+      dependentsDescription: 'Knoten, die auf diesem Knoten basieren',
+      noDependents: 'Keine Angehörigen',
+    },
+    relationsTab: 'Beziehungen',
   },
 }
 
