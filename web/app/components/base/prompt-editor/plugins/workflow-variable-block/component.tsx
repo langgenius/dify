@@ -62,7 +62,7 @@ const WorkflowVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
-  const node = localWorkflowNodesMap![variables[0]]
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
   const isEnv = isENV(variables)
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
@@ -75,6 +75,9 @@ const WorkflowVariableBlockComponent = ({
   else if (isChatVar) {
     if (conversationVariables)
       variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else if (isRagVar) {
+    variableValid = !!node || (variables[0] === 'rag' && variables[1] === 'shared')
   }
   else {
     variableValid = !!node

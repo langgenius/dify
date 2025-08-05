@@ -135,8 +135,9 @@ const Item: FC<ItemProps> = ({
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
     if (isLoopVar) return 'loop'
+    if (isRagVariable) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isSys, isLoopVar])
+  }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
   return (
     <PortalToFollowElem
       open={open}
@@ -159,7 +160,7 @@ const Item: FC<ItemProps> = ({
               variableCategory={variableCategory}
               isExceptionVariable={isException}
             />
-            {!isEnv && !isChatVar && (
+            {!isEnv && !isChatVar && !isRagVariable && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
             {isEnv && (
