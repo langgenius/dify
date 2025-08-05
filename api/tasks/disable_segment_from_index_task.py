@@ -53,7 +53,8 @@ def disable_segment_from_index_task(segment_id: str):
 
         index_type = dataset_document.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        index_processor.clean(dataset, [segment.index_node_id])
+        if segment.index_node_id:
+            index_processor.clean(dataset, [segment.index_node_id])
 
         end_at = time.perf_counter()
         logging.info(click.style(f"Segment removed from index: {segment.id} latency: {end_at - start_at}", fg="green"))
