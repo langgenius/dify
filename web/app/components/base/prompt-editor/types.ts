@@ -70,6 +70,10 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
 }
 
+export type HITLInputBlockType = {
+  show?: boolean
+}
+
 export type MenuTextMatch = {
   leadOffset: number
   matchingString: string

@@ -39,6 +39,11 @@ import {
   WorkflowVariableBlockNode,
   WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
+import {
+  HITLInputBlock,
+  HITLInputBlockReplacementBlock,
+  HITLInputNode,
+} from './plugins/hitl-input-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -49,6 +54,7 @@ import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
   ExternalToolBlockType,
+  HITLInputBlockType,
   HistoryBlockType,
   QueryBlockType,
   VariableBlockType,
@@ -80,6 +86,7 @@ export type PromptEditorProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  hitlInputBlock?: HITLInputBlockType
   isSupportFileVar?: boolean
 }
 
@@ -102,6 +109,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  hitlInputBlock,
   isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -119,6 +127,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       QueryBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
+      HITLInputNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -227,6 +236,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <WorkflowVariableBlock {...workflowVariableBlock} />
               <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
+            </>
+          )
+        }
+        {
+          // TODO: test hitlInputBlock?.show
+          (
+            <>
+              <HITLInputBlock />
+              <HITLInputBlockReplacementBlock />
             </>
           )
         }
