@@ -201,5 +201,3 @@ class AnswerStreamProcessor(StreamProcessor):
                 stream_out_answer_node_ids.append(answer_node_id)
 
         return stream_out_answer_node_ids
-
-
