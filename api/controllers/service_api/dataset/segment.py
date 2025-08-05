@@ -102,6 +102,8 @@ class SegmentApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
+                assert dataset.embedding_model_provider is not None
+                assert dataset.embedding_model is not None
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
@@ -269,6 +271,8 @@ class ChildChunkApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
+                assert dataset.embedding_model_provider is not None
+                assert dataset.embedding_model is not None
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,

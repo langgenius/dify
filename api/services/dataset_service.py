@@ -2291,6 +2291,7 @@ class SegmentService:
                         model_manager = ModelManager()
 
                         if dataset.embedding_model_provider:
+                            assert dataset.embedding_model is not None
                             embedding_model_instance = model_manager.get_model_instance(
                                 tenant_id=dataset.tenant_id,
                                 provider=dataset.embedding_model_provider,
