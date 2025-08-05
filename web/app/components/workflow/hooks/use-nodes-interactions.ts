@@ -1592,14 +1592,13 @@ export const useNodesInteractions = () => {
 
     setNodes(newNodes)
 
-        /* == ② 生成临时连线 == */
     const tempEdges: Edge[] = []
 
     dependencyNodes.forEach((n) => {
       tempEdges.push({
         id: `tmp_${n.id}-source-${selectedNode.id}-target`,
-        type: CUSTOM_EDGE, // 复用自定义 Edge，也可以写一个 DIM_EDGE
-        source: n.id, // 依赖 → 选中
+        type: CUSTOM_EDGE,
+        source: n.id,
         sourceHandle: 'source_tmp',
         target: selectedNode.id,
         targetHandle: 'target_tmp',
@@ -1648,7 +1647,6 @@ export const useNodesInteractions = () => {
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((n) => {
         n.data._dimmed = false
-        // handleNodeLeave(null as unknown as MouseEvent, n)
       })
     })
 
