@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+import json
 import uuid
 from collections.abc import Mapping
 from typing import Any, Optional
@@ -16,7 +17,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
 from extensions.ext_database import db
 from libs import helper
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
@@ -228,13 +229,31 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
             documents.append(doc)
         if documents:
+            # update document parent mode
+            dataset_process_rule = DatasetProcessRule(
+                dataset_id=dataset.id,
+                mode="hierarchical",
+                rules=json.dumps({
+                    "parent_mode": parent_childs.parent_mode,
+                }),
+                created_by=document.created_by,
+            )
+            db.session.add(dataset_process_rule)
+            db.session.flush()
+            document.dataset_process_rule_id = dataset_process_rule.id
+            db.session.commit()
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
             doc_store.add_documents(docs=documents, save_child=True)
             if dataset.indexing_technique == "high_quality":
-                vector = Vector(dataset)
-                vector.create(documents)
+                all_child_documents = []
+                for doc in documents:
+                    if doc.children:
+                        all_child_documents.extend(doc.children)
+                if all_child_documents:
+                    vector = Vector(dataset)
+                    vector.create(all_child_documents)
 
     def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
         parent_childs = ParentChildStructureChunk(**chunks)

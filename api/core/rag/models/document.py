@@ -58,6 +58,7 @@ class ParentChildStructureChunk(BaseModel):
     """
 
     parent_child_chunks: list[ParentChildChunk]
+    parent_mode: str = "paragraph"
 
 
 class QAChunk(BaseModel):
