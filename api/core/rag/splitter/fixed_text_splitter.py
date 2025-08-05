@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from core.model_manager import ModelInstance
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from api.core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 from core.rag.splitter.text_splitter import (
     TS,
     Collection,
@@ -44,14 +44,6 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
                 return []
 
             return [len(text) for text in texts]
-
-        if issubclass(cls, TokenTextSplitter):
-            extra_kwargs = {
-                "model_name": embedding_model_instance.model if embedding_model_instance else "gpt2",
-                "allowed_special": allowed_special,
-                "disallowed_special": disallowed_special,
-            }
-            kwargs = {**kwargs, **extra_kwargs}
 
         return cls(length_function=_character_encoder, **kwargs)
 
