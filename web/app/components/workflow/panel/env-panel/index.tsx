@@ -18,6 +18,7 @@ import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/node
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import cn from '@/utils/classnames'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
@@ -28,6 +29,7 @@ const EnvPanel = () => {
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
   const setEnvSecrets = useStore(s => s.setEnvSecrets)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { emit } = useWebSocketStore()
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
@@ -65,12 +67,13 @@ const EnvPanel = () => {
     setShowVariableModal(true)
   }
 
-  const handleDelete = useCallback((env: EnvironmentVariable) => {
+  const handleDelete = useCallback(async (env: EnvironmentVariable) => {
     removeUsedVarInNodes(env)
     updateEnvList(envList.filter(e => e.id !== env.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    doSyncWorkflowDraft()
+    await doSyncWorkflowDraft()
+    emit('varsAndFeaturesUpdate')
     if (env.value_type === 'secret') {
       const newMap = { ...envSecrets }
       delete newMap[env.id]
@@ -102,6 +105,7 @@ const EnvPanel = () => {
       const newList = [env, ...envList]
       updateEnvList(newList)
       await doSyncWorkflowDraft()
+      emit('varsAndFeaturesUpdate')
       updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
       return
     }
@@ -143,6 +147,7 @@ const EnvPanel = () => {
       setNodes(newNodes)
     }
     await doSyncWorkflowDraft()
+    emit('varsAndFeaturesUpdate')
     updateEnvList(newList.map(e => (e.id === env.id && env.value_type === 'secret') ? { ...e, value: '[__HIDDEN__]' } : e))
   }, [currentVar, doSyncWorkflowDraft, envList, envSecrets, getEffectedNodes, setEnvSecrets, store, updateEnvList])
 

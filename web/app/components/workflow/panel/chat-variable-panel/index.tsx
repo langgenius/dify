@@ -42,9 +42,7 @@ const ChatVariablePanel = () => {
     doSyncWorkflowDraft(false, {
       onSuccess() {
         invalidateConversationVarValues()
-        emit('vars-features-update', {
-          timestamp: Date.now(),
-        })
+        emit('varsAndFeaturesUpdate')
       },
     })
   }, [doSyncWorkflowDraft, invalidateConversationVarValues])

@@ -71,12 +71,12 @@ const WorkflowMain = ({
   useEffect(() => {
     if (!appId) return
 
-    const unsubscribeConversationVarsUpdate = on('vars-features-update', async () => {
+    const unsubscribeConversationVarsUpdate = on('varsAndFeaturesUpdate', async () => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
         handleWorkflowDataUpdate(response)
       }
- catch (error) {
+      catch (error) {
         console.error('workflow vars and features update failed:', error)
       }
     })
