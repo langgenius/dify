@@ -77,7 +77,7 @@ const WorkflowVariableBlockComponent = ({
       variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isRagVar) {
-    variableValid = !!node || (variables[0] === 'rag' && variables[1] === 'shared')
+    variableValid = variables[0] === 'rag'
   }
   else {
     variableValid = !!node
