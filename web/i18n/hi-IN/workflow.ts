@@ -109,8 +109,6 @@ const translation = {
     exitVersions: 'निकलने के संस्करण',
     exportPNG: 'PNG के रूप में निर्यात करें',
     exportJPEG: 'JPEG के रूप में निर्यात करें',
-    referenceVar: 'संदर्भ चर',
-    noExist: 'कोई ऐसा चर नहीं है',
     exportImage: 'छवि निर्यात करें',
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
@@ -623,7 +621,6 @@ const translation = {
       },
       select: 'चुनना',
       addSubVariable: 'उप चर',
-      condition: 'स्थिति',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',

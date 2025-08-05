@@ -109,9 +109,7 @@ const translation = {
     exitVersions: 'Çıkış Sürümleri',
     versionHistory: 'Sürüm Geçmişi',
     exportJPEG: 'JPEG olarak dışa aktar',
-    noExist: 'Böyle bir değişken yok',
     exportSVG: 'SVG olarak dışa aktar',
-    referenceVar: 'Referans Değişken',
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
@@ -609,7 +607,6 @@ const translation = {
       },
       addSubVariable: 'Alt Değişken',
       select: 'Seçmek',
-      condition: 'Koşul',
     },
     variableAssigner: {
       title: 'Değişken ata',

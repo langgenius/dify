@@ -105,9 +105,7 @@ const translation = {
     noHistory: 'ไม่มีประวัติ',
     versionHistory: 'ประวัติรุ่น',
     exportPNG: 'ส่งออกเป็น PNG',
-    noExist: 'ไม่มีตัวแปรดังกล่าว',
     exportJPEG: 'ส่งออกเป็น JPEG',
-    referenceVar: 'ตัวแปรอ้างอิง',
     publishUpdate: 'เผยแพร่การอัปเดต',
     exitVersions: 'ออกเวอร์ชัน',
     exportImage: 'ส่งออกภาพ',
@@ -608,7 +606,6 @@ const translation = {
       selectVariable: 'เลือกตัวแปร...',
       addSubVariable: 'ตัวแปรย่อย',
       select: 'เลือก',
-      condition: 'เงื่อนไข',
     },
     variableAssigner: {
       title: 'กําหนดตัวแปร',

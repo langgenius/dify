@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',

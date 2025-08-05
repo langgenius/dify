@@ -109,9 +109,7 @@ const translation = {
     exitVersions: 'Phiên bản thoát',
     exportImage: 'Xuất hình ảnh',
     exportPNG: 'Xuất dưới dạng PNG',
-    noExist: 'Không có biến như vậy',
     exportJPEG: 'Xuất dưới dạng JPEG',
-    referenceVar: 'Biến tham chiếu',
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
@@ -608,7 +606,6 @@ const translation = {
       },
       addSubVariable: 'Biến phụ',
       select: 'Lựa',
-      condition: 'Điều kiện',
     },
     variableAssigner: {
       title: 'Gán biến',

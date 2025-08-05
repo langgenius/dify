@@ -104,9 +104,7 @@ const translation = {
     noHistory: 'بدون تاریخچه',
     loadMore: 'بارگذاری گردش کار بیشتر',
     exportPNG: 'صادرات به فرمت PNG',
-    noExist: 'هیچگونه متغیری وجود ندارد',
     exitVersions: 'نسخه‌های خروجی',
-    referenceVar: 'متغیر مرجع',
     exportSVG: 'صادرات به فرمت SVG',
     exportJPEG: 'صادرات به فرمت JPEG',
     exportImage: 'تصویر را صادر کنید',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'انتخاب',
       addSubVariable: 'متغیر فرعی',
-      condition: 'شرط',
     },
     variableAssigner: {
       title: 'تخصیص متغیرها',

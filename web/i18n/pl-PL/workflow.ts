@@ -108,10 +108,8 @@ const translation = {
     versionHistory: 'Historia wersji',
     exportSVG: 'Eksportuj jako SVG',
     exportJPEG: 'Eksportuj jako JPEG',
-    noExist: 'Nie ma takiej zmiennej',
     exportPNG: 'Eksportuj jako PNG',
     publishUpdate: 'Opublikuj aktualizację',
-    referenceVar: 'Zmienna odniesienia',
     addBlock: 'Dodaj węzeł',
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
@@ -608,7 +606,6 @@ const translation = {
       },
       addSubVariable: 'Zmienna podrzędna',
       select: 'Wybrać',
-      condition: 'Stan',
     },
     variableAssigner: {
       title: 'Przypisz zmienne',

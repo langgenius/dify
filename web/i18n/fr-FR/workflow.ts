@@ -107,9 +107,7 @@ const translation = {
     exitVersions: 'Versions de sortie',
     exportSVG: 'Exporter en SVG',
     publishUpdate: 'Publier une mise à jour',
-    noExist: 'Aucune variable de ce type',
     versionHistory: 'Historique des versions',
-    referenceVar: 'Variable de référence',
     exportImage: 'Exporter l\'image',
     exportJPEG: 'Exporter en JPEG',
     needEndNode: 'Le nœud de fin doit être ajouté',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'Choisir',
       addSubVariable: 'Sous-variable',
-      condition: 'Condition',
     },
     variableAssigner: {
       title: 'Attribuer des variables',

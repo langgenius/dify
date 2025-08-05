@@ -107,8 +107,6 @@ const translation = {
     publishUpdate: 'Publicar Atualização',
     versionHistory: 'Histórico de Versão',
     exportImage: 'Exportar Imagem',
-    referenceVar: 'Variável de Referência',
-    noExist: 'Nenhuma variável desse tipo',
     exitVersions: 'Versões de Sair',
     exportSVG: 'Exportar como SVG',
     exportJPEG: 'Exportar como JPEG',
@@ -608,7 +606,6 @@ const translation = {
       },
       addSubVariable: 'Subvariável',
       select: 'Selecionar',
-      condition: 'Condição',
     },
     variableAssigner: {
       title: 'Atribuir variáveis',
