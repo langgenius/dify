@@ -1,13 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import { createContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import Operations from '../operations'
 import StatusItem from '../status-item'
-import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
@@ -18,65 +16,22 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import type { ChunkingMode, FileItem, ParentMode, ProcessMode } from '@/models/datasets'
+import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
+import { DocumentContext } from './context'
+import { DocumentTitle } from './document-title'
 
-type DocumentContextValue = {
-  datasetId?: string
-  documentId?: string
-  docForm: string
-  mode?: ProcessMode
-  parentMode?: ParentMode
-}
-
-export const DocumentContext = createContext<DocumentContextValue>({ docForm: '' })
-
-export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
-  return useContextSelector(DocumentContext, selector)
-}
-
-type DocumentTitleProps = {
-  datasetId: string
-  extension?: string
-  name?: string
-  processMode?: ProcessMode
-  parent_mode?: ParentMode
-  iconCls?: string
-  textCls?: string
-  wrapperCls?: string
-}
-
-export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
-  const router = useRouter()
-  return (
-    <div className={cn('flex flex-1 items-center justify-start', wrapperCls)}>
-      <DocumentPicker
-        datasetId={datasetId}
-        value={{
-          name,
-          extension,
-          processMode,
-          parentMode: parent_mode,
-        }}
-        onChange={(doc) => {
-          router.push(`/datasets/${datasetId}/documents/${doc.id}`)
-        }}
-      />
-    </div>
-  )
-}
-
-type Props = {
+type DocumentDetailProps = {
   datasetId: string
   documentId: string
 }
 
-const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
+const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const { t } = useTranslation()
 
@@ -105,7 +60,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
       },
       onError: (e) => {
-        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        const message = 'message' in e ? `: ${e.message}` : ''
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
       },
     })
   }
@@ -121,7 +77,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         checkProcess(res.job_id)
       },
       onError: (e) => {
-        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        const message = 'message' in e ? `: ${e.message}` : ''
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${message}` })
       },
     })
   }
@@ -131,6 +88,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     documentId,
     params: { metadata: 'without' },
   })
+  console.log('🚀 ~ DocumentDetail ~ documentDetail:', documentDetail)
 
   const { data: documentMetadata } = useDocumentMetadata({
     datasetId,
@@ -173,7 +131,9 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const mode = useMemo(() => {
-    return documentDetail?.document_process_rule?.mode || documentDetail?.dataset_process_rule?.mode
+    if (documentDetail?.document_process_rule?.mode)
+      return documentDetail.document_process_rule.mode
+    return documentDetail?.doc_form === 'hierarchical_model' ? 'hierarchical' : 'custom'
   }, [documentDetail?.document_process_rule?.mode, documentDetail?.dataset_process_rule?.mode])
 
   const parentMode = useMemo(() => {
@@ -188,8 +148,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     <DocumentContext.Provider value={{
       datasetId,
       documentId,
-      docForm: documentDetail?.doc_form || '',
-      mode,
+      docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
     }}>
       <div className='flex h-full flex-col bg-background-default'>
@@ -203,7 +162,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             name={documentDetail?.name}
             wrapperCls='mr-2'
             parent_mode={parentMode}
-            processMode={mode}
+            chunkingMode={documentDetail?.doc_form as ChunkingMode}
           />
           <div className='flex flex-wrap items-center'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (

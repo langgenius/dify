@@ -7,7 +7,7 @@ import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { IndexingType } from '../../../create/step-two'
 import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
 import EmbeddingSkeleton from './skeleton'
@@ -101,7 +101,6 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
         break
     }
     return value
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceData])
 
   return <div className='py-3'>
@@ -198,7 +197,6 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
       await sleep(2500)
       await startQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopQueryStatus])
 
   useEffect(() => {

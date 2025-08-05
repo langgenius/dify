@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
-import { ProcessMode } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -24,7 +24,7 @@ type Props = {
   value: {
     name?: string
     extension?: string
-    processMode?: ProcessMode
+    chunkingMode?: ChunkingMode
     parentMode?: ParentMode
   }
   onChange: (value: SimpleDocumentDetail) => void
@@ -39,7 +39,7 @@ const DocumentPicker: FC<Props> = ({
   const {
     name,
     extension,
-    processMode,
+    chunkingMode,
     parentMode,
   } = value
   const [query, setQuery] = useState('')
@@ -53,7 +53,7 @@ const DocumentPicker: FC<Props> = ({
     },
   })
   const documentsList = data?.data
-  const isParentChild = processMode === ProcessMode.parentChild
+  const isParentChild = chunkingMode === ChunkingMode.parentChild
   const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
 
   const [open, {
