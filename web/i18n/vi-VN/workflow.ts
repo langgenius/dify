@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',
+    relations: {
+      noDependencies: 'Không phụ thuộc',
+      dependenciesDescription: 'Các nút mà nút này dựa vào',
+      dependents: 'Người phụ thuộc',
+      dependencies: 'Phụ thuộc',
+      noDependents: 'Không có người phụ thuộc',
+      dependentsDescription: 'Các nút dựa vào nút này',
+    },
+    relationsTab: 'Mối quan hệ',
   },
 }
 

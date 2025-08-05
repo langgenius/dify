@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'Setări',
     lastRunTab: 'Ultima execuție',
+    relations: {
+      dependencies: 'Dependenţele',
+      noDependencies: 'Fără dependențe',
+      dependents: 'Dependenţe',
+      noDependents: 'Fără persoane aflate în întreținere',
+      dependentsDescription: 'Noduri care se bazează pe acest nod',
+      dependenciesDescription: 'Noduri pe care se bazează acest nod',
+    },
+    relationsTab: 'Relații',
   },
 }
 

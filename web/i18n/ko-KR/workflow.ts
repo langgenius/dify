@@ -1019,6 +1019,15 @@ const translation = {
     },
     settingsTab: '설정',
     lastRunTab: '마지막 실행',
+    relations: {
+      dependencies: '종속성',
+      dependentsDescription: '이 노드에 의존하는 노드',
+      noDependents: '부양가족 없음',
+      noDependencies: '종속성 없음',
+      dependents: '부양 가족',
+      dependenciesDescription: '이 노드가 의존하는 노드',
+    },
+    relationsTab: '관계',
   },
 }
 

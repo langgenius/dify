@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'تنظیمات',
     lastRunTab: 'آخرین اجرا',
+    relations: {
+      dependents: 'وابسته',
+      dependencies: 'وابسته',
+      noDependents: 'بدون وابستگان',
+      noDependencies: 'بدون وابستگی',
+      dependenciesDescription: 'گره هایی که این گره به آنها متکی است',
+      dependentsDescription: 'گره هایی که به این گره متکی هستند',
+    },
+    relationsTab: 'روابط',
   },
 }
 

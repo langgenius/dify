@@ -997,6 +997,15 @@ const translation = {
     },
     settingsTab: 'Impostazioni',
     lastRunTab: 'Ultima corsa',
+    relations: {
+      dependents: 'Dipendenti',
+      noDependencies: 'Nessuna dipendenza',
+      dependencies: 'Dipendenze',
+      noDependents: 'Nessuna persona a carico',
+      dependentsDescription: 'Nodi che si basano su questo nodo',
+      dependenciesDescription: 'Nodi su cui si basa questo nodo',
+    },
+    relationsTab: 'Relazioni',
   },
 }
 

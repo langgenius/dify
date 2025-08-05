@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'Paramètres',
     lastRunTab: 'Dernière Exécution',
+    relations: {
+      dependencies: 'Dépendances',
+      dependentsDescription: 'Nœuds qui s’appuient sur ce nœud',
+      noDependents: 'Pas de personnes à charge',
+      dependents: 'Dépendants',
+      noDependencies: 'Aucune dépendance',
+      dependenciesDescription: 'Nœuds sur lesquels repose ce nœud',
+    },
+    relationsTab: 'Relations',
   },
 }
 

@@ -972,6 +972,15 @@ const translation = {
     },
     lastRunTab: 'Son Koşu',
     settingsTab: 'Ayarlar',
+    relations: {
+      noDependents: 'Bakmakla yükümlü olunan kişi yok',
+      dependentsDescription: 'Bu düğüme dayanan düğümler',
+      dependenciesDescription: 'Bu düğümün dayandığı düğümler',
+      dependencies: 'Bağımlılık',
+      dependents: 'Bağımlı',
+      noDependencies: 'Bağımlılık yok',
+    },
+    relationsTab: 'Ilişkiler',
   },
 }
 

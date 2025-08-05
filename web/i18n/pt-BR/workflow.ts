@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'Configurações',
     lastRunTab: 'Última execução',
+    relations: {
+      noDependents: 'Sem dependentes',
+      dependenciesDescription: 'Nós dos quais esse nó depende',
+      dependents: 'Dependentes',
+      dependencies: 'Dependências',
+      dependentsDescription: 'Nós que dependem desse nó',
+      noDependencies: 'Sem dependências',
+    },
+    relationsTab: 'Relações',
   },
 }
 

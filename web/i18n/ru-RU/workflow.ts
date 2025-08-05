@@ -971,6 +971,15 @@ const translation = {
     },
     lastRunTab: 'Последний запуск',
     settingsTab: 'Настройки',
+    relations: {
+      dependencies: 'Зависимости',
+      dependents: 'Иждивенцев',
+      noDependencies: 'Нет зависимостей',
+      dependentsDescription: 'Узлы, которые полагаются на этот узел',
+      noDependents: 'Отсутствие иждивенцев',
+      dependenciesDescription: 'Узлы, на которые опирается этот узел',
+    },
+    relationsTab: 'Отношения',
   },
 }
 

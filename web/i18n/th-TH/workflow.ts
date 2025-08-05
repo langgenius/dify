@@ -971,6 +971,15 @@ const translation = {
     },
     settingsTab: 'การตั้งค่า',
     lastRunTab: 'รอบสุดท้าย',
+    relations: {
+      dependents: 'ผู้อยู่ในอุปการะ',
+      dependencies: 'อ้าง อิง',
+      dependenciesDescription: 'โหนดที่โหนดนี้อาศัย',
+      noDependencies: 'ไม่มีการพึ่งพา',
+      noDependents: 'ไม่มีผู้อยู่ในอุปการะ',
+      dependentsDescription: 'โหนดที่อาศัยโหนดนี้',
+    },
+    relationsTab: 'สัมพันธ์',
   },
 }
 

@@ -991,6 +991,15 @@ const translation = {
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
+    relations: {
+      dependents: 'निष्पाभ लोग',
+      dependentsDescription: 'इस नोड पर निर्भर नोड्स',
+      dependencies: 'निर्भरता',
+      noDependents: 'कोई आश्रित नहीं',
+      dependenciesDescription: 'यह नोड जिस नोड पर निर्भर करता है',
+      noDependencies: 'कोई निर्भरताएँ नहीं',
+    },
+    relationsTab: 'रिश्ते',
   },
 }
 
