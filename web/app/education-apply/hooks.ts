@@ -78,7 +78,9 @@ const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
   const { allowRefreshEducationVerify, educationAccountExpireAt, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  // todo: expiredAt changed then reset reverifyHasNoticed and expiredHasNoticed
+  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
+    defaultValue: 0,
+  })
   const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
     defaultValue: false,
   })
@@ -92,7 +94,17 @@ const useEducationReverifyNotice = ({
       return
     if(allowRefreshEducationVerify) {
         const expired = isExpired(educationAccountExpireAt!, timezone)
-        const shouldNotice = expired ? !expiredHasNoticed : !reverifyHasNoticed
+        const isExpireAtChanged = prevExpireAt !== educationAccountExpireAt
+        if(isExpireAtChanged) {
+          setPrevExpireAt(educationAccountExpireAt!)
+          setReverifyHasNoticed(false)
+          setExpiredHasNoticed(false)
+        }
+        const shouldNotice = (() => {
+          if(isExpireAtChanged)
+            return true
+          return expired ? !expiredHasNoticed : !reverifyHasNoticed
+        })()
         if(shouldNotice) {
           onNotice({
             expireAt: educationAccountExpireAt!,
