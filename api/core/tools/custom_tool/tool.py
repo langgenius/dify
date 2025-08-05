@@ -1,7 +1,7 @@
 import json
 from collections.abc import Generator
 from os import getenv
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -58,7 +58,9 @@ class ApiTool(Tool):
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        return self.validate_and_parse_response(response)
+        parsed_response, _ = self.validate_and_parse_response(response)
+        # For credential validation, always return as string
+        return parsed_response if isinstance(parsed_response, str) else str(parsed_response)
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
@@ -112,23 +114,37 @@ class ApiTool(Tool):
 
         return headers
 
-    def validate_and_parse_response(self, response: httpx.Response) -> str:
+    def validate_and_parse_response(self, response: httpx.Response) -> tuple[Union[str, dict], bool]:
         """
-        validate the response
+        validate the response and return parsed content with JSON flag
+        
+        :return: tuple of (parsed_response, is_json) where parsed_response is either str or dict
         """
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
                 raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
-                return "Empty response from the tool, please check your parameters and try again."
+                return "Empty response from the tool, please check your parameters and try again.", False
+            
+            # Check content type
+            content_type = response.headers.get("content-type", "").lower()
+            is_json_content_type = "application/json" in content_type
+            
+            # Try to parse as JSON
             try:
-                response = response.json()
-                try:
-                    return json.dumps(response, ensure_ascii=False)
-                except Exception:
-                    return json.dumps(response)
+                json_response = response.json()
+                if is_json_content_type:
+                    # Return the original JSON object and mark as JSON
+                    return json_response, True
+                else:
+                    # Even if it's valid JSON, if content-type doesn't indicate JSON, treat as text
+                    try:
+                        return json.dumps(json_response, ensure_ascii=False), False
+                    except Exception:
+                        return json.dumps(json_response), False
             except Exception:
-                return response.text
+                # Not valid JSON, return as text
+                return response.text, False
         else:
             raise ValueError(f"Invalid response type {type(response)}")
 
@@ -369,7 +385,12 @@ class ApiTool(Tool):
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
         # validate response
-        response = self.validate_and_parse_response(response)
+        parsed_response, is_json = self.validate_and_parse_response(response)
 
-        # assemble invoke message
-        yield self.create_text_message(response)
+        # assemble invoke message based on response type
+        if is_json and isinstance(parsed_response, dict):
+            yield self.create_json_message(parsed_response)
+        else:
+            # Convert to string if needed and create text message
+            text_response = parsed_response if isinstance(parsed_response, str) else str(parsed_response)
+            yield self.create_text_message(text_response)
