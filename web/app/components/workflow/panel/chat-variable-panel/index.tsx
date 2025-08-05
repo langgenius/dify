@@ -21,6 +21,7 @@ import type {
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
 import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -36,10 +37,14 @@ const ChatVariablePanel = () => {
   const {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
+  const { emit } = useWebSocketStore()
   const handleVarChanged = useCallback(() => {
     doSyncWorkflowDraft(false, {
       onSuccess() {
         invalidateConversationVarValues()
+        emit('vars-features-update', {
+          timestamp: Date.now(),
+        })
       },
     })
   }, [doSyncWorkflowDraft, invalidateConversationVarValues])

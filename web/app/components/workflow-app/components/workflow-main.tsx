@@ -23,6 +23,7 @@ import { useWebSocketStore } from '@/app/components/workflow/store/websocket-sto
 import { useCollaborativeCursors } from '../hooks'
 import type { OnlineUser } from '@/service/demo/online-user'
 import { collaborationManager } from '@/app/components/workflow/collaboration/manage'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { useStoreApi } from 'reactflow'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
@@ -44,7 +45,7 @@ const WorkflowMain = ({
     collaborationManager.init(appId, store)
   }, [appId, store])
 
-  const { emit, getSocket } = useWebSocketStore()
+  const { emit, getSocket, on } = useWebSocketStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -66,6 +67,24 @@ const WorkflowMain = ({
       setEnvironmentVariables(environment_variables)
     }
   }, [featuresStore, workflowStore])
+
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribeConversationVarsUpdate = on('vars-features-update', async () => {
+      try {
+        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        handleWorkflowDataUpdate(response)
+      }
+ catch (error) {
+        console.error('workflow vars and features update failed:', error)
+      }
+    })
+
+    return () => {
+      unsubscribeConversationVarsUpdate()
+    }
+  }, [appId, on])
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!containerRef.current) return
