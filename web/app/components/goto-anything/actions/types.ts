@@ -22,5 +22,5 @@ export type ActionItem = {
   search: (
     query: string,
     searchTerm?: string
-  ) => SearchResult[]
+  ) => (Promise<SearchResult[]> | SearchResult[])
 }

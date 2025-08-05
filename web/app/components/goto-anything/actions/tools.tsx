@@ -78,12 +78,11 @@ export const toolsAction: ActionItem = {
   shortcut: '@tools',
   title: 'Search Tools',
   description: 'Search and navigate to your tools',
-  search: (query: string, searchTerm?: string) => {
-    const term = searchTerm || query
-    if (!term.trim()) return parser(mockTools)
+  search: (_, searchTerm = '') => {
+    if (!searchTerm.trim()) return parser(mockTools)
 
     const filteredTools = mockTools.filter(tool =>
-      tool.name.toLowerCase().includes(term.toLowerCase()),
+      tool.name.toLowerCase().includes(searchTerm.toLowerCase()),
     )
 
     return parser(filteredTools)

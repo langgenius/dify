@@ -63,13 +63,12 @@ export const knowledgeAction: ActionItem = {
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
   // action,
-  search: (query: string, searchTerm?: string) => {
-    const term = searchTerm || query
-    if (!term.trim()) return parser(mockDatasets)
+  search: (_, searchTerm = '') => {
+    if (!searchTerm) return parser(mockDatasets)
 
     const filteredDatasets = mockDatasets.filter(dataset =>
-      dataset.name.toLowerCase().includes(term.toLowerCase())
-      || dataset.description?.toLowerCase().includes(term.toLowerCase()),
+      dataset.name.toLowerCase().includes(searchTerm.toLowerCase())
+      || dataset.description?.toLowerCase().includes(searchTerm.toLowerCase()),
     )
 
     return parser(filteredDatasets)

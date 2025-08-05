@@ -1,7 +1,7 @@
 import { appAction } from './app'
 import { knowledgeAction } from './knowledge'
 import { toolsAction } from './tools'
-import type { ActionItem } from './types'
+import type { ActionItem, SearchResult } from './types'
 
 export const Actions = {
   app: appAction,
@@ -9,15 +9,24 @@ export const Actions = {
   tools: toolsAction,
 }
 
-export const searchAnything = (query: string, actionItem?: ActionItem) => {
+export const searchAnything = async (query: string, actionItem?: ActionItem): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
-    return actionItem.search(query, searchTerm)
+    return await actionItem.search(query, searchTerm)
+  }
+  else if(query.startsWith('@')){
+    return []
   }
   else {
-    return Object.values(Actions)
-      .flatMap(actionItem => actionItem.search(query))
+    return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query)))).flat()
   }
+}
+
+export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
+  return Object.values(actions).find(action => {
+    const reg = new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`)
+    return reg.test(query)
+  })
 }
 
 export * from './types'
