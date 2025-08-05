@@ -9,8 +9,8 @@ type WebSocketStore = {
 
   isConnected: () => boolean
   getSocket: (appId: string) => WebSocketInstance
-  emit: (eventType: string, data: any) => void
-  on: (eventType: string, handler: (data: any) => void) => () => void
+  emit: (eventType: string, data?: any) => void
+  on: (eventType: string, handler: (data?: any) => void) => () => void
 }
 
 export const useWebSocketStore = create<WebSocketStore>((set, get) => ({
@@ -47,7 +47,7 @@ export const useWebSocketStore = create<WebSocketStore>((set, get) => ({
     return socket
   },
 
-  emit: (eventType: string, data: any) => {
+  emit: (eventType: string, data?: any) => {
     const { socket } = get()
     if (socket?.connected) {
       socket.emit('collaboration_event', {

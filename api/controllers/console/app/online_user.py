@@ -111,7 +111,7 @@ def handle_collaboration_event(sid, data):
     """
     Handle general collaboration events, include:
     1. mouseMove
-    2. openPanel
+    2. varsAndFeaturesUpdate
 
     """
     mapping = redis_client.get(f"ws_sid_map:{sid}")
@@ -127,8 +127,8 @@ def handle_collaboration_event(sid, data):
     event_data = data.get("data")
     timestamp = data.get("timestamp", int(time.time()))
 
-    if not event_type or not event_data:
-        return {"msg": "invalid event data"}, 400
+    if not event_type:
+        return {"msg": "invalid event type"}, 400
 
     sio.emit(
         "collaboration_update",
