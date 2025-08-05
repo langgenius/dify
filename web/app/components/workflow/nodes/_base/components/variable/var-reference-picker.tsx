@@ -45,7 +45,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
-import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import type { Tool } from '@/app/components/tools/types'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -129,7 +128,6 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const node = nodes.find(n => n.id === nodeId)
-  const ragPipelineVariables = useWorkflowStore(s => s.ragPipelineVariables)
   const isInIteration = !!(node?.data as any).isInIteration
   const iterationNode = isInIteration ? nodes.find(n => n.id === node?.parentId) : null
 

@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import { useEffect } from 'react'
 import type {
   EditorState,
@@ -66,7 +66,7 @@ export type PromptEditorProps = {
   compact?: boolean
   wrapperClassName?: string
   className?: string
-  placeholder?: string | JSX.Element
+  placeholder?: string | ReactNode
   placeholderClassName?: string
   style?: React.CSSProperties
   value?: string

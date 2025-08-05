@@ -32,7 +32,7 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || []))
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], variables?.find(o => o.nodeId === 'rag')?.vars || []))
   }, [onInsert, workflowNodesMap, getVarType, variables])
 
   const getMatch = useCallback((text: string) => {

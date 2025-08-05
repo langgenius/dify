@@ -75,7 +75,10 @@ const useAvailableVarList = (nodeId: string, {
   return {
     availableVars,
     availableNodes,
-    availableNodesWithParent: availableNodes,
+    availableNodesWithParent: [
+      ...availableNodes,
+      ...(isDataSourceNode ? [currNode] : []),
+    ],
   }
 }
 
