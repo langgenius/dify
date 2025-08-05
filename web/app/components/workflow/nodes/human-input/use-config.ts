@@ -1,5 +1,5 @@
 import produce from 'immer'
-import type { HumanInputNodeType, Timeout, UserAction } from './types'
+import type { DeliveryMethod, HumanInputNodeType, Timeout, UserAction } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useNodesReadOnly,
@@ -7,6 +7,16 @@ import {
 const useConfig = (id: string, payload: HumanInputNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
+
+  // 1 check email address valid
+  // 2 use immer to handle delivery method configuration
+
+  const handleDeliveryMethodChange = (methods: DeliveryMethod[]) => {
+    setInputs({
+      ...inputs,
+      deliveryMethod: methods,
+    })
+  }
 
   const handleUserActionAdd = (newAction: UserAction) => {
     setInputs({
@@ -45,6 +55,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
   return {
     readOnly,
     inputs,
+    handleDeliveryMethodChange,
     handleUserActionAdd,
     handleUserActionChange,
     handleUserActionDelete,

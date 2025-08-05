@@ -925,6 +925,11 @@ const translation = {
           },
         },
         added: '已添加',
+        notConfigured: '未配置',
+        emailConfigure: {
+          title: '电子邮件配置',
+          description: '通过电子邮件发送输入请求',
+        },
       },
       formContent: '表单内容',
       userActions: {

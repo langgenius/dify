@@ -21,10 +21,12 @@ const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Props = {
   data: DeliveryMethod[]
+  onAdd: (method: DeliveryMethod) => void
 }
 
 const MethodSelector: FC<Props> = ({
   data,
+  onAdd,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
@@ -58,7 +60,17 @@ const MethodSelector: FC<Props> = ({
       <PortalToFollowElemContent className='z-50'>
         <div className='w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
           <div className='p-1'>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.WebApp) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}>
+            <div
+              className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.WebApp) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
+              onClick={() => {
+                if (data.some(method => method.type === DeliveryMethodType.WebApp))
+                  return
+                onAdd({
+                  type: DeliveryMethodType.WebApp,
+                  enabled: true,
+                })
+              }}
+            >
               <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', data.some(method => method.type === DeliveryMethodType.WebApp) && 'opacity-50')}>
                 <RiRobot2Fill className='h-3.5 w-3.5 text-text-primary-on-surface' />
               </div>
@@ -70,7 +82,17 @@ const MethodSelector: FC<Props> = ({
                 <div className='system-xs-regular absolute right-[12px] top-[13px] text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.added`)}</div>
               )}
             </div>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.Email) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}>
+            <div
+              className={cn('relative flex cursor-pointer items-center gap-1 rounded-lg p-1 pl-3 hover:bg-state-base-hover', data.some(method => method.type === DeliveryMethodType.Email) && 'cursor-not-allowed bg-transparent hover:bg-transparent')}
+              onClick={() => {
+                if (data.some(method => method.type === DeliveryMethodType.Email))
+                  return
+                onAdd({
+                  type: DeliveryMethodType.Email,
+                  enabled: false,
+                })
+              }}
+            >
               <div className={cn('rounded-[4px] border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5', data.some(method => method.type === DeliveryMethodType.Email) && 'opacity-50')}>
                 <RiMailSendFill className='h-3.5 w-3.5 text-text-primary-on-surface' />
               </div>

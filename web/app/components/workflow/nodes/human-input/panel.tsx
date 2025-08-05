@@ -25,6 +25,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { t } = useTranslation()
   const {
     inputs,
+    handleDeliveryMethodChange,
     handleUserActionAdd,
     handleUserActionChange,
     handleUserActionDelete,
@@ -33,7 +34,10 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   return (
     <div className='py-2'>
       {/* delivery methods */}
-      <DeliveryMethod value={inputs.deliveryMethod || []} />
+      <DeliveryMethod
+        value={inputs.deliveryMethod || []}
+        onchange={handleDeliveryMethodChange}
+      />
       <div className='px-4 py-2'>
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
       </div>

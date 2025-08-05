@@ -924,6 +924,11 @@ const translation = {
           },
         },
         added: 'Added',
+        notConfigured: 'Not configured',
+        emailConfigure: {
+          title: 'Email',
+          description: 'Send request for input via email',
+        },
       },
       formContent: 'form content',
       userActions: {
