@@ -229,7 +229,7 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: educationAccountInfo?.result || false,
+      isEducationAccount: educationAccountInfo?.is_student || false,
       allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
       educationAccountExpireAt: educationAccountInfo?.expireAt || null,
       isLoadingEducationAccountInfo,
