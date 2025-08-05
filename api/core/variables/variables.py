@@ -83,7 +83,15 @@ class SecretVariable(StringVariable):
     value_type: SegmentType = SegmentType.SECRET
 
     @property
+    def text(self) -> str:
+        return cast(str, encrypter.obfuscated_token(self.value))
+
+    @property
     def log(self) -> str:
+        return cast(str, encrypter.obfuscated_token(self.value))
+
+    @property
+    def markdown(self) -> str:
         return cast(str, encrypter.obfuscated_token(self.value))
 
 
