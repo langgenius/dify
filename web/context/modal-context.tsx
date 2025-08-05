@@ -327,7 +327,7 @@ export const ModalContextProvider = ({
             <Pricing onCancel={() => {
               if (searchParams.get('show-pricing') === '1')
                 router.push(location.pathname, { forceOptimisticNavigation: true } as any)
-
+              removeSpecificQueryParam('action')
               setShowPricingModal(false)
             }} />
           )
