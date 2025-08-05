@@ -5,13 +5,10 @@ from flask_restful import Resource, reqparse
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.wraps import enterprise_inner_api_only
-from core.tools.entities.tool_entities import CredentialType
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from libs.helper import StrLen
 from models.account import Account
 from services.account_service import TenantService
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 
 class EnterpriseWorkspace(Resource):
@@ -74,6 +71,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             "message": "enterprise workspace created.",
             "tenant": resp,
         }
+
 
 api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")
 api.add_resource(EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless")
