@@ -82,6 +82,7 @@ export default combine(
       '**/.next/',
       '**/public/*',
       '**/*.json',
+      '**/*.js',
     ],
   },
   {
