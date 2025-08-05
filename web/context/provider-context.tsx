@@ -48,6 +48,8 @@ type ProviderContextState = {
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
+  allowRefreshEducationVerify: boolean
+  educationAccountExpireAt: number | null
   webappCopyrightEnabled: boolean
   licenseLimit: {
     workspace_members: {
@@ -90,6 +92,8 @@ const ProviderContext = createContext<ProviderContextState>({
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
@@ -135,7 +139,7 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: isEducationAccount } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
 
   const fetchPlan = async () => {
@@ -223,7 +227,9 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: isEducationAccount?.result || false,
+      isEducationAccount: educationAccountInfo?.result || false,
+      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
+      educationAccountExpireAt: educationAccountInfo?.expireAt || null,
       webappCopyrightEnabled,
       licenseLimit,
       refreshLicenseLimit: fetchPlan,
