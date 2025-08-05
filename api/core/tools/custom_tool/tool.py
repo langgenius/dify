@@ -21,9 +21,6 @@ API_TOOL_DEFAULT_TIMEOUT = (
 
 
 class ApiTool(Tool):
-    api_bundle: ApiToolBundle
-    provider_id: str
-
     """
     Api tool
     """

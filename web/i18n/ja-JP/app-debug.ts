@@ -222,6 +222,10 @@ const translation = {
       title: 'ドキュメント',
       description: 'ドキュメント機能を有効にすると、AI モデルがファイルを処理し、その内容に基づいて質問に回答できるようになります。',
     },
+    audioUpload: {
+      title: '音声',
+      description: '音声機能を有効にすると、モデルが音声ファイルの転写と分析を処理できるようになります。',
+    },
   },
   codegen: {
     title: 'コードジェネレーター',
@@ -250,7 +254,6 @@ const translation = {
     noDataLine1: '左側に使用例を記入してください，',
     noDataLine2: 'オーケストレーションのプレビューがこちらに表示されます。',
     apply: '適用',
-    noData: '左側にユースケースを入力すると、こちらでプレビューができます。',
     loading: 'アプリケーションを処理中です',
     overwriteTitle: '既存の設定を上書きしますか？',
     overwriteMessage: 'このプロンプトを適用すると、既存の設定が上書きされます。',
@@ -307,6 +310,9 @@ const translation = {
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
     waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
   },
+  warningMessage: {
+    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を取得するにはログを参照してください。',
+  },
   chatSubTitle: 'プロンプト',
   completionSubTitle: '接頭辞プロンプト',
   promptTip: 'プロンプトは、AI の応答を指示と制約で誘導します。 {{input}} のような変数を挿入します。このプロンプトはユーザーには表示されません。',
@@ -358,6 +364,7 @@ const translation = {
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
+    'content': '内容',
     'required': '必須',
     'hide': '非表示',
     'file': {
@@ -386,12 +393,14 @@ const translation = {
     'maxNumberOfUploads': 'アップロードの最大数',
     'maxNumberTip': 'ドキュメント < {{docLimit}}, 画像 < {{imgLimit}}, 音声 < {{audioLimit}}, 映像 < {{videoLimit}}',
     'errorMsg': {
-      varNameRequired: '変数名は必須です',
       labelNameRequired: 'ラベル名は必須です',
       varNameCanBeRepeat: '変数名は繰り返すことができません',
       atLeastOneOption: '少なくとも 1 つのオプションが必要です',
       optionRepeat: '繰り返しオプションがあります',
     },
+    'defaultValue': 'デフォルト値',
+    'noDefaultValue': 'デフォルト値なし',
+    'selectDefaultValue': 'デフォルト値を選択',
   },
   vision: {
     name: 'ビジョン',

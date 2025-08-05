@@ -113,6 +113,7 @@ const translation = {
     openInExplore: '在“探索”中打开',
     loadMore: '加载更多',
     noHistory: '没有历史版本',
+    tagBound: '使用此标签的应用数量',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -212,7 +213,6 @@ const translation = {
     startRun: '开始运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
-    testRunLoop: '测试运行循环',
     back: '返回',
     iteration: '迭代',
     loop: '循环',
@@ -591,8 +591,8 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
-        'in': '是',
-        'not in': '不是',
+        'in': '在',
+        'not in': '不在',
         'all of': '全部是',
         'exists': '存在',
         'not exists': '不存在',
@@ -920,6 +920,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
@@ -936,11 +937,13 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+      copyIdSuccess: 'ID 已复制到剪贴板',
     },
   },
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    relationsTab: '关系',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
@@ -965,6 +968,14 @@ const translation = {
       envNode: '环境变量',
       chatNode: '会话变量',
       systemNode: '系统变量',
+    },
+    relations: {
+      dependencies: '依赖',
+      dependents: '被依赖',
+      dependenciesDescription: '本节点依赖的其他节点',
+      dependentsDescription: '依赖于本节点的其他节点',
+      noDependencies: '无依赖',
+      noDependents: '无被依赖',
     },
   },
 }

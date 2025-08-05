@@ -275,7 +275,7 @@ class ProviderManager:
         # Get the corresponding TenantDefaultModel record
         default_model = (
             db.session.query(TenantDefaultModel)
-            .filter(
+            .where(
                 TenantDefaultModel.tenant_id == tenant_id,
                 TenantDefaultModel.model_type == model_type.to_origin_model_type(),
             )
@@ -367,7 +367,7 @@ class ProviderManager:
         # Get the list of available models from get_configurations and check if it is LLM
         default_model = (
             db.session.query(TenantDefaultModel)
-            .filter(
+            .where(
                 TenantDefaultModel.tenant_id == tenant_id,
                 TenantDefaultModel.model_type == model_type.to_origin_model_type(),
             )
@@ -541,7 +541,7 @@ class ProviderManager:
                             db.session.rollback()
                             existed_provider_record = (
                                 db.session.query(Provider)
-                                .filter(
+                                .where(
                                     Provider.tenant_id == tenant_id,
                                     Provider.provider_name == ModelProviderID(provider_name).provider_name,
                                     Provider.provider_type == ProviderType.SYSTEM.value,

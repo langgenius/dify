@@ -2,10 +2,12 @@ from flask_restful import fields
 
 from libs.helper import TimestampField
 
+from ._value_type_serializer import serialize_value_type
+
 conversation_variable_fields = {
     "id": fields.String,
     "name": fields.String,
-    "value_type": fields.String(attribute="value_type.value"),
+    "value_type": fields.String(attribute=serialize_value_type),
     "value": fields.String,
     "description": fields.String,
     "created_at": TimestampField,

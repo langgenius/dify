@@ -7,7 +7,6 @@ from core.variables.segments import ArrayAnySegment, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -15,6 +14,7 @@ from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -151,35 +151,40 @@ def test_run():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "dify",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "1",
-        },
+        system_variables=SystemVariable(
+            user_id="1",
+            files=[],
+            query="dify",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
+
+    node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "tt",
+            "title": "迭代",
+            "type": "iteration",
+        },
+        "id": "iteration-1",
+    }
 
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "tt",
-                "title": "迭代",
-                "type": "iteration",
-            },
-            "id": "iteration-1",
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -368,35 +373,40 @@ def test_run_parallel():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "dify",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "1",
-        },
+        system_variables=SystemVariable(
+            user_id="1",
+            files=[],
+            query="dify",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
+
+    node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+        },
+        "id": "iteration-1",
+    }
 
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-            },
-            "id": "iteration-1",
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -584,55 +594,65 @@ def test_iteration_run_in_parallel_mode():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "dify",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "1",
-        },
+        system_variables=SystemVariable(
+            user_id="1",
+            files=[],
+            query="dify",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["dify-1", "dify-2"])
+
+    parallel_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+            "is_parallel": True,
+        },
+        "id": "iteration-1",
+    }
 
     parallel_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-                "is_parallel": True,
-            },
-            "id": "iteration-1",
-        },
+        config=parallel_node_config,
     )
+
+    # Initialize node data
+    parallel_iteration_node.init_node_data(parallel_node_config["data"])
+    sequential_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "迭代",
+            "type": "iteration",
+            "is_parallel": True,
+        },
+        "id": "iteration-1",
+    }
+
     sequential_iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "迭代",
-                "type": "iteration",
-                "is_parallel": True,
-            },
-            "id": "iteration-1",
-        },
+        config=sequential_node_config,
     )
+
+    # Initialize node data
+    sequential_iteration_node.init_node_data(sequential_node_config["data"])
 
     def tt_generator(self):
         return NodeRunResult(
@@ -645,8 +665,8 @@ def test_iteration_run_in_parallel_mode():
         # execute node
         parallel_result = parallel_iteration_node._run()
         sequential_result = sequential_iteration_node._run()
-        assert parallel_iteration_node.node_data.parallel_nums == 10
-        assert parallel_iteration_node.node_data.error_handle_mode == ErrorHandleMode.TERMINATED
+        assert parallel_iteration_node._node_data.parallel_nums == 10
+        assert parallel_iteration_node._node_data.error_handle_mode == ErrorHandleMode.TERMINATED
         count = 0
         parallel_arr = []
         sequential_arr = []
@@ -808,36 +828,41 @@ def test_iteration_run_error_handle():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "dify",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "1",
-        },
+        system_variables=SystemVariable(
+            user_id="1",
+            files=[],
+            query="dify",
+            conversation_id="abababa",
+        ),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["pe", "list_output"], ["1", "1"])
+    error_node_config = {
+        "data": {
+            "iterator_selector": ["pe", "list_output"],
+            "output_selector": ["tt", "output"],
+            "output_type": "array[string]",
+            "startNodeType": "template-transform",
+            "start_node_id": "iteration-start",
+            "title": "iteration",
+            "type": "iteration",
+            "is_parallel": True,
+            "error_handle_mode": ErrorHandleMode.CONTINUE_ON_ERROR,
+        },
+        "id": "iteration-1",
+    }
+
     iteration_node = IterationNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "data": {
-                "iterator_selector": ["pe", "list_output"],
-                "output_selector": ["tt", "output"],
-                "output_type": "array[string]",
-                "startNodeType": "template-transform",
-                "start_node_id": "iteration-start",
-                "title": "iteration",
-                "type": "iteration",
-                "is_parallel": True,
-                "error_handle_mode": ErrorHandleMode.CONTINUE_ON_ERROR,
-            },
-            "id": "iteration-1",
-        },
+        config=error_node_config,
     )
+
+    # Initialize node data
+    iteration_node.init_node_data(error_node_config["data"])
     # execute continue on error node
     result = iteration_node._run()
     result_arr = []
@@ -851,7 +876,7 @@ def test_iteration_run_error_handle():
 
     assert count == 14
     # execute remove abnormal output
-    iteration_node.node_data.error_handle_mode = ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT
+    iteration_node._node_data.error_handle_mode = ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT
     result = iteration_node._run()
     count = 0
     for item in result:

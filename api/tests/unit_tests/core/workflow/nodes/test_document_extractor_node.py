@@ -27,13 +27,17 @@ def document_extractor_node():
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )
-    return DocumentExtractorNode(
+    node_config = {"id": "test_node_id", "data": node_data.model_dump()}
+    node = DocumentExtractorNode(
         id="test_node_id",
-        config={"id": "test_node_id", "data": node_data.model_dump()},
+        config=node_config,
         graph_init_params=Mock(),
         graph=Mock(),
         graph_runtime_state=Mock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
+    return node
 
 
 @pytest.fixture

@@ -27,7 +27,7 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import AppMode, Conversation, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -55,7 +55,7 @@ class ChatMessageListApi(Resource):
 
         conversation = (
             db.session.query(Conversation)
-            .filter(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
+            .where(Conversation.id == args["conversation_id"], Conversation.app_id == app_model.id)
             .first()
         )
 
@@ -65,7 +65,7 @@ class ChatMessageListApi(Resource):
         if args["first_id"]:
             first_message = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id, Message.id == args["first_id"])
+                .where(Message.conversation_id == conversation.id, Message.id == args["first_id"])
                 .first()
             )
 
@@ -74,7 +74,7 @@ class ChatMessageListApi(Resource):
 
             history_messages = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < first_message.created_at,
                     Message.id != first_message.id,
@@ -86,7 +86,7 @@ class ChatMessageListApi(Resource):
         else:
             history_messages = (
                 db.session.query(Message)
-                .filter(Message.conversation_id == conversation.id)
+                .where(Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.desc())
                 .limit(args["limit"])
                 .all()
@@ -97,7 +97,7 @@ class ChatMessageListApi(Resource):
             current_page_first_message = history_messages[-1]
             rest_count = (
                 db.session.query(Message)
-                .filter(
+                .where(
                     Message.conversation_id == conversation.id,
                     Message.created_at < current_page_first_message.created_at,
                     Message.id != current_page_first_message.id,
@@ -124,33 +124,16 @@ class MessageFeedbackApi(Resource):
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         args = parser.parse_args()
 
-        message_id = str(args["message_id"])
-
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        feedback = message.admin_feedback
-
-        if not args["rating"] and feedback:
-            db.session.delete(feedback)
-        elif args["rating"] and feedback:
-            feedback.rating = args["rating"]
-        elif not args["rating"] and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
-        else:
-            feedback = MessageFeedback(
-                app_id=app_model.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                rating=args["rating"],
-                from_source="admin",
-                from_account_id=current_user.id,
+        try:
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=str(args["message_id"]),
+                user=current_user,
+                rating=args.get("rating"),
+                content=None,
             )
-            db.session.add(feedback)
-
-        db.session.commit()
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
 
@@ -183,7 +166,7 @@ class MessageAnnotationCountApi(Resource):
     @account_initialization_required
     @get_app_model
     def get(self, app_model):
-        count = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_model.id).count()
+        count = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app_model.id).count()
 
         return {"count": count}
 
@@ -230,7 +213,7 @@ class MessageApi(Resource):
     def get(self, app_model, message_id):
         message_id = str(message_id)
 
-        message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+        message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
             raise NotFound("Message Not Exists.")

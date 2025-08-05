@@ -155,7 +155,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             session.commit()
 
             deleted_count = cast(int, result.rowcount)
-            logger.info(f"Deleted {deleted_count} workflow runs by IDs")
+            logger.info("Deleted %s workflow runs by IDs", deleted_count)
             return deleted_count
 
     def delete_runs_by_app(
@@ -193,11 +193,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 batch_deleted = result.rowcount
                 total_deleted += batch_deleted
 
-                logger.info(f"Deleted batch of {batch_deleted} workflow runs for app {app_id}")
+                logger.info("Deleted batch of %s workflow runs for app %s", batch_deleted, app_id)
 
                 # If we deleted fewer records than the batch size, we're done
                 if batch_deleted < batch_size:
                     break
 
-        logger.info(f"Total deleted {total_deleted} workflow runs for app {app_id}")
+        logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
