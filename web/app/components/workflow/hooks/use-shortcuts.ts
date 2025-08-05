@@ -214,15 +214,13 @@ export const useShortcuts = (): void => {
     useCapture: true,
   })
 
-  // Shift ↓（按下）
+  // Shift ↓
   useKeyPress(
     'shift',
     (e) => {
       console.log('Shift down', e)
-      if (shouldHandleShortcut(e)) {
-        // handleSelectedNodeHighlight()
+      if (shouldHandleShortcut(e))
         dimOtherNodes()
-      }
     },
     {
       exactMatch: true,
@@ -237,11 +235,8 @@ export const useShortcuts = (): void => {
       return e.key === 'Shift'
     },
     (e) => {
-      if (shouldHandleShortcut(e)) {
-        console.log('Shift up 2: ', e)
-        // handleSelectedNodeUnhighlight()
+      if (shouldHandleShortcut(e))
         undimAllNodes()
-      }
     },
     {
       exactMatch: true,
