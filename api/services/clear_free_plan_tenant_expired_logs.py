@@ -24,13 +24,13 @@ class ClearFreePlanTenantExpiredLogs:
     @classmethod
     def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
         with flask_app.app_context():
-            apps = db.session.query(App).filter(App.tenant_id == tenant_id).all()
+            apps = db.session.query(App).where(App.tenant_id == tenant_id).all()
             app_ids = [app.id for app in apps]
             while True:
                 with Session(db.engine).no_autoflush as session:
                     messages = (
                         session.query(Message)
-                        .filter(
+                        .where(
                             Message.app_id.in_(app_ids),
                             Message.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
@@ -54,7 +54,7 @@ class ClearFreePlanTenantExpiredLogs:
                     message_ids = [message.id for message in messages]
 
                     # delete messages
-                    session.query(Message).filter(
+                    session.query(Message).where(
                         Message.id.in_(message_ids),
                     ).delete(synchronize_session=False)
 
@@ -70,7 +70,7 @@ class ClearFreePlanTenantExpiredLogs:
                 with Session(db.engine).no_autoflush as session:
                     conversations = (
                         session.query(Conversation)
-                        .filter(
+                        .where(
                             Conversation.app_id.in_(app_ids),
                             Conversation.updated_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
@@ -93,7 +93,7 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
                     conversation_ids = [conversation.id for conversation in conversations]
-                    session.query(Conversation).filter(
+                    session.query(Conversation).where(
                         Conversation.id.in_(conversation_ids),
                     ).delete(synchronize_session=False)
                     session.commit()
@@ -228,7 +228,7 @@ class ClearFreePlanTenantExpiredLogs:
                     # only process sandbox tenant
                     cls.process_tenant(flask_app, tenant_id, days, batch)
             except Exception:
-                logger.exception(f"Failed to process tenant {tenant_id}")
+                logger.exception("Failed to process tenant %s", tenant_id)
             finally:
                 nonlocal handled_tenant_count
                 handled_tenant_count += 1
@@ -276,7 +276,7 @@ class ClearFreePlanTenantExpiredLogs:
                     for test_interval in test_intervals:
                         tenant_count = (
                             session.query(Tenant.id)
-                            .filter(Tenant.created_at.between(current_time, current_time + test_interval))
+                            .where(Tenant.created_at.between(current_time, current_time + test_interval))
                             .count()
                         )
                         if tenant_count <= 100:
@@ -301,7 +301,7 @@ class ClearFreePlanTenantExpiredLogs:
 
                     rs = (
                         session.query(Tenant.id)
-                        .filter(Tenant.created_at.between(current_time, batch_end))
+                        .where(Tenant.created_at.between(current_time, batch_end))
                         .order_by(Tenant.created_at)
                     )
 
@@ -311,7 +311,7 @@ class ClearFreePlanTenantExpiredLogs:
                         try:
                             tenants.append(tenant_id)
                         except Exception:
-                            logger.exception(f"Failed to process tenant {tenant_id}")
+                            logger.exception("Failed to process tenant %s", tenant_id)
                             continue
 
                         futures.append(

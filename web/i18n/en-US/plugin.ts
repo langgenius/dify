@@ -29,6 +29,7 @@ const translation = {
   searchTools: 'Search tools...',
   installPlugin: 'Install plugin',
   installFrom: 'INSTALL FROM',
+  deprecated: 'Deprecated',
   list: {
     noInstalled: 'No plugins installed',
     notFound: 'No plugins found',
@@ -99,6 +100,16 @@ const translation = {
     configureApp: 'Configure App',
     configureModel: 'Configure model',
     configureTool: 'Configure tool',
+    deprecation: {
+      fullMessage: 'This plugin has been deprecated due to {{deprecatedReason}}, and will no longer be updated. Please use <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> instead.',
+      onlyReason: 'This plugin has been deprecated due to {{deprecatedReason}} and will no longer be updated.',
+      noReason: 'This plugin has been deprecated and will no longer be updated.',
+      reason: {
+        businessAdjustments: 'business adjustments',
+        ownershipTransferred: 'ownership transferred',
+        noMaintainer: 'no maintainer',
+      },
+    },
   },
   install: '{{num}} installs',
   installAction: 'Install',
@@ -113,6 +124,56 @@ const translation = {
     everyone: 'Everyone',
     admins: 'Admins',
     noone: 'No one',
+  },
+  autoUpdate: {
+    automaticUpdates: 'Automatic updates',
+    updateTime: 'Update time',
+    specifyPluginsToUpdate: 'Specify plugins to update',
+    strategy: {
+      disabled: {
+        name: 'Disabled',
+        description: 'Plugins will not auto-update',
+      },
+      fixOnly: {
+        name: 'Fix Only',
+        description: 'Auto-update for patch versions only (e.g., 1.0.1 → 1.0.2). Minor version changes won\'t trigger updates.',
+        selectedDescription: 'Auto-update for patch versions only',
+      },
+      latest: {
+        name: 'Latest',
+        description: 'Always update to latest version',
+        selectedDescription: 'Always update to latest version',
+      },
+    },
+    updateTimeTitle: 'Update time',
+    upgradeMode: {
+      all: 'Update all',
+      exclude: 'Exclude selected',
+      partial: 'Only selected',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Selected plugins will not auto-update',
+      partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
+    },
+    excludeUpdate: 'The following {{num}} plugins will not auto-update',
+    partialUPdate: 'Only the following {{num}} plugins will auto-update',
+    operation: {
+      clearAll: 'Clear all',
+      select: 'Select plugins',
+    },
+    nextUpdateTime: 'Next auto-update: {{time}}',
+    pluginDowngradeWarning: {
+      title: 'Plugin Downgrade',
+      description: 'Auto-update is currently enabled for this plugin. Downgrading the version may cause your changes to be overwritten during the next automatic update.',
+      downgrade: 'Downgrade anyway',
+      exclude: 'Exclude from auto-update',
+    },
+    noPluginPlaceholder: {
+      noFound: 'No plugins were found',
+      noInstalled: 'No plugins installed',
+    },
+    updateSettings: 'Update Settings',
+    changeTimezone: 'To change time zone, go to <setTimezone>Settings</setTimezone>',
   },
   pluginInfoModal: {
     title: 'Plugin info',

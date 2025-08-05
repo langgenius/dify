@@ -1,0 +1,27 @@
+name: "✨ Enhancement / Refactor"
+description: Suggest an enhancement or request a code refactor.
+title: "[Enhancement/Refactor] "
+labels:
+  - refactor
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: "Describe the enhancement or refactor you are proposing."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      placeholder: "Why is this enhancement or refactor needed?"
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      placeholder: "Add any other context or screenshots about the request here."
+    validations:
+      required: false

@@ -223,7 +223,6 @@ const translation = {
     'searchTool': 'Поиск инструмента',
     'tools': 'Инструменты',
     'allTool': 'Все',
-    'builtInTool': 'Встроенные',
     'customTool': 'Пользовательские',
     'workflowTool': 'Рабочий процесс',
     'question-understand': 'Понимание вопроса',
@@ -497,6 +496,7 @@ const translation = {
           search: 'Поиск метаданных',
         },
         title: 'Фильтрация метаданных',
+        tip: 'Фильтрация метаданных — это процесс использования атрибутов метаданных (таких как теги, категории или права доступа) для уточнения и контроля извлечения соответствующей информации внутри системы.',
       },
     },
     http: {
@@ -586,7 +586,6 @@ const translation = {
         'not empty': 'не пусто',
         'null': 'null',
         'not null': 'не null',
-        'regex match': 'Совпадение с регулярным выражением',
         'all of': 'все',
         'not in': 'не в',
         'not exists': 'не существует',
@@ -931,6 +930,7 @@ const translation = {
       deleteSuccess: 'Версия удалена',
       updateFailure: 'Не удалось обновить версию',
       restoreFailure: 'Не удалось восстановить версию',
+      copyIdSuccess: 'ID скопирован в буфер обмена',
     },
     latest: 'Последний',
     restorationTip: 'После восстановления версии текущий черновик будет перезаписан.',
@@ -941,6 +941,7 @@ const translation = {
     currentDraft: 'Текущий проект',
     releaseNotesPlaceholder: 'Опишите, что изменилось',
     defaultName: 'Без названия версия',
+    copyId: 'Копировать ID',
   },
   debug: {
     noData: {

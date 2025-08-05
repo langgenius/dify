@@ -54,11 +54,15 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 for val in value:
                     if not isinstance(val, str):
                         raise ValueError("value must be a list of strings")
-            elif typ == "constant" and not isinstance(value, str | int | float | bool):
-                raise ValueError("value must be a string, int, float, or bool")
+            elif typ == "constant" and not isinstance(value, str | int | float | bool | dict):
+                raise ValueError("value must be a string, int, float, bool or dict")
             return typ
 
     tool_parameters: dict[str, ToolInput]
+    # The version of the tool parameter.
+    # If this value is None, it indicates this is a previous version
+    # and requires using the legacy parameter parsing rules.
+    tool_node_version: str | None = None
 
     @field_validator("tool_parameters", mode="before")
     @classmethod

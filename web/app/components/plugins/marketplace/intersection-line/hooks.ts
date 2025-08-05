@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useMarketplaceContext } from '@/app/components/plugins/marketplace/context'
 
 export const useScrollIntersection = (
-  anchorRef: React.RefObject<HTMLDivElement>,
+  anchorRef: React.RefObject<HTMLDivElement | null>,
   intersectionContainerId = 'marketplace-container',
 ) => {
   const intersected = useMarketplaceContext(v => v.intersected)

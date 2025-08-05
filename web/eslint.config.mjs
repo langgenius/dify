@@ -8,6 +8,7 @@ import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
 import sonar from 'eslint-plugin-sonarjs'
+import oxlint from 'eslint-plugin-oxlint'
 
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
@@ -81,6 +82,7 @@ export default combine(
       '**/.next/',
       '**/public/*',
       '**/*.json',
+      '**/*.js',
     ],
   },
   {
@@ -245,4 +247,5 @@ export default combine(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
+  oxlint.configs['flat/recommended'],
 )

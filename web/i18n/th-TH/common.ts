@@ -137,7 +137,7 @@ const translation = {
   menus: {
     status: 'Beta',
     explore: 'สํารวจ',
-    apps: 'เรียน',
+    apps: 'สตูดิโอ',
     plugins: 'ปลั๊กอิน',
     pluginsTips: 'รวมปลั๊กอินของบุคคลที่สามหรือสร้างปลั๊กอิน AI ที่เข้ากันได้กับ ChatGPT',
     datasets: 'ความรู้',
@@ -236,6 +236,7 @@ const translation = {
       resendCount: 'ส่งอีกครั้งใน {{count}} วินาที',
       authTip: 'เมื่ออีเมลของคุณถูกเปลี่ยนแปลง บัญชี Google หรือบัญชี GitHub ที่เชื่อมโยงกับอีเมลเก่าของคุณจะไม่สามารถเข้าสู่ระบบบัญชีนี้ได้อีกต่อไป.',
       title: 'เปลี่ยนอีเมล',
+      unAvailableEmail: 'อีเมลนี้ไม่สามารถใช้งานได้ชั่วคราว.',
     },
   },
   members: {

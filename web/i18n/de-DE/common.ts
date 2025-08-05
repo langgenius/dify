@@ -197,7 +197,6 @@ const translation = {
     showAppLength: '{{length}} Apps anzeigen',
     delete: 'Konto löschen',
     deleteTip: 'Wenn Sie Ihr Konto löschen, werden alle Ihre Daten dauerhaft gelöscht und können nicht wiederhergestellt werden.',
-    deleteConfirmTip: 'Zur Bestätigung senden Sie bitte Folgendes von Ihrer registrierten E-Mail-Adresse an ',
     myAccount: 'Mein Konto',
     studio: 'Dify Studio',
     account: 'Konto',
@@ -237,6 +236,7 @@ const translation = {
       existingEmail: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.',
       emailLabel: 'Neue E-Mail',
       authTip: 'Sobald Ihre E-Mail geändert wurde, können Google- oder GitHub-Konten, die mit Ihrer alten E-Mail verknüpft sind, nicht mehr auf dieses Konto zugreifen.',
+      unAvailableEmail: 'Diese E-Mail ist vorübergehend nicht verfügbar.',
     },
   },
   members: {

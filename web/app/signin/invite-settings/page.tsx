@@ -11,7 +11,7 @@ import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
 import Button from '@/app/components/base/button'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n-config/language'
 import I18n from '@/context/i18n'
 import { activateMember, invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
@@ -57,7 +57,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         localStorage.setItem('console_token', res.data.access_token)
         localStorage.setItem('refresh_token', res.data.refresh_token)
-        setLocaleOnClient(language, false)
+        await setLocaleOnClient(language, false)
         router.replace('/apps')
       }
     }

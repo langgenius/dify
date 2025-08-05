@@ -104,10 +104,8 @@ const translation = {
     loadMore: 'Weitere Workflows laden',
     noHistory: 'Keine Geschichte',
     exportSVG: 'Als SVG exportieren',
-    noExist: 'Keine solche Variable',
     versionHistory: 'Versionsverlauf',
     publishUpdate: 'Update veröffentlichen',
-    referenceVar: 'Referenzvariable',
     exportImage: 'Bild exportieren',
     exportJPEG: 'Als JPEG exportieren',
     exitVersions: 'Ausgangsversionen',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Werkzeuge',
     'allTool': 'Alle',
-    'builtInTool': 'Eingebaut',
     'customTool': 'Benutzerdefiniert',
     'workflowTool': 'Arbeitsablauf',
     'question-understand': 'Fragen verstehen',
@@ -497,6 +494,7 @@ const translation = {
           search: 'Suchmetadaten',
         },
         title: 'Metadatenfilterung',
+        tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
     },
     http: {
@@ -586,7 +584,6 @@ const translation = {
         'not empty': 'ist nicht leer',
         'null': 'ist null',
         'not null': 'ist nicht null',
-        'regex match': 'Regex-Übereinstimmung',
         'not exists': 'existiert nicht',
         'in': 'in',
         'all of': 'alle',
@@ -609,7 +606,6 @@ const translation = {
       },
       select: 'Auswählen',
       addSubVariable: 'Untervariable',
-      condition: 'Bedingung',
     },
     variableAssigner: {
       title: 'Variablen zuweisen',
@@ -931,6 +927,7 @@ const translation = {
       deleteFailure: 'Version löschen fehlgeschlagen',
       restoreSuccess: 'Version wiederhergestellt',
       updateFailure: 'Aktualisierung der Version fehlgeschlagen',
+      copyIdSuccess: 'ID in die Zwischenablage kopiert',
     },
     latest: 'Neueste',
     nameThisVersion: 'Nennen Sie diese Version',
@@ -941,6 +938,7 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+    copyId: 'ID kopieren',
   },
   debug: {
     noData: {

@@ -237,6 +237,7 @@ const translation = {
       content2: 'Votre adresse e-mail actuelle est <email>{{email}}</email>. Un code de vérification a été envoyé à cette adresse e-mail.',
       codeLabel: 'Code de vérification',
       content1: 'Si vous continuez, nous enverrons un code de vérification à <email>{{email}}</email> pour une nouvelle authentification.',
+      unAvailableEmail: 'Cet e-mail est temporairement indisponible.',
     },
   },
   members: {

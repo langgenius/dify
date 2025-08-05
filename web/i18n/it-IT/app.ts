@@ -27,27 +27,7 @@ const translation = {
   newApp: {
     startFromBlank: 'Crea da zero',
     startFromTemplate: 'Crea da modello',
-    captionAppType: 'Che tipo di app vuoi creare?',
-    chatbotDescription:
-      'Crea un\'applicazione basata sulla chat. Questa app utilizza un formato domanda-e-risposta, consentendo più round di conversazione continua.',
-    completionDescription:
-      'Crea un\'applicazione che genera testo di alta qualità basato sui prompt, come articoli, riassunti, traduzioni e altro.',
-    completionWarning: 'Questo tipo di app non sarà più supportato.',
-    agentDescription:
-      'Crea un Agente intelligente che può scegliere autonomamente gli strumenti per completare i compiti',
-    workflowDescription:
-      'Crea un\'applicazione che genera testo di alta qualità basato su flussi di lavoro orchestrati con un alto grado di personalizzazione. È adatto per utenti esperti.',
     workflowWarning: 'Attualmente in beta',
-    chatbotType: 'Metodo di orchestrazione Chatbot',
-    basic: 'Base',
-    basicTip: 'Per principianti, può passare a Chatflow in seguito',
-    basicFor: 'PER PRINCIPIANTI',
-    basicDescription:
-      'L\'Orchestrazione di base consente l\'orchestrazione di un\'app Chatbot utilizzando impostazioni semplici, senza la possibilità di modificare i prompt integrati. È adatta per principianti.',
-    advanced: 'Chatflow',
-    advancedFor: 'Per utenti avanzati',
-    advancedDescription:
-      'L\'Orchestrazione del flusso di lavoro orchestra i Chatbot sotto forma di flussi di lavoro, offrendo un alto grado di personalizzazione, inclusa la possibilità di modificare i prompt integrati. È adatta per utenti esperti.',
     captionName: 'Icona e nome dell\'app',
     appNamePlaceholder: 'Dai un nome alla tua app',
     captionDescription: 'Descrizione',
@@ -232,6 +212,7 @@ const translation = {
     structuredTip: 'Le Uscite Strutturate sono una funzione che garantisce che il modello generi sempre risposte che aderiscano al tuo Schema JSON fornito.',
     notConfiguredTip: 'L\'output strutturato non è stato ancora configurato.',
     modelNotSupportedTip: 'Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.',
+    required: 'Necessario',
   },
   accessItemsDescription: {
     anyone: 'Chiunque può accedere all\'app web',
@@ -272,6 +253,7 @@ const translation = {
   noAccessPermission: 'Nessun permesso per accedere all\'app web',
   maxActiveRequestsPlaceholder: 'Inserisci 0 per illimitato',
   maxActiveRequests: 'Massimo numero di richieste concorrenti',
+  maxActiveRequestsTip: 'Numero massimo di richieste attive concorrenti per app (0 per illimitato)',
 }
 
 export default translation

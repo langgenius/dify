@@ -68,15 +68,17 @@ class MCPClient:
         }
 
         parsed_url = urlparse(self.server_url)
-        path = parsed_url.path
+        path = parsed_url.path or ""
         method_name = path.rstrip("/").split("/")[-1] if path else ""
-        try:
+        if method_name in connection_methods:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
-        except KeyError:
+        else:
             try:
+                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
             except MCPConnectionError:
+                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
                 self.connect_server(streamablehttp_client, "mcp")
 
     def connect_server(
@@ -91,7 +93,7 @@ class MCPClient:
                 else {}
             )
             self._streams_context = client_factory(url=self.server_url, headers=headers)
-            if self._streams_context is None:
+            if not self._streams_context:
                 raise MCPConnectionError("Failed to create connection context")
 
             # Use exit_stack to manage context managers properly
@@ -141,10 +143,11 @@ class MCPClient:
         try:
             # ExitStack will handle proper cleanup of all managed context managers
             self.exit_stack.close()
+        except Exception as e:
+            logging.exception("Error during cleanup")
+            raise ValueError(f"Error during cleanup: {e}")
+        finally:
             self._session = None
             self._session_context = None
             self._streams_context = None
             self._initialized = False
-        except Exception as e:
-            logging.exception("Error during cleanup")
-            raise ValueError(f"Error during cleanup: {e}")

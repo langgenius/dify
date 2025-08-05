@@ -241,6 +241,7 @@ const translation = {
       codeLabel: 'Doğrulama kodu',
       content2: 'Sizin mevcut e-posta adresiniz <email>{{email}}</email>. Doğrulama kodu bu e-posta adresine gönderilmiştir.',
       authTip: 'E-posta adresiniz değiştiğinde, eski e-posta adresinize bağlı Google veya GitHub hesapları bu hesaba giriş yapamayacak.',
+      unAvailableEmail: 'Bu e-posta geçici olarak kullanılamıyor.',
     },
   },
   members: {

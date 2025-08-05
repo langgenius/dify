@@ -1,4 +1,6 @@
 import mimetypes
+import os
+import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
@@ -148,9 +150,7 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -199,9 +199,7 @@ def _build_from_remote_url(
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
         file_type = (
-            FileType(specified_type)
-            if specified_type and specified_type != FileType.CUSTOM.value
-            else detected_file_type
+            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
         )
 
         return File(
@@ -244,16 +242,21 @@ def _build_from_remote_url(
 
 def _get_remote_file_info(url: str):
     file_size = -1
-    filename = url.split("/")[-1].split("?")[0] or "unknown_file"
-    mime_type = mimetypes.guess_type(filename)[0] or ""
+    parsed_url = urllib.parse.urlparse(url)
+    url_path = parsed_url.path
+    filename = os.path.basename(url_path)
+
+    # Initialize mime_type from filename as fallback
+    mime_type, _ = mimetypes.guess_type(filename)
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     resp = cast(httpx.Response, resp)
     if resp.status_code == httpx.codes.OK:
         if content_disposition := resp.headers.get("Content-Disposition"):
             filename = str(content_disposition.split("filename=")[-1].strip('"'))
+            # Re-guess mime_type from updated filename
+            mime_type, _ = mimetypes.guess_type(filename)
         file_size = int(resp.headers.get("Content-Length", file_size))
-        mime_type = mime_type or str(resp.headers.get("Content-Type", ""))
 
     return mime_type, filename, file_size
 
@@ -265,13 +268,11 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
-    tool_file = (
-        db.session.query(ToolFile)
-        .filter(
+    tool_file = db.session.scalar(
+        select(ToolFile).where(
             ToolFile.id == mapping.get("tool_file_id"),
             ToolFile.tenant_id == tenant_id,
         )
-        .first()
     )
 
     if tool_file is None:
@@ -279,16 +280,14 @@ def _build_from_tool_file(
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
-    detected_file_type = _standardize_file_type(extension="." + extension, mime_type=tool_file.mimetype)
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
 
     specified_type = mapping.get("type")
 
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
 
     return File(
         id=mapping.get("id"),

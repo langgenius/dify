@@ -222,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Narzędzia',
     'allTool': 'Wszystkie',
-    'builtInTool': 'Wbudowane',
     'customTool': 'Niestandardowe',
     'workflowTool': 'Przepływ pracy',
     'question-understand': 'Zrozumienie pytania',
@@ -497,6 +496,7 @@ const translation = {
           select: 'Wybierz zmienną...',
         },
         title: 'Filtrowanie metadanych',
+        tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
     },
     http: {
@@ -586,7 +586,6 @@ const translation = {
         'not empty': 'nie jest pusty',
         'null': 'jest null',
         'not null': 'nie jest null',
-        'regex match': 'Dopasowanie wyrażenia regularnego',
         'in': 'w',
         'not exists': 'nie istnieje',
         'exists': 'Istnieje',
@@ -931,6 +930,7 @@ const translation = {
       deleteSuccess: 'Wersja usunięta',
       restoreSuccess: 'Wersja przywrócona',
       restoreFailure: 'Nie udało się przywrócić wersji',
+      copyIdSuccess: 'Identyfikator skopiowany do schowka',
     },
     currentDraft: 'Aktualny szkic',
     nameThisVersion: 'Nazwij tę wersję',
@@ -941,6 +941,7 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+    copyId: 'Kopiuj ID',
   },
   debug: {
     noData: {

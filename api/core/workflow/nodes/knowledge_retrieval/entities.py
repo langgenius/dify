@@ -1,10 +1,10 @@
 from collections.abc import Sequence
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.llm.entities import VisionConfig
+from core.workflow.nodes.llm.entities import ModelConfig, VisionConfig
 
 
 class RerankingModelConfig(BaseModel):
@@ -56,17 +56,6 @@ class MultipleRetrievalConfig(BaseModel):
     weights: Optional[WeightedScoreConfig] = None
 
 
-class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
-    provider: str
-    name: str
-    mode: str
-    completion_params: dict[str, Any] = {}
-
-
 class SingleRetrievalConfig(BaseModel):
     """
     Single Retrieval Config.
@@ -85,6 +74,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",
