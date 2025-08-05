@@ -329,6 +329,7 @@ class EducationVerifyApi(Resource):
 class EducationApi(Resource):
     status_fields = {
         "result": fields.Boolean,
+        "active": fields.Boolean,
         "expire_at": TimestampField,
         "allow_refresh": fields.Boolean,
     }
