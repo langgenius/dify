@@ -84,7 +84,8 @@ class SecretVariable(StringVariable):
 
     @property
     def text(self) -> str:
-        return cast(str, encrypter.obfuscated_token(self.value))
+        # Keep original value for template rendering
+        return cast(str, self.value)
 
     @property
     def log(self) -> str:
