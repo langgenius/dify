@@ -144,6 +144,18 @@ const FormItem: FC<Props> = ({
         }
 
         {
+          type === InputVarType.secret && (
+            <Input
+              type="password"
+              value={value || ''}
+              onChange={e => onChange(e.target.value)}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              autoFocus={autoFocus}
+            />
+          )
+        }
+
+        {
           type === InputVarType.paragraph && (
             <Textarea
               value={value || ''}

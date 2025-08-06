@@ -19,6 +19,10 @@ const VariableTypeSelect = ({
       value: VarType.number,
     },
     {
+      label: 'Secret',
+      value: VarType.secret,
+    },
+    {
       label: 'Object',
       value: VarType.object,
     },

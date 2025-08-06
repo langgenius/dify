@@ -65,6 +65,16 @@ const ConstantField: FC<Props> = ({
           max={(schema as CredentialFormSchemaNumberInput).max}
         />
       )}
+      {schema.type === FormTypeEnum.secretInput && (
+        <input
+          type='password'
+          className='h-8 w-full overflow-hidden rounded-lg bg-workflow-block-parma-bg p-2 text-[13px] font-normal leading-8 text-text-secondary placeholder:text-gray-400 focus:outline-none'
+          value={value}
+          onChange={e => onChange(e.target.value, VarKindType.constant)}
+          readOnly={readonly}
+          placeholder={placeholder?.[language] || placeholder?.en_US}
+        />
+      )}
     </>
   )
 }

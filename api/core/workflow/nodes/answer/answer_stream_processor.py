@@ -124,6 +124,7 @@ class AnswerStreamProcessor(StreamProcessor):
                     text = value.markdown
 
                     if text:
+                        # Secret variables are automatically masked in their markdown property
                         yield NodeRunStreamChunkEvent(
                             id=event.id,
                             node_id=event.node_id,

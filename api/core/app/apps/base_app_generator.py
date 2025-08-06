@@ -36,6 +36,10 @@ class BaseAppGenerator:
             for var in variables
         }
         user_inputs = {k: self._sanitize_value(v) for k, v in user_inputs.items()}
+
+        # Mask secret inputs immediately after validation and sanitization
+        user_inputs = self._mask_secret_inputs(user_inputs, variables)
+
         # Convert files in inputs to File
         entity_dictionary = {item.variable: item for item in variables}
         # Convert single file to File
@@ -151,6 +155,29 @@ class BaseAppGenerator:
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value
+
+    def _mask_secret_inputs(
+        self, user_inputs: Mapping[str, Any], variables: Sequence["VariableEntity"]
+    ) -> Mapping[str, Any]:
+        """
+        Mask secret inputs immediately after validation.
+        This ensures that secret values are masked at the earliest possible stage.
+        """
+        from core.helper import encrypter
+
+        # Convert to dict for modification, then return as Mapping
+        masked_inputs = dict(user_inputs)
+
+        # Create a mapping of variable names to their types
+        variable_types = {var.variable: var.type for var in variables}
+
+        # Mask secret inputs
+        for var_name, value in masked_inputs.items():
+            if var_name in variable_types and variable_types[var_name] == VariableEntityType.SECRET:
+                if isinstance(value, str):
+                    masked_inputs[var_name] = encrypter.obfuscated_token(value)
+
+        return masked_inputs
 
     @classmethod
     def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):

@@ -103,6 +103,14 @@ const AppInputsPanel = ({
           }
         }
 
+        if (item.secret) {
+          return {
+            ...item.secret,
+            type: 'secret',
+            required: false,
+          }
+        }
+
         return {
           ...item['text-input'],
           type: 'text-input',

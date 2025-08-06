@@ -131,6 +131,16 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                       />
                     )}
+                    {type === 'secret' && (
+                      <Input
+                        type="password"
+                        value={inputs[key] ? `${inputs[key]}` : ''}
+                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        placeholder={name}
+                        autoFocus={index === 0}
+                        maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                      />
+                    )}
                     {type === 'select' && (
                       <Select
                         className='w-full'
