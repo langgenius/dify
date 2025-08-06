@@ -109,8 +109,6 @@ const translation = {
     exitVersions: 'निकलने के संस्करण',
     exportPNG: 'PNG के रूप में निर्यात करें',
     exportJPEG: 'JPEG के रूप में निर्यात करें',
-    referenceVar: 'संदर्भ चर',
-    noExist: 'कोई ऐसा चर नहीं है',
     exportImage: 'छवि निर्यात करें',
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
@@ -623,7 +621,6 @@ const translation = {
       },
       select: 'चुनना',
       addSubVariable: 'उप चर',
-      condition: 'स्थिति',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',
@@ -991,6 +988,15 @@ const translation = {
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
+    relations: {
+      dependents: 'निष्पाभ लोग',
+      dependentsDescription: 'इस नोड पर निर्भर नोड्स',
+      dependencies: 'निर्भरता',
+      noDependents: 'कोई आश्रित नहीं',
+      dependenciesDescription: 'यह नोड जिस नोड पर निर्भर करता है',
+      noDependencies: 'कोई निर्भरताएँ नहीं',
+    },
+    relationsTab: 'रिश्ते',
   },
 }
 

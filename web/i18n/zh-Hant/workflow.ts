@@ -941,6 +941,9 @@ const translation = {
     copyId: '複製ID',
   },
   debug: {
+    settingsTab: '設定',
+    lastRunTab: '最後一次運行',
+    relationsTab: '關係',
     noData: {
       runThisNode: '運行此節點',
       description: '上次運行的結果將顯示在這裡',
@@ -966,8 +969,14 @@ const translation = {
       emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
       resetConversationVar: '將對話變數重置為默認值',
     },
-    settingsTab: '設定',
-    lastRunTab: '最後一次運行',
+    relations: {
+      dependencies: '依賴',
+      dependents: '被依賴',
+      dependenciesDescription: '此節點所依賴的其他節點',
+      dependentsDescription: '依賴此節點的其他節點',
+      noDependencies: '無依賴',
+      noDependents: '無被依賴',
+    },
   },
 }
 
