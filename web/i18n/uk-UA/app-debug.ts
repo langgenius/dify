@@ -202,7 +202,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'Увімкнено помірний контент',
+      contentEnableLabel: 'Модерація контенту увімкнена',
     },
     fileUpload: {
       title: 'Завантаження файлу',

@@ -197,7 +197,7 @@ const translation = {
           before: 'Za moderiranje OpenAI potrebujete ključ OpenAI API, konfiguriran v',
         },
       },
-      contentEnableLabel: 'Omogočena zmerna vsebina',
+      contentEnableLabel: 'Moderiranje vsebine omogočeno',
     },
     debug: {
       title: 'Odpravljanje napak',

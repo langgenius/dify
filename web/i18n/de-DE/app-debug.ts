@@ -197,7 +197,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'Moderater Inhalt aktiviert',
+      contentEnableLabel: 'Inhaltsmoderation aktiviert',
     },
     fileUpload: {
       title: 'Datei-Upload',
