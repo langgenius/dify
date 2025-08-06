@@ -18,7 +18,7 @@ import { HITL_INPUT_REG } from '@/config'
 
 const REGEX = new RegExp(HITL_INPUT_REG)
 
-const QueryBlockReplacementBlock = ({
+const HITLInputReplacementBlock = ({
   onInsert,
 }: QueryBlockType) => {
   const [editor] = useLexicalComposerContext()
@@ -31,7 +31,7 @@ const QueryBlockReplacementBlock = ({
   const createHITLInputBlockNode = useCallback((textNode: TextNode): QueryBlockNode => {
     if (onInsert)
       onInsert()
-    const varName = textNode.getTextContent().split('.')[1]
+    const varName = textNode.getTextContent().split('.')[1].replace(/#}}$/, '')
     return $applyNodeReplacement($createHITLInputNode(varName))
   }, [onInsert])
 
@@ -59,4 +59,4 @@ const QueryBlockReplacementBlock = ({
   return null
 }
 
-export default memo(QueryBlockReplacementBlock)
+export default memo(HITLInputReplacementBlock)

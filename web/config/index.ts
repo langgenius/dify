@@ -255,7 +255,7 @@ export const VAR_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)
 
 export const resetReg = () => VAR_REGEX.lastIndex = 0
 
-export const HITL_INPUT_REG = /\{\{#$output\.([a-zA-Z_]\w{0,29}){1,10}#\}\}/gi
+export const HITL_INPUT_REG = /\{\{(#\$output\.([a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
 export const resetHITLInputReg = () => HITL_INPUT_REG.lastIndex = 0
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
