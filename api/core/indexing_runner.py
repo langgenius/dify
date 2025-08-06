@@ -529,7 +529,6 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset.indexing_technique == "high_quality":
-            assert dataset.embedding_model_provider is not None
             assert dataset.embedding_model is not None
             embedding_model_instance = self.model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,

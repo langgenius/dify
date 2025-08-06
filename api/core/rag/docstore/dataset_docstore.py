@@ -73,7 +73,6 @@ class DatasetDocumentStore:
         embedding_model = None
         if self._dataset.indexing_technique == "high_quality":
             model_manager = ModelManager()
-            assert self._dataset.embedding_model_provider is not None
             assert self._dataset.embedding_model is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
