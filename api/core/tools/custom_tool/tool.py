@@ -117,7 +117,7 @@ class ApiTool(Tool):
     def validate_and_parse_response(self, response: httpx.Response) -> tuple[Union[str, dict], bool]:
         """
         validate the response and return parsed content with JSON flag
-        
+
         :return: tuple of (parsed_response, is_json) where parsed_response is either str or dict
         """
         if isinstance(response, httpx.Response):
@@ -125,11 +125,11 @@ class ApiTool(Tool):
                 raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
                 return "Empty response from the tool, please check your parameters and try again.", False
-            
+
             # Check content type
             content_type = response.headers.get("content-type", "").lower()
             is_json_content_type = "application/json" in content_type
-            
+
             # Try to parse as JSON
             try:
                 json_response = response.json()
