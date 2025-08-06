@@ -5,11 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
-import { useKeyPress } from 'ahooks'
+import { useDebounce, useKeyPress } from 'ahooks'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { RiSearchLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { Actions, type SearchResult, searchAnything } from './actions'
+import { Actions, type SearchResult, matchAction, searchAnything } from './actions'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 type Props = {
   onHide?: () => void
@@ -49,21 +50,29 @@ const GotoAnything: FC<Props> = ({
     }
   })
 
-  // Generate search results using Actions
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return []
+  const searchQueryDebouncedValue = useDebounce(searchQuery.trim(), {
+    wait: 300,
+  })
 
-    const query = searchQuery.toLowerCase()
+  const { data: searchResults = [], isLoading, isError, error } = useQuery(
+    {
+      queryKey: ['goto-anything', 'search-result', searchQueryDebouncedValue],
+      queryFn: async () => {
+        const query = searchQueryDebouncedValue.toLowerCase()
 
-    // Handle @ commands using Actions
-    const action = Object.values(Actions).find(action =>
-      searchQuery.startsWith(action.key) || searchQuery.startsWith(action.shortcut),
-    )
-
-    const results: SearchResult[] = searchAnything(query, action)
-
-    return results.slice(0, 8) // Limit to 8 results
-  }, [searchQuery])
+        // Handle @ commands using Actions
+        const action = matchAction(query, Actions)
+        return await searchAnything(query, action)
+      },
+      placeholderData: (previousData) => {
+        if (searchQueryDebouncedValue) {
+          return previousData
+        }
+        return []
+      },
+      enabled: !!searchQueryDebouncedValue,
+    },
+  )
 
   // Handle navigation to selected result
   const handleNavigate = useCallback((result: SearchResult) => {
@@ -95,7 +104,7 @@ const GotoAnything: FC<Props> = ({
 
     return (
       <div className='p-2'>
-        {searchResults.map((result) => (
+        {searchResults.map(result => (
           <div
             key={`${result.type}-${result.id}`}
             className={cn(
@@ -106,11 +115,11 @@ const GotoAnything: FC<Props> = ({
             {result.icon}
             <div className='min-w-0 flex-1'>
               <div className='truncate font-medium text-text-secondary'>
-                {highlightMatch(result.title, searchQuery.replace(/@\w+\s*/, ''))}
+                {highlightMatch(result.title, searchQueryDebouncedValue.replace(/@\w+\s*/, ''))}
               </div>
               {result.description && (
                 <div className='mt-0.5 truncate text-xs text-text-quaternary'>
-                  {highlightMatch(result.description, searchQuery.replace(/@\w+\s*/, ''))}
+                  {highlightMatch(result.description, searchQueryDebouncedValue.replace(/@\w+\s*/, ''))}
                 </div>
               )}
             </div>
@@ -124,7 +133,7 @@ const GotoAnything: FC<Props> = ({
   }, [searchResults])
 
   const emptyResult = useMemo(() => {
-    if (searchResults.length || !searchQuery.trim())
+    if (searchResults.length || !searchQueryDebouncedValue.trim())
       return null
 
     return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
@@ -135,10 +144,10 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     </div>)
-  }, [searchResults, searchQuery])
+  }, [searchResults, searchQueryDebouncedValue])
 
   const defaultUI = useMemo(() => {
-    if (searchQuery.trim())
+    if (searchQueryDebouncedValue.trim())
       return null
 
     return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
@@ -154,7 +163,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     </div>)
-  }, [searchResults, searchQuery])
+  }, [searchResults, searchQueryDebouncedValue])
 
   useEffect(() => {
     if (show) {
@@ -199,9 +208,31 @@ const GotoAnything: FC<Props> = ({
         </div>
 
         <div className='max-h-96 min-h-[240px] overflow-y-auto'>
-          {searchResult}
-          {emptyResult}
-          {defaultUI}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+                <span className="text-sm">Searching...</span>
+              </div>
+            </div>
+          )}
+          {isError && (
+            <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+              <div>
+                <div className="text-sm font-medium text-red-500">Search failed</div>
+                <div className="mt-1 text-xs text-text-quaternary">
+                  {error.message}
+                </div>
+              </div>
+            </div>
+          )}
+          {!isLoading && !isError && (
+            <>
+              {searchResult}
+              {emptyResult}
+              {defaultUI}
+            </>
+          )}
         </div>
 
         {!!searchResults.length && (
