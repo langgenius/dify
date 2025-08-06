@@ -242,8 +242,6 @@ class ChatConversationApi(Resource):
                 .having(func.count(Message.id) >= args["message_count_gte"])
             )
 
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
 
         match args["sort_by"]:
             case "created_at":
