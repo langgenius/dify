@@ -32,7 +32,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConf
     <Modal
       isShow
       onClose={onClose}
-      title={expired ? t(`${i18nPrefix}.expired.title`) : t(`${i18nPrefix}.isAboutToExpire.title`, { date: formatTime(expireAt, t('appLog.dateFormat') as string), escapeValue: false })}
+      title={expired ? t(`${i18nPrefix}.expired.title`) : t(`${i18nPrefix}.isAboutToExpire.title`, { date: formatTime(expireAt, t('appLog.dateFormat') as string), interpolation: { escapeValue: false } })}
       closable
       className='max-w-[600px]'
     >
