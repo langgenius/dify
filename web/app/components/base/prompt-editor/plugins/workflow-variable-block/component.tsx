@@ -34,6 +34,7 @@ type WorkflowVariableBlockComponentProps = {
   workflowNodesMap: WorkflowNodesMap
   environmentVariables?: Var[]
   conversationVariables?: Var[]
+  ragVariables?: Var[]
   getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
@@ -47,6 +48,7 @@ const WorkflowVariableBlockComponent = ({
   getVarType,
   environmentVariables,
   conversationVariables,
+  ragVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -66,7 +68,6 @@ const WorkflowVariableBlockComponent = ({
   const isEnv = isENV(variables)
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
-
   let variableValid = true
   if (isEnv) {
     if (environmentVariables)
@@ -77,7 +78,8 @@ const WorkflowVariableBlockComponent = ({
       variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isRagVar) {
-    variableValid = variables[0] === 'rag'
+    if (ragVariables)
+      variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
   }
   else {
     variableValid = !!node

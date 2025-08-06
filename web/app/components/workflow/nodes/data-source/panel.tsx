@@ -1,8 +1,6 @@
 import type { FC } from 'react'
 import {
-  useCallback,
   useMemo,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
@@ -24,10 +22,8 @@ import {
   WEBSITE_CRAWL_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
-import InputVarList from '@/app/components/workflow/nodes/tool/components/input-var-list'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import type { Var } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
+import ToolForm from '../tool/components/tool-form'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -52,18 +48,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const formSchemas = useMemo(() => {
     return currentDataSourceItem ? toolParametersToFormSchemas(currentDataSourceItem.parameters) : []
   }, [currentDataSourceItem])
-  const [currVarIndex, setCurrVarIndex] = useState(-1)
-  const currVarType = formSchemas[currVarIndex]?._type
-  const handleOnVarOpen = useCallback((index: number) => {
-    setCurrVarIndex(index)
-  }, [])
 
-  const filterVar = useCallback((varPayload: Var) => {
-    if (currVarType)
-      return varPayload.type === currVarType
-
-    return varPayload.type !== VarType.arrayFile
-  }, [currVarType])
+  const pipelineId = useStore(s => s.pipelineId)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <div >
@@ -80,16 +67,19 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               supportCollapse: true,
             }}
           >
-            <InputVarList
-              readOnly={nodesReadOnly}
-              nodeId={id}
-              schema={formSchemas as any}
-              filterVar={filterVar}
-              value={datasource_parameters}
-              onChange={handleParametersChange}
-              isSupportConstantValue
-              onOpen={handleOnVarOpen}
-            />
+            {formSchemas.length > 0 && (
+              <ToolForm
+                readOnly={nodesReadOnly}
+                nodeId={id}
+                schema={formSchemas as any}
+                value={datasource_parameters}
+                onChange={handleParametersChange}
+                currentProvider={currentDataSource}
+                currentTool={currentDataSourceItem}
+                showManageInputField={!!pipelineId}
+                onManageInputField={() => setShowInputFieldPanel?.(true)}
+              />
+            )}
           </BoxGroupField>
         )
       }
