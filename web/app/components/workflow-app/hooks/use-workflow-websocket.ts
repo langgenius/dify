@@ -1,22 +1,23 @@
 import { useEffect, useState } from 'react'
-import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
 
 export function useCollaborativeCursors(appId: string) {
   const [cursors, setCursors] = useState<Record<string, any>>({})
   const [myUserId, setMyUserId] = useState<string | null>(null)
-  const { getSocket, on } = useWebSocketStore()
 
   useEffect(() => {
     if (!appId) return
 
-    const socket = getSocket(appId)
+    // Get existing socket or create new one
+    const wsClient = webSocketClient.getClient(appId)
 
     const handleConnect = () => {
-      setMyUserId(socket.id || 'unknown')
+      setMyUserId(wsClient.id || 'unknown')
     }
 
-    const unsubscribeMouseMove = on('mouseMove', (update: any) => {
-      if (update.userId !== myUserId) {
+    // Listen to collaboration events for this specific app
+    const unsubscribeMouseMove = wsClient.on('collaboration_update', (update: any) => {
+      if (update.type === 'mouseMove' && update.userId !== myUserId) {
         setCursors(prev => ({
           ...prev,
           [update.userId]: {
@@ -29,16 +30,16 @@ export function useCollaborativeCursors(appId: string) {
       }
     })
 
-    if (socket.connected)
+    if (wsClient.connected)
       handleConnect()
      else
-      socket.on('connect', handleConnect)
+      wsClient.on('connect', handleConnect)
 
     return () => {
       unsubscribeMouseMove()
-      socket.off('connect', handleConnect)
+      wsClient.off('connect', handleConnect)
     }
-  }, [appId, getSocket, on, myUserId])
+  }, [appId])
 
   return { cursors, myUserId }
 }

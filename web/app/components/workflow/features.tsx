@@ -14,15 +14,15 @@ import useConfig from './nodes/start/use-config'
 import type { StartNodeType } from './nodes/start/types'
 import type { PromptVariable } from '@/models/debug'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const appId = useStore(s => s.appId)
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const nodes = useNodes<CommonNodeType>()
-  const { emit } = useWebSocketStore()
   const startNode = nodes.find(node => node.data.type === 'start')
   const { id, data } = startNode as Node<StartNodeType>
   const { handleAddVariable } = useConfig(id, data)
@@ -43,11 +43,18 @@ const Features = () => {
   const handleFeaturesChange = useCallback(() => {
     doSyncWorkflowDraft(false, {
       onSuccess() {
-        emit('varsAndFeaturesUpdate')
+        if (appId) {
+          const socket = webSocketClient.getSocket(appId)
+          if (socket) {
+            socket.emit('collaboration_event', {
+              type: 'varsAndFeaturesUpdate',
+            })
+          }
+        }
       },
     })
     setShowFeaturesPanel(true)
-  }, [doSyncWorkflowDraft, setShowFeaturesPanel])
+  }, [doSyncWorkflowDraft, setShowFeaturesPanel, appId])
 
   return (
     <NewFeaturePanel

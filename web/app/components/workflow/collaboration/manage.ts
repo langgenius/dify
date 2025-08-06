@@ -1,13 +1,13 @@
 import { LoroDoc } from 'loro-crdt'
 import { isEqual } from 'lodash-es'
-import { type WebSocketInstance, useWebSocketStore } from '../store/websocket-store'
+import { webSocketClient } from './core/websocket-client'
 import type { Edge, Node } from '../types'
 
 class LoroSocketIOProvider {
   private doc: LoroDoc
-  private socket: WebSocketInstance
+  private socket: any
 
-  constructor(socket: WebSocketInstance, doc: LoroDoc) {
+  constructor(socket: any, doc: LoroDoc) {
     this.socket = socket
     this.doc = doc
     this.setupEventListeners()
@@ -44,8 +44,7 @@ class CollaborationManager {
   private edgesMap: any = null
 
   init(appId: string, reactFlowStore: any) {
-    const { getSocket } = useWebSocketStore.getState()
-    const socket = getSocket(appId)
+    const socket = webSocketClient.getClient(appId)
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes')
     this.edgesMap = this.doc.getMap('edges')

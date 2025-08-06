@@ -22,9 +22,9 @@ import {
   useWorkflowStartRun,
 } from '../hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useWebSocketStore } from '@/app/components/workflow/store/websocket-store'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
 import { useCollaborativeCursors } from '../hooks'
-import type { OnlineUser } from '@/service/demo/online-user'
+import type { OnlineUser } from '@/app/components/workflow/collaboration/core/websocket-client'
 import { collaborationManager } from '@/app/components/workflow/collaboration/manage'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useStoreApi } from 'reactflow'
@@ -48,7 +48,10 @@ const WorkflowMain = ({
     collaborationManager.init(appId, store)
   }, [appId, store])
 
-  const { emit, getSocket, on } = useWebSocketStore()
+  // Get the socket for current app
+  const wsClient = useMemo(() => {
+    return appId ? webSocketClient.getClient(appId) : null
+  }, [appId])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -99,24 +102,21 @@ const WorkflowMain = ({
 
   useEffect(() => {
     if (!appId) return
-
-    const unsubscribeConversationVarsUpdate = on('varsAndFeaturesUpdate', async () => {
-      try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-        handleWorkflowDataUpdate(response)
-      }
-      catch (error) {
-        console.error('workflow vars and features update failed:', error)
+    wsClient?.on('collaboration_update', async (update: any) => {
+      if (update.type === 'varsAndFeaturesUpdate') {
+        try {
+          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+          handleWorkflowDataUpdate(response)
+        }
+        catch (error) {
+          console.error('workflow vars and features update failed:', error)
+        }
       }
     })
-
-    return () => {
-      unsubscribeConversationVarsUpdate()
-    }
-  }, [appId, on])
+  }, [appId, wsClient])
 
   const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!containerRef.current) return
+    if (!containerRef.current || !wsClient?.connected) return
 
     const rect = containerRef.current.getBoundingClientRect()
     const x = event.clientX - rect.left
@@ -131,17 +131,24 @@ const WorkflowMain = ({
         lastEmitTimeRef.current = now
         lastPositionRef.current = { x, y }
 
-        emit('mouseMove', {
-          x,
-          y,
-        })
+        const eventData = {
+          type: 'mouseMove',
+          data: { x, y },
+          timestamp: now,
+        }
+
+        wsClient.emit('collaboration_event', eventData)
+
+        // Debug log
+        if (process.env.NODE_ENV === 'development')
+          console.log('Mouse move emitted:', eventData)
       }
       else {
         // Update position for potential future emit
         lastPositionRef.current = { x, y }
       }
     }
-  }, [emit])
+  }, [wsClient])
 
   useEffect(() => {
     const container = containerRef.current
@@ -176,8 +183,7 @@ const WorkflowMain = ({
   const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUser>>({})
 
   useEffect(() => {
-    if (!appId) return
-    const socket = getSocket(appId)
+    if (!appId || !wsClient) return
 
     const handleOnlineUsersUpdate = (data: { users: OnlineUser[] }) => {
       const usersMap = data.users.reduce((acc, user) => {
@@ -186,11 +192,13 @@ const WorkflowMain = ({
       }, {} as Record<string, OnlineUser>)
       setOnlineUsers(usersMap)
     }
-    socket.on('online_users', handleOnlineUsersUpdate)
+
+    wsClient.on('online_users', handleOnlineUsersUpdate)
+
     return () => {
-      socket.off('online_users', handleOnlineUsersUpdate)
+      wsClient.off('online_users', handleOnlineUsersUpdate)
     }
-  }, [appId])
+  }, [appId, wsClient])
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowId: appId,
