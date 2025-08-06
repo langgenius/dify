@@ -1370,7 +1370,7 @@ class DocumentService:
                         )
                         return
                     db.session.add(dataset_process_rule)
-                    db.session.commit()
+                    db.session.flush()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             with redis_client.lock(lock_name, timeout=600):
                 position = DocumentService.get_documents_position(dataset.id)

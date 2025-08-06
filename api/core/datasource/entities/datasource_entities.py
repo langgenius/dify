@@ -226,9 +226,9 @@ class OnlineDocumentInfo(BaseModel):
     Online document info
     """
 
-    workspace_id: str = Field(..., description="The workspace id")
-    workspace_name: str = Field(..., description="The workspace name")
-    workspace_icon: str = Field(..., description="The workspace icon")
+    workspace_id: Optional[str] = Field(None, description="The workspace id")
+    workspace_name: Optional[str] = Field(None, description="The workspace name")
+    workspace_icon: Optional[str] = Field(None, description="The workspace icon")
     total: int = Field(..., description="The total number of documents")
     pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
 

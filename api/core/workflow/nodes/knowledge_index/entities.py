@@ -107,10 +107,10 @@ class OnlineDocumentInfo(BaseModel):
     """
 
     provider: str
-    workspace_id: str
+    workspace_id: Optional[str] = None
     page_id: str
     page_type: str
-    icon: OnlineDocumentIcon
+    icon: Optional[OnlineDocumentIcon] = None
 
 
 class WebsiteInfo(BaseModel):
