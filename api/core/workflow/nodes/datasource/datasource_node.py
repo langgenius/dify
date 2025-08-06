@@ -122,15 +122,23 @@ class DatasourceNode(BaseNode):
         )
 
         try:
+            datasource_provider_service = DatasourceProviderService()
+            if datasource_info.get("credential_id"):
+                credentials = datasource_provider_service.get_real_credential_by_id(
+                    tenant_id=self.tenant_id,
+                    credential_id=datasource_info.get("credential_id"),
+                    provider=node_data.provider_name,
+                    plugin_id=node_data.plugin_id,
+                )
+            else:
+                credentials = datasource_provider_service.get_default_credentials(
+                    tenant_id=self.tenant_id,
+                    provider=node_data.provider_name,
+                    plugin_id=node_data.plugin_id,
+                )
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    datasource_provider_service = DatasourceProviderService()
-                    credentials = datasource_provider_service.get_default_credentials(
-                        tenant_id=self.tenant_id,
-                        provider=node_data.provider_name,
-                        plugin_id=node_data.plugin_id,
-                    )
                     if credentials:
                         datasource_runtime.runtime.credentials = credentials
                     online_document_result: Generator[DatasourceMessage, None, None] = (
@@ -151,12 +159,6 @@ class DatasourceNode(BaseNode):
                     )
                 case DatasourceProviderType.ONLINE_DRIVE:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                    datasource_provider_service = DatasourceProviderService()
-                    credentials = datasource_provider_service.get_real_datasource_credentials(
-                        tenant_id=self.tenant_id,
-                        provider=node_data.provider_name,
-                        plugin_id=node_data.plugin_id,
-                    )
                     if credentials:
                         datasource_runtime.runtime.credentials = credentials
                     online_drive_result: Generator[DatasourceMessage, None, None] = (
