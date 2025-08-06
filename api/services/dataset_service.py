@@ -2077,7 +2077,6 @@ class SegmentService:
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
                 model_manager = ModelManager()
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 embedding_model = model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
@@ -2246,7 +2245,6 @@ class SegmentService:
                 tokens = 0
                 if dataset.indexing_technique == "high_quality":
                     model_manager = ModelManager()
-                    assert dataset.embedding_model_provider is not None
                     assert dataset.embedding_model is not None
                     embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
@@ -2671,7 +2669,6 @@ class SegmentService:
         if dataset.indexing_technique == "high_quality":
             try:
                 model_manager = ModelManager()
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager.get_model_instance(
                     tenant_id=user_id,

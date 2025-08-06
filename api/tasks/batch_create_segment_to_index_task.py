@@ -89,7 +89,6 @@ def batch_create_segment_to_index_task(
             document_segments = []
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(

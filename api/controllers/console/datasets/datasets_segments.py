@@ -168,7 +168,6 @@ class DatasetDocumentSegmentApi(Resource):
             # check embedding model setting
             try:
                 model_manager = ModelManager()
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
@@ -218,7 +217,6 @@ class DatasetDocumentSegmentAddApi(Resource):
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
@@ -271,7 +269,6 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             # check embedding model setting
             try:
                 model_manager = ModelManager()
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
@@ -442,7 +439,6 @@ class ChildChunkAddApi(Resource):
         if dataset.indexing_technique == "high_quality":
             try:
                 model_manager = ModelManager()
-                assert dataset.embedding_model_provider is not None
                 assert dataset.embedding_model is not None
                 model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
