@@ -28,22 +28,22 @@ const UserActionItem: FC<Props> = ({
       <div className='shrink-0'>
         <Input
           wrapperClassName='w-[120px]'
-          value={data.name}
+          value={data.id}
           placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`)}
-          onChange={e => onChange({ ...data, name: e.target.value })}
+          onChange={e => onChange({ ...data, id: e.target.value })}
         />
       </div>
       <div className='grow'>
         <Input
-          value={data.text}
+          value={data.title}
           placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`)}
-          onChange={e => onChange({ ...data, text: e.target.value })}
+          onChange={e => onChange({ ...data, title: e.target.value })}
         />
       </div>
       <ButtonStyleDropdown
-        text={data.text}
-        data={data.type}
-        onChange={type => onChange({ ...data, type })}
+        text={data.title}
+        data={data.button_style}
+        onChange={type => onChange({ ...data, button_style: type })}
       />
       <Button
         className='px-2'

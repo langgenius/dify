@@ -16,8 +16,8 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
   const { t } = useTranslation()
 
   const { data } = props
-  const deliveryMethods = data.deliveryMethod
-  const userActions = data.userActions
+  const deliveryMethods = data.delivery_methods
+  const userActions = data.user_actions
 
   return (
     <>

@@ -5,7 +5,7 @@ import { ALL_CHAT_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const nodeDefault: NodeDefault<HumanInputNodeType> = {
   defaultValue: {
-    deliveryMethod: [
+    delivery_methods: [
       {
         type: DeliveryMethodType.WebApp,
         enabled: true,
@@ -15,30 +15,26 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
         enabled: false,
       },
     ],
-    userActions: [
+    user_actions: [
       {
         id: 'approve-action',
-        name: 'approve',
-        text: 'Post to X',
-        type: UserActionButtonType.Primary,
+        title: 'Post to X',
+        button_style: UserActionButtonType.Primary,
       },
       {
         id: 'regenerate-action',
-        name: 'regenerate',
-        text: 'regenerate',
-        type: UserActionButtonType.Default,
+        title: 'regenerate',
+        button_style: UserActionButtonType.Default,
       },
       {
         id: 'thinking-action',
-        name: 'thinking',
-        text: 'think more',
-        type: UserActionButtonType.Accent,
+        title: 'thinking',
+        button_style: UserActionButtonType.Accent,
       },
       {
         id: 'cancel-action',
-        name: 'cancel',
-        text: 'cancel',
-        type: UserActionButtonType.Ghost,
+        title: 'cancel',
+        button_style: UserActionButtonType.Ghost,
       },
     ],
     timeout: {

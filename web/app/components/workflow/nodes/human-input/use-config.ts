@@ -14,34 +14,34 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
   const handleDeliveryMethodChange = (methods: DeliveryMethod[]) => {
     setInputs({
       ...inputs,
-      deliveryMethod: methods,
+      delivery_methods: methods,
     })
   }
 
   const handleUserActionAdd = (newAction: UserAction) => {
     setInputs({
       ...inputs,
-      userActions: [...inputs.userActions, newAction],
+      user_actions: [...inputs.user_actions, newAction],
     })
   }
 
   const handleUserActionChange = (updatedAction: UserAction) => {
-    const newActions = produce(inputs.userActions, (draft) => {
+    const newActions = produce(inputs.user_actions, (draft) => {
       const index = draft.findIndex(a => a.id === updatedAction.id)
       if (index !== -1)
         draft[index] = updatedAction
     })
     setInputs({
       ...inputs,
-      userActions: newActions,
+      user_actions: newActions,
     })
   }
 
   const handleUserActionDelete = (actionId: string) => {
-    const newActions = inputs.userActions.filter(action => action.id !== actionId)
+    const newActions = inputs.user_actions.filter(action => action.id !== actionId)
     setInputs({
       ...inputs,
-      userActions: newActions,
+      user_actions: newActions,
     })
   }
 

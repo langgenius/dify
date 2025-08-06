@@ -1,9 +1,9 @@
 import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
 
 export type HumanInputNodeType = CommonNodeType & {
-  deliveryMethod: DeliveryMethod[]
-  formContent: any
-  userActions: UserAction[]
+  delivery_methods: DeliveryMethod[]
+  form_content: any
+  user_actions: UserAction[]
   timeout: Timeout
   outputs: Variable[]
 }
@@ -22,7 +22,7 @@ export enum DeliveryMethodType {
 export type DeliveryMethod = {
   type: DeliveryMethodType
   enabled: boolean
-  configure?: Record<string, any>
+  config?: Record<string, any>
 }
 
 export enum UserActionButtonType {
@@ -34,7 +34,6 @@ export enum UserActionButtonType {
 
 export type UserAction = {
   id: string
-  name: string
-  text: string
-  type: UserActionButtonType
+  title: string
+  button_style: UserActionButtonType
 }

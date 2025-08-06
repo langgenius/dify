@@ -37,36 +37,36 @@ const DeliveryMethodForm: React.FC<Props> = ({ value, onchange }) => {
 
   return (
     <div className='px-4 py-2'>
-        <div className='mb-1 flex items-center justify-between'>
-          <div className='flex items-center gap-0.5'>
-            <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.title`)}</div>
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`)}
-            />
-          </div>
-          <div className='flex items-center px-1'>
-            <MethodSelector
-              data={value}
-              onAdd={handleMethodAdd}
-            />
-          </div>
+      <div className='mb-1 flex items-center justify-between'>
+        <div className='flex items-center gap-0.5'>
+          <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.title`)}</div>
+          <Tooltip
+            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`)}
+          />
         </div>
-        {!value.length && (
-          <div className='system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emptyTip`)}</div>
-        )}
-        {value.length > 0 && (
-          <div className='space-y-1'>
-            {value.map((method, index) => (
-              <MethodItem
-                method={method}
-                key={index}
-                onChange={handleMethodChange}
-                onDelete={handleMethodDelete}
-              />
-            ))}
-          </div>
-        )}
+        <div className='flex items-center px-1'>
+          <MethodSelector
+            data={value}
+            onAdd={handleMethodAdd}
+          />
+        </div>
       </div>
+      {!value.length && (
+        <div className='system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t(`${i18nPrefix}.deliveryMethod.emptyTip`)}</div>
+      )}
+      {value.length > 0 && (
+        <div className='space-y-1'>
+          {value.map((method, index) => (
+            <MethodItem
+              method={method}
+              key={index}
+              onChange={handleMethodChange}
+              onDelete={handleMethodDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
