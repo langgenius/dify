@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +52,35 @@ const SelectionContextmenu = () => {
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
+
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const menuPosition = useMemo(() => {
+    if (!selectionMenu) return { left: 0, top: 0 }
+
+    let left = selectionMenu.left
+    let top = selectionMenu.top
+
+    const container = document.querySelector('#workflow-container')
+    if (container) {
+      const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect()
+
+      const menuWidth = 240
+
+      const estimatedMenuHeight = 380
+
+      if (left + menuWidth > containerWidth)
+        left = left - menuWidth
+
+      if (top + estimatedMenuHeight > containerHeight)
+        top = top - estimatedMenuHeight
+
+      left = Math.max(0, left)
+      top = Math.max(0, top)
+    }
+
+    return { left, top }
+  }, [selectionMenu])
 
   useClickAway(() => {
     handleSelectionContextmenuCancel()
@@ -322,12 +352,12 @@ const SelectionContextmenu = () => {
     <div
       className='absolute z-[9]'
       style={{
-        left: selectionMenu.left,
-        top: selectionMenu.top,
+        left: menuPosition.left,
+        top: menuPosition.top,
       }}
       ref={ref}
     >
-      <div className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+      <div ref={menuRef} className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
         <div className='p-1'>
           <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
             {t('workflow.operator.vertical')}
