@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
 } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
@@ -10,7 +11,7 @@ import type {
 } from '../types'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../constants'
 
-export const useConfig = (id: string) => {
+export const useConfig = (id: string, dataSourceList?: any[]) => {
   const store = useStoreApi()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
@@ -60,8 +61,59 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate, getNodeData])
 
+  const outputSchema = useMemo(() => {
+    const nodeData = getNodeData()
+    if (!nodeData?.data || !dataSourceList) return []
+
+    const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
+    const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
+    const output_schema = currentDataSourceItem?.output_schema
+
+    const res: any[] = []
+    if (!output_schema || !output_schema.properties)
+      return []
+
+    Object.keys(output_schema.properties).forEach((outputKey) => {
+      const output = output_schema.properties[outputKey]
+      const type = output.type
+      if (type === 'object') {
+        res.push({
+          name: outputKey,
+          value: output,
+        })
+      }
+      else {
+        res.push({
+          name: outputKey,
+          type: output.type === 'array'
+            ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+          description: output.description,
+        })
+      }
+    })
+    return res
+  }, [getNodeData, dataSourceList])
+
+  const hasObjectOutput = useMemo(() => {
+    const nodeData = getNodeData()
+    if (!nodeData?.data || !dataSourceList) return false
+
+    const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
+    const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
+    const output_schema = currentDataSourceItem?.output_schema
+
+    if (!output_schema || !output_schema.properties)
+      return false
+
+    const properties = output_schema.properties
+    return Object.keys(properties).some(key => properties[key].type === 'object')
+  }, [getNodeData, dataSourceList])
+
   return {
     handleFileExtensionsChange,
     handleParametersChange,
+    outputSchema,
+    hasObjectOutput,
   }
 }

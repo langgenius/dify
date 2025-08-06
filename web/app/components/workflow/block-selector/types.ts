@@ -46,6 +46,7 @@ export type DataSourceDefaultValue = {
   provider_name: string
   datasource_name: string
   datasource_label: string
+  output_schema?: Record<string, any>
 }
 
 export type ToolValue = {
@@ -86,6 +87,10 @@ export type DataSourceItem = {
         provider: string
       }
       parameters: any[]
+      output_schema?: {
+        type: string
+        properties: Record<string, any>
+      }
     }[]
   }
   is_authorized: boolean

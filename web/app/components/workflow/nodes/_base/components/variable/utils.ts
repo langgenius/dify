@@ -517,7 +517,42 @@ const formatItem = (
     }
 
     case BlockEnum.DataSource: {
-      res.vars = DataSourceNodeDefault.getOutputVars?.(data as DataSourceNodeType, ragVars) || []
+      const payload = data as DataSourceNodeType
+      const baseVars = DataSourceNodeDefault.getOutputVars?.(payload, ragVars) || []
+      if (payload.output_schema?.properties) {
+        const dynamicOutputSchema: any[] = []
+        Object.keys(payload.output_schema.properties).forEach((outputKey) => {
+          const output = payload.output_schema!.properties[outputKey]
+          const dataType = output?.properties?.dify_builtin_type ? output.properties.dify_builtin_type.enum[0] : output.type
+          dynamicOutputSchema.push({
+            variable: outputKey,
+            type: dataType === 'array'
+              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+              : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
+            description: output.description,
+            children: output.type === 'object' ? {
+              schema: {
+                type: 'object',
+                properties: Object.fromEntries(
+                  Object.entries(output.properties).filter(([key]) => key !== 'dify_builtin_type'),
+                ),
+              },
+            } : undefined,
+          })
+        })
+        res.vars = [
+          ...baseVars,
+          ...dynamicOutputSchema,
+          {
+            variable: 'output',
+            type: VarType.object,
+            children: dynamicOutputSchema,
+          },
+        ]
+      }
+      else {
+        res.vars = baseVars
+      }
       break
     }
 

@@ -125,6 +125,8 @@ class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
+    output_schema: Optional[dict] = None
+
 
     @field_validator("parameters", mode="before")
     @classmethod
