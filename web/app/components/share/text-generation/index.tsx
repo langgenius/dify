@@ -371,7 +371,7 @@ const TextGeneration: FC<IMainProps> = ({
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
-      changeLanguage(siteInfo.default_language)
+      await changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({

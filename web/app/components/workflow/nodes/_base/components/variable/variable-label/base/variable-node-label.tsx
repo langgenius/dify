@@ -22,7 +22,7 @@ const VariableNodeLabel = ({
       {
         nodeTitle && (
           <div
-            className='system-xs-medium max-[60px] truncate text-text-secondary'
+            className='system-xs-medium max-w-[60px] truncate text-text-secondary'
             title={nodeTitle}
           >
             {nodeTitle}

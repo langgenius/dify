@@ -266,7 +266,7 @@ class DatasetService:
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -370,7 +370,7 @@ class DatasetService:
             raise ValueError("External knowledge api id is required.")
         # Update metadata fields
         dataset.updated_by = user.id if user else None
-        dataset.updated_at = datetime.datetime.utcnow()
+        dataset.updated_at = naive_utc_now()
         db.session.add(dataset)
 
         # Update external knowledge binding
@@ -2372,7 +2372,7 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
                 indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
@@ -2382,10 +2382,10 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
             segments = (
                 db.session.query(DocumentSegment)
@@ -2399,7 +2399,7 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
                 indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
@@ -2409,10 +2409,10 @@ class SegmentService:
                 segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         else:
             raise InvalidActionError()
 
@@ -2670,7 +2670,7 @@ class SegmentService:
         # check segment
         segment = (
             db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id)
+            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
             .first()
         )
         if not segment:

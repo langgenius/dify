@@ -11,7 +11,7 @@ import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
@@ -111,7 +111,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [checkVariableName, tempPayload.label])
 
   const handleVarNameChange = useCallback((e: ChangeEvent<any>) => {
-    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
     if (!isValid) {

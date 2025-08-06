@@ -110,11 +110,9 @@ const translation = {
     publishUpdate: 'Pubblica aggiornamento',
     versionHistory: 'Cronologia delle versioni',
     exitVersions: 'Uscita Versioni',
-    referenceVar: 'Variabile di riferimento',
     exportSVG: 'Esporta come SVG',
     exportImage: 'Esporta immagine',
     exportJPEG: 'Esporta come JPEG',
-    noExist: 'Nessuna variabile del genere',
     exportPNG: 'Esporta come PNG',
     needEndNode: 'Deve essere aggiunto il nodo finale',
     addBlock: 'Aggiungi nodo',
@@ -627,7 +625,6 @@ const translation = {
       },
       addSubVariable: 'Variabile secondaria',
       select: 'Selezionare',
-      condition: 'Condizione',
     },
     variableAssigner: {
       title: 'Assegna variabili',
@@ -956,6 +953,7 @@ const translation = {
       updateSuccess: 'Versione aggiornata',
       deleteFailure: 'Impossibile eliminare la versione',
       updateFailure: 'Impossibile aggiornare la versione',
+      copyIdSuccess: 'ID copiato negli appunti',
     },
     latest: 'Ultimo',
     defaultName: 'Versione senza titolo',
@@ -966,6 +964,7 @@ const translation = {
     currentDraft: 'Bozza attuale',
     restorationTip: 'Dopo il ripristino della versione, la bozza attuale verrà sovrascritta.',
     title: 'Versioni',
+    copyId: 'Copia ID',
   },
   debug: {
     noData: {
@@ -995,6 +994,15 @@ const translation = {
     },
     settingsTab: 'Impostazioni',
     lastRunTab: 'Ultima corsa',
+    relations: {
+      dependents: 'Dipendenti',
+      noDependencies: 'Nessuna dipendenza',
+      dependencies: 'Dipendenze',
+      noDependents: 'Nessuna persona a carico',
+      dependentsDescription: 'Nodi che si basano su questo nodo',
+      dependenciesDescription: 'Nodi su cui si basa questo nodo',
+    },
+    relationsTab: 'Relazioni',
   },
 }
 

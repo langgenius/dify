@@ -104,9 +104,7 @@ const translation = {
     noHistory: 'بدون تاریخچه',
     loadMore: 'بارگذاری گردش کار بیشتر',
     exportPNG: 'صادرات به فرمت PNG',
-    noExist: 'هیچگونه متغیری وجود ندارد',
     exitVersions: 'نسخه‌های خروجی',
-    referenceVar: 'متغیر مرجع',
     exportSVG: 'صادرات به فرمت SVG',
     exportJPEG: 'صادرات به فرمت JPEG',
     exportImage: 'تصویر را صادر کنید',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'انتخاب',
       addSubVariable: 'متغیر فرعی',
-      condition: 'شرط',
     },
     variableAssigner: {
       title: 'تخصیص متغیرها',
@@ -930,6 +927,7 @@ const translation = {
       deleteFailure: 'حذف نسخه موفق نبود',
       restoreFailure: 'بازگرداندن نسخه ناموفق بود',
       updateFailure: 'به‌روزرسانی نسخه ناموفق بود',
+      copyIdSuccess: 'شناسه در کلیپ بورد کپی شده است',
     },
     latest: 'آخرین',
     editVersionInfo: 'ویرایش اطلاعات نسخه',
@@ -940,6 +938,7 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+    copyId: 'شناسه کپی',
   },
   debug: {
     noData: {
@@ -969,6 +968,15 @@ const translation = {
     },
     settingsTab: 'تنظیمات',
     lastRunTab: 'آخرین اجرا',
+    relations: {
+      dependents: 'وابسته',
+      dependencies: 'وابسته',
+      noDependents: 'بدون وابستگان',
+      noDependencies: 'بدون وابستگی',
+      dependenciesDescription: 'گره هایی که این گره به آنها متکی است',
+      dependentsDescription: 'گره هایی که به این گره متکی هستند',
+    },
+    relationsTab: 'روابط',
   },
 }
 

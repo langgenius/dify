@@ -538,7 +538,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.5.0-beta
+    image: milvusdb/milvus:v2.5.15
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]

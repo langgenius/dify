@@ -927,6 +927,7 @@ const translation = {
       deleteFailure: 'Error al eliminar la versión',
       updateFailure: 'Error al actualizar la versión',
       restoreSuccess: 'Versión restaurada',
+      copyIdSuccess: 'ID copiado en el portapapeles',
     },
     releaseNotesPlaceholder: 'Describe lo que cambió',
     restorationTip: 'Después de la restauración de la versión, el borrador actual será sobrescrito.',
@@ -937,6 +938,7 @@ const translation = {
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
     latest: 'Último',
+    copyId: 'Copiar ID',
   },
   debug: {
     noData: {
@@ -966,6 +968,15 @@ const translation = {
     },
     lastRunTab: 'Última ejecución',
     settingsTab: 'Ajustes',
+    relations: {
+      dependents: 'Dependientes',
+      dependenciesDescription: 'Nodos en los que se basa este nodo',
+      dependentsDescription: 'Nodos que dependen de este nodo',
+      noDependencies: 'Sin dependencias',
+      noDependents: 'Sin dependientes',
+      dependencies: 'Dependencias',
+    },
+    relationsTab: 'Relaciones',
   },
 }
 

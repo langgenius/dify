@@ -9,6 +9,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 import click
+import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
 from sqlalchemy.orm import Session
@@ -197,7 +198,7 @@ class PluginMigration:
         """
         with Session(db.engine) as session:
             rs = session.execute(
-                db.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
+                sa.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
             )
             result = []
             for row in rs:

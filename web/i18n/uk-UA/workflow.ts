@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -608,7 +606,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -930,6 +927,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -940,6 +938,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {
@@ -969,6 +968,15 @@ const translation = {
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
   },
 }
 

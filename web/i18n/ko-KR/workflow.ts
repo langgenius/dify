@@ -977,6 +977,7 @@ const translation = {
       restoreFailure: '버전을 복원하지 못했습니다.',
       deleteFailure: '버전을 삭제하지 못했습니다.',
       updateSuccess: '버전이 업데이트되었습니다.',
+      copyIdSuccess: '클립보드에 복사된 ID',
     },
     editVersionInfo: '버전 정보 편집',
     latest: '최신',
@@ -987,6 +988,7 @@ const translation = {
     title: '버전 기록',
     deletionTip: '삭제는 되돌릴 수 없으니, 확인해 주시기 바랍니다.',
     restorationTip: '버전 복원 후 현재 초안이 덮어쓰여질 것입니다.',
+    copyId: 'ID 복사',
   },
   debug: {
     noData: {
@@ -1017,6 +1019,15 @@ const translation = {
     },
     settingsTab: '설정',
     lastRunTab: '마지막 실행',
+    relations: {
+      dependencies: '종속성',
+      dependentsDescription: '이 노드에 의존하는 노드',
+      noDependents: '부양가족 없음',
+      noDependencies: '종속성 없음',
+      dependents: '부양 가족',
+      dependenciesDescription: '이 노드가 의존하는 노드',
+    },
+    relationsTab: '관계',
   },
 }
 
