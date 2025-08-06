@@ -1,11 +1,11 @@
-import type { ActionItem } from './types'
+import type { ActionItem, AppSearchResult } from './types'
 import type { App } from '@/types/app'
 import { fetchAppList } from '@/service/apps'
 import AppIcon from '../../base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'
 import { getRedirectionPath } from '@/utils/app-redirection'
 
-const parser = (apps: App[]) => {
+const parser = (apps: App[]): AppSearchResult[] => {
   return apps.map(app => ({
     id: app.id,
     title: app.name,
@@ -28,6 +28,7 @@ const parser = (apps: App[]) => {
           className='h-3 w-3' type={app.mode} />
       </div>
     ),
+    data: app,
   }))
 }
 
