@@ -38,6 +38,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import type { WorkflowRunHistoryResponse } from '@/types/workflow'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 export type ViewHistoryProps = {
   withText?: boolean
@@ -65,6 +66,7 @@ const ViewHistory = ({
   const setControlMode = useStore(s => s.setControlMode)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const fetcher = historyFetcher ?? (noop as Fetcher<WorkflowRunHistoryResponse, string>)
   const {
@@ -168,6 +170,7 @@ const ViewHistory = ({
                             showInputsPanel: false,
                             showEnvPanel: false,
                           })
+                          closeAllInputFieldPanels()
                           handleBackupDraft()
                           setOpen(false)
                           handleNodesCancelSelected()

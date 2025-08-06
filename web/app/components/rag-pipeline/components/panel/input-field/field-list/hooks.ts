@@ -12,7 +12,7 @@ import { useBoolean } from 'ahooks'
 import Toast from '@/app/components/base/toast'
 import { usePipeline } from '../../../../hooks/use-pipeline'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const VARIABLE_PREFIX = 'rag'
 
@@ -30,7 +30,7 @@ export const useFieldList = ({
   allVariableNames,
 }: useFieldListProps) => {
   const { t } = useTranslation()
-  const setInputFieldEditPanelProps = useStore(s => s.setInputFieldEditPanelProps)
+  const { toggleInputFieldEditPanel } = useInputFieldPanel()
   const [inputFields, setInputFields] = useState<InputVar[]>(initialInputFields)
   const inputFieldsRef = useRef<InputVar[]>(inputFields)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
@@ -60,9 +60,9 @@ export const useFieldList = ({
   const editingFieldIndex = useRef<number>(-1)
 
   const handleCloseInputFieldEditor = useCallback(() => {
-    setInputFieldEditPanelProps?.(null)
+    toggleInputFieldEditPanel?.(null)
     editingFieldIndex.current = -1
-  }, [setInputFieldEditPanelProps])
+  }, [toggleInputFieldEditPanel])
 
   const handleRemoveField = useCallback((index: number) => {
     const itemToRemove = inputFieldsRef.current[index]
@@ -112,7 +112,7 @@ export const useFieldList = ({
   const handleOpenInputFieldEditor = useCallback((id?: string) => {
     const index = inputFieldsRef.current.findIndex(field => field.variable === id)
     editingFieldIndex.current = index
-    setInputFieldEditPanelProps?.({
+    toggleInputFieldEditPanel?.({
       onClose: handleCloseInputFieldEditor,
       onSubmit: handleSubmitField,
       initialData: inputFieldsRef.current[index],

@@ -6,16 +6,16 @@ import DataSource from './data-source'
 import Divider from '@/app/components/base/divider'
 import ProcessDocuments from './process-documents'
 import type { Datasource } from '../../test-run/types'
-import { useStore } from '@/app/components/workflow/store'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const PreviewPanel = () => {
   const { t } = useTranslation()
   const [datasource, setDatasource] = useState<Datasource>()
-  const setShowInputFieldPreviewPanel = useStore(state => state.setShowInputFieldPreviewPanel)
+  const { toggleInputFieldPreviewPanel } = useInputFieldPanel()
 
   const handleClosePreviewPanel = useCallback(() => {
-    setShowInputFieldPreviewPanel(false)
-  }, [setShowInputFieldPreviewPanel])
+    toggleInputFieldPreviewPanel()
+  }, [toggleInputFieldPreviewPanel])
 
   return (
     <div className='mr-1 flex h-full w-[480px] flex-col overflow-y-auto rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>

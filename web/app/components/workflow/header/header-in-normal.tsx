@@ -18,6 +18,7 @@ import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import VersionHistoryButton from './version-history-button'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -41,6 +42,7 @@ const HeaderInNormal = ({
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
@@ -53,6 +55,7 @@ const HeaderInNormal = ({
     setShowDebugAndPreviewPanel(false)
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
+    closeAllInputFieldPanels()
   }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel])
 
   return (

@@ -44,7 +44,6 @@ import {
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
-import { canFindTool } from '@/utils'
 import { MAX_PARALLEL_LIMIT } from '@/config'
 import { useNodesMetaData } from '.'
 
@@ -527,6 +526,7 @@ export const useWorkflowReadOnly = () => {
     getWorkflowReadOnly,
   }
 }
+
 export const useNodesReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)

@@ -21,17 +21,19 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const InputFieldPanel = () => {
   const { t } = useTranslation()
   const nodes = useNodes<DataSourceNodeType>()
-  const setShowInputFieldPanel = useStore(state => state.setShowInputFieldPanel)
+  const {
+    closeAllInputFieldPanels,
+    toggleInputFieldPreviewPanel,
+    isPreviewing,
+    isEditing,
+  } = useInputFieldPanel()
   const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
   const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
-  const showInputFieldPreviewPanel = useStore(state => state.showInputFieldPreviewPanel)
-  const setShowInputFieldPreviewPanel = useStore(state => state.setShowInputFieldPreviewPanel)
-  const inputFieldEditPanelProps = useStore(state => state.inputFieldEditPanelProps)
-  const setInputFieldEditPanelProps = useStore(state => state.setInputFieldEditPanelProps)
 
   const getInputFieldsMap = () => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
@@ -86,14 +88,12 @@ const InputFieldPanel = () => {
   }, [setRagPipelineVariables, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
-    setShowInputFieldPanel?.(false)
-    setShowInputFieldPreviewPanel?.(false)
-    setInputFieldEditPanelProps?.(null)
-  }, [setShowInputFieldPanel, setShowInputFieldPreviewPanel, setInputFieldEditPanelProps])
+    closeAllInputFieldPanels()
+  }, [closeAllInputFieldPanels])
 
   const togglePreviewPanel = useCallback(() => {
-    setShowInputFieldPreviewPanel?.(!showInputFieldPreviewPanel)
-  }, [showInputFieldPreviewPanel, setShowInputFieldPreviewPanel])
+    toggleInputFieldPreviewPanel()
+  }, [toggleInputFieldPreviewPanel])
 
   const allVariableNames = useMemo(() => {
     return ragPipelineVariables?.map(variable => variable.variable) || []
@@ -110,10 +110,10 @@ const InputFieldPanel = () => {
           size='small'
           className={cn(
             'shrink-0 gap-x-px px-1.5',
-            showInputFieldPreviewPanel && 'bg-state-accent-active text-text-accent',
+            isPreviewing && 'bg-state-accent-active text-text-accent',
           )}
           onClick={togglePreviewPanel}
-          disabled={!!inputFieldEditPanelProps}
+          disabled={isEditing}
         >
           <RiEyeLine className='size-3.5' />
           <span className='px-[3px]'>{t('datasetPipeline.operations.preview')}</span>
@@ -151,7 +151,7 @@ const InputFieldPanel = () => {
                   nodeId={key}
                   LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
                   inputFields={inputFields}
-                  readonly={showInputFieldPreviewPanel || !!inputFieldEditPanelProps}
+                  readonly={isPreviewing || isEditing}
                   labelClassName='pt-1 pb-1'
                   handleInputFieldsChange={updateInputFields}
                   allVariableNames={allVariableNames}
@@ -165,7 +165,7 @@ const InputFieldPanel = () => {
           nodeId='shared'
           LabelRightContent={<GlobalInputs />}
           inputFields={inputFieldsMap.current.shared || []}
-          readonly={showInputFieldPreviewPanel || !!inputFieldEditPanelProps}
+          readonly={isPreviewing || isEditing}
           labelClassName='pt-2 pb-1'
           handleInputFieldsChange={updateInputFields}
           allVariableNames={allVariableNames}

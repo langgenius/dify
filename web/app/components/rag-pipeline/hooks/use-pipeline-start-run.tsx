@@ -5,6 +5,7 @@ import {
 } from '@/app/components/workflow/types'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import {
+  useInputFieldPanel,
   useNodesSyncDraft,
 } from '.'
 
@@ -12,6 +13,7 @@ export const usePipelineStartRun = () => {
   const workflowStore = useWorkflowStore()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
     const {
@@ -28,6 +30,7 @@ export const usePipelineStartRun = () => {
     } = workflowStore.getState()
 
     setShowEnvPanel(false)
+    closeAllInputFieldPanels()
 
     if (showDebugAndPreviewPanel) {
       handleCancelDebugAndPreviewPanel()
