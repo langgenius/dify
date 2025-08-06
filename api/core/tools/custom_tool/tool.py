@@ -1,5 +1,6 @@
 import json
 from collections.abc import Generator
+from dataclasses import dataclass
 from os import getenv
 from typing import Any, Optional, Union
 from urllib.parse import urlencode
@@ -18,6 +19,19 @@ API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
     int(getenv("API_TOOL_DEFAULT_READ_TIMEOUT", "60")),
 )
+
+
+@dataclass
+class ParsedResponse:
+    """Represents a parsed HTTP response with type information"""
+    content: Union[str, dict]
+    is_json: bool
+    
+    def to_string(self) -> str:
+        """Convert response to string format for credential validation"""
+        if isinstance(self.content, dict):
+            return json.dumps(self.content, ensure_ascii=False)
+        return str(self.content)
 
 
 class ApiTool(Tool):
@@ -58,9 +72,9 @@ class ApiTool(Tool):
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        parsed_response, _ = self.validate_and_parse_response(response)
+        parsed_response = self.validate_and_parse_response(response)
         # For credential validation, always return as string
-        return parsed_response if isinstance(parsed_response, str) else str(parsed_response)
+        return parsed_response.to_string()
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
@@ -114,37 +128,37 @@ class ApiTool(Tool):
 
         return headers
 
-    def validate_and_parse_response(self, response: httpx.Response) -> tuple[Union[str, dict], bool]:
+    def validate_and_parse_response(self, response: httpx.Response) -> ParsedResponse:
         """
-        validate the response and return parsed content with JSON flag
-
-        :return: tuple of (parsed_response, is_json) where parsed_response is either str or dict
+        validate the response and return parsed content with type information
+        
+        :return: ParsedResponse with content and is_json flag
         """
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
                 raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
-                return "Empty response from the tool, please check your parameters and try again.", False
-
+                return ParsedResponse(
+                    "Empty response from the tool, please check your parameters and try again.", 
+                    False
+                )
+            
             # Check content type
             content_type = response.headers.get("content-type", "").lower()
             is_json_content_type = "application/json" in content_type
-
+            
             # Try to parse as JSON
             try:
                 json_response = response.json()
+                # If content-type indicates JSON, return as JSON object
                 if is_json_content_type:
-                    # Return the original JSON object and mark as JSON
-                    return json_response, True
+                    return ParsedResponse(json_response, True)
                 else:
-                    # Even if it's valid JSON, if content-type doesn't indicate JSON, treat as text
-                    try:
-                        return json.dumps(json_response, ensure_ascii=False), False
-                    except Exception:
-                        return json.dumps(json_response), False
+                    # If content-type doesn't indicate JSON, treat as text regardless of content
+                    return ParsedResponse(response.text, False)
             except Exception:
                 # Not valid JSON, return as text
-                return response.text, False
+                return ParsedResponse(response.text, False)
         else:
             raise ValueError(f"Invalid response type {type(response)}")
 
@@ -385,12 +399,16 @@ class ApiTool(Tool):
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
         # validate response
-        parsed_response, is_json = self.validate_and_parse_response(response)
+        parsed_response = self.validate_and_parse_response(response)
 
         # assemble invoke message based on response type
-        if is_json and isinstance(parsed_response, dict):
-            yield self.create_json_message(parsed_response)
+        if parsed_response.is_json and isinstance(parsed_response.content, dict):
+            yield self.create_json_message(parsed_response.content)
         else:
             # Convert to string if needed and create text message
-            text_response = parsed_response if isinstance(parsed_response, str) else str(parsed_response)
+            text_response = (
+                parsed_response.content 
+                if isinstance(parsed_response.content, str) 
+                else str(parsed_response.content)
+            )
             yield self.create_text_message(text_response)
