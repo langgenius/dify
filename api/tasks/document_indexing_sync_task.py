@@ -44,20 +44,6 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .where(
-                db.and_(
-                    DataSourceOauthBinding.tenant_id == document.tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                )
-            )
-            .first()
-        )
-        if not data_source_binding:
-            raise ValueError("Data source binding not found.")
 
         loader = NotionExtractor(
             notion_workspace_id=workspace_id,
