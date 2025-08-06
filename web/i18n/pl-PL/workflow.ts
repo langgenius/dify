@@ -108,13 +108,12 @@ const translation = {
     versionHistory: 'Historia wersji',
     exportSVG: 'Eksportuj jako SVG',
     exportJPEG: 'Eksportuj jako JPEG',
-    noExist: 'Nie ma takiej zmiennej',
     exportPNG: 'Eksportuj jako PNG',
     publishUpdate: 'Opublikuj aktualizację',
-    referenceVar: 'Zmienna odniesienia',
     addBlock: 'Dodaj węzeł',
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
+    tagBound: 'Liczba aplikacji korzystających z tego tagu',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -221,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Narzędzia',
     'allTool': 'Wszystkie',
-    'builtInTool': 'Wbudowane',
     'customTool': 'Niestandardowe',
     'workflowTool': 'Przepływ pracy',
     'question-understand': 'Zrozumienie pytania',
@@ -234,6 +232,8 @@ const translation = {
     'plugin': 'Wtyczka',
     'searchBlock': 'Wyszukaj węzeł',
     'blocks': 'Węzły',
+    'addAll': 'Dodaj wszystko',
+    'allAdded': 'Wszystko dodane',
   },
   blocks: {
     'start': 'Start',
@@ -364,7 +364,10 @@ const translation = {
         retryFailedTimes: '{{times}} ponawianie prób nie powiodło się',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Użyj zmiennej',
+        input: 'Wartość wejściowa',
+      },
     },
     start: {
       required: 'wymagane',
@@ -491,6 +494,7 @@ const translation = {
           select: 'Wybierz zmienną...',
         },
         title: 'Filtrowanie metadanych',
+        tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
     },
     http: {
@@ -551,6 +555,7 @@ const translation = {
       advancedDependencies: 'Zaawansowane zależności',
       advancedDependenciesTip: 'Dodaj niektóre preładowane zależności, które zajmują więcej czasu lub nie są domyślnie wbudowane',
       searchDependencies: 'Wyszukaj zależności',
+      syncFunctionSignature: 'Zsynchronizuj sygnaturę funkcji z kodem',
     },
     templateTransform: {
       inputVars: 'Zmienne wejściowe',
@@ -579,7 +584,6 @@ const translation = {
         'not empty': 'nie jest pusty',
         'null': 'jest null',
         'not null': 'nie jest null',
-        'regex match': 'Dopasowanie wyrażenia regularnego',
         'in': 'w',
         'not exists': 'nie istnieje',
         'exists': 'Istnieje',
@@ -602,7 +606,6 @@ const translation = {
       },
       addSubVariable: 'Zmienna podrzędna',
       select: 'Wybrać',
-      condition: 'Stan',
     },
     variableAssigner: {
       title: 'Przypisz zmienne',
@@ -670,6 +673,9 @@ const translation = {
         json: 'JSON wygenerowany przez narzędzien',
       },
       authorize: 'Autoryzuj',
+      insertPlaceholder2: 'wstaw zmienną',
+      settings: 'Ustawienia',
+      insertPlaceholder1: 'Wpisz lub naciśnij',
     },
     questionClassifiers: {
       model: 'model',
@@ -854,6 +860,8 @@ const translation = {
       learnMore: 'Dowiedz się więcej',
       strategyNotSet: 'Nie ustawiono strategii agentalnej',
       model: 'model',
+      parameterSchema: 'Schemat parametrów',
+      clickToViewParameterSchema: 'Kliknij, aby zobaczyć schemat parametrów',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +927,7 @@ const translation = {
       deleteSuccess: 'Wersja usunięta',
       restoreSuccess: 'Wersja przywrócona',
       restoreFailure: 'Nie udało się przywrócić wersji',
+      copyIdSuccess: 'Identyfikator skopiowany do schowka',
     },
     currentDraft: 'Aktualny szkic',
     nameThisVersion: 'Nazwij tę wersję',
@@ -929,6 +938,7 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+    copyId: 'Kopiuj ID',
   },
   debug: {
     noData: {
@@ -958,6 +968,15 @@ const translation = {
     },
     settingsTab: 'Ustawienia',
     lastRunTab: 'Ostatnie uruchomienie',
+    relations: {
+      dependencies: 'Zależności',
+      dependenciesDescription: 'Węzły, na których opiera się ten węzeł',
+      noDependents: 'Brak osób na utrzymaniu',
+      dependents: 'Zależności',
+      dependentsDescription: 'Węzły, które opierają się na tym węźle',
+      noDependencies: 'Brak zależności',
+    },
+    relationsTab: 'Stosunków',
   },
 }
 

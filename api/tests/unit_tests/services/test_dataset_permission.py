@@ -301,5 +301,5 @@ class TestDatasetPermissionService:
 
         # Verify debug message was logged with correct user and dataset information
         mock_logging_dependencies["logging"].debug.assert_called_with(
-            f"User {normal_user.id} does not have permission to access dataset {dataset.id}"
+            "User %s does not have permission to access dataset %s", normal_user.id, dataset.id
         )

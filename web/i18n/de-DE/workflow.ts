@@ -104,10 +104,8 @@ const translation = {
     loadMore: 'Weitere Workflows laden',
     noHistory: 'Keine Geschichte',
     exportSVG: 'Als SVG exportieren',
-    noExist: 'Keine solche Variable',
     versionHistory: 'Versionsverlauf',
     publishUpdate: 'Update veröffentlichen',
-    referenceVar: 'Referenzvariable',
     exportImage: 'Bild exportieren',
     exportJPEG: 'Als JPEG exportieren',
     exitVersions: 'Ausgangsversionen',
@@ -115,6 +113,7 @@ const translation = {
     addBlock: 'Knoten hinzufügen',
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
+    tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -221,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Werkzeuge',
     'allTool': 'Alle',
-    'builtInTool': 'Eingebaut',
     'customTool': 'Benutzerdefiniert',
     'workflowTool': 'Arbeitsablauf',
     'question-understand': 'Fragen verstehen',
@@ -234,6 +232,8 @@ const translation = {
     'agent': 'Agenten-Strategie',
     'searchBlock': 'Suchknoten',
     'blocks': 'Knoten',
+    'allAdded': 'Alle hinzugefügt',
+    'addAll': 'Alles hinzufügen',
   },
   blocks: {
     'start': 'Start',
@@ -364,7 +364,10 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Eingabewert',
+        variable: 'Verwende die Variable',
+      },
     },
     start: {
       required: 'erforderlich',
@@ -491,6 +494,7 @@ const translation = {
           search: 'Suchmetadaten',
         },
         title: 'Metadatenfilterung',
+        tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
     },
     http: {
@@ -551,6 +555,7 @@ const translation = {
       advancedDependencies: 'Erweiterte Abhängigkeiten',
       advancedDependenciesTip: 'Fügen Sie hier einige vorinstallierte Abhängigkeiten hinzu, die mehr Zeit in Anspruch nehmen oder nicht standardmäßig eingebaut sind',
       searchDependencies: 'Abhängigkeiten suchen',
+      syncFunctionSignature: 'Synchronisiere die Funktionssignatur mit dem Code',
     },
     templateTransform: {
       inputVars: 'Eingabevariablen',
@@ -579,7 +584,6 @@ const translation = {
         'not empty': 'ist nicht leer',
         'null': 'ist null',
         'not null': 'ist nicht null',
-        'regex match': 'Regex-Übereinstimmung',
         'not exists': 'existiert nicht',
         'in': 'in',
         'all of': 'alle',
@@ -602,7 +606,6 @@ const translation = {
       },
       select: 'Auswählen',
       addSubVariable: 'Untervariable',
-      condition: 'Bedingung',
     },
     variableAssigner: {
       title: 'Variablen zuweisen',
@@ -670,6 +673,9 @@ const translation = {
         json: 'von einem Tool generiertes JSON',
       },
       authorize: 'Autorisieren',
+      insertPlaceholder2: 'Fügen Sie die Variable ein.',
+      insertPlaceholder1: 'Tippen oder drücken',
+      settings: 'Einstellungen',
     },
     questionClassifiers: {
       model: 'Modell',
@@ -854,6 +860,8 @@ const translation = {
       learnMore: 'Weitere Informationen',
       configureModel: 'Modell konfigurieren',
       linkToPlugin: 'Link zu Plugins',
+      parameterSchema: 'Parameter-Schema',
+      clickToViewParameterSchema: 'Klicken Sie hier, um das Parameterschema anzuzeigen.',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +927,7 @@ const translation = {
       deleteFailure: 'Version löschen fehlgeschlagen',
       restoreSuccess: 'Version wiederhergestellt',
       updateFailure: 'Aktualisierung der Version fehlgeschlagen',
+      copyIdSuccess: 'ID in die Zwischenablage kopiert',
     },
     latest: 'Neueste',
     nameThisVersion: 'Nennen Sie diese Version',
@@ -929,6 +938,7 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+    copyId: 'ID kopieren',
   },
   debug: {
     noData: {
@@ -958,6 +968,15 @@ const translation = {
     },
     settingsTab: 'Einstellungen',
     lastRunTab: 'Letzte Ausführung',
+    relations: {
+      dependents: 'Angehörige',
+      dependenciesDescription: 'Knoten, auf die sich dieser Knoten stützt',
+      dependencies: 'Abhängigkeiten',
+      noDependencies: 'Keine Abhängigkeiten',
+      dependentsDescription: 'Knoten, die auf diesem Knoten basieren',
+      noDependents: 'Keine Angehörigen',
+    },
+    relationsTab: 'Beziehungen',
   },
 }
 

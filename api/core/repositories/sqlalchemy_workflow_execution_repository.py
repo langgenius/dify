@@ -6,7 +6,6 @@ import json
 import logging
 from typing import Optional, Union
 
-from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -204,46 +203,5 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
-            logger.debug(f"Updating cache for execution_id: {db_model.id}")
+            logger.debug("Updating cache for execution_id: %s", db_model.id)
             self._execution_cache[db_model.id] = db_model
-
-    def get(self, execution_id: str) -> Optional[WorkflowExecution]:
-        """
-        Retrieve a WorkflowExecution by its ID.
-
-        First checks the in-memory cache, and if not found, queries the database.
-        If found in the database, adds it to the cache for future lookups.
-
-        Args:
-            execution_id: The workflow execution ID
-
-        Returns:
-            The WorkflowExecution instance if found, None otherwise
-        """
-        # First check the cache
-        if execution_id in self._execution_cache:
-            logger.debug(f"Cache hit for execution_id: {execution_id}")
-            # Convert cached DB model to domain model
-            cached_db_model = self._execution_cache[execution_id]
-            return self._to_domain_model(cached_db_model)
-
-        # If not in cache, query the database
-        logger.debug(f"Cache miss for execution_id: {execution_id}, querying database")
-        with self._session_factory() as session:
-            stmt = select(WorkflowRun).where(
-                WorkflowRun.id == execution_id,
-                WorkflowRun.tenant_id == self._tenant_id,
-            )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowRun.app_id == self._app_id)
-
-            db_model = session.scalar(stmt)
-            if db_model:
-                # Add DB model to cache
-                self._execution_cache[execution_id] = db_model
-
-                # Convert to domain model and return
-                return self._to_domain_model(db_model)
-
-            return None

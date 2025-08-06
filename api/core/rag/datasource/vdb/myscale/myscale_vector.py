@@ -53,7 +53,7 @@ class MyScaleVector(BaseVector):
         return self.add_texts(documents=texts, embeddings=embeddings, **kwargs)
 
     def _create_collection(self, dimension: int):
-        logging.info(f"create MyScale collection {self._collection_name} with dimension {dimension}")
+        logging.info("create MyScale collection %s with dimension %s", self._collection_name, dimension)
         self._client.command(f"CREATE DATABASE IF NOT EXISTS {self._config.database}")
         fts_params = f"('{self._config.fts_params}')" if self._config.fts_params else ""
         sql = f"""
@@ -151,7 +151,7 @@ class MyScaleVector(BaseVector):
                 for r in self._client.query(sql).named_results()
             ]
         except Exception as e:
-            logging.exception(f"\033[91m\033[1m{type(e)}\033[0m \033[95m{str(e)}\033[0m")  # noqa:TRY401
+            logging.exception("\033[91m\033[1m%s\033[0m \033[95m%s\033[0m", type(e), str(e))  # noqa:TRY401
             return []
 
     def delete(self) -> None:

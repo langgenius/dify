@@ -147,7 +147,7 @@ class OceanBaseVector(BaseVector):
             logger.debug("Current OceanBase version is %s", ob_version)
             return version.parse(ob_version).base_version >= version.parse("4.3.5.1").base_version
         except Exception as e:
-            logger.warning(f"Failed to check OceanBase version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check OceanBase version: %s. Disabling hybrid search.", str(e))
             return False
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -229,7 +229,7 @@ class OceanBaseVector(BaseVector):
 
                     return docs
         except Exception as e:
-            logger.warning(f"Failed to fulltext search: {str(e)}.")
+            logger.warning("Failed to fulltext search: %s.", str(e))
             return []
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

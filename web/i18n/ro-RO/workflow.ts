@@ -106,15 +106,14 @@ const translation = {
     exportImage: 'Exportă imaginea',
     exportSVG: 'Exportă ca SVG',
     exportPNG: 'Exportă ca PNG',
-    noExist: 'Nu există o astfel de variabilă',
     exitVersions: 'Ieșire Versiuni',
     versionHistory: 'Istoricul versiunilor',
     publishUpdate: 'Publicați actualizarea',
-    referenceVar: 'Variabilă de referință',
     exportJPEG: 'Exportă ca JPEG',
     addBlock: 'Adaugă nod',
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
     needEndNode: 'Nodul de sfârșit trebuie adăugat',
+    tagBound: 'Numărul de aplicații care folosesc acest tag',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -221,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Instrumente',
     'allTool': 'Toate',
-    'builtInTool': 'Integrat',
     'customTool': 'Personalizat',
     'workflowTool': 'Flux de lucru',
     'question-understand': 'Înțelegerea întrebărilor',
@@ -234,6 +232,8 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Noduri',
     'searchBlock': 'Căutare nod',
+    'addAll': 'Adaugă tot',
+    'allAdded': 'Toate adăugate',
   },
   blocks: {
     'start': 'Începe',
@@ -364,7 +364,10 @@ const translation = {
         retries: '{{num}} Încercări',
         retryTimes: 'Reîncercați {{times}} ori în caz de eșec',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Folosește variabila',
+        input: 'Valoare de intrare',
+      },
     },
     start: {
       required: 'necesar',
@@ -491,6 +494,7 @@ const translation = {
           search: 'Căutare metadate',
         },
         title: 'Filtrarea metadatelor',
+        tip: 'Filtrarea metadatelor este procesul de utilizare a atributelor metadatelor (cum ar fi etichetele, categoriile sau permisiunile de acces) pentru a rafina și controla recuperarea informațiilor relevante într-un sistem.',
       },
     },
     http: {
@@ -551,6 +555,7 @@ const translation = {
       advancedDependencies: 'Dependențe avansate',
       advancedDependenciesTip: 'Adăugați câteva dependențe preîncărcate care necesită mai mult timp pentru a consuma sau nu sunt integrate implicit aici',
       searchDependencies: 'Căutați dependențe',
+      syncFunctionSignature: 'Sincronizați semnătura funcției cu codul',
     },
     templateTransform: {
       inputVars: 'Variabile de intrare',
@@ -579,7 +584,6 @@ const translation = {
         'not empty': 'nu este gol',
         'null': 'este null',
         'not null': 'nu este null',
-        'regex match': 'potrivire regex',
         'in': 'în',
         'not in': 'nu în',
         'exists': 'Există',
@@ -602,7 +606,6 @@ const translation = {
       },
       select: 'Alege',
       addSubVariable: 'Subvariabilă',
-      condition: 'Condiție',
     },
     variableAssigner: {
       title: 'Atribuie variabile',
@@ -670,6 +673,9 @@ const translation = {
         json: 'JSON generat de instrument',
       },
       authorize: 'Autorizați',
+      insertPlaceholder2: 'introduce o variabilă',
+      insertPlaceholder1: 'Scrieți sau apăsați',
+      settings: 'Setări',
     },
     questionClassifiers: {
       model: 'model',
@@ -854,6 +860,8 @@ const translation = {
       modelNotInstallTooltip: 'Acest model nu este instalat',
       linkToPlugin: 'Link către pluginuri',
       model: 'model',
+      parameterSchema: 'Schema parametrului',
+      clickToViewParameterSchema: 'Click pentru a vizualiza schema parametrilor',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +927,7 @@ const translation = {
       deleteFailure: 'Ștergerea versiunii a eșuat',
       updateSuccess: 'Versiune actualizată',
       updateFailure: 'Actualizarea versiunii a eșuat',
+      copyIdSuccess: 'ID copiat în clipboard',
     },
     latest: 'Cea mai recentă',
     title: 'Versiuni',
@@ -929,6 +938,7 @@ const translation = {
     releaseNotesPlaceholder: 'Descrie ce s-a schimbat',
     deletionTip: 'Ștergerea este irreversibilă, vă rugăm să confirmați.',
     currentDraft: 'Draftul curent',
+    copyId: 'Copiază ID',
   },
   debug: {
     noData: {
@@ -958,6 +968,15 @@ const translation = {
     },
     settingsTab: 'Setări',
     lastRunTab: 'Ultima execuție',
+    relations: {
+      dependencies: 'Dependenţele',
+      noDependencies: 'Fără dependențe',
+      dependents: 'Dependenţe',
+      noDependents: 'Fără persoane aflate în întreținere',
+      dependentsDescription: 'Noduri care se bazează pe acest nod',
+      dependenciesDescription: 'Noduri pe care se bazează acest nod',
+    },
+    relationsTab: 'Relații',
   },
 }
 

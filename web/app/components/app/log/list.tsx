@@ -470,8 +470,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               className="py-4"
               id="scrollableDiv"
               style={{
-                height: 1000, // Specify a value
-                overflow: 'auto',
                 display: 'flex',
                 flexDirection: 'column-reverse',
               }}>
@@ -690,7 +688,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <div className='overflow-x-auto'>
+    <div className='relative grow overflow-x-auto'>
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>

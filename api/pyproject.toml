@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.6.0"
+version = "1.7.1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -49,6 +49,8 @@ dependencies = [
     "opentelemetry-instrumentation==0.48b0",
     "opentelemetry-instrumentation-celery==0.48b0",
     "opentelemetry-instrumentation-flask==0.48b0",
+    "opentelemetry-instrumentation-redis==0.48b0",
+    "opentelemetry-instrumentation-requests==0.48b0",
     "opentelemetry-instrumentation-sqlalchemy==0.48b0",
     "opentelemetry-propagator-b3==1.27.0",
     # opentelemetry-proto1.28.0 depends on protobuf (>=5.0,<6.0),

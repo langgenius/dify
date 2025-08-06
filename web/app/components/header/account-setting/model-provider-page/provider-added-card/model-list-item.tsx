@@ -48,7 +48,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
     <div
       key={model.model}
       className={classNames(
-        'group flex items-center pl-2 pr-2.5 h-8 rounded-lg',
+        'group flex h-8 items-center rounded-lg pl-2 pr-2.5',
         isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
         model.deprecated && 'opacity-60',
       )}
@@ -105,7 +105,6 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 popupContent={
                   <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
                 }
-                needsDelay
               >
                 <Switch defaultValue={false} disabled size='md' />
               </Tooltip>

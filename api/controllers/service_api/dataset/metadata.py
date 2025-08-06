@@ -17,8 +17,8 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         metadata_args = MetadataArgs(**args)
 
@@ -43,7 +43,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, metadata_id):
         parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         dataset_id_str = str(dataset_id)
@@ -101,7 +101,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         parser = reqparse.RequestParser()
-        parser.add_argument("operation_data", type=list, required=True, nullable=True, location="json")
+        parser.add_argument("operation_data", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         metadata_args = MetadataOperationData(**args)
 

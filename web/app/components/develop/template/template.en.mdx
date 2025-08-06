@@ -580,11 +580,30 @@ The text generation application offers non-session support and is ideal for tran
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) Whether it is enabled
-        - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+      - `document` (object) Document settings  
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Document number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `image` (object) Image settings  
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Image number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `audio` (object) Audio settings  
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Audio number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `video` (object) Video settings  
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Video number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `custom` (object) Custom settings  
+        - `enabled` (bool) Whether it is enabled  
+        - `number_limits` (int) Custom number limit, default is 3  
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one. 
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)
