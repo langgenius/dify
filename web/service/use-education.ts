@@ -59,6 +59,7 @@ export const useEducationStatus = (disable?: boolean) => {
       return get<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null }>('/account/education')
     },
     retry: false,
+    gcTime: 0, // No cache. Prevent switch account caused stale data
   })
 }
 

@@ -12,14 +12,14 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from './constants'
-import { useEducationAutocomplete, useEducationVerify, useInvalidateEducationStatus } from '@/service/use-education'
+import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from 'next/navigation'
+import { useProviderContext } from '@/context/provider-context'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -77,10 +77,14 @@ const isExpired = (expireAt?: number, timezone?: string) => {
   const expiredDay = dayjs.unix(expireAt).tz(timezone).startOf('day')
   return today.isSame(expiredDay) || today.isAfter(expiredDay)
 }
+
 const useEducationReverifyNotice = ({
   onNotice,
 }: useEducationReverifyNoticeParams) => {
-  const { allowRefreshEducationVerify, educationAccountExpireAt, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
+  const { userProfile: { timezone } } = useAppContext()
+  // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
+  // const isLoading = !educationInfo
+  const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
   const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
     defaultValue: 0,
   })
@@ -90,13 +94,6 @@ const useEducationReverifyNotice = ({
   const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
     defaultValue: false,
   })
-  const { userProfile: { timezone } } = useAppContext()
-  const updateEducationStatus = useInvalidateEducationStatus()
-
-  useEffect(() => {
-    // To avoid use other account's education info
-    updateEducationStatus()
-  }, [])
 
   useEffect(() => {
     if(isLoading || !timezone)
