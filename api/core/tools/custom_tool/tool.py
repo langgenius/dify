@@ -24,9 +24,10 @@ API_TOOL_DEFAULT_TIMEOUT = (
 @dataclass
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
+
     content: Union[str, dict]
     is_json: bool
-    
+
     def to_string(self) -> str:
         """Convert response to string format for credential validation"""
         if isinstance(self.content, dict):
@@ -131,7 +132,7 @@ class ApiTool(Tool):
     def validate_and_parse_response(self, response: httpx.Response) -> ParsedResponse:
         """
         validate the response and return parsed content with type information
-        
+
         :return: ParsedResponse with content and is_json flag
         """
         if isinstance(response, httpx.Response):
@@ -139,14 +140,13 @@ class ApiTool(Tool):
                 raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
                 return ParsedResponse(
-                    "Empty response from the tool, please check your parameters and try again.", 
-                    False
+                    "Empty response from the tool, please check your parameters and try again.", False
                 )
-            
+
             # Check content type
             content_type = response.headers.get("content-type", "").lower()
             is_json_content_type = "application/json" in content_type
-            
+
             # Try to parse as JSON
             try:
                 json_response = response.json()
@@ -407,8 +407,6 @@ class ApiTool(Tool):
         else:
             # Convert to string if needed and create text message
             text_response = (
-                parsed_response.content 
-                if isinstance(parsed_response.content, str) 
-                else str(parsed_response.content)
+                parsed_response.content if isinstance(parsed_response.content, str) else str(parsed_response.content)
             )
             yield self.create_text_message(text_response)
