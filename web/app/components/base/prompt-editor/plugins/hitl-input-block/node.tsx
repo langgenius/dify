@@ -34,7 +34,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
   createDOM(): HTMLElement {
     const div = document.createElement('div')
-    div.classList.add('flex', 'w-full', 'items-center', 'align-middle')
+    div.classList.add('flex', 'items-center', 'align-middle')
     return div
   }
 

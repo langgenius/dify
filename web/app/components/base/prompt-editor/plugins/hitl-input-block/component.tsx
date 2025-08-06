@@ -21,7 +21,7 @@ const HITLInputComponent: FC<QueryBlockComponentProps> = ({
   return (
     <div
       className={`
-        flex h-6 items-center rounded-[5px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1 pr-0.5 hover:bg-[#FFEAD5]
+        flex h-6 w-full items-center rounded-[5px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1 pr-0.5 hover:bg-[#FFEAD5]
         ${isSelected && '!border-[#FD853A]'}
       `}
       ref={ref}
