@@ -1,5 +1,4 @@
 import hashlib
-import os
 from typing import Union
 
 from Crypto.Cipher import AES
