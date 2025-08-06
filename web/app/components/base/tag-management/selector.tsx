@@ -238,12 +238,19 @@ const TagSelector: FC<TagSelectorProps> = ({
   }, [selectedTags, tagList])
 
   const Trigger = () => {
+    const hasNoTags = !triggerContent
     return (
       <div className={cn(
         'group/tip relative flex w-full cursor-pointer items-center gap-1 rounded-md px-2 py-[7px] hover:bg-state-base-hover',
       )}>
-        <Tag01 className='h-3 w-3 shrink-0 text-components-input-text-placeholder' />
-        <div className='system-sm-regular grow truncate  text-start text-components-input-text-placeholder'>
+        <Tag01 className={cn(
+          'h-3 w-3 shrink-0 transition-colors',
+          hasNoTags ? 'text-components-input-text-placeholder' : 'text-text-tertiary',
+        )} />
+        <div className={cn(
+          'system-sm-regular grow truncate text-start transition-colors',
+          hasNoTags ? 'italic text-components-input-text-placeholder' : 'text-text-secondary',
+        )}>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>
