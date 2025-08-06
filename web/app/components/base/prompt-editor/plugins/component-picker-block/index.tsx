@@ -20,6 +20,7 @@ import type {
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
+  RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
@@ -37,6 +38,7 @@ type ComponentPickerProps = {
   triggerString: string
   contextBlock?: ContextBlockType
   queryBlock?: QueryBlockType
+  requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
@@ -47,6 +49,7 @@ const ComponentPicker = ({
   triggerString,
   contextBlock,
   queryBlock,
+  requestURLBlock,
   historyBlock,
   variableBlock,
   externalToolBlock,
@@ -87,6 +90,7 @@ const ComponentPicker = ({
     variableBlock,
     externalToolBlock,
     workflowVariableBlock,
+    requestURLBlock,
   )
 
   const onSelectOption = useCallback(

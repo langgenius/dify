@@ -664,6 +664,12 @@ const translation = {
         desc: '插入用户查询模板',
       },
     },
+    requestURL: {
+      item: {
+        title: '请求 URL',
+        desc: '插入请求 URL',
+      },
+    },
     existed: 'Prompt 中已存在',
   },
   imageUploader: {

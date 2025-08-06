@@ -44,6 +44,11 @@ import {
   HITLInputBlockReplacementBlock,
   HITLInputNode,
 } from './plugins/hitl-input-block'
+import {
+  RequestURLBlock,
+  RequestURLBlockNode,
+  RequestURLBlockReplacementBlock,
+} from './plugins/request-url-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -57,6 +62,7 @@ import type {
   HITLInputBlockType,
   HistoryBlockType,
   QueryBlockType,
+  RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -82,6 +88,7 @@ export type PromptEditorProps = {
   onFocus?: () => void
   contextBlock?: ContextBlockType
   queryBlock?: QueryBlockType
+  requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
@@ -105,6 +112,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onFocus,
   contextBlock,
   queryBlock,
+  requestURLBlock,
   historyBlock,
   variableBlock,
   externalToolBlock,
@@ -125,6 +133,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       ContextBlockNode,
       HistoryBlockNode,
       QueryBlockNode,
+      RequestURLBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
       HITLInputNode,
@@ -184,6 +193,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
@@ -194,6 +204,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
@@ -245,6 +256,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <HITLInputBlock />
               <HITLInputBlockReplacementBlock />
+            </>
+          )
+        }
+        {
+          requestURLBlock?.show && (
+            <>
+              <RequestURLBlock {...requestURLBlock} />
+              <RequestURLBlockReplacementBlock {...requestURLBlock} />
             </>
           )
         }

@@ -664,6 +664,12 @@ const translation = {
         desc: 'Insert user query template',
       },
     },
+    requestURL: {
+      item: {
+        title: 'Request URL',
+        desc: 'Insert request URL',
+      },
+    },
     existed: 'Already exists in the prompt',
   },
   imageUploader: {

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiGlobalLine } from '@remixicon/react'
 import { $insertNodes } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
@@ -7,6 +8,7 @@ import type {
   ExternalToolBlockType,
   HistoryBlockType,
   QueryBlockType,
+  RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
@@ -14,6 +16,7 @@ import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
 import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
 import { INSERT_QUERY_BLOCK_COMMAND } from '../query-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { INSERT_REQUEST_URL_BLOCK_COMMAND } from '../request-url-block'
 import { $createCustomTextNode } from '../custom-text/node'
 import { PromptMenuItem } from './prompt-option'
 import { VariableMenuItem } from './variable-option'
@@ -32,6 +35,7 @@ export const usePromptOptions = (
   contextBlock?: ContextBlockType,
   queryBlock?: QueryBlockType,
   historyBlock?: HistoryBlockType,
+  requestURLBlock?: RequestURLBlockType,
 ) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -83,6 +87,28 @@ export const usePromptOptions = (
         },
       }),
     )
+  }
+
+  if (requestURLBlock?.show) {
+    promptOptions.push(new PickerBlockMenuOption({
+      key: t('common.promptEditor.requestURL.item.title'),
+      group: 'request URL',
+      render: ({ isSelected, onSelect, onSetHighlight }) => {
+        return <PromptMenuItem
+          title={t('common.promptEditor.requestURL.item.title')}
+          icon={<RiGlobalLine className='h-4 w-4 text-util-colors-violet-violet-600' />}
+          disabled={!requestURLBlock.selectable}
+          isSelected={isSelected}
+          onClick={onSelect}
+          onMouseEnter={onSetHighlight}
+        />
+      },
+      onSelect: () => {
+        if (!requestURLBlock?.selectable)
+          return
+        editor.dispatchCommand(INSERT_REQUEST_URL_BLOCK_COMMAND, undefined)
+      },
+    }))
   }
 
   if (historyBlock?.show) {
@@ -267,9 +293,10 @@ export const useOptions = (
   variableBlock?: VariableBlockType,
   externalToolBlockType?: ExternalToolBlockType,
   workflowVariableBlockType?: WorkflowVariableBlockType,
+  requestURLBlock?: RequestURLBlockType,
   queryString?: string,
 ) => {
-  const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
+  const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock, requestURLBlock)
   const variableOptions = useVariableOptions(variableBlock, queryString)
   const externalToolOptions = useExternalToolOptions(externalToolBlockType, queryString)
   const workflowVariableOptions = useMemo(() => {

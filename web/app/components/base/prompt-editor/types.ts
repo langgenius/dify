@@ -45,6 +45,13 @@ export type HistoryBlockType = {
   onEditRole?: () => void
 }
 
+export type RequestURLBlockType = {
+  show?: boolean
+  selectable?: boolean
+  onInsert?: () => void
+  onDelete?: () => void
+}
+
 export type VariableBlockType = {
   show?: boolean
   variables?: Option[]

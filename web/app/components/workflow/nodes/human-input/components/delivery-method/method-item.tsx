@@ -13,17 +13,29 @@ import Indicator from '@/app/components/header/indicator'
 import EmailConfigureModal from './email-configure-modal'
 import type { DeliveryMethod } from '../../types'
 import { DeliveryMethodType } from '../../types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Props = {
   method: DeliveryMethod
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
   onChange: (method: DeliveryMethod) => void
   onDelete: (type: DeliveryMethodType) => void
 }
 
-const DeliveryMethodItem: React.FC<Props> = ({ method, onChange, onDelete }) => {
+const DeliveryMethodItem: React.FC<Props> = ({
+  method,
+  nodesOutputVars,
+  availableNodes,
+  onChange,
+  onDelete,
+}) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = React.useState(false)
   const [showEmailModal, setShowEmailModal] = React.useState(false)
@@ -32,6 +44,13 @@ const DeliveryMethodItem: React.FC<Props> = ({ method, onChange, onDelete }) => 
     onChange({
       ...method,
       enabled,
+    })
+  }
+
+  const handleConfigChange = (config: any) => {
+    onChange({
+      ...method,
+      config,
     })
   }
 
@@ -93,9 +112,12 @@ const DeliveryMethodItem: React.FC<Props> = ({ method, onChange, onDelete }) => 
       {showEmailModal && (
         <EmailConfigureModal
           isShow={showEmailModal}
+          config={method.config}
+          nodesOutputVars={nodesOutputVars}
+          availableNodes={availableNodes}
           onClose={() => setShowEmailModal(false)}
           onConfirm={(data) => {
-            onChange({ ...method, ...data })
+            handleConfigChange(data)
             setShowEmailModal(false)
           }}
         />

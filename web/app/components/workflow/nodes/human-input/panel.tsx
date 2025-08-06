@@ -14,6 +14,9 @@ import Divider from '@/app/components/base/divider'
 import DeliveryMethod from './components/delivery-method'
 import UserActionItem from './components/user-action'
 import TimeoutInput from './components/timeout'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { VarType } from '@/app/components/workflow/types'
+import type { Var } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -30,12 +33,22 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     handleUserActionDelete,
     handleTimeoutChange,
   } = useConfig(id, data)
+
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    },
+  })
+
   return (
     <div className='py-2'>
       {/* delivery methods */}
       <DeliveryMethod
         value={inputs.delivery_methods || []}
-        onchange={handleDeliveryMethodChange}
+        nodesOutputVars={availableVars}
+        availableNodes={availableNodesWithParent}
+        onChange={handleDeliveryMethodChange}
       />
       <div className='px-4 py-2'>
         <Divider className='!my-0 !h-px !bg-divider-subtle' />

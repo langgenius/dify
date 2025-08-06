@@ -3,37 +3,43 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
-import TextArea from '@/app/components/base/textarea'
 import Button from '@/app/components/base/button'
+import MailBodyInput from './mail-body-input'
+import type { EmailConfig, Recipient } from '../../types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
-
-type Recipient = {
-  value: string
-  label: string
-}
 
 type EmailConfigureModalProps = {
   isShow: boolean
   onClose: () => void
   onConfirm: (data: any) => void
+  config?: EmailConfig
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const EmailConfigureModal = ({
   isShow,
   onClose,
   onConfirm,
+  config,
+  nodesOutputVars = [],
+  availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
 
-  const [recipients, setRecipients] = useState<Recipient[]>([])
-  const [subject, setSubject] = useState('')
-  const [body, setBody] = useState('')
+  const [recipients, setRecipients] = useState<Recipient[]>(config?.recipients || [])
+  const [subject, setSubject] = useState(config?.subject || '')
+  const [body, setBody] = useState(config?.body || '')
 
   const handleConfirm = useCallback(() => {
     onConfirm({
-      recipients: recipients.map(recipient => recipient.value),
+      recipients,
       subject,
       body,
     })
@@ -73,11 +79,11 @@ const EmailConfigureModal = ({
           <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.body`)}
           </div>
-          <TextArea
-            className="min-h-[200px] w-full"
+          <MailBodyInput
             value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder={t('email.configure.enterBody', 'Enter email content')}
+            onChange={setBody}
+            nodesOutputVars={nodesOutputVars}
+            availableNodes={availableNodes}
           />
         </div>
       </div>

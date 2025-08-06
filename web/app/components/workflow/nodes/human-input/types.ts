@@ -19,10 +19,22 @@ export enum DeliveryMethodType {
   Slack = 'slack',
 }
 
+export type Recipient = {
+  type: 'member' | 'external'
+  email?: string
+  user_id?: string
+}
+
+export type EmailConfig = {
+  recipients: Recipient[]
+  subject: string
+  body: string
+}
+
 export type DeliveryMethod = {
   type: DeliveryMethodType
   enabled: boolean
-  config?: Record<string, any>
+  config?: EmailConfig
 }
 
 export enum UserActionButtonType {

@@ -5,15 +5,26 @@ import Tooltip from '@/app/components/base/tooltip'
 import MethodSelector from './method-selector'
 import MethodItem from './method-item'
 import type { DeliveryMethod, DeliveryMethodType } from '../../types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Props = {
   value: DeliveryMethod[]
-  onchange: (value: DeliveryMethod[]) => void
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
+  onChange: (value: DeliveryMethod[]) => void
 }
 
-const DeliveryMethodForm: React.FC<Props> = ({ value, onchange }) => {
+const DeliveryMethodForm: React.FC<Props> = ({
+  value,
+  nodesOutputVars,
+  availableNodes,
+  onChange,
+}) => {
   const { t } = useTranslation()
 
   const handleMethodChange = (target: DeliveryMethod) => {
@@ -22,17 +33,17 @@ const DeliveryMethodForm: React.FC<Props> = ({ value, onchange }) => {
       if (index !== -1)
         draft[index] = target
     })
-    onchange(newMethods)
+    onChange(newMethods)
   }
 
   const handleMethodAdd = (newMethod: DeliveryMethod) => {
     const newMethods = [...value, newMethod]
-    onchange(newMethods)
+    onChange(newMethods)
   }
 
   const handleMethodDelete = (type: DeliveryMethodType) => {
     const newMethods = value.filter(method => method.type !== type)
-    onchange(newMethods)
+    onChange(newMethods)
   }
 
   return (
@@ -62,6 +73,8 @@ const DeliveryMethodForm: React.FC<Props> = ({ value, onchange }) => {
               key={index}
               onChange={handleMethodChange}
               onDelete={handleMethodDelete}
+              nodesOutputVars={nodesOutputVars}
+              availableNodes={availableNodes}
             />
           ))}
         </div>
