@@ -1460,23 +1460,10 @@ class DocumentService:
                             exist_document[data_source_info["notion_page_id"]] = document.id
                     for notion_info in notion_info_list:
                         workspace_id = notion_info.workspace_id
-                        data_source_binding = (
-                            db.session.query(DataSourceOauthBinding)
-                            .where(
-                                db.and_(
-                                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                                    DataSourceOauthBinding.provider == "notion",
-                                    DataSourceOauthBinding.disabled == False,
-                                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                                )
-                            )
-                            .first()
-                        )
-                        if not data_source_binding:
-                            raise ValueError("Data source binding not found.")
                         for page in notion_info.pages:
                             if page.page_id not in exist_page_ids:
                                 data_source_info = {
+                                    "credential_id": notion_info.credential_id,
                                     "notion_workspace_id": workspace_id,
                                     "notion_page_id": page.page_id,
                                     "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
@@ -1956,22 +1943,9 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
-                        .where(
-                            db.and_(
-                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                                DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
-                                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                            )
-                        )
-                        .first()
-                    )
-                    if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
                         data_source_info = {
+                            "credential_id": notion_info.credential_id,
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page.page_id,
                             "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
