@@ -231,14 +231,20 @@ const ModelModal: FC<ModelModalProps> = ({
                   inputClassName='justify-start'
                   ref={formRef}
                 />
-                <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
-                <ModelLoadBalancingConfigs withSwitch {...{
-                  draftConfig,
-                  setDraftConfig,
-                  provider,
-                  currentCustomConfigurationModelFixedFields,
-                  configurationMethod: configurateMethod,
-                }} />
+                {
+                  !!draftConfig && (
+                    <>
+                      <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
+                      <ModelLoadBalancingConfigs withSwitch {...{
+                        draftConfig,
+                        setDraftConfig,
+                        provider,
+                        currentCustomConfigurationModelFixedFields,
+                        configurationMethod: configurateMethod,
+                      }} />
+                    </>
+                  )
+                }
               </div>
 
               <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 bg-components-panel-bg px-2 pb-6 pt-4'>
