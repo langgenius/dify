@@ -7,6 +7,7 @@ on:
       - "deploy/dev"
       - "deploy/enterprise"
       - "build/**"
+      - "release/e-*"
       - "deploy/rag-dev"
     tags:
       - "*"

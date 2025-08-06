@@ -5,11 +5,23 @@ import {
 import type { PanelProps } from '@/app/components/workflow/panel'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
-import Record from '@/app/components/workflow/panel/record'
-import TestRunPanel from './test-run'
-import InputFieldPanel from './input-field'
-import PreviewPanel from './input-field/preview'
-import InputFieldEditorPanel from './input-field/editor'
+import dynamic from 'next/dynamic'
+
+const Record = dynamic(() => import('@/app/components/workflow/panel/record'), {
+  ssr: false,
+})
+const TestRunPanel = dynamic(() => import('@/app/components/rag-pipeline/components/panel/test-run'), {
+  ssr: false,
+})
+const InputFieldPanel = dynamic(() => import('./input-field'), {
+  ssr: false,
+})
+const InputFieldEditorPanel = dynamic(() => import('./input-field/editor'), {
+  ssr: false,
+})
+const PreviewPanel = dynamic(() => import('./input-field/preview'), {
+  ssr: false,
+})
 
 const RagPipelinePanelOnRight = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)

@@ -294,6 +294,18 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    alignNodes: 'Align Nodes',
+    alignLeft: 'Left',
+    alignCenter: 'Center',
+    alignRight: 'Right',
+    alignTop: 'Top',
+    alignMiddle: 'Middle',
+    alignBottom: 'Bottom',
+    vertical: 'Vertical',
+    horizontal: 'Horizontal',
+    distributeHorizontal: 'Space Horizontally',
+    distributeVertical: 'Space Vertically',
+    selectionAlignment: 'Selection Alignment',
   },
   variableReference: {
     noAvailableVars: 'No available variables',
@@ -965,6 +977,7 @@ const translation = {
   debug: {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
+    relationsTab: 'Relations',
     noData: {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
@@ -989,6 +1002,14 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+    },
+    relations: {
+      dependencies: 'Dependencies',
+      dependents: 'Dependents',
+      dependenciesDescription: 'Nodes that this node relies on',
+      dependentsDescription: 'Nodes that rely on this node',
+      noDependencies: 'No dependencies',
+      noDependents: 'No dependents',
     },
   },
 }

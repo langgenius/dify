@@ -44,7 +44,6 @@ from models.dataset import (
     Pipeline,
 )
 from models.model import UploadFile
-from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
