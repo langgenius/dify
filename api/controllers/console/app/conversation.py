@@ -241,7 +241,6 @@ class ChatConversationApi(Resource):
                 .having(func.count(Message.id) >= args["message_count_gte"])
             )
 
-
         match args["sort_by"]:
             case "created_at":
                 query = query.order_by(Conversation.created_at.asc())
