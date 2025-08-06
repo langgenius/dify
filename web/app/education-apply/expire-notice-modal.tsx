@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { RiExternalLinkLine } from '@remixicon/react'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useModalContextSelector } from '@/context/modal-context'
 
 export type ExpireNoticeModalPayloadProps = {
   expireAt: number
@@ -18,30 +19,38 @@ export type Props = {
   onConfirm: () => void
 } & ExpireNoticeModalPayloadProps
 
+const i18nPrefix = 'education.notice'
+
 const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConfirm }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const eduDocLink = docLink('/getting-started/dify-for-education')
   const { formatTime } = useTimestamp()
+    const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+
   return (
     <Modal
       isShow
       onClose={onClose}
-      title={expired ? 'Your education status has expired' : `Your education status will expire on ${formatTime(expireAt, t('appLog.dateFormat') as string)}`}
+      title={expired ? t(`${i18nPrefix}.expired.title`) : t(`${i18nPrefix}.isAboutToExpire.title`, { date: formatTime(expireAt, t('appLog.dateFormat') as string), escapeValue: false })}
       closable
       className='max-w-[600px]'
     >
       <div className='body-md-regular mt-5 space-y-5 text-text-secondary'>
         <div>
-          Don't worry — this won't affect your current subscription, but you won't get the education discount when it renews unless you verify your status again.
+          {expired ? (<>
+            <div>{t(`${i18nPrefix}.expired.summary.line1`)}</div>
+            <div>{t(`${i18nPrefix}.expired.summary.line2`)}</div>
+          </>
+          ) : t(`${i18nPrefix}.isAboutToExpire.summary`)}
         </div>
         <div>
-          <strong className='title-md-semi-bold block'>Still in education?</strong>
-          Re-verify now to get a new coupon for the upcoming academic year. It'll be saved to your account and ready to use at your next renewal.
+          <strong className='title-md-semi-bold block'>{t(`${i18nPrefix}.stillInEducation.title`)}</strong>
+          {t(`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`)}
         </div>
         <div>
-          <strong className='title-md-semi-bold block'>Already graduated?</strong>
-          Your current subscription will still remain active. When it ends, you'll be moved to the Sandbox plan, or you can upgrade anytime to restore full access to paid features.
+          <strong className='title-md-semi-bold block'>{t(`${i18nPrefix}.alreadyGraduated.title`)}</strong>
+          {t(`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`)}
         </div>
       </div>
       <div className="mt-7 flex items-center justify-between space-x-2">
@@ -51,17 +60,20 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose, onConf
         </Link>
         <div className='flex space-x-2'>
           {expired ? (
-            <Button onClick={onClose} className='flex items-center space-x-1'>
+            <Button onClick={() => {
+              onClose()
+              setShowPricingModal()
+            }} className='flex items-center space-x-1'>
               <SparklesSoftAccent className='size-4' />
-              <div className='text-components-button-secondary-accent-text'>Upgrade</div>
+              <div className='text-components-button-secondary-accent-text'>{t(`${i18nPrefix}.action.upgrade`)}</div>
             </Button>
           ) : (
             <Button onClick={onClose}>
-            Dismiss
-          </Button>
+              {t(`${i18nPrefix}.action.dismiss`)}
+            </Button>
           )}
           <Button variant='primary' onClick={onConfirm}>
-            Re-verify
+            {t(`${i18nPrefix}.action.reVerify`)}
           </Button>
         </div>
       </div>
