@@ -6,6 +6,9 @@ import {
   useState,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
@@ -56,7 +59,33 @@ const WorkflowMain = ({
     if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
 
-      setFeatures(features)
+      const transformedFeatures: FeaturesData = {
+        file: {
+          image: {
+            enabled: !!features.file_upload?.image?.enabled,
+            number_limits: features.file_upload?.image?.number_limits || 3,
+            transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          },
+          enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
+          allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
+          allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+          allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
+        },
+        opening: {
+          enabled: !!features.opening_statement,
+          opening_statement: features.opening_statement,
+          suggested_questions: features.suggested_questions,
+        },
+        suggested: features.suggested_questions_after_answer || { enabled: false },
+        speech2text: features.speech_to_text || { enabled: false },
+        text2speech: features.text_to_speech || { enabled: false },
+        citation: features.retriever_resource || { enabled: false },
+        moderation: features.sensitive_word_avoidance || { enabled: false },
+        annotationReply: features.annotation_reply || { enabled: false },
+      }
+
+      setFeatures(transformedFeatures)
     }
     if (conversation_variables) {
       const { setConversationVariables } = workflowStore.getState()
