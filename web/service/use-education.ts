@@ -56,7 +56,7 @@ export const useEducationStatus = (disable?: boolean) => {
     enabled: !disable,
     queryKey: [NAME_SPACE, 'education-status'],
     queryFn: () => {
-      return get<{ is_student: boolean, allow_refresh: boolean, expireAt: number | null }>('/account/education')
+      return get<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null }>('/account/education')
     },
     retry: false,
   })

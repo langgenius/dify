@@ -231,7 +231,7 @@ export const ProviderContextProvider = ({
       isEducationWorkspace,
       isEducationAccount: educationAccountInfo?.is_student || false,
       allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
-      educationAccountExpireAt: educationAccountInfo?.expireAt || null,
+      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
       isLoadingEducationAccountInfo,
       webappCopyrightEnabled,
       licenseLimit,

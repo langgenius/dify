@@ -12,7 +12,7 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
 } from './constants'
-import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
+import { useEducationAutocomplete, useEducationVerify, useInvalidateEducationStatus } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -91,6 +91,12 @@ const useEducationReverifyNotice = ({
     defaultValue: false,
   })
   const { userProfile: { timezone } } = useAppContext()
+  const updateEducationStatus = useInvalidateEducationStatus()
+
+  useEffect(() => {
+    // To avoid use other account's education info
+    updateEducationStatus()
+  }, [])
 
   useEffect(() => {
     if(isLoading || !timezone)
