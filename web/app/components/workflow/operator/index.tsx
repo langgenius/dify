@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
 import ZoomInOut from './zoom-in-out'
+import NodeSearch from './node-search'
 import VariableTrigger from '../variable-inspect/trigger'
 import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
@@ -52,7 +53,10 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
       }
     >
       <div className='flex justify-between px-1 pb-2'>
-        <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
+        <div className='flex items-center gap-2'>
+          <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
+          <NodeSearch />
+        </div>
         <VariableTrigger />
         <div className='relative'>
           <MiniMap
