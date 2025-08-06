@@ -170,6 +170,10 @@ const translation = {
   },
   importFromDSLUrl: 'URL de origen',
   importFromDSLUrlPlaceholder: 'Pegar enlace DSL aquí',
+  dslUploader: {
+    button: 'Arrastrar y soltar archivo, o',
+    browse: 'Examinar',
+  },
   importFromDSL: 'Importar desde DSL',
   importFromDSLFile: 'Desde el archivo DSL',
   mermaid: {
