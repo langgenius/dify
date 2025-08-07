@@ -65,6 +65,7 @@ import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
+import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
 import {
@@ -79,10 +80,14 @@ import {
 } from './constants'
 import { WorkflowHistoryProvider } from './workflow-history-store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import dynamic from 'next/dynamic'
+
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -186,7 +191,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -260,6 +264,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
+    handleSelectionContextMenu,
   } = useSelectionInteractions()
   const {
     handlePaneContextMenu,
@@ -278,7 +283,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   useEffect(() => {
     fetchInspectVars()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const store = useStoreApi()
@@ -311,6 +315,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <SelectionContextmenu />
       <HelpLine />
       {
         !!showConfirm && (
@@ -347,6 +352,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
         // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
@@ -393,8 +399,8 @@ export const WorkflowWithInnerContext = memo(({
   )
 })
 
-type WorkflowWithDefaultContextProps =
-  Pick<WorkflowProps, 'edges' | 'nodes'>
+type WorkflowWithDefaultContextProps
+  = Pick<WorkflowProps, 'edges' | 'nodes'>
   & {
     children: React.ReactNode
   }

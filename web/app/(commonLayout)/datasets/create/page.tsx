@@ -1,9 +1,7 @@
 import React from 'react'
 import DatasetUpdateForm from '@/app/components/datasets/create'
 
-type Props = {}
-
-const DatasetCreation = async (props: Props) => {
+const DatasetCreation = async () => {
   return (
     <DatasetUpdateForm />
   )

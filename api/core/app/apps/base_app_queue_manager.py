@@ -169,7 +169,3 @@ class AppQueueManager:
                 raise TypeError(
                     "Critical Error: Passing SQLAlchemy Model instances that cause thread safety issues is not allowed."
                 )
-
-
-class GenerateTaskStoppedError(Exception):
-    pass

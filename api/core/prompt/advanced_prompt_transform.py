@@ -158,7 +158,7 @@ class AdvancedPromptTransform(PromptTransform):
 
             if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
                 if self.with_variable_tmpl:
-                    vp = VariablePool()
+                    vp = VariablePool.empty()
                     for k, v in inputs.items():
                         if k.startswith("#"):
                             vp.add(k[1:-1].split("."), v)

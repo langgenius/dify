@@ -1,0 +1,28 @@
+name: autofix.ci
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [ "main" ]
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use uv to ensure we have the same ruff version in CI and locally.
+      - uses: astral-sh/setup-uv@7edac99f961f18b581bbd960d59d049f04c0002f 
+      - run: |
+          cd api
+          uv sync --dev
+          # Fix lint errors
+          uv run ruff check --fix-only .
+          # Format code
+          uv run ruff format .
+
+      - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
+

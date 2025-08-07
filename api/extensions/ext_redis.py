@@ -137,7 +137,7 @@ def redis_fallback(default_return: Any = None):
             try:
                 return func(*args, **kwargs)
             except RedisError as e:
-                logger.warning(f"Redis operation failed in {func.__name__}: {str(e)}", exc_info=True)
+                logger.warning("Redis operation failed in %s: %s", func.__name__, str(e), exc_info=True)
                 return default_return
 
         return wrapper

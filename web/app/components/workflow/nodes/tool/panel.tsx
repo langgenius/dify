@@ -5,10 +5,8 @@ import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
 import useConfig from './use-config'
 import ToolForm from './components/tool-form'
-import Button from '@/app/components/base/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Loading from '@/app/components/base/loading'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
@@ -32,10 +30,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     setToolSettingValue,
     currCollection,
     isShowAuthBtn,
-    showSetAuth,
-    showSetAuthModal,
-    hideSetAuthModal,
-    handleSaveAuth,
     isLoading,
     outputSchema,
     hasObjectOutput,
@@ -52,19 +46,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   return (
     <div className='pt-2'>
-      {!readOnly && isShowAuthBtn && (
-        <>
-          <div className='px-4'>
-            <Button
-              variant='primary'
-              className='w-full'
-              onClick={showSetAuthModal}
-            >
-              {t(`${i18nPrefix}.authorize`)}
-            </Button>
-          </div>
-        </>
-      )}
       {!isShowAuthBtn && (
         <div className='relative'>
           {toolInputVarSchema.length > 0 && (
@@ -107,15 +88,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             </>
           )}
         </div>
-      )}
-
-      {showSetAuth && (
-        <ConfigCredential
-          collection={currCollection!}
-          onCancel={hideSetAuthModal}
-          onSaved={handleSaveAuth}
-          isHideRemoveBtn
-        />
       )}
 
       <div>
