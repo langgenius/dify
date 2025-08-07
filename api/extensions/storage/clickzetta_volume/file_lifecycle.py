@@ -142,7 +142,7 @@ class FileLifecycleManager:
             metadata_dict[filename] = file_metadata.to_dict()
             self._save_metadata(metadata_dict)
 
-            logger.info(f"File {filename} saved with lifecycle management, version {new_version}")
+            logger.info("File %s saved with lifecycle management, version %s", filename, new_version)
             return file_metadata
 
         except Exception as e:
@@ -164,7 +164,7 @@ class FileLifecycleManager:
                 return FileMetadata.from_dict(metadata_dict[filename])
             return None
         except Exception as e:
-            logger.exception(f"Failed to get file metadata for {filename}")
+            logger.exception("Failed to get file metadata for %s", filename)
             return None
 
     def list_file_versions(self, filename: str) -> list[FileMetadata]:
@@ -205,7 +205,7 @@ class FileLifecycleManager:
             return sorted(versions, key=lambda x: x.version or 0, reverse=True)
 
         except Exception as e:
-            logger.exception(f"Failed to list file versions for {filename}")
+            logger.exception("Failed to list file versions for %s", filename)
             return []
 
     def restore_version(self, filename: str, version: int) -> bool:
@@ -223,7 +223,7 @@ class FileLifecycleManager:
 
             # 检查版本文件是否存在
             if not self._storage.exists(version_filename):
-                logger.warning(f"Version {version} of {filename} not found")
+                logger.warning("Version %s of %s not found", version, filename)
                 return False
 
             # 读取版本文件内容
@@ -239,7 +239,7 @@ class FileLifecycleManager:
             return True
 
         except Exception as e:
-            logger.exception(f"Failed to restore {filename} to version {version}")
+            logger.exception("Failed to restore %s to version %s", filename, version)
             return False
 
     def archive_file(self, filename: str) -> bool:
@@ -253,14 +253,14 @@ class FileLifecycleManager:
         """
         # 权限检查
         if not self._check_permission(filename, "archive"):
-            logger.warning(f"Permission denied for archive operation on file: {filename}")
+            logger.warning("Permission denied for archive operation on file: %s", filename)
             return False
 
         try:
             # 更新文件状态为归档
             metadata_dict = self._load_metadata()
             if filename not in metadata_dict:
-                logger.warning(f"File {filename} not found in metadata")
+                logger.warning("File %s not found in metadata", filename)
                 return False
 
             metadata_dict[filename]["status"] = FileStatus.ARCHIVED.value
@@ -268,11 +268,11 @@ class FileLifecycleManager:
 
             self._save_metadata(metadata_dict)
 
-            logger.info(f"File {filename} archived successfully")
+            logger.info("File %s archived successfully", filename)
             return True
 
         except Exception as e:
-            logger.exception(f"Failed to archive file {filename}")
+            logger.exception("Failed to archive file %s", filename)
             return False
 
     def soft_delete_file(self, filename: str) -> bool:
@@ -286,13 +286,13 @@ class FileLifecycleManager:
         """
         # 权限检查
         if not self._check_permission(filename, "delete"):
-            logger.warning(f"Permission denied for soft delete operation on file: {filename}")
+            logger.warning("Permission denied for soft delete operation on file: %s", filename)
             return False
 
         try:
             # 检查文件是否存在
             if not self._storage.exists(filename):
-                logger.warning(f"File {filename} not found")
+                logger.warning("File %s not found", filename)
                 return False
 
             # 读取文件内容
@@ -312,11 +312,11 @@ class FileLifecycleManager:
                 metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
                 self._save_metadata(metadata_dict)
 
-            logger.info(f"File {filename} soft deleted successfully")
+            logger.info("File %s soft deleted successfully", filename)
             return True
 
         except Exception as e:
-            logger.exception(f"Failed to soft delete file {filename}")
+            logger.exception("Failed to soft delete file %s", filename)
             return False
 
     def cleanup_old_versions(self, max_versions: int = 5, max_age_days: int = 30) -> int:
@@ -365,12 +365,12 @@ class FileLifecycleManager:
                         for version_num, version_file in to_delete:
                             self._storage.delete(version_file)
                             cleaned_count += 1
-                            logger.debug(f"Cleaned old version: {version_file}")
+                            logger.debug("Cleaned old version: %s", version_file)
 
-                logger.info(f"Cleaned {cleaned_count} old version files")
+                logger.info("Cleaned %d old version files", cleaned_count)
 
             except Exception as e:
-                logger.warning(f"Could not scan for version files: {e}")
+                logger.warning("Could not scan for version files: %s", e)
 
             return cleaned_count
 
@@ -443,10 +443,10 @@ class FileLifecycleManager:
             version_filename = f"{self._version_prefix}{filename}.v{metadata['version']}"
             self._storage.save(version_filename, current_data)
 
-            logger.debug(f"Created version backup: {version_filename}")
+            logger.debug("Created version backup: %s", version_filename)
 
         except Exception as e:
-            logger.warning(f"Failed to create version backup for {filename}: {e}")
+            logger.warning("Failed to create version backup for %s: %s", filename, e)
 
     def _load_metadata(self) -> dict[str, Any]:
         """加载元数据文件"""
@@ -458,7 +458,7 @@ class FileLifecycleManager:
             else:
                 return {}
         except Exception as e:
-            logger.warning(f"Failed to load metadata: {e}")
+            logger.warning("Failed to load metadata: %s", e)
             return {}
 
     def _save_metadata(self, metadata_dict: dict):
@@ -511,6 +511,6 @@ class FileLifecycleManager:
             return bool(result)
 
         except Exception as e:
-            logger.exception(f"Permission check failed for {filename} operation {operation}")
+            logger.exception("Permission check failed for %s operation %s", filename, operation)
             # 安全默认：权限检查失败时拒绝访问
             return False

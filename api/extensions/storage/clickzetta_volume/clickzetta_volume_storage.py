@@ -124,7 +124,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         self._init_connection()
         self._init_permission_manager()
 
-        logger.info(f"ClickZetta Volume storage initialized with type: {config.volume_type}")
+        logger.info("ClickZetta Volume storage initialized with type: %s", config.volume_type)
 
     def _init_connection(self):
         """Initialize ClickZetta connection."""
@@ -214,7 +214,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                     return cursor.fetchall()
                 return None
         except Exception as e:
-            logger.exception(f"SQL execution failed: {sql}")
+            logger.exception("SQL execution failed: %s", sql)
             raise
 
     def _ensure_table_volume_exists(self, dataset_id: str) -> None:
@@ -245,10 +245,10 @@ class ClickZettaVolumeStorage(BaseStorage):
                 ) WITH VOLUME
                 """
                 self._execute_sql(create_sql)
-                logger.info(f"Created table volume: {table_name}")
+                logger.info("Created table volume: %s", table_name)
 
         except Exception as e:
-            logger.warning(f"Failed to create table volume {table_name}: {e}")
+            logger.warning("Failed to create table volume %s: %s", table_name, e)
             # Don't raise exception, let the operation continue
             # The table might exist but not be visible due to permissions
 
@@ -301,7 +301,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 sql = f"PUT '{temp_file_path}' TO {volume_prefix} FILE '{filename}'"
 
             self._execute_sql(sql)
-            logger.debug(f"File {filename} saved to ClickZetta Volume at path {volume_path}")
+            logger.debug("File %s saved to ClickZetta Volume at path %s", filename, volume_path)
         finally:
             # Clean up temporary file
             Path(temp_file_path).unlink(missing_ok=True)
@@ -363,7 +363,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
             content = downloaded_file.read_bytes()
 
-            logger.debug(f"File {filename} loaded from ClickZetta Volume")
+            logger.debug("File %s loaded from ClickZetta Volume", filename)
             return content
 
     def load_stream(self, filename: str) -> Generator:
@@ -382,7 +382,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         while chunk := stream.read(batch_size):
             yield chunk
 
-        logger.debug(f"File {filename} loaded as stream from ClickZetta Volume")
+        logger.debug("File %s loaded as stream from ClickZetta Volume", filename)
 
     def download(self, filename: str, target_filepath: str):
         """Download file from ClickZetta Volume to local path.
@@ -396,7 +396,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         with Path(target_filepath).open("wb") as f:
             f.write(content)
 
-        logger.debug(f"File {filename} downloaded from ClickZetta Volume to {target_filepath}")
+        logger.debug("File %s downloaded from ClickZetta Volume to %s", filename, target_filepath)
 
     def exists(self, filename: str) -> bool:
         """Check if file exists in ClickZetta Volume.
@@ -433,10 +433,10 @@ class ClickZettaVolumeStorage(BaseStorage):
             rows = self._execute_sql(sql, fetch=True)
 
             exists = len(rows) > 0
-            logger.debug(f"File {filename} exists check: {exists}")
+            logger.debug("File %s exists check: %s", filename, exists)
             return exists
         except Exception as e:
-            logger.warning(f"Error checking file existence for {filename}: {e}")
+            logger.warning("Error checking file existence for %s: %s", filename, e)
             return False
 
     def delete(self, filename: str):
@@ -446,7 +446,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             filename: File path in volume
         """
         if not self.exists(filename):
-            logger.debug(f"File {filename} not found, skip delete")
+            logger.debug("File %s not found, skip delete", filename)
             return
 
         # Extract dataset_id from filename if present
@@ -473,7 +473,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         self._execute_sql(sql)
 
-        logger.debug(f"File {filename} deleted from ClickZetta Volume")
+        logger.debug("File %s deleted from ClickZetta Volume", filename)
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         """Scan files and directories in ClickZetta Volume.
@@ -522,9 +522,9 @@ class ClickZettaVolumeStorage(BaseStorage):
                 if files and not file_path.endswith("/") or directories and file_path.endswith("/"):
                     result.append(file_path)
 
-            logger.debug(f"Scanned {len(result)} items in path {path}")
+            logger.debug("Scanned %d items in path %s", len(result), path)
             return result
 
         except Exception as e:
-            logger.exception(f"Error scanning path {path}")
+            logger.exception("Error scanning path %s", path)
             return []
