@@ -14,7 +14,10 @@ from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import ConversationVariable
 from models.account import Account
-from models.model import App, Conversation, EndUser, Message
+from models.model import App, Conversation, Message, MessageAnnotation, MessageFeedback, EndUser
+from models.web import PinnedConversation
+from models.tools import ToolConversationVariables, ToolFile
+from models.workflow import ConversationVariable
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -152,18 +155,65 @@ class ConversationService:
 
     @classmethod
     def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = (
-            db.session.query(Conversation)
-            .where(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
+        if isinstance(user, EndUser):
+            # For service API users, allow deletion of any API-created conversation in the app
+            conversation = (
+                db.session.query(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == "api",
+                    Conversation.is_deleted == False,
+                )
+                .first()
             )
-            .first()
-        )
+        else:
+            # For console users, use the old code
+            conversation = (
+                db.session.query(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                    Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                    Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                    Conversation.is_deleted == False,
+                )
+                .first()
+            )
+
+        if not conversation:
+            raise ConversationNotExistsError()
+
+        return conversation
+
+    @classmethod
+    def get_conversation_for_deletion(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
+        if isinstance(user, EndUser):
+            # For service API users, allow deletion of any API-created conversation in the app
+            conversation = (
+                db.session.query(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == "api",
+                    Conversation.is_deleted == False,
+                )
+                .first()
+            )
+        else:
+            # For console users, use the old code
+            conversation = (
+                db.session.query(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == "console",
+                    Conversation.from_account_id == user.id,
+                    Conversation.is_deleted == False,
+                )
+                .first()
+            )
 
         if not conversation:
             raise ConversationNotExistsError()
@@ -172,11 +222,50 @@ class ConversationService:
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = cls.get_conversation(app_model, conversation_id, user)
+        try:
+            conversation = cls.get_conversation(app_model, conversation_id, user)
 
-        conversation.is_deleted = True
-        conversation.updated_at = naive_utc_now()
-        db.session.commit()
+            if conversation.app_id != app_model.id:
+                raise ConversationNotExistsError()
+
+            # Delete related data in correct order to respect foreign key constraints
+            db.session.query(MessageAnnotation).where(
+                MessageAnnotation.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(MessageFeedback).where(
+                MessageFeedback.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(ToolConversationVariables).where(
+                ToolConversationVariables.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(ToolFile).where(
+                ToolFile.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(ConversationVariable).where(
+                ConversationVariable.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(Message).where(
+                Message.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(PinnedConversation).where(
+                PinnedConversation.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(Conversation).where(
+                Conversation.id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @classmethod
     def get_conversational_variable(
