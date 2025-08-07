@@ -9,6 +9,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
     setup_required,
+    knowledge_pipeline_publish_enabled,
 )
 from extensions.ext_database import db
 from libs.login import login_required
@@ -116,6 +117,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @knowledge_pipeline_publish_enabled
     def post(self, pipeline_id: str):
         parser = reqparse.RequestParser()
         parser.add_argument(
