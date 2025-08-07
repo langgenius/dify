@@ -117,8 +117,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
     }
-    catch {
-      notify({ type: 'error', message: t('app.editFailed') })
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e.message || t('app.editFailed'),
+      })
     }
   }, [app.id, notify, onRefresh, t])
 
