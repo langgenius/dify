@@ -296,7 +296,7 @@ class TenantPluginPermission(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
     install_permission: Mapped[InstallPermission] = mapped_column(String(16), nullable=False, server_default="everyone")
     debug_permission: Mapped[DebugPermission] = mapped_column(String(16), nullable=False, server_default="noone")
 
@@ -319,7 +319,7 @@ class TenantPluginAutoUpgradeStrategy(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
     strategy_setting: Mapped[StrategySetting] = mapped_column(String(16), nullable=False, server_default="fix_only")
     upgrade_time_of_day: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)  # seconds of the day
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(String(16), nullable=False, server_default="exclude")

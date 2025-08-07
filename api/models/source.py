@@ -21,7 +21,7 @@ class DataSourceOauthBinding(Base):
     )
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     access_token: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     source_info = mapped_column(JSONB, nullable=False)
@@ -39,7 +39,7 @@ class DataSourceApiKeyAuthBinding(Base):
     )
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     credentials = mapped_column(sa.Text, nullable=True)  # JSON
