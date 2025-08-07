@@ -1,14 +1,5 @@
 import type { AppMode } from '@/types/app'
 
-export const getRedirection = (
-  isCurrentWorkspaceEditor: boolean,
-  app: { id: string, mode: AppMode },
-  redirectionFunc: (href: string) => void,
-) => {
-  const redirectionPath = getRedirectionPath(isCurrentWorkspaceEditor, app)
-  redirectionFunc(redirectionPath)
-}
-
 export const getRedirectionPath = (
   isCurrentWorkspaceEditor: boolean,
   app: { id: string, mode: AppMode },
@@ -22,4 +13,13 @@ export const getRedirectionPath = (
     else
       return `/app/${app.id}/configuration`
   }
+}
+
+export const getRedirection = (
+  isCurrentWorkspaceEditor: boolean,
+  app: { id: string, mode: AppMode },
+  redirectionFunc: (href: string) => void,
+) => {
+  const redirectionPath = getRedirectionPath(isCurrentWorkspaceEditor, app)
+  redirectionFunc(redirectionPath)
 }
