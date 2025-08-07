@@ -25,7 +25,7 @@ class CeleryTask(Base):
         onupdate=lambda: naive_utc_now(),
         nullable=True,
     )
-    traceback = mapped_column(sa.Text, nullable=True)
+    traceback: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     name = mapped_column(String(155), nullable=True)
     args = mapped_column(sa.LargeBinary, nullable=True)
     kwargs = mapped_column(sa.LargeBinary, nullable=True)

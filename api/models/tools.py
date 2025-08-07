@@ -81,7 +81,7 @@ class BuiltinToolProvider(Base):
     # name of the tool provider
     provider: Mapped[str] = mapped_column(String(256), nullable=False)
     # credential of the tool provider
-    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)  # TODO: Optional or not
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
@@ -269,7 +269,7 @@ class MCPToolProvider(Base):
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # encrypted credentials
-    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)  # TODO: Optional or not
     # authed
     authed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
     # tools
