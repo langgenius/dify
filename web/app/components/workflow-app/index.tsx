@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
 } from 'react'
 import useSWR from 'swr'
@@ -25,25 +24,14 @@ import {
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useStore } from '@/app/components/workflow/store'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
   } = useWorkflowInit()
-  const appId = useStore(s => s.appId)
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-
-  useEffect(() => {
-    if (appId && data)
-      collaborationManager.init(appId, null)
-
-    return () => {
-      collaborationManager.destroy()
-    }
-  }, [appId, data])
 
   const nodesData = useMemo(() => {
     if (data) {

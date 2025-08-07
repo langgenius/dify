@@ -14,8 +14,13 @@ export class CollaborationManager {
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: any = null
+  private cursors: Record<string, CursorPosition> = {}
 
   init = (appId: string, reactFlowStore: any): void => {
+    if (!reactFlowStore) {
+      console.warn('CollaborationManager.init called without reactFlowStore, deferring to connect()')
+      return
+    }
     this.connect(appId, reactFlowStore)
   }
 
@@ -64,6 +69,7 @@ export class CollaborationManager {
     this.edgesMap = null
     this.currentAppId = null
     this.reactFlowStore = null
+    this.cursors = {}
     this.eventEmitter.removeAllListeners()
   }
 
@@ -125,7 +131,7 @@ export class CollaborationManager {
       if (!oldNode) {
         this.nodesMap.set(newNode.id, newNode)
       }
- else {
+      else {
         const oldPersistentData = this.getPersistentNodeData(oldNode)
         const newPersistentData = this.getPersistentNodeData(newNode)
         if (!isEqual(oldPersistentData, newPersistentData))
@@ -185,24 +191,42 @@ export class CollaborationManager {
   }
 
   private setupSocketEventListeners(socket: any): void {
+    console.log('Setting up socket event listeners for collaboration')
+
     socket.on('collaboration_update', (update: any) => {
       if (update.type === 'mouseMove') {
-        this.eventEmitter.emit('cursors', {
-          [update.userId]: {
-            x: update.data.x,
-            y: update.data.y,
-            userId: update.userId,
-            timestamp: update.timestamp,
-          },
-        })
+        console.log('Processing mouseMove event:', update)
+
+        // Update cursor state for this user
+        this.cursors[update.userId] = {
+          x: update.data.x,
+          y: update.data.y,
+          userId: update.userId,
+          timestamp: update.timestamp,
+        }
+
+        // Emit the complete cursor state
+        console.log('Emitting complete cursor state:', this.cursors)
+        this.eventEmitter.emit('cursors', { ...this.cursors })
       }
- else if (update.type === 'varsAndFeaturesUpdate') {
+      else if (update.type === 'varsAndFeaturesUpdate') {
+        console.log('Processing varsAndFeaturesUpdate event:', update)
         this.eventEmitter.emit('varsAndFeaturesUpdate', update)
       }
     })
 
     socket.on('online_users', (data: { users: OnlineUser[] }) => {
+      const onlineUserIds = new Set(data.users.map(user => user.user_id))
+
+      // Remove cursors for offline users
+      Object.keys(this.cursors).forEach((userId) => {
+        if (!onlineUserIds.has(userId))
+          delete this.cursors[userId]
+      })
+
+      console.log('Updated online users and cleaned offline cursors:', data.users)
       this.eventEmitter.emit('onlineUsers', data.users)
+      this.eventEmitter.emit('cursors', { ...this.cursors })
     })
 
     socket.on('connect', () => {

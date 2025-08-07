@@ -30,14 +30,17 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     initCollaboration()
 
     const unsubscribeStateChange = collaborationManager.onStateChange((newState: any) => {
+      console.log('Collaboration state change:', newState)
       setState((prev: any) => ({ ...prev, ...newState }))
     })
 
     const unsubscribeCursors = collaborationManager.onCursorUpdate((cursors: any) => {
+      console.log('Cursor update received:', cursors)
       setState((prev: any) => ({ ...prev, cursors }))
     })
 
     const unsubscribeUsers = collaborationManager.onOnlineUsersUpdate((users: any) => {
+      console.log('Online users update:', users)
       setState((prev: any) => ({ ...prev, onlineUsers: users }))
     })
 

@@ -107,7 +107,7 @@ const WorkflowMain = ({
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
         handleWorkflowDataUpdate(response)
       }
- catch (error) {
+      catch (error) {
         console.error('workflow vars and features update failed:', error)
       }
     })
