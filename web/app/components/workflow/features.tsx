@@ -14,7 +14,7 @@ import useConfig from './nodes/start/use-config'
 import type { StartNodeType } from './nodes/start/types'
 import type { PromptVariable } from '@/models/debug'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)

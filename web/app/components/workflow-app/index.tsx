@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
 } from 'react'
 import useSWR from 'swr'
@@ -23,22 +24,31 @@ import {
 } from '@/app/components/workflow/context'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
-import { collaborationManager } from '@/app/components/workflow/collaboration/manage'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useStore } from '@/app/components/workflow/store'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
     data,
     isLoading,
   } = useWorkflowInit()
-  const { setNodes, setEdges } = collaborationManager
+  const appId = useStore(s => s.appId)
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+
+  useEffect(() => {
+    if (appId && data)
+      collaborationManager.init(appId, null)
+
+    return () => {
+      collaborationManager.destroy()
+    }
+  }, [appId, data])
 
   const nodesData = useMemo(() => {
     if (data) {
       const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)
-      setNodes([], processedNodes)
-
+      collaborationManager.setNodes([], processedNodes)
       return processedNodes
     }
     return []
@@ -47,8 +57,7 @@ const WorkflowAppWithAdditionalContext = () => {
   const edgesData = useMemo(() => {
     if (data) {
       const processedEdges = initialEdges(data.graph.edges, data.graph.nodes)
-      setEdges([], processedEdges)
-
+      collaborationManager.setEdges([], processedEdges)
       return processedEdges
     }
     return []

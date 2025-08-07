@@ -26,7 +26,7 @@ import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -117,7 +117,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetailRes(res)
       // Only connect for workflow/advanced-chat apps and if not already connected
       if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && !webSocketClient.isConnected(appId))
-        webSocketClient.getClient(appId)
+        webSocketClient.connect(appId)
     }).catch((e: any) => {
       if (e.status === 404)
         router.replace('/apps')

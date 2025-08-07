@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -22,10 +21,9 @@ import {
   useWorkflowStartRun,
 } from '../hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
 import { useCollaborativeCursors } from '../hooks'
-import type { OnlineUser } from '@/app/components/workflow/collaboration/core/websocket-client'
-import { collaborationManager } from '@/app/components/workflow/collaboration/manage'
+import { useCollaboration } from '@/app/components/workflow/collaboration'
+import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useStoreApi } from 'reactflow'
 
@@ -39,19 +37,18 @@ const WorkflowMain = ({
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
   const containerRef = useRef<HTMLDivElement>(null)
-  const lastEmitTimeRef = useRef<number>(0)
-  const lastPositionRef = useRef<{ x: number; y: number } | null>(null)
 
   const store = useStoreApi()
+  const { startCursorTracking, stopCursorTracking, onlineUsers } = useCollaboration(appId, store)
 
   useEffect(() => {
-    collaborationManager.init(appId, store)
-  }, [appId, store])
+    if (containerRef.current)
+      startCursorTracking(containerRef as React.RefObject<HTMLElement>)
 
-  // Get the socket for current app
-  const wsClient = useMemo(() => {
-    return appId ? webSocketClient.getClient(appId) : null
-  }, [appId])
+    return () => {
+      stopCursorTracking()
+    }
+  }, [startCursorTracking, stopCursorTracking])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -102,64 +99,19 @@ const WorkflowMain = ({
 
   useEffect(() => {
     if (!appId) return
-    wsClient?.on('collaboration_update', async (update: any) => {
-      if (update.type === 'varsAndFeaturesUpdate') {
-        try {
-          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-          handleWorkflowDataUpdate(response)
-        }
-        catch (error) {
-          console.error('workflow vars and features update failed:', error)
-        }
+
+    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (update: any) => {
+      try {
+        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        handleWorkflowDataUpdate(response)
+      }
+ catch (error) {
+        console.error('workflow vars and features update failed:', error)
       }
     })
-  }, [appId, wsClient])
 
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!containerRef.current || !wsClient?.connected) return
-
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = event.clientX - rect.left
-    const y = event.clientY - rect.top
-
-    // Only emit if mouse is within the container
-    if (x >= 0 && y >= 0 && x <= rect.width && y <= rect.height) {
-      const now = Date.now()
-      const timeSinceLastEmit = now - lastEmitTimeRef.current
-
-      if (timeSinceLastEmit >= 300) {
-        lastEmitTimeRef.current = now
-        lastPositionRef.current = { x, y }
-
-        const eventData = {
-          type: 'mouseMove',
-          data: { x, y },
-          timestamp: now,
-        }
-
-        wsClient.emit('collaboration_event', eventData)
-
-        // Debug log
-        if (process.env.NODE_ENV === 'development')
-          console.log('Mouse move emitted:', eventData)
-      }
-      else {
-        // Update position for potential future emit
-        lastPositionRef.current = { x, y }
-      }
-    }
-  }, [wsClient])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    container.addEventListener('mousemove', handleMouseMove)
-
-    return () => {
-      container.removeEventListener('mousemove', handleMouseMove)
-    }
-  }, [handleMouseMove])
+    return unsubscribe
+  }, [appId, handleWorkflowDataUpdate])
 
   const {
     doSyncWorkflowDraft,
@@ -180,25 +132,6 @@ const WorkflowMain = ({
   } = useWorkflowStartRun()
 
   const { cursors, myUserId } = useCollaborativeCursors(appId)
-  const [onlineUsers, setOnlineUsers] = useState<Record<string, OnlineUser>>({})
-
-  useEffect(() => {
-    if (!appId || !wsClient) return
-
-    const handleOnlineUsersUpdate = (data: { users: OnlineUser[] }) => {
-      const usersMap = data.users.reduce((acc, user) => {
-        acc[user.user_id] = user
-        return acc
-      }, {} as Record<string, OnlineUser>)
-      setOnlineUsers(usersMap)
-    }
-
-    wsClient.on('online_users', handleOnlineUsersUpdate)
-
-    return () => {
-      wsClient.off('online_users', handleOnlineUsersUpdate)
-    }
-  }, [appId, wsClient])
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowId: appId,
@@ -302,7 +235,7 @@ const WorkflowMain = ({
         if (userId === myUserId)
           return null
 
-        const userInfo = onlineUsers[userId]
+        const userInfo = onlineUsers.find(user => user.user_id === userId)
         const userName = userInfo?.username || `User ${userId.slice(-4)}`
 
         const getUserColor = (id: string) => {

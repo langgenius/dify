@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import type { Edge, Node } from '../types'
-import { collaborationManager } from '../collaboration/manage'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 
 export const useCollaborativeWorkflow = () => {
   const store = useStoreApi()

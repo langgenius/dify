@@ -18,7 +18,7 @@ import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/node
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import cn from '@/utils/classnames'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-client'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 
 const EnvPanel = () => {
