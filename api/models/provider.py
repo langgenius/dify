@@ -55,7 +55,7 @@ class Provider(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[str] = mapped_column(
         String(40), nullable=False, server_default=text("'custom'::character varying")
@@ -112,7 +112,7 @@ class ProviderModel(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -130,7 +130,7 @@ class TenantDefaultModel(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -146,7 +146,7 @@ class TenantPreferredModelProvider(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -161,9 +161,9 @@ class ProviderOrder(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    account_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     payment_product_id: Mapped[str] = mapped_column(String(191), nullable=False)
     payment_id: Mapped[Optional[str]] = mapped_column(String(191))
     transaction_id: Mapped[Optional[str]] = mapped_column(String(191))
@@ -192,7 +192,7 @@ class ProviderModelSetting(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -214,7 +214,7 @@ class LoadBalancingModelConfig(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)

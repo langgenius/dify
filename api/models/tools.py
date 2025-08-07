@@ -46,7 +46,7 @@ class ToolOAuthTenantClient(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # tenant id
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
@@ -77,7 +77,7 @@ class BuiltinToolProvider(Base):
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
     # who created this tool provider
-    user_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
     provider: Mapped[str] = mapped_column(String(256), nullable=False)
     # credential of the tool provider
@@ -202,13 +202,13 @@ class WorkflowToolProvider(Base):
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # app id of the workflow provider
-    app_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # version of the workflow provider
     version: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
     # who created this tool
-    user_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # description of the provider
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # parameter configuration
@@ -265,9 +265,9 @@ class MCPToolProvider(Base):
     # icon of the mcp provider
     icon: Mapped[str] = mapped_column(String(255), nullable=True)
     # tenant id
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who created this tool
-    user_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # encrypted credentials
     encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=True)
     # authed
@@ -458,7 +458,7 @@ class DeprecatedPublishedAppTool(Base):
     # id of the app
     app_id = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
 
-    user_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who published this tool
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # llm_description of the tool, for LLM

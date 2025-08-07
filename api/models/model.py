@@ -1303,14 +1303,14 @@ class MessageFile(Base):
         self.created_by = created_by
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    message_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     belongs_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     upload_file_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -1357,7 +1357,7 @@ class AppAnnotationHitHistory(Base):
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    annotation_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    annotation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     source: Mapped[str] = mapped_column(sa.Text, nullable=False)
     question: Mapped[str] = mapped_column(sa.Text, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1437,7 +1437,7 @@ class EndUser(Base, UserMixin):
     )
 
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     external_user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -1576,7 +1576,7 @@ class UploadFile(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1586,7 +1586,7 @@ class UploadFile(Base):
     created_by_role: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'account'::character varying")
     )
-    created_by: Mapped[str]= mapped_column(StringUUID, nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
