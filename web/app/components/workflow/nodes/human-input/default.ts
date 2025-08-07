@@ -37,10 +37,8 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
         button_style: UserActionButtonType.Ghost,
       },
     ],
-    timeout: {
-      value: 3,
-      unit: 'days',
-    },
+    timeout: 3,
+    timeout_unit: 'day',
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

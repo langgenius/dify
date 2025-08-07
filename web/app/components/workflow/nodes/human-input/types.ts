@@ -4,13 +4,9 @@ export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
   form_content: any
   user_actions: UserAction[]
-  timeout: Timeout
+  timeout: number
+  timeout_unit: 'hour' | 'day'
   outputs: Variable[]
-}
-
-export type Timeout = {
-  value: number
-  unit: 'hours' | 'days'
 }
 
 export enum DeliveryMethodType {

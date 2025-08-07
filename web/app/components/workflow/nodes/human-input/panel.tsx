@@ -100,6 +100,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.timeout.title`)}</div>
         <TimeoutInput
           timeout={inputs.timeout}
+          unit={inputs.timeout_unit}
           onChange={handleTimeoutChange}
         />
       </div>
