@@ -944,7 +944,10 @@ const translation = {
           },
         },
       },
-      formContent: 'form content',
+      formContent: {
+        title: 'Form Content',
+        tooltip: 'What users will see after opening the form. Supports Markdown formatting.',
+      },
       userActions: {
         title: 'User Actions',
         tooltip: 'Define buttons that users can click to respond to this form. Each button can trigger different workflow paths.',
@@ -970,6 +973,9 @@ const translation = {
         users: 'users',
         prePopulateFieldPlaceholderEnd: 'will see initially, or leave empty.',
         insert: 'Insert',
+      },
+      editor: {
+        notes: 'notes',
       },
     },
   },

@@ -17,6 +17,7 @@ import TimeoutInput from './components/timeout'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
 import type { Var } from '@/app/components/workflow/types'
+import FormContent from './components/form-content'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -52,6 +53,18 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       />
       <div className='px-4 py-2'>
         <Divider className='!my-0 !h-px !bg-divider-subtle' />
+      </div>
+      {/* form content */}
+      <div className='px-4 py-2'>
+        <div className='mb-1 flex items-center justify-between'>
+          <div className='flex items-center gap-0.5'>
+            <div className='system-sm-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.formContent.title`)}</div>
+            <Tooltip
+              popupContent={t(`${i18nPrefix}.formContent.tooltip`)}
+            />
+          </div>
+        </div>
+        <FormContent />
       </div>
       {/* user actions */}
       <div className='px-4 py-2'>

@@ -945,7 +945,10 @@ const translation = {
           },
         },
       },
-      formContent: '表单内容',
+      formContent: {
+        title: '表单内容',
+        tooltip: '用户打开表单后看到的内容。支持 Markdown 格式。',
+      },
       userActions: {
         title: '用户操作',
         tooltip: '定义用户可以点击以响应此表单的按钮。每个按钮都可以触发不同的工作流路径。',
@@ -971,6 +974,9 @@ const translation = {
         users: '用户',
         prePopulateFieldPlaceholderEnd: '将最初看到，或留空。',
         insert: '插入',
+      },
+      editor: {
+        notes: ' 笔记',
       },
     },
   },
