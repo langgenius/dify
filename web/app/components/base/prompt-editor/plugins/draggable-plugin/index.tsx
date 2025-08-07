@@ -1,10 +1,9 @@
 import type { JSX } from 'react'
-
-import './index.css'
-
 import { DraggableBlockPlugin_EXPERIMENTAL } from '@lexical/react/LexicalDraggableBlockPlugin'
 import { useEffect, useRef, useState } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { RiDraggable } from '@remixicon/react'
+import cn from '@/utils/classnames'
 
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu'
 
@@ -56,12 +55,12 @@ const [editor] = useLexicalComposerContext()
       menuRef={menuRef as any}
       targetLineRef={targetLineRef as any}
       menuComponent={
-        isSupportDrag ? <div ref={menuRef} className="icon draggable-block-menu">
-          <div className="icon" />
+        isSupportDrag ? <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-[10px] top-[18px] cursor-grab opacity-0 will-change-transform active:cursor-grabbing')}>
+          <RiDraggable className='size-3.5 text-text-tertiary' />
         </div> : null
       }
       targetLineComponent={
-        <div ref={targetLineRef} className="draggable-block-target-line" />
+        <div ref={targetLineRef} className="pointer-events-none absolute left-[-21px] right-[10px] top-0 h-1 bg-[deepskyblue] opacity-0 will-change-transform" />
       }
       isOnMenu={isOnMenu}
       onElementChanged={setDraggableElement}
