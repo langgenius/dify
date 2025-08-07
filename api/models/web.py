@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -19,7 +18,7 @@ class SavedMessage(Base):
         sa.Index("saved_message_message_idx", "app_id", "message_id", "created_by_role", "created_by"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_by_role: Mapped[str] = mapped_column(
@@ -40,7 +39,7 @@ class PinnedConversation(Base):
         sa.Index("pinned_conversation_conversation_idx", "app_id", "conversation_id", "created_by_role", "created_by"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role: Mapped[str] = mapped_column(

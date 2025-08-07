@@ -8,7 +8,6 @@ import os
 import pickle
 import re
 import time
-import uuid
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, Optional, cast
@@ -48,7 +47,7 @@ class Dataset(Base):
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
@@ -64,7 +63,7 @@ class Dataset(Base):
     embedding_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     embedding_model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     collection_binding_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    retrieval_model = mapped_column(JSONB, nullable=True)
+    retrieval_model: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     @property
@@ -371,7 +370,7 @@ class Document(Base):
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
-    doc_metadata = mapped_column(JSONB, nullable=True)
+    doc_metadata: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     doc_form: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text_model'::character varying")
     )
@@ -674,7 +673,7 @@ class DocumentSegment(Base):
     tokens: Mapped[int]
 
     # indexing fields
-    keywords = mapped_column(sa.JSON, nullable=True)
+    keywords: Mapped[Optional[Any]] = mapped_column(sa.JSON, nullable=True)
     index_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     index_node_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
@@ -1019,7 +1018,7 @@ class DatasetPermission(Base):
         sa.Index("idx_dataset_permissions_tenant_id", "tenant_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), primary_key=True)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), primary_key=True)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1110,7 +1109,7 @@ class DatasetAutoDisableLog(Base):
         sa.Index("dataset_auto_disable_log_created_atx", "created_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1128,7 +1127,7 @@ class RateLimitLog(Base):
         sa.Index("rate_limit_log_operation_idx", "operation"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     subscription_plan: Mapped[str] = mapped_column(String(255), nullable=False)
     operation: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1145,7 +1144,7 @@ class DatasetMetadata(Base):
         sa.Index("dataset_metadata_dataset_idx", "dataset_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1170,7 +1169,7 @@ class DatasetMetadataBinding(Base):
         sa.Index("dataset_metadata_binding_document_idx", "document_id"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     metadata_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
