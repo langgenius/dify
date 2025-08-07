@@ -689,7 +689,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `message_files` (array[object]) メッセージファイル
         - `id` (string) ID
         - `type` (string) ファイルタイプ、画像の場合はimage
-        - `url` (string) プレビュー画像URL
+        - `url` (string) ファイルプレビューURL、ファイルアクセスにはファイルプレビューAPI（`/files/{file_id}/preview`）を使用してください
         - `belongs_to` (string) 所属、ユーザーまたはアシスタント
       - `agent_thoughts` (array[object]) エージェントの思考（基本アシスタントの場合は空）
         - `id` (string) エージェント思考ID、各反復には一意のエージェント思考IDがあります
