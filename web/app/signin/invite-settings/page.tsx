@@ -17,9 +17,11 @@ import { activateMember, invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -150,7 +152,7 @@ export default function InviteSettingsPage() {
         </Button>
       </div>
     </form>
-    <div className="system-xs-regular mt-2 block w-full">
+    {!systemFeatures.branding.enabled && <div className="system-xs-regular mt-2 block w-full">
       {t('login.license.tip')}
       &nbsp;
       <Link
@@ -158,6 +160,6 @@ export default function InviteSettingsPage() {
         target='_blank' rel='noopener noreferrer'
         href={docLink('/policies/open-source')}
       >{t('login.license.link')}</Link>
-    </div>
+    </div>}
   </div>
 }
