@@ -163,6 +163,86 @@ def test_custom_authorization_header(setup_http_mock):
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
+def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
+    """
+    Test that when switching from custom to bearer authorization,
+    the custom header settings don't interfere with bearer token.
+    This test verifies the fix for issue #23554.
+    """
+    node = init_http_node(
+        config={
+            "id": "1",
+            "data": {
+                "title": "http",
+                "desc": "",
+                "method": "get",
+                "url": "http://example.com",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {
+                        "type": "bearer",
+                        "api_key": "test-token",
+                        "header": "X-Custom-Auth",  # This should be ignored in bearer mode
+                    },
+                },
+                "headers": "",
+                "params": "",
+                "body": None,
+            },
+        }
+    )
+
+    result = node._run()
+    assert result.process_data is not None
+    data = result.process_data.get("request", "")
+
+    # In bearer mode, should use Authorization header with Bearer prefix
+    assert "Authorization: Bearer test-token" in data
+    # Custom header should NOT be used
+    assert "X-Custom-Auth: test-token" not in data
+
+
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
+def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
+    """
+    Test that when switching from custom to basic authorization,
+    the custom header settings don't interfere with basic auth.
+    This test verifies the fix for issue #23554.
+    """
+    node = init_http_node(
+        config={
+            "id": "1",
+            "data": {
+                "title": "http",
+                "desc": "",
+                "method": "get",
+                "url": "http://example.com",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {
+                        "type": "basic",
+                        "api_key": "user:pass",
+                        "header": "X-Custom-Auth",  # This should be ignored in basic mode
+                    },
+                },
+                "headers": "",
+                "params": "",
+                "body": None,
+            },
+        }
+    )
+
+    result = node._run()
+    assert result.process_data is not None
+    data = result.process_data.get("request", "")
+
+    # In basic mode, should use Authorization header with Basic prefix
+    assert "Authorization: Basic" in data
+    # Custom header should NOT be used
+    assert "X-Custom-Auth:" not in data
+
+
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_template(setup_http_mock):
     node = init_http_node(
         config={
