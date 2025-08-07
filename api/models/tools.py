@@ -460,7 +460,7 @@ class DeprecatedPublishedAppTool(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # id of the app
-    app_id = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
+    app_id: Mapped[uuid.UUID] = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
 
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who published this tool
