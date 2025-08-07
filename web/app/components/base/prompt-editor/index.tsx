@@ -17,7 +17,7 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import DraggableBlockPlugin from './plugins/draggable-plugin'
-import TreeView from './plugins/tree-view'
+// import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
@@ -282,7 +282,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         {floatingAnchorElem && (
             <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
           )}
-        <TreeView />
+        {/* <TreeView /> */}
       </div>
     </LexicalComposer>
   )
