@@ -1,8 +1,8 @@
 import os
-from dotenv import load_dotenv
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dotenv import load_dotenv
 from flask import Flask
 
 # Getting the absolute path of the current file's directory
