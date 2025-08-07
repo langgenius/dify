@@ -897,7 +897,7 @@ class DatasetKeywordTable(Base):
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    data_source_type = mapped_column(
+    data_source_type: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'database'::character varying")
     )
 
@@ -941,11 +941,11 @@ class Embedding(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
-    model_name = mapped_column(
+    model_name: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'::character varying")
     )
     hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    embedding = mapped_column(sa.LargeBinary, nullable=False)
+    embedding: Mapped[bytes] = mapped_column(sa.LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     provider_name: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("''::character varying")

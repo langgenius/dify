@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 from typing import Optional
 
@@ -15,10 +16,10 @@ class CeleryTask(Base):
 
     __tablename__ = "celery_taskmeta"
 
-    id = mapped_column(sa.Integer, sa.Sequence("task_id_sequence"), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(sa.Integer, sa.Sequence("task_id_sequence"), primary_key=True, autoincrement=True)
     task_id = mapped_column(String(155), unique=True)
     status = mapped_column(String(50), default=states.PENDING)
-    result = mapped_column(sa.PickleType, nullable=True)
+    result: Mapped[Optional[Any]] = mapped_column(sa.PickleType, nullable=True)
     date_done: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
         default=lambda: naive_utc_now(),
@@ -27,8 +28,8 @@ class CeleryTask(Base):
     )
     traceback: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
-    args = mapped_column(sa.LargeBinary, nullable=True)
-    kwargs = mapped_column(sa.LargeBinary, nullable=True)
+    args: Mapped[Optional[bytes]] = mapped_column(sa.LargeBinary, nullable=True)
+    kwargs: Mapped[Optional[bytes]] = mapped_column(sa.LargeBinary, nullable=True)
     worker: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
     retries: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
     queue: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
@@ -43,5 +44,5 @@ class CeleryTaskSet(Base):
         sa.Integer, sa.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True
     )
     taskset_id = mapped_column(String(155), unique=True)
-    result = mapped_column(sa.PickleType, nullable=True)
+    result: Mapped[Optional[Any]] = mapped_column(sa.PickleType, nullable=True)
     date_done: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: naive_utc_now(), nullable=True)
