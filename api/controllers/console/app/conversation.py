@@ -49,9 +49,7 @@ class CompletionConversationApi(Resource):
         args = parser.parse_args()
 
         query = db.select(Conversation).where(
-            Conversation.app_id == app_model.id,
-            Conversation.mode == "completion",
-            Conversation.is_deleted.is_(False)
+            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
         if args["keyword"]:
@@ -171,10 +169,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(
-            Conversation.app_id == app_model.id,
-            Conversation.is_deleted.is_(False)
-        )
+        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
             keyword_filter = f"%{args['keyword']}%"
