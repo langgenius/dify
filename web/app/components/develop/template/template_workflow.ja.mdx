@@ -786,7 +786,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     --header 'Authorization: Bearer {api_key}'
     ```
 
-    ```bash {{ title: 'cURL - 添付ファイルとしてダウンロード' }}
+    </CodeGroup>
+
+    ### 添付ファイルとしてダウンロード
+    <CodeGroup title="Download Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
     --header 'Authorization: Bearer {api_key}' \
     --output downloaded_file.png
@@ -801,7 +806,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     Content-Length: 1024
     Cache-Control: public, max-age=3600
     ```
+    </CodeGroup>
 
+    ### ダウンロードレスポンスヘッダー
+    <CodeGroup title="Download Response Headers">
     ```http {{ title: 'ヘッダー - ファイルダウンロード' }}
     Content-Type: image/png
     Content-Length: 1024

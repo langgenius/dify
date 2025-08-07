@@ -395,12 +395,17 @@ Chat applications support session persistence, allowing previous chat history to
     ### Request Example
     <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
 
-    ```bash {{ title: 'cURL - Preview in Browser' }}
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
-    ```bash {{ title: 'cURL - Download as Attachment' }}
+    </CodeGroup>
+
+    ### Download as Attachment
+    <CodeGroup title="Download Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
     --header 'Authorization: Bearer {api_key}' \
     --output downloaded_file.png
@@ -415,7 +420,10 @@ Chat applications support session persistence, allowing previous chat history to
     Content-Length: 1024
     Cache-Control: public, max-age=3600
     ```
+    </CodeGroup>
 
+    ### Download Response Headers
+    <CodeGroup title="Download Response Headers">
     ```http {{ title: 'Headers - File Download' }}
     Content-Type: image/png
     Content-Length: 1024

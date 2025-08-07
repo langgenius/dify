@@ -315,12 +315,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### リクエスト例
     <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
 
-    ```bash {{ title: 'cURL - ブラウザプレビュー' }}
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
-    ```bash {{ title: 'cURL - 添付ファイルとしてダウンロード' }}
+    </CodeGroup>
+
+    ### 添付ファイルとしてダウンロード
+    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
     --header 'Authorization: Bearer {api_key}' \
     --output downloaded_file.png
@@ -330,13 +335,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### レスポンスヘッダー例
     <CodeGroup title="Response Headers">
-    ```http {{ title: 'Headers - 画像プレビュー' }}
+    ```http {{ title: 'ヘッダー - 画像プレビュー' }}
     Content-Type: image/png
     Content-Length: 1024
     Cache-Control: public, max-age=3600
     ```
+    </CodeGroup>
 
-    ```http {{ title: 'Headers - ファイルダウンロード' }}
+    ### ファイルダウンロードレスポンスヘッダー
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'ヘッダー - ファイルダウンロード' }}
     Content-Type: image/png
     Content-Length: 1024
     Content-Disposition: attachment; filename="example.png"

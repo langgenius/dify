@@ -769,12 +769,17 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     ### 请求示例
     <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
 
-    ```bash {{ title: 'cURL - 浏览器预览' }}
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
-    ```bash {{ title: 'cURL - 作为附件下载' }}
+    </CodeGroup>
+
+    ### 作为附件下载
+    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\\\\n--header 'Authorization: Bearer {api_key}' \\\\\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
     --header 'Authorization: Bearer {api_key}' \
     --output downloaded_file.png
@@ -789,7 +794,10 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     Content-Length: 1024
     Cache-Control: public, max-age=3600
     ```
+    </CodeGroup>
 
+    ### 文件下载响应标头
+    <CodeGroup title="Download Response Headers">
     ```http {{ title: 'Headers - 文件下载' }}
     Content-Type: image/png
     Content-Length: 1024
