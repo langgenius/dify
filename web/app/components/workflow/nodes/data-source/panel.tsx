@@ -50,7 +50,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
-    const dataType = outputItem.value?.properties?.dify_builtin_type ? outputItem.value?.properties?.dify_builtin_type.enum[0] : Type.object
+    const dataType = Type.object
     const properties = Object.fromEntries(
       Object.entries(outputItem.value?.properties || {}).filter(([key]) => key !== 'dify_builtin_type'),
     ) as Record<string, any>
@@ -61,6 +61,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           [outputItem.name]: {
             ...outputItem.value,
             properties,
+            alias: outputItem.value?.properties?.dify_builtin_type?.enum?.[0],
           },
         },
         additionalProperties: false,
