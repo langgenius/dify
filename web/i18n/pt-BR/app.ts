@@ -27,21 +27,7 @@ const translation = {
   newApp: {
     startFromBlank: 'Criar do zero',
     startFromTemplate: 'Criar do modelo',
-    captionAppType: 'Que tipo de aplicativo você deseja criar?',
-    chatbotDescription: 'Construa um aplicativo baseado em chat. Este aplicativo usa um formato de pergunta e resposta, permitindo várias rodadas de conversa contínua.',
-    completionDescription: 'Construa um aplicativo que gera texto de alta qualidade com base em prompts, como geração de artigos, resumos, traduções e muito mais.',
-    completionWarning: 'Este tipo de aplicativo não será mais suportado.',
-    agentDescription: 'Construa um Agente inteligente que pode escolher ferramentas para completar as tarefas autonomamente',
-    workflowDescription: 'Construa um aplicativo que gera texto de alta qualidade com base em fluxo de trabalho com alto grau de personalização. É adequado para usuários experientes.',
     workflowWarning: 'Atualmente em beta',
-    chatbotType: 'Método de orquestração do Chatbot',
-    basic: 'Básico',
-    basicTip: 'Para iniciantes, pode mudar para o Chatflow mais tarde',
-    basicFor: 'PARA INICIANTES',
-    basicDescription: 'A Orquestração Básica permite orquestrar um aplicativo Chatbot usando configurações simples, sem a capacidade de modificar prompts integrados. É adequado para iniciantes.',
-    advanced: 'Chatflow',
-    advancedFor: 'Para usuários avançados',
-    advancedDescription: 'A Orquestração de Fluxo de Trabalho orquestra Chatbots na forma de fluxos de trabalho, oferecendo um alto grau de personalização, incluindo a capacidade de editar prompts integrados. É adequado para usuários experientes.',
     captionName: 'Ícone e nome do aplicativo',
     appNamePlaceholder: 'Dê um nome para o seu aplicativo',
     captionDescription: 'Descrição',
@@ -172,7 +158,10 @@ const translation = {
       description: 'Weave é uma plataforma de código aberto para avaliar, testar e monitorar aplicações de LLM.',
       title: 'Trançar',
     },
-    aliyun: {},
+    aliyun: {
+      title: 'Monitoramento em Nuvem',
+      description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',
@@ -256,6 +245,9 @@ const translation = {
   },
   accessControl: 'Controle de Acesso do Aplicativo Web',
   noAccessPermission: 'Sem permissão para acessar o aplicativo web',
+  maxActiveRequestsPlaceholder: 'Digite 0 para ilimitado',
+  maxActiveRequests: 'Máximo de solicitações simultâneas',
+  maxActiveRequestsTip: 'Número máximo de solicitações ativas simultâneas por aplicativo (0 para ilimitado)',
 }
 
 export default translation

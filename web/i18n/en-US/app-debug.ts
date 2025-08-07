@@ -163,7 +163,7 @@ const translation = {
     moderation: {
       title: 'Content moderation',
       description: 'Secure model output by using moderation API or maintaining a sensitive word list.',
-      contentEnableLabel: 'Enabled moderate content',
+      contentEnableLabel: 'Content moderation enabled',
       allEnabled: 'INPUT & OUTPUT',
       inputEnabled: 'INPUT',
       outputEnabled: 'OUTPUT',
@@ -404,6 +404,9 @@ const translation = {
       atLeastOneOption: 'At least one option is required',
       optionRepeat: 'Has repeat options',
     },
+    'defaultValue': 'Default value',
+    'noDefaultValue': 'No default value',
+    'selectDefaultValue': 'Select default value',
   },
   vision: {
     name: 'Vision',

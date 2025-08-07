@@ -20,6 +20,7 @@ def handle(sender, **kwargs):
                     provider_id=tool_entity.provider_id,
                     tool_name=tool_entity.tool_name,
                     tenant_id=app.tenant_id,
+                    credential_id=tool_entity.credential_id,
                 )
                 manager = ToolParameterConfigurationManager(
                     tenant_id=app.tenant_id,

@@ -39,6 +39,9 @@ type PureSelectProps = {
     itemClassName?: string
     title?: string
   },
+  placeholder?: string
+  disabled?: boolean
+  triggerPopupSameWidth?: boolean
 }
 const PureSelect = ({
   options,
@@ -47,6 +50,9 @@ const PureSelect = ({
   containerProps,
   triggerProps,
   popupProps,
+  placeholder,
+  disabled,
+  triggerPopupSameWidth,
 }: PureSelectProps) => {
   const { t } = useTranslation()
   const {
@@ -74,7 +80,7 @@ const PureSelect = ({
   }, [onOpenChange])
 
   const selectedOption = options.find(option => option.value === value)
-  const triggerText = selectedOption?.label || t('common.placeholder.select')
+  const triggerText = selectedOption?.label || placeholder || t('common.placeholder.select')
 
   return (
     <PortalToFollowElem
@@ -82,15 +88,17 @@ const PureSelect = ({
       offset={offset || 4}
       open={mergedOpen}
       onOpenChange={handleOpenChange}
+      triggerPopupSameWidth={triggerPopupSameWidth}
     >
       <PortalToFollowElemTrigger
-        onClick={() => handleOpenChange(!mergedOpen)}
-        asChild
-      >
+        onClick={() => !disabled && handleOpenChange(!mergedOpen)}
+        asChild >
         <div
           className={cn(
-            'system-sm-regular group flex h-8 cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt',
-            mergedOpen && 'bg-state-base-hover-alt',
+            'system-sm-regular group flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled',
+            !disabled && 'cursor-pointer hover:bg-state-base-hover-alt',
+            disabled && 'cursor-not-allowed opacity-50',
+            mergedOpen && !disabled && 'bg-state-base-hover-alt',
             triggerClassName,
           )}
         >
@@ -109,7 +117,7 @@ const PureSelect = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
-        'z-10',
+        'z-[9999]',
         popupWrapperClassName,
       )}>
         <div
@@ -135,6 +143,7 @@ const PureSelect = ({
                 )}
                 title={option.label}
                 onClick={() => {
+                  if (disabled) return
                   onChange?.(option.value)
                   handleOpenChange(false)
                 }}

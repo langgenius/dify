@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n-config/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
@@ -21,8 +21,8 @@ type IState = {
   timezone: string
 }
 
-type IAction =
-  | { type: 'failed', payload: null }
+type IAction
+  = | { type: 'failed', payload: null }
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }
@@ -103,7 +103,6 @@ const OneMoreStep = () => {
                     </div>
                   </div>
                 }
-                needsDelay
               >
                 <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
               </Tooltip>

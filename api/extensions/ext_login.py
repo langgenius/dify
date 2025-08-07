@@ -40,9 +40,9 @@ def load_user_from_request(request_from_flask_login):
             if workspace_id:
                 tenant_account_join = (
                     db.session.query(Tenant, TenantAccountJoin)
-                    .filter(Tenant.id == workspace_id)
-                    .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                    .filter(TenantAccountJoin.role == "owner")
+                    .where(Tenant.id == workspace_id)
+                    .where(TenantAccountJoin.tenant_id == Tenant.id)
+                    .where(TenantAccountJoin.role == "owner")
                     .one_or_none()
                 )
                 if tenant_account_join:
@@ -70,7 +70,7 @@ def load_user_from_request(request_from_flask_login):
         end_user_id = decoded.get("end_user_id")
         if not end_user_id:
             raise Unauthorized("Invalid Authorization token.")
-        end_user = db.session.query(EndUser).filter(EndUser.id == decoded["end_user_id"]).first()
+        end_user = db.session.query(EndUser).where(EndUser.id == decoded["end_user_id"]).first()
         if not end_user:
             raise NotFound("End user not found.")
         return end_user
@@ -78,12 +78,12 @@ def load_user_from_request(request_from_flask_login):
         server_code = request.view_args.get("server_code") if request.view_args else None
         if not server_code:
             raise Unauthorized("Invalid Authorization token.")
-        app_mcp_server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
+        app_mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = (
             db.session.query(EndUser)
-            .filter(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
+            .where(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
             .first()
         )
         if not end_user:

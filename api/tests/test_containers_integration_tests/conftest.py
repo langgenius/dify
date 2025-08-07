@@ -28,19 +28,6 @@ from models import db
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-DB_USERNAME = "postgres"
-DB_PASSWORD = "difyai123456"
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_DATABASE = "dify"
-
-STORAGE_TYPE = "opendal"
-OPENDAL_SCHEME = "fs"
-OPENDAL_FS_ROOT = "storage"
-
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-
 
 class DifyTestContainers:
     """
@@ -77,7 +64,7 @@ class DifyTestContainers:
         # PostgreSQL is used for storing user data, workflows, and application state
         logger.info("Initializing PostgreSQL container...")
         self.postgres = PostgresContainer(
-            image="postgres:latest",
+            image="postgres:16-alpine",
         )
         self.postgres.start()
         db_host = self.postgres.get_container_host_ip()
@@ -88,8 +75,11 @@ class DifyTestContainers:
         os.environ["DB_PASSWORD"] = self.postgres.password
         os.environ["DB_DATABASE"] = self.postgres.dbname
         logger.info(
-            f"PostgreSQL container started successfully - Host: "
-            f"{db_host}, Port: {db_port} User: {self.postgres.username}, Database: {self.postgres.dbname}"
+            "PostgreSQL container started successfully - Host: %s, Port: %s User: %s, Database: %s",
+            db_host,
+            db_port,
+            self.postgres.username,
+            self.postgres.dbname,
         )
 
         # Wait for PostgreSQL to be ready
@@ -116,7 +106,7 @@ class DifyTestContainers:
             conn.close()
             logger.info("uuid-ossp extension installed successfully")
         except Exception as e:
-            logger.warning(f"Failed to install uuid-ossp extension: {e}")
+            logger.warning("Failed to install uuid-ossp extension: %s", e)
 
         # Set up storage environment variables
         os.environ["STORAGE_TYPE"] = "opendal"
@@ -132,7 +122,7 @@ class DifyTestContainers:
         redis_port = self.redis.get_exposed_port(6379)
         os.environ["REDIS_HOST"] = redis_host
         os.environ["REDIS_PORT"] = str(redis_port)
-        logger.info(f"Redis container started successfully - Host: {redis_host}, Port: {redis_port}")
+        logger.info("Redis container started successfully - Host: %s, Port: %s", redis_host, redis_port)
 
         # Wait for Redis to be ready
         logger.info("Waiting for Redis to be ready to accept connections...")
@@ -152,7 +142,7 @@ class DifyTestContainers:
         sandbox_port = self.dify_sandbox.get_exposed_port(8194)
         os.environ["CODE_EXECUTION_ENDPOINT"] = f"http://{sandbox_host}:{sandbox_port}"
         os.environ["CODE_EXECUTION_API_KEY"] = "test_api_key"
-        logger.info(f"Dify Sandbox container started successfully - Host: {sandbox_host}, Port: {sandbox_port}")
+        logger.info("Dify Sandbox container started successfully - Host: %s, Port: %s", sandbox_host, sandbox_port)
 
         # Wait for Dify Sandbox to be ready
         logger.info("Waiting for Dify Sandbox to be ready to accept connections...")
@@ -179,12 +169,12 @@ class DifyTestContainers:
             if container:
                 try:
                     container_name = container.image
-                    logger.info(f"Stopping container: {container_name}")
+                    logger.info("Stopping container: %s", container_name)
                     container.stop()
-                    logger.info(f"Successfully stopped container: {container_name}")
+                    logger.info("Successfully stopped container: %s", container_name)
                 except Exception as e:
                     # Log error but don't fail the test cleanup
-                    logger.warning(f"Failed to stop container {container}: {e}")
+                    logger.warning("Failed to stop container %s: %s", container, e)
 
         self._containers_started = False
         logger.info("All test containers stopped and cleaned up successfully")

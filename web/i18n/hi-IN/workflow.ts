@@ -109,8 +109,6 @@ const translation = {
     exitVersions: 'निकलने के संस्करण',
     exportPNG: 'PNG के रूप में निर्यात करें',
     exportJPEG: 'JPEG के रूप में निर्यात करें',
-    referenceVar: 'संदर्भ चर',
-    noExist: 'कोई ऐसा चर नहीं है',
     exportImage: 'छवि निर्यात करें',
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
@@ -118,6 +116,7 @@ const translation = {
     needAnswerNode: 'उत्तर नोड जोड़ा जाना चाहिए',
     addBlock: 'नोड जोड़ें',
     needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
+    tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -224,7 +223,6 @@ const translation = {
   tabs: {
     'tools': 'टूल्स',
     'allTool': 'सभी',
-    'builtInTool': 'अंतर्निहित',
     'customTool': 'कस्टम',
     'workflowTool': 'कार्यप्रवाह',
     'question-understand': 'प्रश्न समझ',
@@ -237,6 +235,8 @@ const translation = {
     'agent': 'एजेंट रणनीति',
     'searchBlock': 'खोज नोड',
     'blocks': 'नोड्स',
+    'addAll': 'सभी जोड़ें',
+    'allAdded': 'सभी जोड़े गए',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -298,6 +298,18 @@ const translation = {
     zoomTo50: '50% पर ज़ूम करें',
     zoomTo100: '100% पर ज़ूम करें',
     zoomToFit: 'फिट करने के लिए ज़ूम करें',
+    alignRight: 'सही',
+    alignLeft: 'बाईं ओर',
+    alignTop: 'शीर्ष',
+    horizontal: 'क्षैतिज',
+    alignNodes: 'नोड्स को संरेखित करें',
+    selectionAlignment: 'चयन संरेखण',
+    alignCenter: 'केंद्र',
+    vertical: 'ऊर्ध्वाधर',
+    distributeHorizontal: 'क्षैतिज स्पेस',
+    alignBottom: 'तल',
+    distributeVertical: 'अंतरिक्ष को वर्टिकल रूप से',
+    alignMiddle: 'मध्य',
   },
   panel: {
     userInputField: 'उपयोगकर्ता इनपुट फ़ील्ड',
@@ -376,7 +388,10 @@ const translation = {
         retry: 'पुनर्प्रयास',
         retryOnFailure: 'विफलता पर पुनः प्रयास करें',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'इनपुट मान',
+        variable: 'चर का प्रयोग करें',
+      },
     },
     start: {
       required: 'आवश्यक',
@@ -504,6 +519,7 @@ const translation = {
           search: 'खोज मेटाडेटा',
         },
         title: 'मेटाडेटा फ़िल्टरिंग',
+        tip: 'मेटाडेटा छानने की प्रक्रिया है जिसमें मेटाडेटा विशेषताओं (जैसे टैग, श्रेणियाँ, या पहुंच अनुमतियाँ) का उपयोग करके एक प्रणाली के भीतर प्रासंगिक जानकारी की पुनर्प्राप्ति को सुधारने और नियंत्रित करने के लिए किया जाता है।',
       },
     },
     http: {
@@ -565,6 +581,7 @@ const translation = {
       advancedDependenciesTip:
         'कुछ प्रीलोडेड निर्भरताएँ जोड़ें जिनका उपयोग करने में अधिक समय लगता है या जो डिफ़ॉल्ट निर्मित में नहीं हैं',
       searchDependencies: 'निर्भरताएँ खोजें',
+      syncFunctionSignature: 'कोड के साथ फ़ंक्शन हस्ताक्षर को सिंक करें',
     },
     templateTransform: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -594,7 +611,6 @@ const translation = {
         'not empty': 'खाली नहीं है',
         'null': 'शून्य है',
         'not null': 'शून्य नहीं है',
-        'regex match': 'रेगेक्स मैच',
         'in': 'में',
         'all of': 'के सभी',
         'not exists': 'मौजूद नहीं है',
@@ -617,7 +633,6 @@ const translation = {
       },
       select: 'चुनना',
       addSubVariable: 'उप चर',
-      condition: 'स्थिति',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',
@@ -686,6 +701,9 @@ const translation = {
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
       authorize: 'अधिकृत करें',
+      insertPlaceholder1: 'टाइप करें या दबाएँ',
+      settings: 'सेटिंग्स',
+      insertPlaceholder2: 'वेरिएबल डालें',
     },
     questionClassifiers: {
       model: 'मॉडल',
@@ -874,6 +892,8 @@ const translation = {
       maxIterations: 'अधिकतम पुनरावृत्तियाँ',
       strategyNotSet: 'एजेंटिक रणनीति सेट नहीं की गई',
       strategyNotFoundDescAndSwitchVersion: 'स्थापित प्लगइन संस्करण इस रणनीति को प्रदान नहीं करता है। संस्करण बदलने के लिए क्लिक करें।',
+      parameterSchema: 'पैरामीटर स्कीमा',
+      clickToViewParameterSchema: 'पैरामीटर स्कीमा देखने के लिए क्लिक करें',
     },
     loop: {
       ErrorMethod: {
@@ -939,6 +959,7 @@ const translation = {
       updateSuccess: 'संस्करण अपडेट किया गया',
       updateFailure: 'संस्करण अपडेट करने में विफल',
       restoreFailure: 'संस्करण को पुनर्स्थापित करने में विफल',
+      copyIdSuccess: 'आईडी क्लिपबोर्ड पर कॉपी हो गई',
     },
     latest: 'लेटेस्ट',
     editVersionInfo: 'संस्करण की जानकारी संपादित करें',
@@ -949,6 +970,7 @@ const translation = {
     restorationTip: 'संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।',
     defaultName: 'अविभाजित संस्करण',
     deletionTip: 'हटाना अप्रतिबंधी है, कृपया पुष्टि करें।',
+    copyId: 'आईडी कॉपी करें',
   },
   debug: {
     noData: {
@@ -978,6 +1000,15 @@ const translation = {
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
+    relations: {
+      dependents: 'निष्पाभ लोग',
+      dependentsDescription: 'इस नोड पर निर्भर नोड्स',
+      dependencies: 'निर्भरता',
+      noDependents: 'कोई आश्रित नहीं',
+      dependenciesDescription: 'यह नोड जिस नोड पर निर्भर करता है',
+      noDependencies: 'कोई निर्भरताएँ नहीं',
+    },
+    relationsTab: 'रिश्ते',
   },
 }
 
