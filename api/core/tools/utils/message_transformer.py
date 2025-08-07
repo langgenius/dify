@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 def safe_json_value(v):
     if isinstance(v, datetime):
-        return v.astimezone(pytz.timezone(current_user.timezone)).isoformat()
+        tz_name = getattr(current_user, "timezone", None) if current_user is not None else None
+        if not tz_name:
+            tz_name = "UTC"
+        return v.astimezone(pytz.timezone(tz_name)).isoformat()
     elif isinstance(v, date):
         return v.isoformat()
     elif isinstance(v, UUID):
@@ -29,7 +32,7 @@ def safe_json_value(v):
     elif isinstance(v, bytes):
         try:
             return v.decode("utf-8")
-        except:
+        except UnicodeDecodeError:
             return v.hex()
     elif isinstance(v, memoryview):
         return v.tobytes().hex()
