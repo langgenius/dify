@@ -19,7 +19,7 @@ class CeleryTask(Base):
     task_id = mapped_column(String(155), unique=True)
     status = mapped_column(String(50), default=states.PENDING)
     result = mapped_column(sa.PickleType, nullable=True)
-    date_done = mapped_column(
+    date_done: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
         default=lambda: naive_utc_now(),
         onupdate=lambda: naive_utc_now(),

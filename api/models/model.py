@@ -643,7 +643,7 @@ class Conversation(Base):
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    read_at = mapped_column(sa.DateTime)
+    read_at: Mapped[Optional[datetime]] = mapped_column(sa.DateTime)
     read_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -913,7 +913,7 @@ class Message(Base):
     answer_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     parent_message_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    provider_response_latency = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_price = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
