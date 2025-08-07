@@ -9,6 +9,14 @@ export type SerializedNode = SerializedLexicalNode & {
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string
 
+  isIsolated(): boolean {
+    return true // This is necessary for drag-and-drop to work correctly
+  }
+
+  isTopLevel(): boolean {
+    return true // This is necessary for drag-and-drop to work correctly
+  }
+
   static getType(): string {
     return 'hitl-input-block'
   }
@@ -34,7 +42,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
   createDOM(): HTMLElement {
     const div = document.createElement('div')
-    div.classList.add('flex', 'items-center', 'align-middle')
+    div.classList.add('flex', 'items-center', 'align-middle', 'support-drag')
     return div
   }
 

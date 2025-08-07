@@ -1,0 +1,40 @@
+.draggable-block-menu {
+  border-radius: 4px;
+  padding: 2px 1px;
+  cursor: grab;
+  opacity: 0;
+  position: absolute;
+  left: -20px;
+  top: 0;
+  will-change: transform;
+  display: flex;
+  gap: 2px;
+}
+
+.draggable-block-menu .icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.3;
+  background-image: url(./icons/draggable-block-menu.svg);
+  background-repeat: no-repeat;
+}
+
+.draggable-block-menu:active {
+  cursor: grabbing;
+}
+
+.draggable-block-menu .icon:hover {
+  background-color: #efefef;
+}
+
+.draggable-block-target-line {
+  pointer-events: none;
+  background: deepskyblue;
+  height: 4px;
+  position: absolute;
+  left: -21px;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  will-change: transform;
+}

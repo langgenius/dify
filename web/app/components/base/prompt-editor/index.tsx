@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import type {
   EditorState,
 } from 'lexical'
@@ -16,7 +16,8 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
-// import TreeView from './plugins/tree-view'
+import DraggableBlockPlugin from './plugins/draggable-plugin'
+import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
@@ -165,9 +166,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
     } as any)
   }, [eventEmitter, historyBlock?.history])
 
+  const [floatingAnchorElem, setFloatingAnchorElem] = useState(null)
+
+  const onRef = (_floatingAnchorElem: any) => {
+    if (_floatingAnchorElem !== null)
+      setFloatingAnchorElem(_floatingAnchorElem)
+  }
+
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className={cn('relative', wrapperClassName)}>
+      <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <RichTextPlugin
           contentEditable={
             <ContentEditable
@@ -271,7 +279,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />
         <HistoryPlugin />
-        {/* <TreeView /> */}
+        {floatingAnchorElem && (
+            <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
+          )}
+        <TreeView />
       </div>
     </LexicalComposer>
   )
