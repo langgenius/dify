@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useCallback } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useNodes } from 'reactflow'
 import { useNodesInteractions } from './use-nodes-interactions'
 import type { CommonNodeType } from '../types'
 import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { setupNodeSelectionListener } from '../utils/node-navigation'
 
 /**
  * Hook to register workflow nodes search functionality
@@ -45,9 +47,9 @@ export const useWorkflowSearch = () => {
   // Create search function for workflow nodes
   const searchWorkflowNodes = useCallback((query: string) => {
     if (!searchableNodes.length || !query.trim()) return []
-    
+
     const searchTerm = query.toLowerCase()
-    
+
     const results = searchableNodes
       .map((node) => {
         const titleMatch = node.title.toLowerCase()
@@ -62,28 +64,37 @@ export const useWorkflowSearch = () => {
         else if (typeMatch.includes(searchTerm)) score += 30
         else if (descMatch.includes(searchTerm)) score += 20
 
-        return score > 0 
-          ? { 
+        return score > 0
+          ? {
               id: node.id,
               title: node.title,
               description: node.desc || node.type,
               type: 'workflow-node' as const,
               path: `#${node.id}`,
+              icon: (
+                <BlockIcon
+                  type={node.blockType}
+                  className="shrink-0"
+                  size="sm"
+                />
+              ),
               metadata: {
                 nodeId: node.id,
                 nodeData: node.nodeData,
-              }
-            } 
+              },
+              // Add required data property for SearchResult type
+              data: node.nodeData,
+            }
           : null
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
         const aTitle = a.title.toLowerCase()
         const bTitle = b.title.toLowerCase()
-        
+
         if (aTitle.startsWith(searchTerm) && !bTitle.startsWith(searchTerm)) return -1
         if (!aTitle.startsWith(searchTerm) && bTitle.startsWith(searchTerm)) return 1
-        
+
         return 0
       })
 
@@ -95,27 +106,17 @@ export const useWorkflowSearch = () => {
     if (searchableNodes.length > 0) {
       // Set the search function directly on the action
       workflowNodesAction.searchFn = searchWorkflowNodes
-      console.log('Registered workflow node search function with', searchableNodes.length, 'nodes')
     }
 
     return () => {
       // Clean up when component unmounts
-      workflowNodesAction.searchFn = null
+      workflowNodesAction.searchFn = undefined
     }
   }, [searchableNodes, searchWorkflowNodes])
 
-  // Set up node selection event listener
+  // Set up node selection event listener using the utility function
   useEffect(() => {
-    const handleNodeSelection = (event: CustomEvent) => {
-      const { nodeId } = event.detail
-      if (nodeId) handleNodeSelect(nodeId)
-    }
-
-    document.addEventListener('workflow:select-node', handleNodeSelection as EventListener)
-
-    return () => {
-      document.removeEventListener('workflow:select-node', handleNodeSelection as EventListener)
-    }
+    return setupNodeSelectionListener(handleNodeSelect)
   }, [handleNodeSelect])
 
   return null
