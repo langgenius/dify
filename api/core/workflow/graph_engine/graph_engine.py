@@ -85,11 +85,6 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         if self.submit_count > self.max_submit_count:
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
-    def wait_for_all_tasks_done(self) -> None:
-        """Block until all submitted tasks have completed."""
-        while self.submit_count > 0:
-            time.sleep(0.01)
-
 
 class GraphEngine:
     workflow_thread_pool_mapping: dict[str, GraphEngineThreadPool] = {}
