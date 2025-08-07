@@ -3,7 +3,7 @@ import time
 
 import click
 from sqlalchemy import func, select
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
@@ -65,8 +65,8 @@ def clean_unused_datasets_task():
 
             datasets = db.paginate(stmt, page=1, per_page=50)
 
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if datasets.items is None or len(datasets.items) == 0:
             break
         for dataset in datasets:
@@ -146,8 +146,8 @@ def clean_unused_datasets_task():
             )
             datasets = db.paginate(stmt, page=1, per_page=50)
 
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if datasets.items is None or len(datasets.items) == 0:
             break
         for dataset in datasets:
