@@ -26,12 +26,12 @@ class CeleryTask(Base):
         nullable=True,
     )
     traceback: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    name = mapped_column(String(155), nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
     args = mapped_column(sa.LargeBinary, nullable=True)
     kwargs = mapped_column(sa.LargeBinary, nullable=True)
-    worker = mapped_column(String(155), nullable=True)
+    worker: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
     retries: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    queue = mapped_column(String(155), nullable=True)
+    queue: Mapped[Optional[str]] = mapped_column(String(155), nullable=True)
 
 
 class CeleryTaskSet(Base):

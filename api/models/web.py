@@ -21,7 +21,7 @@ class SavedMessage(Base):
     id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role = mapped_column(
+    created_by_role: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'end_user'::character varying")
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)

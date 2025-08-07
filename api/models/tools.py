@@ -367,7 +367,7 @@ class ToolModelInvoke(Base):
     # prompt messages
     prompt_messages: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # invoke response
-    model_response = mapped_column(sa.Text, nullable=False)
+    model_response: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
