@@ -171,6 +171,10 @@ const translation = {
   importFromDSL: '從 DSL 導入',
   importFromDSLFile: '從 DSL 檔',
   importFromDSLUrlPlaceholder: '在此處貼上 DSL 連結',
+  dslUploader: {
+    button: '拖拽檔案至此，或者',
+    browse: '選擇檔案',
+  },
   mermaid: {
     handDrawn: '手繪',
     classic: '經典',

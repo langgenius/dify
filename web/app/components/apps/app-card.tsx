@@ -370,20 +370,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             {app.description}
           </div>
         </div>
-        <div className={cn(
-          'absolute bottom-1 left-0 right-0 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
-          tags.length ? 'flex' : '!hidden group-hover:!flex',
-        )}>
+        <div className='absolute bottom-1 left-0 right-0 flex h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1'>
           {isCurrentWorkspaceEditor && (
             <>
               <div className={cn('flex w-0 grow items-center gap-1')} onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
               }}>
-                <div className={cn(
-                  'mr-[41px] w-full grow group-hover:!mr-0 group-hover:!block',
-                  tags.length ? '!block' : '!hidden',
-                )}>
+                <div className='mr-[41px] w-full grow group-hover:!mr-0'>
                   <TagSelector
                     position='bl'
                     type='app'
@@ -395,7 +389,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 group-hover:!flex' />
+              <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 bg-divider-regular group-hover:!flex' />
               <div className='!hidden shrink-0 group-hover:!flex'>
                 <CustomPopover
                   htmlContent={<Operations />}

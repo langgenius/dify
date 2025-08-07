@@ -169,7 +169,11 @@ const translation = {
     descriptionInExplore: 'Utilisation de l’icône web app pour remplacer 🤖 dans Explore',
   },
   importFromDSLUrlPlaceholder: 'Collez le lien DSL ici',
-  importFromDSL: 'Importation à partir d’une DSL',
+  dslUploader: {
+    button: 'Glisser-déposer un fichier, ou',
+    browse: 'Parcourir',
+  },
+  importFromDSL: 'Importation à partir d\'une DSL',
   importFromDSLUrl: 'À partir de l’URL',
   importFromDSLFile: 'À partir d’un fichier DSL',
   mermaid: {

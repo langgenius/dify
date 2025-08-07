@@ -197,7 +197,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'Conținut moderat activat',
+      contentEnableLabel: 'Moderarea conținutului activată',
     },
     fileUpload: {
       title: 'Încărcare fișier',

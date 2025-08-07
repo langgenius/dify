@@ -197,7 +197,7 @@ const translation = {
           after: '中配置 OpenAI API 金鑰。',
         },
       },
-      contentEnableLabel: '啟用了中等內容',
+      contentEnableLabel: '內容審查已啟用',
     },
     fileUpload: {
       title: '檔案上傳',
@@ -239,7 +239,7 @@ const translation = {
     waitForBatchResponse: '請等待批次任務完成',
     notSelectModel: '請選擇模型',
     waitForImgUpload: '請等待圖片上傳完成',
-    waitForFileUpload: '請等待檔上傳',
+    waitForFileUpload: '請等待檔案上傳完成',
   },
   chatSubTitle: '提示詞',
   completionSubTitle: '字首提示詞',

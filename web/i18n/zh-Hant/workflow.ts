@@ -287,6 +287,18 @@ const translation = {
     zoomTo50: '縮放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自適應視圖',
+    alignNodes: '對齊節點（Align Nodes）',
+    distributeVertical: '垂直空間',
+    alignLeft: '左',
+    distributeHorizontal: '水平空間',
+    vertical: '垂直',
+    alignTop: '返回頁首',
+    alignCenter: '中心',
+    horizontal: '水準',
+    selectionAlignment: '選擇對齊',
+    alignRight: '右',
+    alignBottom: '底',
+    alignMiddle: '中間',
   },
   panel: {
     userInputField: '用戶輸入字段',
@@ -941,6 +953,9 @@ const translation = {
     copyId: '複製ID',
   },
   debug: {
+    settingsTab: '設定',
+    lastRunTab: '最後一次運行',
+    relationsTab: '關係',
     noData: {
       runThisNode: '運行此節點',
       description: '上次運行的結果將顯示在這裡',
@@ -966,8 +981,14 @@ const translation = {
       emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
       resetConversationVar: '將對話變數重置為默認值',
     },
-    settingsTab: '設定',
-    lastRunTab: '最後一次運行',
+    relations: {
+      dependencies: '依賴',
+      dependents: '被依賴',
+      dependenciesDescription: '此節點所依賴的其他節點',
+      dependentsDescription: '依賴此節點的其他節點',
+      noDependencies: '無依賴',
+      noDependents: '無被依賴',
+    },
   },
 }
 

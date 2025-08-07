@@ -173,7 +173,7 @@ const translation = {
         },
         title: 'การตั้งค่าการกลั่นกรองเนื้อหา',
       },
-      contentEnableLabel: 'เปิดใช้งานเนื้อหากลั่นกรอง',
+      contentEnableLabel: 'การกลั่นกรองเนื้อหาเปิดใช้งานแล้ว',
       outputEnabled: 'ผลิตภัณฑ์',
       title: 'การกลั่นกรองเนื้อหา',
       allEnabled: 'อินพุต & เอาต์พุต',
