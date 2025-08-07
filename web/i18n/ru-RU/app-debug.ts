@@ -197,7 +197,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'Включен модерируемый контент',
+      contentEnableLabel: 'Модерация контента включена',
     },
     fileUpload: {
       title: 'Загрузка файлов',

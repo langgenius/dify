@@ -65,6 +65,7 @@ import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
+import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
 import {
@@ -263,6 +264,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
+    handleSelectionContextMenu,
   } = useSelectionInteractions()
   const {
     handlePaneContextMenu,
@@ -313,6 +315,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <SelectionContextmenu />
       <HelpLine />
       {
         !!showConfirm && (
@@ -349,6 +352,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
         // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}

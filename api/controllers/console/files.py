@@ -49,7 +49,6 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
-        file = request.files["file"]
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -58,6 +57,7 @@ class FileApi(Resource):
 
         if len(request.files) > 1:
             raise TooManyFilesError()
+        file = request.files["file"]
 
         if not file.filename:
             raise FilenameNotExistsError

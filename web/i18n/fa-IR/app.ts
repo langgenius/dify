@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'از فایل DSL',
   importFromDSLUrl: 'از URL',
   importFromDSLUrlPlaceholder: 'لینک DSL را اینجا بچسبانید',
+  dslUploader: {
+    button: 'فایل را بکشید و رها کنید، یا',
+    browse: 'مرور',
+  },
   deleteAppConfirmTitle: 'آیا این برنامه حذف شود؟',
   deleteAppConfirmContent:
     'حذف برنامه غیرقابل برگشت است. کاربران دیگر قادر به دسترسی به برنامه شما نخواهند بود و تمام تنظیمات و گزارشات درخواست‌ها به صورت دائم حذف خواهند شد.',
