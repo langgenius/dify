@@ -107,3 +107,15 @@ class UnsupportedFileTypeError(BaseHTTPException):
     error_code = "unsupported_file_type"
     description = "File type not allowed."
     code = 415
+
+
+class FileNotFoundError(BaseHTTPException):
+    error_code = "file_not_found"
+    description = "The requested file was not found."
+    code = 404
+
+
+class FileAccessDeniedError(BaseHTTPException):
+    error_code = "file_access_denied"
+    description = "Access to the requested file is denied."
+    code = 403
