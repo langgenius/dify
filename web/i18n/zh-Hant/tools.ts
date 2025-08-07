@@ -54,12 +54,16 @@ const translation = {
       keyTooltip: 'HTTP 頭部名稱，如果你不知道是什麼，可以將其保留為 Authorization 或設定為自定義值',
       types: {
         none: '無',
-        api_key: 'API Key',
         apiKeyPlaceholder: 'HTTP 頭部名稱，用於傳遞 API Key',
         apiValuePlaceholder: '輸入 API Key',
+        api_key_query: '查詢參數',
+        queryParamPlaceholder: 'API 金鑰的查詢參數名稱',
+        api_key_header: '標題',
       },
       key: '鍵',
       value: '值',
+      queryParam: '查詢參數',
+      queryParamTooltip: '要傳遞的 API 金鑰查詢參數的名稱，例如在 "https://example.com/test?key=API_KEY" 中的 "key"。',
     },
     authHeaderPrefix: {
       title: '鑑權頭部字首',

@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Twoja nazwa użytkownika',
   forget: 'Zapomniałeś hasła?',
   signBtn: 'Zaloguj się',
-  sso: 'Kontynuuj za pomocą SSO',
   installBtn: 'Ustaw',
   setAdminAccount: 'Ustawianie konta administratora',
   setAdminAccountDesc:
@@ -86,8 +85,8 @@ const translation = {
     useAnotherMethod: 'Użyj innej metody',
     didNotReceiveCode: 'Nie otrzymałeś kodu?',
     verificationCode: 'Kod weryfikacyjny',
-    tips: 'Wysyłamy kod weryfikacyjny na <strong>adres {{email}}</strong>',
     emptyCode: 'Kod jest wymagany',
+    tipsPrefix: 'Wysyłamy kod weryfikacyjny do',
   },
   continueWithCode: 'Kontynuuj z kodem',
   setYourAccount: 'Ustaw swoje konto',
@@ -114,6 +113,7 @@ const translation = {
     noLoginMethod: 'Metoda uwierzytelniania nie jest skonfigurowana dla aplikacji internetowej',
     noLoginMethodTip: 'Proszę skontaktować się z administratorem systemu, aby dodać metodę uwierzytelniania.',
     disabled: 'Uwierzytelnianie aplikacji internetowej jest wyłączone. Proszę skontaktować się z administratorem systemu, aby je włączyć. Możesz spróbować użyć aplikacji bezpośrednio.',
+    login: 'Zaloguj się',
   },
 }
 

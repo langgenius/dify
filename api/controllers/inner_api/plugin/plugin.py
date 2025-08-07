@@ -175,6 +175,7 @@ class PluginInvokeToolApi(Resource):
                     provider=payload.provider,
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
+                    credential_id=payload.credential_id,
                 ),
             )
 

@@ -103,7 +103,7 @@ class MilvusVector(BaseVector):
             # For standard Milvus installations, check version number
             return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
         except Exception as e:
-            logger.warning(f"Failed to check Milvus version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
     def get_type(self) -> str:
@@ -289,9 +289,9 @@ class MilvusVector(BaseVector):
         """
         Create a new collection in Milvus with the specified schema and index parameters.
         """
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             # Grab the existing collection if it exists

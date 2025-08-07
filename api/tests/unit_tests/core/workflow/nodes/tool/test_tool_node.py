@@ -38,12 +38,13 @@ def _create_tool_node():
         system_variables=SystemVariable.empty(),
         user_inputs={},
     )
+    node_config = {
+        "id": "1",
+        "data": data.model_dump(),
+    }
     node = ToolNode(
         id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=GraphInitParams(
             tenant_id="1",
             app_id="1",
@@ -71,6 +72,8 @@ def _create_tool_node():
             start_at=0,
         ),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     return node
 
 
@@ -108,5 +111,5 @@ def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert "oops" in result.error
-    assert "Failed to transform tool message:" in result.error
+    assert "Failed to invoke tool" in result.error
     assert result.error_type == "ToolInvokeError"

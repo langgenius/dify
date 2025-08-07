@@ -144,7 +144,7 @@ class FileService:
 
     @staticmethod
     def get_file_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found")
@@ -167,7 +167,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -187,7 +187,7 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -198,7 +198,7 @@ class FileService:
 
     @staticmethod
     def get_public_image_preview(file_id: str):
-        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")

@@ -1,16 +1,20 @@
+from core.helper.provider_cache import SingletonProviderCredentialsCache
 from core.plugin.entities.request import RequestInvokeEncrypt
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.encryption import create_provider_encrypter
 from models.account import Tenant
 
 
 class PluginEncrypter:
     @classmethod
     def invoke_encrypt(cls, tenant: Tenant, payload: RequestInvokeEncrypt) -> dict:
-        encrypter = ProviderConfigEncrypter(
+        encrypter, cache = create_provider_encrypter(
             tenant_id=tenant.id,
             config=payload.config,
-            provider_type=payload.namespace,
-            provider_identity=payload.identity,
+            cache=SingletonProviderCredentialsCache(
+                tenant_id=tenant.id,
+                provider_type=payload.namespace,
+                provider_identity=payload.identity,
+            ),
         )
 
         if payload.opt == "encrypt":
@@ -22,7 +26,7 @@ class PluginEncrypter:
                 "data": encrypter.decrypt(payload.data),
             }
         elif payload.opt == "clear":
-            encrypter.delete_tool_credentials_cache()
+            cache.delete()
             return {
                 "data": {},
             }

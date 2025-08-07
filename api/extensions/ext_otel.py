@@ -136,6 +136,8 @@ def init_app(app: DifyApp):
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
     from opentelemetry.propagate import set_global_textmap
@@ -205,7 +207,7 @@ def init_app(app: DifyApp):
 
             metric_endpoint = dify_config.OTLP_METRIC_ENDPOINT
             if not metric_endpoint:
-                metric_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/traces"
+                metric_endpoint = dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics"
             metric_exporter = HTTPMetricExporter(
                 endpoint=metric_endpoint,
                 headers=headers,
@@ -234,6 +236,8 @@ def init_app(app: DifyApp):
         CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
+    RedisInstrumentor().instrument()
+    RequestsInstrumentor().instrument()
     atexit.register(shutdown_tracer)
 
 

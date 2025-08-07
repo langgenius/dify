@@ -115,6 +115,7 @@ const translation = {
     needEndNode: 'Le nœud de fin doit être ajouté',
     needAnswerNode: 'Le nœud de réponse doit être ajouté.',
     addBlock: 'Ajouter un nœud',
+    tagBound: 'Nombre d\'applications utilisant cette étiquette',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -221,7 +222,6 @@ const translation = {
   tabs: {
     'tools': 'Outils',
     'allTool': 'Tous',
-    'builtInTool': 'Intégré',
     'customTool': 'Personnalisé',
     'workflowTool': 'Flux de travail',
     'question-understand': 'Compréhension des questions',
@@ -234,6 +234,8 @@ const translation = {
     'agent': 'Stratégie d’agent',
     'blocks': 'Nœuds',
     'searchBlock': 'Nœud de recherche',
+    'addAll': 'Ajouter tout',
+    'allAdded': 'Tout ajouté',
   },
   blocks: {
     'start': 'Début',
@@ -364,7 +366,10 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Tentatives',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Valeur d\'entrée',
+        variable: 'Utilisez une variable',
+      },
     },
     start: {
       required: 'requis',
@@ -491,6 +496,7 @@ const translation = {
           title: 'Conditions de filtrage des métadonnées',
         },
         title: 'Filtrage des métadonnées',
+        tip: 'Le filtrage des métadonnées est le processus d\'utilisation des attributs de métadonnées (tels que les étiquettes, les catégories ou les autorisations d\'accès) pour affiner et contrôler la récupération d\'informations pertinentes au sein d\'un système.',
       },
     },
     http: {
@@ -551,6 +557,7 @@ const translation = {
       advancedDependencies: 'Dépendances avancées',
       advancedDependenciesTip: 'Ajoutez quelques dépendances préchargées qui prennent plus de temps à consommer ou ne sont pas par défaut ici',
       searchDependencies: 'Rechercher des dépendances',
+      syncFunctionSignature: 'Synchroniser la signature de fonction avec le code',
     },
     templateTransform: {
       inputVars: 'Variables de saisie',
@@ -579,7 +586,6 @@ const translation = {
         'not empty': 'n\'est pas vide',
         'null': 'est nul',
         'not null': 'n\'est pas nul',
-        'regex match': 'correspondance regex',
         'in': 'dans',
         'not in': 'pas dans',
         'exists': 'Existe',
@@ -670,6 +676,9 @@ const translation = {
         json: 'JSON généré par un outil',
       },
       authorize: 'Autoriser',
+      insertPlaceholder2: 'insérer une variable',
+      settings: 'Paramètres',
+      insertPlaceholder1: 'Tapez ou appuyez',
     },
     questionClassifiers: {
       model: 'modèle',
@@ -854,6 +863,8 @@ const translation = {
       pluginNotInstalledDesc: 'Ce plugin est installé à partir de GitHub. Veuillez aller dans Plugins pour réinstaller',
       maxIterations: 'Nombre maximal d’itérations',
       toolNotAuthorizedTooltip: '{{outil}} Non autorisé',
+      clickToViewParameterSchema: 'Cliquez pour voir le schéma des paramètres',
+      parameterSchema: 'Schéma de Paramètres',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +930,7 @@ const translation = {
       deleteSuccess: 'Version supprimée',
       updateFailure: 'Échec de la mise à jour de la version',
       restoreFailure: 'Échec de la restauration de la version',
+      copyIdSuccess: 'ID copié dans le presse-papiers',
     },
     title: 'Versions',
     releaseNotesPlaceholder: 'Décrivez ce qui a changé',
@@ -929,6 +941,7 @@ const translation = {
     restorationTip: 'Après la restauration de la version, le brouillon actuel sera écrasé.',
     deletionTip: 'La suppression est irreversible, veuillez confirmer.',
     latest: 'Dernier',
+    copyId: 'Copier l’ID',
   },
   debug: {
     noData: {

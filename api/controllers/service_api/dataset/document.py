@@ -63,7 +63,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -136,7 +136,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -206,7 +206,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -299,7 +299,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -358,39 +358,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         return documents_and_batch_fields, 200
 
 
-class DocumentDeleteApi(DatasetApiResource):
-    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, document_id):
-        """Delete document."""
-        document_id = str(document_id)
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-
-        # get dataset info
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
-
-        document = DocumentService.get_document(dataset.id, document_id)
-
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
-
-        # 403 if document is archived
-        if DocumentService.check_archived(document):
-            raise ArchivedDocumentImmutableError()
-
-        try:
-            # delete document
-            DocumentService.delete_document(document)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
-
-        return 204
-
-
 class DocumentListApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id):
         dataset_id = str(dataset_id)
@@ -398,7 +365,7 @@ class DocumentListApi(DatasetApiResource):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -406,7 +373,7 @@ class DocumentListApi(DatasetApiResource):
 
         if search:
             search = f"%{search}%"
-            query = query.filter(Document.name.like(search))
+            query = query.where(Document.name.like(search))
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
@@ -430,7 +397,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         batch = str(batch)
         tenant_id = str(tenant_id)
         # get dataset
-        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
@@ -441,7 +408,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         for document in documents:
             completed_segments = (
                 db.session.query(DocumentSegment)
-                .filter(
+                .where(
                     DocumentSegment.completed_at.isnot(None),
                     DocumentSegment.document_id == str(document.id),
                     DocumentSegment.status != "re_segment",
@@ -450,7 +417,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             )
             total_segments = (
                 db.session.query(DocumentSegment)
-                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
                 .count()
             )
             # Create a dictionary with document attributes and additional fields
@@ -473,7 +440,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
-class DocumentDetailApi(DatasetApiResource):
+class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
     def get(self, tenant_id, dataset_id, document_id):
@@ -567,6 +534,37 @@ class DocumentDetailApi(DatasetApiResource):
 
         return response
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def delete(self, tenant_id, dataset_id, document_id):
+        """Delete document."""
+        document_id = str(document_id)
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+
+        # get dataset info
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+
+        if not dataset:
+            raise ValueError("Dataset does not exist.")
+
+        document = DocumentService.get_document(dataset.id, document_id)
+
+        # 404 if document not found
+        if document is None:
+            raise NotFound("Document Not Exists.")
+
+        # 403 if document is archived
+        if DocumentService.check_archived(document):
+            raise ArchivedDocumentImmutableError()
+
+        try:
+            # delete document
+            DocumentService.delete_document(document)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return 204
+
 
 api.add_resource(
     DocumentAddByTextApi,
@@ -588,7 +586,6 @@ api.add_resource(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
 )
-api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+api.add_resource(DocumentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentListApi, "/datasets/<uuid:dataset_id>/documents")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
-api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")

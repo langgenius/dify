@@ -119,6 +119,7 @@ const translation = {
     needEndNode: 'Deve essere aggiunto il nodo finale',
     addBlock: 'Aggiungi nodo',
     needAnswerNode: 'Deve essere aggiunto il nodo di risposta',
+    tagBound: 'Numero di app che utilizzano questo tag',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -226,7 +227,6 @@ const translation = {
   tabs: {
     'tools': 'Strumenti',
     'allTool': 'Tutti',
-    'builtInTool': 'Integrato',
     'customTool': 'Personalizzato',
     'workflowTool': 'Flusso di lavoro',
     'question-understand': 'Comprensione Domanda',
@@ -239,6 +239,8 @@ const translation = {
     'plugin': 'Plugin',
     'searchBlock': 'Cerca nodo',
     'blocks': 'Nodi',
+    'allAdded': 'Tutto aggiunto',
+    'addAll': 'Aggiungi tutto',
   },
   blocks: {
     'start': 'Inizio',
@@ -379,7 +381,10 @@ const translation = {
         retryFailed: 'Nuovo tentativo non riuscito',
         ms: 'ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Valore di input',
+        variable: 'Usa la variabile',
+      },
     },
     start: {
       required: 'richiesto',
@@ -491,6 +496,7 @@ const translation = {
           automatic: {
             subTitle: 'Genera automaticamente condizioni di filtraggio dei metadati in base alla query dell\'utente',
             desc: 'Genera automaticamente condizioni di filtraggio dei metadati basate sulla variabile di query',
+            title: 'Automatico',
           },
           manual: {
             title: 'Manuale',
@@ -507,6 +513,7 @@ const translation = {
           search: 'Cerca metadati',
         },
         title: 'Filtraggio dei metadati',
+        tip: 'Il filtraggio dei metadati è il processo di utilizzo degli attributi dei metadati (come tag, categorie o permessi di accesso) per affinare e controllare il recupero di informazioni pertinenti all\'interno di un sistema.',
       },
     },
     http: {
@@ -568,6 +575,7 @@ const translation = {
       advancedDependenciesTip:
         'Aggiungi alcune dipendenze precaricate che richiedono più tempo per essere consumate o che non sono predefinite qui',
       searchDependencies: 'Cerca Dipendenze',
+      syncFunctionSignature: 'Sincronizza la firma della funzione con il codice',
     },
     templateTransform: {
       inputVars: 'Variabili di Input',
@@ -597,13 +605,13 @@ const translation = {
         'not empty': 'non è vuoto',
         'null': 'è nullo',
         'not null': 'non è nullo',
-        'regex match': 'Corrispondenza regex',
         'in': 'in',
         'all of': 'tutto di',
         'not in': 'non in',
         'exists': 'Esiste',
         'not exists': 'non esiste',
         'after': 'dopo',
+        'before': 'prima',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',
@@ -689,6 +697,9 @@ const translation = {
         json: 'json generato dallo strumento',
       },
       authorize: 'Autorizza',
+      insertPlaceholder1: 'Digita o premi',
+      insertPlaceholder2: 'inserisci variabile',
+      settings: 'Impostazioni',
     },
     questionClassifiers: {
       model: 'modello',
@@ -878,6 +889,8 @@ const translation = {
       strategyNotFoundDescAndSwitchVersion: 'La versione del plugin installata non fornisce questa strategia. Fare clic per cambiare versione.',
       pluginNotInstalled: 'Questo plugin non è installato',
       pluginNotFoundDesc: 'Questo plugin viene installato da GitHub. Vai su Plugin per reinstallare',
+      parameterSchema: 'Schema dei parametri',
+      clickToViewParameterSchema: 'Clicca per visualizzare lo schema dei parametri',
     },
     loop: {
       ErrorMethod: {
@@ -943,6 +956,7 @@ const translation = {
       updateSuccess: 'Versione aggiornata',
       deleteFailure: 'Impossibile eliminare la versione',
       updateFailure: 'Impossibile aggiornare la versione',
+      copyIdSuccess: 'ID copiato negli appunti',
     },
     latest: 'Ultimo',
     defaultName: 'Versione senza titolo',
@@ -953,6 +967,7 @@ const translation = {
     currentDraft: 'Bozza attuale',
     restorationTip: 'Dopo il ripristino della versione, la bozza attuale verrà sovrascritta.',
     title: 'Versioni',
+    copyId: 'Copia ID',
   },
   debug: {
     noData: {
