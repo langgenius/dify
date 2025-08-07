@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
@@ -30,7 +31,7 @@ class ToolOAuthSystemClient(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    plugin_id = mapped_column(String(512), nullable=False)
+    plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -371,10 +372,12 @@ class ToolModelInvoke(Base):
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    answer_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
-    answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    answer_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_price = mapped_column(sa.Numeric(10, 7))
+    total_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())

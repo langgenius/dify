@@ -3,6 +3,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
@@ -906,15 +907,19 @@ class Message(Base):
     query: Mapped[str] = mapped_column(sa.Text, nullable=False)
     message = mapped_column(sa.JSON, nullable=False)
     message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    message_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
-    message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    message_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    message_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     answer: Mapped[str] = mapped_column(sa.Text, nullable=False)
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
-    answer_unit_price = mapped_column(sa.Numeric(10, 4), nullable=False)
-    answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    answer_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     parent_message_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_price = mapped_column(sa.Numeric(10, 7))
+    total_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'normal'::character varying")
@@ -1686,15 +1691,19 @@ class MessageAgentThought(Base):
     tool_process_data: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     message: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     message_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    message_unit_price = mapped_column(sa.Numeric, nullable=True)
-    message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    message_unit_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric, nullable=True)
+    message_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     message_files: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     answer: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     answer_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    answer_unit_price = mapped_column(sa.Numeric, nullable=True)
-    answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    answer_unit_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric, nullable=True)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    total_price = mapped_column(sa.Numeric, nullable=True)
+    total_price: Mapped[Optional[Decimal]] = mapped_column(sa.Numeric, nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String, nullable=False)
@@ -1855,7 +1864,7 @@ class TraceAppConfig(Base):
     tracing_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     tracing_config = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))

@@ -369,7 +369,7 @@ class Document(Base):
     archived_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    doc_type = mapped_column(String(40), nullable=True)
+    doc_type: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     doc_metadata = mapped_column(JSONB, nullable=True)
     doc_form: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text_model'::character varying")
@@ -882,7 +882,7 @@ class DatasetQuery(Base):
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    created_by_role = mapped_column(String, nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=db.func.current_timestamp())
 
@@ -944,7 +944,7 @@ class Embedding(Base):
     model_name = mapped_column(
         String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'::character varying")
     )
-    hash = mapped_column(String(64), nullable=False)
+    hash: Mapped[str] = mapped_column(String(64), nullable=False)
     embedding = mapped_column(sa.LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     provider_name: Mapped[str] = mapped_column(
@@ -969,7 +969,7 @@ class DatasetCollectionBinding(Base):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     type = mapped_column(String(40), server_default=sa.text("'dataset'::character varying"), nullable=False)
-    collection_name = mapped_column(String(64), nullable=False)
+    collection_name: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
