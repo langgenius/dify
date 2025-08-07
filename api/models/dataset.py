@@ -197,6 +197,8 @@ class Dataset(Base):
         )
         if not external_knowledge_api:
             return None
+        if external_knowledge_api.settings is None:
+            return None
         return {
             "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
             "external_knowledge_api_id": external_knowledge_api.id,

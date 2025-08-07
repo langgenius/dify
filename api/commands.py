@@ -221,6 +221,7 @@ def migrate_annotation_vector_database():
                 documents = []
                 if annotations:
                     for annotation in annotations:
+                        assert annotation.question is not None
                         document = Document(
                             page_content=annotation.question,
                             metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},

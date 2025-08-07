@@ -48,6 +48,7 @@ class DataSourceApiKeyAuthBinding(Base):
     disabled: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
 
     def to_dict(self):
+        assert self.credentials is not None
         return {
             "id": self.id,
             "tenant_id": self.tenant_id,

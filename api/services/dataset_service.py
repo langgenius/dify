@@ -1283,6 +1283,7 @@ class DocumentService:
                     )
                     if documents:
                         for document in documents:
+                            assert document.data_source_info is not None
                             data_source_info = json.loads(document.data_source_info)
                             exist_page_ids.append(data_source_info["notion_page_id"])
                             exist_document[data_source_info["notion_page_id"]] = document.id

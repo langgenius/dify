@@ -339,6 +339,7 @@ class BaseAgentRunner(AppRunner):
             raise ValueError("agent thought not found")
 
         if thought:
+            assert agent_thought.thought is not None
             agent_thought.thought += thought
 
         if tool_name:
@@ -437,16 +438,19 @@ class BaseAgentRunner(AppRunner):
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
+                    assert agent_thought.tool is not None
                     tools = agent_thought.tool
                     if tools:
                         tools = tools.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
                         try:
+                            assert agent_thought.tool_input is not None
                             tool_inputs = json.loads(agent_thought.tool_input)
                         except Exception:
                             tool_inputs = {tool: {} for tool in tools}
                         try:
+                            assert agent_thought.observation is not None
                             tool_responses = json.loads(agent_thought.observation)
                         except Exception:
                             tool_responses = dict.fromkeys(tools, agent_thought.observation)
@@ -481,7 +485,7 @@ class BaseAgentRunner(AppRunner):
                                 *tool_call_response,
                             ]
                         )
-                    if not tools:
+                    if not tools and agent_thought.thought is not None:
                         result.append(AssistantPromptMessage(content=agent_thought.thought))
             else:
                 if message.answer:

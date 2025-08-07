@@ -163,6 +163,7 @@ class ExternalDatasetService:
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
+        assert external_knowledge_api.settings is not None
         settings = json.loads(external_knowledge_api.settings)
         for setting in settings:
             custom_parameters = setting.get("document_process_setting")
@@ -280,7 +281,7 @@ class ExternalDatasetService:
         )
         if not external_knowledge_api:
             raise ValueError("external api template not found")
-
+        assert external_knowledge_api.settings is not None
         settings = json.loads(external_knowledge_api.settings)
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):

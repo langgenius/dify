@@ -33,6 +33,7 @@ class AnnotationReplyFeature:
             return None
 
         collection_binding_detail = annotation_setting.collection_binding_detail
+        assert collection_binding_detail is not None
 
         try:
             score_threshold = annotation_setting.score_threshold or 1
@@ -69,6 +70,7 @@ class AnnotationReplyFeature:
                         from_source = "console"
 
                     # insert annotation history
+                    assert annotation.question is not None
                     AppAnnotationService.add_annotation_history(
                         annotation.id,
                         app_record.id,
