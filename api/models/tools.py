@@ -119,18 +119,18 @@ class ApiToolProvider(Base):
     # icon
     icon: Mapped[str] = mapped_column(String(255), nullable=False)
     # original schema
-    schema = mapped_column(sa.Text, nullable=False)
+    schema: Mapped[str] = mapped_column(sa.Text, nullable=False)
     schema_type_str: Mapped[str] = mapped_column(String(40), nullable=False)
     # who created this tool
     user_id = mapped_column(StringUUID, nullable=False)
     # tenant id
     tenant_id = mapped_column(StringUUID, nullable=False)
     # description of the provider
-    description = mapped_column(sa.Text, nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # json format tools
-    tools_str = mapped_column(sa.Text, nullable=False)
+    tools_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # json format credentials
-    credentials_str = mapped_column(sa.Text, nullable=False)
+    credentials_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # privacy policy
     privacy_policy: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # custom_disclaimer
@@ -402,7 +402,7 @@ class ToolConversationVariables(Base):
     # conversation id
     conversation_id = mapped_column(StringUUID, nullable=False)
     # variables pool
-    variables_str = mapped_column(sa.Text, nullable=False)
+    variables_str: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -460,12 +460,12 @@ class DeprecatedPublishedAppTool(Base):
 
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # who published this tool
-    description = mapped_column(sa.Text, nullable=False)
+    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # llm_description of the tool, for LLM
-    llm_description = mapped_column(sa.Text, nullable=False)
+    llm_description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # query description, query will be seem as a parameter of the tool,
     # to describe this parameter to llm, we need this field
-    query_description = mapped_column(sa.Text, nullable=False)
+    query_description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # query name, the name of the query parameter
     query_name: Mapped[str] = mapped_column(String(40), nullable=False)
     # name of the tool provider

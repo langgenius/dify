@@ -665,7 +665,7 @@ class DocumentSegment(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content = mapped_column(sa.Text, nullable=False)
+    content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     answer = mapped_column(sa.Text, nullable=True)
     word_count: Mapped[int]
     tokens: Mapped[int]
@@ -814,7 +814,7 @@ class ChildChunk(Base):
     document_id = mapped_column(StringUUID, nullable=False)
     segment_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    content = mapped_column(sa.Text, nullable=False)
+    content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
     index_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -873,7 +873,7 @@ class DatasetQuery(Base):
 
     id = mapped_column(StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False)
-    content = mapped_column(sa.Text, nullable=False)
+    content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     source_app_id = mapped_column(StringUUID, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
@@ -890,7 +890,7 @@ class DatasetKeywordTable(Base):
 
     id = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
     dataset_id = mapped_column(StringUUID, nullable=False, unique=True)
-    keyword_table = mapped_column(sa.Text, nullable=False)
+    keyword_table: Mapped[str] = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(
         String(255), nullable=False, server_default=sa.text("'database'::character varying")
     )
@@ -1085,7 +1085,7 @@ class ExternalKnowledgeBindings(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     external_knowledge_api_id = mapped_column(StringUUID, nullable=False)
     dataset_id = mapped_column(StringUUID, nullable=False)
-    external_knowledge_id = mapped_column(sa.Text, nullable=False)
+    external_knowledge_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
