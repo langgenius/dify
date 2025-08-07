@@ -12,18 +12,17 @@ from services.file_service import FileService
 class FileApi(WebApiResource):
     @marshal_with(file_fields)
     def post(self, app_model, end_user):
-        file = request.files["file"]
-        source = request.form.get("source")
-
         if "file" not in request.files:
             raise NoFileUploadedError()
 
         if len(request.files) > 1:
             raise TooManyFilesError()
 
+        file = request.files["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
+        source = request.form.get("source")
         if source not in ("datasets", None):
             source = None
 
