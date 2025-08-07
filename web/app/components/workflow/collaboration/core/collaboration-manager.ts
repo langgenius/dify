@@ -129,13 +129,17 @@ export class CollaborationManager {
     newNodes.forEach((newNode) => {
       const oldNode = oldNodesMap.get(newNode.id)
       if (!oldNode) {
-        this.nodesMap.set(newNode.id, newNode)
+        const persistentData = this.getPersistentNodeData(newNode)
+        const clonedData = JSON.parse(JSON.stringify(persistentData))
+        this.nodesMap.set(newNode.id, clonedData)
       }
       else {
         const oldPersistentData = this.getPersistentNodeData(oldNode)
         const newPersistentData = this.getPersistentNodeData(newNode)
-        if (!isEqual(oldPersistentData, newPersistentData))
-          this.nodesMap.set(newNode.id, newPersistentData)
+        if (!isEqual(oldPersistentData, newPersistentData)) {
+          const clonedData = JSON.parse(JSON.stringify(newPersistentData))
+          this.nodesMap.set(newNode.id, clonedData)
+        }
       }
     })
   }
@@ -153,10 +157,14 @@ export class CollaborationManager {
 
     newEdges.forEach((newEdge) => {
       const oldEdge = oldEdgesMap.get(newEdge.id)
-      if (!oldEdge)
-        this.edgesMap.set(newEdge.id, newEdge)
-       else if (!isEqual(oldEdge, newEdge))
-        this.edgesMap.set(newEdge.id, newEdge)
+      if (!oldEdge) {
+        const clonedEdge = JSON.parse(JSON.stringify(newEdge))
+        this.edgesMap.set(newEdge.id, clonedEdge)
+      }
+      else if (!isEqual(oldEdge, newEdge)) {
+        const clonedEdge = JSON.parse(JSON.stringify(newEdge))
+        this.edgesMap.set(newEdge.id, clonedEdge)
+      }
     })
   }
 
