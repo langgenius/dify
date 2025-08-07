@@ -39,7 +39,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
         try:
             local_time = datetime.strptime(localtime, time_format)
             if local_tz is None:
-                localtime = local_time.astimezone()
+                localtime = local_time.astimezone()  # type: ignore
             elif isinstance(local_tz, str):
                 local_tz = pytz.timezone(local_tz)
                 localtime = local_tz.localize(local_time)  # type: ignore
