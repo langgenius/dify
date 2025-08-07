@@ -641,10 +641,10 @@ class Conversation(Base):
 
     # ref: ConversationSource.
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id = mapped_column(StringUUID)
-    from_account_id = mapped_column(StringUUID)
+    from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     read_at = mapped_column(sa.DateTime)
-    read_account_id = mapped_column(StringUUID)
+    read_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1247,8 +1247,8 @@ class MessageFeedback(Base):
     rating: Mapped[str] = mapped_column(String(255), nullable=False)
     content = mapped_column(sa.Text)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id = mapped_column(StringUUID)
-    from_account_id = mapped_column(StringUUID)
+    from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
