@@ -48,7 +48,9 @@ class CompletionConversationApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False))
+        query = db.select(Conversation).where(
+            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
+        )
 
         if args["keyword"]:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
