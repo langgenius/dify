@@ -28,7 +28,7 @@ class MCPServerStreamableHTTPRequestHandler:
     ):
         self.app = app
         self.request = request
-        mcp_server = db.session.query(AppMCPServer).filter(AppMCPServer.app_id == self.app.id).first()
+        mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == self.app.id).first()
         if not mcp_server:
             raise ValueError("MCP server not found")
         self.mcp_server: AppMCPServer = mcp_server
@@ -192,7 +192,7 @@ class MCPServerStreamableHTTPRequestHandler:
     def retrieve_end_user(self):
         return (
             db.session.query(EndUser)
-            .filter(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
+            .where(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
             .first()
         )
 

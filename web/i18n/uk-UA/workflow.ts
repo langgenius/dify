@@ -103,9 +103,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Інструменти',
     'allTool': 'Усі',
-    'builtInTool': 'Вбудовані',
     'customTool': 'Користувацькі',
     'workflowTool': 'Робочий потік',
     'question-understand': 'Розуміння питань',
@@ -290,6 +287,18 @@ const translation = {
     zoomTo50: 'Збільшити до 50%',
     zoomTo100: 'Збільшити до 100%',
     zoomToFit: 'Збільшити для підгонки',
+    alignCenter: 'Центр',
+    alignRight: 'Праворуч',
+    vertical: 'Вертикальні',
+    alignBottom: 'Низ',
+    alignLeft: 'Ліворуч',
+    alignTop: 'Верх',
+    horizontal: 'Горизонтальні',
+    alignMiddle: 'Середній',
+    distributeVertical: 'Простір по вертикалі',
+    distributeHorizontal: 'Простір по горизонталі',
+    selectionAlignment: 'Вирівнювання вибору',
+    alignNodes: 'Вирівнювання вузлів',
   },
   panel: {
     userInputField: 'Поле введення користувача',
@@ -497,6 +506,7 @@ const translation = {
           add: 'Додати умову',
         },
         title: 'Фільтрація метаданих',
+        tip: 'Фільтрація метаданих — це процес використання атрибутів метаданих (таких як теги, категорії або права доступу) для уточнення та контролю отримання відповідної інформації в системі.',
       },
     },
     http: {
@@ -586,7 +596,6 @@ const translation = {
         'not empty': 'не порожній',
         'null': 'є null',
         'not null': 'не є null',
-        'regex match': 'Регулярний вираз збігу',
         'in': 'В',
         'all of': 'Всі з',
         'exists': 'Існує',
@@ -609,7 +618,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -931,6 +939,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -941,6 +950,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {
@@ -970,6 +980,15 @@ const translation = {
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
   },
 }
 

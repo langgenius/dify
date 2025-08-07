@@ -108,10 +108,8 @@ const translation = {
     versionHistory: 'Historia wersji',
     exportSVG: 'Eksportuj jako SVG',
     exportJPEG: 'Eksportuj jako JPEG',
-    noExist: 'Nie ma takiej zmiennej',
     exportPNG: 'Eksportuj jako PNG',
     publishUpdate: 'Opublikuj aktualizację',
-    referenceVar: 'Zmienna odniesienia',
     addBlock: 'Dodaj węzeł',
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Narzędzia',
     'allTool': 'Wszystkie',
-    'builtInTool': 'Wbudowane',
     'customTool': 'Niestandardowe',
     'workflowTool': 'Przepływ pracy',
     'question-understand': 'Zrozumienie pytania',
@@ -290,6 +287,18 @@ const translation = {
     zoomTo50: 'Powiększ do 50%',
     zoomTo100: 'Powiększ do 100%',
     zoomToFit: 'Dopasuj do ekranu',
+    alignMiddle: 'Środek',
+    alignTop: 'Do góry',
+    distributeHorizontal: 'Odstęp w poziomie',
+    alignCenter: 'Centrum',
+    alignRight: 'Prawy',
+    alignNodes: 'Wyrównywanie węzłów',
+    selectionAlignment: 'Wyrównanie zaznaczenia',
+    horizontal: 'Poziomy',
+    distributeVertical: 'Przestrzeń w pionie',
+    alignBottom: 'Dno',
+    alignLeft: 'Lewy',
+    vertical: 'Pionowy',
   },
   panel: {
     userInputField: 'Pole wprowadzania użytkownika',
@@ -497,6 +506,7 @@ const translation = {
           select: 'Wybierz zmienną...',
         },
         title: 'Filtrowanie metadanych',
+        tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
     },
     http: {
@@ -586,7 +596,6 @@ const translation = {
         'not empty': 'nie jest pusty',
         'null': 'jest null',
         'not null': 'nie jest null',
-        'regex match': 'Dopasowanie wyrażenia regularnego',
         'in': 'w',
         'not exists': 'nie istnieje',
         'exists': 'Istnieje',
@@ -609,7 +618,6 @@ const translation = {
       },
       addSubVariable: 'Zmienna podrzędna',
       select: 'Wybrać',
-      condition: 'Stan',
     },
     variableAssigner: {
       title: 'Przypisz zmienne',
@@ -931,6 +939,7 @@ const translation = {
       deleteSuccess: 'Wersja usunięta',
       restoreSuccess: 'Wersja przywrócona',
       restoreFailure: 'Nie udało się przywrócić wersji',
+      copyIdSuccess: 'Identyfikator skopiowany do schowka',
     },
     currentDraft: 'Aktualny szkic',
     nameThisVersion: 'Nazwij tę wersję',
@@ -941,6 +950,7 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+    copyId: 'Kopiuj ID',
   },
   debug: {
     noData: {
@@ -970,6 +980,15 @@ const translation = {
     },
     settingsTab: 'Ustawienia',
     lastRunTab: 'Ostatnie uruchomienie',
+    relations: {
+      dependencies: 'Zależności',
+      dependenciesDescription: 'Węzły, na których opiera się ten węzeł',
+      noDependents: 'Brak osób na utrzymaniu',
+      dependents: 'Zależności',
+      dependentsDescription: 'Węzły, które opierają się na tym węźle',
+      noDependencies: 'Brak zależności',
+    },
+    relationsTab: 'Stosunków',
   },
 }
 

@@ -3,150 +3,127 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from flask import render_template
 
 from extensions.ext_mail import mail
-from services.feature_service import FeatureService
+from libs.email_i18n import EmailType, get_email_i18n_service
 
 
 @shared_task(queue="mail")
-def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspace: str):
+def send_owner_transfer_confirm_task(language: str, to: str, code: str, workspace: str) -> None:
     """
-    Async Send owner transfer confirm mail
-    :param language: Language in which the email should be sent (e.g., 'en', 'zh')
-    :param to: Recipient email address
-    :param workspace: Workspace name
+    Send owner transfer confirmation email with internationalization support.
+
+    Args:
+        language: Language code for email localization
+        to: Recipient email address
+        code: Verification code
+        workspace: Workspace name
     """
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start change email mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start owner transfer confirm mail to {to}", fg="green"))
     start_at = time.perf_counter()
-    # send change email mail using different languages
+
     try:
-        if language == "zh-Hans":
-            template = "transfer_workspace_owner_confirm_template_zh-CN.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_owner_confirm_template_zh-CN.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
-                mail.send(to=to, subject="验证您转移工作空间所有权的请求", html=html_content)
-            else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
-                mail.send(to=to, subject="验证您转移工作空间所有权的请求", html=html_content)
-        else:
-            template = "transfer_workspace_owner_confirm_template_en-US.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_owner_confirm_template_en-US.html"
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
-                mail.send(to=to, subject="Verify Your Request to Transfer Workspace Ownership", html=html_content)
-            else:
-                html_content = render_template(template, to=to, code=code, WorkspaceName=workspace)
-                mail.send(to=to, subject="Verify Your Request to Transfer Workspace Ownership", html=html_content)
+        email_service = get_email_i18n_service()
+        email_service.send_email(
+            email_type=EmailType.OWNER_TRANSFER_CONFIRM,
+            language_code=language,
+            to=to,
+            template_context={
+                "to": to,
+                "code": code,
+                "WorkspaceName": workspace,
+            },
+        )
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Send owner transfer confirm mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                f"Send owner transfer confirm mail to {to} succeeded: latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("owner transfer confirm email mail to {} failed".format(to))
+        logging.exception("owner transfer confirm email mail to %s failed", to)
 
 
 @shared_task(queue="mail")
-def send_old_owner_transfer_notify_email_task(language: str, to: str, workspace: str, new_owner_email: str):
+def send_old_owner_transfer_notify_email_task(language: str, to: str, workspace: str, new_owner_email: str) -> None:
     """
-    Async Send owner transfer confirm mail
-    :param language: Language in which the email should be sent (e.g., 'en', 'zh')
-    :param to: Recipient email address
-    :param workspace: Workspace name
-    :param new_owner_email: New owner email
+    Send old owner transfer notification email with internationalization support.
+
+    Args:
+        language: Language code for email localization
+        to: Recipient email address
+        workspace: Workspace name
+        new_owner_email: New owner email address
     """
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start change email mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start old owner transfer notify mail to {to}", fg="green"))
     start_at = time.perf_counter()
-    # send change email mail using different languages
+
     try:
-        if language == "zh-Hans":
-            template = "transfer_workspace_old_owner_notify_template_zh-CN.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_old_owner_notify_template_zh-CN.html"
-                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
-                mail.send(to=to, subject="工作区所有权已转移", html=html_content)
-            else:
-                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
-                mail.send(to=to, subject="工作区所有权已转移", html=html_content)
-        else:
-            template = "transfer_workspace_old_owner_notify_template_en-US.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_old_owner_notify_template_en-US.html"
-                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
-                mail.send(to=to, subject="Workspace ownership has been transferred", html=html_content)
-            else:
-                html_content = render_template(template, to=to, WorkspaceName=workspace, NewOwnerEmail=new_owner_email)
-                mail.send(to=to, subject="Workspace ownership has been transferred", html=html_content)
+        email_service = get_email_i18n_service()
+        email_service.send_email(
+            email_type=EmailType.OWNER_TRANSFER_OLD_NOTIFY,
+            language_code=language,
+            to=to,
+            template_context={
+                "to": to,
+                "WorkspaceName": workspace,
+                "NewOwnerEmail": new_owner_email,
+            },
+        )
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Send owner transfer confirm mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                f"Send old owner transfer notify mail to {to} succeeded: latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("owner transfer confirm email mail to {} failed".format(to))
+        logging.exception("old owner transfer notify email mail to %s failed", to)
 
 
 @shared_task(queue="mail")
-def send_new_owner_transfer_notify_email_task(language: str, to: str, workspace: str):
+def send_new_owner_transfer_notify_email_task(language: str, to: str, workspace: str) -> None:
     """
-    Async Send owner transfer confirm mail
-    :param language: Language in which the email should be sent (e.g., 'en', 'zh')
-    :param to: Recipient email address
-    :param code: Change email code
-    :param workspace: Workspace name
+    Send new owner transfer notification email with internationalization support.
+
+    Args:
+        language: Language code for email localization
+        to: Recipient email address
+        workspace: Workspace name
     """
     if not mail.is_inited():
         return
 
-    logging.info(click.style("Start change email mail to {}".format(to), fg="green"))
+    logging.info(click.style(f"Start new owner transfer notify mail to {to}", fg="green"))
     start_at = time.perf_counter()
-    # send change email mail using different languages
+
     try:
-        if language == "zh-Hans":
-            template = "transfer_workspace_new_owner_notify_template_zh-CN.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_new_owner_notify_template_zh-CN.html"
-                html_content = render_template(template, to=to, WorkspaceName=workspace)
-                mail.send(to=to, subject=f"您现在是 {workspace} 的所有者", html=html_content)
-            else:
-                html_content = render_template(template, to=to, WorkspaceName=workspace)
-                mail.send(to=to, subject=f"您现在是 {workspace} 的所有者", html=html_content)
-        else:
-            template = "transfer_workspace_new_owner_notify_template_en-US.html"
-            system_features = FeatureService.get_system_features()
-            if system_features.branding.enabled:
-                template = "without-brand/transfer_workspace_new_owner_notify_template_en-US.html"
-                html_content = render_template(template, to=to, WorkspaceName=workspace)
-                mail.send(to=to, subject=f"You are now the owner of {workspace}", html=html_content)
-            else:
-                html_content = render_template(template, to=to, WorkspaceName=workspace)
-                mail.send(to=to, subject=f"You are now the owner of {workspace}", html=html_content)
+        email_service = get_email_i18n_service()
+        email_service.send_email(
+            email_type=EmailType.OWNER_TRANSFER_NEW_NOTIFY,
+            language_code=language,
+            to=to,
+            template_context={
+                "to": to,
+                "WorkspaceName": workspace,
+            },
+        )
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Send owner transfer confirm mail to {} succeeded: latency: {}".format(to, end_at - start_at),
+                f"Send new owner transfer notify mail to {to} succeeded: latency: {end_at - start_at}",
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("owner transfer confirm email mail to {} failed".format(to))
+        logging.exception("new owner transfer notify email mail to %s failed", to)

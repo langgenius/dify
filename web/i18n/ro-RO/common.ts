@@ -237,6 +237,7 @@ const translation = {
       content4: 'Tocmai ți-am trimis un cod de verificare temporar la <email>{{email}}</email>.',
       content2: 'Adresa ta de email curentă este <email>{{email}}</email>. Codul de verificare a fost trimis la această adresă de email.',
       emailLabel: 'Email nou',
+      unAvailableEmail: 'Acest email este temporar indisponibil.',
     },
   },
   members: {

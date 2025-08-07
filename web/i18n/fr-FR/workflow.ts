@@ -107,9 +107,7 @@ const translation = {
     exitVersions: 'Versions de sortie',
     exportSVG: 'Exporter en SVG',
     publishUpdate: 'Publier une mise à jour',
-    noExist: 'Aucune variable de ce type',
     versionHistory: 'Historique des versions',
-    referenceVar: 'Variable de référence',
     exportImage: 'Exporter l\'image',
     exportJPEG: 'Exporter en JPEG',
     needEndNode: 'Le nœud de fin doit être ajouté',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Outils',
     'allTool': 'Tous',
-    'builtInTool': 'Intégré',
     'customTool': 'Personnalisé',
     'workflowTool': 'Flux de travail',
     'question-understand': 'Compréhension des questions',
@@ -290,6 +287,18 @@ const translation = {
     zoomTo50: 'Zoomer à 50%',
     zoomTo100: 'Zoomer à 100%',
     zoomToFit: 'Zoomer pour ajuster',
+    alignBottom: 'Fond',
+    alignLeft: 'Gauche',
+    alignCenter: 'Centre',
+    alignTop: 'Retour au début',
+    alignNodes: 'Aligner les nœuds',
+    distributeHorizontal: 'Espace horizontal',
+    alignMiddle: 'Milieu',
+    horizontal: 'Horizontal',
+    selectionAlignment: 'Alignement de la sélection',
+    alignRight: 'Droite',
+    vertical: 'Vertical',
+    distributeVertical: 'Espace vertical',
   },
   panel: {
     userInputField: 'Champ de saisie de l\'utilisateur',
@@ -497,6 +506,7 @@ const translation = {
           title: 'Conditions de filtrage des métadonnées',
         },
         title: 'Filtrage des métadonnées',
+        tip: 'Le filtrage des métadonnées est le processus d\'utilisation des attributs de métadonnées (tels que les étiquettes, les catégories ou les autorisations d\'accès) pour affiner et contrôler la récupération d\'informations pertinentes au sein d\'un système.',
       },
     },
     http: {
@@ -586,7 +596,6 @@ const translation = {
         'not empty': 'n\'est pas vide',
         'null': 'est nul',
         'not null': 'n\'est pas nul',
-        'regex match': 'correspondance regex',
         'in': 'dans',
         'not in': 'pas dans',
         'exists': 'Existe',
@@ -609,7 +618,6 @@ const translation = {
       },
       select: 'Choisir',
       addSubVariable: 'Sous-variable',
-      condition: 'Condition',
     },
     variableAssigner: {
       title: 'Attribuer des variables',
@@ -931,6 +939,7 @@ const translation = {
       deleteSuccess: 'Version supprimée',
       updateFailure: 'Échec de la mise à jour de la version',
       restoreFailure: 'Échec de la restauration de la version',
+      copyIdSuccess: 'ID copié dans le presse-papiers',
     },
     title: 'Versions',
     releaseNotesPlaceholder: 'Décrivez ce qui a changé',
@@ -941,6 +950,7 @@ const translation = {
     restorationTip: 'Après la restauration de la version, le brouillon actuel sera écrasé.',
     deletionTip: 'La suppression est irreversible, veuillez confirmer.',
     latest: 'Dernier',
+    copyId: 'Copier l’ID',
   },
   debug: {
     noData: {
@@ -970,6 +980,15 @@ const translation = {
     },
     settingsTab: 'Paramètres',
     lastRunTab: 'Dernière Exécution',
+    relations: {
+      dependencies: 'Dépendances',
+      dependentsDescription: 'Nœuds qui s’appuient sur ce nœud',
+      noDependents: 'Pas de personnes à charge',
+      dependents: 'Dépendants',
+      noDependencies: 'Aucune dépendance',
+      dependenciesDescription: 'Nœuds sur lesquels repose ce nœud',
+    },
+    relationsTab: 'Relations',
   },
 }
 

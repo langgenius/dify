@@ -26,21 +26,7 @@ const translation = {
   newApp: {
     startFromBlank: '建立空白應用',
     startFromTemplate: '從應用模版建立',
-    captionAppType: '想要哪種應用類型？',
-    chatbotDescription: '使用大型語言模型構建聊天助手',
-    completionDescription: '構建一個根據提示生成高品質文字的應用程式，例如生成文章、摘要、翻譯等。',
-    completionWarning: '該類型不久後將不再支援建立',
-    agentDescription: '構建一個智慧 Agent，可以自主選擇工具來完成任務',
-    workflowDescription: '以工作流的形式編排生成型應用，提供更多的自訂設定。它適合有經驗的使用者。',
     workflowWarning: '正在進行 Beta 測試',
-    chatbotType: '聊天助手編排方法',
-    basic: '基礎編排',
-    basicTip: '新手適用，可以切換成工作流編排',
-    basicFor: '新手適用',
-    basicDescription: '基本編排允許使用簡單的設定編排聊天機器人應用程式，而無需修改內建提示。它適合初學者。',
-    advanced: '工作流編排',
-    advancedFor: '進階使用者適用',
-    advancedDescription: '工作流編排以工作流的形式編排聊天機器人，提供自訂設定，包括編輯內建提示的能力。它適合有經驗的使用者。',
     captionName: '應用名稱 & 圖示',
     appNamePlaceholder: '給你的應用起個名字',
     captionDescription: '描述',
@@ -260,6 +246,7 @@ const translation = {
   noAccessPermission: '沒有權限訪問網絡應用程式',
   maxActiveRequestsPlaceholder: '輸入 0 以表示無限',
   maxActiveRequests: '同時最大請求數',
+  maxActiveRequestsTip: '每個應用程式可同時活躍請求的最大數量（0為無限制）',
 }
 
 export default translation

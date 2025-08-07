@@ -213,7 +213,6 @@ const translation = {
     startRun: '実行開始',
     running: '実行中',
     testRunIteration: 'テスト実行（イテレーション）',
-    testRunLoop: 'テスト実行（ループ）',
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
@@ -288,6 +287,18 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    horizontal: '横',
+    alignBottom: '底',
+    alignNodes: 'ノードを整列させる',
+    vertical: '垂直',
+    alignLeft: '左',
+    alignTop: 'トップ',
+    alignRight: '右',
+    alignMiddle: '中間',
+    distributeVertical: '垂直にスペースを',
+    alignCenter: 'センター',
+    selectionAlignment: '選択の整列',
+    distributeHorizontal: '空間を水平方向に',
   },
   variableReference: {
     noAvailableVars: '利用可能な変数がありません',
@@ -592,7 +603,6 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'null でない',
-        'regex match': '正規表現マッチ',
         'in': '含まれている',
         'not in': '含まれていない',
         'all of': 'すべての',
@@ -619,7 +629,6 @@ const translation = {
     variableAssigner: {
       title: '変数を代入する',
       outputType: '出力タイプ',
-      outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
       noVarTip: '代入された変数を追加してください',
       type: {
@@ -887,7 +896,7 @@ const translation = {
       modelNotSelected: 'モデルが選択されていません',
       toolNotAuthorizedTooltip: '{{tool}} 認可されていません',
       toolNotInstallTooltip: '{{tool}}はインストールされていません',
-      tools: '道具',
+      tools: 'ツール',
       learnMore: 'もっと学ぶ',
       configureModel: 'モデルを設定する',
       model: 'モデル',
@@ -939,7 +948,9 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
   },
   debug: {
     noData: {
@@ -969,6 +980,15 @@ const translation = {
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
   },
 }
 

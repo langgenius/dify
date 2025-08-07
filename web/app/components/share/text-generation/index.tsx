@@ -24,7 +24,7 @@ import type {
 } from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
@@ -371,7 +371,7 @@ const TextGeneration: FC<IMainProps> = ({
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
-      changeLanguage(siteInfo.default_language)
+      await changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({

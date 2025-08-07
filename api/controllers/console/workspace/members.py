@@ -108,7 +108,7 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        member = db.session.query(Account).filter(Account.id == str(member_id)).first()
+        member = db.session.query(Account).where(Account.id == str(member_id)).first()
         if member is None:
             abort(404)
         else:
@@ -264,11 +264,9 @@ class OwnerTransfer(Resource):
 
         transfer_token_data = AccountService.get_owner_transfer_data(args["token"])
         if not transfer_token_data:
-            print(transfer_token_data, "transfer_token_data")
             raise InvalidTokenError()
 
         if transfer_token_data.get("email") != current_user.email:
-            print(transfer_token_data.get("email"), current_user.email)
             raise InvalidEmailError()
 
         AccountService.revoke_owner_transfer_token(args["token"])

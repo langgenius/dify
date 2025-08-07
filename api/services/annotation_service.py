@@ -26,7 +26,7 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -35,7 +35,7 @@ class AppAnnotationService:
         if args.get("message_id"):
             message_id = str(args["message_id"])
             # get message info
-            message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app.id).first()
+            message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:
                 raise NotFound("Message Not Exists.")
@@ -61,9 +61,7 @@ class AppAnnotationService:
         db.session.add(annotation)
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
+        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
@@ -76,14 +74,14 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
-        enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
+        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = "enable_app_annotation_job_{}".format(str(job_id))
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         enable_annotation_reply_task.delay(
@@ -99,14 +97,14 @@ class AppAnnotationService:
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> dict:
-        disable_app_annotation_key = "disable_app_annotation_{}".format(str(app_id))
+        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
             return {"job_id": cache_result, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = "disable_app_annotation_job_{}".format(str(job_id))
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
         disable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id)
@@ -117,7 +115,7 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -126,11 +124,11 @@ class AppAnnotationService:
         if keyword:
             stmt = (
                 select(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
-                .filter(
+                .where(MessageAnnotation.app_id == app_id)
+                .where(
                     or_(
-                        MessageAnnotation.question.ilike("%{}%".format(keyword)),
-                        MessageAnnotation.content.ilike("%{}%".format(keyword)),
+                        MessageAnnotation.question.ilike(f"%{keyword}%"),
+                        MessageAnnotation.content.ilike(f"%{keyword}%"),
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
@@ -138,7 +136,7 @@ class AppAnnotationService:
         else:
             stmt = (
                 select(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
+                .where(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
         annotations = db.paginate(select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False)
@@ -149,7 +147,7 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -157,7 +155,7 @@ class AppAnnotationService:
             raise NotFound("App not found")
         annotations = (
             db.session.query(MessageAnnotation)
-            .filter(MessageAnnotation.app_id == app_id)
+            .where(MessageAnnotation.app_id == app_id)
             .order_by(MessageAnnotation.created_at.desc())
             .all()
         )
@@ -168,7 +166,7 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -181,9 +179,7 @@ class AppAnnotationService:
         db.session.add(annotation)
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
+        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
@@ -199,14 +195,14 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -217,7 +213,7 @@ class AppAnnotationService:
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
         app_annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
         if app_annotation_setting:
@@ -236,14 +232,14 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -252,7 +248,7 @@ class AppAnnotationService:
 
         annotation_hit_histories = (
             db.session.query(AppAnnotationHitHistory)
-            .filter(AppAnnotationHitHistory.annotation_id == annotation_id)
+            .where(AppAnnotationHitHistory.annotation_id == annotation_id)
             .all()
         )
         if annotation_hit_histories:
@@ -262,7 +258,7 @@ class AppAnnotationService:
         db.session.commit()
         # if annotation reply is enabled , delete annotation index
         app_annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
         if app_annotation_setting:
@@ -271,11 +267,59 @@ class AppAnnotationService:
             )
 
     @classmethod
+    def delete_app_annotations_in_batch(cls, app_id: str, annotation_ids: list[str]):
+        # get app info
+        app = (
+            db.session.query(App)
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # Fetch annotations and their settings in a single query
+        annotations_to_delete = (
+            db.session.query(MessageAnnotation, AppAnnotationSetting)
+            .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
+            .filter(MessageAnnotation.id.in_(annotation_ids))
+            .all()
+        )
+
+        if not annotations_to_delete:
+            return {"deleted_count": 0}
+
+        # Step 1: Extract IDs for bulk operations
+        annotation_ids_to_delete = [annotation.id for annotation, _ in annotations_to_delete]
+
+        # Step 2: Bulk delete hit histories in a single query
+        db.session.query(AppAnnotationHitHistory).filter(
+            AppAnnotationHitHistory.annotation_id.in_(annotation_ids_to_delete)
+        ).delete(synchronize_session=False)
+
+        # Step 3: Trigger async tasks for search index deletion
+        for annotation, annotation_setting in annotations_to_delete:
+            if annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, annotation_setting.collection_binding_id
+                )
+
+        # Step 4: Bulk delete annotations in a single query
+        deleted_count = (
+            db.session.query(MessageAnnotation)
+            .filter(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            .delete(synchronize_session=False)
+        )
+
+        db.session.commit()
+        return {"deleted_count": deleted_count}
+
+    @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -284,7 +328,7 @@ class AppAnnotationService:
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype=str)
             result = []
             for index, row in df.iterrows():
                 content = {"question": row.iloc[0], "answer": row.iloc[1]}
@@ -299,7 +343,7 @@ class AppAnnotationService:
                     raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_import_annotations_task.delay(
@@ -314,21 +358,21 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
             raise NotFound("Annotation not found")
 
         stmt = (
             select(AppAnnotationHitHistory)
-            .filter(
+            .where(
                 AppAnnotationHitHistory.app_id == app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_id,
             )
@@ -341,7 +385,7 @@ class AppAnnotationService:
 
     @classmethod
     def get_annotation_by_id(cls, annotation_id: str) -> MessageAnnotation | None:
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
 
         if not annotation:
             return None
@@ -361,7 +405,7 @@ class AppAnnotationService:
         score: float,
     ):
         # add hit count to annotation
-        db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).update(
+        db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).update(
             {MessageAnnotation.hit_count: MessageAnnotation.hit_count + 1}, synchronize_session=False
         )
 
@@ -384,16 +428,14 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
-        )
+        annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
             return {
@@ -412,7 +454,7 @@ class AppAnnotationService:
         # get app info
         app = (
             db.session.query(App)
-            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
             .first()
         )
 
@@ -421,7 +463,7 @@ class AppAnnotationService:
 
         annotation_setting = (
             db.session.query(AppAnnotationSetting)
-            .filter(
+            .where(
                 AppAnnotationSetting.app_id == app_id,
                 AppAnnotationSetting.id == annotation_setting_id,
             )
@@ -446,3 +488,38 @@ class AppAnnotationService:
                 "embedding_model_name": collection_binding_detail.model_name,
             },
         }
+
+    @classmethod
+    def clear_all_annotations(cls, app_id: str) -> dict:
+        app = (
+            db.session.query(App)
+            .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+            .first()
+        )
+
+        if not app:
+            raise NotFound("App not found")
+
+        # if annotation reply is enabled, delete annotation index
+        app_annotation_setting = (
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        )
+
+        annotations_query = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id)
+        for annotation in annotations_query.yield_per(100):
+            annotation_hit_histories_query = db.session.query(AppAnnotationHitHistory).filter(
+                AppAnnotationHitHistory.annotation_id == annotation.id
+            )
+            for annotation_hit_history in annotation_hit_histories_query.yield_per(100):
+                db.session.delete(annotation_hit_history)
+
+            # if annotation reply is enabled, delete annotation index
+            if app_annotation_setting:
+                delete_annotation_index_task.delay(
+                    annotation.id, app_id, current_user.current_tenant_id, app_annotation_setting.collection_binding_id
+                )
+
+            db.session.delete(annotation)
+
+        db.session.commit()
+        return {"result": "success"}

@@ -22,13 +22,13 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
               {key}
             </div>
             {typeof tool_configurations[key].value === 'string' && (
-              <div title={tool_configurations[key]} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
+              <div title={tool_configurations[key].value} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
                 {paramSchemas?.find(i => i.name === key)?.type === FormTypeEnum.secretInput ? '********' : tool_configurations[key].value}
               </div>
             )}
             {typeof tool_configurations[key].value === 'number' && (
-              <div title={tool_configurations[key].toString()} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
-                {tool_configurations[key].value}
+              <div title={Number.isNaN(tool_configurations[key].value) ? '' : tool_configurations[key].value} className='w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary'>
+                {Number.isNaN(tool_configurations[key].value) ? '' : tool_configurations[key].value}
               </div>
             )}
             {typeof tool_configurations[key] !== 'string' && tool_configurations[key]?.type === FormTypeEnum.modelSelector && (

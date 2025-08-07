@@ -81,7 +81,7 @@ class MessageCycleManager:
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
             # get conversation and message
-            conversation = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+            conversation = db.session.query(Conversation).where(Conversation.id == conversation_id).first()
 
             if not conversation:
                 return
@@ -97,7 +97,7 @@ class MessageCycleManager:
                     conversation.name = name
                 except Exception as e:
                     if dify_config.DEBUG:
-                        logging.exception(f"generate conversation name failed, conversation_id: {conversation_id}")
+                        logging.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                     pass
 
                 db.session.merge(conversation)
@@ -140,7 +140,7 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        message_file = db.session.query(MessageFile).filter(MessageFile.id == event.message_file_id).first()
+        message_file = db.session.query(MessageFile).where(MessageFile.id == event.message_file_id).first()
 
         if message_file and message_file.url is not None:
             # get tool file id

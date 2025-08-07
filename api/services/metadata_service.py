@@ -79,7 +79,10 @@ class MetadataService:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     value = doc_metadata.pop(old_name, None)
                     doc_metadata[name] = value
                     document.doc_metadata = doc_metadata
@@ -109,7 +112,10 @@ class MetadataService:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata.pop(metadata.name, None)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
@@ -137,7 +143,6 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            dataset.built_in_field_enabled = True
             db.session.add(dataset)
             documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
             if documents:
@@ -153,6 +158,7 @@ class MetadataService:
                     doc_metadata[BuiltInField.source.value] = MetadataDataSource[document.data_source_type].value
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
+            dataset.built_in_field_enabled = True
             db.session.commit()
         except Exception:
             logging.exception("Enable built-in field failed")
@@ -166,13 +172,15 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            dataset.built_in_field_enabled = False
             db.session.add(dataset)
             documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
             document_ids = []
             if documents:
                 for document in documents:
-                    doc_metadata = copy.deepcopy(document.doc_metadata)
+                    if not document.doc_metadata:
+                        doc_metadata = {}
+                    else:
+                        doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata.pop(BuiltInField.document_name.value, None)
                     doc_metadata.pop(BuiltInField.uploader.value, None)
                     doc_metadata.pop(BuiltInField.upload_date.value, None)
@@ -181,6 +189,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
                     document_ids.append(document.id)
+            dataset.built_in_field_enabled = False
             db.session.commit()
         except Exception:
             logging.exception("Disable built-in field failed")
