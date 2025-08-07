@@ -69,7 +69,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
             ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
             : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
           description: output.description,
-          alias: output?.properties.dify_builtin_type?.enum?.[0],
+          alias: output?.properties?.dify_builtin_type?.enum?.[0],
           children: output.type === 'object' ? {
             schema: {
               type: 'object',

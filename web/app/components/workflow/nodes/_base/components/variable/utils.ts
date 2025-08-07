@@ -413,6 +413,7 @@ const formatItem = (
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
+            alias: output?.properties?.dify_builtin_type?.enum?.[0],
             children: output.type === 'object' ? {
               schema: {
                 type: 'object',
