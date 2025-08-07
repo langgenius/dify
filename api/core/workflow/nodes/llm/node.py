@@ -204,7 +204,7 @@ class LLMNode(BaseNode):
                     if self._node_data.vision.enabled
                     else []
                 )
-            
+
             if files:
                 node_inputs["#files#"] = [file.to_dict() for file in files]
 
