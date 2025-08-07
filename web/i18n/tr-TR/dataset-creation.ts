@@ -28,6 +28,7 @@ const translation = {
     uploader: {
       title: 'Dosya yükle',
       button: 'Dosyaları veya klasörleri sürükleyip bırakın veya',
+      buttonSingleFile: 'Dosyayı sürükleyip bırakın veya',
       browse: 'Göz atın',
       tip: 'Destekler {{supportTypes}}. Her biri en fazla {{size}}MB.',
       validation: {

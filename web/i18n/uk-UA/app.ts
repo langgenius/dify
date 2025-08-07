@@ -171,6 +171,10 @@ const translation = {
   importFromDSLUrl: 'З URL',
   importFromDSL: 'Імпорт з DSL',
   importFromDSLUrlPlaceholder: 'Вставте посилання на DSL тут',
+  dslUploader: {
+    button: 'Перетягніть файл, або',
+    browse: 'Огляд',
+  },
   importFromDSLFile: 'З DSL-файлу',
   mermaid: {
     handDrawn: 'Намальовані від руки',

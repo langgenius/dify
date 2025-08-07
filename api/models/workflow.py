@@ -864,6 +864,19 @@ class WorkflowAppLog(Base):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "workflow_id": self.workflow_id,
+            "workflow_run_id": self.workflow_run_id,
+            "created_from": self.created_from,
+            "created_by_role": self.created_by_role,
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+        }
+
 
 class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"

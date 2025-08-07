@@ -234,8 +234,6 @@ class DocumentAddByFileApi(DatasetApiResource):
                 args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
             )
 
-        # save file info
-        file = request.files["file"]
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -243,6 +241,8 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
+        # save file info
+        file = request.files["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
