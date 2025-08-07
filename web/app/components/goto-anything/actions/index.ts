@@ -1,33 +1,37 @@
 import { appAction } from './app'
 import { knowledgeAction } from './knowledge'
-import { toolsAction } from './tools'
+import { pluginAction } from './plugin'
 import type { ActionItem, SearchResult } from './types'
 
 export const Actions = {
   app: appAction,
   knowledge: knowledgeAction,
-  tools: toolsAction,
+  plugin: pluginAction,
 }
 
-export const searchAnything = async (query: string, actionItem?: ActionItem): Promise<SearchResult[]> => {
+export const searchAnything = async (
+  query: string,
+  actionItem?: ActionItem,
+  locale?: string,
+): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
-    return await actionItem.search(query, searchTerm)
+    return await actionItem.search(query, searchTerm, locale)
   }
-  else if(query.startsWith('@')){
+  else if(query.startsWith('@')) {
     return []
   }
   else {
-    return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query)))).flat()
+    return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query, query, locale)))).flat()
   }
 }
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
-  return Object.values(actions).find(action => {
+  return Object.values(actions).find((action) => {
     const reg = new RegExp(`^(${action.key}|${action.shortcut})(?:\\s|$)`)
     return reg.test(query)
   })
 }
 
 export * from './types'
-export { appAction, knowledgeAction, toolsAction }
+export { appAction, knowledgeAction, pluginAction as toolsAction }

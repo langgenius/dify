@@ -1,5 +1,5 @@
 import { RiDatabase2Line } from '@remixicon/react'
-import type { ActionItem } from './types'
+import type { ActionItem, KnowledgeSearchResult } from './types'
 import type { DataSet } from '@/models/datasets'
 
 // Mock data for knowledge bases
@@ -46,14 +46,15 @@ const mockDatasets: DataSet[] = [
   },
 ] as unknown as DataSet[]
 
-const parser = (datasets: DataSet[]) => {
+const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
   return datasets.map(dataset => ({
     id: dataset.id,
     title: dataset.name,
     description: dataset.description,
-    type: 'dataset' as const,
+    type: 'knowledge' as const,
     path: `/datasets/${dataset.id}`,
     icon: <RiDatabase2Line className="h-4 w-4 text-text-secondary" />,
+    data: dataset,
   }))
 }
 
