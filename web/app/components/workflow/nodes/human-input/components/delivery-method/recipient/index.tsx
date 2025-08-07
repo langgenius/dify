@@ -5,8 +5,9 @@ import { RiGroupLine } from '@remixicon/react'
 import { useAppContext } from '@/context/app-context'
 import Switch from '@/app/components/base/switch'
 import MemberSelector from './member-selector'
+import EmailInput from './email-input'
 import { fetchMembers } from '@/service/common'
-import type { RecipientData } from '../../../types'
+import type { RecipientData, Recipient as RecipientItem } from '../../../types'
 import cn from '@/utils/classnames'
 import { produce } from 'immer'
 
@@ -43,6 +44,28 @@ const Recipient = ({
     )
   }
 
+  const handleEmailAdd = (email: string) => {
+    onChange(
+      produce(data, (draft) => {
+        draft.items.push({
+          type: 'external',
+          email,
+        })
+      }),
+    )
+  }
+
+  const handleDelete = (recipient: RecipientItem) => {
+    onChange(
+      produce(data, (draft) => {
+        if (recipient.type === 'member')
+          draft.items = draft.items.filter(item => item.user_id !== recipient.user_id)
+        else if (recipient.type === 'external')
+          draft.items = draft.items.filter(item => item.email !== recipient.email)
+      }),
+    )
+  }
+
   return (
     <div className='space-y-1'>
       <div className='rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs'>
@@ -60,6 +83,14 @@ const Recipient = ({
             />
           </div>
         </div>
+        <EmailInput
+          email={userProfile.email}
+          value={data.items}
+          list={accounts}
+          onDelete={handleDelete}
+          onSelect={handleMemberSelect}
+          onAdd={handleEmailAdd}
+        />
       </div>
       <div className='flex h-10 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pl-2.5 pr-3 shadow-xs'>
         <div className='flex h-5 w-5 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[14px]'>
