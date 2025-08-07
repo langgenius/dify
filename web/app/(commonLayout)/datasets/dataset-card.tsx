@@ -162,24 +162,19 @@ const DatasetCard = ({
         </div>
         <div
           className={cn(
-            'mb-2 max-h-[72px] grow px-[14px] text-xs leading-normal text-text-tertiary group-hover:line-clamp-2 group-hover:max-h-[36px]',
-            tags.length ? 'line-clamp-2' : 'line-clamp-4',
+            'mb-2 line-clamp-2 max-h-[36px] grow px-[14px] text-xs leading-normal text-text-tertiary',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
           title={dataset.description}>
           {dataset.description}
         </div>
-        <div className={cn(
-          'mt-4 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
-          tags.length ? 'flex' : '!hidden group-hover:!flex',
-        )}>
+        <div className='mt-4 flex h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1'>
           <div className={cn('flex w-0 grow items-center gap-1', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
             e.stopPropagation()
             e.preventDefault()
           }}>
             <div className={cn(
-              'mr-[41px] w-full grow group-hover:!mr-0 group-hover:!block',
-              tags.length ? '!block' : '!hidden',
+              'mr-[41px] w-full grow group-hover:!mr-0',
             )}>
               <TagSelector
                 position='bl'
