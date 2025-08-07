@@ -69,7 +69,11 @@ const GotoAnything: FC<Props> = ({
         // Handle @ commands using Actions
         const action = matchAction(query, Actions)
 
-        return await searchAnything(query, action, defaultLocale)
+        return await searchAnything(
+          defaultLocale,
+          query,
+          action,
+        )
       },
       placeholderData: (previousData) => {
         if (searchQueryDebouncedValue)
