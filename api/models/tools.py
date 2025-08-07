@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional, cast
@@ -112,7 +113,7 @@ class ApiToolProvider(Base):
         sa.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # name of the api provider
     name: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'API KEY 1'::character varying")
@@ -352,7 +353,7 @@ class ToolModelInvoke(Base):
     __tablename__ = "tool_model_invokes"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="tool_model_invoke_pkey"),)
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # who invoke this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -397,7 +398,7 @@ class ToolConversationVariables(Base):
         sa.Index("conversation_id_idx", "conversation_id"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -457,7 +458,7 @@ class DeprecatedPublishedAppTool(Base):
         sa.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[uuid.UUID] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     # id of the app
     app_id = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
 
