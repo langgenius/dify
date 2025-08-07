@@ -5,8 +5,9 @@ This test module validates the 400-character limit enforcement
 for App descriptions across all creation and editing endpoints.
 """
 
-import sys
 import os
+import sys
+
 import pytest
 
 # Add the API root to Python path for imports
@@ -42,18 +43,20 @@ class TestAppDescriptionValidationUnit:
         """Test that App and Dataset validation functions are consistent"""
         from controllers.console.app.app import _validate_description_length as app_validate
         from controllers.console.datasets.datasets import _validate_description_length as dataset_validate
+        from controllers.service_api.dataset.dataset import _validate_description_length as service_dataset_validate
 
         # Test same valid inputs
         valid_desc = "x" * 400
-        assert app_validate(valid_desc) == dataset_validate(valid_desc)
-        assert app_validate("") == dataset_validate("")
-        assert app_validate(None) == dataset_validate(None)
+        assert app_validate(valid_desc) == dataset_validate(valid_desc) == service_dataset_validate(valid_desc)
+        assert app_validate("") == dataset_validate("") == service_dataset_validate("")
+        assert app_validate(None) == dataset_validate(None) == service_dataset_validate(None)
 
         # Test same invalid inputs produce same error
         invalid_desc = "x" * 401
         
         app_error = None
         dataset_error = None
+        service_dataset_error = None
         
         try:
             app_validate(invalid_desc)
@@ -65,7 +68,12 @@ class TestAppDescriptionValidationUnit:
         except ValueError as e:
             dataset_error = str(e)
             
-        assert app_error == dataset_error
+        try:
+            service_dataset_validate(invalid_desc)
+        except ValueError as e:
+            service_dataset_error = str(e)
+            
+        assert app_error == dataset_error == service_dataset_error
         assert app_error == "Description cannot exceed 400 characters."
 
     def test_boundary_values(self):
