@@ -197,7 +197,7 @@ const translation = {
           after: 'Sorry, but you didn\'t provide a text to translate. Could you please provide the text?',
         },
       },
-      contentEnableLabel: 'Activation du contenu modéré',
+      contentEnableLabel: 'Modération de contenu activée',
     },
     fileUpload: {
       title: 'Téléchargement de fichier',
@@ -242,7 +242,7 @@ const translation = {
       'Veuillez attendre que la réponse à la tâche en lot soit terminée.',
     notSelectModel: 'Veuillez choisir un modèle',
     waitForImgUpload: 'Veuillez attendre que l\'image soit téléchargée',
-    waitForFileUpload: 'Veuillez patienter jusqu’à ce que le(s) fichier(s) soit/les fichiers à télécharger',
+    waitForFileUpload: 'Veuillez patienter pendant le téléchargement du/des fichier(s)',
   },
   chatSubTitle: 'Instructions',
   completionSubTitle: 'Indicatif de Prompt',

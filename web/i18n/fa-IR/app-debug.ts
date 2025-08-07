@@ -197,7 +197,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'محتوای متوسط فعال شده است',
+      contentEnableLabel: 'مدیریت محتوا فعال شده است',
     },
     generate: {
       title: 'تولید کننده دستورالعمل',

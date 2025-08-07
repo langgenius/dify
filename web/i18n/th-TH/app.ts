@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'จากไฟล์ DSL',
   importFromDSLUrl: 'จาก URL',
   importFromDSLUrlPlaceholder: 'วางลิงค์ DSL ที่นี่',
+  dslUploader: {
+    button: 'ลากและวางไฟล์ หรือ',
+    browse: 'เรียกดู',
+  },
   deleteAppConfirmTitle: 'ลบโปรเจกต์นี้?',
   deleteAppConfirmContent: 'การลบโปรเจกนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงโปรเจกต์ของคุณอีกต่อไป และการกําหนดค่าต่างๆและบันทึกทั้งหมดจะถูกลบอย่างถาวร',
   appDeleted: 'โปรเจกต์ถูกลบ',
