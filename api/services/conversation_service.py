@@ -185,7 +185,7 @@ class ConversationService:
                     Conversation.id == conversation_id,
                     Conversation.app_id == app_model.id,
                     Conversation.from_source == "api",
-                    Conversation.is_deleted == False,
+                    Conversation.is_deleted.is_(False),
                 )
                 .first()
             )
@@ -198,7 +198,7 @@ class ConversationService:
                     Conversation.app_id == app_model.id,
                     Conversation.from_source == "console",
                     Conversation.from_account_id == user.id,
-                    Conversation.is_deleted == False,
+                    Conversation.is_deleted.is_(False),
                 )
                 .first()
             )
