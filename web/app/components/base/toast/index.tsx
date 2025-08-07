@@ -51,8 +51,9 @@ const Toast = ({
   return <div className={cn(
     className,
     'fixed z-[9999] mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
-    size === 'md' ? 'p-3' : 'p-2',
     'border border-components-panel-border-subtle bg-components-panel-bg-blur shadow-sm',
+    'top-0',
+    'right-0',
     size === 'md' ? 'p-3' : 'p-2',
     className,
   )}>

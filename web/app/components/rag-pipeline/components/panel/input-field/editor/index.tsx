@@ -1,11 +1,13 @@
 import { RiCloseLine } from '@remixicon/react'
 import InputFieldForm from './form'
 import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { useFloatingRight } from '../hooks'
+import cn from '@/utils/classnames'
 
 export type InputFieldEditorProps = {
   onClose: () => void
@@ -19,7 +21,12 @@ const InputFieldEditorPanel = ({
   initialData,
 }: InputFieldEditorProps) => {
   const { t } = useTranslation()
-  const formData = convertToInputFieldFormData(initialData)
+
+  const { floatingRight, floatingRightWidth } = useFloatingRight(400)
+
+  const formData = useMemo(() => {
+    return convertToInputFieldFormData(initialData)
+  }, [initialData])
 
   const handleSubmit = useCallback((value: FormData, moreInfo?: MoreInfo) => {
     const inputFieldData = convertFormDataToINputField(value)
@@ -27,7 +34,16 @@ const InputFieldEditorPanel = ({
   }, [onSubmit])
 
   return (
-    <div className='relative mr-1 flex h-fit max-h-full w-[400px] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'>
+    <div
+      className={cn(
+        'relative mr-1 flex h-fit max-h-full w-[400px] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9',
+        'transition-all duration-300 ease-in-out',
+        floatingRight && 'absolute right-0 z-[100]',
+      )}
+      style={{
+        width: `${floatingRightWidth}px`,
+      }}
+    >
       <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
         {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
       </div>

@@ -7,18 +7,31 @@ import Divider from '@/app/components/base/divider'
 import ProcessDocuments from './process-documents'
 import type { Datasource } from '../../test-run/types'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import cn from '@/utils/classnames'
+import { useFloatingRight } from '../hooks'
 
 const PreviewPanel = () => {
   const { t } = useTranslation()
   const [datasource, setDatasource] = useState<Datasource>()
   const { toggleInputFieldPreviewPanel } = useInputFieldPanel()
 
+  const { floatingRight, floatingRightWidth } = useFloatingRight(480)
+
   const handleClosePreviewPanel = useCallback(() => {
     toggleInputFieldPreviewPanel()
   }, [toggleInputFieldPreviewPanel])
 
   return (
-    <div className='mr-1 flex h-full w-[480px] flex-col overflow-y-auto rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
+    <div
+      className={cn(
+        'mr-1 flex h-full flex-col overflow-y-auto rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
+        'transition-all duration-300 ease-in-out',
+        floatingRight && 'absolute right-0 z-[100]',
+      )}
+      style={{
+        width: `${floatingRightWidth}px`,
+      }}
+    >
       <div className='flex items-center gap-x-2 px-4 pt-1'>
         <div className='grow py-1'>
           <Badge className='border-text-accent-secondary bg-components-badge-bg-dimm text-text-accent-secondary'>
