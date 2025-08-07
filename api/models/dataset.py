@@ -58,11 +58,11 @@ class Dataset(Base):
     index_struct = mapped_column(sa.Text, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     embedding_model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     embedding_model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    collection_binding_id = mapped_column(StringUUID, nullable=True)
+    collection_binding_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
@@ -319,12 +319,12 @@ class Document(Base):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     data_source_type: Mapped[str] = mapped_column(String(255), nullable=False)
     data_source_info = mapped_column(sa.Text, nullable=True)
-    dataset_process_rule_id = mapped_column(StringUUID, nullable=True)
+    dataset_process_rule_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_api_request_id = mapped_column(StringUUID, nullable=True)
+    created_api_request_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
@@ -348,7 +348,7 @@ class Document(Base):
 
     # pause
     is_paused: Mapped[Optional[bool]] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
-    paused_by = mapped_column(StringUUID, nullable=True)
+    paused_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # error
@@ -361,10 +361,10 @@ class Document(Base):
     )
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
+    disabled_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     archived_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    archived_by = mapped_column(StringUUID, nullable=True)
+    archived_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     doc_type = mapped_column(String(40), nullable=True)
@@ -679,11 +679,11 @@ class DocumentSegment(Base):
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
+    disabled_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'::character varying"))
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     indexing_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -826,7 +826,7 @@ class ChildChunk(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
@@ -875,7 +875,7 @@ class DatasetQuery(Base):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_app_id = mapped_column(StringUUID, nullable=True)
+    source_app_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=db.func.current_timestamp())
@@ -977,7 +977,7 @@ class TidbAuthBinding(Base):
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
     id = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
@@ -996,7 +996,7 @@ class Whitelist(Base):
         sa.Index("whitelists_tenant_idx", "tenant_id"),
     )
     id = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
-    tenant_id = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -1033,7 +1033,7 @@ class ExternalKnowledgeApis(Base):
     settings = mapped_column(sa.Text, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     def to_dict(self):
@@ -1088,7 +1088,7 @@ class ExternalKnowledgeBindings(Base):
     external_knowledge_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -1148,7 +1148,7 @@ class DatasetMetadata(Base):
         DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
 
 
 class DatasetMetadataBinding(Base):

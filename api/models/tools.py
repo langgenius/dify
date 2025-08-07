@@ -75,7 +75,7 @@ class BuiltinToolProvider(Base):
         String(256), nullable=False, server_default=sa.text("'API KEY 1'::character varying")
     )
     # id of the tenant
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)  # TODO: figure out Optional or not
     # who created this tool provider
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
@@ -367,7 +367,7 @@ class ToolModelInvoke(Base):
     # prompt messages
     prompt_messages: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # invoke response
-    model_response: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    model_response = mapped_column(sa.Text, nullable=False)
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -429,7 +429,7 @@ class ToolFile(Base):
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)  # TODO: figure out Optional or not
     # file key
     file_key: Mapped[str] = mapped_column(String(255), nullable=False)
     # mime type
