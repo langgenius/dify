@@ -4,8 +4,9 @@ import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
+import Recipient from './recipient'
 import MailBodyInput from './mail-body-input'
-import type { EmailConfig, Recipient } from '../../types'
+import type { EmailConfig } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
@@ -33,7 +34,7 @@ const EmailConfigureModal = ({
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
 
-  const [recipients, setRecipients] = useState<Recipient[]>(config?.recipients || [])
+  const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '')
 
@@ -43,7 +44,7 @@ const EmailConfigureModal = ({
       subject,
       body,
     })
-  }, [recipients, subject, body, onConfirm])
+  }, [subject, body, onConfirm])
 
   return (
     <Modal
@@ -63,6 +64,10 @@ const EmailConfigureModal = ({
           <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
             {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`)}
           </div>
+          <Recipient
+            data={recipients}
+            onChange={setRecipients}
+          />
         </div>
         <div>
           <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
@@ -91,13 +96,13 @@ const EmailConfigureModal = ({
         <Button
           variant='primary'
           className='w-[72px]'
-          onClick={onClose}
+          onClick={handleConfirm}
         >
           {t('common.operation.save')}
         </Button>
         <Button
           className='w-[72px]'
-          onClick={handleConfirm}
+          onClick={onClose}
         >
           {t('common.operation.cancel')}
         </Button>

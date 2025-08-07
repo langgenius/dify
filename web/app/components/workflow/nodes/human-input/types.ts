@@ -21,8 +21,13 @@ export type Recipient = {
   user_id?: string
 }
 
+export type RecipientData = {
+  whole_workspace: boolean
+  items: Recipient[]
+}
+
 export type EmailConfig = {
-  recipients: Recipient[]
+  recipients: RecipientData
   subject: string
   body: string
 }
