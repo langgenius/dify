@@ -11,7 +11,7 @@ import sys
 import pytest
 
 # Add the API root to Python path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 
 
 class TestAppDescriptionValidationUnit:
@@ -53,26 +53,26 @@ class TestAppDescriptionValidationUnit:
 
         # Test same invalid inputs produce same error
         invalid_desc = "x" * 401
-        
+
         app_error = None
         dataset_error = None
         service_dataset_error = None
-        
+
         try:
             app_validate(invalid_desc)
         except ValueError as e:
             app_error = str(e)
-            
+
         try:
             dataset_validate(invalid_desc)
         except ValueError as e:
             dataset_error = str(e)
-            
+
         try:
             service_dataset_validate(invalid_desc)
         except ValueError as e:
             service_dataset_error = str(e)
-            
+
         assert app_error == dataset_error == service_dataset_error
         assert app_error == "Description cannot exceed 400 characters."
 
@@ -84,7 +84,7 @@ class TestAppDescriptionValidationUnit:
         exactly_400 = "x" * 400
         assert _validate_description_length(exactly_400) == exactly_400
 
-        # Test just over boundary  
+        # Test just over boundary
         just_over_400 = "x" * 401
         with pytest.raises(ValueError):
             _validate_description_length(just_over_400)
@@ -99,17 +99,17 @@ class TestAppDescriptionValidationUnit:
 
         # Test None input
         assert _validate_description_length(None) is None
-        
+
         # Test empty string
         assert _validate_description_length("") == ""
-        
+
         # Test single character
         assert _validate_description_length("a") == "a"
-        
+
         # Test unicode characters
         unicode_desc = "测试" * 200  # 400 characters in Chinese
         assert _validate_description_length(unicode_desc) == unicode_desc
-        
+
         # Test unicode over limit
         unicode_over = "测试" * 201  # 402 characters
         with pytest.raises(ValueError):
@@ -118,20 +118,20 @@ class TestAppDescriptionValidationUnit:
     def test_whitespace_handling(self):
         """Test how validation handles whitespace"""
         from controllers.console.app.app import _validate_description_length
-        
+
         # Test description with spaces
         spaces_400 = " " * 400
         assert _validate_description_length(spaces_400) == spaces_400
-        
+
         # Test description with spaces over limit
         spaces_401 = " " * 401
         with pytest.raises(ValueError):
             _validate_description_length(spaces_401)
-        
+
         # Test mixed content
         mixed_400 = "a" * 200 + " " * 200
         assert _validate_description_length(mixed_400) == mixed_400
-        
+
         # Test mixed over limit
         mixed_401 = "a" * 200 + " " * 201
         with pytest.raises(ValueError):
@@ -141,13 +141,13 @@ class TestAppDescriptionValidationUnit:
 if __name__ == "__main__":
     # Run tests directly
     import traceback
-    
+
     test_instance = TestAppDescriptionValidationUnit()
-    test_methods = [method for method in dir(test_instance) if method.startswith('test_')]
-    
+    test_methods = [method for method in dir(test_instance) if method.startswith("test_")]
+
     passed = 0
     failed = 0
-    
+
     for test_method in test_methods:
         try:
             print(f"Running {test_method}...")
@@ -158,9 +158,9 @@ if __name__ == "__main__":
             print(f"❌ {test_method} FAILED: {str(e)}")
             traceback.print_exc()
             failed += 1
-    
+
     print(f"\n📊 Test Results: {passed} passed, {failed} failed")
-    
+
     if failed == 0:
         print("🎉 All tests passed!")
     else:
