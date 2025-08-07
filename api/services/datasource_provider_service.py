@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy.orm import Session
@@ -71,15 +71,23 @@ class DatasourceProviderService:
             return copy_credentials
 
     def get_real_credential_by_id(
-        self, tenant_id: str, credential_id: str, provider: str, plugin_id: str
+        self, tenant_id: str, credential_id: Optional[str], provider: str, plugin_id: str
     ) -> dict[str, Any]:
         """
         get credential by id
         """
         with Session(db.engine) as session:
-            datasource_provider = (
-                session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
-            )
+            if credential_id:
+                datasource_provider = (
+                    session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, id=credential_id).first()
+                )
+            else:
+                datasource_provider = (
+                    session.query(DatasourceProvider)
+                    .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+                    .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
+                    .first()
+                )
             if not datasource_provider:
                 return {}
             encrypted_credentials = datasource_provider.encrypted_credentials
