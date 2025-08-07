@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -23,7 +24,6 @@ import {
   useWorkflowStartRun,
 } from '../hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useCollaborativeCursors } from '../hooks'
 import { useCollaboration } from '@/app/components/workflow/collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -133,7 +133,17 @@ const WorkflowMain = ({
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
 
-  const { cursors, myUserId } = useCollaborativeCursors(appId)
+  const { cursors, isConnected } = useCollaboration(appId)
+  const [myUserId, setMyUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isConnected)
+      setMyUserId('current-user')
+  }, [isConnected])
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
     flowId: appId,
@@ -231,7 +241,7 @@ const WorkflowMain = ({
       >
         <WorkflowChildren />
       </WorkflowWithInnerContext>
-      <UserCursors cursors={cursors} myUserId={myUserId} onlineUsers={onlineUsers} />
+      <UserCursors cursors={filteredCursors} myUserId={myUserId} onlineUsers={onlineUsers} />
     </div>
   )
 }
