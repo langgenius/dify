@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: 'Arreglar Solo',
         selectedDescription: 'Actualización automática solo para versiones de parches',
+        description: 'Actualización automática solo para versiones de parche (por ejemplo, 1.0.1 → 1.0.2). Los cambios de versión menor no activarán actualizaciones.',
       },
       latest: {
         selectedDescription: 'Siempre actualiza a la última versión',

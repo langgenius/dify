@@ -234,8 +234,6 @@ class DocumentAddByFileApi(DatasetApiResource):
                 args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
             )
 
-        # save file info
-        file = request.files["file"]
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -243,6 +241,8 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
+        # save file info
+        file = request.files["file"]
         if not file.filename:
             raise FilenameNotExistsError
 
@@ -358,39 +358,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         return documents_and_batch_fields, 200
 
 
-class DocumentDeleteApi(DatasetApiResource):
-    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id, document_id):
-        """Delete document."""
-        document_id = str(document_id)
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-
-        # get dataset info
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
-
-        document = DocumentService.get_document(dataset.id, document_id)
-
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
-
-        # 403 if document is archived
-        if DocumentService.check_archived(document):
-            raise ArchivedDocumentImmutableError()
-
-        try:
-            # delete document
-            DocumentService.delete_document(document)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
-
-        return 204
-
-
 class DocumentListApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id):
         dataset_id = str(dataset_id)
@@ -473,7 +440,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
-class DocumentDetailApi(DatasetApiResource):
+class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
     def get(self, tenant_id, dataset_id, document_id):
@@ -567,6 +534,37 @@ class DocumentDetailApi(DatasetApiResource):
 
         return response
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def delete(self, tenant_id, dataset_id, document_id):
+        """Delete document."""
+        document_id = str(document_id)
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+
+        # get dataset info
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+
+        if not dataset:
+            raise ValueError("Dataset does not exist.")
+
+        document = DocumentService.get_document(dataset.id, document_id)
+
+        # 404 if document not found
+        if document is None:
+            raise NotFound("Document Not Exists.")
+
+        # 403 if document is archived
+        if DocumentService.check_archived(document):
+            raise ArchivedDocumentImmutableError()
+
+        try:
+            # delete document
+            DocumentService.delete_document(document)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return 204
+
 
 api.add_resource(
     DocumentAddByTextApi,
@@ -588,7 +586,6 @@ api.add_resource(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
 )
-api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+api.add_resource(DocumentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentListApi, "/datasets/<uuid:dataset_id>/documents")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
-api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")

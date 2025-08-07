@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 
 import click
+import sqlalchemy as sa
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -331,7 +332,7 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
 def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
     while True:
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query_sql), params)
+            rs = conn.execute(sa.text(query_sql), params)
             if rs.rowcount == 0:
                 break
 

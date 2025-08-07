@@ -642,7 +642,7 @@ class DocumentIndexingStatusApi(DocumentResource):
         return marshal(document_dict, document_status_fields)
 
 
-class DocumentDetailApi(DocumentResource):
+class DocumentApi(DocumentResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
     @setup_required
@@ -730,6 +730,28 @@ class DocumentDetailApi(DocumentResource):
 
         return response, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    def delete(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        document = self.get_document(dataset_id, document_id)
+
+        try:
+            DocumentService.delete_document(document)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return {"result": "success"}, 204
+
 
 class DocumentProcessingApi(DocumentResource):
     @setup_required
@@ -766,30 +788,6 @@ class DocumentProcessingApi(DocumentResource):
             raise InvalidActionError()
 
         return {"result": "success"}, 200
-
-
-class DocumentDeleteApi(DocumentResource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
-    def delete(self, dataset_id, document_id):
-        dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
-
-        document = self.get_document(dataset_id, document_id)
-
-        try:
-            DocumentService.delete_document(document)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
-
-        return {"result": "success"}, 204
 
 
 class DocumentMetadataApi(DocumentResource):
@@ -1037,11 +1035,10 @@ api.add_resource(
 api.add_resource(DocumentBatchIndexingEstimateApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 api.add_resource(DocumentBatchIndexingStatusApi, "/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
-api.add_resource(DocumentDetailApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
+api.add_resource(DocumentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(
     DocumentProcessingApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>"
 )
-api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
 api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")

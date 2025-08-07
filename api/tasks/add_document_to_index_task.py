@@ -32,6 +32,7 @@ def add_document_to_index_task(dataset_document_id: str):
         return
 
     if dataset_document.indexing_status != "completed":
+        db.session.close()
         return
 
     indexing_cache_key = f"document_{dataset_document.id}_indexing"
@@ -112,3 +113,4 @@ def add_document_to_index_task(dataset_document_id: str):
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()

@@ -23,6 +23,10 @@ const translation = {
   importFromDSLFile: '文件',
   importFromDSLUrl: 'URL',
   importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
+  dslUploader: {
+    button: '拖拽文件至此，或者',
+    browse: '选择文件',
+  },
   deleteAppConfirmTitle: '确认删除应用？',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
@@ -35,7 +39,6 @@ const translation = {
     learnMore: '了解更多',
     startFromBlank: '创建空白应用',
     startFromTemplate: '从应用模版创建',
-    captionAppType: '想要哪种应用类型？',
     foundResult: '{{count}} 个结果',
     foundResults: '{{count}} 个结果',
     noAppsFound: '未找到应用',
@@ -45,7 +48,6 @@ const translation = {
     chatbotUserDescription: '通过简单的配置快速搭建一个基于 LLM 的对话机器人。支持切换为 Chatflow 编排。',
     completionShortDescription: '用于文本生成任务的 AI 助手',
     completionUserDescription: '通过简单的配置快速搭建一个面向文本生成类任务的 AI 助手。',
-    completionWarning: '该类型不久后将不再支持创建',
     agentShortDescription: '具备推理与自主工具调用的智能助手',
     agentUserDescription: '能够迭代式的规划推理、自主工具调用，直至完成任务目标的智能助手。',
     workflowShortDescription: '面向单轮自动化任务的编排工作流',

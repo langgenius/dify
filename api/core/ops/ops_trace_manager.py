@@ -322,7 +322,7 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if enabled == True:
+        if enabled:
             try:
                 provider_config_map[tracing_provider]
             except KeyError:
@@ -422,8 +422,11 @@ class TraceTask:
         self.timer = timer
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.app_id = None
-
+        self.trace_id = None
         self.kwargs = kwargs
+        external_trace_id = kwargs.get("external_trace_id")
+        if external_trace_id:
+            self.trace_id = external_trace_id
 
     def execute(self):
         return self.preprocess()
@@ -520,11 +523,8 @@ class TraceTask:
                 "app_id": workflow_run.app_id,
             }
 
-            external_trace_id = self.kwargs.get("external_trace_id")
-            if external_trace_id:
-                metadata["external_trace_id"] = external_trace_id
-
             workflow_trace_info = WorkflowTraceInfo(
+                trace_id=self.trace_id,
                 workflow_data=workflow_run.to_dict(),
                 conversation_id=conversation_id,
                 workflow_id=workflow_id,
@@ -584,6 +584,7 @@ class TraceTask:
         message_tokens = message_data.message_tokens
 
         message_trace_info = MessageTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             message_data=message_data.to_dict(),
             conversation_model=conversation_mode,
@@ -627,6 +628,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         moderation_trace_info = ModerationTraceInfo(
+            trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
             message_data=message_data.to_dict(),
@@ -667,6 +669,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
+            trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             message_data=message_data.to_dict(),
             inputs=message_data.message,
@@ -708,6 +711,7 @@ class TraceTask:
         }
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             inputs=message_data.query or message_data.inputs,
             documents=[doc.model_dump() for doc in documents] if documents else [],
@@ -772,6 +776,7 @@ class TraceTask:
             )
 
         tool_trace_info = ToolTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             message_data=message_data.to_dict(),
             tool_name=tool_name,
@@ -807,6 +812,7 @@ class TraceTask:
         }
 
         generate_name_trace_info = GenerateNameTraceInfo(
+            trace_id=self.trace_id,
             conversation_id=conversation_id,
             inputs=inputs,
             outputs=generate_conversation_name,

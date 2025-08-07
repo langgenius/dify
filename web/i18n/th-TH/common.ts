@@ -137,7 +137,7 @@ const translation = {
   menus: {
     status: 'Beta',
     explore: 'สํารวจ',
-    apps: 'เรียน',
+    apps: 'สตูดิโอ',
     plugins: 'ปลั๊กอิน',
     pluginsTips: 'รวมปลั๊กอินของบุคคลที่สามหรือสร้างปลั๊กอิน AI ที่เข้ากันได้กับ ChatGPT',
     datasets: 'ความรู้',

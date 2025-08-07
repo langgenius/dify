@@ -109,9 +109,7 @@ const translation = {
     exitVersions: 'Phiên bản thoát',
     exportImage: 'Xuất hình ảnh',
     exportPNG: 'Xuất dưới dạng PNG',
-    noExist: 'Không có biến như vậy',
     exportJPEG: 'Xuất dưới dạng JPEG',
-    referenceVar: 'Biến tham chiếu',
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
@@ -222,7 +220,6 @@ const translation = {
   tabs: {
     'tools': 'Công cụ',
     'allTool': 'Tất cả',
-    'builtInTool': 'Tích hợp sẵn',
     'customTool': 'Tùy chỉnh',
     'workflowTool': 'Quy trình làm việc',
     'question-understand': 'Hiểu câu hỏi',
@@ -290,6 +287,18 @@ const translation = {
     zoomTo50: 'Phóng to 50%',
     zoomTo100: 'Phóng to 100%',
     zoomToFit: 'Phóng to vừa màn hình',
+    alignBottom: 'Dưới',
+    alignMiddle: 'Giữa',
+    alignRight: 'Phải',
+    alignNodes: 'Căn chỉnh các nút',
+    alignLeft: 'Trái',
+    horizontal: 'Ngang',
+    alignCenter: 'Giữa',
+    alignTop: 'Trên',
+    distributeVertical: 'Phân bố theo chiều dọc',
+    selectionAlignment: 'Căn chỉnh lựa chọn',
+    distributeHorizontal: 'Phân bố theo chiều ngang',
+    vertical: 'Dọc',
   },
   panel: {
     userInputField: 'Trường đầu vào của người dùng',
@@ -497,6 +506,7 @@ const translation = {
           search: 'Tìm kiếm siêu dữ liệu',
         },
         title: 'Lọc siêu dữ liệu',
+        tip: 'Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.',
       },
     },
     http: {
@@ -586,7 +596,6 @@ const translation = {
         'not empty': 'không trống',
         'null': 'là null',
         'not null': 'không là null',
-        'regex match': 'Trận đấu Regex',
         'exists': 'Tồn tại',
         'not exists': 'không tồn tại',
         'not in': 'không có trong',
@@ -609,7 +618,6 @@ const translation = {
       },
       addSubVariable: 'Biến phụ',
       select: 'Lựa',
-      condition: 'Điều kiện',
     },
     variableAssigner: {
       title: 'Gán biến',
@@ -931,6 +939,7 @@ const translation = {
       updateSuccess: 'Phiên bản đã được cập nhật',
       restoreSuccess: 'Phiên bản đã được khôi phục',
       restoreFailure: 'Không thể khôi phục phiên bản',
+      copyIdSuccess: 'ID được sao chép vào khay nhớ tạm',
     },
     defaultName: 'Phiên bản không được đặt tên',
     releaseNotesPlaceholder: 'Mô tả những gì đã thay đổi',
@@ -941,6 +950,7 @@ const translation = {
     nameThisVersion: 'Đặt tên cho phiên bản này',
     restorationTip: 'Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.',
     title: 'Các phiên bản',
+    copyId: 'Sao chép ID',
   },
   debug: {
     noData: {
@@ -970,6 +980,15 @@ const translation = {
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',
+    relations: {
+      noDependencies: 'Không phụ thuộc',
+      dependenciesDescription: 'Các nút mà nút này dựa vào',
+      dependents: 'Người phụ thuộc',
+      dependencies: 'Phụ thuộc',
+      noDependents: 'Không có người phụ thuộc',
+      dependentsDescription: 'Các nút dựa vào nút này',
+    },
+    relationsTab: 'Mối quan hệ',
   },
 }
 
