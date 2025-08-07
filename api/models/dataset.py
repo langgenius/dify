@@ -269,7 +269,7 @@ class DatasetProcessRule(Base):
         sa.Index("dataset_process_rule_dataset_id_idx", "dataset_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     mode: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'automatic'::character varying")
@@ -315,7 +315,7 @@ class Document(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -662,7 +662,7 @@ class DocumentSegment(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -810,7 +810,7 @@ class ChildChunk(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -895,7 +895,7 @@ class DatasetKeywordTable(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
-    dataset_id = mapped_column(StringUUID, nullable=False, unique=True)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table: Mapped[str] = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(
         String(255), nullable=False, server_default=sa.text("'database'::character varying")
@@ -1032,7 +1032,7 @@ class ExternalKnowledgeApis(Base):
         sa.Index("external_knowledge_apis_name_idx", "name"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1087,7 +1087,7 @@ class ExternalKnowledgeBindings(Base):
         sa.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     external_knowledge_api_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

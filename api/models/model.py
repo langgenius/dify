@@ -1637,7 +1637,7 @@ class ApiRequest(Base):
         sa.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     api_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     path: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1654,7 +1654,7 @@ class MessageChain(Base):
         sa.Index("message_chain_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
@@ -1672,7 +1672,7 @@ class MessageAgentThought(Base):
         sa.Index("message_agent_thought_message_chain_id_idx", "message_chain_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_chain_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
@@ -1787,7 +1787,7 @@ class DatasetRetrieverResource(Base):
         sa.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
