@@ -53,7 +53,7 @@ class Dataset(Base):
     description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'::character varying"))
     permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'::character varying"))
-    data_source_type = mapped_column(String(255))
+    data_source_type: Mapped[Optional[str]] = mapped_column(String(255))
     indexing_technique: Mapped[Optional[str]] = mapped_column(String(255))
     index_struct: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
