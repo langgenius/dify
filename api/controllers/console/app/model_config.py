@@ -42,7 +42,7 @@ class ModelConfigResource(Resource):
         if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
             # get original app model config
             original_app_model_config = (
-                db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()
+                db.session.query(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).first()
             )
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")

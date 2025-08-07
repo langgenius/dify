@@ -1,6 +1,5 @@
 import json
 from copy import deepcopy
-from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 from urllib.parse import urlparse
 
@@ -11,6 +10,7 @@ from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -30,11 +30,11 @@ class ExternalDatasetService:
     ) -> tuple[list[ExternalKnowledgeApis], int | None]:
         query = (
             select(ExternalKnowledgeApis)
-            .filter(ExternalKnowledgeApis.tenant_id == tenant_id)
+            .where(ExternalKnowledgeApis.tenant_id == tenant_id)
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
-            query = query.filter(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
+            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
 
         external_knowledge_apis = db.paginate(
             select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
@@ -46,9 +46,9 @@ class ExternalDatasetService:
     def validate_api_list(cls, api_settings: dict):
         if not api_settings:
             raise ValueError("api list is empty")
-        if "endpoint" not in api_settings and not api_settings["endpoint"]:
+        if not api_settings.get("endpoint"):
             raise ValueError("endpoint is required")
-        if "api_key" not in api_settings and not api_settings["api_key"]:
+        if not api_settings.get("api_key"):
             raise ValueError("api_key is required")
 
     @staticmethod
@@ -120,7 +120,7 @@ class ExternalDatasetService:
         external_knowledge_api.description = args.get("description", "")
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
-        external_knowledge_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        external_knowledge_api.updated_at = naive_utc_now()
         db.session.commit()
 
         return external_knowledge_api

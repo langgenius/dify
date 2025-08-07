@@ -113,6 +113,7 @@ const translation = {
     addFailureBranch: '失敗ブランチを追加',
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
+    tagBound: 'このタグを使用しているアプリの数',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -212,7 +213,6 @@ const translation = {
     startRun: '実行開始',
     running: '実行中',
     testRunIteration: 'テスト実行（イテレーション）',
-    testRunLoop: 'テスト実行（ループ）',
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
@@ -232,6 +232,8 @@ const translation = {
     'noResult': '該当なし',
     'plugin': 'プラグイン',
     'agent': 'エージェント戦略',
+    'addAll': 'すべてを追加する',
+    'allAdded': 'すべて追加されました',
   },
   blocks: {
     'start': '開始',
@@ -285,6 +287,18 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    horizontal: '横',
+    alignBottom: '底',
+    alignNodes: 'ノードを整列させる',
+    vertical: '垂直',
+    alignLeft: '左',
+    alignTop: 'トップ',
+    alignRight: '右',
+    alignMiddle: '中間',
+    distributeVertical: '垂直にスペースを',
+    alignCenter: 'センター',
+    selectionAlignment: '選択の整列',
+    distributeHorizontal: '空間を水平方向に',
   },
   variableReference: {
     noAvailableVars: '利用可能な変数がありません',
@@ -369,7 +383,10 @@ const translation = {
         ms: 'ミリ秒',
         retries: '再試行回数：{{num}}',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '入力値',
+        variable: '変数を使用する',
+      },
     },
     start: {
       required: '必須',
@@ -586,7 +603,6 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'null でない',
-        'regex match': '正規表現マッチ',
         'in': '含まれている',
         'not in': '含まれていない',
         'all of': 'すべての',
@@ -613,7 +629,6 @@ const translation = {
     variableAssigner: {
       title: '変数を代入する',
       outputType: '出力タイプ',
-      outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
       noVarTip: '代入された変数を追加してください',
       type: {
@@ -677,6 +692,9 @@ const translation = {
         json: 'ツールで生成された JSON',
       },
       authorize: '認証する',
+      settings: '設定',
+      insertPlaceholder1: 'タイプするか押してください',
+      insertPlaceholder2: '変数を挿入する',
     },
     questionClassifiers: {
       model: 'モデル',
@@ -878,7 +896,7 @@ const translation = {
       modelNotSelected: 'モデルが選択されていません',
       toolNotAuthorizedTooltip: '{{tool}} 認可されていません',
       toolNotInstallTooltip: '{{tool}}はインストールされていません',
-      tools: '道具',
+      tools: 'ツール',
       learnMore: 'もっと学ぶ',
       configureModel: 'モデルを設定する',
       model: 'モデル',
@@ -893,6 +911,8 @@ const translation = {
       unsupportedStrategy: 'サポートされていない戦略',
       pluginNotFoundDesc: 'このプラグインは GitHub からインストールされています。再インストールするにはプラグインに移動してください。',
       strategyNotFoundDesc: 'インストールされたプラグインのバージョンは、この戦略を提供していません。',
+      parameterSchema: 'パラメータスキーマ',
+      clickToViewParameterSchema: 'パラメータースキーマを見るにはクリックしてください',
     },
   },
   tracing: {
@@ -928,7 +948,9 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
   },
   debug: {
     noData: {
@@ -958,6 +980,15 @@ const translation = {
     },
     settingsTab: '設定',
     lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
   },
 }
 

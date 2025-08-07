@@ -1,7 +1,7 @@
 import type { AssignerNodeType } from './types'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export const checkNodeValid = (payload: AssignerNodeType) => {
+export const checkNodeValid = (_payload: AssignerNodeType) => {
   return true
 }
 

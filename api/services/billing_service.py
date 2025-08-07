@@ -75,14 +75,14 @@ class BillingService:
 
         join: Optional[TenantAccountJoin] = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
 
         if not join:
             raise ValueError("Tenant account join not found")
 
-        if not TenantAccountRole.is_privileged_role(join.role):
+        if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
             raise ValueError("Only team owner or team admin can perform this action")
 
     @classmethod
@@ -159,9 +159,9 @@ class BillingService:
     ):
         limiter_key = f"{account_id}:{tenant_id}"
         if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            from controllers.console.error import CompilanceRateLimitError
+            from controllers.console.error import ComplianceRateLimitError
 
-            raise CompilanceRateLimitError()
+            raise ComplianceRateLimitError()
 
         json = {
             "doc_name": doc_name,

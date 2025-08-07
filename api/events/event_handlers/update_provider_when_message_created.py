@@ -131,9 +131,11 @@ def handle(sender: Message, **kwargs):
         duration = time_module.perf_counter() - start_time
 
         logger.info(
-            f"Provider updates completed successfully. "
-            f"Updates: {len(updates_to_perform)}, Duration: {duration:.3f}s, "
-            f"Tenant: {tenant_id}, Provider: {provider_name}"
+            "Provider updates completed successfully. Updates: %s, Duration: %s s, Tenant: %s, Provider: %s",
+            len(updates_to_perform),
+            duration,
+            tenant_id,
+            provider_name,
         )
 
     except Exception as e:
@@ -141,9 +143,11 @@ def handle(sender: Message, **kwargs):
         duration = time_module.perf_counter() - start_time
 
         logger.exception(
-            f"Provider updates failed after {duration:.3f}s. "
-            f"Updates: {len(updates_to_perform)}, Tenant: {tenant_id}, "
-            f"Provider: {provider_name}"
+            "Provider updates failed after %s s. Updates: %s, Tenant: %s, Provider: %s",
+            duration,
+            len(updates_to_perform),
+            tenant_id,
+            provider_name,
         )
         raise
 
@@ -219,16 +223,20 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
             rows_affected = result.rowcount
 
             logger.debug(
-                f"Provider update ({description}): {rows_affected} rows affected. "
-                f"Filters: {filters.model_dump()}, Values: {update_values}"
+                "Provider update (%s): %s rows affected. Filters: %s, Values: %s",
+                description,
+                rows_affected,
+                filters.model_dump(),
+                update_values,
             )
 
             # If no rows were affected for quota updates, log a warning
             if rows_affected == 0 and description == "quota_deduction_update":
                 logger.warning(
-                    f"No Provider rows updated for quota deduction. "
-                    f"This may indicate quota limit exceeded or provider not found. "
-                    f"Filters: {filters.model_dump()}"
+                    "No Provider rows updated for quota deduction. "
+                    "This may indicate quota limit exceeded or provider not found. "
+                    "Filters: %s",
+                    filters.model_dump(),
                 )
 
-        logger.debug(f"Successfully processed {len(updates_to_perform)} Provider updates")
+        logger.debug("Successfully processed %s Provider updates", len(updates_to_perform))

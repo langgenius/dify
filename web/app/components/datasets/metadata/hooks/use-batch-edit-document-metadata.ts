@@ -9,12 +9,14 @@ import { t } from 'i18next'
 type Props = {
   datasetId: string
   docList: SimpleDocumentDetail[]
+  selectedDocumentIds?: string[]
   onUpdate: () => void
 }
 
 const useBatchEditDocumentMetadata = ({
   datasetId,
   docList,
+  selectedDocumentIds,
   onUpdate,
 }: Props) => {
   const [isShowEditModal, {
@@ -79,9 +81,12 @@ const useBatchEditDocumentMetadata = ({
       return false
     })
 
-    const res: MetadataBatchEditToServer = docList.map((item, i) => {
-      // the new metadata will override the old one
-      const oldMetadataList = metaDataList[i]
+    // Use selectedDocumentIds if available, otherwise fall back to docList
+    const documentIds = selectedDocumentIds || docList.map(doc => doc.id)
+    const res: MetadataBatchEditToServer = documentIds.map((documentId) => {
+      // Find the document in docList to get its metadata
+      const docIndex = docList.findIndex(doc => doc.id === documentId)
+      const oldMetadataList = docIndex >= 0 ? metaDataList[docIndex] : []
       let newMetadataList: MetadataItemWithValue[] = [...oldMetadataList, ...addedList]
         .filter((item) => {
           return !removedList.find(removedItem => removedItem.id === item.id)
@@ -108,7 +113,7 @@ const useBatchEditDocumentMetadata = ({
       })
 
       return {
-        document_id: item.id,
+        document_id: documentId,
         metadata_list: newMetadataList,
       }
     })

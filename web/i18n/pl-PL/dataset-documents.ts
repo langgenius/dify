@@ -28,8 +28,9 @@ const translation = {
       delete: 'Usuń',
       enableWarning: 'Zarchiwizowany plik nie może zostać włączony',
       sync: 'Synchronizuj',
-      resume: 'Wznawiać',
+      resume: 'Wznów',
       pause: 'Pauza',
+      download: 'Pobierz plik',
     },
     index: {
       enable: 'Włącz',
@@ -369,6 +370,7 @@ const translation = {
     regenerationSuccessTitle: 'Regeneracja zakończona',
     edited: 'EDYTOWANE',
     editedAt: 'Zredagowane w',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     collapseChunks: 'Zwijanie fragmentów',
     empty: 'Nie znaleziono fragmentu',
     newChunk: 'Nowy fragment',

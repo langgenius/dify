@@ -32,6 +32,7 @@ const translation = {
       sync: '同步',
       pause: '暂停',
       resume: '恢复',
+      download: '下载文件',
     },
     index: {
       enable: '启用中',
@@ -387,6 +388,7 @@ const translation = {
     regenerationSuccessMessage: '可以关闭窗口',
     edited: '已编辑',
     editedAt: '编辑于',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     expandChunks: '展开分段',
     collapseChunks: '折叠分段',
     keywordEmpty: '关键词不能为空',

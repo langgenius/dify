@@ -101,7 +101,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
     </div>
     <Divider className='my-3' />
 
-    <div className="w-full flex-1 overflow-y-auto overflow-x-hidden px-3">
+    <div className="max-h-[200px] w-full overflow-y-auto overflow-x-hidden px-3">
       {isSearching && <>
         <div key={'category-search'} className='flex flex-col'>
           <p className='system-xs-medium-uppercase mb-1 text-text-primary'>Search</p>
@@ -149,7 +149,8 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
     {/* Color Select */}
     <div className={cn('flex items-center justify-between p-3 pb-0')}>
       <p className='system-xs-medium-uppercase mb-2 text-text-primary'>Choose Style</p>
-      {showStyleColors ? <ChevronDownIcon className='h-4 w-4' onClick={() => setShowStyleColors(!showStyleColors)} /> : <ChevronUpIcon className='h-4 w-4' onClick={() => setShowStyleColors(!showStyleColors)} />}
+      {showStyleColors ? <ChevronDownIcon className='h-4 w-4 cursor-pointer text-text-quaternary' onClick={() => setShowStyleColors(!showStyleColors)} />
+        : <ChevronUpIcon className='h-4 w-4 cursor-pointer text-text-quaternary' onClick={() => setShowStyleColors(!showStyleColors)} />}
     </div>
     {showStyleColors && <div className='grid w-full grid-cols-8 gap-1 px-3'>
       {backgroundColors.map((color) => {
@@ -170,7 +171,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
             'flex h-8 w-8 items-center justify-center rounded-lg p-1',
           )
           } style={{ background: color }}>
-          {selectedEmoji !== '' && <em-emoji id={selectedEmoji} />}
+            {selectedEmoji !== '' && <em-emoji id={selectedEmoji} />}
           </div>
         </div>
       })}

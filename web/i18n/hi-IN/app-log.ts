@@ -90,12 +90,6 @@ const translation = {
   viewLog: 'व्यू लॉग',
   agentLogDetail: {
     agentMode: 'एजेंट मोड',
-    startTime: 'शुरू करने का समय',
-    endTime: 'समाप्ति समय',
-    duration: 'अवधि',
-    promptTemplate: 'प्रॉम्प्ट टेम्पलेट',
-    promptInput: 'प्रॉम्प्ट इनपुट',
-    response: 'प्रतिक्रिया',
     iterations: 'पुनरूक्तियाँ',
     toolUsed: 'प्रयुक्त उपकरण',
     finalProcessing: 'अंतिम प्रसंस्करण',
