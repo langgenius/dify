@@ -10,20 +10,19 @@ export const Actions = {
 }
 
 export const searchAnything = async (
+  locale: string,
   query: string,
   actionItem?: ActionItem,
-  locale?: string,
 ): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
     return await actionItem.search(query, searchTerm, locale)
   }
-  else if(query.startsWith('@')) {
+
+  if (query.startsWith('@'))
     return []
-  }
-  else {
-    return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query, query, locale)))).flat()
-  }
+
+  return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query, query, locale)))).flat()
 }
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
@@ -34,4 +33,4 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
 }
 
 export * from './types'
-export { appAction, knowledgeAction, pluginAction as toolsAction }
+export { appAction, knowledgeAction, pluginAction }
