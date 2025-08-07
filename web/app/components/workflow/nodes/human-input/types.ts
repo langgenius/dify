@@ -1,8 +1,17 @@
-import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, InputVarType, ValueSelector, Variable } from '@/app/components/workflow/types'
 
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
-  form_content: any
+  form_content: string
+  form_input: {
+    type: InputVarType
+    output_variable_name: string
+    placeholder?: { // only text-input and paragraph support placeholder
+      type: 'variable' | 'const',
+      selector: ValueSelector
+      value: string
+    }
+  }[]
   user_actions: UserAction[]
   timeout: number
   timeout_unit: 'hour' | 'day'

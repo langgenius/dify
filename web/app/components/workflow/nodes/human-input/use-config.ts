@@ -4,9 +4,11 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import useFormContent from './use-form-content'
 const useConfig = (id: string, payload: HumanInputNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
+  const formContentHook = useFormContent(id, payload)
 
   const handleDeliveryMethodChange = (methods: DeliveryMethod[]) => {
     setInputs({
@@ -58,6 +60,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     handleUserActionChange,
     handleUserActionDelete,
     handleTimeoutChange,
+    ...formContentHook,
   }
 }
 

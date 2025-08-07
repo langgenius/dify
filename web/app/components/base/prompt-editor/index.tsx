@@ -259,8 +259,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           )
         }
         {
-          // TODO: test hitlInputBlock?.show
-          (
+          hitlInputBlock?.show && (
             <>
               <HITLInputBlock />
               <HITLInputBlockReplacementBlock />

@@ -33,6 +33,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     handleUserActionChange,
     handleUserActionDelete,
     handleTimeoutChange,
+    handleFormContentChange,
   } = useConfig(id, data)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
@@ -64,7 +65,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           </div>
         </div>
-        <FormContent />
+        <FormContent
+          nodeId={id}
+          value={inputs.form_content}
+          onChange={handleFormContentChange}
+        />
       </div>
       {/* user actions */}
       <div className='px-4 py-2'>
