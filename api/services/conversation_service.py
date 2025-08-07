@@ -17,7 +17,6 @@ from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation, MessageFeedback
 from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
-from models.workflow import ConversationVariable
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
