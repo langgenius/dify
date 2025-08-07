@@ -698,7 +698,7 @@ export const useNodesInteractions = () => {
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-        ...(toolDefaultValue || {}),
+        ...(toolDefaultValue ?? {}),
         selected: true,
         _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
         _holdAddVariablePopup: false,
@@ -1130,7 +1130,7 @@ export const useNodesInteractions = () => {
       data: {
         ...NODES_INITIAL_DATA[nodeType],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-        ...(toolDefaultValue || {}),
+        ...(toolDefaultValue ?? {}),
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],
         selected: currentNode.data.selected,

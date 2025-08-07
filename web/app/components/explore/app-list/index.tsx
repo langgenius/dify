@@ -51,7 +51,7 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currentType, setCurrentType] = useState<string>('')
+  const [currentType, _setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
     disableSearchParams: false,
