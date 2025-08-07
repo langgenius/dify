@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import quote
 
 from flask import Response
@@ -12,6 +13,8 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, EndUser, Message, MessageFile, UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 class FilePreviewApi(Resource):
@@ -111,13 +114,9 @@ class FilePreviewApi(Resource):
                 raise FileNotFoundError("Upload file record not found")
 
             # Additional security: verify tenant isolation
-            # The app and file should belong to the same tenant
-            if hasattr(upload_file, "tenant_id"):
-                from models.model import App
-
-                app = db.session.query(App).where(App.id == app_id).first()
-                if app and hasattr(app, "tenant_id") and upload_file.tenant_id != app.tenant_id:
-                    raise FileAccessDeniedError("File access denied: tenant mismatch")
+            app = db.session.query(App).where(App.id == app_id).first()
+            if app and upload_file.tenant_id != app.tenant_id:
+                raise FileAccessDeniedError("File access denied: tenant mismatch")
 
             return message_file, upload_file
 
@@ -125,8 +124,11 @@ class FilePreviewApi(Resource):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
-            # Catch any unexpected errors and log them securely
-            # Don't expose internal details in the error message
+            # Log unexpected errors for debugging
+            logger.exception(
+                "Unexpected error during file ownership validation",
+                extra={"file_id": file_id, "app_id": app_id, "error": str(e)},
+            )
             raise FileAccessDeniedError("File access validation failed")
 
     def _build_file_response(self, generator, upload_file: UploadFile, as_attachment: bool = False) -> Response:

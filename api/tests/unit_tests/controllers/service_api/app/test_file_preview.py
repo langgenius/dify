@@ -311,3 +311,26 @@ class TestFilePreviewApi:
                 mock_storage.load(mock_upload_file.key, stream=True)
 
             assert "Storage error" in str(exc_info.value)
+
+    @patch("controllers.service_api.app.file_preview.logger")
+    def test_validate_file_ownership_unexpected_error_logging(self, mock_logger, file_preview_api):
+        """Test that unexpected errors are logged properly"""
+        file_id = str(uuid.uuid4())
+        app_id = str(uuid.uuid4())
+
+        with patch("controllers.service_api.app.file_preview.db") as mock_db:
+            # Mock database query to raise unexpected exception
+            mock_db.session.query.side_effect = Exception("Unexpected database error")
+
+            # Execute and assert exception
+            with pytest.raises(FileAccessDeniedError) as exc_info:
+                file_preview_api._validate_file_ownership(file_id, app_id)
+
+            # Verify error message
+            assert "File access validation failed" in str(exc_info.value)
+
+            # Verify logging was called
+            mock_logger.exception.assert_called_once_with(
+                "Unexpected error during file ownership validation",
+                extra={"file_id": file_id, "app_id": app_id, "error": "Unexpected database error"},
+            )
