@@ -194,6 +194,17 @@ class LLMNode(BaseNode):
                 else []
             )
 
+            # single step run fetch file from sys files
+            if not files and self.invoke_from == InvokeFrom.DEBUGGER and not self.previous_node_id:
+                files = (
+                    llm_utils.fetch_files(
+                        variable_pool=variable_pool,
+                        selector=["sys", "files"],
+                    )
+                    if self._node_data.vision.enabled
+                    else []
+                )
+            
             if files:
                 node_inputs["#files#"] = [file.to_dict() for file in files]
 
