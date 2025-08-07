@@ -359,15 +359,15 @@ class ToolModelInvoke(Base):
     # provider
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # type
-    tool_type = mapped_column(String(40), nullable=False)
+    tool_type: Mapped[str] = mapped_column(String(40), nullable=False)
     # tool name
-    tool_name = mapped_column(String(128), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
     # invoke parameters
-    model_parameters = mapped_column(sa.Text, nullable=False)
+    model_parameters: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # prompt messages
-    prompt_messages = mapped_column(sa.Text, nullable=False)
+    prompt_messages: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # invoke response
-    model_response = mapped_column(sa.Text, nullable=False)
+    model_response: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     prompt_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -467,11 +467,11 @@ class DeprecatedPublishedAppTool(Base):
     # to describe this parameter to llm, we need this field
     query_description = mapped_column(sa.Text, nullable=False)
     # query name, the name of the query parameter
-    query_name = mapped_column(String(40), nullable=False)
+    query_name: Mapped[str] = mapped_column(String(40), nullable=False)
     # name of the tool provider
-    tool_name = mapped_column(String(40), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(40), nullable=False)
     # author
-    author = mapped_column(String(40), nullable=False)
+    author: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
