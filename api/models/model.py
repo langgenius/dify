@@ -901,7 +901,7 @@ class Message(Base):
     model_provider: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     model_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     override_model_configs: Mapped[Optional[str]] = mapped_column(sa.Text)
-    conversation_id = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
     _inputs: Mapped[dict] = mapped_column("inputs", sa.JSON)
     query: Mapped[str] = mapped_column(sa.Text, nullable=False)
     message = mapped_column(sa.JSON, nullable=False)

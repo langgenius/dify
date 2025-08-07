@@ -308,7 +308,7 @@ class OpsTraceManager:
                 .first()
             )
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
-            app_model_config = conversation_data.override_model_configs
+            app_model_config = conversation_data.override_model_configs  # type: ignore
 
         return app_model_config
 
