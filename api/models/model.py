@@ -597,7 +597,7 @@ class InstalledApp(Base):
     app_owner_tenant_id = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    last_used_at = mapped_column(sa.DateTime, nullable=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(sa.DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
@@ -1556,7 +1556,7 @@ class ApiToken(Base):
     tenant_id = mapped_column(StringUUID, nullable=True)
     type = mapped_column(String(16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_used_at = mapped_column(sa.DateTime, nullable=True)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(sa.DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
