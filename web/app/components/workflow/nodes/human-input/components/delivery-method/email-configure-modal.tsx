@@ -6,6 +6,7 @@ import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import Recipient from './recipient'
 import MailBodyInput from './mail-body-input'
+import Toast from '@/app/components/base/toast'
 import type { EmailConfig } from '../../types'
 import type {
   Node,
@@ -38,7 +39,33 @@ const EmailConfigureModal = ({
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '')
 
+  const checkValidConfig = () => {
+    if (!subject.trim()) {
+      Toast.notify({
+        type: 'error',
+        message: 'subject is required',
+      })
+      return false
+    }
+    if (!body.trim()) {
+      Toast.notify({
+        type: 'error',
+        message: 'body is required',
+      })
+      return false
+    }
+    if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
+      Toast.notify({
+        type: 'error',
+        message: 'recipients is required',
+      })
+      return false
+    }
+    return true
+  }
+
   const handleConfirm = useCallback(() => {
+    if (!checkValidConfig()) return
     onConfirm({
       recipients,
       subject,
