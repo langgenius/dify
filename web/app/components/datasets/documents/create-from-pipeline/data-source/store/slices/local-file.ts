@@ -6,7 +6,7 @@ export type LocalFileSliceShape = {
   setLocalFileList: (fileList: FileItem[]) => void
   currentLocalFile: File | undefined
   setCurrentLocalFile: (file: File | undefined) => void
-  previewLocalFileRef: React.MutableRefObject<DocumentItem | undefined>
+  previewLocalFileRef: React.RefObject<DocumentItem | undefined>
 }
 
 export const createLocalFileSlice: StateCreator<LocalFileSliceShape> = (set, get) => {

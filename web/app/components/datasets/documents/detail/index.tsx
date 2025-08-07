@@ -88,7 +88,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     documentId,
     params: { metadata: 'without' },
   })
-  console.log('🚀 ~ DocumentDetail ~ documentDetail:', documentDetail)
 
   const { data: documentMetadata } = useDocumentMetadata({
     datasetId,

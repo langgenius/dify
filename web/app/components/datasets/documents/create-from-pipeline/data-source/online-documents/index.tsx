@@ -13,8 +13,8 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import Title from './title'
-import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
-import { noop } from 'lodash-es'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
+import Loading from '@/app/components/base/loading'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
@@ -34,12 +34,20 @@ const OnlineDocuments = ({
     searchValue,
     selectedPagesId,
     currentWorkspaceId,
+    currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     documentsData: state.documentsData,
     searchValue: state.searchValue,
     selectedPagesId: state.selectedPagesId,
     currentWorkspaceId: state.currentWorkspaceId,
+    currentCredentialId: state.currentCredentialId,
   })))
+
+  const { data: dataSourceAuth } = useGetDataSourceAuth({
+    pluginId: nodeData.plugin_id,
+    provider: nodeData.provider_name,
+  })
+
   const dataSourceStore = useDataSourceStore()
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
@@ -137,29 +145,16 @@ const OnlineDocuments = ({
     })
   }, [setShowAccountSettingModal])
 
-  if (!documentsData?.length)
-    return null
-
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        // todo: delete mock data
         docTitle='How to use?'
         docLink='https://docs.dify.ai'
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
-        currentCredentialId={'12345678'}
-        onCredentialChange={noop}
-        credentials={[{
-          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
-          credential: {
-            credentials: '......',
-          },
-          id: '12345678',
-          is_default: true,
-          name: 'test123',
-          type: CredentialTypeEnum.API_KEY,
-        }]}
+        currentCredentialId={currentCredentialId}
+        onCredentialChange={dataSourceStore.getState().setCurrentCredentialId}
+        credentials={dataSourceAuth?.result || []}
       />
       <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <div className='flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3'>
@@ -172,18 +167,24 @@ const OnlineDocuments = ({
           />
         </div>
         <div className='overflow-hidden rounded-b-xl'>
-          <PageSelector
-            checkedIds={selectedPagesId}
-            disabledValue={new Set()}
-            searchValue={searchValue}
-            list={currentWorkspace?.pages || []}
-            pagesMap={PagesMapAndSelectedPagesId}
-            onSelect={handleSelectPages}
-            canPreview={!isInPipeline}
-            onPreview={handlePreviewPage}
-            isMultipleChoice={!isInPipeline}
-            currentWorkspaceId={currentWorkspaceId}
-          />
+          {documentsData?.length ? (
+            <PageSelector
+              checkedIds={selectedPagesId}
+              disabledValue={new Set()}
+              searchValue={searchValue}
+              list={currentWorkspace?.pages || []}
+              pagesMap={PagesMapAndSelectedPagesId}
+              onSelect={handleSelectPages}
+              canPreview={!isInPipeline}
+              onPreview={handlePreviewPage}
+              isMultipleChoice={!isInPipeline}
+              currentWorkspaceId={currentWorkspaceId}
+            />
+          ) : (
+            <div className='flex h-[296px] items-center justify-center'>
+              <Loading type='app' />
+            </div>
+          )}
         </div>
       </div>
     </div>

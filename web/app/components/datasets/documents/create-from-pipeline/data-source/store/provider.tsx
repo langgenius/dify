@@ -14,7 +14,7 @@ type DataSourceProviderProps = {
 const DataSourceProvider = ({
   children,
 }: DataSourceProviderProps) => {
-  const storeRef = useRef<DataSourceStoreApi>()
+  const storeRef = useRef<DataSourceStoreApi>(null)
 
   if (!storeRef.current)
     storeRef.current = createDataSourceStore()

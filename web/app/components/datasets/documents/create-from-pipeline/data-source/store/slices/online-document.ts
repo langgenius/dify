@@ -14,7 +14,7 @@ export type OnlineDocumentSliceShape = {
   setCurrentDocument: (document: NotionPage | undefined) => void
   selectedPagesId: Set<string>
   setSelectedPagesId: (selectedPagesId: Set<string>) => void
-  previewOnlineDocumentRef: React.MutableRefObject<NotionPage | undefined>
+  previewOnlineDocumentRef: React.RefObject<NotionPage | undefined>
 }
 
 export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set, get) => {

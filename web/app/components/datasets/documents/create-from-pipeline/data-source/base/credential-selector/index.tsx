@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -24,7 +24,14 @@ const CredentialSelector = ({
 }: CredentialSelectorProps) => {
   const [open, { toggle }] = useBoolean(false)
 
-  const currentCredential = credentials.find(cred => cred.id === currentCredentialId) as DataSourceCredential
+  const currentCredential = useMemo(() => {
+    return credentials.find(cred => cred.id === currentCredentialId)
+  }, [credentials, currentCredentialId])
+
+  useEffect(() => {
+    if (!currentCredential && credentials.length)
+      onCredentialChange(credentials[0].id)
+  }, [currentCredential, credentials])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     onCredentialChange(credentialId)

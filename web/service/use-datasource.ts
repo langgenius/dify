@@ -4,7 +4,10 @@ import {
 } from '@tanstack/react-query'
 import { get } from './base'
 import { useInvalid } from './use-base'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type {
+  DataSourceAuth,
+  DataSourceCredential,
+} from '@/app/components/header/account-setting/data-source-page-new/types'
 
 const NAME_SPACE = 'data-source-auth'
 
@@ -34,6 +37,7 @@ export const useInvalidDefaultDataSourceListAuth = (
 ) => {
   return useInvalid([NAME_SPACE, 'default-list'])
 }
+
 export const useGetDataSourceOAuthUrl = (
   provider: string,
 ) => {
@@ -41,11 +45,35 @@ export const useGetDataSourceOAuthUrl = (
     mutationKey: [NAME_SPACE, 'oauth-url', provider],
     mutationFn: (credentialId?: string) => {
       return get<
-      {
-        authorization_url: string
-        state: string
-        context_id: string
-      }>(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
+        {
+          authorization_url: string
+          state: string
+          context_id: string
+        }>(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
     },
   })
+}
+
+export const useGetDataSourceAuth = ({
+  pluginId,
+  provider,
+}: {
+  pluginId: string
+  provider: string
+}) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'specific-data-source', pluginId, provider],
+    queryFn: () => get<{ result: DataSourceCredential[] }>(`/auth/plugin/datasource/${pluginId}/${provider}`),
+    retry: 0,
+  })
+}
+
+export const useInvalidDataSourceAuth = ({
+  pluginId,
+  provider,
+}: {
+  pluginId: string
+  provider: string
+}) => {
+  return useInvalid([NAME_SPACE, 'specific-data-source', pluginId, provider])
 }

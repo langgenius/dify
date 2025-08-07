@@ -1,3 +1,4 @@
+import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 import type { DataSourceCredential } from '@/types/pipeline'
 import { RiCheckLine } from '@remixicon/react'
 import React, { useCallback } from 'react'
@@ -28,8 +29,12 @@ const Item = ({
       className='flex cursor-pointer items-center gap-x-2 rounded-lg p-2 hover:bg-state-base-hover'
       onClick={handleCredentialChange}
     >
-      <img src={avatar_url} className='size-5 shrink-0 rounded-md border border-divider-regular object-contain' />
-      <span className='system-sm-medium grow text-text-secondary'>
+      <CredentialIcon
+        avatar_url={avatar_url}
+        name={name}
+        size={20}
+      />
+      <span className='system-sm-medium grow truncate text-text-secondary'>
         {t('datasetPipeline.credentialSelector.name', {
           credentialName: name,
           pluginName,

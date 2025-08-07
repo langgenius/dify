@@ -43,7 +43,10 @@ const Card = ({
     category: AuthCategory.datasource,
     provider: `${item.plugin_id}/${item.name}`,
   }
-  const { handleAuthUpdate } = useDataSourceAuthUpdate()
+  const { handleAuthUpdate } = useDataSourceAuthUpdate({
+    pluginId: item.plugin_id,
+    provider: item.name,
+  })
   const {
     deleteCredentialId,
     doingAction,

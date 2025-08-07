@@ -23,11 +23,11 @@ const Header = ({
 
   return (
     <div className='flex items-center gap-x-2'>
-      <div className='flex shrink-0 grow items-center gap-x-1'>
+      <div className='flex grow items-center gap-x-1'>
         <CredentialSelector
           {...rest}
         />
-        <Divider type='vertical' className='mx-1 h-3.5' />
+        <Divider type='vertical' className='mx-1 h-3.5 shrink-0' />
         <Tooltip
           popupContent={t('datasetPipeline.configurationTip', { pluginName: rest.pluginName })}
           position='top'
@@ -35,7 +35,7 @@ const Header = ({
           <Button
             variant='ghost'
             size='small'
-            className='size-6 px-1'
+            className='size-6 shrink-0 px-1'
           >
             <RiEqualizer2Line
               className='h-4 w-4'
@@ -45,13 +45,13 @@ const Header = ({
         </Tooltip>
       </div>
       <a
-        className='system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent'
+        className='system-xs-medium flex shrink-0 items-center gap-x-1 text-text-accent'
         href={docLink}
         target='_blank'
         rel='noopener noreferrer'
       >
         <RiBookOpenLine className='size-3.5 shrink-0' />
-        <span className='grow truncate' title={docTitle}>{docTitle}</span>
+        <span title={docTitle}>{docTitle}</span>
       </a>
     </div>
   )
