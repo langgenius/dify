@@ -88,7 +88,8 @@ const HeaderOptions: FC<Props> = ({
       await clearAllAnnotations(appId)
       onAdded()
     }
-    catch (_) {
+    catch (e) {
+      console.error(`failed to clear all annotations, ${e}`)
     }
     finally {
       setShowClearConfirm(false)

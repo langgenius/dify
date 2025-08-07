@@ -80,6 +80,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       タイトルを自動生成、デフォルトは`true`。
       `false`に設定すると、会話のリネームAPIを呼び出し、`auto_generate`を`true`に設定することで非同期タイトル生成を実現できます。
       </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+      （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。
+      </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         （オプション）トレースID。既存の業務システムのトレースコンポーネントと連携し、エンドツーエンドの分散トレーシングを実現するために使用します。指定がない場合、システムが自動的に trace_id を生成します。以下の3つの方法で渡すことができ、優先順位は次のとおりです：<br/>
         - Header：HTTPヘッダー <code>X-Trace-Id</code> で渡す（最優先）。<br/>
@@ -225,6 +228,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - 400, `provider_not_initialize`, 利用可能なモデル資格情報構成がありません
     - 400, `provider_quota_exceeded`, モデル呼び出しクォータが不足しています
     - 400, `model_currently_not_support`, 現在のモデルが利用できません
+    - 400, `workflow_not_found`, 指定されたワークフローバージョンが見つかりません
+    - 400, `draft_workflow_error`, ドラフトワークフローバージョンは使用できません
+    - 400, `workflow_id_format_error`, ワークフローID形式エラー、UUID形式が必要です
     - 400, `completion_request_error`, テキスト生成に失敗しました
     - 500, 内部サーバーエラー
 
@@ -1130,7 +1136,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   url='/audio-to-text'
   method='POST'
   title='音声からテキストへ'
-  name='#audio'
+  name='#audio-to-text'
 />
 <Row>
   <Col>
@@ -1181,7 +1187,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   url='/text-to-audio'
   method='POST'
   title='テキストから音声へ'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>

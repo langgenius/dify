@@ -109,8 +109,6 @@ const translation = {
     exitVersions: 'निकलने के संस्करण',
     exportPNG: 'PNG के रूप में निर्यात करें',
     exportJPEG: 'JPEG के रूप में निर्यात करें',
-    referenceVar: 'संदर्भ चर',
-    noExist: 'कोई ऐसा चर नहीं है',
     exportImage: 'छवि निर्यात करें',
     publishUpdate: 'अपडेट प्रकाशित करें',
     exportSVG: 'SVG के रूप में निर्यात करें',
@@ -300,6 +298,18 @@ const translation = {
     zoomTo50: '50% पर ज़ूम करें',
     zoomTo100: '100% पर ज़ूम करें',
     zoomToFit: 'फिट करने के लिए ज़ूम करें',
+    alignRight: 'सही',
+    alignLeft: 'बाईं ओर',
+    alignTop: 'शीर्ष',
+    horizontal: 'क्षैतिज',
+    alignNodes: 'नोड्स को संरेखित करें',
+    selectionAlignment: 'चयन संरेखण',
+    alignCenter: 'केंद्र',
+    vertical: 'ऊर्ध्वाधर',
+    distributeHorizontal: 'क्षैतिज स्पेस',
+    alignBottom: 'तल',
+    distributeVertical: 'अंतरिक्ष को वर्टिकल रूप से',
+    alignMiddle: 'मध्य',
   },
   panel: {
     userInputField: 'उपयोगकर्ता इनपुट फ़ील्ड',
@@ -623,7 +633,6 @@ const translation = {
       },
       select: 'चुनना',
       addSubVariable: 'उप चर',
-      condition: 'स्थिति',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',
@@ -950,6 +959,7 @@ const translation = {
       updateSuccess: 'संस्करण अपडेट किया गया',
       updateFailure: 'संस्करण अपडेट करने में विफल',
       restoreFailure: 'संस्करण को पुनर्स्थापित करने में विफल',
+      copyIdSuccess: 'आईडी क्लिपबोर्ड पर कॉपी हो गई',
     },
     latest: 'लेटेस्ट',
     editVersionInfo: 'संस्करण की जानकारी संपादित करें',
@@ -960,6 +970,7 @@ const translation = {
     restorationTip: 'संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।',
     defaultName: 'अविभाजित संस्करण',
     deletionTip: 'हटाना अप्रतिबंधी है, कृपया पुष्टि करें।',
+    copyId: 'आईडी कॉपी करें',
   },
   debug: {
     noData: {
@@ -989,6 +1000,15 @@ const translation = {
     },
     settingsTab: 'सेटिंग्स',
     lastRunTab: 'अंतिम रन',
+    relations: {
+      dependents: 'निष्पाभ लोग',
+      dependentsDescription: 'इस नोड पर निर्भर नोड्स',
+      dependencies: 'निर्भरता',
+      noDependents: 'कोई आश्रित नहीं',
+      dependenciesDescription: 'यह नोड जिस नोड पर निर्भर करता है',
+      noDependencies: 'कोई निर्भरताएँ नहीं',
+    },
+    relationsTab: 'रिश्ते',
   },
 }
 

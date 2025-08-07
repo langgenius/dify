@@ -74,6 +74,9 @@ Chat applications support session persistence, allowing previous chat history to
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+      (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
+      </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
         - Header: via HTTP Header <code>X-Trace-Id</code>, highest priority.<br/>
@@ -180,6 +183,9 @@ Chat applications support session persistence, allowing previous chat history to
     - 400, `provider_not_initialize`, no available model credential configuration
     - 400, `provider_quota_exceeded`, model invocation quota insufficient
     - 400, `model_currently_not_support`, current model unavailable
+    - 400, `workflow_not_found`, specified workflow version not found
+    - 400, `draft_workflow_error`, cannot use draft workflow version
+    - 400, `workflow_id_format_error`, invalid workflow_id format, expected UUID format
     - 400, `completion_request_error`, text generation failed
     - 500, internal server error
 
@@ -1164,7 +1170,7 @@ Chat applications support session persistence, allowing previous chat history to
   url='/audio-to-text'
   method='POST'
   title='Speech to Text'
-  name='#audio'
+  name='#audio-to-text'
 />
 <Row>
   <Col>
@@ -1215,7 +1221,7 @@ Chat applications support session persistence, allowing previous chat history to
   url='/text-to-audio'
   method='POST'
   title='Text to Audio'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>

@@ -197,6 +197,7 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Moderação de conteúdo habilitada',
     },
     fileUpload: {
       title: 'Upload de Arquivo',
@@ -258,6 +259,7 @@ const translation = {
       'Aguarde a resposta à tarefa em lote ser concluída.',
     notSelectModel: 'Por favor, escolha um modelo',
     waitForImgUpload: 'Aguarde o upload da imagem',
+    waitForFileUpload: 'Aguarde o upload do arquivo / arquivos',
   },
   chatSubTitle: 'Instruções',
   completionSubTitle: 'Prefixo da Solicitação',
@@ -322,6 +324,33 @@ const translation = {
     'defaultValue': 'Valor padrão',
     'noDefaultValue': 'Nenhum valor padrão',
     'selectDefaultValue': 'Selecionar valor padrão',
+    'file': {
+      image: {
+        name: 'Imagem',
+      },
+      audio: {
+        name: 'Áudio',
+      },
+      document: {
+        name: 'Documento',
+      },
+      video: {
+        name: 'Vídeo',
+      },
+      custom: {
+        description: 'Especifique outros tipos de arquivo.',
+        name: 'Outros tipos de arquivo',
+        createPlaceholder: '  Extensão de arquivo, por exemplo, .doc',
+      },
+      supportFileTypes: 'Tipos de arquivo de suporte',
+    },
+    'content': 'Conteúdo',
+    'multi-files': 'Lista de arquivos',
+    'single-file': 'Fila indiana',
+    'maxNumberOfUploads': 'Número máximo de uploads',
+    'uploadFileTypes': 'Carregar tipos de arquivo',
+    'both': 'Ambos',
+    'localUpload': 'Local Upload',
   },
   vision: {
     name: 'Visão',
@@ -341,6 +370,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Limite de Upload',
     },
+    onlySupportVisionModelTip: 'Suporta apenas modelos de visão',
   },
   voice: {
     name: 'voz',
@@ -412,6 +442,7 @@ const translation = {
     score_threshold: 'Limiar de Pontuação',
     score_thresholdTip: 'Usado para definir o limiar de similaridade para filtragem de trechos.',
     retrieveChangeTip: 'Modificar o modo de índice e o modo de recuperação pode afetar os aplicativos associados a este Conhecimento.',
+    embeddingModelRequired: 'É necessário um modelo de incorporação configurado',
   },
   assistantType: {
     name: 'Tipo de Assistente',
@@ -449,6 +480,83 @@ const translation = {
       enabled: 'Habilitado',
     },
   },
+  codegen: {
+    instruction: 'Instruções',
+    generatedCodeTitle: 'Código gerado',
+    noDataLine1: 'Descreva seu caso de uso à esquerda,',
+    loading: 'Gerando código...',
+    description: 'O Gerador de código usa modelos configurados para gerar código de alta qualidade com base em suas instruções. Por favor, forneça instruções claras e detalhadas.',
+    generate: 'Gerar',
+    resTitle: 'Código gerado',
+    title: 'Gerador de código',
+    overwriteConfirmTitle: 'Substituir o código existente?',
+    overwriteConfirmMessage: 'Essa ação substituirá o código existente. Você quer continuar?',
+    apply: 'Aplicar',
+    applyChanges: 'Aplicar alterações',
+    instructionPlaceholder: 'Insira uma descrição detalhada do código que você deseja gerar.',
+    noDataLine2: 'A visualização do código será exibida aqui.',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        instruction: 'Um bot que pode gerar e depurar seu código com base em suas instruções',
+        name: 'Depurador Python',
+      },
+      translation: {
+        name: 'Tradução',
+        instruction: 'Um tradutor que pode traduzir vários idiomas',
+      },
+      professionalAnalyst: {
+        name: 'Analista profissional',
+        instruction: 'Extraia insights, identifique riscos e destile informações importantes de relatórios longos em um único memorando',
+      },
+      excelFormulaExpert: {
+        name: 'Especialista em fórmulas do Excel',
+        instruction: 'Um chatbot que pode ajudar usuários iniciantes a entender, usar e criar fórmulas do Excel com base nas instruções do usuário',
+      },
+      travelPlanning: {
+        name: 'Planejamento de viagens',
+        instruction: 'O Assistente de Planejamento de Viagens é uma ferramenta inteligente projetada para ajudar os usuários a planejar suas viagens sem esforço',
+      },
+      SQLSorcerer: {
+        instruction: 'Transforme a linguagem cotidiana em consultas SQL',
+        name: 'Feiticeiro SQL',
+      },
+      GitGud: {
+        instruction: 'Gerar comandos Git apropriados com base nas ações de controle de versão descritas pelo usuário',
+        name: 'Bom jogo',
+      },
+      meetingTakeaways: {
+        name: 'Conclusões da reunião',
+        instruction: 'Destilar reuniões em resumos concisos, incluindo tópicos de discussão, principais conclusões e itens de ação',
+      },
+      writingsPolisher: {
+        instruction: 'Use técnicas avançadas de edição de texto para melhorar seus escritos',
+        name: 'Polidor de escrita',
+      },
+    },
+    generate: 'Gerar',
+    overwriteMessage: 'A aplicação desse prompt substituirá a configuração existente.',
+    apply: 'Aplicar',
+    title: 'Gerador de Prompt',
+    description: 'O Gerador de Prompts usa o modelo configurado para otimizar prompts para maior qualidade e melhor estrutura. Por favor, escreva instruções claras e detalhadas.',
+    instructionPlaceHolder: 'Escreva instruções claras e específicas.',
+    noDataLine2: 'A visualização da orquestração será exibida aqui.',
+    tryIt: 'Experimente',
+    loading: 'Orquestrando o aplicativo para você...',
+    instruction: 'Instruções',
+    resTitle: 'Prompt gerado',
+    noDataLine1: 'Descreva seu caso de uso à esquerda,',
+    overwriteTitle: 'Substituir a configuração existente?',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Os resultados não são exibidos devido ao tempo limite. Consulte os logs para obter os resultados completos.',
+  },
+  debugAsSingleModel: 'Depurar como modelo único',
+  noResult: 'A saída será exibida aqui.',
+  debugAsMultipleModel: 'Depurar como vários modelos',
+  publishAs: 'Publicar como',
+  duplicateModel: 'Duplicar',
 }
 
 export default translation

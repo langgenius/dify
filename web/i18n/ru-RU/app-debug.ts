@@ -197,6 +197,7 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Модерация контента включена',
     },
     fileUpload: {
       title: 'Загрузка файлов',
@@ -294,6 +295,7 @@ const translation = {
       'Пожалуйста, дождитесь завершения ответа на пакетное задание.',
     notSelectModel: 'Пожалуйста, выберите модель',
     waitForImgUpload: 'Пожалуйста, дождитесь загрузки изображения',
+    waitForFileUpload: 'Пожалуйста, дождитесь загрузки файла/файлов',
   },
   chatSubTitle: 'Инструкции',
   completionSubTitle: 'Префикс Промпта',
@@ -359,6 +361,32 @@ const translation = {
     'defaultValue': 'Значение по умолчанию',
     'noDefaultValue': 'Без значения по умолчанию',
     'selectDefaultValue': 'Выберите значение по умолчанию',
+    'file': {
+      image: {
+        name: 'Образ',
+      },
+      audio: {
+        name: 'Аудио',
+      },
+      document: {
+        name: 'Документ',
+      },
+      video: {
+        name: 'Видео',
+      },
+      custom: {
+        createPlaceholder: '  Расширение файла, например .doc',
+        name: 'Другие типы файлов',
+        description: 'Укажите другие типы файлов.',
+      },
+      supportFileTypes: 'Типы файлов поддержки',
+    },
+    'both': 'Оба',
+    'localUpload': 'Локальная загрузка',
+    'maxNumberOfUploads': 'Максимальное количество загрузок',
+    'uploadFileTypes': 'Типы файлов загрузки',
+    'single-file': 'Друг за другом',
+    'multi-files': 'Список файлов',
   },
   vision: {
     name: 'Зрение',
@@ -378,6 +406,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Лимит загрузки',
     },
+    onlySupportVisionModelTip: 'Поддерживает только модели машинного зрения',
   },
   voice: {
     name: 'Голос',
@@ -449,6 +478,7 @@ const translation = {
     score_threshold: 'Порог оценки',
     score_thresholdTip: 'Используется для установки порога сходства для фильтрации фрагментов.',
     retrieveChangeTip: 'Изменение режима индексации и режима поиска может повлиять на приложения, связанные с этими знаниями.',
+    embeddingModelRequired: 'Требуется сконфигурированная модель встраивания',
   },
   debugAsSingleModel: 'Отладка как одной модели',
   debugAsMultipleModel: 'Отладка как нескольких моделей',
@@ -490,6 +520,26 @@ const translation = {
       enabled: 'Включено',
     },
   },
+  codegen: {
+    generate: 'Порождать',
+    title: 'Генератор кодов',
+    resTitle: 'Сгенерированный код',
+    generatedCodeTitle: 'Сгенерированный код',
+    applyChanges: 'Применение изменений',
+    loading: 'Генерация кода...',
+    noDataLine2: 'Предварительный просмотр кода будет показан здесь.',
+    instruction: 'Резолюция',
+    apply: 'Применять',
+    overwriteConfirmTitle: 'Перезаписать существующий код?',
+    overwriteConfirmMessage: 'Это действие перезапишет существующий код. Хотите продолжить?',
+    instructionPlaceholder: 'Введите подробное описание кода, который вы хотите сгенерировать.',
+    noDataLine1: 'Опишите свой вариант использования слева,',
+    description: 'Генератор кода использует настроенные модели для создания высококачественного кода на основе ваших инструкций. Пожалуйста, предоставьте четкие и подробные инструкции.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Результаты не отображаются из-за тайм-аута. Пожалуйста, обратитесь к журналам для получения полных результатов.',
+  },
+  noResult: 'Вывод будет отображаться здесь.',
 }
 
 export default translation

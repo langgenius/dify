@@ -287,6 +287,18 @@ const translation = {
     zoomTo50: 'Auf 50% vergrößern',
     zoomTo100: 'Auf 100% vergrößern',
     zoomToFit: 'An Bildschirm anpassen',
+    selectionAlignment: 'Ausrichtung der Auswahl',
+    alignLeft: 'Links',
+    alignTop: 'Nach oben',
+    distributeVertical: 'Vertikaler Raum',
+    alignBottom: 'Unteres',
+    distributeHorizontal: 'Horizontaler Raum',
+    vertical: 'Senkrecht',
+    alignMiddle: 'Mitte',
+    alignCenter: 'Mitte',
+    alignRight: 'Rechts',
+    alignNodes: 'Knoten ausrichten',
+    horizontal: 'Horizontal',
   },
   panel: {
     userInputField: 'Benutzereingabefeld',
@@ -927,6 +939,7 @@ const translation = {
       deleteFailure: 'Version löschen fehlgeschlagen',
       restoreSuccess: 'Version wiederhergestellt',
       updateFailure: 'Aktualisierung der Version fehlgeschlagen',
+      copyIdSuccess: 'ID in die Zwischenablage kopiert',
     },
     latest: 'Neueste',
     nameThisVersion: 'Nennen Sie diese Version',
@@ -937,6 +950,7 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+    copyId: 'ID kopieren',
   },
   debug: {
     noData: {
@@ -966,6 +980,15 @@ const translation = {
     },
     settingsTab: 'Einstellungen',
     lastRunTab: 'Letzte Ausführung',
+    relations: {
+      dependents: 'Angehörige',
+      dependenciesDescription: 'Knoten, auf die sich dieser Knoten stützt',
+      dependencies: 'Abhängigkeiten',
+      noDependencies: 'Keine Abhängigkeiten',
+      dependentsDescription: 'Knoten, die auf diesem Knoten basieren',
+      noDependents: 'Keine Angehörigen',
+    },
+    relationsTab: 'Beziehungen',
   },
 }
 

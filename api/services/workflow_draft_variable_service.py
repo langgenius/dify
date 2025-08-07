@@ -422,7 +422,7 @@ class WorkflowDraftVariableService:
                 description=conv_var.description,
             )
             draft_conv_vars.append(draft_var)
-        _batch_upsert_draft_varaible(
+        _batch_upsert_draft_variable(
             self._session,
             draft_conv_vars,
             policy=_UpsertPolicy.IGNORE,
@@ -434,7 +434,7 @@ class _UpsertPolicy(StrEnum):
     OVERWRITE = "overwrite"
 
 
-def _batch_upsert_draft_varaible(
+def _batch_upsert_draft_variable(
     session: Session,
     draft_vars: Sequence[WorkflowDraftVariable],
     policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
@@ -721,7 +721,7 @@ class DraftVariableSaver:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
-        _batch_upsert_draft_varaible(self._session, draft_vars)
+        _batch_upsert_draft_variable(self._session, draft_vars)
 
     @staticmethod
     def _should_variable_be_editable(node_id: str, name: str) -> bool:

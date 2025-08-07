@@ -5,6 +5,7 @@ import secrets
 from typing import Any, Optional
 
 import click
+import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
@@ -457,7 +458,7 @@ def convert_to_agent_apps():
         """
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query))
+            rs = conn.execute(sa.text(sql_query))
 
             apps = []
             for i in rs:
@@ -702,7 +703,7 @@ def fix_app_site_missing():
         sql = """select apps.id as id from apps left join sites on sites.app_id=apps.id
 where sites.id is null limit 1000"""
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql))
+            rs = conn.execute(sa.text(sql))
 
             processed_count = 0
             for i in rs:
@@ -916,7 +917,7 @@ def clear_orphaned_file_records(force: bool):
         )
         orphaned_message_files = []
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query))
+            rs = conn.execute(sa.text(query))
             for i in rs:
                 orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
 
@@ -937,7 +938,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(sa.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
             click.echo(
                 click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
             )
@@ -954,7 +955,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
@@ -974,7 +975,7 @@ def clear_orphaned_file_records(force: bool):
                     f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
             elif ids_table["type"] == "text":
@@ -989,7 +990,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1008,7 +1009,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1037,7 +1038,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Deleting orphaned file records in table {files_table['table']}", fg="white"))
             query = f"DELETE FROM {files_table['table']} WHERE {files_table['id_column']} IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple(orphaned_files)})
+                conn.execute(sa.text(query), {"ids": tuple(orphaned_files)})
     except Exception as e:
         click.echo(click.style(f"Error deleting orphaned file records: {str(e)}", fg="red"))
         return
@@ -1107,7 +1108,7 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append(str(i[0]))
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))

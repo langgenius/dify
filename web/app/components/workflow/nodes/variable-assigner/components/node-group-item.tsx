@@ -18,10 +18,12 @@ import {
 } from '../hooks'
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
-import NodeVariableItem from './node-variable-item'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import cn from '@/utils/classnames'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {
@@ -122,27 +124,29 @@ const NodeGroupItem = ({
         )
       }
       {
-        !!item.variables.length && item.variables.map((variable = [], index) => {
-          const isSystem = isSystemVar(variable)
-          const isEnv = isENV(variable)
-          const isChatVar = isConversationVar(variable)
+        !!item.variables.length && (
+          <div className='space-y-0.5'>
+            {
+              item.variables.map((variable = [], index) => {
+                const isSystem = isSystemVar(variable)
 
-          const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
-          const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
-          const isException = isExceptionVariable(varName, node?.data.type)
+                const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
+                const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
+                const isException = isExceptionVariable(varName, node?.data.type)
 
-          return (
-            <NodeVariableItem
-              key={index}
-              isEnv={isEnv}
-              isChatVar={isChatVar}
-              isException={isException}
-              node={node as Node}
-              varName={varName}
-              showBorder={showSelectedBorder || showSelectionBorder}
-            />
-          )
-        })
+                return (
+                  <VariableLabelInNode
+                    key={index}
+                    variables={variable}
+                    nodeType={node?.data.type}
+                    nodeTitle={node?.data.title}
+                    isExceptionVariable={isException}
+                  />
+                )
+              })
+            }
+          </div>
+        )
       }
     </div>
   )
