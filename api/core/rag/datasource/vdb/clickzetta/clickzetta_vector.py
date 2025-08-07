@@ -3,7 +3,7 @@ import logging
 import queue
 import threading
 import uuid
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 import clickzetta  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -82,7 +82,7 @@ class ClickzettaVector(BaseVector):
         super().__init__(collection_name)
         self._config = config
         self._table_name = collection_name.replace("-", "_").lower()  # Ensure valid table name
-        self._connection: Optional["Connection"] = None
+        self._connection: Optional[Connection] = None
         self._init_connection()
         self._init_write_queue()
 
@@ -142,7 +142,10 @@ class ClickzettaVector(BaseVector):
             for hint in performance_hints:
                 cursor.execute(hint)
 
-            logger.info("Applied %d performance optimization hints for ClickZetta vector operations", len(performance_hints))
+            logger.info(
+                "Applied %d performance optimization hints for ClickZetta vector operations", 
+                len(performance_hints)
+            )
 
         except Exception:
             # Catch any errors setting performance hints but continue with defaults
@@ -438,11 +441,11 @@ class ClickzettaVector(BaseVector):
 
                 cursor.executemany(insert_sql, data_rows)
                 logger.info(
-                    f"Inserted batch {batch_index // batch_size + 1}/{total_batches} "
-                    f"({len(data_rows)} valid docs using parameterized query with VECTOR({vector_dimension}) cast)"
+                    "Inserted batch %d/%d (%d valid docs using parameterized query with VECTOR(%d) cast)",
+                    batch_index // batch_size + 1, total_batches, len(data_rows), vector_dimension
                 )
             except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
-                logger.exception("Parameterized SQL execution failed for %d documents: %s", len(data_rows), e)
+                logger.exception("Parameterized SQL execution failed for %d documents", len(data_rows))
                 logger.exception("SQL template: %s", insert_sql)
                 logger.exception("Sample data row: %s", data_rows[0] if data_rows else 'None')
                 raise
@@ -584,7 +587,7 @@ class ClickzettaVector(BaseVector):
                     else:
                         metadata = {}
                 except (json.JSONDecodeError, TypeError) as e:
-                    logger.error("JSON parsing failed: %s", e)
+                    logger.exception("JSON parsing failed")
                     # Fallback: extract document_id with regex
                     import re
                     doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
@@ -678,7 +681,7 @@ class ClickzettaVector(BaseVector):
                         else:
                             metadata = {}
                     except (json.JSONDecodeError, TypeError) as e:
-                        logger.error("JSON parsing failed: %s", e)
+                        logger.exception("JSON parsing failed")
                         # Fallback: extract document_id with regex
                         import re
                         doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
@@ -762,7 +765,7 @@ class ClickzettaVector(BaseVector):
                     else:
                         metadata = {}
                 except (json.JSONDecodeError, TypeError) as e:
-                    logger.error("JSON parsing failed: %s", e)
+                    logger.exception("JSON parsing failed")
                     # Fallback: extract document_id with regex
                     import re
                     doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ''))
