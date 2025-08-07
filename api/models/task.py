@@ -16,8 +16,8 @@ class CeleryTask(Base):
     __tablename__ = "celery_taskmeta"
 
     id: Mapped[int] = mapped_column(sa.Integer, sa.Sequence("task_id_sequence"), primary_key=True, autoincrement=True)
-    task_id = mapped_column(String(155), unique=True)
-    status = mapped_column(String(50), default=states.PENDING)
+    task_id: Mapped[str] = mapped_column(String(155), unique=True)
+    status: Mapped[str] = mapped_column(String(50), default=states.PENDING)
     result: Mapped[Optional[Any]] = mapped_column(sa.PickleType, nullable=True)
     date_done: Mapped[Optional[datetime]] = mapped_column(
         DateTime,
@@ -42,6 +42,6 @@ class CeleryTaskSet(Base):
     id: Mapped[int] = mapped_column(
         sa.Integer, sa.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True
     )
-    taskset_id = mapped_column(String(155), unique=True)
+    taskset_id: Mapped[str] = mapped_column(String(155), unique=True)
     result: Mapped[Optional[Any]] = mapped_column(sa.PickleType, nullable=True)
     date_done: Mapped[Optional[datetime]] = mapped_column(DateTime, default=lambda: naive_utc_now(), nullable=True)
