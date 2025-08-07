@@ -50,7 +50,8 @@ const EmailInput = ({
 
   const setInputFocus = () => {
     setIsFocus(true)
-    inputRef.current?.focus()
+    const input = inputRef.current?.children[0] as HTMLInputElement
+    input?.focus()
   }
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,8 +91,8 @@ const EmailInput = ({
       setOpen(false)
     }
     else if (e.key === 'Backspace') {
-      e.preventDefault()
       if (searchKey === '' && value.length > 0) {
+        e.preventDefault()
         onDelete(value[value.length - 1])
         setSearchKey('')
         setOpen(false)
@@ -122,7 +123,7 @@ const EmailInput = ({
             crossAxis: -40,
           }}
         >
-          <PortalToFollowElemTrigger asChild className='block h-6 min-w-[166px]'>
+          <PortalToFollowElemTrigger className='block h-6 min-w-[166px]'>
             <input
               ref={inputRef}
               className='system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder'
