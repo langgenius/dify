@@ -191,6 +191,9 @@ class ConversationService:
             )
         else:
             # For console users, use the old code
+            if user is None:
+                raise ConversationNotExistsError()
+
             conversation = (
                 db.session.query(Conversation)
                 .where(
