@@ -10,7 +10,7 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
-import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 type ItemProps = {
@@ -36,7 +36,7 @@ const Item = ({
     return true
   }
   const handleUpdateItemLabel = useCallback((e: any) => {
-    replaceSpaceWithUnderscreInVarNameInput(e.target)
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
     if (!!e.target.value && !checkVariableName(e.target.value))
       return
     handleUpdateLoopVariable(item.id, { label: e.target.value })

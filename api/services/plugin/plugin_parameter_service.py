@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.utils.encryption import create_tool_provider_encrypter
 from extensions.ext_database import db
 from models.tools import BuiltinToolProvider
 
@@ -38,11 +38,9 @@ class PluginParameterService:
             case "tool":
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
                 # init tool configuration
-                tool_configuration = ProviderConfigEncrypter(
+                encrypter, _ = create_tool_provider_encrypter(
                     tenant_id=tenant_id,
-                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
-                    provider_type=provider_controller.provider_type.value,
-                    provider_identity=provider_controller.entity.identity.name,
+                    controller=provider_controller,
                 )
 
                 # check if credentials are required
@@ -53,7 +51,7 @@ class PluginParameterService:
                     with Session(db.engine) as session:
                         db_record = (
                             session.query(BuiltinToolProvider)
-                            .filter(
+                            .where(
                                 BuiltinToolProvider.tenant_id == tenant_id,
                                 BuiltinToolProvider.provider == provider,
                             )
@@ -63,7 +61,7 @@ class PluginParameterService:
                     if db_record is None:
                         raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
-                    credentials = tool_configuration.decrypt(db_record.credentials)
+                    credentials = encrypter.decrypt(db_record.credentials)
             case _:
                 raise ValueError(f"Invalid provider type: {provider_type}")
 

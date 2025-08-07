@@ -34,7 +34,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @validate_app_token
     def get(self, app_model: App, job_id, action):
         job_id = str(job_id)
-        app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
+        app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -42,7 +42,7 @@ class AnnotationReplyActionStatusApi(Resource):
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            app_annotation_error_key = "{}_app_annotation_error_{}".format(action, str(job_id))
+            app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
             error_msg = redis_client.get(app_annotation_error_key).decode()
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200

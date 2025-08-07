@@ -32,6 +32,13 @@ class MarketplacePluginDeclaration(BaseModel):
     latest_package_identifier: str = Field(
         ..., description="Unique identifier for the latest package release of the plugin"
     )
+    status: str = Field(..., description="Indicate the status of marketplace plugin, enum from `active` `deleted`")
+    deprecated_reason: str = Field(
+        ..., description="Not empty when status='deleted', indicates the reason why this plugin is deleted(deprecated)"
+    )
+    alternative_plugin_id: str = Field(
+        ..., description="Optional, indicates the alternative plugin for user to switch to"
+    )
 
     @model_validator(mode="before")
     @classmethod

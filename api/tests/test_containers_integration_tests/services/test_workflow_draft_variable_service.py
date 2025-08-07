@@ -15,7 +15,7 @@ from services.workflow_draft_variable_service import (
 class TestWorkflowDraftVariableService:
     """
     Comprehensive integration tests for WorkflowDraftVariableService using testcontainers.
-    
+
     This test class covers all major functionality of the WorkflowDraftVariableService:
     - CRUD operations for workflow draft variables (Create, Read, Update, Delete)
     - Variable listing and filtering by type (conversation, system, node)
@@ -23,7 +23,7 @@ class TestWorkflowDraftVariableService:
     - Variable deletion operations at different scopes
     - Special functionality like prefill and conversation ID retrieval
     - Error handling for various edge cases and invalid operations
-    
+
     All tests use the testcontainers infrastructure to ensure proper database isolation
     and realistic testing environment with actual database interactions.
     """
@@ -32,7 +32,7 @@ class TestWorkflowDraftVariableService:
     def mock_external_service_dependencies(self):
         """
         Mock setup for external service dependencies.
-        
+
         WorkflowDraftVariableService doesn't have external dependencies that need mocking,
         so this fixture returns an empty dictionary to maintain consistency with other test classes.
         This ensures the test structure remains consistent across different service test files.
@@ -43,16 +43,16 @@ class TestWorkflowDraftVariableService:
     def _create_test_app(self, db_session_with_containers, mock_external_service_dependencies, fake=None):
         """
         Helper method to create a test app with realistic data for testing.
-        
+
         This method creates a complete App instance with all required fields populated
         using Faker for generating realistic test data. The app is configured for
         workflow mode to support workflow draft variable testing.
-        
+
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies (unused in this service)
             fake: Faker instance for generating test data, creates new instance if not provided
-            
+
         Returns:
             App: Created test app instance with all required fields populated
         """
@@ -70,7 +70,7 @@ class TestWorkflowDraftVariableService:
         app.enable_api = True
         app.created_by = fake.uuid4()
         app.updated_by = app.created_by
-        
+
         from extensions.ext_database import db
 
         db.session.add(app)
@@ -80,16 +80,16 @@ class TestWorkflowDraftVariableService:
     def _create_test_workflow(self, db_session_with_containers, app, fake=None):
         """
         Helper method to create a test workflow associated with an app.
-        
+
         This method creates a Workflow instance using the proper factory method
         to ensure all required fields are set correctly. The workflow is configured
         as a draft version with basic graph structure for testing workflow variables.
-        
+
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
             app: The app to associate the workflow with
             fake: Faker instance for generating test data, creates new instance if not provided
-            
+
         Returns:
             Workflow: Created test workflow instance with proper configuration
         """
@@ -116,11 +116,11 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Helper method to create a test workflow draft variable with proper configuration.
-        
+
         This method creates different types of variables (conversation, system, node) using
         the appropriate factory methods to ensure proper initialization. Each variable type
         has specific requirements and this method handles the creation logic for all types.
-        
+
         Args:
             db_session_with_containers: Database session from testcontainers infrastructure
             app_id: ID of the app to associate the variable with
@@ -129,7 +129,7 @@ class TestWorkflowDraftVariableService:
             value: StringSegment value for the variable content
             variable_type: Type of variable ("conversation", "system", "node") determining creation method
             fake: Faker instance for generating test data, creates new instance if not provided
-            
+
         Returns:
             WorkflowDraftVariable: Created test variable instance with proper type configuration
         """
@@ -171,7 +171,7 @@ class TestWorkflowDraftVariableService:
     def test_get_variable_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test getting a single variable by ID successfully.
-        
+
         This test verifies that the service can retrieve a specific variable
         by its ID and that the returned variable contains the correct data.
         It ensures the basic CRUD read operation works correctly for workflow draft variables.
@@ -193,7 +193,7 @@ class TestWorkflowDraftVariableService:
     def test_get_variable_not_found(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test getting a variable that doesn't exist.
-        
+
         This test verifies that the service returns None when trying to
         retrieve a variable with a non-existent ID. This ensures proper
         handling of missing data scenarios.
@@ -209,7 +209,7 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Test getting variables by selectors successfully.
-        
+
         This test verifies that the service can retrieve multiple variables
         using selector pairs (node_id, variable_name) and returns the correct
         variables for each selector. This is useful for bulk variable retrieval
@@ -254,7 +254,7 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Test listing variables without values successfully with pagination.
-        
+
         This test verifies that the service can list variables with pagination
         and that the returned variables don't include their values (for performance).
         This is important for scenarios where only variable metadata is needed
@@ -280,7 +280,7 @@ class TestWorkflowDraftVariableService:
     def test_list_node_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test listing variables for a specific node successfully.
-        
+
         This test verifies that the service can filter and return only
         variables associated with a specific node ID. This is crucial for
         workflow execution where variables need to be scoped to specific nodes.
@@ -310,7 +310,7 @@ class TestWorkflowDraftVariableService:
     def test_list_conversation_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test listing conversation variables successfully.
-        
+
         This test verifies that the service can filter and return only
         conversation variables, excluding system and node variables.
         Conversation variables are user-facing variables that can be
@@ -345,7 +345,7 @@ class TestWorkflowDraftVariableService:
     def test_update_variable_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test updating a variable's name and value successfully.
-        
+
         This test verifies that the service can update both the name and value
         of an editable variable and that the changes are persisted correctly.
         It also checks that the last_edited_at timestamp is updated appropriately.
@@ -377,7 +377,7 @@ class TestWorkflowDraftVariableService:
     def test_update_variable_not_editable(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test that updating a non-editable variable raises an exception.
-        
+
         This test verifies that the service properly prevents updates to
         variables that are not marked as editable. This is important for
         maintaining data integrity and preventing unauthorized modifications
@@ -407,7 +407,7 @@ class TestWorkflowDraftVariableService:
     def test_reset_conversation_variable_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test resetting conversation variable successfully.
-        
+
         This test verifies that the service can reset a conversation variable
         to its default value and clear the last_edited_at timestamp.
         This functionality is useful for reverting user modifications
@@ -451,7 +451,7 @@ class TestWorkflowDraftVariableService:
     def test_delete_variable_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test deleting a single variable successfully.
-        
+
         This test verifies that the service can delete a specific variable
         and that it's properly removed from the database. It ensures that
         the deletion operation is atomic and complete.
@@ -472,7 +472,7 @@ class TestWorkflowDraftVariableService:
     def test_delete_workflow_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test deleting all variables for a workflow successfully.
-        
+
         This test verifies that the service can delete all variables
         associated with a specific app/workflow. This is useful for
         cleanup operations when workflows are deleted or reset.
@@ -505,7 +505,7 @@ class TestWorkflowDraftVariableService:
     def test_delete_node_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test deleting all variables for a specific node successfully.
-        
+
         This test verifies that the service can delete all variables
         associated with a specific node while preserving variables
         for other nodes and conversation variables. This is important
@@ -563,7 +563,7 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Test prefill conversation variable default values successfully.
-        
+
         This test verifies that the service can automatically create
         conversation variables with default values based on the workflow
         configuration when none exist. This is important for initializing
@@ -612,7 +612,7 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Test getting conversation ID from draft variable successfully.
-        
+
         This test verifies that the service can extract the conversation ID
         from a system variable named "conversation_id". This is important
         for maintaining conversation context across workflow executions.
@@ -639,7 +639,7 @@ class TestWorkflowDraftVariableService:
     ):
         """
         Test getting conversation ID when it doesn't exist.
-        
+
         This test verifies that the service returns None when no
         conversation_id variable exists for the app. This ensures
         proper handling of missing conversation context scenarios.
@@ -653,7 +653,7 @@ class TestWorkflowDraftVariableService:
     def test_list_system_variables_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test listing system variables successfully.
-        
+
         This test verifies that the service can filter and return only
         system variables, excluding conversation and node variables.
         System variables are internal variables used by the workflow
@@ -688,7 +688,7 @@ class TestWorkflowDraftVariableService:
     def test_get_variable_by_name_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test getting variables by name successfully for different types.
-        
+
         This test verifies that the service can retrieve variables by name
         for different variable types (conversation, system, node). This
         functionality is important for variable lookup operations during
@@ -723,7 +723,7 @@ class TestWorkflowDraftVariableService:
     def test_get_variable_by_name_not_found(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test getting variables by name when they don't exist.
-        
+
         This test verifies that the service returns None when trying to
         retrieve variables by name that don't exist. This ensures proper
         handling of missing variable scenarios for all variable types.

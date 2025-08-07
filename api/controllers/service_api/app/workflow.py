@@ -1,10 +1,11 @@
 import logging
 
 from dateutil.parser import isoparse
+from flask import request
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.service_api import api
 from controllers.service_api.app.error import (
@@ -23,6 +24,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
@@ -30,8 +32,9 @@ from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
+from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
@@ -63,7 +66,15 @@ class WorkflowRunDetailApi(Resource):
         if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
+        # Use repository to get workflow run
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+        workflow_run = workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_id=workflow_run_id,
+        )
         return workflow_run
 
 
@@ -82,7 +93,9 @@ class WorkflowRunApi(Resource):
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         args = parser.parse_args()
-
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
         streaming = args.get("response_mode") == "streaming"
 
         try:
@@ -91,6 +104,59 @@ class WorkflowRunApi(Resource):
             )
 
             return helper.compact_generate_response(response)
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+
+class WorkflowRunByIdApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
+        """
+        Run specific workflow by ID
+        """
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode != AppMode.WORKFLOW:
+            raise NotWorkflowAppError()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        args = parser.parse_args()
+
+        # Add workflow_id to args for AppGenerateService
+        args["workflow_id"] = workflow_id
+
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
+        streaming = args.get("response_mode") == "streaming"
+
+        try:
+            response = AppGenerateService.generate(
+                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+            )
+
+            return helper.compact_generate_response(response)
+        except WorkflowNotFoundError as ex:
+            raise NotFound(str(ex))
+        except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
+        except WorkflowIdFormatError as ex:
+            raise BadRequest(str(ex))
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -181,5 +247,6 @@ class WorkflowAppLogApi(Resource):
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_run_id>")
+api.add_resource(WorkflowRunByIdApi, "/workflows/<string:workflow_id>/run")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
 api.add_resource(WorkflowAppLogApi, "/workflows/logs")

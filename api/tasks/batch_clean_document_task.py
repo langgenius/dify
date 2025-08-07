@@ -27,12 +27,12 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id.in_(document_ids)).all()
+        segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids)).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
@@ -42,33 +42,34 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
-                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    image_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
                     try:
                         if image_file and image_file.key:
                             storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
-                                          image_upload_file_is: {}".format(upload_file_id)
+                                          image_upload_file_is: %s",
+                            upload_file_id,
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
 
             db.session.commit()
         if file_ids:
-            files = db.session.query(UploadFile).filter(UploadFile.id.in_(file_ids)).all()
+            files = db.session.query(UploadFile).where(UploadFile.id.in_(file_ids)).all()
             for file in files:
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file.id))
+                    logging.exception("Delete file failed when document deleted, file_id: %s", file.id)
                 db.session.delete(file)
             db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Cleaned documents when documents deleted latency: {}".format(end_at - start_at),
+                f"Cleaned documents when documents deleted latency: {end_at - start_at}",
                 fg="green",
             )
         )

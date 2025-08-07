@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'बल्क आयात',
       bulkExport: 'बल्क निर्यात',
       clearAll: 'सभी एनोटेशन साफ करें',
+      clearAllConfirm: 'क्या सभी टिप्पणियाँ हटानी हैं?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'सहेजें',
   },
   embeddingModelSwitchTip: 'एनोटेशन टेक्स्ट वेक्टराइजेशन मॉडल, मॉडल बदलने से पुनः एम्बेड किया जाएगा, जिससे अतिरिक्त लागतें उत्पन्न होंगी।',
+  list: {
+    delete: {
+      title: 'क्या आप सुनिश्चित हैं कि हटाएं?',
+    },
+  },
+  batchAction: {
+    selected: 'चुना हुआ',
+    delete: 'हटाएँ',
+    cancel: 'रद्द करें',
+  },
 }
 
 export default translation

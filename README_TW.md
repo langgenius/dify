@@ -197,12 +197,13 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 如果您需要自定義配置，請參考我們的 [.env.example](docker/.env.example) 文件中的註釋，並在您的 `.env` 文件中更新相應的值。此外，根據您特定的部署環境和需求，您可能需要調整 `docker-compose.yaml` 文件本身，例如更改映像版本、端口映射或卷掛載。進行任何更改後，請重新運行 `docker-compose up -d`。您可以在[這裡](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用環境變數的完整列表。
 
-如果您想配置高可用性設置，社區貢獻的 [Helm Charts](https://helm.sh/) 和 YAML 文件允許在 Kubernetes 上部署 Dify。
+如果您想配置高可用性設置，社區貢獻的 [Helm Charts](https://helm.sh/) 和 Kubernetes 資源清單（YAML）允許在 Kubernetes 上部署 Dify。
 
 - [由 @LeoQuote 提供的 Helm Chart](https://github.com/douban/charts/tree/master/charts/dify)
 - [由 @BorisPolonsky 提供的 Helm Chart](https://github.com/BorisPolonsky/dify-helm)
 - [由 @Winson-030 提供的 YAML 文件](https://github.com/Winson-030/dify-kubernetes)
 - [由 @wyy-holding 提供的 YAML 文件](https://github.com/wyy-holding/dify-k8s)
+- [🚀 NEW! YAML 檔案（支援 Dify v1.6.0）by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 ### 使用 Terraform 進行部署
 
@@ -232,13 +233,17 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 透過 [阿里雲數據管理DMS](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)，一鍵將 Dify 部署至阿里雲
 
+#### 使用 Azure Devops Pipeline 部署到AKS
+
+使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 將 Dify 一鍵部署到 AKS
+
 
 ## 貢獻
 
 對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。
 同時，也請考慮透過在社群媒體和各種活動與會議上分享 Dify 來支持我們。
 
-> 我們正在尋找貢獻者協助將 Dify 翻譯成中文和英文以外的語言。如果您有興趣幫忙，請查看 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) 獲取更多資訊，並在我們的 [Discord 社群伺服器](https://discord.gg/8Tpq4AcN9c) 的 `global-users` 頻道留言給我們。
+> 我們正在尋找貢獻者協助將 Dify 翻譯成中文和英文以外的語言。如果您有興趣幫忙，請查看 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) 獲取更多資訊，並在我們的 [Discord 社群伺服器](https://discord.gg/8Tpq4AcN9c) 的 `global-users` 頻道留言給我們。
 
 ## 社群與聯絡方式
 

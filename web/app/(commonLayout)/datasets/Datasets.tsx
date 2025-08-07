@@ -36,7 +36,7 @@ const getKey = (
 }
 
 type Props = {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   tags: string[]
   keywords: string
   includeAll: boolean

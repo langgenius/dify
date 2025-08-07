@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
@@ -10,6 +8,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
+from libs.datetime_utils import naive_utc_now
 from libs.login import login_required
 from models import Site
 
@@ -50,7 +49,7 @@ class AppSite(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
         if not site:
             raise NotFound
 
@@ -77,7 +76,7 @@ class AppSite(Resource):
                 setattr(site, attr_name, value)
 
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        site.updated_at = naive_utc_now()
         db.session.commit()
 
         return site
@@ -94,14 +93,14 @@ class AppSiteAccessTokenReset(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:
             raise NotFound
 
         site.code = Site.generate_code(16)
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        site.updated_at = naive_utc_now()
         db.session.commit()
 
         return site

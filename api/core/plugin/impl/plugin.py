@@ -36,7 +36,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": 1, "page_size": 256},
+            params={"page": 1, "page_size": 256, "response_type": "paged"},
         )
         return result.list
 
@@ -45,7 +45,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": page, "page_size": page_size},
+            params={"page": page, "page_size": page_size, "response_type": "paged"},
         )
 
     def upload_pkg(

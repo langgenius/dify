@@ -73,6 +73,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.TOOL: {
         LATEST_VERSION: ToolNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
         "2": ToolNode,
         "1": ToolNode,
     },
@@ -123,6 +126,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.AGENT: {
         LATEST_VERSION: AgentNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
         "2": AgentNode,
         "1": AgentNode,
     },

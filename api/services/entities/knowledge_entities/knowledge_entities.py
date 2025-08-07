@@ -4,13 +4,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
-class SegmentUpdateEntity(BaseModel):
-    content: str
-    answer: Optional[str] = None
-    keywords: Optional[list[str]] = None
-    enabled: Optional[bool] = None
-
-
 class ParentMode(StrEnum):
     FULL_DOC = "full-doc"
     PARAGRAPH = "paragraph"
@@ -95,7 +88,7 @@ class WeightKeywordSetting(BaseModel):
 
 
 class WeightModel(BaseModel):
-    weight_type: Optional[str] = None
+    weight_type: Optional[Literal["semantic_first", "keyword_first", "customized"]] = None
     vector_setting: Optional[WeightVectorSetting] = None
     keyword_setting: Optional[WeightKeywordSetting] = None
 
@@ -151,10 +144,6 @@ class MetadataArgs(BaseModel):
 class MetadataUpdateArgs(BaseModel):
     name: str
     value: Optional[str | int | float] = None
-
-
-class MetadataValueUpdateArgs(BaseModel):
-    fields: list[MetadataUpdateArgs]
 
 
 class MetadataDetail(BaseModel):

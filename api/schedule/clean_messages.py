@@ -36,7 +36,7 @@ def clean_messages():
             # Main query with join and filter
             messages = (
                 db.session.query(Message)
-                .filter(Message.created_at < plan_sandbox_clean_message_day)
+                .where(Message.created_at < plan_sandbox_clean_message_day)
                 .order_by(Message.created_at.desc())
                 .limit(100)
                 .all()
@@ -66,25 +66,25 @@ def clean_messages():
                 plan = plan_cache.decode()
             if plan == "sandbox":
                 # clean related message
-                db.session.query(MessageFeedback).filter(MessageFeedback.message_id == message.id).delete(
+                db.session.query(MessageFeedback).where(MessageFeedback.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id == message.id).delete(
+                db.session.query(MessageAnnotation).where(MessageAnnotation.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(MessageChain).filter(MessageChain.message_id == message.id).delete(
+                db.session.query(MessageChain).where(MessageChain.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == message.id).delete(
+                db.session.query(MessageAgentThought).where(MessageAgentThought.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(MessageFile).filter(MessageFile.message_id == message.id).delete(
+                db.session.query(MessageFile).where(MessageFile.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(SavedMessage).filter(SavedMessage.message_id == message.id).delete(
+                db.session.query(SavedMessage).where(SavedMessage.message_id == message.id).delete(
                     synchronize_session=False
                 )
-                db.session.query(Message).filter(Message.id == message.id).delete()
+                db.session.query(Message).where(Message.id == message.id).delete()
                 db.session.commit()
     end_at = time.perf_counter()
-    click.echo(click.style("Cleaned messages from db success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Cleaned messages from db success latency: {end_at - start_at}", fg="green"))

@@ -35,7 +35,6 @@ const translation = {
     learnMore: '了解更多',
     startFromBlank: '创建空白应用',
     startFromTemplate: '从应用模版创建',
-    captionAppType: '想要哪种应用类型？',
     foundResult: '{{count}} 个结果',
     foundResults: '{{count}} 个结果',
     noAppsFound: '未找到应用',
@@ -45,7 +44,6 @@ const translation = {
     chatbotUserDescription: '通过简单的配置快速搭建一个基于 LLM 的对话机器人。支持切换为 Chatflow 编排。',
     completionShortDescription: '用于文本生成任务的 AI 助手',
     completionUserDescription: '通过简单的配置快速搭建一个面向文本生成类任务的 AI 助手。',
-    completionWarning: '该类型不久后将不再支持创建',
     agentShortDescription: '具备推理与自主工具调用的智能助手',
     agentUserDescription: '能够迭代式的规划推理、自主工具调用，直至完成任务目标的智能助手。',
     workflowShortDescription: '面向单轮自动化任务的编排工作流',
@@ -186,8 +184,8 @@ const translation = {
       description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
     },
     aliyun: {
-      title: '大模型可观测',
-      description: '阿里云提供的SaaS化可观测平台，一键开启Dify应用的监控追踪和评估。',
+      title: '云监控',
+      description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
     },
   },
   appSelector: {
@@ -246,6 +244,9 @@ const translation = {
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web 应用',
+  maxActiveRequests: '最大活跃请求数',
+  maxActiveRequestsPlaceholder: '0 表示不限制',
+  maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',
 }
 
 export default translation
