@@ -398,6 +398,8 @@ class LoopNode(BaseNode):
             else:
                 yield self._handle_event_metadata(event=cast(InNodeEvent, event), iter_run_index=current_index)
 
+        graph_engine.thread_pool.wait_for_all_tasks_done()
+
         # Remove all nodes outputs from variable pool
         for node_id in loop_graph.node_ids:
             variable_pool.remove([node_id])
