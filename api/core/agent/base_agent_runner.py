@@ -439,9 +439,8 @@ class BaseAgentRunner(AppRunner):
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
                     assert agent_thought.tool is not None
-                    tools = agent_thought.tool
+                    tools = agent_thought.tool.split(";")
                     if tools:
-                        tools = tools.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
                         try:
