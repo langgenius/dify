@@ -1028,7 +1028,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
           selectors.push(c.variable_selector)
         // Handle sub-variable conditions
         if (c.sub_variable_condition && c.sub_variable_condition.conditions)
-          selectors.push(...getNonEmptyVariableSelectorsFromSubConditions(c.sub_variable_condition.conditions))
+          selectors.push(...c.sub_variable_condition.conditions.map(subC => subC.variable_selector || []).filter(sel => sel.length > 0))
         return selectors
       }))
       break
