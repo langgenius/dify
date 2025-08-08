@@ -63,13 +63,12 @@ const DatasetCard = ({
       mutate(
         key => {
           if (typeof key === 'string') return key.includes('/datasets')
-          if (typeof key === 'object' && key !== null) {
+          if (typeof key === 'object' && key !== null)
             return key.url === '/datasets' || key.url?.includes('/datasets')
-          }
           return false
         },
         undefined,
-        { revalidate: true }
+        { revalidate: true },
       )
 
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
