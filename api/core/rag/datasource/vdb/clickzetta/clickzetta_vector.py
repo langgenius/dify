@@ -243,11 +243,11 @@ class ClickzettaVector(BaseVector):
         if self._connection is None:
             logger.warning("Database connection is None, attempting to reconnect")
             self._init_connection()
-        
+
         # After init, connection should not be None, but check for type safety
         if self._connection is None:
             raise RuntimeError("Failed to establish database connection")
-            
+
         # Test connection health
         try:
             with self._connection.cursor() as cursor:
@@ -261,7 +261,7 @@ class ClickzettaVector(BaseVector):
             except Exception as reconnect_error:
                 logger.exception("Failed to reconnect")
                 raise RuntimeError("Database connection failed: {}".format(reconnect_error))
-                
+
         return self._connection
 
     def _table_exists(self) -> bool:
@@ -274,11 +274,10 @@ class ClickzettaVector(BaseVector):
         except Exception as e:
             error_message = str(e).lower()
             # Handle ClickZetta specific "table or view not found" errors
-            if any(phrase in error_message for phrase in [
-                "table or view not found",
-                "czlh-42000",
-                "semantic analysis exception"
-            ]):
+            if any(
+                phrase in error_message
+                for phrase in ["table or view not found", "czlh-42000", "semantic analysis exception"]
+            ):
                 logger.debug("Table %s.%s does not exist", self._config.schema_name, self._table_name)
                 return False
             else:
