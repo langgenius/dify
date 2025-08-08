@@ -59,7 +59,11 @@ def clean_dataset_task(
         # Fix: Always clean vector database resources regardless of document existence
         # This ensures all 33 vector databases properly drop tables/collections/indices
         if doc_form is None:
-            raise ValueError("Index type must be specified.")
+            # Use default paragraph index type for empty datasets to enable vector database cleanup
+            from core.rag.index_processor.constant.index_type import IndexType
+            doc_form = IndexType.PARAGRAPH_INDEX
+            logging.info(click.style(f"No documents found, using default index type for cleanup: {doc_form}", fg="yellow"))
+        
         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
         index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
 
