@@ -9,6 +9,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -103,7 +104,7 @@ const EmailInput = ({
   return (
     <div className='p-1 pt-0'>
       <div
-        className='flex max-h-24 min-h-16 flex-wrap overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal p-2'
+        className={cn('flex max-h-24 min-h-16 flex-wrap overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal p-2 hover:border-components-input-border-hover hover:bg-components-input-bg-hover', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}
         onClick={setInputFocus}
       >
         {selectedEmails.map(item => (

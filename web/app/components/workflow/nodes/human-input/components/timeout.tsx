@@ -18,6 +18,14 @@ const TimeoutInput: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
+
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (/^\d*$/.test(value))
+      onChange({ timeout: Number(value) || 1, unit })
+    else
+      onChange({ timeout: 1, unit })
+  }
   return (
     <div className='flex items-center gap-1'>
       <Input
@@ -25,7 +33,7 @@ const TimeoutInput: FC<Props> = ({
         type='number'
         value={timeout}
         min={1}
-        onChange={e => onChange({ timeout: Number(e.target.value), unit })}
+        onChange={handleValueChange}
       />
       <div className='flex items-center gap-0.5 rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'>
         <div

@@ -54,6 +54,13 @@ const EmailConfigureModal = ({
       })
       return false
     }
+    if (!/{{#url#}}/.test(body.trim())) {
+      Toast.notify({
+        type: 'error',
+        message: `body must contain one ${t('common.promptEditor.requestURL.item.title')}`,
+      })
+      return false
+    }
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
       Toast.notify({
         type: 'error',
