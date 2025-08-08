@@ -102,15 +102,15 @@ class ClickzettaVector(BaseVector):
                     vcluster=self._config.vcluster,
                     schema=self._config.schema_name,
                 )
-                logger.info(f"Successfully connected to ClickZetta (attempt {attempt + 1}/{max_retries})")
+                logger.info("Successfully connected to ClickZetta (attempt %d/%d)", attempt + 1, max_retries)
                 return
             except Exception as e:
-                logger.exception(f"ClickZetta connection attempt {attempt + 1}/{max_retries} failed")
+                logger.exception("ClickZetta connection attempt %d/%d failed", attempt + 1, max_retries)
                 if attempt < max_retries - 1:
                     import time
                     time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                 else:
-                    logger.error(f"Failed to connect to ClickZetta after {max_retries} attempts")
+                    logger.exception("Failed to connect to ClickZetta after %d attempts", max_retries)
                     raise
 
         # Set session parameters for better string handling and performance optimization
@@ -172,7 +172,10 @@ class ClickzettaVector(BaseVector):
                 # Restore original logging level
                 clickzetta_logger.setLevel(original_level)
 
-            logger.debug(f"Applied {len(performance_hints)} performance optimization hints for ClickZetta vector operations")
+            logger.debug(
+                "Applied %d performance optimization hints for ClickZetta vector operations",
+                len(performance_hints),
+            )
 
         except Exception:
             # Catch any errors setting performance hints but continue with defaults
@@ -240,6 +243,10 @@ class ClickzettaVector(BaseVector):
             logger.warning("Database connection is None, attempting to reconnect")
             self._init_connection()
         
+        # After init, connection should not be None, but check for type safety
+        if self._connection is None:
+            raise RuntimeError("Failed to establish database connection")
+            
         # Test connection health
         try:
             with self._connection.cursor() as cursor:
@@ -248,9 +255,11 @@ class ClickzettaVector(BaseVector):
             logger.exception("Connection health check failed, attempting to reconnect")
             try:
                 self._init_connection()
+                if self._connection is None:
+                    raise RuntimeError("Failed to establish database connection after reconnect")
             except Exception as reconnect_error:
                 logger.exception("Failed to reconnect")
-                raise RuntimeError(f"Database connection failed: {reconnect_error}")
+                raise RuntimeError("Database connection failed: {}".format(reconnect_error))
                 
         return self._connection
 
@@ -269,11 +278,15 @@ class ClickzettaVector(BaseVector):
                 "czlh-42000",
                 "semantic analysis exception"
             ]):
-                logger.debug(f"Table {self._config.schema_name}.{self._table_name} does not exist")
+                logger.debug("Table %s.%s does not exist", self._config.schema_name, self._table_name)
                 return False
             else:
                 # For other connection/permission errors, log warning but return False to avoid blocking cleanup
-                logger.exception(f"Table existence check failed for {self._config.schema_name}.{self._table_name}, assuming it doesn't exist")
+                logger.exception(
+                    "Table existence check failed for %s.%s, assuming it doesn't exist",
+                    self._config.schema_name,
+                    self._table_name,
+                )
                 return False
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -289,7 +302,7 @@ class ClickzettaVector(BaseVector):
         """Create table and indexes (executed in write worker thread)."""
         # Check if table already exists to avoid unnecessary index creation
         if self._table_exists():
-            logger.info(f"Table {self._config.schema_name}.{self._table_name} already exists, skipping creation")
+            logger.info("Table %s.%s already exists, skipping creation", self._config.schema_name, self._table_name)
             return
 
         # Create table with vector and metadata columns
@@ -309,7 +322,7 @@ class ClickzettaVector(BaseVector):
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
             cursor.execute(create_table_sql)
-            logger.info(f"Created table {self._config.schema_name}.{self._table_name}")
+            logger.info("Created table %s.%s", self._config.schema_name, self._table_name)
 
             # Create vector index
             self._create_vector_index(cursor)
@@ -539,7 +552,7 @@ class ClickzettaVector(BaseVector):
 
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
+            logger.warning("Table %s.%s does not exist, skipping delete", self._config.schema_name, self._table_name)
             return
 
         # Execute delete through write queue
@@ -560,7 +573,7 @@ class ClickzettaVector(BaseVector):
         """Delete documents by metadata field."""
         # Check if table exists before attempting delete
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, skipping delete")
+            logger.warning("Table %s.%s does not exist, skipping delete", self._config.schema_name, self._table_name)
             return
 
         # Execute delete through write queue
@@ -583,7 +596,11 @@ class ClickzettaVector(BaseVector):
         """Search for documents by vector similarity."""
         # Check if table exists first
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, returning empty results")
+            logger.warning(
+                "Table %s.%s does not exist, returning empty results",
+                self._config.schema_name,
+                self._table_name,
+            )
             return []
             
         top_k = kwargs.get("top_k", 10)
@@ -697,7 +714,11 @@ class ClickzettaVector(BaseVector):
             
         # Check if table exists first
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, returning empty results")
+            logger.warning(
+                "Table %s.%s does not exist, returning empty results",
+                self._config.schema_name,
+                self._table_name,
+            )
             return []
 
         top_k = kwargs.get("top_k", 10)
@@ -793,7 +814,11 @@ class ClickzettaVector(BaseVector):
         """Fallback search using LIKE operator."""
         # Check if table exists first
         if not self._table_exists():
-            logger.warning(f"Table {self._config.schema_name}.{self._table_name} does not exist, returning empty results")
+            logger.warning(
+                "Table %s.%s does not exist, returning empty results",
+                self._config.schema_name,
+                self._table_name,
+            )
             return []
             
         top_k = kwargs.get("top_k", 10)
