@@ -90,7 +90,7 @@ class ClickzettaVector(BaseVector):
         """Initialize Clickzetta connection with retry logic."""
         max_retries = 3
         retry_delay = 1.0
-        
+
         for attempt in range(max_retries):
             try:
                 self._connection = clickzetta.connect(
@@ -108,6 +108,7 @@ class ClickzettaVector(BaseVector):
                 logger.exception("ClickZetta connection attempt %d/%d failed", attempt + 1, max_retries)
                 if attempt < max_retries - 1:
                     import time
+
                     time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                 else:
                     logger.exception("Failed to connect to ClickZetta after %d attempts", max_retries)
@@ -117,10 +118,10 @@ class ClickzettaVector(BaseVector):
         if self._connection is not None:
             with self._connection.cursor() as cursor:
                 # Temporarily suppress ClickZetta client logging to reduce noise
-                clickzetta_logger = logging.getLogger('clickzetta')
+                clickzetta_logger = logging.getLogger("clickzetta")
                 original_level = clickzetta_logger.level
                 clickzetta_logger.setLevel(logging.WARNING)
-                
+
                 try:
                     # Use quote mode for string literal escaping to handle quotes better
                     cursor.execute("SET cz.sql.string.literal.escape.mode = 'quote'")
@@ -161,10 +162,10 @@ class ClickzettaVector(BaseVector):
             ]
 
             # Temporarily suppress ClickZetta client logging to reduce noise
-            clickzetta_logger = logging.getLogger('clickzetta')
+            clickzetta_logger = logging.getLogger("clickzetta")
             original_level = clickzetta_logger.level
             clickzetta_logger.setLevel(logging.WARNING)
-            
+
             try:
                 for hint in performance_hints:
                     cursor.execute(hint)
@@ -504,10 +505,10 @@ class ClickzettaVector(BaseVector):
                 # Set session-level hints for batch insert operations
                 # Note: executemany doesn't support hints parameter, so we set them as session variables
                 # Temporarily suppress ClickZetta client logging to reduce noise
-                clickzetta_logger = logging.getLogger('clickzetta')
+                clickzetta_logger = logging.getLogger("clickzetta")
                 original_level = clickzetta_logger.level
                 clickzetta_logger.setLevel(logging.WARNING)
-                
+
                 try:
                     cursor.execute("SET cz.sql.job.fast.mode = true")
                     cursor.execute("SET cz.sql.compaction.after.commit = true")
@@ -535,7 +536,7 @@ class ClickzettaVector(BaseVector):
         # Check if table exists first
         if not self._table_exists():
             return False
-            
+
         safe_id = self._safe_doc_id(id)
         connection = self._ensure_connection()
         with connection.cursor() as cursor:
@@ -602,7 +603,7 @@ class ClickzettaVector(BaseVector):
                 self._table_name,
             )
             return []
-            
+
         top_k = kwargs.get("top_k", 10)
         score_threshold = kwargs.get("score_threshold", 0.0)
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -711,7 +712,7 @@ class ClickzettaVector(BaseVector):
         if not self._config.enable_inverted_index:
             logger.warning("Full-text search is not enabled. Enable inverted index in config.")
             return []
-            
+
         # Check if table exists first
         if not self._table_exists():
             logger.warning(
@@ -820,7 +821,7 @@ class ClickzettaVector(BaseVector):
                 self._table_name,
             )
             return []
-            
+
         top_k = kwargs.get("top_k", 10)
         document_ids_filter = kwargs.get("document_ids_filter")
 
