@@ -213,41 +213,32 @@ class ConversationService:
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         try:
+            # Verify conversation exists and user has permission to delete it
             conversation = cls.get_conversation_for_deletion(app_model, conversation_id, user)
 
             if conversation.app_id != app_model.id:
                 raise ConversationNotExistsError()
 
-            # Delete related data in correct order to respect foreign key constraints
-            db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
+            # Delete all related records in a single transaction
+            tables_to_clear = [
+                MessageAnnotation,
+                MessageFeedback,
+                ToolConversationVariables,
+                ToolFile,
+                ConversationVariable,
+                Message,
+                PinnedConversation,
+                Conversation
+            ]
 
-            db.session.query(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
-
-            db.session.query(ToolConversationVariables).where(
-                ToolConversationVariables.conversation_id == conversation_id
-            ).delete(synchronize_session=False)
-
-            db.session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
-
-            db.session.query(ConversationVariable).where(
-                ConversationVariable.conversation_id == conversation_id
-            ).delete(synchronize_session=False)
-
-            db.session.query(Message).where(Message.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
-
-            db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
-                synchronize_session=False
-            )
-
-            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            # Delete records from each table in order (to respect foreign keys)
+            for table in tables_to_clear:
+                query = db.session.query(table)
+                if table is not Conversation:
+                    query = query.filter(table.conversation_id == conversation_id)
+                else:
+                    query = query.filter(table.id == conversation_id)
+                query.delete(synchronize_session=False)
 
             db.session.commit()
 
