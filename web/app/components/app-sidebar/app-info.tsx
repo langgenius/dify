@@ -30,6 +30,7 @@ import Divider from '../base/divider'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
+import cn from '@/utils/classnames'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -257,13 +258,15 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         >
           <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
             <div className='flex items-center gap-1'>
-              <AppIcon
-                size={expand ? 'large' : 'small'}
-                iconType={appDetail.icon_type}
-                icon={appDetail.icon}
-                background={appDetail.icon_background}
-                imageUrl={appDetail.icon_url}
-              />
+              <div className={cn(!expand && 'ml-1')}>
+                <AppIcon
+                  size={expand ? 'large' : 'small'}
+                  iconType={appDetail.icon_type}
+                  icon={appDetail.icon}
+                  background={appDetail.icon_background}
+                  imageUrl={appDetail.icon_url}
+                />
+              </div>
               {expand && (
                 <div className='ml-auto flex items-center justify-center rounded-md p-0.5'>
                   <div className='flex h-5 w-5 items-center justify-center'>
