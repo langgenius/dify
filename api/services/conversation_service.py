@@ -219,7 +219,7 @@ class ConversationService:
             if conversation.app_id != app_model.id:
                 raise ConversationNotExistsError()
 
-           # Delete related data in correct order to respect foreign key constraints
+            # Delete related data in correct order to respect foreign key constraints
             db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
                 synchronize_session=False
             )
