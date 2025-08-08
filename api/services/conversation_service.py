@@ -248,6 +248,7 @@ class ConversationService:
         finally:
             if db.session.is_active:
                 db.session.rollback()
+
     @classmethod
     def get_conversational_variable(
         cls,
