@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any
 
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
@@ -19,24 +19,15 @@ from services.tools.tools_transform_service import ToolTransformService
 
 
 class MCPToolProviderController(ToolProviderController):
-    def __init__(
-        self,
-        entity: ToolProviderEntityWithPlugin,
-        provider_id: str,
-        tenant_id: str,
-        server_url: str,
-        headers: Optional[dict[str, str]] = None,
-        timeout: Optional[float] = None,
-        sse_read_timeout: Optional[float] = None,
-    ) -> None:
+    provider_id: str
+    entity: ToolProviderEntityWithPlugin
+
+    def __init__(self, entity: ToolProviderEntityWithPlugin, provider_id: str, tenant_id: str, server_url: str) -> None:
         super().__init__(entity)
-        self.entity: ToolProviderEntityWithPlugin = entity
+        self.entity = entity
         self.tenant_id = tenant_id
         self.provider_id = provider_id
         self.server_url = server_url
-        self.headers = headers or {}
-        self.timeout = timeout
-        self.sse_read_timeout = sse_read_timeout
 
     @property
     def provider_type(self) -> ToolProviderType:
@@ -94,9 +85,6 @@ class MCPToolProviderController(ToolProviderController):
             provider_id=db_provider.server_identifier or "",
             tenant_id=db_provider.tenant_id or "",
             server_url=db_provider.decrypted_server_url,
-            headers={},  # TODO: get headers from db provider
-            timeout=db_provider.timeout,
-            sse_read_timeout=db_provider.sse_read_timeout,
         )
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
@@ -123,9 +111,6 @@ class MCPToolProviderController(ToolProviderController):
             icon=self.entity.identity.icon,
             server_url=self.server_url,
             provider_id=self.provider_id,
-            headers=self.headers,
-            timeout=self.timeout,
-            sse_read_timeout=self.sse_read_timeout,
         )
 
     def get_tools(self) -> list[MCPTool]:  # type: ignore
@@ -140,9 +125,6 @@ class MCPToolProviderController(ToolProviderController):
                 icon=self.entity.identity.icon,
                 server_url=self.server_url,
                 provider_id=self.provider_id,
-                headers=self.headers,
-                timeout=self.timeout,
-                sse_read_timeout=self.sse_read_timeout,
             )
             for tool_entity in self.entity.tools
         ]
