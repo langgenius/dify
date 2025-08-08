@@ -1,3 +1,4 @@
+import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
@@ -79,6 +80,9 @@ export type WorkflowVariableBlockType = {
 
 export type HITLInputBlockType = {
   show?: boolean
+  nodeTitle: string
+  formInputs?: FormInputItem[]
+  onFormInputsChange?: (inputs: FormInputItem[]) => void
 }
 
 export type MenuTextMatch = {

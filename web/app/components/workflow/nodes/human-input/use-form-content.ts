@@ -1,5 +1,5 @@
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import type { HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from './types'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
@@ -9,8 +9,16 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
       form_content: value,
     })
   }
+
+  const handleFormInputsChange = (formInputs: FormInputItem[]) => {
+    setInputs({
+      ...inputs,
+      inputs: formInputs,
+    })
+  }
   return {
     handleFormContentChange,
+    handleFormInputsChange,
   }
 }
 

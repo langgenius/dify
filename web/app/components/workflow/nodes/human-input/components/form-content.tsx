@@ -6,17 +6,24 @@ import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { BlockEnum } from '../../../types'
 import { useWorkflowVariableType } from '../../../hooks'
 import { useTranslation } from 'react-i18next'
+import type { FormInputItem } from '../types'
 
 type Props = {
   nodeId: string
   value: string
   onChange: (value: string) => void
+  formInputs: FormInputItem[]
+  onFormInputsChange: (payload: FormInputItem[]) => void
+  nodeTitle: string
 }
 
 const FormContent: FC<Props> = ({
   nodeId,
   value,
   onChange,
+  formInputs,
+  onFormInputsChange,
+  nodeTitle,
 }) => {
   const { t } = useTranslation()
   const filterVar = () => true
@@ -38,6 +45,9 @@ const FormContent: FC<Props> = ({
         className='min-h-[80px]'
         hitlInputBlock={{
           show: true,
+          formInputs,
+          nodeTitle,
+          onFormInputsChange,
         }}
         workflowVariableBlock={{
           show: true,

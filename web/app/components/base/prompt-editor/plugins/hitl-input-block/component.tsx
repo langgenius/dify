@@ -1,29 +1,51 @@
-import type { FC } from 'react'
+import { type FC, useCallback } from 'react'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_HITL_INPUT_BLOCK_COMMAND } from './'
 import ComponentUi from './component-ui'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import produce from 'immer'
 
 type QueryBlockComponentProps = {
   nodeKey: string
-  nodeName: string
+  nodeTitle: string
   varName: string
+  formInputs?: FormInputItem[]
+  onChange: (inputs: FormInputItem[]) => void
 }
 
 const HITLInputComponent: FC<QueryBlockComponentProps> = ({
   nodeKey,
-  nodeName,
+  nodeTitle,
   varName,
+  formInputs = [],
+  onChange,
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
+  const payload = formInputs.find(item => item.output_variable_name === varName)
+  const handleChange = useCallback((newPayload: FormInputItem) => {
+    if(!payload) {
+      onChange([...formInputs, newPayload])
+      return
+    }
+    if(payload?.output_variable_name !== newPayload.output_variable_name) {
+      onChange(produce(formInputs, (draft) => {
+        draft.splice(draft.findIndex(item => item.output_variable_name === payload?.output_variable_name), 1, newPayload)
+      }))
+      return
+    }
+    onChange(formInputs.map(item => item.output_variable_name === varName ? newPayload : item))
+  }, [onChange])
   return (
     <div
       ref={ref}
       className='w-full pb-1 pt-3'
     >
       <ComponentUi
-        nodeName={nodeName}
+        nodeTitle={nodeTitle}
         varName={varName}
         isSelected={isSelected}
+        formInput={payload}
+        onChange={handleChange}
       />
     </div>
   )

@@ -1,13 +1,20 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import HILTInputBlockComponent from './component'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 
 export type SerializedNode = SerializedLexicalNode & {
   variableName: string
+  nodeTitle: string
+  formInputs: FormInputItem[]
+  onFormInputsChange: (inputs: FormInputItem[]) => void
 }
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string
+  __nodeTitle: string
+  __formInputs?: FormInputItem[]
+  __onFormInputsChange: (inputs: FormInputItem[]) => void
 
   isIsolated(): boolean {
     return true // This is necessary for drag-and-drop to work correctly
@@ -26,18 +33,36 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__variableName
   }
 
+  getNodeTitle(): string {
+    const self = this.getLatest()
+    return self.__nodeTitle
+  }
+
+  getFormInputs(): FormInputItem[] {
+    const self = this.getLatest()
+    return self.__formInputs || []
+  }
+
+  getOnFormInputsChange(): (inputs: FormInputItem[]) => void {
+    const self = this.getLatest()
+    return self.__onFormInputsChange
+  }
+
   static clone(node: HITLInputNode): HITLInputNode {
-    return new HITLInputNode(node.__variableName, node.__key)
+    return new HITLInputNode(node.__variableName, node.__nodeTitle, node.__formInputs || [], node.__onFormInputsChange, node.__key)
   }
 
   isInline(): boolean {
     return true
   }
 
-  constructor(varName: string, key?: NodeKey) {
+  constructor(varName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, key?: NodeKey) {
     super(key)
 
     this.__variableName = varName
+    this.__nodeTitle = nodeTitle
+    this.__formInputs = formInputs
+    this.__onFormInputsChange = onFormInputsChange
   }
 
   createDOM(): HTMLElement {
@@ -51,11 +76,17 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   }
 
   decorate(): React.JSX.Element {
-    return <HILTInputBlockComponent nodeKey={this.getKey()} nodeName='todo' varName={this.getVariableName()} />
+    return <HILTInputBlockComponent
+      nodeKey={this.getKey()}
+      varName={this.getVariableName()}
+      nodeTitle={this.getNodeTitle()}
+      formInputs={this.getFormInputs()}
+      onChange={this.getOnFormInputsChange()}
+    />
   }
 
   static importJSON(serializedNode: SerializedNode): HITLInputNode {
-    const node = $createHITLInputNode(serializedNode.variableName)
+    const node = $createHITLInputNode(serializedNode.variableName, serializedNode.nodeTitle, serializedNode.formInputs, serializedNode.onFormInputsChange)
 
     return node
   }
@@ -65,6 +96,9 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       type: 'hitl-input-block',
       version: 1,
       variableName: this.getVariableName(),
+      nodeTitle: this.getNodeTitle(),
+      formInputs: this.getFormInputs(),
+      onFormInputsChange: this.getOnFormInputsChange(),
     }
   }
 
@@ -73,8 +107,8 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   }
 }
 
-export function $createHITLInputNode(variableName: string): HITLInputNode {
-  return new HITLInputNode(variableName)
+export function $createHITLInputNode(variableName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void): HITLInputNode {
+  return new HITLInputNode(variableName, nodeTitle, formInputs, onFormInputsChange)
 }
 
 export function $isHITLInputNode(

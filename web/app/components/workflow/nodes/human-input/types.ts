@@ -3,15 +3,7 @@ import type { CommonNodeType, InputVarType, ValueSelector, Variable } from '@/ap
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
   form_content: string
-  form_input: {
-    type: InputVarType
-    output_variable_name: string
-    placeholder?: { // only text-input and paragraph support placeholder
-      type: 'variable' | 'const',
-      selector: ValueSelector
-      value: string
-    }
-  }[]
+  inputs: FormInputItem[]
   user_actions: UserAction[]
   timeout: number
   timeout_unit: 'hour' | 'day'
@@ -45,6 +37,19 @@ export type DeliveryMethod = {
   type: DeliveryMethodType
   enabled: boolean
   config?: EmailConfig
+}
+
+export type FormInputItemPlaceholder = {
+  type: 'variable' | 'const',
+  selector: ValueSelector
+  value: string
+}
+
+export type FormInputItem = {
+  type: InputVarType
+  output_variable_name: string
+  // only text-input and paragraph support placeholder
+  placeholder?: FormInputItemPlaceholder
 }
 
 export enum UserActionButtonType {

@@ -8,7 +8,7 @@ import { $applyNodeReplacement } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { decoratorTransform } from '../../utils'
-import type { QueryBlockType } from '../../types'
+import type { HITLInputBlockType } from '../../types'
 import { $createHITLInputNode } from './node'
 import {
   QueryBlockNode,
@@ -19,8 +19,11 @@ import { HITL_INPUT_REG } from '@/config'
 const REGEX = new RegExp(HITL_INPUT_REG)
 
 const HITLInputReplacementBlock = ({
-  onInsert,
-}: QueryBlockType) => {
+  // onInsert,
+  nodeTitle,
+  formInputs,
+  onFormInputsChange,
+}: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -29,11 +32,9 @@ const HITLInputReplacementBlock = ({
   }, [editor])
 
   const createHITLInputBlockNode = useCallback((textNode: TextNode): QueryBlockNode => {
-    if (onInsert)
-      onInsert()
     const varName = textNode.getTextContent().split('.')[1].replace(/#}}$/, '')
-    return $applyNodeReplacement($createHITLInputNode(varName))
-  }, [onInsert])
+    return $applyNodeReplacement($createHITLInputNode(varName, nodeTitle, formInputs || [], onFormInputsChange!))
+  }, [nodeTitle, formInputs, onFormInputsChange])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
