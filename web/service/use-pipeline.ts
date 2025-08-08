@@ -340,12 +340,13 @@ export const usePreviewOnlineDocument = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'preview-online-document'],
     mutationFn: (params: OnlineDocumentPreviewRequest) => {
-      const { pipelineId, datasourceNodeId, workspaceID, pageID, pageType } = params
+      const { pipelineId, datasourceNodeId, workspaceID, pageID, pageType, credentialId } = params
       return post<OnlineDocumentPreviewResponse>(
         `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${datasourceNodeId}/preview`,
         {
           body: {
             datasource_type: DatasourceType.onlineDocument,
+            credential_id: credentialId,
             inputs: {
               workspace_id: workspaceID,
               page_id: pageID,

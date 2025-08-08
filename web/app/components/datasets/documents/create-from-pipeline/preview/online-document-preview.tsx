@@ -10,6 +10,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePreviewOnlineDocument } from '@/service/use-pipeline'
 import Toast from '@/app/components/base/toast'
 import { Markdown } from '@/app/components/base/markdown'
+import { useDataSourceStore } from '../data-source/store'
 
 type OnlineDocumentPreviewProps = {
   currentPage: NotionPage
@@ -26,14 +27,17 @@ const OnlineDocumentPreview = ({
   const [content, setContent] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
   const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
+  const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {
+    const { currentCredentialId } = dataSourceStore.getState()
     getOnlineDocumentContent({
       workspaceID: currentPage.workspace_id,
       pageID: currentPage.page_id,
       pageType: currentPage.type,
       pipelineId: pipelineId || '',
       datasourceNodeId,
+      credentialId: currentCredentialId,
     }, {
       onSuccess(data) {
         setContent(data.content)
@@ -45,7 +49,6 @@ const OnlineDocumentPreview = ({
         })
       },
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage.page_id])
 
   return (

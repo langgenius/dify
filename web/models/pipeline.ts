@@ -262,6 +262,7 @@ export type OnlineDocumentPreviewRequest = {
   pageType: string
   pipelineId: string
   datasourceNodeId: string
+  credentialId: string
 }
 
 export type OnlineDocumentPreviewResponse = {
