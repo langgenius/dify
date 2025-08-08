@@ -28,6 +28,7 @@ const OnlineDrive = ({
   isInPipeline = false,
   onCredentialChange,
 }: OnlineDriveProps) => {
+  const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
@@ -97,7 +98,15 @@ const OnlineDrive = ({
   }, [datasourceNodeRunURL, dataSourceStore])
 
   useEffect(() => {
-    getOnlineDriveFiles()
+    if (isInitialMount) {
+      // Only fetch files on initial mount if fileList is empty
+      if (fileList.length === 0)
+        getOnlineDriveFiles()
+      setIsInitialMount(false)
+    }
+    else {
+      getOnlineDriveFiles()
+    }
   }, [startAfter, prefix, bucket, currentCredentialId])
 
   const onlineDriveFileList = useMemo(() => {

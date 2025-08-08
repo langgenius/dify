@@ -174,6 +174,7 @@ const CreateFormPipeline = () => {
       previewOnlineDocumentRef,
       previewWebsitePageRef,
       previewOnlineDriveFileRef,
+      currentCredentialId,
     } = dataSourceStore.getState()
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
@@ -187,6 +188,7 @@ const CreateFormPipeline = () => {
         mime_type,
         url: '',
         transfer_method: TransferMethod.local_file,
+        credential_id: currentCredentialId,
       }
       datasourceInfoList.push(documentInfo)
     }
@@ -195,17 +197,23 @@ const CreateFormPipeline = () => {
       const documentInfo = {
         workspace_id,
         page: rest,
+        credential_id: currentCredentialId,
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasourceType === DatasourceType.websiteCrawl)
-      datasourceInfoList.push(previewWebsitePageRef.current!)
+    if (datasourceType === DatasourceType.websiteCrawl) {
+      datasourceInfoList.push({
+        ...previewWebsitePageRef.current!,
+        credential_id: currentCredentialId,
+      })
+    }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket } = dataSourceStore.getState()
       const { key } = previewOnlineDriveFileRef.current!
       datasourceInfoList.push({
         bucket,
         key,
+        credential_id: currentCredentialId,
       })
     }
     await runPublishedPipeline({
@@ -225,6 +233,7 @@ const CreateFormPipeline = () => {
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
+    const { bucket, currentCredentialId } = dataSourceStore.getState()
     const datasourceInfoList: Record<string, any>[] = []
     if (datasourceType === DatasourceType.localFile) {
       fileList.forEach((file) => {
@@ -238,6 +247,7 @@ const CreateFormPipeline = () => {
           mime_type,
           url: '',
           transfer_method: TransferMethod.local_file,
+          credential_id: currentCredentialId,
         }
         datasourceInfoList.push(documentInfo)
       })
@@ -248,22 +258,26 @@ const CreateFormPipeline = () => {
         const documentInfo = {
           workspace_id,
           page: rest,
+          credential_id: currentCredentialId,
         }
         datasourceInfoList.push(documentInfo)
       })
     }
     if (datasourceType === DatasourceType.websiteCrawl) {
       websitePages.forEach((websitePage) => {
-        datasourceInfoList.push(websitePage)
+        datasourceInfoList.push({
+          ...websitePage,
+          credential_id: currentCredentialId,
+        })
       })
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       if (datasourceType === DatasourceType.onlineDrive) {
-        const { bucket } = dataSourceStore.getState()
         selectedFileKeys.forEach((key) => {
           datasourceInfoList.push({
             bucket,
             key,
+            credential_id: currentCredentialId,
           })
         })
       }
