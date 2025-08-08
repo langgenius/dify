@@ -313,7 +313,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ConversationVariable.app_id == self.conversation.app_id,
             ConversationVariable.conversation_id == self.conversation.id,
         )
-        return session.scalars(stmt).all()
+        return list(session.scalars(stmt).all())
 
     def _create_all_conversation_variables(self, session: Session) -> list[ConversationVariable]:
         """
