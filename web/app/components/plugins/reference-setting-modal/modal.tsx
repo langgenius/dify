@@ -50,9 +50,9 @@ const PluginSettingModal: FC<Props> = ({
       isShow
       onClose={onHide}
       closable
-      className='w-[480px] !p-0'
+      className='w-[600px] max-w-[600px] !p-0'
     >
-      <div className='shadows-shadow-xl flex w-[480px] flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg'>
+      <div className='shadows-shadow-xl flex w-full flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg'>
         <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
           <span className='title-2xl-semi-bold self-stretch text-text-primary'>{t(`${i18nPrefix}.title`)}</span>
         </div>
