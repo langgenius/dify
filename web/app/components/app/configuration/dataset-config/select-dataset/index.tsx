@@ -51,10 +51,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         setLoaded(true)
 
         // Initialize selected datasets based on selectedIds and available datasets
-        if (!hasInitialized && selectedIds.length > 0) {
-          const validSelectedDatasets = selectedIds
-            .map(id => newList.find(item => item.id === id))
-            .filter(Boolean) as DataSet[]
         if (!hasInitialized) {
           if (selectedIds.length > 0) {
             const validSelectedDatasets = selectedIds

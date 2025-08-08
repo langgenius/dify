@@ -64,8 +64,7 @@ const DatasetCard = ({
         (key) => {
           if (typeof key === 'string') return key.includes('/datasets')
           if (typeof key === 'object' && key !== null)
-          if (hasUrlProperty(key))
-            return key.url === '/datasets' || key.url.includes('/datasets')
+            return key.url === '/datasets' || key.url?.includes('/datasets')
           return false
         },
         undefined,
