@@ -228,17 +228,13 @@ class ConversationService:
                 ConversationVariable,
                 Message,
                 PinnedConversation,
-                Conversation,
             ]
 
             # Delete records from each table in order (to respect foreign keys)
             for table in tables_to_clear:
-                query = db.session.query(table)
-                if table is not Conversation:
-                    query = query.filter(table.conversation_id == conversation_id)
-                else:
-                    query = query.filter(table.id == conversation_id)
-                query.delete(synchronize_session=False)
+                db.session.query(table).where(table.conversation_id == conversation_id).delete(synchronize_session=False)
+
+            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
 
             db.session.commit()
 
