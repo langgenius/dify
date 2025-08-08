@@ -12,6 +12,7 @@ type ResultProps = {
   tokens?: number
   error?: string
   exceptionCounts?: number
+  inputURL?: string
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -20,6 +21,7 @@ const StatusPanel: FC<ResultProps> = ({
   tokens,
   error,
   exceptionCounts,
+  inputURL,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -38,7 +40,7 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
-              status === 'stopped' && 'text-util-colors-warning-warning-600',
+              (status === 'stopped' || status === 'suspended') && 'text-util-colors-warning-warning-600',
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
@@ -78,15 +80,21 @@ const StatusPanel: FC<ResultProps> = ({
                 <span>STOP</span>
               </>
             )}
+            {status === 'suspended' && (
+              <>
+                <Indicator color={'yellow'} />
+                <span>PENDING</span>
+              </>
+            )}
           </div>
         </div>
         <div className='max-w-[152px] flex-[33%]'>
           <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.time')}</div>
           <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
-            {status === 'running' && (
+            {(status === 'running' || status === 'suspended') && (
               <div className='h-2 w-16 rounded-sm bg-text-quaternary' />
             )}
-            {status !== 'running' && (
+            {status !== 'running' && status !== 'suspended' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
             )}
           </div>
@@ -94,10 +102,10 @@ const StatusPanel: FC<ResultProps> = ({
         <div className='flex-[33%]'>
           <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.tokens')}</div>
           <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
-            {status === 'running' && (
+            {(status === 'running' || status === 'suspended') && (
               <div className='h-2 w-20 rounded-sm bg-text-quaternary' />
             )}
-            {status !== 'running' && (
+            {status !== 'running' && status !== 'suspended' && (
               <span>{`${tokens || 0} Tokens`}</span>
             )}
           </div>
@@ -146,6 +154,25 @@ const StatusPanel: FC<ResultProps> = ({
           </>
         )
       }
+      {status === 'suspended' && (
+        <>
+          <div className='my-2 h-[0.5px] bg-divider-deep'/>
+          <div className='system-xs-medium space-y-1 text-text-warning'>
+            <div className='flex items-center gap-1'>
+              <div className='w-[96px] uppercase'>{t('workflow.nodes.humanInput.log.reason')}</div>
+              <div className='truncate'>{t('workflow.nodes.humanInput.log.reasonContent')}</div>
+            </div>
+            <div className='flex items-center gap-1'>
+              <div className='w-[96px] uppercase'>{t('workflow.nodes.humanInput.log.inputURL')}</div>
+              <a
+                href={inputURL}
+                target='_blank'
+                className='text-text-accent'
+              >{inputURL}</a>
+            </div>
+          </div>
+        </>
+      )}
     </StatusContainer>
   )
 }

@@ -8,6 +8,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningLine,
   RiLoader2Line,
+  RiPauseCircleFill,
 } from '@remixicon/react'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -152,6 +153,9 @@ const NodePanel: FC<Props> = ({
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
+          {nodeInfo.status === 'suspended' && (
+            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+          )}
           {nodeInfo.status === 'exception' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
@@ -220,6 +224,11 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.status === 'retry' && (
                 <StatusContainer status='failed'>
                   {nodeInfo.error}
+                </StatusContainer>
+              )}
+              {(nodeInfo.status === 'suspended') && (
+                <StatusContainer status='suspended'>
+                  <div className='system-xs-regular text-text-warning'>{t('workflow.nodes.humanInput.log.reasonContent')}</div>
                 </StatusContainer>
               )}
             </div>

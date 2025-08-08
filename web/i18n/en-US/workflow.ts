@@ -982,6 +982,11 @@ const translation = {
         noDeliveryMethodEnabled: 'Please enable at least one delivery method',
         noUserActions: 'Please add at least one user action',
       },
+      log: {
+        reason: 'Reason:',
+        reasonContent: 'Human input required to proceed',
+        inputURL: 'Input URL:',
+      },
     },
   },
   tracing: {

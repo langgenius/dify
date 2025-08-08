@@ -983,6 +983,11 @@ const translation = {
         noDeliveryMethodEnabled: '请至少启用一种提交方式',
         noUserActions: '请添加至少一个用户操作',
       },
+      log: {
+        reason: '原因：',
+        reasonContent: '需要人类输入才能继续',
+        inputURL: '输入 URL ：',
+      },
     },
   },
   tracing: {
