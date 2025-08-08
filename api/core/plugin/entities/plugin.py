@@ -205,6 +205,9 @@ class PluginDependency(BaseModel):
 
         @property
         def plugin_unique_identifier(self) -> str:
+            # Strip checksum if present (format: org/name:version@checksum -> org/name:version)
+            if "@" in self.marketplace_plugin_unique_identifier:
+                return self.marketplace_plugin_unique_identifier.split("@")[0]
             return self.marketplace_plugin_unique_identifier
 
     class Package(BaseModel):

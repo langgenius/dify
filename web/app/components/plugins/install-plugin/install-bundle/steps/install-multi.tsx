@@ -41,9 +41,11 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
     const dependecy = (d as GitHubItemAndMarketPlaceDependency).value
-    // split org, name, version by / and :
-    // and remove @ and its suffix
-    const [orgPart, nameAndVersionPart] = dependecy.marketplace_plugin_unique_identifier!.split('@')[0].split('/')
+    // Parse org/name:version format (checksum already removed by backend)
+    const identifier = dependecy.marketplace_plugin_unique_identifier!
+    // Remove checksum if still present (for backward compatibility)
+    const cleanIdentifier = identifier.includes('@') ? identifier.split('@')[0] : identifier
+    const [orgPart, nameAndVersionPart] = cleanIdentifier.split('/')
     const [name, version] = nameAndVersionPart.split(':')
     return {
       organization: orgPart,
@@ -109,7 +111,13 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
     if (!isFetchingMarketplaceDataById && infoGetById?.data.list) {
       const sortedList = allPlugins.filter(d => d.type === 'marketplace').map((d) => {
         const p = d as GitHubItemAndMarketPlaceDependency
-        const id = p.value.marketplace_plugin_unique_identifier?.split(':')[0]
+        // Parse org/name from org/name:version format
+        let identifier = p.value.marketplace_plugin_unique_identifier || ''
+        // Remove checksum if present
+        if (identifier.includes('@'))
+          identifier = identifier.split('@')[0]
+        // Get org/name part (without version)
+        const id = identifier.split(':')[0]
         const retPluginInfo = infoGetById.data.list.find(item => item.plugin.plugin_id === id)?.plugin
         return { ...retPluginInfo, from: d.type } as Plugin
       })
