@@ -407,6 +407,12 @@ Both your input and output should be in JSON format.
 }
 ! Above is the schema for output content !
 
+When you are modifying the code, you should remember:
+- Do not use print, this not work in dify sandbox.
+- Get inputs from the parameters of the function and have explicit type annotations.
+- Write proper imports at the top of the code.
+- Use return statement to return the result.
+- You should return a `dict`.
 Your output must strictly follow the schema format, do not output any content outside of the JSON body.
 """  # noqa: E501
 
