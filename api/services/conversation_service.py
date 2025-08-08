@@ -228,7 +228,7 @@ class ConversationService:
                 ConversationVariable,
                 Message,
                 PinnedConversation,
-                Conversation
+                Conversation,
             ]
 
             # Delete records from each table in order (to respect foreign keys)
