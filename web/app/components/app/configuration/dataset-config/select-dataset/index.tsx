@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import produce from 'immer'
 import TypeIcon from '../type-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
@@ -50,7 +49,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
-        
+
         // Initialize selected datasets based on selectedIds and available datasets
         if (!hasInitialized && selectedIds.length > 0) {
           const validSelectedDatasets = selectedIds

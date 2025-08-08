@@ -58,7 +58,7 @@ const DatasetCard = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      
+
       // Clear SWR cache to prevent stale data in knowledge retrieval nodes
       mutate(
         key => {
@@ -71,7 +71,7 @@ const DatasetCard = ({
         undefined,
         { revalidate: true }
       )
-      
+
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
       if (onSuccess)
         onSuccess()
