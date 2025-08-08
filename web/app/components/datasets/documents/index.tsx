@@ -32,6 +32,7 @@ import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
 import { useDocLink } from '@/context/i18n'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
+import { matchCond } from '@/utils/var'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -362,26 +363,30 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             )}
           </div>
         </div>
-        {isListLoading
-          ? <Loading type='app' />
-          : total > 0
-            ? <List
-              embeddingAvailable={embeddingAvailable}
-              documents={documentsList || []}
-              datasetId={datasetId}
-              onUpdate={handleUpdate}
-              selectedIds={selectedIds}
-              onSelectedIdChange={setSelectedIds}
-              pagination={{
-                total,
-                limit,
-                onLimitChange: handleLimitChange,
-                current: currPage,
-                onChange: handlePageChange,
-              }}
-              onManageMetadata={showEditMetadataModal}
-            />
-            : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
+        {
+          matchCond(
+            isListLoading,
+            [
+              [true, <Loading type='app' />],
+              [() => total, <List
+                embeddingAvailable={embeddingAvailable}
+                documents={documentsList || []}
+                datasetId={datasetId}
+                onUpdate={handleUpdate}
+                selectedIds={selectedIds}
+                onSelectedIdChange={setSelectedIds}
+                pagination={{
+                  total,
+                  limit,
+                  onLimitChange: handleLimitChange,
+                  current: currPage,
+                  onChange: handlePageChange,
+                }}
+                onManageMetadata={showEditMetadataModal}
+              />],
+            ],
+            <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />,
+          )
         }
         <NotionPageSelectorModal
           isShow={notionPageSelectorModalVisible}

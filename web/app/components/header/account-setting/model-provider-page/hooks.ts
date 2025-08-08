@@ -37,6 +37,7 @@ import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/ma
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
+import { matchCond } from '@/utils/var'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -91,16 +92,17 @@ export const useProviderCredentialsAndLoadBalancing = (
     fetchModelProviderCredentials,
   )
 
-  const credentials = useMemo(() => {
-    return configurationMethod === ConfigurationMethodEnum.predefinedModel
-      ? predefinedFormSchemasValue?.credentials
-      : customFormSchemasValue?.credentials
-        ? {
-          ...customFormSchemasValue?.credentials,
-          ...currentCustomConfigurationModelFixedFields,
-        }
-        : undefined
-  }, [
+  const credentials = useMemo(() => matchCond(
+    configurationMethod,
+    [
+      [ConfigurationMethodEnum.predefinedModel, predefinedFormSchemasValue?.credentials],
+      [() => customFormSchemasValue?.credentials, {
+        ...customFormSchemasValue?.credentials,
+        ...currentCustomConfigurationModelFixedFields,
+      }],
+    ],
+    undefined,
+  ), [
     configurationMethod,
     currentCustomConfigurationModelFixedFields,
     customFormSchemasValue?.credentials,
@@ -338,7 +340,7 @@ export const useModelModalHandler = () => {
         })
 
         if (configurationMethod === ConfigurationMethodEnum.customizableModel
-            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+          && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,

@@ -25,6 +25,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
+import { matchCond } from '@/utils/var'
 
 const limit = 10
 
@@ -128,13 +129,12 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
         <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
-        {(!recordsRes && !error)
-          ? (
-            <div className='flex-1'><Loading type='app' /></div>
-          )
-          : recordsRes?.data?.length
-            ? (
-              <>
+        {
+          matchCond(
+            !recordsRes && !error,
+            [
+              [true, <div className='flex-1'><Loading type='app' /></div>],
+              [() => recordsRes?.data?.length, <>
                 <div className='grow overflow-y-auto'>
                   <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
                     <thead className='sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary'>
@@ -170,11 +170,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
                 {(total && total > limit)
                   ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
                   : null}
-              </>
-            )
-            : (
-              <RecordsEmpty />
-            )}
+              </>],
+            ],
+            <RecordsEmpty />,
+          )
+        }
       </div>
       <FloatRightContainer panelClassName='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
         <div className='flex flex-col pt-3'>

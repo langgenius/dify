@@ -14,6 +14,7 @@ import SegmentAdd, { ProcessStatus } from './segment-add'
 import BatchModal from './batch-modal'
 import style from './style.module.css'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
@@ -261,8 +262,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-1 flex-row' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={cn('flex h-full min-w-0 grow flex-col',
-              embedding ? '' : isFullDocMode ? 'relative pl-11 pr-11 pt-4' : 'relative pl-5 pr-11 pt-3',
+            : <div className={cn(
+              'flex h-full min-w-0 grow flex-col',
+              matchCond(embedding, [
+                [Boolean, ''],
+                [() => isFullDocMode, 'relative pl-11 pr-11 pt-4'],
+              ], 'relative pl-5 pr-11 pt-3'),
             )}>
               {embedding
                 ? <Embedding

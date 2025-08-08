@@ -7,6 +7,7 @@ import data from '@emoji-mart/data'
 import { cva } from 'class-variance-authority'
 import type { AppIconType } from '@/types/app'
 import classNames from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 
 init({ data })
 
@@ -63,10 +64,11 @@ const AppIcon: FC<AppIconProps> = ({
     style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
     onClick={onClick}
   >
-    {isValidImageIcon
-
-      ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
-      : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
+    {
+      matchCond(isValidImageIcon,
+        [[true, <img src={imageUrl ?? ''} className="h-full w-full" alt="app icon" />]],
+        (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />)),
+      )
     }
     {coverElement}
   </span>

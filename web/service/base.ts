@@ -1,7 +1,7 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
-import { basePath } from '@/utils/var'
+import { basePath, matchCond } from '@/utils/var'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -383,9 +383,12 @@ export const ssePost = async (
   getAbortController?.(abortController)
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
-    ? url
-    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const urlWithPrefix = matchCond((url.startsWith('http://') || url.startsWith('https://')),
+    [[true, url],
+    [() => url.startsWith('/'), `${urlPrefix}${url}`],
+    ],
+    `${urlPrefix}/${url}`,
+  )
 
   const { body } = options
   if (body)

@@ -27,6 +27,7 @@ import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { matchCond } from '@/utils/var'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -199,8 +200,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           className='block'
         >
           {
-            renderTrigger
-              ? renderTrigger({
+            matchCond(
+              !!renderTrigger,
+              [
+                [true, renderTrigger!({
                 open,
                 disabled,
                 modelDisabled,
@@ -209,9 +212,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 currentModel,
                 providerName: value?.provider,
                 modelId: value?.model,
-              })
-              : (isAgentStrategy
-                ? <AgentModelTrigger
+              })],
+              [() => isAgentStrategy, <AgentModelTrigger
                   disabled={disabled}
                   hasDeprecated={hasDeprecated}
                   currentProvider={currentProvider}
@@ -219,8 +221,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   providerName={value?.provider}
                   modelId={value?.model}
                   scope={scope}
-                />
-                : <Trigger
+                />],
+              ],
+              <Trigger
                   disabled={disabled}
                   isInWorkflow={isInWorkflow}
                   modelDisabled={modelDisabled}
@@ -229,8 +232,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   currentModel={currentModel}
                   providerName={value?.provider}
                   modelId={value?.model}
-                />
-              )
+                />,
+            )
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>

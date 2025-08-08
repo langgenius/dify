@@ -14,6 +14,7 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 
 export type currentVarType = {
   nodeId: string
@@ -161,11 +162,14 @@ const Panel: FC = () => {
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',
-          bottomPanelWidth < 488
-            ? showLeftPanel
-              ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
-              : 'hidden'
-            : 'block',
+          matchCond(bottomPanelWidth < 488,
+            [
+              [true, showLeftPanel
+                ? 'absolute left-0 top-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'
+                : 'hidden'],
+            ],
+            'block',
+          ),
         )}
       >
         <Left

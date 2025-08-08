@@ -3,6 +3,7 @@ import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import classNames from '@/utils/classnames'
 import './index.css'
+import { matchCond } from '@/utils/var'
 
 enum BadgeState {
   Warning = 'warning',
@@ -61,11 +62,13 @@ const Badge: React.FC<BadgeProps> = ({
       className={classNames(
         BadgeVariants({ size, className }),
         getBadgeState(state),
-        size === 's'
-          ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
-          : size === 'l'
-            ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
-            : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'),
+        matchCond(
+          size,
+          [
+            ['s', iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]'],
+            ['l', iconOnly ? 'p-1.5' : 'px-2 py-1'],
+          ],
+          iconOnly ? 'p-1' : 'px-[5px] py-[2px]'),
         uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium',
       )}
       style={styleCss}

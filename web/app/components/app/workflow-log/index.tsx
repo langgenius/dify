@@ -11,7 +11,7 @@ import timezone from 'dayjs/plugin/timezone'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
-import { basePath } from '@/utils/var'
+import { basePath, matchCond } from '@/utils/var'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
@@ -97,11 +97,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       <div className='flex max-h-[calc(100%-16px)] flex-1 flex-col py-4'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
-        {total === undefined
-          ? <Loading type='app' />
-          : total > 0
-            ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+        {
+          matchCond(total, [
+            [undefined, <Loading type='app' />],
+            [Boolean, <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />],
+          ],
+            <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />,
+          )
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

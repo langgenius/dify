@@ -14,6 +14,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import SearchInput from '@/app/components/base/search-input'
 import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
 import { useDocumentList } from '@/service/knowledge/use-document'
@@ -85,7 +86,10 @@ const DocumentPicker: FC<Props> = ({
               <TypeIcon className='h-3 w-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
                 {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
-                {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
+                {isParentChild && ` · ${matchCond(parentMode, [
+                  [() => !parentMode, '--'],
+                  ['paragraph', t('dataset.parentMode.paragraph')],
+                ], t('dataset.parentMode.fullDoc'))}`}
               </span>
             </div>
           </div>

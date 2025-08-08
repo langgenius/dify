@@ -1,6 +1,7 @@
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import classNames from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
@@ -44,7 +45,10 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     if (currentProvider.is_team_authorization === false) return 'not-authorized'
     return undefined
   }, [currentProvider, isDataReady])
-  const indicator = status === 'not-installed' ? 'red' : status === 'not-authorized' ? 'yellow' : undefined
+  const indicator = matchCond(status, [
+    ['not-installed', 'red'],
+    ['not-authorized', 'yellow'],
+  ], undefined)
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
   const { t } = useTranslation()
   const tooltip = useMemo(() => {

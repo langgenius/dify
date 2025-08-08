@@ -31,6 +31,7 @@ import { sleep } from '@/utils'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   datasetId: string
@@ -71,27 +72,33 @@ const RuleDetail: FC<{
   const getValue = useCallback((field: string) => {
     let value: string | number | undefined = '-'
     const maxTokens = isNumber(sourceData?.rules?.segmentation?.max_tokens)
-      ? sourceData.rules.segmentation.max_tokens
+      ? sourceData?.rules.segmentation.max_tokens
       : value
     const childMaxTokens = isNumber(sourceData?.rules?.subchunk_segmentation?.max_tokens)
-      ? sourceData.rules.subchunk_segmentation.max_tokens
+      ? sourceData?.rules.subchunk_segmentation.max_tokens
       : value
     switch (field) {
       case 'mode':
-        value = !sourceData?.mode
-          ? value
-          : sourceData.mode === ProcessMode.general
-            ? (t('datasetDocuments.embedding.custom') as string)
-            : `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('dataset.parentMode.paragraph')
-              : t('dataset.parentMode.fullDoc')}`
+        value = matchCond(
+          !sourceData?.mode,
+          [
+            [true, value],
+            [() => sourceData?.mode === ProcessMode.general, t('datasetDocuments.embedding.custom') as string],
+          ],
+          `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
+            ? t('dataset.parentMode.paragraph')
+            : t('dataset.parentMode.fullDoc')}`,
+        )
         break
       case 'segmentLength':
-        value = !sourceData?.mode
-          ? value
-          : sourceData.mode === ProcessMode.general
-            ? maxTokens
-            : `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`
+        value = matchCond(
+          !sourceData?.mode,
+          [
+            [true, value],
+            [() => sourceData?.mode === ProcessMode.general, maxTokens],
+          ],
+          `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`,
+        )
         break
       default:
         value = !sourceData?.mode
@@ -101,7 +108,6 @@ const RuleDetail: FC<{
         break
     }
     return value
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceData])
 
   return <div className='flex flex-col gap-1'>
@@ -135,11 +141,14 @@ const RuleDetail: FC<{
         <Image
           className='size-4'
           src={
-            retrievalMethod === RETRIEVE_METHOD.fullText
-              ? retrievalIcon.fullText
-              : retrievalMethod === RETRIEVE_METHOD.hybrid
-                ? retrievalIcon.hybrid
-                : retrievalIcon.vector
+            matchCond(
+              retrievalMethod,
+              [
+                [RETRIEVE_METHOD.fullText, retrievalIcon.fullText],
+                [RETRIEVE_METHOD.hybrid, retrievalIcon.hybrid],
+              ],
+              retrievalIcon.vector,
+            )
           }
           alt=''
         />
@@ -196,7 +205,6 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return () => {
       stopQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // get rule

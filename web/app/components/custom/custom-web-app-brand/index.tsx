@@ -25,6 +25,7 @@ import {
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { matchCond } from '@/utils/var'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
@@ -247,11 +248,13 @@ const CustomWebAppBrand = () => {
                   <>
                     <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
                     {
-                      systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                        ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
-                        : webappLogo
-                          ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
-                          : <DifyLogo size='small' />
+                      matchCond(systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo,
+                        [
+                          [Boolean, <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />],
+                          [() => webappLogo, <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />],
+                        ],
+                        <DifyLogo size='small' />,
+                      )
                     }
                   </>
                 )}
@@ -309,11 +312,14 @@ const CustomWebAppBrand = () => {
               <>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
                 {
-                  systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
-                    : webappLogo
-                      ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
-                      : <DifyLogo size='small' />
+                  matchCond(
+                    systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo,
+                    [
+                      [Boolean, <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />],
+                      [() => webappLogo, <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />],
+                    ],
+                    <DifyLogo size='small' />,
+                  )
                 }
               </>
             )}

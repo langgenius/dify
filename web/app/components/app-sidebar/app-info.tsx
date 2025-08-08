@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -31,6 +31,7 @@ import Divider from '../base/divider'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
+import { matchCond } from '@/utils/var'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -194,6 +195,16 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
+  const appTypeName = useMemo(() => matchCond(appDetail,
+    [
+      [{ mode: 'advanced-chat' }, t('app.types.advanced')],
+      [{ mode: 'agent-chat' }, t('app.types.agent')],
+      [{ mode: 'chat' }, t('app.types.chatbot')],
+      [{ mode: 'completion' }, t('app.types.completion')],
+    ],
+    t('app.types.workflow'),
+  ), [t, appDetail])
+
   if (!appDetail)
     return null
 
@@ -280,7 +291,9 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
               <div className='flex w-full'>
                 <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
               </div>
-              <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>
+                {appTypeName}
+              </div>
             </div>
           </div>
         </button>
@@ -304,7 +317,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             />
             <div className='flex w-full grow flex-col items-start justify-center'>
               <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appTypeName}</div>
             </div>
           </div>
           {/* description */}

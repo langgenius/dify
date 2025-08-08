@@ -7,6 +7,7 @@ import { isEmptyRelatedOperator } from './utils'
 import type { Condition, IfElseNodeType } from './types'
 import ConditionValue from './components/condition-value'
 import ConditionFilesListValue from './components/condition-files-list-value'
+import { matchCond } from '@/utils/var'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
@@ -63,9 +64,10 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
               {caseItem.conditions.map((condition, i) => (
                 <div key={condition.id} className='relative'>
                   {
-                    checkIsConditionSet(condition)
-                      ? (
-                        (!isEmptyRelatedOperator(condition.comparison_operator!) && condition.sub_variable_condition)
+                  matchCond(
+                    checkIsConditionSet(condition),
+                    [
+                      [true, (!isEmptyRelatedOperator(condition.comparison_operator!) && condition.sub_variable_condition)
                           ? (
                             <ConditionFilesListValue condition={condition} />
                           )
@@ -75,10 +77,10 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                               operator={condition.comparison_operator!}
                               value={condition.value}
                             />
-                          )
-
-                      )
-                      : conditionNotSet}
+                          )],
+                    ],
+                    conditionNotSet,
+                  )}
                   {i !== caseItem.conditions.length - 1 && (
                     <div className='absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4 text-text-accent'>{t(`${i18nPrefix}.${caseItem.logical_operator}`)}</div>
                   )}

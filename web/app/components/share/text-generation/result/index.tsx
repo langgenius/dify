@@ -18,9 +18,11 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
 import type { SiteInfo } from '@/models/share'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import * as _ from 'lodash-es'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
+import { matchCond } from '@/utils/var'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -423,7 +425,7 @@ const Result: FC<IResultProps> = ({
       isInstalledApp={isInstalledApp}
       installedAppId={installedAppInfo?.id}
       isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
-      taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
+      taskId={isCallBatchAPI ? _.padStart(`${taskId}`, 2, '0') : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}
       isShowTextToSpeech={isShowTextToSpeech}
       hideProcessDetail
@@ -448,17 +450,18 @@ const Result: FC<IResultProps> = ({
             </>
           )
       )}
-      {!isCallBatchAPI && isWorkflow && (
-        (isResponding && !workflowProcessData)
-          ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>
+      {
+        !isCallBatchAPI
+        && isWorkflow
+        && matchCond(
+          isResponding && !workflowProcessData,
+          [
+            [true, <div className='flex h-full w-full items-center justify-center'><Loading type='area' /></div>],
+            [() => !workflowProcessData, <NoData />],
+          ],
+          renderTextGenerationRes(),
           )
-          : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
-      )}
+      }
       {isCallBatchAPI && renderTextGenerationRes()}
     </>
   )

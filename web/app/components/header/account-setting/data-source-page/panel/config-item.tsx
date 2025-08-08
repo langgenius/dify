@@ -55,9 +55,7 @@ const ConfigItem: FC<Props> = ({
       }
       <div className={`system-xs-semibold-uppercase mr-3 shrink-0 ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
-          payload.isActive
-            ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
-            : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
+          t(`common.dataSource.${type}.${payload.isActive ? 'connected' : 'disconnected'}`)
         }
       </div>
       <div className='mr-2 h-3 w-[1px] bg-divider-regular' />

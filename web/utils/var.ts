@@ -6,6 +6,7 @@ import {
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
 import { InputVarType } from '@/app/components/workflow/types'
+import * as _ from 'lodash-es'
 
 const otherAllowedRegex = /^\w+$/
 
@@ -129,4 +130,25 @@ export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement
 
   if (start !== null && end !== null)
     input.setSelectionRange(start, end)
+}
+
+export const matchCond = <T, R>(
+  value: T,
+  patterns: Array<[any | ((v: T) => boolean), R | ((v: T) => R)]>,
+  defaultValue?: R | ((v: T) => R),
+): R => {
+  for (const [pattern, result] of patterns) {
+    let isMatch = false
+    if (_.isFunction(pattern))
+      isMatch = !!pattern(value)
+    else if (_.isObject(pattern))
+      isMatch = _.isMatch(value as object, pattern as object)
+    else
+      isMatch = pattern === value
+
+    if (isMatch)
+      return _.isFunction(result) ? result(value) : result
+  }
+
+  return _.isFunction(defaultValue) ? defaultValue(value) : defaultValue!
 }

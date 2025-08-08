@@ -14,6 +14,7 @@ import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
@@ -170,9 +171,16 @@ function Form<
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabled}
-            type={formSchema.type === FormTypeEnum.secretInput ? 'password'
-              : formSchema.type === FormTypeEnum.textNumber ? 'number'
-                : 'text'}
+            type={
+              matchCond(
+                formSchema.type,
+                [
+                  [FormTypeEnum.secretInput, 'password'],
+                  [FormTypeEnum.textNumber, 'number'],
+                ],
+                'text',
+              )
+             }
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})} />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -284,7 +292,10 @@ function Form<
             </div>
             <Radio.Group
               className='flex items-center'
-              value={value[variable] === null ? undefined : (value[variable] ? 1 : 0)}
+              value={matchCond(value[variable], [
+                [null, undefined],
+                [Boolean, 1],
+              ], 0)}
               onChange={val => handleFormChange(variable, val === 1)}
             >
               <Radio value={1} className='!mr-1'>True</Radio>

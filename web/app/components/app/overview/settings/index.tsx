@@ -26,6 +26,7 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import cn from '@/utils/classnames'
 import { useDocLink } from '@/context/i18n'
+import { matchCond } from '@/utils/var'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -184,11 +185,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: !webappCopyrightEnabled
-        ? ''
-        : inputInfo.copyrightSwitchValue
-          ? inputInfo.copyright
-          : '',
+      copyright: matchCond(!webappCopyrightEnabled,
+        [
+          [true, ''],
+          [() => inputInfo.copyrightSwitchValue, inputInfo.copyright],
+        ],
+        '',
+      ),
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
       icon_type: appIcon.type,

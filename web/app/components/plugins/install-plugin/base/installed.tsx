@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   payload?: Plugin | PluginDeclaration | PluginManifestInMarket | null
@@ -31,7 +32,13 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <p className='system-md-regular text-text-secondary'>{(isFailed && errMsg) ? errMsg : t(`plugin.installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`)}</p>
+        <p className='system-md-regular text-text-secondary'>{
+          matchCond(
+            isFailed && errMsg,
+            [[Boolean, errMsg]],
+            t(`plugin.installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`),
+          )
+        }</p>
         {payload && (
           <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
             <Card

@@ -42,6 +42,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { matchCond } from '@/utils/var'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -417,56 +418,59 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         </div>
       </div>
       <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
-        {!isChatMode
-          ? <div className="px-6 py-4">
-            <div className='flex h-[18px] items-center space-x-3'>
-              <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
-              <div className='h-[1px] grow' style={{
-                background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
-              }}></div>
-            </div>
-            <TextGeneration
-              className='mt-2'
-              content={detail.message.answer}
-              messageId={detail.message.id}
-              isError={false}
-              onRetry={noop}
-              isInstalledApp={false}
-              supportFeedback
-              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-              isShowTextToSpeech
-              siteInfo={null}
-            />
-          </div>
-          : threadChatItems.length < 8
-            ? <div className="mb-4 pt-4">
-              <Chat
-                config={{
-                  appId: appDetail?.id,
-                  text_to_speech: {
-                    enabled: true,
-                  },
-                  questionEditEnable: false,
-                  supportAnnotation: true,
-                  annotation_reply: {
-                    enabled: true,
-                  },
-                  supportFeedback: true,
-                } as any}
-                chatList={threadChatItems}
-                onAnnotationAdded={handleAnnotationAdded}
-                onAnnotationEdited={handleAnnotationEdited}
-                onAnnotationRemoved={handleAnnotationRemoved}
-                onFeedback={onFeedback}
-                noChatInput
-                showPromptLog
-                hideProcessDetail
-                chatContainerInnerClassName='px-3'
-                switchSibling={switchSibling}
-              />
-            </div>
-            : <div
+        {
+          matchCond(
+            !isChatMode,
+            [
+              [true, <div className="px-6 py-4">
+                <div className='flex h-[18px] items-center space-x-3'>
+                  <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
+                  <div className='h-[1px] grow' style={{
+                    background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+                  }}></div>
+                </div>
+                <TextGeneration
+                  className='mt-2'
+                  content={detail.message.answer}
+                  messageId={detail.message.id}
+                  isError={false}
+                  onRetry={noop}
+                  isInstalledApp={false}
+                  supportFeedback
+                  feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+                  onFeedback={feedback => onFeedback(detail.message.id, feedback)}
+                  isShowTextToSpeech
+                  siteInfo={null}
+                />
+              </div>],
+              [() => threadChatItems.length < 8, <div className="mb-4 pt-4">
+                <Chat
+                  config={{
+                    appId: appDetail?.id,
+                    text_to_speech: {
+                      enabled: true,
+                    },
+                    questionEditEnable: false,
+                    supportAnnotation: true,
+                    annotation_reply: {
+                      enabled: true,
+                    },
+                    supportFeedback: true,
+                  } as any}
+                  chatList={threadChatItems}
+                  onAnnotationAdded={handleAnnotationAdded}
+                  onAnnotationEdited={handleAnnotationEdited}
+                  onAnnotationRemoved={handleAnnotationRemoved}
+                  onFeedback={onFeedback}
+                  noChatInput
+                  showPromptLog
+                  hideProcessDetail
+                  chatContainerInnerClassName='px-3'
+                  switchSibling={switchSibling}
+                />
+              </div>],
+            ],
+            <div
               className="py-4"
               id="scrollableDiv"
               style={{
@@ -520,7 +524,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   switchSibling={switchSibling}
                 />
               </InfiniteScroll>
-            </div>
+            </div>,
+          )
         }
       </div>
       {showMessageLogModal && (

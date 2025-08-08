@@ -13,6 +13,7 @@ import { useBoolean } from 'ahooks'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   isActive?: boolean
@@ -56,11 +57,10 @@ const Operation: FC<Props> = ({
         <ActionButton
           className={cn((isItemHovering || open) ? 'opacity-100' : 'opacity-0')}
           state={
-            isActive
-              ? ActionButtonState.Active
-              : open
-                ? ActionButtonState.Hover
-                : ActionButtonState.Default
+            matchCond({ isActive, open }, [
+              [{ isActive: true }, ActionButtonState.Active],
+              [{ open: true }, ActionButtonState.Hover],
+            ], ActionButtonState.Default)
           }
         >
           <RiMoreFill className='h-4 w-4' />

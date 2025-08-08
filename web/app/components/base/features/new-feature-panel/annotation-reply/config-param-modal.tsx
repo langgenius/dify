@@ -12,6 +12,7 @@ import { ANNOTATION_DEFAULT } from '@/config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { matchCond } from '@/utils/var'
 
 type Props = {
   appId: string
@@ -41,17 +42,20 @@ const ConfigParamModal: FC<Props> = ({
   const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
 
   const [isLoading, setLoading] = useState(false)
-  const [embeddingModel, setEmbeddingModel] = useState(oldAnnotationConfig.embedding_model
-    ? {
-      providerName: oldAnnotationConfig.embedding_model.embedding_provider_name,
-      modelName: oldAnnotationConfig.embedding_model.embedding_model_name,
-    }
-    : (embeddingsDefaultModel
-      ? {
-        providerName: embeddingsDefaultModel.provider.provider,
-        modelName: embeddingsDefaultModel.model,
-      }
-      : undefined))
+  const [embeddingModel, setEmbeddingModel] = useState(
+    matchCond(oldAnnotationConfig.embedding_model,
+      [
+        [Boolean, {
+          providerName: oldAnnotationConfig.embedding_model.embedding_provider_name,
+          modelName: oldAnnotationConfig.embedding_model.embedding_model_name,
+        }],
+        [() => embeddingsDefaultModel, {
+          providerName: embeddingsDefaultModel!.provider.provider,
+          modelName: embeddingsDefaultModel!.model,
+        }],
+      ],
+    ),
+  )
   const onHide = () => {
     if (!isLoading)
       doHide()

@@ -26,6 +26,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
 import Avatar from '../../avatar'
+import { matchCond } from '@/utils/var'
 
 const ChatWrapper = () => {
   const {
@@ -223,16 +224,18 @@ const ChatWrapper = () => {
     )
   }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
 
-  const answerIcon = isDify()
-    ? <LogoAvatar className='relative shrink-0' />
-    : (appData?.site && appData.site.use_icon_as_answer_icon)
-      ? <AnswerIcon
-        iconType={appData.site.icon_type}
-        icon={appData.site.icon}
-        background={appData.site.icon_background}
-        imageUrl={appData.site.icon_url}
-      />
-      : null
+  const answerIcon = matchCond(isDify(),
+    [
+      [true, <LogoAvatar className='relative shrink-0' />],
+      [() => appData?.site && appData.site.use_icon_as_answer_icon, <AnswerIcon
+        iconType={appData!.site.icon_type}
+        icon={appData!.site.icon}
+        background={appData!.site.icon_background}
+        imageUrl={appData!.site.icon_url}
+      />],
+    ],
+    null,
+  )
 
   return (
     <Chat

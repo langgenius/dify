@@ -16,6 +16,7 @@ import { useProviderContext, useProviderContextSelector } from '@/context/provid
 import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
+import { matchCond } from '@/utils/var'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -74,8 +75,10 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
       </ModelName>
       <div className='flex shrink-0 items-center'>
         {
-          model.fetch_from === ConfigurationMethodEnum.customizableModel
-            ? (isCurrentWorkspaceManager && (
+          matchCond(
+            model.fetch_from === ConfigurationMethodEnum.customizableModel,
+            [
+              [true, (isCurrentWorkspaceManager && (
               <Button
                 size='small'
                 className='hidden group-hover:flex'
@@ -84,19 +87,21 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 <Settings01 className='mr-1 h-3.5 w-3.5' />
                 {t('common.modelProvider.config')}
               </Button>
-            ))
-            : (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
-              ? (
-                <Button
-                  size='small'
-                  className='opacity-0 transition-opacity group-hover:opacity-100'
-                  onClick={() => onModifyLoadBalancing?.(model)}
-                >
-                  <Balance className='mr-1 h-3.5 w-3.5' />
-                  {t('common.modelProvider.configLoadBalancing')}
-                </Button>
-              )
-              : null
+            ))],
+            [
+              () => (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)),
+              <Button
+                size='small'
+                className='opacity-0 transition-opacity group-hover:opacity-100'
+                onClick={() => onModifyLoadBalancing?.(model)}
+              >
+                <Balance className='mr-1 h-3.5 w-3.5' />
+                {t('common.modelProvider.configLoadBalancing')}
+              </Button>,
+            ],
+          ],
+          null,
+          )
         }
         {
           model.deprecated

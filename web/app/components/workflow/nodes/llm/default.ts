@@ -1,4 +1,5 @@
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
+import { matchCond } from '@/utils/var'
 import { BlockEnum, EditionType } from '../../types'
 import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
@@ -69,14 +70,20 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
 
     if (!errorMessages && !payload.memory) {
       const isChatModel = payload.model.mode === 'chat'
-      const isPromptEmpty = isChatModel
-        ? !(payload.prompt_template as PromptItem[]).some((t) => {
-          if (t.edition_type === EditionType.jinja2)
-            return t.jinja2_text !== ''
+      const isPromptEmpty = matchCond(
+        isChatModel,
+        [
+          [true, !(payload.prompt_template as PromptItem[]).some((t) => {
+            if (t.edition_type === EditionType.jinja2)
+              return t.jinja2_text !== ''
 
-          return t.text !== ''
-        })
-        : ((payload.prompt_template as PromptItem).edition_type === EditionType.jinja2 ? (payload.prompt_template as PromptItem).jinja2_text === '' : (payload.prompt_template as PromptItem).text === '')
+            return t.text !== ''
+          })],
+          [() => (payload.prompt_template as PromptItem).edition_type === EditionType.jinja2, (payload.prompt_template as PromptItem).jinja2_text === ''],
+        ],
+        (payload.prompt_template as PromptItem).text === '',
+      )
+
       if (isPromptEmpty)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.llm.prompt') })
     }

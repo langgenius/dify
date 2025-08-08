@@ -15,6 +15,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
+import { matchCond } from '@/utils/var'
 
 export type TriggerProps = {
   open?: boolean
@@ -90,11 +91,14 @@ const Trigger: FC<TriggerProps> = ({
           ? (
             <Tooltip
               popupContent={
-                hasDeprecated
-                  ? t('common.modelProvider.deprecated')
-                  : (modelDisabled && currentModel)
-                    ? MODEL_STATUS_TEXT[currentModel.status as string][language]
-                    : ''
+                matchCond(
+                  hasDeprecated,
+                  [
+                    [true, t('common.modelProvider.deprecated')],
+                    [() => modelDisabled && currentModel, MODEL_STATUS_TEXT[currentModel!.status as string][language]],
+                  ],
+                  '',
+                )
               }
             >
               <AlertTriangle className='h-4 w-4 text-[#F79009]' />

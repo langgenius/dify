@@ -24,6 +24,7 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
+import { matchCond } from '@/utils/var'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -62,30 +63,33 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
       <div className={cn('w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary', editAlignTop && 'pt-1')}>{label}</div>
       <div className="flex grow items-center gap-1 text-text-secondary">
         {valueIcon}
-        {!showEdit
-          ? displayedValue
-          : inputType === 'select'
-            ? <SimpleSelect
-              onSelect={({ value }) => onUpdate && onUpdate(value as string)}
-              items={selectOptions}
-              defaultValue={value}
-              className={s.select}
-              wrapperClassName={s.selectWrapper}
-              placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
-            />
-            : inputType === 'textarea'
-              ? <AutoHeightTextarea
+        {
+          matchCond<string, string | ReactNode>(
+            inputType,
+            [
+              [() => !showEdit, displayedValue],
+              ['select', <SimpleSelect
+                onSelect={({ value }) => onUpdate && onUpdate(value as string)}
+                items={selectOptions}
+                defaultValue={value}
+                className={s.select}
+                wrapperClassName={s.selectWrapper}
+                placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
+              />],
+              ['textarea', <AutoHeightTextarea
                 onChange={e => onUpdate && onUpdate(e.target.value)}
                 value={value}
                 className={s.textArea}
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-              />
-              : <Input
-                onChange={e => onUpdate?.(e.target.value)}
-                value={value}
-                defaultValue={defaultValue}
-                placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-              />
+              />],
+            ],
+            <Input
+              onChange={e => onUpdate?.(e.target.value)}
+              value={value}
+              defaultValue={defaultValue}
+              placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
+            />,
+          )
         }
       </div>
     </div>
@@ -312,20 +316,24 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
 
   return (
     <div className={`${s.main} ${editStatus ? 'bg-white' : 'bg-gray-25'}`}>
-      {loading
-        ? (<Loading type='app' />)
-        : (
+      {
+        matchCond(
+          loading,
+          [[true, <Loading type='app' />]],
           <>
             <div className={s.titleWrapper}>
               <span className={s.title}>{t('datasetDocuments.metadata.title')}</span>
-              {!editStatus
-                ? <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                  <PencilIcon className={s.opIcon} />
-                  {t('common.operation.edit')}
-                </Button>
-                : showDocTypes
-                  ? null
-                  : <div className={s.opBtnWrapper}>
+              {
+                matchCond(
+                  !editStatus,
+                  [
+                    [true, <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+                      <PencilIcon className={s.opIcon} />
+                      {t('common.operation.edit')}
+                    </Button>],
+                    [() => showDocTypes, null],
+                  ],
+                  <div className={s.opBtnWrapper}>
                     <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
                     <Button onClick={onSave}
                       className={`${s.opBtn} ${s.opSaveBtn}`}
@@ -334,17 +342,21 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                     >
                       {t('common.operation.save')}
                     </Button>
-                  </div>}
+                  </div>,
+                )
+              }
             </div>
             {/* show selected doc type and changing entry */}
-            {!editStatus
-              ? <div className={s.documentTypeShow}>
-                <TypeIcon iconName={metadataMap[doc_type || 'book']?.iconName || ''} className={s.iconShow} />
-                {metadataMap[doc_type || 'book'].text}
-              </div>
-              : showDocTypes
-                ? null
-                : <div className={s.documentTypeShow}>
+            {
+              matchCond(
+                !editStatus,
+                [[true, <div className={s.documentTypeShow}>
+                  <TypeIcon iconName={metadataMap[doc_type || 'book']?.iconName || ''} className={s.iconShow} />
+                  {metadataMap[doc_type || 'book'].text}
+                </div>],
+                [() => showDocTypes, null],
+                ],
+                <div className={s.documentTypeShow}>
                   {metadataParams.documentType && <>
                     <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
                     {metadataMap[metadataParams.documentType || 'book'].text}
@@ -358,7 +370,8 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                       </div>
                     </div>}
                   </>}
-                </div>
+                </div>,
+              )
             }
             {(!doc_type && showDocTypes) ? null : <Divider />}
             {showDocTypes ? renderSelectDocType() : renderFieldInfos({ mainField: metadataParams.documentType, canEdit: editStatus })}
@@ -368,8 +381,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
             <div className={`${s.title} mt-8`}>{metadataMap.technicalParameters.text}</div>
             <Divider />
             {renderFieldInfos({ mainField: 'technicalParameters', canEdit: false })}
-          </>
-        )}
+          </>,
+        )
+      }
     </div>
   )
 }
