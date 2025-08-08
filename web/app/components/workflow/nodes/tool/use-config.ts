@@ -140,7 +140,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return
     const inputsWithDefaultValue = formattingParameters()
     setInputs(inputsWithDefaultValue)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
 
   // setting when call
@@ -191,7 +190,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
           name: outputKey,
           type: output.type === 'array'
             ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+            : `${output.type?.slice(0, 1).toLocaleUpperCase()}${output.type?.slice(1)}`,
           description: output.description,
         })
       }

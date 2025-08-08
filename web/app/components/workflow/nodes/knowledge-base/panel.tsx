@@ -1,10 +1,12 @@
 import type { FC } from 'react'
 import {
   memo,
+  useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { KnowledgeBaseNodeType } from './types'
 import {
+  ChunkStructureEnum,
   IndexMethodEnum,
 } from './types'
 import ChunkStructure from './components/chunk-structure'
@@ -21,6 +23,8 @@ import {
 import Split from '../_base/components/split'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import type { Var } from '@/app/components/workflow/types'
+import { CHUNK_TYPE_MAP } from '@/app/components/workflow/utils/tool'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
@@ -43,6 +47,16 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleInputVariableChange,
   } = useConfig(id)
 
+  const filterVar = useCallback((variable: Var) => {
+    if (data.chunk_structure === ChunkStructureEnum.general && variable.alias === CHUNK_TYPE_MAP.general_chunks)
+      return true
+    if (data.chunk_structure === ChunkStructureEnum.parent_child && variable.alias === CHUNK_TYPE_MAP.parent_child_chunks)
+      return true
+    if (data.chunk_structure === ChunkStructureEnum.question_answer && variable.alias === CHUNK_TYPE_MAP.qa_chunks)
+      return true
+    return false
+  }, [data.chunk_structure])
+
   return (
     <div>
       <BoxGroupField
@@ -61,6 +75,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           value={data.index_chunk_variable_selector}
           onChange={handleInputVariableChange}
           readonly={nodesReadOnly}
+          filterVar={filterVar}
+          isSupportFileVar={false}
         />
       </BoxGroupField>
       <Group

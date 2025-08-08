@@ -44,19 +44,29 @@ export const getToolCheckParams = (
   }
 }
 
+export const CHUNK_TYPE_MAP = {
+  general_chunks: 'GeneralStructureChunk',
+  parent_child_chunks: 'ParentChildStructureChunk',
+  qa_chunks: 'QAStructureChunk',
+}
+
+export const getOutputVariableAlias = (variable: Record<string, any>) => {
+  if (variable?.general_chunks)
+    return CHUNK_TYPE_MAP.general_chunks
+  if (variable?.parent_child_chunks)
+    return CHUNK_TYPE_MAP.parent_child_chunks
+  if (variable?.qa_chunks)
+    return CHUNK_TYPE_MAP.qa_chunks
+}
 export const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
   const dataType = Type.object
-  const properties = Object.fromEntries(
-    Object.entries(outputItem.value?.properties || {}).filter(([key]) => key !== 'dify_builtin_type'),
-  ) as Record<string, any>
   return {
     schema: {
       type: dataType,
       properties: {
         [outputItem.name]: {
           ...outputItem.value,
-          properties,
-          alias: outputItem.value?.properties?.dify_builtin_type?.enum?.[0],
+          alias: getOutputVariableAlias(outputItem.value?.properties),
         },
       },
       additionalProperties: false,

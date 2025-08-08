@@ -73,7 +73,7 @@ const AddOAuthButton = ({
     is_system_oauth_params_exists,
     client_params,
     redirect_uri,
-  } = mergedOAuthData as any
+  } = mergedOAuthData as any || {}
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()

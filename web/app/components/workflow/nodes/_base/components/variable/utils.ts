@@ -39,6 +39,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
+import { getOutputVariableAlias } from '@/app/components/workflow/utils/tool'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -413,7 +414,7 @@ const formatItem = (
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
-            alias: output?.properties?.dify_builtin_type?.enum?.[0],
+            alias: getOutputVariableAlias(output.properties),
             children: output.type === 'object' ? {
               schema: {
                 type: 'object',
