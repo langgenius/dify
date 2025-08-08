@@ -35,7 +35,7 @@ export default function IntegrationsPage() {
         {
           integrates.map(integrate => (
             <div key={integrate.provider} className='mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2'>
-              <div className={classNames('w-8 h-8 mr-3 bg-white rounded-lg border border-gray-100', s[`${integrate.provider}-icon`])} />
+              <div className={classNames('mr-3 h-8 w-8 rounded-lg border border-gray-100 bg-white', s[`${integrate.provider}-icon`])} />
               <div className='grow'>
                 <div className='text-sm font-medium leading-[21px] text-gray-800'>{integrateMap[integrate.provider].name}</div>
                 <div className='text-xs font-normal leading-[18px] text-gray-500'>{integrateMap[integrate.provider].description}</div>
