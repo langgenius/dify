@@ -56,15 +56,17 @@ def clean_dataset_task(
         documents = db.session.query(Document).where(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id).all()
 
+        # Fix: Always clean vector database resources regardless of document existence
+        # This ensures all 33 vector databases properly drop tables/collections/indices
+        if doc_form is None:
+            raise ValueError("Index type must be specified.")
+        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+        index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
+
         if documents is None or len(documents) == 0:
             logging.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
         else:
             logging.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
-            # Specify the index type before initializing the index processor
-            if doc_form is None:
-                raise ValueError("Index type must be specified.")
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
 
             for document in documents:
                 db.session.delete(document)

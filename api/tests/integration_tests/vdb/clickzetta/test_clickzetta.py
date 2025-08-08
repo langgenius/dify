@@ -39,10 +39,7 @@ class TestClickzettaVector(AbstractVectorTest):
         )
 
         with setup_mock_redis():
-            vector = ClickzettaVector(
-                collection_name="test_collection_" + str(os.getpid()),
-                config=config
-            )
+            vector = ClickzettaVector(collection_name="test_collection_" + str(os.getpid()), config=config)
 
             yield vector
 
@@ -114,7 +111,7 @@ class TestClickzettaVector(AbstractVectorTest):
                     "category": "technical" if i % 2 == 0 else "general",
                     "document_id": f"doc_{i // 3}",  # Group documents
                     "importance": i,
-                }
+                },
             )
             documents.append(doc)
             # Create varied embeddings
@@ -124,22 +121,14 @@ class TestClickzettaVector(AbstractVectorTest):
 
         # Test vector search with document filter
         query_vector = [0.5, 1.0, 1.5, 2.0]
-        results = vector_store.search_by_vector(
-            query_vector,
-            top_k=5,
-            document_ids_filter=["doc_0", "doc_1"]
-        )
+        results = vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["doc_0", "doc_1"])
         assert len(results) > 0
         # All results should belong to doc_0 or doc_1 groups
         for result in results:
             assert result.metadata["document_id"] in ["doc_0", "doc_1"]
 
         # Test score threshold
-        results = vector_store.search_by_vector(
-            query_vector,
-            top_k=10,
-            score_threshold=0.5
-        )
+        results = vector_store.search_by_vector(query_vector, top_k=10, score_threshold=0.5)
         # Check that all results have a score above threshold
         for result in results:
             assert result.metadata.get("score", 0) >= 0.5
@@ -154,7 +143,7 @@ class TestClickzettaVector(AbstractVectorTest):
         for i in range(batch_size):
             doc = Document(
                 page_content=f"Batch document {i}: This is a test document for batch processing.",
-                metadata={"doc_id": f"batch_doc_{i}", "batch": "test_batch"}
+                metadata={"doc_id": f"batch_doc_{i}", "batch": "test_batch"},
             )
             documents.append(doc)
             embeddings.append([0.1 * (i % 10), 0.2 * (i % 10), 0.3 * (i % 10), 0.4 * (i % 10)])
@@ -179,7 +168,7 @@ class TestClickzettaVector(AbstractVectorTest):
         # Test special characters in content
         special_doc = Document(
             page_content="Special chars: 'quotes', \"double\", \\backslash, \n newline",
-            metadata={"doc_id": "special_doc", "test": "edge_case"}
+            metadata={"doc_id": "special_doc", "test": "edge_case"},
         )
         embeddings = [[0.1, 0.2, 0.3, 0.4]]
 
@@ -199,20 +188,18 @@ class TestClickzettaVector(AbstractVectorTest):
         # Prepare documents with various language content
         documents = [
             Document(
-                page_content="云器科技提供强大的Lakehouse解决方案",
-                metadata={"doc_id": "cn_doc_1", "lang": "chinese"}
+                page_content="云器科技提供强大的Lakehouse解决方案", metadata={"doc_id": "cn_doc_1", "lang": "chinese"}
             ),
             Document(
                 page_content="Clickzetta provides powerful Lakehouse solutions",
-                metadata={"doc_id": "en_doc_1", "lang": "english"}
+                metadata={"doc_id": "en_doc_1", "lang": "english"},
             ),
             Document(
-                page_content="Lakehouse是现代数据架构的重要组成部分",
-                metadata={"doc_id": "cn_doc_2", "lang": "chinese"}
+                page_content="Lakehouse是现代数据架构的重要组成部分", metadata={"doc_id": "cn_doc_2", "lang": "chinese"}
             ),
             Document(
                 page_content="Modern data architecture includes Lakehouse technology",
-                metadata={"doc_id": "en_doc_2", "lang": "english"}
+                metadata={"doc_id": "en_doc_2", "lang": "english"},
             ),
         ]
 
