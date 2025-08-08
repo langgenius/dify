@@ -977,6 +977,11 @@ const translation = {
       editor: {
         notes: 'notes',
       },
+      errorMsg: {
+        noDeliveryMethod: 'Please select at least one delivery method',
+        noDeliveryMethodEnabled: 'Please enable at least one delivery method',
+        noUserActions: 'Please add at least one user action',
+      },
     },
   },
   tracing: {

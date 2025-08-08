@@ -978,6 +978,11 @@ const translation = {
       editor: {
         notes: ' 笔记',
       },
+      errorMsg: {
+        noDeliveryMethod: '请至少选择一种提交方式',
+        noDeliveryMethodEnabled: '请至少启用一种提交方式',
+        noUserActions: '请添加至少一个用户操作',
+      },
     },
   },
   tracing: {

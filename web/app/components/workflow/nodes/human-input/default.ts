@@ -3,6 +3,8 @@ import type { HumanInputNodeType } from './types'
 import { DeliveryMethodType, UserActionButtonType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
+const i18nPrefix = 'workflow.nodes.humanInput.errorMsg'
+
 const nodeDefault: NodeDefault<HumanInputNodeType> = {
   defaultValue: {
     delivery_methods: [
@@ -50,12 +52,24 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
     const nodes = ALL_CHAT_AVAILABLE_BLOCKS
     return nodes
   },
-  checkValid() {
-    return {
-      isValid: true,
-      errorMessage: '',
-    }
-  },
+  checkValid(payload: HumanInputNodeType, t: any) {
+      let errorMessages = ''
+      if (!errorMessages && !payload.delivery_methods.length)
+        errorMessages = t(`${i18nPrefix}.noDeliveryMethod`)
+
+      if (!errorMessages && payload.delivery_methods.length > 0 && !payload.delivery_methods.some(method => method.enabled))
+        errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`)
+
+      // TODO : Add more validation for form content
+
+      if (!errorMessages && !payload.user_actions.length)
+        errorMessages = t(`${i18nPrefix}.noUserActions`)
+
+      return {
+        isValid: !errorMessages,
+        errorMessage: errorMessages,
+      }
+    },
 }
 
 export default nodeDefault
