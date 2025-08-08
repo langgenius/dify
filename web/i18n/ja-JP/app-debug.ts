@@ -163,7 +163,7 @@ const translation = {
     moderation: {
       title: 'コンテンツのモデレーション',
       description: 'モデレーション API を使用するか、機密語リストを維持することで、モデルの出力を安全にします。',
-      contentEnableLabel: 'モデレート・コンテンツを有効にする',
+      contentEnableLabel: 'コンテンツモデレーションが有効',
       allEnabled: '入力/出力コンテンツが有効になっています',
       inputEnabled: '入力コンテンツが有効になっています',
       outputEnabled: '出力コンテンツが有効になっています',

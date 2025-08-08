@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'Iz datoteke DSL',
   importFromDSLUrl: 'Iz URL-ja',
   importFromDSLUrlPlaceholder: 'Tukaj prilepi povezavo DSL',
+  dslUploader: {
+    button: 'Povlecite in spustite datoteko, ali',
+    browse: 'Prebrskaj',
+  },
   deleteAppConfirmTitle: 'Izbrišem to aplikacijo?',
   deleteAppConfirmContent:
     'Brisanje aplikacije je nepopravljivo. Uporabniki ne bodo več imeli dostopa do vaše aplikacije, vse konfiguracije in dnevniki pa bodo trajno izbrisani.',

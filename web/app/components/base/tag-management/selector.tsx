@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
@@ -231,11 +231,6 @@ const TagSelector: FC<TagSelectorProps> = ({
     }
   }
 
-  useEffect(() => {
-    if (tagList.length === 0)
-      getTagList()
-  }, [type])
-
   const triggerContent = useMemo(() => {
     if (selectedTags?.length)
       return selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name).join(', ')
@@ -243,12 +238,16 @@ const TagSelector: FC<TagSelectorProps> = ({
   }, [selectedTags, tagList])
 
   const Trigger = () => {
+    const hasNoTags = !triggerContent
     return (
       <div className={cn(
         'group/tip relative flex w-full cursor-pointer items-center gap-1 rounded-md px-2 py-[7px] hover:bg-state-base-hover',
       )}>
         <Tag01 className='h-3 w-3 shrink-0 text-components-input-text-placeholder' />
-        <div className='system-sm-regular grow truncate  text-start text-components-input-text-placeholder'>
+        <div className={cn(
+          'system-sm-regular grow truncate text-start',
+          hasNoTags ? 'italic text-components-input-text-placeholder' : 'font-medium text-components-input-text-placeholder',
+        )}>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>

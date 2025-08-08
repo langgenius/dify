@@ -169,6 +169,10 @@ const translation = {
     title: 'Use o ícone do web app para substituir 🤖',
   },
   importFromDSLUrlPlaceholder: 'Cole o link DSL aqui',
+  dslUploader: {
+    button: 'Arraste e solte o arquivo, ou',
+    browse: 'Navegar',
+  },
   importFromDSLUrl: 'Do URL',
   importFromDSLFile: 'Do arquivo DSL',
   importFromDSL: 'Importar de DSL',

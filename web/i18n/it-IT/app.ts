@@ -178,6 +178,10 @@ const translation = {
   importFromDSLFile: 'Da file DSL',
   importFromDSL: 'Importazione da DSL',
   importFromDSLUrlPlaceholder: 'Incolla qui il link DSL',
+  dslUploader: {
+    button: 'Trascina e rilascia il file, o',
+    browse: 'Sfoglia',
+  },
   mermaid: {
     handDrawn: 'Disegnato a mano',
     classic: 'Classico',

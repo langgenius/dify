@@ -25,15 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowTool(Tool):
-    workflow_app_id: str
-    version: str
-    workflow_entities: dict[str, Any]
-    workflow_call_depth: int
-    thread_pool_id: Optional[str] = None
-    workflow_as_tool_id: str
-
-    label: str
-
     """
     Workflow tool.
     """

@@ -9,10 +9,10 @@ import { useQuery } from '@tanstack/react-query'
 
 // Components
 import ExternalAPIPanel from '../../components/datasets/external-api/external-api-panel'
-import Datasets from './Datasets'
-import DatasetFooter from './DatasetFooter'
+import Datasets from './datasets'
+import DatasetFooter from './dataset-footer'
 import ApiServer from '../../components/develop/ApiServer'
-import Doc from './Doc'
+import Doc from './doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'

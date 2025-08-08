@@ -20,9 +20,6 @@ class Tool(ABC):
     The base class of a tool
     """
 
-    entity: ToolEntity
-    runtime: ToolRuntime
-
     def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
         self.entity = entity
         self.runtime = runtime
