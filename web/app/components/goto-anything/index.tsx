@@ -95,7 +95,7 @@ const GotoAnything: FC<Props> = ({
         )
       },
       placeholderData: (previousData) => {
-        if (searchQueryDebouncedValue && !!lastSearchQuery)
+        if (searchQueryDebouncedValue && !!lastSearchQuery.current)
           return previousData
 
         return []
@@ -124,23 +124,6 @@ const GotoAnything: FC<Props> = ({
           router.push(result.path)
     }
   }, [router])
-
-  // Highlight matching text
-  // const highlightMatch = useCallback((text: string, query: string) => {
-  //   if (!query.trim()) return text
-
-  //   const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  //   const regex = new RegExp(`(${safeQuery})`, 'gi')
-  //   const parts = text.split(regex)
-
-  //   return parts.map((part, index) =>
-  //     regex.test(part) ? (
-  //       <mark key={index} className='rounded bg-yellow-200 text-yellow-900'>
-  //         {part}
-  //       </mark>
-  //     ) : part,
-  //   )
-  // }, [])
 
   // Group results by type
   const groupedResults = useMemo(() => searchResults.reduce((acc, result) => {
