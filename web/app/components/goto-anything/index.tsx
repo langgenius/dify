@@ -28,6 +28,7 @@ const GotoAnything: FC<Props> = ({
   const { isWorkflowPage } = useGotoAnythingContext()
   const [show, setShow] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Filter actions based on context
@@ -133,12 +134,42 @@ const GotoAnything: FC<Props> = ({
 
     return parts.map((part, index) =>
       regex.test(part) ? (
-        <mark key={index} className='rounded bg-yellow-200 px-0.5 text-yellow-900'>
+        <mark key={index} className='rounded bg-yellow-200 text-yellow-900'>
           {part}
         </mark>
       ) : part,
     )
   }, [])
+
+  useKeyPress(['downarrow'], (e) => {
+    e.preventDefault()
+    if (searchResults.length > 0) {
+      if (selectedIndex >= 0 && selectedIndex < searchResults.length - 1)
+        setSelectedIndex(selectedIndex + 1)
+      else if (selectedIndex < 0)
+        setSelectedIndex(0)
+    }
+  })
+
+  useKeyPress(['uparrow'], (e) => {
+    e.preventDefault()
+    if (searchResults.length > 0 && selectedIndex > 0)
+      setSelectedIndex(selectedIndex - 1)
+  })
+
+  useKeyPress(['enter'], (e) => {
+    e.preventDefault()
+    if (searchResults.length > 0 && selectedIndex >= 0)
+      handleNavigate(searchResults[selectedIndex])
+  })
+
+  useEffect(() => {
+    if (selectedIndex !== null && searchResults.length > 0) {
+      const activeElement = document.querySelector(`[data-index="${selectedIndex}"]`)
+      if (activeElement)
+        activeElement.scrollIntoView({ block: 'nearest', inline: 'start' })
+    }
+  }, [selectedIndex, searchResults])
 
   const searchResult = useMemo(() => {
     if (!searchResults.length)
@@ -146,11 +177,13 @@ const GotoAnything: FC<Props> = ({
 
     return (
       <div className='p-2'>
-        {searchResults.map(result => (
+        {searchResults.map((result, index) => (
           <div
             key={`${result.type}-${result.id}`}
+            data-index={index}
             className={cn(
               'flex cursor-pointer items-center gap-3 rounded-md p-3 hover:bg-state-base-hover',
+              selectedIndex === index ? 'bg-state-base-hover' : '',
             )}
             onClick={() => handleNavigate(result)}
           >
@@ -172,7 +205,7 @@ const GotoAnything: FC<Props> = ({
         ))}
       </div>
     )
-  }, [searchResults])
+  }, [searchResults, selectedIndex])
 
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQueryDebouncedValue.trim())
@@ -212,6 +245,9 @@ const GotoAnything: FC<Props> = ({
       requestAnimationFrame(() => {
         inputRef.current?.focus()
       })
+    }
+ else {
+      setSelectedIndex(-1)
     }
   }, [show])
 
