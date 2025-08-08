@@ -20,7 +20,7 @@ def delete_conversation(conversation_id: str) -> None:
         conversation_id: conversation Id
     """
 
-    logging.info(click.style(f"Starting to delete data from db fir conversation_id {conversation_id}", fg="green"))
+    logging.info(click.style(f"Starting to delete conversation data from db for conversation_id {conversation_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -55,7 +55,7 @@ def delete_conversation(conversation_id: str) -> None:
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                f"Succeeded in cleaning data from db for conversation_id {conversation_id} latency: {end_at - start_at}",
+                f"Succeeded cleaning data from db for conversation_id {conversation_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )
