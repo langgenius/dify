@@ -143,7 +143,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         category: PluginType.agent,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   const pluginRef = useRef<ListRef>(null)

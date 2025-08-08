@@ -15,18 +15,21 @@ import cn from '@/utils/classnames'
 import { VarType } from '../../../types'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
+import { getConditionValueAsString } from '@/app/components/workflow/nodes/utils'
 
 const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   name: VarType.string,
   url: VarType.string,
   extension: VarType.string,
   mime_type: VarType.string,
-  related_id: VarType.number,
+  related_id: VarType.string,
+  size: VarType.number,
 }
 
 type Props = {
   condition: Condition
   onChange: (condition: Condition) => void
+  varType: VarType
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
@@ -34,6 +37,7 @@ type Props = {
 
 const FilterCondition: FC<Props> = ({
   condition = { key: '', comparison_operator: ComparisonOperator.equal, value: '' },
+  varType,
   onChange,
   hasSubVariable,
   readOnly,
@@ -42,7 +46,7 @@ const FilterCondition: FC<Props> = ({
   const { t } = useTranslation()
   const [isFocus, setIsFocus] = useState(false)
 
-  const expectedVarType = VAR_INPUT_SUPPORTED_KEYS[condition.key]
+  const expectedVarType = condition.key ? VAR_INPUT_SUPPORTED_KEYS[condition.key] : varType
   const supportVariableInput = !!expectedVarType
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
@@ -93,6 +97,59 @@ const FilterCondition: FC<Props> = ({
     })
   }, [onChange, expectedVarType])
 
+  // Extract input rendering logic to avoid nested ternary
+  let inputElement: React.ReactNode = null
+  if (!comparisonOperatorNotRequireValue(condition.comparison_operator)) {
+    if (isSelect) {
+      inputElement = (
+        <Select
+          items={selectOptions}
+          defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
+          onSelect={item => handleChange('value')(item.value)}
+          className='!text-[13px]'
+          wrapperClassName='grow h-8'
+          placeholder='Select value'
+        />
+      )
+    }
+    else if (supportVariableInput) {
+      inputElement = (
+        <Input
+          instanceId='filter-condition-input'
+          className={cn(
+            isFocus
+              ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+              : 'border-components-input-border-hover bg-components-input-bg-normal',
+            'w-0 grow rounded-lg border px-3 py-[6px]',
+          )}
+          value={
+            getConditionValueAsString(condition)
+          }
+          onChange={handleChange('value')}
+          readOnly={readOnly}
+          nodesOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+          onFocusChange={setIsFocus}
+          placeholder={!readOnly ? t('workflow.nodes.http.insertVarPlaceholder')! : ''}
+          placeholderClassName='!leading-[21px]'
+        />
+      )
+    }
+    else {
+      inputElement = (
+        <input
+          type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
+          className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
+          value={
+            getConditionValueAsString(condition)
+          }
+          onChange={e => handleChange('value')(e.target.value)}
+          readOnly={readOnly}
+        />
+      )
+    }
+  }
+
   return (
     <div>
       {hasSubVariable && (
@@ -111,46 +168,7 @@ const FilterCondition: FC<Props> = ({
           file={hasSubVariable ? { key: condition.key } : undefined}
           disabled={readOnly}
         />
-        {!comparisonOperatorNotRequireValue(condition.comparison_operator) && (
-          <>
-            {isSelect ? (
-              <Select
-                items={selectOptions}
-                defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
-                onSelect={item => handleChange('value')(item.value)}
-                className='!text-[13px]'
-                wrapperClassName='grow h-8'
-                placeholder='Select value'
-              />
-            ) : supportVariableInput ? (
-              <Input
-                instanceId='filter-condition-input'
-                className={cn(
-                  isFocus
-                    ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
-                    : 'border-components-input-border-hover bg-components-input-bg-normal',
-                  'w-0 grow rounded-lg border px-3 py-[6px]',
-                )}
-                value={condition.value}
-                onChange={handleChange('value')}
-                readOnly={readOnly}
-                nodesOutputVars={availableVars}
-                availableNodes={availableNodesWithParent}
-                onFocusChange={setIsFocus}
-                placeholder={!readOnly ? t('workflow.nodes.http.extractListPlaceholder')! : ''}
-                placeholderClassName='!leading-[21px]'
-              />
-            ) : (
-              <input
-                type={(condition.key === 'size' || expectedVarType === VarType.number) ? 'number' : 'text'}
-                className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
-                value={condition.value}
-                onChange={e => handleChange('value')(e.target.value)}
-                readOnly={readOnly}
-              />
-            )}
-          </>
-        )}
+        {inputElement}
       </div>
     </div>
   )

@@ -2,6 +2,7 @@ import json
 import logging
 
 import click
+import sqlalchemy as sa
 
 from core.plugin.entities.plugin import GenericProviderID, ModelProviderID, ToolProviderID
 from models.engine import db
@@ -38,7 +39,7 @@ class PluginDataMigration:
 where {provider_column_name} not like '%/%' and {provider_column_name} is not null and {provider_column_name} != ''
 limit 1000"""
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(sql))
+                rs = conn.execute(sa.text(sql))
 
                 current_iter_count = 0
                 for i in rs:
@@ -94,7 +95,7 @@ limit 1000"""
                         :provider_name
                         {update_retrieval_model_sql}
                         where id = :record_id"""
-                        conn.execute(db.text(sql), params)
+                        conn.execute(sa.text(sql), params)
                         click.echo(
                             click.style(
                                 f"[{processed_count}] Migrated [{table_name}] {record_id} ({provider_name})",
@@ -148,7 +149,7 @@ limit 1000"""
             params = {"last_id": last_id or ""}
 
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(sql), params)
+                rs = conn.execute(sa.text(sql), params)
 
                 current_iter_count = 0
                 batch_updates = []
@@ -193,7 +194,7 @@ limit 1000"""
                         SET {provider_column_name} = :updated_value
                         WHERE id = :record_id
                     """
-                    conn.execute(db.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
+                    conn.execute(sa.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])
                     click.echo(
                         click.style(
                             f"[{processed_count}] Batch migrated [{len(batch_updates)}] records from [{table_name}]",

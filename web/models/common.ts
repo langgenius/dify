@@ -5,6 +5,18 @@ export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
+export type FileDownloadResponse = {
+  id: string
+  name: string
+  size: number
+  extension: string
+  url: string
+  download_url: string
+  mime_type: string
+  created_by: string
+  created_at: number
+}
+
 export type OauthResponse = {
   redirect_url: string
 }

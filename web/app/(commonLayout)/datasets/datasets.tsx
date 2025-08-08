@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
-import NewDatasetCard from './NewDatasetCard'
-import DatasetCard from './DatasetCard'
+import NewDatasetCard from './new-dataset-card'
+import DatasetCard from './dataset-card'
 import type { DataSetListResponse, FetchDatasetsParams } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -36,7 +36,7 @@ const getKey = (
 }
 
 type Props = {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   tags: string[]
   keywords: string
   includeAll: boolean

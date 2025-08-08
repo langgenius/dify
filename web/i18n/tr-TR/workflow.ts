@@ -109,9 +109,7 @@ const translation = {
     exitVersions: 'Çıkış Sürümleri',
     versionHistory: 'Sürüm Geçmişi',
     exportJPEG: 'JPEG olarak dışa aktar',
-    noExist: 'Böyle bir değişken yok',
     exportSVG: 'SVG olarak dışa aktar',
-    referenceVar: 'Referans Değişken',
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
@@ -289,6 +287,18 @@ const translation = {
     zoomTo50: '%50 Yakınlaştır',
     zoomTo100: '%100 Yakınlaştır',
     zoomToFit: 'Sığdıracak Şekilde Yakınlaştır',
+    alignCenter: 'Orta',
+    alignMiddle: 'Orta',
+    alignLeft: 'Sol',
+    alignNodes: 'Düğümleri Hizala',
+    vertical: 'Dikey',
+    alignRight: 'Sağ',
+    alignTop: 'Üst',
+    alignBottom: 'Alt',
+    selectionAlignment: 'Seçim Hizalama',
+    distributeHorizontal: 'Yatay Dağıt',
+    horizontal: 'Yatay',
+    distributeVertical: 'Dikey Dağıt',
   },
   panel: {
     userInputField: 'Kullanıcı Giriş Alanı',
@@ -609,7 +619,6 @@ const translation = {
       },
       addSubVariable: 'Alt Değişken',
       select: 'Seçmek',
-      condition: 'Koşul',
     },
     variableAssigner: {
       title: 'Değişken ata',
@@ -931,6 +940,7 @@ const translation = {
       updateFailure: 'Sürüm güncellenemedi',
       updateSuccess: 'Sürüm güncellendi',
       deleteSuccess: 'Sürüm silindi',
+      copyIdSuccess: 'Kimlik panoya kopyalandı',
     },
     latest: 'Sonuncu',
     currentDraft: 'Mevcut Taslak',
@@ -941,6 +951,7 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+    copyId: 'ID Kopyala',
   },
   debug: {
     noData: {
@@ -970,6 +981,15 @@ const translation = {
     },
     lastRunTab: 'Son Koşu',
     settingsTab: 'Ayarlar',
+    relations: {
+      noDependents: 'Bakmakla yükümlü olunan kişi yok',
+      dependentsDescription: 'Bu düğüme dayanan düğümler',
+      dependenciesDescription: 'Bu düğümün dayandığı düğümler',
+      dependencies: 'Bağımlılık',
+      dependents: 'Bağımlı',
+      noDependencies: 'Bağımlılık yok',
+    },
+    relationsTab: 'Ilişkiler',
   },
 }
 

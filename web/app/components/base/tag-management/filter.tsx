@@ -33,6 +33,7 @@ const TagFilter: FC<TagFilterProps> = ({
 
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
+  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -135,6 +136,18 @@ const TagFilter: FC<TagFilterProps> = ({
                   <div className='text-xs leading-[14px] text-text-tertiary'>{t('common.tag.noTag')}</div>
                 </div>
               )}
+            </div>
+            <div className='border-t-[0.5px] border-divider-regular' />
+            <div className='p-1'>
+              <div className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
+                setShowTagManagementModal(true)
+                setOpen(false)
+              }}>
+                <Tag03 className='h-4 w-4 text-text-tertiary' />
+                <div className='grow truncate text-sm leading-5 text-text-secondary'>
+                  {t('common.tag.manageTags')}
+                </div>
+              </div>
             </div>
           </div>
         </PortalToFollowElemContent>

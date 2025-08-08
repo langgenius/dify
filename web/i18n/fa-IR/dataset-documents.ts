@@ -31,6 +31,7 @@ const translation = {
       sync: 'همگام‌سازی',
       resume: 'ادامه',
       pause: 'مکث',
+      download: 'دانلود فایل',
     },
     index: {
       enable: 'فعال کردن',

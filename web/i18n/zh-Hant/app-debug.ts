@@ -197,6 +197,7 @@ const translation = {
           after: '中配置 OpenAI API 金鑰。',
         },
       },
+      contentEnableLabel: '內容審查已啟用',
     },
     fileUpload: {
       title: '檔案上傳',
@@ -238,6 +239,7 @@ const translation = {
     waitForBatchResponse: '請等待批次任務完成',
     notSelectModel: '請選擇模型',
     waitForImgUpload: '請等待圖片上傳完成',
+    waitForFileUpload: '請等待檔案上傳完成',
   },
   chatSubTitle: '提示詞',
   completionSubTitle: '字首提示詞',
@@ -302,6 +304,33 @@ const translation = {
     'defaultValue': '預設值',
     'noDefaultValue': '無預設值',
     'selectDefaultValue': '選擇預設值',
+    'file': {
+      image: {
+        name: '圖像',
+      },
+      audio: {
+        name: '音訊',
+      },
+      document: {
+        name: '公文',
+      },
+      video: {
+        name: '視頻',
+      },
+      custom: {
+        name: '其他文件類型',
+        description: '指定其他檔案類型。',
+        createPlaceholder: '檔擴展名，例如 .doc',
+      },
+      supportFileTypes: '支援檔案類型',
+    },
+    'both': '雙',
+    'uploadFileTypes': '上傳檔類型',
+    'multi-files': '檔案清單',
+    'content': '內容',
+    'localUpload': '本地上傳',
+    'single-file': '單個檔',
+    'maxNumberOfUploads': '最大上傳次數',
   },
   vision: {
     name: '視覺',
@@ -321,6 +350,7 @@ const translation = {
       url: 'URL',
       uploadLimit: '上傳數量限制',
     },
+    onlySupportVisionModelTip: '僅支持視覺模型',
   },
   voice: {
     name: '音色',
@@ -390,6 +420,7 @@ const translation = {
     score_threshold: 'Score 閾值',
     score_thresholdTip: '用於設定文字片段篩選的相似度閾值。',
     retrieveChangeTip: '修改索引模式和檢索模式可能會影響與該知識庫關聯的應用程式。',
+    embeddingModelRequired: '需要配置的嵌入模型',
   },
   debugAsSingleModel: '單一模型進行除錯',
   debugAsMultipleModel: '多個模型進行除錯',
@@ -431,6 +462,79 @@ const translation = {
       enabled: '啟用',
     },
   },
+  codegen: {
+    resTitle: '生成的代碼',
+    apply: '應用',
+    overwriteConfirmMessage: '此作將覆蓋現有代碼。你想繼續嗎？',
+    instruction: '指示',
+    instructionPlaceholder: '輸入要生成的代碼的詳細說明。',
+    generate: '生成',
+    noDataLine2: '代碼預覽將在此處顯示。',
+    applyChanges: '應用更改',
+    noDataLine1: '在左側描述您的用例，',
+    overwriteConfirmTitle: '覆蓋現有代碼？',
+    title: '代碼生成器',
+    generatedCodeTitle: '生成的代碼',
+    loading: '產生代碼...',
+    description: '代碼生成器使用配置的模型根據您的指令生成高質量的代碼。請提供清晰詳細的說明。',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        instruction: '可以根據您的指令生成和調試代碼的機器人',
+        name: 'Python 調試器',
+      },
+      translation: {
+        name: '譯本',
+        instruction: '可以翻譯多種語言的翻譯器',
+      },
+      professionalAnalyst: {
+        instruction: '提取見解、識別風險並將長報告中的關鍵資訊提煉成單個備忘錄',
+        name: '專業分析師',
+      },
+      excelFormulaExpert: {
+        name: 'Excel公式專家',
+        instruction: '一個聊天機器人，可以説明新手使用者根據使用者指令理解、使用和創建Excel公式',
+      },
+      travelPlanning: {
+        instruction: '旅行計劃助手是一款智慧工具，旨在説明用戶輕鬆計劃他們的旅行',
+        name: '旅行計劃',
+      },
+      SQLSorcerer: {
+        instruction: '將日常語言轉換為 SQL 查詢',
+        name: 'SQL 巫師',
+      },
+      GitGud: {
+        instruction: '根據使用者描述的版本控制作生成適當的 Git 命令',
+        name: '吉特古德',
+      },
+      meetingTakeaways: {
+        name: '會議要點',
+        instruction: '將會議提煉成簡潔的摘要，包括討論主題、關鍵要點和行動專案',
+      },
+      writingsPolisher: {
+        instruction: '使用先進的文案編輯技術來改進您的寫作',
+        name: '書寫拋光機',
+      },
+    },
+    overwriteMessage: '應用此提示將覆蓋現有配置。',
+    tryIt: '試試看',
+    noDataLine1: '在左側描述您的用例，',
+    instruction: '指示',
+    description: '提示生成器使用配置的模型來優化提示，以獲得更高的品質和更好的結構。請寫出清晰詳細的說明。',
+    generate: '生成',
+    apply: '應用',
+    instructionPlaceHolder: '寫出清晰具體的說明。',
+    overwriteTitle: '覆蓋現有配置？',
+    title: '提示生成器',
+    loading: '為您編排應用程式...',
+    noDataLine2: '業務流程預覽將在此處顯示。',
+    resTitle: '生成的提示',
+  },
+  warningMessage: {
+    timeoutExceeded: '由於超時，不顯示結果。請參閱日誌以收集完整結果。',
+  },
+  noResult: '輸出將顯示在此處。',
 }
 
 export default translation

@@ -3,6 +3,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { RiExternalLinkLine } from '@remixicon/react'
 import type { AnyFieldApi } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-form'
 import cn from '@/utils/classnames'
@@ -198,6 +199,22 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.url && (
+            <a
+              className='system-xs-regular mt-4 flex items-center text-text-accent'
+              href={formSchema?.url}
+              target='_blank'
+            >
+              <span className='break-all'>
+                {renderI18nObject(formSchema?.help as any)}
+              </span>
+              {
+                <RiExternalLinkLine className='ml-1 h-3 w-3' />
+              }
+            </a>
           )
         }
       </div>

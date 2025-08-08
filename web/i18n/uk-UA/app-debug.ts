@@ -161,11 +161,16 @@ const translation = {
       title: 'ІНСТРУМЕНТИ', // TOOLBOX (all caps to convey its section title nature)
     },
     moderation: {
-      title: 'Модерація контенту', // Content moderation
-      description: 'Захистіть вивід моделі, використовуючи API модерації або список конфіденційних слів.', // Secure model output...
-      allEnabled: 'Вміст ВВЕДЕННЯ/ВИВЕДЕННЯ ввімкнено', // INPUT/OUTPUT Content Enabled
-      inputEnabled: 'Вміст ВВЕДЕННЯ ввімкнено', // INPUT Content Enabled
-      outputEnabled: 'Вміст ВИВЕДЕННЯ ввімкнено', // OUTPUT Content Enabled
+      // Content moderation
+      title: 'Модерація контенту',
+      // Secure model output...
+      description: 'Захистіть вивід моделі, використовуючи API модерації або список конфіденційних слів.',
+      // INPUT/OUTPUT Content Enabled
+      allEnabled: 'Вміст ВВЕДЕННЯ/ВИВЕДЕННЯ ввімкнено',
+      // INPUT Content Enabled
+      inputEnabled: 'Вміст ВВЕДЕННЯ ввімкнено',
+      // OUTPUT Content Enabled
+      outputEnabled: 'Вміст ВИВЕДЕННЯ ввімкнено',
       modal: {
         title: 'Налаштування модерації вмісту', // Content moderation settings
         provider: {
@@ -197,6 +202,7 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Модерація контенту увімкнена',
     },
     fileUpload: {
       title: 'Завантаження файлу',
@@ -248,23 +254,37 @@ const translation = {
     message: 'Скидання призводить до скасування змін, відновлюючи останню опубліковану конфігурацію.',
   },
   errorMessage: {
-    nameOfKeyRequired: 'назва ключа: {{key}} обов’язкова', // name of the key: {{key}} required
-    valueOfVarRequired: 'значення {{key}} не може бути порожнім', // {{key}} value can not be empty
-    queryRequired: 'Текст запиту обов’язковий.', // Request text is required.
-    waitForResponse: 'Будь ласка, зачекайте, доки буде завершено відповідь на попереднє повідомлення.', // Please wait for the response to the previous message to complete.
-    waitForBatchResponse: 'Будь ласка, дочекайтеся завершення відповіді на пакетне завдання.', // Please wait for the response to the batch task to complete.
-    notSelectModel: 'Будь ласка, виберіть модель', // Please choose a model
-    waitForImgUpload: 'Будь ласка, зачекайте, поки зображення завантажиться', // Please wait for the image to upload
+    // name of the key: {{key}} required
+    nameOfKeyRequired: 'назва ключа: {{key}} обов’язкова',
+    // {{key}} value can not be empty
+    valueOfVarRequired: 'значення {{key}} не може бути порожнім',
+    // Request text is required.
+    queryRequired: 'Текст запиту обов’язковий.',
+    // Please wait for the response to the previous message to complete.
+    waitForResponse: 'Будь ласка, зачекайте, доки буде завершено відповідь на попереднє повідомлення.',
+    // Please wait for the response to the batch task to complete.
+    waitForBatchResponse: 'Будь ласка, дочекайтеся завершення відповіді на пакетне завдання.',
+    // Please choose a model
+    notSelectModel: 'Будь ласка, виберіть модель',
+    // Please wait for the image to upload
+    waitForImgUpload: 'Будь ласка, зачекайте, поки зображення завантажиться',
+    waitForFileUpload: 'Будь ласка, зачекайте, поки файл/файли завантажаться',
   },
-  chatSubTitle: 'Інструкції', // Instructions
-  completionSubTitle: 'Префікс команди', // Prefix Prompt
+  // Instructions
+  chatSubTitle: 'Інструкції',
+  // Prefix Prompt
+  completionSubTitle: 'Префікс команди',
   promptTip: 'Запити керують відповідями ШІ, надаючи інструкції та обмеження. Вставте змінні, як-от {{input}}. Цей запит не буде видно користувачам.',
-  formattingChangedTitle: 'Змінено форматування', // Formatting changed
-  formattingChangedText: 'Змінення форматування призведе до скидання області налагодження. Ви впевнені?', // Modifying the formatting will reset the debug area, are you sure?
-  variableTitle: 'Змінні', // Variables
+  // Formatting changed
+  formattingChangedTitle: 'Змінено форматування',
+  // Modifying the formatting will reset the debug area, are you sure?
+  formattingChangedText: 'Змінення форматування призведе до скидання області налагодження. Ви впевнені?',
+  // Variables
+  variableTitle: 'Змінні',
   variableTip: 'Користувачі заповнюють змінні у формі, автоматично замінюючи змінні в команді.',
   notSetVar: 'Змінні дозволяють користувачам вводити підказки або вступні зауваження під час заповнення форм. Ви можете спробувати ввести "{{input}}" у слова підказки.',
-  autoAddVar: 'На невизначені змінні, на які посилаються в попередньому запиті, є посилання. Ви хочете додати їх у форму вводу користувача?', // Undefined variables referenced in pre-prompt, are you want to add them in user input form?
+  // Undefined variables referenced in pre-prompt, are you want to add them in user input form?
+  autoAddVar: 'На невизначені змінні, на які посилаються в попередньому запиті, є посилання. Ви хочете додати їх у форму вводу користувача?',
   variableTable: {
     key: 'Ключ змінної', // Variable Key
     name: 'Назва поля для введення користувача', // User Input Field Name
@@ -316,11 +336,40 @@ const translation = {
     'defaultValue': 'Значення за замовчуванням',
     'noDefaultValue': 'Без значення за замовчуванням',
     'selectDefaultValue': 'Обрати значення за замовчуванням',
+    'file': {
+      image: {
+        name: 'Образ',
+      },
+      audio: {
+        name: 'Аудіо',
+      },
+      document: {
+        name: 'Документ',
+      },
+      video: {
+        name: 'Відео',
+      },
+      custom: {
+        description: 'Укажіть інші типи файлів.',
+        createPlaceholder: '  Розширення файлу, наприклад .doc',
+        name: 'Інші типи файлів',
+      },
+      supportFileTypes: 'Підтримка типів файлів',
+    },
+    'content': 'Вміст',
+    'both': 'Як',
+    'single-file': 'Один файл',
+    'multi-files': 'Список файлів',
+    'localUpload': 'Локальне завантаження',
+    'uploadFileTypes': 'Типи файлів для завантаження',
+    'maxNumberOfUploads': 'Максимальна кількість завантажень',
   },
   vision: {
-    name: 'Зображення', // Vision
+    // Vision
+    name: 'Зображення',
     description: 'Увімкнення функції "Зображення" дозволить моделі приймати зображення та відповідати на запитання про них.',
-    settings: 'Налаштування', // Settings
+    // Settings
+    settings: 'Налаштування',
     visionSettings: {
       title: 'Налаштування зображень', // Vision Settings
       resolution: 'Роздільна здатність', // Resolution
@@ -335,6 +384,7 @@ const translation = {
       url: 'URL-адреса', // URL
       uploadLimit: 'Ліміт завантаження', // Upload Limit
     },
+    onlySupportVisionModelTip: 'Підтримує лише моделі зору',
   },
   voice: {
     name: 'Голос', // Voice
@@ -384,9 +434,11 @@ const translation = {
     queryPlaceholder: 'Будь ласка, введіть текст запиту', // Please enter the request text.
     run: 'ЗАПУСТИТИ', // RUN
   },
-  result: 'Вихідний текст', // Output Text
+  // Output Text
+  result: 'Вихідний текст',
   datasetConfig: {
-    settingTitle: 'Налаштування пошуку', // Retrieval settings
+    // Retrieval settings
+    settingTitle: 'Налаштування пошуку',
     knowledgeTip: 'Клацніть кнопку “+”, щоб додати знання',
     retrieveOneWay: {
       title: 'Односторонній пошук', // N-to-1 retrieval
@@ -396,18 +448,28 @@ const translation = {
       title: 'Багатосторонній пошук', // Multi-path retrieval
       description: 'На основі намірів користувача запитує по всіх Базах Знань, отримує релевантний текст із кількох джерел і вибирає найкращі результати, що відповідають запиту користувача, після переранжування. Необхідна конфігурація API моделі переранжування.',
     },
-    rerankModelRequired: 'Необхідна модель переранжування', // Rerank model is required
-    params: 'Параметри', // Params
-    top_k: 'Найкращих K', // Top K
+    // Rerank model is required
+    rerankModelRequired: 'Необхідна модель переранжування',
+    // Params
+    params: 'Параметри',
+    // Top K
+    top_k: 'Найкращих K',
     top_kTip: 'Використовується для фільтрації фрагментів, найбільш схожих на запитання користувачів. Система також динамічно регулюватиме значення K у відповідності з max_tokens обраної моделі.',
-    score_threshold: 'Поріг оцінки', // Score Threshold
+    // Score Threshold
+    score_threshold: 'Поріг оцінки',
     score_thresholdTip: 'Використовується для встановлення порогу схожості для фільтрації фрагментів.',
-    retrieveChangeTip: 'Зміна  режиму індексування та режиму отримання може вплинути на застосунки, пов’язані з цими знаннями.', // Modifying...
+    // Modifying...
+    retrieveChangeTip: 'Зміна  режиму індексування та режиму отримання може вплинути на застосунки, пов’язані з цими знаннями.',
+    embeddingModelRequired: 'Потрібна налаштована модель вбудовування',
   },
-  debugAsSingleModel: 'Налагодження як одна модель', // Debug as Single Model
-  debugAsMultipleModel: 'Налагодження як багато моделей', // Debug as Multiple Models
-  duplicateModel: 'Дублювання', // Duplicate
-  publishAs: 'Опублікувати як', // Publish as
+  // Debug as Single Model
+  debugAsSingleModel: 'Налагодження як одна модель',
+  // Debug as Multiple Models
+  debugAsMultipleModel: 'Налагодження як багато моделей',
+  // Duplicate
+  duplicateModel: 'Дублювання',
+  // Publish as
+  publishAs: 'Опублікувати як',
   assistantType: {
     name: 'Тип Асистента', // Assistant Type
     chatAssistant: {
@@ -444,6 +506,79 @@ const translation = {
       enabled: 'Увімкнено', // Enabled
     },
   },
+  codegen: {
+    generatedCodeTitle: 'Згенерований код',
+    generate: 'Генерувати',
+    title: 'Генератор коду',
+    loading: 'Генерація коду...',
+    instruction: 'Інструкції',
+    applyChanges: 'Застосувати зміни',
+    resTitle: 'Згенерований код',
+    noDataLine2: 'Тут з\'явиться попередній перегляд коду.',
+    noDataLine1: 'Опишіть свій випадок використання зліва,',
+    apply: 'Застосовувати',
+    overwriteConfirmTitle: 'Перезаписати існуючий код?',
+    overwriteConfirmMessage: 'Ця дія перезапише існуючий код. Хочете продовжити?',
+    instructionPlaceholder: 'Введіть детальний опис коду, який ви хочете згенерувати.',
+    description: 'Генератор коду використовує налаштовані моделі для генерації високоякісного коду на основі ваших інструкцій. Будь ласка, надайте чіткі та детальні інструкції.',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        name: 'Налагоджувач Python',
+        instruction: 'Бот, який може генерувати та налагоджувати ваш код на основі ваших інструкцій',
+      },
+      translation: {
+        name: 'Переклад',
+        instruction: 'Перекладач, який може перекладати кількома мовами',
+      },
+      professionalAnalyst: {
+        name: 'Професійний аналітик',
+        instruction: 'Отримуйте аналітичні дані, виявляйте ризики та перетворюйте ключову інформацію з довгих звітів в єдину записку',
+      },
+      excelFormulaExpert: {
+        name: 'Експерт з формул Excel',
+        instruction: 'Чат-бот, який може допомогти користувачам-початківцям розуміти, використовувати та створювати формули Excel на основі інструкцій користувача',
+      },
+      travelPlanning: {
+        name: 'Планування подорожей',
+        instruction: 'Помічник із планування подорожей — це інтелектуальний інструмент, розроблений, щоб допомогти користувачам без зусиль планувати свої поїздки',
+      },
+      SQLSorcerer: {
+        name: 'SQL чаклун',
+        instruction: 'Перетворюйте повсякденну мову на SQL-запити',
+      },
+      GitGud: {
+        name: 'Git gud',
+        instruction: 'Генеруйте відповідні команди Git на основі описаних користувачем дій контролю версій',
+      },
+      meetingTakeaways: {
+        name: 'Підсумки зустрічі',
+        instruction: 'Перетворіть зустрічі на стислі підсумки, включаючи теми для обговорення, ключові висновки та пункти дій',
+      },
+      writingsPolisher: {
+        name: 'Письменницька полірувальна машина',
+        instruction: 'Використовуйте передові методи редагування тексту, щоб покращити свої тексти',
+      },
+    },
+    instruction: 'Інструкції',
+    generate: 'Генерувати',
+    apply: 'Застосовувати',
+    tryIt: 'Спробуйте',
+    overwriteTitle: 'Змінити існуючу конфігурацію?',
+    instructionPlaceHolder: 'Пишіть чіткі та конкретні інструкції.',
+    loading: 'Оркестрування програми для вас...',
+    noDataLine1: 'Опишіть свій випадок використання зліва,',
+    resTitle: 'Згенерований запит',
+    title: 'Генератор підказок',
+    noDataLine2: 'Тут буде показано попередній перегляд оркестровки.',
+    overwriteMessage: 'Застосування цього рядка замінить існуючу конфігурацію.',
+    description: 'Генератор підказок використовує налаштовану модель для оптимізації запитів для кращої якості та кращої структури. Напишіть, будь ласка, зрозумілу та детальну інструкцію.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Результати не відображаються через тайм-аут. Будь ласка, зверніться до журналів, щоб отримати повні результати.',
+  },
+  noResult: 'Тут буде відображено вихідні дані.',
 }
 
 export default translation

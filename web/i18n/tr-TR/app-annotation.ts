@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Kaydet',
   },
   embeddingModelSwitchTip: 'Ek açıklama metin vektörleştirme modeli, model değiştirmek yeniden yerleştirilecek ve ek maliyetlere yol açacaktır.',
+  list: {
+    delete: {
+      title: 'Silmekte emin misin?',
+    },
+  },
+  batchAction: {
+    delete: 'Sil',
+    selected: 'Seçildi',
+    cancel: 'İptal et',
+  },
 }
 
 export default translation

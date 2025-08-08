@@ -23,6 +23,10 @@ const translation = {
   importFromDSLFile: '文件',
   importFromDSLUrl: 'URL',
   importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
+  dslUploader: {
+    button: '拖拽文件至此，或者',
+    browse: '选择文件',
+  },
   deleteAppConfirmTitle: '确认删除应用？',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',

@@ -101,15 +101,15 @@ export const useEmbeddedChatbot = () => {
 
       if (localeParam) {
         // If locale parameter exists in URL, use it instead of default
-        changeLanguage(localeParam)
+        await changeLanguage(localeParam)
       }
       else if (localeFromSysVar) {
         // If locale is set as a system variable, use that
-        changeLanguage(localeFromSysVar)
+        await changeLanguage(localeFromSysVar)
       }
       else if (appInfo?.site.default_language) {
         // Otherwise use the default from app config
-        changeLanguage(appInfo.site.default_language)
+        await changeLanguage(appInfo.site.default_language)
       }
     }
 

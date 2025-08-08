@@ -112,7 +112,7 @@ const BlockInput: FC<IBlockInputProps> = ({
         ? <div className='h-full px-4 py-2'>
           <textarea
             ref={contentEditableRef}
-            className={classNames(editAreaClassName, 'block w-full h-full resize-none')}
+            className={classNames(editAreaClassName, 'block h-full w-full resize-none')}
             placeholder={placeholder}
             onChange={onValueChange}
             value={currentValue}
@@ -130,7 +130,7 @@ const BlockInput: FC<IBlockInputProps> = ({
     </div>)
 
   return (
-    <div className={classNames('block-input w-full overflow-y-auto bg-white border-none rounded-xl')}>
+    <div className={classNames('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
       {textAreaContent}
       {/* footer */}
       {!readonly && (

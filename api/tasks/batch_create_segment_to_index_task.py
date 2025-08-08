@@ -134,6 +134,7 @@ def batch_create_segment_to_index_task(
             db.session.add(segment_document)
             document_segments.append(segment_document)
         # update document word count
+        assert dataset_document.word_count is not None
         dataset_document.word_count += word_count_change
         db.session.add(dataset_document)
         # add index to db

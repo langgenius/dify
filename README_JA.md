@@ -227,6 +227,10 @@ docker compose up -d
 #### Alibaba Cloud Data Management
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
 
+#### AKSへのデプロイにAzure Devops Pipelineを使用
+
+[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)を使用してDifyをAKSにワンクリックでデプロイ
+
 
 ## 貢献
 
