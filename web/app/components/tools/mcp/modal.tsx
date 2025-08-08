@@ -27,6 +27,8 @@ export type DuplicateAppModalProps = {
     icon: string
     icon_background?: string | null
     server_identifier: string
+    timeout: number
+    sse_read_timeout: number
   }) => void
   onHide: () => void
 }
@@ -125,6 +127,8 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
+      timeout: timeout || 30,
+      sse_read_timeout: sseReadTimeout || 300,
     })
     if(isCreate)
       onHide()
