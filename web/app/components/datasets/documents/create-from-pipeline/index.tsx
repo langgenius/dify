@@ -72,16 +72,19 @@ const CreateFormPipeline = () => {
     currentDocument,
     PagesMapAndSelectedPagesId,
     hidePreviewOnlineDocument,
+    clearOnlineDocumentData,
   } = useOnlineDocument()
   const {
     websitePages,
     currentWebsite,
     hideWebsitePreview,
+    clearWebsiteCrawlData,
   } = useWebsiteCrawl()
   const {
     fileList: onlineDriveFileList,
     selectedFileKeys,
     selectedOnlineDriveFileList,
+    clearOnlineDriveData,
   } = useOnlineDrive()
 
   const datasourceType = datasource?.nodeData.provider_type
@@ -351,6 +354,32 @@ const CreateFormPipeline = () => {
     }
   }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 
+  const clearDataSourceData = useCallback((dataSource: Datasource) => {
+    if (dataSource.nodeData.provider_type === DatasourceType.onlineDocument)
+      clearOnlineDocumentData()
+    else if (dataSource.nodeData.provider_type === DatasourceType.websiteCrawl)
+      clearWebsiteCrawlData()
+    else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
+      clearOnlineDriveData()
+  }, [])
+
+  const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
+    const {
+      setCurrentCredentialId,
+      currentNodeIdRef,
+    } = dataSourceStore.getState()
+    clearDataSourceData(dataSource)
+    setCurrentCredentialId('')
+    currentNodeIdRef.current = dataSource.nodeId
+    setDatasource(dataSource)
+  }, [dataSourceStore])
+
+  const handleCredentialChange = useCallback((credentialId: string) => {
+    const { setCurrentCredentialId } = dataSourceStore.getState()
+    clearDataSourceData(datasource!)
+    setCurrentCredentialId(credentialId)
+  }, [dataSourceStore, datasource])
+
   if (isFetchingPipelineInfo) {
     return (
       <Loading type='app' />
@@ -374,7 +403,7 @@ const CreateFormPipeline = () => {
                 <div className='flex flex-col gap-y-5 pt-4'>
                   <DataSourceOptions
                     datasourceNodeId={datasource?.nodeId || ''}
-                    onSelect={setDatasource}
+                    onSelect={handleSwitchDataSource}
                     pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                   />
                   {datasourceType === DatasourceType.localFile && (
@@ -387,18 +416,21 @@ const CreateFormPipeline = () => {
                     <OnlineDocuments
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
+                      onCredentialChange={handleCredentialChange}
                     />
                   )}
                   {datasourceType === DatasourceType.websiteCrawl && (
                     <WebsiteCrawl
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
+                      onCredentialChange={handleCredentialChange}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDrive && (
                     <OnlineDrive
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
+                      onCredentialChange={handleCredentialChange}
                     />
                   )}
                   {isShowVectorSpaceFull && (

@@ -7,6 +7,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import { useShallow } from 'zustand/react/shallow'
+import { CrawlStep } from '@/models/datasets'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -120,12 +121,28 @@ export const useOnlineDocument = () => {
     setCurrentDocument(undefined)
   }, [dataSourceStore])
 
+  const clearOnlineDocumentData = useCallback(() => {
+    const {
+      setDocumentsData,
+      setSearchValue,
+      setSelectedPagesId,
+      setOnlineDocuments,
+      setCurrentDocument,
+    } = dataSourceStore.getState()
+    setDocumentsData([])
+    setSearchValue('')
+    setSelectedPagesId(new Set())
+    setOnlineDocuments([])
+    setCurrentDocument(undefined)
+  }, [dataSourceStore])
+
   return {
     currentWorkspace,
     onlineDocuments,
     currentDocument,
     PagesMapAndSelectedPagesId,
     hidePreviewOnlineDocument,
+    clearOnlineDocumentData,
   }
 }
 
@@ -145,10 +162,26 @@ export const useWebsiteCrawl = () => {
     setPreviewIndex(-1)
   }, [dataSourceStore])
 
+  const clearWebsiteCrawlData = useCallback(() => {
+    const {
+      setStep,
+      setCrawlResult,
+      setWebsitePages,
+      setPreviewIndex,
+      setCurrentWebsite,
+    } = dataSourceStore.getState()
+    setStep(CrawlStep.init)
+    setCrawlResult(undefined)
+    setCurrentWebsite(undefined)
+    setWebsitePages([])
+    setPreviewIndex(-1)
+  }, [dataSourceStore])
+
   return {
     websitePages,
     currentWebsite,
     hideWebsitePreview,
+    clearWebsiteCrawlData,
   }
 }
 
@@ -160,14 +193,31 @@ export const useOnlineDrive = () => {
     fileList: state.fileList,
     selectedFileKeys: state.selectedFileKeys,
   })))
+  const dataSourceStore = useDataSourceStore()
 
   const selectedOnlineDriveFileList = useMemo(() => {
     return selectedFileKeys.map(key => fileList.find(item => item.key === key)!)
   }, [fileList, selectedFileKeys])
 
+  const clearOnlineDriveData = useCallback(() => {
+    const {
+      setFileList,
+      setBucket,
+      setPrefix,
+      setKeywords,
+      setSelectedFileKeys,
+    } = dataSourceStore.getState()
+    setFileList([])
+    setBucket('')
+    setPrefix([])
+    setKeywords('')
+    setSelectedFileKeys([])
+  }, [dataSourceStore])
+
   return {
     fileList,
     selectedFileKeys,
     selectedOnlineDriveFileList,
+    clearOnlineDriveData,
   }
 }
