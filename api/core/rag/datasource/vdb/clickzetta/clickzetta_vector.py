@@ -74,10 +74,10 @@ class ClickzettaConnectionPool:
     Global connection pool for ClickZetta connections.
     Manages connection reuse across ClickzettaVector instances.
     """
-    
+
     _instance: Optional["ClickzettaConnectionPool"] = None
     _lock = threading.Lock()
-    
+
     def __init__(self):
         self._pools: dict[str, list[tuple[Connection, float]]] = {}  # config_key -> [(connection, last_used_time)]
         self._pool_locks: dict[str, threading.Lock] = {}
@@ -86,7 +86,7 @@ class ClickzettaConnectionPool:
         self._cleanup_thread: Optional[threading.Thread] = None
         self._shutdown = False
         self._start_cleanup_thread()
-    
+
     @classmethod
     def get_instance(cls) -> "ClickzettaConnectionPool":
         """Get singleton instance of connection pool."""
@@ -95,19 +95,19 @@ class ClickzettaConnectionPool:
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
-    
+
     def _get_config_key(self, config: ClickzettaConfig) -> str:
         """Generate unique key for connection configuration."""
         return (
             f"{config.username}:{config.instance}:{config.service}:"
             f"{config.workspace}:{config.vcluster}:{config.schema_name}"
         )
-    
+
     def _create_connection(self, config: ClickzettaConfig) -> "Connection":
         """Create a new ClickZetta connection."""
         max_retries = 3
         retry_delay = 1.0
-        
+
         for attempt in range(max_retries):
             try:
                 connection = clickzetta.connect(
@@ -119,7 +119,7 @@ class ClickzettaConnectionPool:
                     vcluster=config.vcluster,
                     schema=config.schema_name,
                 )
-                
+
                 # Configure connection session settings
                 self._configure_connection(connection)
                 logger.debug("Created new ClickZetta connection (attempt %d/%d)", attempt + 1, max_retries)
@@ -127,12 +127,12 @@ class ClickzettaConnectionPool:
             except Exception:
                 logger.exception("ClickZetta connection attempt %d/%d failed", attempt + 1, max_retries)
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay * (2 ** attempt))
+                    time.sleep(retry_delay * (2**attempt))
                 else:
                     raise
-        
+
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
-    
+
     def _configure_connection(self, connection: "Connection") -> None:
         """Configure connection session settings."""
         try:
@@ -141,11 +141,11 @@ class ClickzettaConnectionPool:
                 clickzetta_logger = logging.getLogger("clickzetta")
                 original_level = clickzetta_logger.level
                 clickzetta_logger.setLevel(logging.WARNING)
-                
+
                 try:
                     # Use quote mode for string literal escaping
                     cursor.execute("SET cz.sql.string.literal.escape.mode = 'quote'")
-                    
+
                     # Apply performance optimization hints
                     performance_hints = [
                         # Vector index optimization
@@ -170,16 +170,16 @@ class ClickzettaConnectionPool:
                         "SET cz.storage.parquet.non.contiguous.read = true",
                         "SET cz.sql.compaction.after.commit = true",
                     ]
-                    
+
                     for hint in performance_hints:
                         cursor.execute(hint)
                 finally:
                     # Restore original logging level
                     clickzetta_logger.setLevel(original_level)
-                    
+
         except Exception:
             logger.exception("Failed to configure connection, continuing with defaults")
-    
+
     def _is_connection_valid(self, connection: "Connection") -> bool:
         """Check if connection is still valid."""
         try:
@@ -188,29 +188,28 @@ class ClickzettaConnectionPool:
                 return True
         except Exception:
             return False
-    
+
     def get_connection(self, config: ClickzettaConfig) -> "Connection":
         """Get a connection from the pool or create a new one."""
         config_key = self._get_config_key(config)
-        
+
         # Ensure pool lock exists
         if config_key not in self._pool_locks:
             with self._lock:
                 if config_key not in self._pool_locks:
                     self._pool_locks[config_key] = threading.Lock()
                     self._pools[config_key] = []
-        
+
         with self._pool_locks[config_key]:
             pool = self._pools[config_key]
             current_time = time.time()
-            
+
             # Try to reuse existing connection
             while pool:
                 connection, last_used = pool.pop(0)
-                
+
                 # Check if connection is not expired and still valid
-                if (current_time - last_used < self._connection_timeout and
-                    self._is_connection_valid(connection)):
+                if current_time - last_used < self._connection_timeout and self._is_connection_valid(connection):
                     logger.debug("Reusing ClickZetta connection from pool")
                     return connection
                 else:
@@ -219,14 +218,14 @@ class ClickzettaConnectionPool:
                         connection.close()
                     except Exception:
                         pass
-            
+
             # No valid connection found, create new one
             return self._create_connection(config)
-    
+
     def return_connection(self, config: ClickzettaConfig, connection: "Connection") -> None:
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
-        
+
         if config_key not in self._pool_locks:
             # Pool was cleaned up, just close the connection
             try:
@@ -234,10 +233,10 @@ class ClickzettaConnectionPool:
             except Exception:
                 pass
             return
-        
+
         with self._pool_locks[config_key]:
             pool = self._pools[config_key]
-            
+
             # Only return to pool if not at capacity and connection is valid
             if len(pool) < self._max_pool_size and self._is_connection_valid(connection):
                 pool.append((connection, time.time()))
@@ -248,20 +247,20 @@ class ClickzettaConnectionPool:
                     connection.close()
                 except Exception:
                     pass
-    
+
     def _cleanup_expired_connections(self) -> None:
         """Clean up expired connections from all pools."""
         current_time = time.time()
-        
+
         with self._lock:
             for config_key in list(self._pools.keys()):
                 if config_key not in self._pool_locks:
                     continue
-                    
+
                 with self._pool_locks[config_key]:
                     pool = self._pools[config_key]
                     valid_connections = []
-                    
+
                     for connection, last_used in pool:
                         if current_time - last_used < self._connection_timeout:
                             valid_connections.append((connection, last_used))
@@ -270,11 +269,12 @@ class ClickzettaConnectionPool:
                                 connection.close()
                             except Exception:
                                 pass
-                    
+
                     self._pools[config_key] = valid_connections
-    
+
     def _start_cleanup_thread(self) -> None:
         """Start background thread for connection cleanup."""
+
         def cleanup_worker():
             while not self._shutdown:
                 try:
@@ -283,19 +283,19 @@ class ClickzettaConnectionPool:
                         self._cleanup_expired_connections()
                 except Exception:
                     logger.exception("Error in connection pool cleanup")
-        
+
         self._cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
         self._cleanup_thread.start()
-    
+
     def shutdown(self) -> None:
         """Shutdown connection pool and close all connections."""
         self._shutdown = True
-        
+
         with self._lock:
             for config_key in list(self._pools.keys()):
                 if config_key not in self._pool_locks:
                     continue
-                    
+
                 with self._pool_locks[config_key]:
                     pool = self._pools[config_key]
                     for connection, _ in pool:
@@ -327,49 +327,49 @@ class ClickzettaVector(BaseVector):
     def _get_connection(self) -> "Connection":
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
-    
+
     def _return_connection(self, connection: "Connection") -> None:
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
-    
+
     class ConnectionContext:
         """Context manager for borrowing and returning connections."""
-        
+
         def __init__(self, vector_instance: "ClickzettaVector"):
             self.vector = vector_instance
             self.connection: Optional[Connection] = None
-        
+
         def __enter__(self) -> "Connection":
             self.connection = self.vector._get_connection()
             return self.connection
-        
+
         def __exit__(self, exc_type, exc_val, exc_tb):
             if self.connection:
                 self.vector._return_connection(self.connection)
-    
+
     def get_connection_context(self) -> "ClickzettaVector.ConnectionContext":
         """Get a connection context manager."""
         return self.ConnectionContext(self)
-    
+
     def _parse_metadata(self, raw_metadata: str, row_id: str) -> dict:
         """
         Parse metadata from JSON string with proper error handling and fallback.
-        
+
         Args:
             raw_metadata: Raw JSON string from database
             row_id: Row ID for fallback document_id
-            
+
         Returns:
             Parsed metadata dict with guaranteed required fields
         """
         try:
             if raw_metadata:
                 metadata = json.loads(raw_metadata)
-                
+
                 # Handle double-encoded JSON
                 if isinstance(metadata, str):
                     metadata = json.loads(metadata)
-                
+
                 # Ensure we have a dict
                 if not isinstance(metadata, dict):
                     metadata = {}
@@ -380,14 +380,14 @@ class ClickzettaVector(BaseVector):
             # Fallback: extract document_id with regex
             doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', raw_metadata or "")
             metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
-        
+
         # Ensure required fields are set
         metadata["doc_id"] = row_id  # segment id
-        
+
         # Ensure document_id exists (critical for Dify's format_retrieval_documents)
         if "document_id" not in metadata:
             metadata["document_id"] = row_id  # fallback to segment id
-        
+
         return metadata
 
     @classmethod
@@ -726,7 +726,8 @@ class ClickzettaVector(BaseVector):
         with self.get_connection_context() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    f"SELECT COUNT(*) FROM {self._config.schema_name}.{self._table_name} WHERE id = ?", binding_params=[safe_id]
+                    f"SELECT COUNT(*) FROM {self._config.schema_name}.{self._table_name} WHERE id = ?",
+                    binding_params=[safe_id],
                 )
                 result = cursor.fetchone()
                 return result[0] > 0 if result else False
