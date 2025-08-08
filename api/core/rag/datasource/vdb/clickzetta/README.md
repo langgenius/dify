@@ -185,6 +185,6 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 
 ## References
 
-- [Clickzetta Vector Search Documentation](../../../../../../../yunqidoc/cn_markdown_20250526/vector-search.md)
-- [Clickzetta Inverted Index Documentation](../../../../../../../yunqidoc/cn_markdown_20250526/inverted-index.md)
-- [Clickzetta SQL Functions](../../../../../../../yunqidoc/cn_markdown_20250526/sql_functions/)
+- [Clickzetta Vector Search Documentation](https://yunqi.tech/documents/vector-search)
+- [Clickzetta Inverted Index Documentation](https://yunqi.tech/documents/inverted-index)
+- [Clickzetta SQL Functions](https://yunqi.tech/documents/sql-reference)
