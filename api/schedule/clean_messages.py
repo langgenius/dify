@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 import app
 from configs import dify_config
@@ -42,8 +42,8 @@ def clean_messages():
                 .all()
             )
 
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not messages:
             break
         for message in messages:
