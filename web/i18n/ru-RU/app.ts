@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'Из файла DSL',
   importFromDSLUrl: 'Из URL',
   importFromDSLUrlPlaceholder: 'Вставьте ссылку DSL сюда',
+  dslUploader: {
+    button: 'Перетащите файл, или',
+    browse: 'Обзор',
+  },
   deleteAppConfirmTitle: 'Удалить это приложение?',
   deleteAppConfirmContent:
     'Удаление приложения необратимо. Пользователи больше не смогут получить доступ к вашему приложению, и все настройки подсказок и журналы будут безвозвратно удалены.',

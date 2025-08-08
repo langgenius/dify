@@ -217,6 +217,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
     children: childrenResult,
+    alias: obj.alias,
   }
 
   return res
@@ -412,6 +413,7 @@ const formatItem = (
               ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
               : `${output.type.slice(0, 1).toLocaleLowerCase()}${output.type.slice(1)}`,
             description: output.description,
+            alias: output?.properties?.dify_builtin_type?.enum?.[0],
             children: output.type === 'object' ? {
               schema: {
                 type: 'object',
@@ -518,41 +520,8 @@ const formatItem = (
 
     case BlockEnum.DataSource: {
       const payload = data as DataSourceNodeType
-      const baseVars = DataSourceNodeDefault.getOutputVars?.(payload, ragVars) || []
-      if (payload.output_schema?.properties) {
-        const dynamicOutputSchema: any[] = []
-        Object.keys(payload.output_schema.properties).forEach((outputKey) => {
-          const output = payload.output_schema!.properties[outputKey]
-          const dataType = output?.properties?.dify_builtin_type ? output.properties.dify_builtin_type.enum[0] : output.type
-          dynamicOutputSchema.push({
-            variable: outputKey,
-            type: dataType === 'array'
-              ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
-              : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
-            description: output.description,
-            children: output.type === 'object' ? {
-              schema: {
-                type: 'object',
-                properties: Object.fromEntries(
-                  Object.entries(output.properties).filter(([key]) => key !== 'dify_builtin_type'),
-                ),
-              },
-            } : undefined,
-          })
-        })
-        res.vars = [
-          ...baseVars,
-          ...dynamicOutputSchema,
-          {
-            variable: 'output',
-            type: VarType.object,
-            children: dynamicOutputSchema,
-          },
-        ]
-      }
-      else {
-        res.vars = baseVars
-      }
+      const dataSourceVars = DataSourceNodeDefault.getOutputVars?.(payload, ragVars) || []
+      res.vars = dataSourceVars
       break
     }
 
@@ -952,7 +921,7 @@ export const getVarType = ({
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
       if (valueSelector.length === 2) { // root
-        return VarType.object
+        return targetVar.alias || VarType.object
       }
       let currProperties = targetVar.children.schema;
       (valueSelector as ValueSelector).slice(2).forEach((key, i) => {

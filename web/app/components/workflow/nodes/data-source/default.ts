@@ -58,6 +58,29 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       provider_type,
     } = payload
     const isLocalFile = provider_type === DataSourceClassification.localFile
+    const dynamicOutputSchema: any[] = []
+    if (payload.output_schema?.properties) {
+      Object.keys(payload.output_schema.properties).forEach((outputKey) => {
+        const output = payload.output_schema!.properties[outputKey]
+        const dataType = output.type
+        dynamicOutputSchema.push({
+          variable: outputKey,
+          type: dataType === 'array'
+            ? `array[${output.items?.type.slice(0, 1).toLocaleLowerCase()}${output.items?.type.slice(1)}]`
+            : `${dataType.slice(0, 1).toLocaleLowerCase()}${dataType.slice(1)}`,
+          description: output.description,
+          alias: output?.properties?.dify_builtin_type?.enum?.[0],
+          children: output.type === 'object' ? {
+            schema: {
+              type: 'object',
+              properties: Object.fromEntries(
+                Object.entries(output.properties).filter(([key]) => key !== 'dify_builtin_type'),
+              ),
+            },
+          } : undefined,
+        })
+      })
+    }
     return [
       ...COMMON_OUTPUT.map(item => ({ variable: item.name, type: item.type })),
       ...(
@@ -66,6 +89,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
           : []
       ),
       ...ragVars,
+      ...dynamicOutputSchema,
     ]
   },
 }

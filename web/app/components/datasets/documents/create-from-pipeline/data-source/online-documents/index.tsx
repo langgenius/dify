@@ -13,19 +13,21 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import Title from './title'
-import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
-import { noop } from 'lodash-es'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
+import Loading from '@/app/components/base/loading'
 
 type OnlineDocumentsProps = {
   isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
+  onCredentialChange: (credentialId: string) => void
 }
 
 const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  onCredentialChange,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -33,13 +35,19 @@ const OnlineDocuments = ({
     documentsData,
     searchValue,
     selectedPagesId,
-    currentWorkspaceId,
+    currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     documentsData: state.documentsData,
     searchValue: state.searchValue,
     selectedPagesId: state.selectedPagesId,
-    currentWorkspaceId: state.currentWorkspaceId,
+    currentCredentialId: state.currentCredentialId,
   })))
+
+  const { data: dataSourceAuth } = useGetDataSourceAuth({
+    pluginId: nodeData.plugin_id,
+    provider: nodeData.provider_name,
+  })
+
   const dataSourceStore = useDataSourceStore()
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
@@ -61,19 +69,21 @@ const OnlineDocuments = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDocuments = useCallback(async () => {
+    const { currentCredentialId } = dataSourceStore.getState()
+    if (!currentCredentialId) return
     ssePost(
       datasourceNodeRunURL,
       {
         body: {
           inputs: {},
+          credential_id: currentCredentialId,
           datasource_type: DatasourceType.onlineDocument,
         },
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setDocumentsData, setCurrentWorkspaceId } = dataSourceStore.getState()
+          const { setDocumentsData } = dataSourceStore.getState()
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
-          setCurrentWorkspaceId(documentsData.data[0].workspace_id)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           Toast.notify({
@@ -86,33 +96,8 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL])
 
   useEffect(() => {
-    const {
-      setDocumentsData,
-      setCurrentWorkspaceId,
-      setSearchValue,
-      setSelectedPagesId,
-      setOnlineDocuments,
-      setCurrentDocument,
-      currentNodeIdRef,
-    } = dataSourceStore.getState()
-    if (nodeId !== currentNodeIdRef.current) {
-      setDocumentsData([])
-      setCurrentWorkspaceId('')
-      setSearchValue('')
-      setSelectedPagesId(new Set())
-      setOnlineDocuments([])
-      setCurrentDocument(undefined)
-      currentNodeIdRef.current = nodeId
-      getOnlineDocuments()
-    }
-    else {
-      // Avoid fetching documents when come back from next step
-      if (!documentsData.length)
-        getOnlineDocuments()
-    }
-  }, [nodeId])
-
-  const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
+    getOnlineDocuments()
+  }, [currentCredentialId])
 
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
@@ -137,29 +122,16 @@ const OnlineDocuments = ({
     })
   }, [setShowAccountSettingModal])
 
-  if (!documentsData?.length)
-    return null
-
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        // todo: delete mock data
         docTitle='How to use?'
         docLink='https://docs.dify.ai'
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
-        currentCredentialId={'12345678'}
-        onCredentialChange={noop}
-        credentials={[{
-          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
-          credential: {
-            credentials: '......',
-          },
-          id: '12345678',
-          is_default: true,
-          name: 'test123',
-          type: CredentialTypeEnum.API_KEY,
-        }]}
+        currentCredentialId={currentCredentialId}
+        onCredentialChange={onCredentialChange}
+        credentials={dataSourceAuth?.result || []}
       />
       <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <div className='flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3'>
@@ -172,18 +144,24 @@ const OnlineDocuments = ({
           />
         </div>
         <div className='overflow-hidden rounded-b-xl'>
-          <PageSelector
-            checkedIds={selectedPagesId}
-            disabledValue={new Set()}
-            searchValue={searchValue}
-            list={currentWorkspace?.pages || []}
-            pagesMap={PagesMapAndSelectedPagesId}
-            onSelect={handleSelectPages}
-            canPreview={!isInPipeline}
-            onPreview={handlePreviewPage}
-            isMultipleChoice={!isInPipeline}
-            currentWorkspaceId={currentWorkspaceId}
-          />
+          {documentsData?.length ? (
+            <PageSelector
+              checkedIds={selectedPagesId}
+              disabledValue={new Set()}
+              searchValue={searchValue}
+              list={documentsData[0].pages || []}
+              pagesMap={PagesMapAndSelectedPagesId}
+              onSelect={handleSelectPages}
+              canPreview={!isInPipeline}
+              onPreview={handlePreviewPage}
+              isMultipleChoice={!isInPipeline}
+              currentCredentialId={currentCredentialId}
+            />
+          ) : (
+            <div className='flex h-[296px] items-center justify-center'>
+              <Loading type='app' />
+            </div>
+          )}
         </div>
       </div>
     </div>

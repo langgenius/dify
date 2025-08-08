@@ -173,7 +173,7 @@ const Item: FC<ItemProps> = ({
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.alias || itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
@@ -186,7 +186,7 @@ const Item: FC<ItemProps> = ({
       }}>
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
-            root={{ nodeId, nodeName: title, attrName: itemData.variable }}
+            root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.alias }}
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
             onSelect={(valueSelector) => {

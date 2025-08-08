@@ -15,14 +15,13 @@ import StructureOutputItem from '@/app/components/workflow/nodes/_base/component
 import TagInput from '@/app/components/base/tag-input'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useConfig } from './hooks/use-config'
-import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
 import {
   COMMON_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolForm from '../tool/components/tool-form'
+import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -49,24 +48,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
 
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
-  const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
-    const dataType = outputItem.value?.properties?.dify_builtin_type ? outputItem.value?.properties?.dify_builtin_type.enum[0] : Type.object
-    const properties = Object.fromEntries(
-      Object.entries(outputItem.value?.properties || {}).filter(([key]) => key !== 'dify_builtin_type'),
-    ) as Record<string, any>
-    return {
-      schema: {
-        type: dataType,
-        properties: {
-          [outputItem.name]: {
-            ...outputItem.value,
-            properties,
-          },
-        },
-        additionalProperties: false,
-      },
-    }
-  }
+
   return (
     <div >
       {

@@ -34,7 +34,7 @@ const Datasets = ({
   })
   const resetDatasetList = useResetDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
-  const observerRef = useRef<IntersectionObserver>()
+  const observerRef = useRef<IntersectionObserver>(null)
 
   useEffect(() => {
     document.title = `${t('dataset.knowledge')} - Dify`
@@ -51,7 +51,6 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchorRef])
 
   return (

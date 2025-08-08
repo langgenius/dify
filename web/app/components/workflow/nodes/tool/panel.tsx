@@ -10,8 +10,8 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Loading from '@/app/components/base/loading'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { Type } from '../llm/types'
 import { useStore } from '@/app/components/workflow/store'
+import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -121,15 +121,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 {outputItem.value?.type === 'object' ? (
                   <StructureOutputItem
                     rootClassName='code-sm-semibold text-text-secondary'
-                    payload={{
-                      schema: {
-                        type: Type.object,
-                        properties: {
-                          [outputItem.name]: outputItem.value,
-                        },
-                        additionalProperties: false,
-                      },
-                    }} />
+                    payload={wrapStructuredVarItem(outputItem)} />
                 ) : (
                   <VarItem
                     name={outputItem.name}

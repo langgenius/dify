@@ -13,54 +13,55 @@ import { convertOnlineDriveData } from './utils'
 import produce from 'immer'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
-import { noop } from 'lodash-es'
-import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
 
 type OnlineDriveProps = {
   nodeId: string
   nodeData: DataSourceNodeType
   isInPipeline?: boolean
+  onCredentialChange: (credentialId: string) => void
 }
 
 const OnlineDrive = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  onCredentialChange,
 }: OnlineDriveProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
+    startAfter,
     prefix,
     keywords,
     bucket,
     selectedFileKeys,
     fileList,
+    currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
+    startAfter: state.startAfter,
     prefix: state.prefix,
     keywords: state.keywords,
     bucket: state.bucket,
     selectedFileKeys: state.selectedFileKeys,
     fileList: state.fileList,
+    currentCredentialId: state.currentCredentialId,
   })))
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
+
+  const { data: dataSourceAuth } = useGetDataSourceAuth({
+    pluginId: nodeData.plugin_id,
+    provider: nodeData.provider_name,
+  })
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
-  const getOnlineDriveFiles = useCallback(async (params: {
-    prefix?: string[]
-    bucket?: string
-    startAfter?: string
-    fileList?: OnlineDriveFile[]
-  }) => {
-    const { startAfter, prefix, bucket, fileList } = dataSourceStore.getState()
-    const _prefix = params.prefix ?? prefix
-    const _bucket = params.bucket ?? bucket
-    const _startAfter = params.startAfter ?? startAfter.current
-    const _fileList = params.fileList ?? fileList
-    const prefixString = _prefix.length > 0 ? `${_prefix.join('/')}/` : ''
+  const getOnlineDriveFiles = useCallback(async () => {
+    const { startAfter, prefix, bucket, fileList, currentCredentialId } = dataSourceStore.getState()
+    const prefixString = prefix.length > 0 ? `${prefix.join('/')}/` : ''
     setIsLoading(true)
     ssePost(
       datasourceNodeRunURL,
@@ -68,18 +69,19 @@ const OnlineDrive = ({
         body: {
           inputs: {
             prefix: prefixString,
-            bucket: _bucket,
-            start_after: _startAfter,
+            bucket,
+            start_after: startAfter,
             max_keys: 30, // Adjust as needed
           },
           datasource_type: DatasourceType.onlineDrive,
+          credential_id: currentCredentialId,
         },
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           const { setFileList, isTruncated } = dataSourceStore.getState()
-          const { fileList: newFileList, isTruncated: newIsTruncated } = convertOnlineDriveData(documentsData.data, _prefix, _bucket)
-          setFileList([..._fileList, ...newFileList])
+          const { fileList: newFileList, isTruncated: newIsTruncated } = convertOnlineDriveData(documentsData.data, prefix, bucket)
+          setFileList([...fileList, ...newFileList])
           isTruncated.current = newIsTruncated
           setIsLoading(false)
         },
@@ -95,34 +97,8 @@ const OnlineDrive = ({
   }, [datasourceNodeRunURL, dataSourceStore])
 
   useEffect(() => {
-    const {
-      setFileList,
-      setBucket,
-      setPrefix,
-      setKeywords,
-      setSelectedFileKeys,
-      currentNodeIdRef,
-    } = dataSourceStore.getState()
-    if (nodeId !== currentNodeIdRef.current) {
-      setFileList([])
-      setBucket('')
-      setPrefix([])
-      setKeywords('')
-      setSelectedFileKeys([])
-      currentNodeIdRef.current = nodeId
-      getOnlineDriveFiles({
-        prefix: [],
-        bucket: '',
-        fileList: [],
-        startAfter: '',
-      })
-    }
-    else {
-      // Avoid fetching files when come back from next step
-      if (fileList.length > 0) return
-      getOnlineDriveFiles({})
-    }
-  }, [nodeId])
+    getOnlineDriveFiles()
+  }, [startAfter, prefix, bucket, currentCredentialId])
 
   const onlineDriveFileList = useMemo(() => {
     if (keywords)
@@ -163,7 +139,6 @@ const OnlineDrive = ({
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
       setBucket(file.displayName)
-      getOnlineDriveFiles({ bucket: file.displayName, fileList: [] })
     }
     else {
       setSelectedFileKeys([])
@@ -172,7 +147,6 @@ const OnlineDrive = ({
         draft.push(displayName)
       })
       setPrefix(newPrefix)
-      getOnlineDriveFiles({ prefix: newPrefix, fileList: [] })
     }
   }, [dataSourceStore, getOnlineDriveFiles])
 
@@ -185,23 +159,13 @@ const OnlineDrive = ({
   return (
     <div className='flex flex-col gap-y-2'>
       <Header
-        // todo: delete mock data
         docTitle='Online Drive Docs'
         docLink='https://docs.dify.ai/'
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
-        currentCredentialId={'12345678'}
-        onCredentialChange={noop}
-        credentials={[{
-          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
-          credential: {
-            credentials: '......',
-          },
-          id: '12345678',
-          is_default: true,
-          name: 'test123',
-          type: CredentialTypeEnum.API_KEY,
-        }]}
+        currentCredentialId={currentCredentialId}
+        onCredentialChange={onCredentialChange}
+        credentials={dataSourceAuth?.result || []}
       />
       <FileList
         fileList={onlineDriveFileList}
@@ -216,7 +180,6 @@ const OnlineDrive = ({
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
         isLoading={isLoading}
-        getOnlineDriveFiles={getOnlineDriveFiles}
       />
     </div>
   )

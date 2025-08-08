@@ -12,12 +12,11 @@ import { createWebsiteCrawlSlice } from './slices/website-crawl'
 import type { OnlineDriveSliceShape } from './slices/online-drive'
 import { createOnlineDriveSlice } from './slices/online-drive'
 
-export type DataSourceShape =
-  CommonShape &
-  LocalFileSliceShape &
-  OnlineDocumentSliceShape &
-  WebsiteCrawlSliceShape &
-  OnlineDriveSliceShape
+export type DataSourceShape = CommonShape
+  & LocalFileSliceShape
+  & OnlineDocumentSliceShape
+  & WebsiteCrawlSliceShape
+  & OnlineDriveSliceShape
 
 export const createDataSourceStore = () => {
   return createStore<DataSourceShape>((...args) => ({

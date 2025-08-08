@@ -1,6 +1,11 @@
 import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workflow/store'
 import { useCallback, useMemo, useState } from 'react'
-import { useTestRunSteps } from './hooks'
+import {
+  useOnlineDocument,
+  useOnlineDrive,
+  useTestRunSteps,
+  useWebsiteCrawl,
+} from './hooks'
 import DataSourceOptions from './data-source-options'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
@@ -42,6 +47,10 @@ const TestRunPanel = () => {
     handleBackStep,
   } = useTestRunSteps()
 
+  const { clearOnlineDocumentData } = useOnlineDocument()
+  const { clearWebsiteCrawlData } = useWebsiteCrawl()
+  const { clearOnlineDriveData } = useOnlineDrive()
+
   const datasourceType = datasource?.nodeData.provider_type
 
   const nextBtnDisabled = useMemo(() => {
@@ -67,6 +76,7 @@ const TestRunPanel = () => {
     if (!datasource)
       return
     const datasourceInfoList: Record<string, any>[] = []
+    const credentialId = dataSourceStore.getState().currentCredentialId
     if (datasourceType === DatasourceType.localFile) {
       const { id, name, type, size, extension, mime_type } = fileList[0].file
       const documentInfo = {
@@ -86,16 +96,22 @@ const TestRunPanel = () => {
       const documentInfo = {
         workspace_id,
         page: rest,
+        credential_id: credentialId,
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasourceType === DatasourceType.websiteCrawl)
-      datasourceInfoList.push(websitePages[0])
+    if (datasourceType === DatasourceType.websiteCrawl) {
+      datasourceInfoList.push({
+        ...websitePages[0],
+        credential_id: credentialId,
+      })
+    }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket } = dataSourceStore.getState()
       datasourceInfoList.push({
         bucket,
         key: selectedFileKeys[0],
+        credential_id: credentialId,
       })
     }
     handleRun({
@@ -105,6 +121,32 @@ const TestRunPanel = () => {
       datasource_info_list: datasourceInfoList,
     })
   }, [dataSourceStore, datasource, datasourceType, fileList, handleRun, onlineDocuments, selectedFileKeys, websitePages])
+
+  const clearDataSourceData = useCallback((dataSource: Datasource) => {
+    if (dataSource.nodeData.provider_type === DatasourceType.onlineDocument)
+      clearOnlineDocumentData()
+    else if (dataSource.nodeData.provider_type === DatasourceType.websiteCrawl)
+      clearWebsiteCrawlData()
+    else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
+      clearOnlineDriveData()
+  }, [])
+
+  const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
+    const {
+      setCurrentCredentialId,
+      currentNodeIdRef,
+    } = dataSourceStore.getState()
+    clearDataSourceData(dataSource)
+    setCurrentCredentialId('')
+    currentNodeIdRef.current = dataSource.nodeId
+    setDatasource(dataSource)
+  }, [dataSourceStore])
+
+  const handleCredentialChange = useCallback((credentialId: string) => {
+    const { setCurrentCredentialId } = dataSourceStore.getState()
+    clearDataSourceData(datasource!)
+    setCurrentCredentialId(credentialId)
+  }, [dataSourceStore, datasource])
 
   return (
     <div
@@ -119,7 +161,7 @@ const TestRunPanel = () => {
               <div className='flex flex-col gap-y-4 px-4 py-2'>
                 <DataSourceOptions
                   dataSourceNodeId={datasource?.nodeId || ''}
-                  onSelect={setDatasource}
+                  onSelect={handleSwitchDataSource}
                 />
                 {datasourceType === DatasourceType.localFile && (
                   <LocalFile
@@ -132,6 +174,7 @@ const TestRunPanel = () => {
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
                     isInPipeline
+                    onCredentialChange={handleCredentialChange}
                   />
                 )}
                 {datasourceType === DatasourceType.websiteCrawl && (
@@ -139,6 +182,7 @@ const TestRunPanel = () => {
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
                     isInPipeline
+                    onCredentialChange={handleCredentialChange}
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDrive && (
@@ -146,6 +190,7 @@ const TestRunPanel = () => {
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
                     isInPipeline
+                    onCredentialChange={handleCredentialChange}
                   />
                 )}
               </div>

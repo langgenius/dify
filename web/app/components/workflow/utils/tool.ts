@@ -6,6 +6,8 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { canFindTool } from '@/utils'
+import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
 
 export const getToolCheckParams = (
   toolData: ToolNodeType,
@@ -39,5 +41,25 @@ export const getToolCheckParams = (
     notAuthed: isBuiltIn && !!currCollection?.allow_delete && !currCollection?.is_team_authorization,
     toolSettingSchema,
     language,
+  }
+}
+
+export const wrapStructuredVarItem = (outputItem: any): StructuredOutput => {
+  const dataType = Type.object
+  const properties = Object.fromEntries(
+    Object.entries(outputItem.value?.properties || {}).filter(([key]) => key !== 'dify_builtin_type'),
+  ) as Record<string, any>
+  return {
+    schema: {
+      type: dataType,
+      properties: {
+        [outputItem.name]: {
+          ...outputItem.value,
+          properties,
+          alias: outputItem.value?.properties?.dify_builtin_type?.enum?.[0],
+        },
+      },
+      additionalProperties: false,
+    },
   }
 }

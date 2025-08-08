@@ -13,7 +13,7 @@ export type WebsiteCrawlSliceShape = {
   setStep: (step: CrawlStep) => void
   previewIndex: number
   setPreviewIndex: (index: number) => void
-  previewWebsitePageRef: React.MutableRefObject<CrawlResultItem | undefined>
+  previewWebsitePageRef: React.RefObject<CrawlResultItem | undefined>
 }
 
 export const createWebsiteCrawlSlice: StateCreator<WebsiteCrawlSliceShape> = (set, get) => {
