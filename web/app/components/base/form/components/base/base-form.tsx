@@ -4,6 +4,7 @@ import {
   useImperativeHandle,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   AnyFieldApi,
   AnyFormApi,
@@ -24,6 +25,7 @@ import {
   useGetFormValues,
   useGetValidators,
 } from '@/app/components/base/form/hooks'
+import { Button } from '@/app/components/base/button'
 
 export type BaseFormProps = {
   formSchemas?: FormSchema[]
@@ -32,6 +34,8 @@ export type BaseFormProps = {
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
+  onSubmit?: (values: Record<string, any>) => void
+  onCancel?: () => void
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -45,7 +49,10 @@ const BaseForm = ({
   ref,
   disabled,
   formFromProps,
+  onSubmit,
+  onCancel,
 }: BaseFormProps) => {
+  const { t } = useTranslation()
   const initialDefaultValues = useMemo(() => {
     if (defaultValues)
       return defaultValues
@@ -119,6 +126,28 @@ const BaseForm = ({
       className={cn(formClassName)}
     >
       {formSchemas.map(renderFieldWrapper)}
+      {
+        onSubmit && (
+          <div className='flex justify-end space-x-2'>
+            {
+              onCancel && (
+                <Button
+                  variant='secondary'
+                  onClick={onCancel}
+                >
+                  {t('common.operation.cancel')}
+                </Button>
+              )
+            }
+            <Button
+              variant='primary'
+              onClick={() => onSubmit(form.getValues())}
+            >
+              {t('common.operation.save')}
+            </Button>
+          </div>
+        )
+      }
     </form>
   )
 }

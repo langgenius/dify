@@ -17,6 +17,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import VariableForm from '@/app/components/base/form/form-scenarios/variable'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable
@@ -81,6 +82,77 @@ const ChatVariableModal = ({
   const [editorContent, setEditorContent] = React.useState<string>()
   const [editInJSON, setEditInJSON] = React.useState(false)
   const [description, setDescription] = React.useState<string>('')
+
+  const variableFormSchemas = useMemo(() => {
+    return [
+      {
+        name: 'name',
+        label: t('workflow.chatVariable.modal.name'),
+        type: 'text-input',
+        placeholder: t('workflow.chatVariable.modal.namePlaceholder'),
+      },
+      {
+        name: 'type',
+        label: t('workflow.chatVariable.modal.type'),
+        type: 'select',
+        options: typeList.map(type => ({
+          label: type,
+          value: type,
+        })),
+      },
+      {
+        name: 'value',
+        label: t('workflow.chatVariable.modal.value'),
+        type: 'textarea',
+        placeholder: t('workflow.chatVariable.modal.valuePlaceholder'),
+        fieldClassName: 'h-20',
+      },
+      {
+        name: 'description',
+        label: t('workflow.chatVariable.modal.description'),
+        type: 'textarea-input',
+        placeholder: t('workflow.chatVariable.modal.descriptionPlaceholder'),
+      },
+      {
+        name: 'memoryTemplate',
+        label: 'Memory template',
+        type: 'prompt-input',
+      },
+      {
+        name: 'updateTrigger',
+        label: 'Update trigger',
+        type: 'radio',
+        required: true,
+        fieldClassName: 'flex items-center justify-between',
+        options: [
+          {
+            label: 'Every N turns',
+            value: 'every_n_turns',
+          },
+          {
+            label: 'Auto',
+            value: 'auto',
+          },
+        ],
+      },
+      {
+        name: 'moreSettings',
+        label: 'More settings',
+        type: 'collapse',
+      },
+      {
+        name: 'memoryModel',
+        label: 'Memory model',
+        type: 'model-selector',
+        show_on: [
+          {
+            variable: 'moreSettings',
+            value: true,
+          },
+        ],
+      },
+    ]
+  }, [])
 
   const editorMinHeight = useMemo(() => {
     if (type === ChatVarType.ArrayObject)
@@ -391,6 +463,9 @@ const ChatVariableModal = ({
             />
           </div>
         </div>
+        <VariableForm
+          formSchemas={variableFormSchemas}
+        />
       </div>
       <div className='flex flex-row-reverse rounded-b-2xl p-4 pt-2'>
         <div className='flex gap-2'>

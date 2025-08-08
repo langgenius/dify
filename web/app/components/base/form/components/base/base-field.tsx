@@ -3,7 +3,10 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { RiExternalLinkLine } from '@remixicon/react'
+import {
+  RiArrowDownSFill,
+  RiExternalLinkLine,
+} from '@remixicon/react'
 import type { AnyFieldApi } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-form'
 import cn from '@/utils/classnames'
@@ -13,6 +16,9 @@ import type { FormSchema } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import RadioE from '@/app/components/base/radio/ui'
+import Textarea from '@/app/components/base/textarea'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 
 export type BaseFieldProps = {
   fieldClassName?: string
@@ -39,6 +45,9 @@ const BaseField = ({
     placeholder,
     options,
     labelClassName: formLabelClassName,
+    fieldClassName: formFieldClassName,
+    inputContainerClassName: formInputContainerClassName,
+    inputClassName: formInputClassName,
     show_on = [],
   } = formSchema
 
@@ -104,7 +113,7 @@ const BaseField = ({
     return null
 
   return (
-    <div className={cn(fieldClassName)}>
+    <div className={cn(fieldClassName, formFieldClassName)}>
       <div className={cn(labelClassName, formLabelClassName)}>
         {memorizedLabel}
         {
@@ -112,14 +121,25 @@ const BaseField = ({
             <span className='ml-1 text-text-destructive-secondary'>*</span>
           )
         }
+        {
+          formSchema.type === FormTypeEnum.collapse && (
+            <RiArrowDownSFill
+              className={cn(
+                'h-4 w-4',
+                value && 'rotate-180',
+              )}
+              onClick={() => field.handleChange(!value)}
+            />
+          )
+        }
       </div>
-      <div className={cn(inputContainerClassName)}>
+      <div className={cn(inputContainerClassName, formInputContainerClassName)}>
         {
           formSchema.type === FormTypeEnum.textInput && (
             <Input
               id={field.name}
               name={field.name}
-              className={cn(inputClassName)}
+              className={cn(inputClassName, formInputClassName)}
               value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
@@ -134,7 +154,7 @@ const BaseField = ({
               id={field.name}
               name={field.name}
               type='password'
-              className={cn(inputClassName)}
+              className={cn(inputClassName, formInputClassName)}
               value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
@@ -149,7 +169,7 @@ const BaseField = ({
               id={field.name}
               name={field.name}
               type='number'
-              className={cn(inputClassName)}
+              className={cn(inputClassName, formInputClassName)}
               value={value || ''}
               onChange={e => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
@@ -183,6 +203,7 @@ const BaseField = ({
                       'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
                       value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                       inputClassName,
+                      formInputClassName,
                     )}
                     onClick={() => field.handleChange(option.value)}
                   >
@@ -199,6 +220,50 @@ const BaseField = ({
                 ))
               }
             </div>
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.textareaInput && (
+            <Textarea
+              className={cn(
+                'min-h-[80px]',
+                inputClassName,
+                formInputClassName,
+              )}
+              value={value}
+              placeholder={memorizedPlaceholder}
+              onChange={e => field.handleChange(e.target.value)}
+              onBlur={field.handleBlur}
+              disabled={disabled}
+            />
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.promptInput && (
+            <PromptEditor
+              value={value}
+              onChange={e => field.handleChange(e)}
+              onBlur={field.handleBlur}
+              editable={!disabled}
+              placeholder={memorizedPlaceholder}
+              className={cn(
+                'min-h-[80px]',
+                inputClassName,
+                formInputClassName,
+              )}
+            />
+          )
+        }
+        {
+          formSchema.type === FormTypeEnum.modelSelector && (
+            <ModelParameterModal
+              popupClassName='!w-[387px]'
+              value={value}
+              setModel={p => field.handleChange(p)}
+              readonly={disabled}
+              scope={formSchema.scope}
+              isAdvancedMode
+            />
           )
         }
         {

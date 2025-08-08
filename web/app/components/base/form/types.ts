@@ -32,6 +32,9 @@ export enum FormTypeEnum {
   multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
   dynamicSelect = 'dynamic-select',
+  textareaInput = 'textarea-input',
+  promptInput = 'prompt-input',
+  collapse = 'collapse',
 }
 
 export type FormOption = {
@@ -56,7 +59,10 @@ export type FormSchema = {
   help?: string | TypeWithI18N
   placeholder?: string | TypeWithI18N
   options?: FormOption[]
+  fieldClassName?: string
   labelClassName?: string
+  inputContainerClassName?: string
+  inputClassName?: string
   validators?: AnyValidators
   showRadioUI?: boolean
 }
