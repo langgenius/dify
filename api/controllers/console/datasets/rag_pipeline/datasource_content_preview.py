@@ -28,6 +28,7 @@ class DataSourceContentPreviewApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
+        parser.add_argument("credential_id", type=str, required=False, location="json")
         args = parser.parse_args()
 
         inputs = args.get("inputs")
@@ -45,6 +46,7 @@ class DataSourceContentPreviewApi(Resource):
             account=current_user,
             datasource_type=datasource_type,
             is_published=True,
+            credential_id=args.get("credential_id"),
         )
         return preview_content, 200
 

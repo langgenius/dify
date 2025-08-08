@@ -628,6 +628,7 @@ class RagPipelineService:
         account: Account,
         datasource_type: str,
         is_published: bool,
+        credential_id: Optional[str] = None,
     ) -> Mapping[str, Any]:
         """
         Run published workflow datasource
@@ -665,13 +666,14 @@ class RagPipelineService:
                 datasource_type=DatasourceProviderType(datasource_type),
             )
             datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_real_datasource_credentials(
+            credentials = datasource_provider_service.get_real_credential_by_id(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
+                credential_id=credential_id,
             )
             if credentials:
-                datasource_runtime.runtime.credentials = credentials[0].get("credentials")
+                datasource_runtime.runtime.credentials = credentials
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
