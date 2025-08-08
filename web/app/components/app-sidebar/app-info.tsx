@@ -12,7 +12,6 @@ import {
   RiFileUploadLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
-import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
@@ -280,17 +279,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
                 </div>
               </div>
             )}
-            <div className={cn(
-              'flex flex-col items-start gap-1 transition-all duration-200 ease-in-out',
-              expand
-                ? 'w-auto opacity-100'
-                : 'pointer-events-none w-0 overflow-hidden opacity-0',
-            )}>
-              <div className='flex w-full'>
-                <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
+            {expand && (
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex w-full'>
+                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
+                </div>
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
               </div>
-              <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
-            </div>
+            )}
           </div>
         </button>
       )}
