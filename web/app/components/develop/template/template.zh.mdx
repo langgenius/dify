@@ -252,6 +252,86 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
 </Row>
 ---
+
+<Heading
+  url='/files/:file_id/preview'
+  method='GET'
+  title='文件预览'
+  name='#file-preview'
+/>
+<Row>
+  <Col>
+    预览或下载已上传的文件。此端点允许您访问先前通过文件上传 API 上传的文件。
+    
+    <i>文件只能在属于请求应用程序的消息范围内访问。</i>
+
+    ### 路径参数
+    - `file_id` (string) 必需
+      要预览的文件的唯一标识符，从文件上传 API 响应中获得。
+
+    ### 查询参数
+    - `as_attachment` (boolean) 可选
+      是否强制将文件作为附件下载。默认为 `false`（在浏览器中预览）。
+
+    ### 响应
+    返回带有适当浏览器显示或下载标头的文件内容。
+    - `Content-Type` 根据文件 MIME 类型设置
+    - `Content-Length` 文件大小（以字节为单位，如果可用）
+    - `Content-Disposition` 如果 `as_attachment=true` 则设置为 "attachment"
+    - `Cache-Control` 用于性能的缓存标头
+    - `Accept-Ranges` 对于音频/视频文件设置为 "bytes"
+
+    ### 错误
+    - 400, `invalid_param`, 参数输入异常
+    - 403, `file_access_denied`, 文件访问被拒绝或文件不属于当前应用程序
+    - 404, `file_not_found`, 文件未找到或已被删除
+    - 500, 服务内部错误
+
+  </Col>
+  <Col sticky>
+    ### 请求示例
+    <CodeGroup title="Request" tag="GET" label="/files/:file_id/preview" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    ### 作为附件下载
+    <CodeGroup title="下载请求" tag="GET" label="/files/:file_id/preview?as_attachment=true" targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\\n--header 'Authorization: Bearer {api_key}' \\\n--output downloaded_file.png`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \
+    --header 'Authorization: Bearer {api_key}' \
+    --output downloaded_file.png
+    ```
+
+    </CodeGroup>
+
+    ### 响应标头示例
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'Headers - 图片预览' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+
+    ### 文件下载响应标头
+    <CodeGroup title="Download Response Headers">
+    ```http {{ title: 'Headers - 文件下载' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Content-Disposition: attachment; filename*=UTF-8''example.png
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
 <Heading
   url='/completion-messages/:task_id/stop'
   method='POST'
@@ -423,7 +503,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   url='/text-to-audio'
   method='POST'
   title='文字转语音'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>

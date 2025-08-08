@@ -27,27 +27,7 @@ const translation = {
   newApp: {
     startFromBlank: 'Utwórz od podstaw',
     startFromTemplate: 'Utwórz z szablonu',
-    captionAppType: 'Jaki typ aplikacji chcesz stworzyć?',
-    chatbotDescription:
-      'Zbuduj aplikację opartą na czacie. Ta aplikacja używa formatu pytań i odpowiedzi, umożliwiając wielokrotne rundy ciągłej konwersacji.',
-    completionDescription:
-      'Zbuduj aplikację generującą teksty wysokiej jakości na podstawie monitów, takich jak generowanie artykułów, streszczeń, tłumaczeń i innych.',
-    completionWarning: 'Ten typ aplikacji nie będzie już obsługiwany.',
-    agentDescription:
-      'Zbuduj inteligentnego agenta, który może autonomicznie wybierać narzędzia do wykonywania zadań',
-    workflowDescription:
-      'Zbuduj aplikację, która w oparciu o przepływ pracy generuje teksty wysokiej jakości z dużą możliwością dostosowania. Jest odpowiednia dla doświadczonych użytkowników.',
     workflowWarning: 'Obecnie w fazie beta',
-    chatbotType: 'Metoda orkiestracji chatbota',
-    basic: 'Podstawowy',
-    basicTip: 'Dla początkujących, można przełączyć się później na Chatflow',
-    basicFor: 'Dla początkujących',
-    basicDescription:
-      'Podstawowa orkiestracja pozwala na skonfigurowanie aplikacji Chatbot za pomocą prostych ustawień, bez możliwości modyfikacji wbudowanych monitów. Jest odpowiednia dla początkujących.',
-    advanced: 'Chatflow',
-    advancedFor: 'Dla zaawansowanych użytkowników',
-    advancedDescription:
-      'Orkiestracja przepływu pracy organizuje Chatboty w formie przepływów pracy, oferując wysoki stopień dostosowania, w tym możliwość edycji wbudowanych monitów. Jest odpowiednia dla doświadczonych użytkowników.',
     captionName: 'Ikona i nazwa aplikacji',
     appNamePlaceholder: 'Podaj nazwę swojej aplikacji',
     captionDescription: 'Opis',
@@ -193,6 +173,10 @@ const translation = {
   importFromDSLUrl: 'Z adresu URL',
   importFromDSLFile: 'Z pliku DSL',
   importFromDSLUrlPlaceholder: 'Wklej tutaj link DSL',
+  dslUploader: {
+    button: 'Przeciągnij i upuść plik, lub',
+    browse: 'Przeglądaj',
+  },
   mermaid: {
     handDrawn: 'Ręcznie rysowane',
     classic: 'Klasyczny',

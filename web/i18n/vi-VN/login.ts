@@ -70,7 +70,6 @@ const translation = {
   activated: 'Đăng nhập ngay',
   adminInitPassword: 'Mật khẩu khởi tạo quản trị viên',
   validate: 'Xác thực',
-  sso: 'Tiếp tục với SSO',
   checkCode: {
     checkYourEmail: 'Kiểm tra email của bạn',
     verify: 'Xác minh',
@@ -82,7 +81,7 @@ const translation = {
     useAnotherMethod: 'Sử dụng phương pháp khác',
     emptyCode: 'Mã là bắt buộc',
     verificationCodePlaceholder: 'Nhập mã gồm 6 chữ số',
-    tips: 'Chúng tôi gửi mã xác minh đến <strong>{{email}}</strong>',
+    tipsPrefix: 'Chúng tôi gửi mã xác minh đến',
   },
   back: 'Lưng',
   withSSO: 'Tiếp tục với SSO',

@@ -287,6 +287,18 @@ const translation = {
     zoomTo50: '缩放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
+    alignNodes: '对齐节点',
+    alignLeft: '左对齐',
+    alignCenter: '居中对齐',
+    alignRight: '右对齐',
+    alignTop: '顶部对齐',
+    alignMiddle: '中部对齐',
+    alignBottom: '底部对齐',
+    vertical: '垂直方向',
+    horizontal: '水平方向',
+    distributeHorizontal: '水平等间距',
+    distributeVertical: '垂直等间距',
+    selectionAlignment: '选择对齐',
   },
   variableReference: {
     noAvailableVars: '没有可用变量',
@@ -920,6 +932,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
@@ -936,11 +949,13 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+      copyIdSuccess: 'ID 已复制到剪贴板',
     },
   },
   debug: {
     settingsTab: '设置',
     lastRunTab: '上次运行',
+    relationsTab: '关系',
     noData: {
       description: '上次运行的结果将显示在这里',
       runThisNode: '运行此节点',
@@ -967,6 +982,14 @@ const translation = {
       systemNode: '系统变量',
     },
     lastOutput: '上次输出',
+    relations: {
+      dependencies: '依赖',
+      dependents: '被依赖',
+      dependenciesDescription: '本节点依赖的其他节点',
+      dependentsDescription: '依赖于本节点的其他节点',
+      noDependencies: '无依赖',
+      noDependents: '无被依赖',
+    },
   },
 }
 

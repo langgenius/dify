@@ -189,6 +189,10 @@ const translation = {
   importFromDSLFile: 'DSL 파일에서',
   importFromDSLUrl: 'URL 에서',
   importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
+  dslUploader: {
+    button: '파일을 드래그 앤 드롭하거나',
+    browse: '찾아보기',
+  },
   mermaid: {
     handDrawn: '손으로 그린',
     classic: '고전',

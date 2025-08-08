@@ -83,6 +83,15 @@ const translation = {
     configConfirmBtn: '儲存',
   },
   embeddingModelSwitchTip: '標註文字向量化模型，切換模型會重新嵌入，產生額外費用消耗',
+  list: {
+    delete: {
+      title: '您確定要刪除嗎？',
+    },
+  },
+  batchAction: {
+    selected: '選擇的',
+    delete: '刪除',
+  },
 }
 
 export default translation

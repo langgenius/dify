@@ -129,7 +129,10 @@ class WorkflowService:
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise IsDraftWorkflowError(f"Workflow is draft version, id={workflow_id}")
+            raise IsDraftWorkflowError(
+                f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+                f"Please use a published workflow version or leave workflow_id empty."
+            )
         return workflow
 
     def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
@@ -441,9 +444,9 @@ class WorkflowService:
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
         """
-        Run draft workflow node
+        Run free workflow node
         """
-        # run draft workflow node
+        # run free workflow node
         start_at = time.perf_counter()
 
         node_execution = self._handle_node_run_result(
