@@ -14,6 +14,8 @@ export class CollaborationManager {
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: any = null
+  private isLeader = false
+  private leaderId: string | null = null
   private cursors: Record<string, CursorPosition> = {}
 
   init = (appId: string, reactFlowStore: any): void => {
@@ -113,6 +115,10 @@ export class CollaborationManager {
 
   onVarsAndFeaturesUpdate(callback: (update: any) => void): () => void {
     return this.eventEmitter.on('varsAndFeaturesUpdate', callback)
+  }
+
+  onLeaderChange(callback: (isLeader: boolean) => void): () => void {
+    return this.eventEmitter.on('leaderChange', callback)
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
@@ -223,7 +229,7 @@ export class CollaborationManager {
       }
     })
 
-    socket.on('online_users', (data: { users: OnlineUser[] }) => {
+    socket.on('online_users', (data: { users: OnlineUser[]; leader: string }) => {
       const onlineUserIds = new Set(data.users.map(user => user.user_id))
 
       // Remove cursors for offline users
@@ -233,8 +239,25 @@ export class CollaborationManager {
       })
 
       console.log('Updated online users and cleaned offline cursors:', data.users)
+      this.leaderId = data.leader
       this.eventEmitter.emit('onlineUsers', data.users)
       this.eventEmitter.emit('cursors', { ...this.cursors })
+    })
+
+    socket.on('status', (data: { isLeader: boolean }) => {
+      if (this.isLeader !== data.isLeader) {
+        this.isLeader = data.isLeader
+        console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
+        this.eventEmitter.emit('leaderChange', this.isLeader)
+      }
+    })
+
+    socket.on('status', (data: { isLeader: boolean }) => {
+      if (this.isLeader !== data.isLeader) {
+        this.isLeader = data.isLeader
+        console.log(`Collaboration: I am now the ${this.isLeader ? 'Leader' : 'Follower'}.`)
+        this.eventEmitter.emit('leaderChange', this.isLeader)
+      }
     })
 
     socket.on('connect', () => {

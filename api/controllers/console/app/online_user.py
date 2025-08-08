@@ -67,7 +67,24 @@ def handle_user_connect(sid, data):
         "sid": sid,
     }
 
-    redis_client.hset(f"workflow_online_users:{workflow_id}", user_id, json.dumps(user_info))
+    # --- Leader Election Logic ---
+    workflow_users_key = f"workflow_online_users:{workflow_id}"
+    workflow_order_key = f"workflow_user_order:{workflow_id}"
+
+    # Remove user from list in case of reconnection, to add them to the end
+    redis_client.lrem(workflow_order_key, 0, user_id)
+    # Add user to the end of the list
+    redis_client.rpush(workflow_order_key, user_id)
+
+    # The first user in the list is the leader
+    leader_user_id_bytes = redis_client.lindex(workflow_order_key, 0)
+    is_leader = leader_user_id_bytes and leader_user_id_bytes.decode("utf-8") == user_id
+
+    # Notify the connecting client of their leader status
+    sio.emit("status", {"isLeader": is_leader}, room=sid)
+    # --- End of Leader Election Logic ---
+
+    redis_client.hset(workflow_users_key, user_id, json.dumps(user_info))
     redis_client.set(f"ws_sid_map:{sid}", json.dumps({"workflow_id": workflow_id, "user_id": user_id}))
 
     sio.enter_room(sid, workflow_id)
@@ -86,8 +103,35 @@ def handle_disconnect(sid):
         data = json.loads(mapping)
         workflow_id = data["workflow_id"]
         user_id = data["user_id"]
-        redis_client.hdel(f"workflow_online_users:{workflow_id}", user_id)
+
+        workflow_users_key = f"workflow_online_users:{workflow_id}"
+        workflow_order_key = f"workflow_user_order:{workflow_id}"
+
+        # Get leader before any modification
+        leader_user_id_bytes = redis_client.lindex(workflow_order_key, 0)
+        was_leader = leader_user_id_bytes and leader_user_id_bytes.decode("utf-8") == user_id
+
+        # Remove user
+        redis_client.hdel(workflow_users_key, user_id)
         redis_client.delete(f"ws_sid_map:{sid}")
+        redis_client.lrem(workflow_order_key, 0, user_id)
+
+        # Check if leader disconnected and a new one needs to be elected
+        if was_leader:
+            new_leader_user_id_bytes = redis_client.lindex(workflow_order_key, 0)
+            if new_leader_user_id_bytes:
+                new_leader_user_id = new_leader_user_id_bytes.decode("utf-8")
+                # get new leader's info to find their sid
+                new_leader_info_json = redis_client.hget(workflow_users_key, new_leader_user_id)
+                if new_leader_info_json:
+                    new_leader_info = json.loads(new_leader_info_json)
+                    new_leader_sid = new_leader_info.get("sid")
+                    if new_leader_sid:
+                        sio.emit("status", {"isLeader": True}, room=new_leader_sid)
+
+        # If the room is empty, clean up the redis key
+        if redis_client.llen(workflow_order_key) == 0:
+            redis_client.delete(workflow_order_key)
 
         broadcast_online_users(workflow_id)
 
@@ -96,14 +140,25 @@ def broadcast_online_users(workflow_id):
     """
     broadcast online users to the workflow room
     """
-    users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+    workflow_users_key = f"workflow_online_users:{workflow_id}"
+    workflow_order_key = f"workflow_user_order:{workflow_id}"
+
+    # The first user in the list is the leader
+    leader_user_id_bytes = redis_client.lindex(workflow_order_key, 0)
+    leader_user_id = leader_user_id_bytes.decode("utf-8") if leader_user_id_bytes else None
+
+    users_json = redis_client.hgetall(workflow_users_key)
     users = []
     for _, user_info_json in users_json.items():
         try:
             users.append(json.loads(user_info_json))
         except Exception:
             continue
-    sio.emit("online_users", {"workflow_id": workflow_id, "users": users}, room=workflow_id)
+    sio.emit(
+        "online_users",
+        {"workflow_id": workflow_id, "users": users, "leader": leader_user_id},
+        room=workflow_id,
+    )
 
 
 @sio.on("collaboration_event")
