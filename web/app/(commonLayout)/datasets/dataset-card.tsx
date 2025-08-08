@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiMoreFill } from '@remixicon/react'
+import { mutate } from 'swr'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -57,6 +58,20 @@ const DatasetCard = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
+      
+      // Clear SWR cache to prevent stale data in knowledge retrieval nodes
+      mutate(
+        key => {
+          if (typeof key === 'string') return key.includes('/datasets')
+          if (typeof key === 'object' && key !== null) {
+            return key.url === '/datasets' || key.url?.includes('/datasets')
+          }
+          return false
+        },
+        undefined,
+        { revalidate: true }
+      )
+      
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
       if (onSuccess)
         onSuccess()
