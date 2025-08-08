@@ -55,7 +55,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           const validSelectedDatasets = selectedIds
             .map(id => newList.find(item => item.id === id))
             .filter(Boolean) as DataSet[]
-          setSelected(validSelectedDatasets)
+        if (!hasInitialized) {
+          if (selectedIds.length > 0) {
+            const validSelectedDatasets = selectedIds
+              .map(id => newList.find(item => item.id === id))
+              .filter(Boolean) as DataSet[]
+            setSelected(validSelectedDatasets)
+          }
           setHasInitialized(true)
         }
       }
