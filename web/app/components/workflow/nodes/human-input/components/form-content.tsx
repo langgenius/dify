@@ -14,7 +14,9 @@ type Props = {
   onChange: (value: string) => void
   formInputs: FormInputItem[]
   onFormInputsChange: (payload: FormInputItem[]) => void
+  onFormInputItemRemove: (varName: string) => void
   nodeTitle: string
+  editorKey: number
 }
 
 const FormContent: FC<Props> = ({
@@ -23,7 +25,9 @@ const FormContent: FC<Props> = ({
   onChange,
   formInputs,
   onFormInputsChange,
+  onFormInputItemRemove,
   nodeTitle,
+  editorKey,
 }) => {
   const { t } = useTranslation()
   const filterVar = () => true
@@ -40,6 +44,7 @@ const FormContent: FC<Props> = ({
   return (
     <div>
       <PromptEditor
+        key={editorKey}
         value={value}
         onChange={onChange}
         className='min-h-[80px]'
@@ -48,6 +53,7 @@ const FormContent: FC<Props> = ({
           formInputs,
           nodeTitle,
           onFormInputsChange,
+          onFormInputItemRemove,
         }}
         workflowVariableBlock={{
           show: true,

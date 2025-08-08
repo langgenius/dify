@@ -5,20 +5,22 @@ import ComponentUi from './component-ui'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import produce from 'immer'
 
-type QueryBlockComponentProps = {
+type Props = {
   nodeKey: string
   nodeTitle: string
   varName: string
   formInputs?: FormInputItem[]
   onChange: (inputs: FormInputItem[]) => void
+  onRemove: (varName: string) => void
 }
 
-const HITLInputComponent: FC<QueryBlockComponentProps> = ({
+const HITLInputComponent: FC<Props> = ({
   nodeKey,
   nodeTitle,
   varName,
   formInputs = [],
   onChange,
+  onRemove,
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
   const payload = formInputs.find(item => item.output_variable_name === varName)
@@ -46,6 +48,7 @@ const HITLInputComponent: FC<QueryBlockComponentProps> = ({
         isSelected={isSelected}
         formInput={payload}
         onChange={handleChange}
+        onRemove={onRemove}
       />
     </div>
   )

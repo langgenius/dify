@@ -19,6 +19,7 @@ type Props = {
   isSelected: boolean
   formInput?: FormInputItem
   onChange: (input: FormInputItem) => void
+  onRemove: (varName: string) => void
 }
 
 const ComponentUI: FC<Props> = ({
@@ -35,6 +36,7 @@ const ComponentUI: FC<Props> = ({
     },
   },
   onChange,
+  onRemove,
 }) => {
   const { t } = useTranslation()
   const [isShowEditModal, {
@@ -42,6 +44,7 @@ const ComponentUI: FC<Props> = ({
     setFalse: hideEditModal,
   }] = useBoolean(false)
 
+  // Lexical delegate the click make it unable to add click by the method of react
   const editBtnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const editBtn = editBtnRef.current
@@ -53,6 +56,18 @@ const ComponentUI: FC<Props> = ({
         editBtn.removeEventListener('click', showEditModal)
     }
   }, [])
+
+  const removeBtnRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const removeBtn = removeBtnRef.current
+    if (removeBtn)
+      removeBtn.addEventListener('click', () => onRemove(varName))
+
+    return () => {
+      if (removeBtn)
+        removeBtn.removeEventListener('click', () => onRemove(varName))
+    }
+  }, [onRemove, varName])
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
     onChange(newPayload)
@@ -93,7 +108,7 @@ const ComponentUI: FC<Props> = ({
             </ActionButton>
           </div>
 
-          <div className='flex h-full items-center' >
+          <div className='flex h-full items-center' ref={removeBtnRef}>
             <ActionButton size='s'>
               <RiDeleteBinLine className='size-4 text-text-tertiary' />
             </ActionButton>

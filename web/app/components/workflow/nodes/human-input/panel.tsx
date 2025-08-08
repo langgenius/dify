@@ -36,6 +36,8 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     handleTimeoutChange,
     handleFormContentChange,
     handleFormInputsChange,
+    handleFormInputItemRemove,
+    editorKey,
   } = useConfig(id, data)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
@@ -68,12 +70,14 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           </div>
         </div>
         <FormContent
+          editorKey={editorKey}
           nodeId={id}
           value={inputs.form_content}
           onChange={handleFormContentChange}
           nodeTitle={inputs.title}
           formInputs={inputs.inputs}
           onFormInputsChange={handleFormInputsChange}
+          onFormInputItemRemove={handleFormInputItemRemove}
         />
       </div>
       {/* user actions */}

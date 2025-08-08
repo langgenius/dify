@@ -23,6 +23,7 @@ const HITLInputReplacementBlock = ({
   nodeTitle,
   formInputs,
   onFormInputsChange,
+  onFormInputItemRemove,
 }: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -33,8 +34,14 @@ const HITLInputReplacementBlock = ({
 
   const createHITLInputBlockNode = useCallback((textNode: TextNode): QueryBlockNode => {
     const varName = textNode.getTextContent().split('.')[1].replace(/#}}$/, '')
-    return $applyNodeReplacement($createHITLInputNode(varName, nodeTitle, formInputs || [], onFormInputsChange!))
-  }, [nodeTitle, formInputs, onFormInputsChange])
+    return $applyNodeReplacement($createHITLInputNode(
+      varName,
+      nodeTitle,
+      formInputs || [],
+      onFormInputsChange!,
+      onFormInputItemRemove!,
+    ))
+  }, [nodeTitle, formInputs, onFormInputsChange, onFormInputItemRemove])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

@@ -8,6 +8,7 @@ export type SerializedNode = SerializedLexicalNode & {
   nodeTitle: string
   formInputs: FormInputItem[]
   onFormInputsChange: (inputs: FormInputItem[]) => void
+  onFormInputItemRemove: (varName: string) => void
 }
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
@@ -15,6 +16,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __nodeTitle: string
   __formInputs?: FormInputItem[]
   __onFormInputsChange: (inputs: FormInputItem[]) => void
+  __onFormInputItemRemove: (varName: string) => void
 
   isIsolated(): boolean {
     return true // This is necessary for drag-and-drop to work correctly
@@ -48,21 +50,34 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__onFormInputsChange
   }
 
+  getOnFormInputItemRemove(): (varName: string) => void {
+    const self = this.getLatest()
+    return self.__onFormInputItemRemove
+  }
+
   static clone(node: HITLInputNode): HITLInputNode {
-    return new HITLInputNode(node.__variableName, node.__nodeTitle, node.__formInputs || [], node.__onFormInputsChange, node.__key)
+    return new HITLInputNode(
+      node.__variableName,
+      node.__nodeTitle,
+      node.__formInputs || [],
+      node.__onFormInputsChange,
+      node.__onFormInputItemRemove,
+      node.__key,
+    )
   }
 
   isInline(): boolean {
     return true
   }
 
-  constructor(varName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, key?: NodeKey) {
+  constructor(varName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, onFormInputItemRemove: (varName: string) => void, key?: NodeKey) {
     super(key)
 
     this.__variableName = varName
     this.__nodeTitle = nodeTitle
     this.__formInputs = formInputs
     this.__onFormInputsChange = onFormInputsChange
+    this.__onFormInputItemRemove = onFormInputItemRemove
   }
 
   createDOM(): HTMLElement {
@@ -82,11 +97,18 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       nodeTitle={this.getNodeTitle()}
       formInputs={this.getFormInputs()}
       onChange={this.getOnFormInputsChange()}
+      onRemove={this.getOnFormInputItemRemove()}
     />
   }
 
   static importJSON(serializedNode: SerializedNode): HITLInputNode {
-    const node = $createHITLInputNode(serializedNode.variableName, serializedNode.nodeTitle, serializedNode.formInputs, serializedNode.onFormInputsChange)
+    const node = $createHITLInputNode(
+      serializedNode.variableName,
+      serializedNode.nodeTitle,
+      serializedNode.formInputs,
+      serializedNode.onFormInputsChange,
+      serializedNode.onFormInputItemRemove,
+    )
 
     return node
   }
@@ -99,6 +121,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       nodeTitle: this.getNodeTitle(),
       formInputs: this.getFormInputs(),
       onFormInputsChange: this.getOnFormInputsChange(),
+      onFormInputItemRemove: this.getOnFormInputItemRemove(),
     }
   }
 
@@ -107,8 +130,14 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   }
 }
 
-export function $createHITLInputNode(variableName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void): HITLInputNode {
-  return new HITLInputNode(variableName, nodeTitle, formInputs, onFormInputsChange)
+export function $createHITLInputNode(variableName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, onFormInputItemRemove: (varName: string) => void): HITLInputNode {
+  return new HITLInputNode(
+    variableName,
+    nodeTitle,
+    formInputs,
+    onFormInputsChange,
+    onFormInputItemRemove,
+  )
 }
 
 export function $isHITLInputNode(
