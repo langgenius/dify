@@ -219,22 +219,34 @@ class ConversationService:
             if conversation.app_id != app_model.id:
                 raise ConversationNotExistsError()
 
-            # Delete all related records in a single transaction
-            tables_to_clear = [
-                MessageAnnotation,
-                MessageFeedback,
-                ToolConversationVariables,
-                ToolFile,
-                ConversationVariable,
-                Message,
-                PinnedConversation,
-            ]
+           # Delete related data in correct order to respect foreign key constraints
+            db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
+                synchronize_session=False
+            )
 
-            # Delete records from each table in order (to respect foreign keys)
-            for table in tables_to_clear:
-                db.session.query(table).where(table.conversation_id == conversation_id).delete(
-                    synchronize_session=False
-                )  # type: ignore
+            db.session.query(MessageFeedback).where(MessageFeedback.conversation_id == conversation_id).delete(
+                synchronize_session=False
+            )
+
+            db.session.query(ToolConversationVariables).where(
+                ToolConversationVariables.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(
+                synchronize_session=False
+            )
+
+            db.session.query(ConversationVariable).where(
+                ConversationVariable.conversation_id == conversation_id
+            ).delete(synchronize_session=False)
+
+            db.session.query(Message).where(Message.conversation_id == conversation_id).delete(
+                synchronize_session=False
+            )
+
+            db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
+                synchronize_session=False
+            )
 
             db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
 
