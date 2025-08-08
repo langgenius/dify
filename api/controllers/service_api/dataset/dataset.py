@@ -29,7 +29,7 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 400:
+    if description and len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
@@ -87,7 +87,7 @@ class DatasetListApi(DatasetApiResource):
         )
         parser.add_argument(
             "description",
-            type=str,
+            type=_validate_description_length,
             nullable=True,
             required=False,
             default="",

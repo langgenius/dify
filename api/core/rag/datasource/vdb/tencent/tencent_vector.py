@@ -92,9 +92,9 @@ class TencentVector(BaseVector):
 
     def _create_collection(self, dimension: int) -> None:
         self._dimension = dimension
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
 
@@ -206,9 +206,19 @@ class TencentVector(BaseVector):
     def delete_by_ids(self, ids: list[str]) -> None:
         if not ids:
             return
-        self._client.delete(
-            database_name=self._client_config.database, collection_name=self.collection_name, document_ids=ids
-        )
+
+        total_count = len(ids)
+        batch_size = self._client_config.max_upsert_batch_size
+        batch = math.ceil(total_count / batch_size)
+
+        for j in range(batch):
+            start_idx = j * batch_size
+            end_idx = min(total_count, (j + 1) * batch_size)
+            batch_ids = ids[start_idx:end_idx]
+
+            self._client.delete(
+                database_name=self._client_config.database, collection_name=self.collection_name, document_ids=batch_ids
+            )
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         self._client.delete(
@@ -236,6 +246,10 @@ class TencentVector(BaseVector):
         return self._get_search_res(res, score_threshold)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = None
+        if document_ids_filter:
+            filter = Filter(Filter.In("metadata.document_id", document_ids_filter))
         if not self._enable_hybrid_search:
             return []
         res = self._client.hybrid_search(
@@ -259,6 +273,7 @@ class TencentVector(BaseVector):
             ),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),
+            filter=filter,
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
@@ -274,7 +289,8 @@ class TencentVector(BaseVector):
                 # Compatible with version 1.1.3 and below.
                 meta = json.loads(meta)
                 score = 1 - result.get("score", 0.0)
-            score = result.get("score", 0.0)
+            else:
+                score = result.get("score", 0.0)
             if score > score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)

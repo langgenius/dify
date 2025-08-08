@@ -21,7 +21,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
 
   return (
     <div className={classNames(
-      'flex items-center rounded-lg bg-components-segmented-control-bg-normal gap-x-[1px] p-0.5',
+      'flex items-center gap-x-[1px] rounded-lg bg-components-segmented-control-bg-normal p-0.5',
       className,
     )}>
       {options.map((option, index) => {
@@ -34,7 +34,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
             type='button'
             key={String(option.value)}
             className={classNames(
-              'flex items-center justify-center relative px-2 py-1 rounded-lg gap-x-0.5 group border-0.5 border-transparent',
+              'border-0.5 group relative flex items-center justify-center gap-x-0.5 rounded-lg border-transparent px-2 py-1',
               isSelected
                 ? 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3'
                 : 'hover:bg-state-base-hover',
@@ -43,12 +43,12 @@ export const SegmentedControl = <T extends string | number | symbol>({
           >
             <span className='flex h-5 w-5 items-center justify-center'>
               <Icon className={classNames(
-                'w-4 h-4 text-text-tertiary',
+                'h-4 w-4 text-text-tertiary',
                 isSelected ? 'text-text-accent-light-mode-only' : 'group-hover:text-text-secondary',
               )} />
             </span>
             <span className={classNames(
-              'p-0.5 text-text-tertiary system-sm-medium',
+              'system-sm-medium p-0.5 text-text-tertiary',
               isSelected ? 'text-text-accent-light-mode-only' : 'group-hover:text-text-secondary',
             )}>
               {option.text}

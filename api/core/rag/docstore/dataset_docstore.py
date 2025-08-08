@@ -32,7 +32,7 @@ class DatasetDocumentStore:
         }
 
     @property
-    def dateset_id(self) -> Any:
+    def dataset_id(self) -> Any:
         return self._dataset.id
 
     @property
@@ -42,7 +42,7 @@ class DatasetDocumentStore:
     @property
     def docs(self) -> dict[str, Document]:
         document_segments = (
-            db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == self._dataset.id).all()
+            db.session.query(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id).all()
         )
 
         output = {}
@@ -63,7 +63,7 @@ class DatasetDocumentStore:
     def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
-            .filter(DocumentSegment.document_id == self._document_id)
+            .where(DocumentSegment.document_id == self._document_id)
             .scalar()
         )
 
@@ -123,13 +123,13 @@ class DatasetDocumentStore:
                 db.session.flush()
                 if save_child:
                     if doc.children:
-                        for postion, child in enumerate(doc.children, start=1):
+                        for position, child in enumerate(doc.children, start=1):
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
                                 document_id=self._document_id,
                                 segment_id=segment_document.id,
-                                position=postion,
+                                position=position,
                                 index_node_id=child.metadata.get("doc_id"),
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
@@ -147,7 +147,7 @@ class DatasetDocumentStore:
                 segment_document.tokens = tokens
                 if save_child and doc.children:
                     # delete the existing child chunks
-                    db.session.query(ChildChunk).filter(
+                    db.session.query(ChildChunk).where(
                         ChildChunk.tenant_id == self._dataset.tenant_id,
                         ChildChunk.dataset_id == self._dataset.id,
                         ChildChunk.document_id == self._document_id,
@@ -230,7 +230,7 @@ class DatasetDocumentStore:
     def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
         document_segment = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
+            .where(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)
             .first()
         )
 

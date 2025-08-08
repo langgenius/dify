@@ -28,7 +28,7 @@ def installed_app_required(view=None):
 
             installed_app = (
                 db.session.query(InstalledApp)
-                .filter(
+                .where(
                     InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
                 )
                 .first()

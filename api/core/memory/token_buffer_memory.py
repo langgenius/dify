@@ -67,7 +67,7 @@ class TokenBufferMemory:
 
         prompt_messages: list[PromptMessage] = []
         for message in messages:
-            files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+            files = db.session.query(MessageFile).where(MessageFile.message_id == message.id).all()
             if files:
                 file_extra_config = None
                 if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:
@@ -121,9 +121,8 @@ class TokenBufferMemory:
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         if curr_message_tokens > max_token_limit:
-            pruned_memory = []
             while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-                pruned_memory.append(prompt_messages.pop(0))
+                prompt_messages.pop(0)
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         return prompt_messages

@@ -138,7 +138,7 @@ class WorkflowDraftVariableService:
         )
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
-        return self._session.query(WorkflowDraftVariable).filter(WorkflowDraftVariable.id == variable_id).first()
+        return self._session.query(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable_id).first()
 
     def get_draft_variables_by_selectors(
         self,
@@ -166,7 +166,7 @@ class WorkflowDraftVariableService:
     def list_variables_without_values(self, app_id: str, page: int, limit: int) -> WorkflowDraftVariableList:
         criteria = WorkflowDraftVariable.app_id == app_id
         total = None
-        query = self._session.query(WorkflowDraftVariable).filter(criteria)
+        query = self._session.query(WorkflowDraftVariable).where(criteria)
         if page == 1:
             total = query.count()
         variables = (
@@ -185,7 +185,7 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.node_id == node_id,
         )
-        query = self._session.query(WorkflowDraftVariable).filter(*criteria)
+        query = self._session.query(WorkflowDraftVariable).where(*criteria)
         variables = query.order_by(WorkflowDraftVariable.created_at.desc()).all()
         return WorkflowDraftVariableList(variables=variables)
 
@@ -256,7 +256,7 @@ class WorkflowDraftVariableService:
     def _reset_node_var_or_sys_var(
         self, workflow: Workflow, variable: WorkflowDraftVariable
     ) -> WorkflowDraftVariable | None:
-        # If a variable does not allow updating, it makes no sence to resetting it.
+        # If a variable does not allow updating, it makes no sense to reset it.
         if not variable.editable:
             return variable
         # No execution record for this variable, delete the variable instead.
@@ -328,7 +328,7 @@ class WorkflowDraftVariableService:
     def delete_workflow_variables(self, app_id: str):
         (
             self._session.query(WorkflowDraftVariable)
-            .filter(WorkflowDraftVariable.app_id == app_id)
+            .where(WorkflowDraftVariable.app_id == app_id)
             .delete(synchronize_session=False)
         )
 
@@ -379,7 +379,7 @@ class WorkflowDraftVariableService:
         if conv_id is not None:
             conversation = (
                 self._session.query(Conversation)
-                .filter(
+                .where(
                     Conversation.id == conv_id,
                     Conversation.app_id == workflow.app_id,
                 )
@@ -422,7 +422,7 @@ class WorkflowDraftVariableService:
                 description=conv_var.description,
             )
             draft_conv_vars.append(draft_var)
-        _batch_upsert_draft_varaible(
+        _batch_upsert_draft_variable(
             self._session,
             draft_conv_vars,
             policy=_UpsertPolicy.IGNORE,
@@ -434,7 +434,7 @@ class _UpsertPolicy(StrEnum):
     OVERWRITE = "overwrite"
 
 
-def _batch_upsert_draft_varaible(
+def _batch_upsert_draft_variable(
     session: Session,
     draft_vars: Sequence[WorkflowDraftVariable],
     policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
@@ -478,7 +478,7 @@ def _batch_upsert_draft_varaible(
                 "node_execution_id": stmt.excluded.node_execution_id,
             },
         )
-    elif _UpsertPolicy.IGNORE:
+    elif policy == _UpsertPolicy.IGNORE:
         stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
     else:
         raise Exception("Invalid value for update policy.")
@@ -721,7 +721,7 @@ class DraftVariableSaver:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
-        _batch_upsert_draft_varaible(self._session, draft_vars)
+        _batch_upsert_draft_variable(self._session, draft_vars)
 
     @staticmethod
     def _should_variable_be_editable(node_id: str, name: str) -> bool:

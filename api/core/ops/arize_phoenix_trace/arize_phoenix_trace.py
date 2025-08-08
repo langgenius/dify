@@ -3,7 +3,8 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry import trace
@@ -40,8 +41,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
     try:
         # Choose the appropriate exporter based on config type
         exporter: Union[GrpcOTLPSpanExporter, HttpOTLPSpanExporter]
+
+        # Inspect the provided endpoint to determine its structure
+        parsed = urlparse(arize_phoenix_config.endpoint)
+        base_endpoint = f"{parsed.scheme}://{parsed.netloc}"
+        path = parsed.path.rstrip("/")
+
         if isinstance(arize_phoenix_config, ArizeConfig):
-            arize_endpoint = f"{arize_phoenix_config.endpoint}/v1"
+            arize_endpoint = f"{base_endpoint}/v1"
             arize_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "space_id": arize_phoenix_config.space_id or "",
@@ -53,7 +60,7 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
                 timeout=30,
             )
         else:
-            phoenix_endpoint = f"{arize_phoenix_config.endpoint}/v1/traces"
+            phoenix_endpoint = f"{base_endpoint}{path}/v1/traces"
             phoenix_headers = {
                 "api_key": arize_phoenix_config.api_key or "",
                 "authorization": f"Bearer {arize_phoenix_config.api_key or ''}",
@@ -77,10 +84,10 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
 
         # Create a named tracer instead of setting the global provider
         tracer_name = f"arize_phoenix_tracer_{arize_phoenix_config.project}"
-        logger.info(f"[Arize/Phoenix] Created tracer with name: {tracer_name}")
+        logger.info("[Arize/Phoenix] Created tracer with name: %s", tracer_name)
         return cast(trace_sdk.Tracer, provider.get_tracer(tracer_name)), processor
     except Exception as e:
-        logger.error(f"[Arize/Phoenix] Failed to setup the tracer: {str(e)}", exc_info=True)
+        logger.error("[Arize/Phoenix] Failed to setup the tracer: %s", str(e), exc_info=True)
         raise
 
 
@@ -91,16 +98,21 @@ def datetime_to_nanos(dt: Optional[datetime]) -> int:
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def uuid_to_trace_id(string: Optional[str]) -> int:
-    """Convert UUID string to a valid trace ID (16-byte integer)."""
+def string_to_trace_id128(string: Optional[str]) -> int:
+    """
+    Convert any input string into a stable 128-bit integer trace ID.
+
+    This uses SHA-256 hashing and takes the first 16 bytes (128 bits) of the digest.
+    It's suitable for generating consistent, unique identifiers from strings.
+    """
     if string is None:
         string = ""
     hash_object = hashlib.sha256(string.encode())
 
-    # Take the first 16 bytes (128 bits) of the hash
+    # Take the first 16 bytes (128 bits) of the hash digest
     digest = hash_object.digest()[:16]
 
-    # Convert to integer (128 bits)
+    # Convert to a 128-bit integer
     return int.from_bytes(digest, byteorder="big")
 
 
@@ -120,7 +132,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
     def trace(self, trace_info: BaseTraceInfo):
-        logger.info(f"[Arize/Phoenix] Trace: {trace_info}")
+        logger.info("[Arize/Phoenix] Trace: %s", trace_info)
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -138,15 +150,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 self.generate_name_trace(trace_info)
 
         except Exception as e:
-            logger.error(f"[Arize/Phoenix] Error in the trace: {str(e)}", exc_info=True)
+            logger.error("[Arize/Phoenix] Error in the trace: %s", str(e), exc_info=True)
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        if trace_info.message_data is None:
-            return
-
         workflow_metadata = {
-            "workflow_id": trace_info.workflow_run_id or "",
+            "workflow_run_id": trace_info.workflow_run_id or "",
             "message_id": trace_info.message_id or "",
             "workflow_app_log_id": trace_info.workflow_app_log_id or "",
             "status": trace_info.workflow_run_status or "",
@@ -156,7 +165,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.workflow_run_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -213,7 +222,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     if model:
                         node_metadata["ls_model_name"] = model
 
-                    outputs = json.loads(node_execution.outputs).get("usage", {})
+                    outputs = json.loads(node_execution.outputs).get("usage", {}) if "outputs" in node_execution else {}
                     usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
                     if usage_data:
                         node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
@@ -236,31 +245,34 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
                     start_time=datetime_to_nanos(created_at),
+                    context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
                 )
 
                 try:
                     if node_execution.node_type == "llm":
+                        llm_attributes: dict[str, Any] = {
+                            SpanAttributes.INPUT_VALUE: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
+                        }
                         provider = process_data.get("model_provider")
                         model = process_data.get("model_name")
                         if provider:
-                            node_span.set_attribute(SpanAttributes.LLM_PROVIDER, provider)
+                            llm_attributes[SpanAttributes.LLM_PROVIDER] = provider
                         if model:
-                            node_span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model)
-
-                        outputs = json.loads(node_execution.outputs).get("usage", {})
+                            llm_attributes[SpanAttributes.LLM_MODEL_NAME] = model
+                        outputs = (
+                            json.loads(node_execution.outputs).get("usage", {}) if "outputs" in node_execution else {}
+                        )
                         usage_data = (
                             process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
                         )
                         if usage_data:
-                            node_span.set_attribute(
-                                SpanAttributes.LLM_TOKEN_COUNT_TOTAL, usage_data.get("total_tokens", 0)
+                            llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_TOTAL] = usage_data.get("total_tokens", 0)
+                            llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_PROMPT] = usage_data.get("prompt_tokens", 0)
+                            llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_COMPLETION] = usage_data.get(
+                                "completion_tokens", 0
                             )
-                            node_span.set_attribute(
-                                SpanAttributes.LLM_TOKEN_COUNT_PROMPT, usage_data.get("prompt_tokens", 0)
-                            )
-                            node_span.set_attribute(
-                                SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, usage_data.get("completion_tokens", 0)
-                            )
+                        llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
+                        node_span.set_attributes(llm_attributes)
                 finally:
                     node_span.end(end_time=datetime_to_nanos(finished_at))
         finally:
@@ -296,7 +308,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
             end_user_data: Optional[EndUser] = (
-                db.session.query(EndUser).filter(EndUser.id == trace_info.message_data.from_end_user_id).first()
+                db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
                 message_metadata["end_user_id"] = end_user_data.session_id
@@ -309,7 +321,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
         }
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.message_id)
         message_span_id = RandomIdGenerator().generate_span_id()
         span_context = SpanContext(
             trace_id=trace_id,
@@ -352,25 +364,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.METADATA: json.dumps(message_metadata, ensure_ascii=False),
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
             }
-
-            if isinstance(trace_info.inputs, list):
-                for i, msg in enumerate(trace_info.inputs):
-                    if isinstance(msg, dict):
-                        llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.content"] = msg.get("text", "")
-                        llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.role"] = msg.get(
-                            "role", "user"
-                        )
-                        # todo: handle assistant and tool role messages, as they don't always
-                        # have a text field, but may have a tool_calls field instead
-                        # e.g. 'tool_calls': [{'id': '98af3a29-b066-45a5-b4b1-46c74ddafc58',
-                        # 'type': 'function', 'function': {'name': 'current_time', 'arguments': '{}'}}]}
-            elif isinstance(trace_info.inputs, dict):
-                llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = json.dumps(trace_info.inputs)
-                llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
-            elif isinstance(trace_info.inputs, str):
-                llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = trace_info.inputs
-                llm_attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
-
+            llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
             if trace_info.total_tokens is not None and trace_info.total_tokens > 0:
                 llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_TOTAL] = trace_info.total_tokens
             if trace_info.message_tokens is not None and trace_info.message_tokens > 0:
@@ -423,7 +417,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -485,7 +479,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -538,7 +532,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -585,9 +579,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "tool_config": json.dumps(trace_info.tool_config, ensure_ascii=False),
         }
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         tool_span_id = RandomIdGenerator().generate_span_id()
-        logger.info(f"[Arize/Phoenix] Creating tool trace with trace_id: {trace_id}, span_id: {tool_span_id}")
+        logger.info("[Arize/Phoenix] Creating tool trace with trace_id: %s, span_id: %s", trace_id, tool_span_id)
 
         # Create span context with the same trace_id as the parent
         # todo: Create with the appropriate parent span context, so that the tool span is
@@ -646,7 +640,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = uuid_to_trace_id(trace_info.message_id)
+        trace_id = string_to_trace_id128(trace_info.message_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
@@ -690,7 +684,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 span.set_attribute("test", "true")
             return True
         except Exception as e:
-            logger.info(f"[Arize/Phoenix] API check failed: {str(e)}", exc_info=True)
+            logger.info("[Arize/Phoenix] API check failed: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}")
 
     def get_project_url(self):
@@ -700,7 +694,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             else:
                 return f"{self.arize_phoenix_config.endpoint}/projects/"
         except Exception as e:
-            logger.info(f"[Arize/Phoenix] Get run url failed: {str(e)}", exc_info=True)
+            logger.info("[Arize/Phoenix] Get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] Get run url failed: {str(e)}")
 
     def _get_workflow_nodes(self, workflow_run_id: str):
@@ -720,7 +714,28 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.process_data,
                 WorkflowNodeExecutionModel.execution_metadata,
             )
-            .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
             .all()
         )
         return workflow_nodes
+
+    def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
+        """Helper method to construct LLM attributes with passed prompts."""
+        attributes = {}
+        if isinstance(prompts, list):
+            for i, msg in enumerate(prompts):
+                if isinstance(msg, dict):
+                    attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.content"] = msg.get("text", "")
+                    attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.role"] = msg.get("role", "user")
+                    # todo: handle assistant and tool role messages, as they don't always
+                    # have a text field, but may have a tool_calls field instead
+                    # e.g. 'tool_calls': [{'id': '98af3a29-b066-45a5-b4b1-46c74ddafc58',
+                    # 'type': 'function', 'function': {'name': 'current_time', 'arguments': '{}'}}]}
+        elif isinstance(prompts, dict):
+            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = json.dumps(prompts)
+            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
+        elif isinstance(prompts, str):
+            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = prompts
+            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
+
+        return attributes

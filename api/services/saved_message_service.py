@@ -17,7 +17,7 @@ class SavedMessageService:
             raise ValueError("User is required")
         saved_messages = (
             db.session.query(SavedMessage)
-            .filter(
+            .where(
                 SavedMessage.app_id == app_model.id,
                 SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
                 SavedMessage.created_by == user.id,
@@ -37,7 +37,7 @@ class SavedMessageService:
             return
         saved_message = (
             db.session.query(SavedMessage)
-            .filter(
+            .where(
                 SavedMessage.app_id == app_model.id,
                 SavedMessage.message_id == message_id,
                 SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
@@ -67,7 +67,7 @@ class SavedMessageService:
             return
         saved_message = (
             db.session.query(SavedMessage)
-            .filter(
+            .where(
                 SavedMessage.app_id == app_model.id,
                 SavedMessage.message_id == message_id,
                 SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),

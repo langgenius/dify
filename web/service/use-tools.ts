@@ -16,10 +16,11 @@ import {
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
-export const useAllToolProviders = () => {
+export const useAllToolProviders = (enabled = true) => {
   return useQuery<Collection[]>({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    enabled,
   })
 }
 
@@ -206,7 +207,7 @@ export const useCreateMCPServer = () => {
     mutationKey: [NAME_SPACE, 'create-mcp-server'],
     mutationFn: (payload: {
       appID: string
-      description: string
+      description?: string
       parameters?: Record<string, string>
     }) => {
       const { appID, ...rest } = payload

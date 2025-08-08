@@ -23,6 +23,10 @@ const translation = {
   importFromDSLFile: 'From DSL file',
   importFromDSLUrl: 'From URL',
   importFromDSLUrlPlaceholder: 'Paste DSL link here',
+  dslUploader: {
+    button: 'Drag and drop file, or',
+    browse: 'Browse',
+  },
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:
     'Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.',
@@ -245,6 +249,9 @@ const translation = {
     notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
   },
   noAccessPermission: 'No permission to access web app',
+  maxActiveRequests: 'Max concurrent requests',
+  maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
+  maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
 }
 
 export default translation

@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'واردات انبوه',
       bulkExport: 'صادرات انبوه',
       clearAll: 'پاک کردن همه یادداشت‌ها',
+      clearAllConfirm: 'آیا همه حاشیه‌نویسی‌ها را حذف کنیم؟',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'ذخیره',
   },
   embeddingModelSwitchTip: 'مدل برداری‌سازی متن یادداشت، تغییر مدل‌ها باعث جاسازی مجدد خواهد شد و هزینه‌های اضافی به همراه خواهد داشت.',
+  list: {
+    delete: {
+      title: 'آیا مطمئن هستید که می‌خواهید حذف کنید؟',
+    },
+  },
+  batchAction: {
+    cancel: 'لغو',
+    selected: 'انتخاب شده',
+    delete: 'حذف کنید',
+  },
 }
 
 export default translation

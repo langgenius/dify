@@ -93,6 +93,8 @@ export type CommonNodeType<T = {}> = {
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
+  credential_id?: string
+  _dimmed?: boolean
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
@@ -108,7 +110,8 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum
+  targetType: BlockEnum,
+  _isTemp?: boolean,
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
@@ -445,4 +448,9 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
+  copyId = 'copyId',
+}
+
+export type ChildNodeTypeCount = {
+  [key: string]: number;
 }

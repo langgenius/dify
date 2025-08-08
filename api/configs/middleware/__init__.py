@@ -10,6 +10,7 @@ from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
 from .storage.baidu_obs_storage_config import BaiduOBSStorageConfig
+from .storage.clickzetta_volume_storage_config import ClickZettaVolumeStorageConfig
 from .storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from .storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from .storage.oci_storage_config import OCIStorageConfig
@@ -20,6 +21,7 @@ from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
+from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
@@ -52,6 +54,7 @@ class StorageConfig(BaseSettings):
         "aliyun-oss",
         "azure-blob",
         "baidu-obs",
+        "clickzetta-volume",
         "google-storage",
         "huawei-obs",
         "oci-storage",
@@ -61,8 +64,9 @@ class StorageConfig(BaseSettings):
         "local",
     ] = Field(
         description="Type of storage to use."
-        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', "
-        "'huawei-obs', 'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'opendal'.",
+        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
+        "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
+        "'volcengine-tos', 'supabase'. Default is 'opendal'.",
         default="opendal",
     )
 
@@ -83,6 +87,11 @@ class VectorStoreConfig(BaseSettings):
     VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
         description="Enable whitelist for vector store.",
         default=False,
+    )
+
+    VECTOR_INDEX_NAME_PREFIX: Optional[str] = Field(
+        description="Prefix used to create collection name in vector database",
+        default="Vector_index",
     )
 
 
@@ -210,8 +219,8 @@ class DatabaseConfig(BaseSettings):
 
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
-        description="Backend for Celery task results. Options: 'database', 'redis'.",
-        default="database",
+        description="Backend for Celery task results. Options: 'database', 'redis', 'rabbitmq'.",
+        default="redis",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(
@@ -240,11 +249,12 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     def CELERY_RESULT_BACKEND(self) -> str | None:
-        return (
-            "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
-            if self.CELERY_BACKEND == "database"
-            else self.CELERY_BROKER_URL
-        )
+        if self.CELERY_BACKEND in ("database", "rabbitmq"):
+            return f"db+{self.SQLALCHEMY_DATABASE_URI}"
+        elif self.CELERY_BACKEND == "redis":
+            return self.CELERY_BROKER_URL
+        else:
+            return None
 
     @property
     def BROKER_USE_SSL(self) -> bool:
@@ -297,6 +307,7 @@ class MiddlewareConfig(
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
     BaiduOBSStorageConfig,
+    ClickZettaVolumeStorageConfig,
     GoogleCloudStorageConfig,
     HuaweiCloudOBSStorageConfig,
     OCIStorageConfig,
@@ -309,6 +320,7 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    ClickzettaConfig,
     HuaweiCloudConfig,
     MilvusConfig,
     MyScaleConfig,

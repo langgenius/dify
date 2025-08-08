@@ -29,7 +29,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
@@ -247,7 +247,8 @@ class ToolEngine:
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
                 result += json.dumps(
-                    cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False
+                    safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
+                    ensure_ascii=False,
                 )
             else:
                 result += str(response.message)

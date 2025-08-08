@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 from typing import Optional
 
 import requests
@@ -13,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
@@ -80,7 +80,7 @@ class OAuthCallback(Resource):
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.RequestException as e:
             error_text = e.response.text if e.response else str(e)
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
+            logging.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -110,7 +110,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
             db.session.commit()
 
         try:

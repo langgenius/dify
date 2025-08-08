@@ -82,12 +82,16 @@ const translation = {
       keyTooltip: 'HTTP ヘッダーキー。アイデアがない場合は "Authorization" として残しておいてもかまいません。またはカスタム値に設定できます。',
       types: {
         none: 'なし',
-        api_key: 'API キー',
         apiKeyPlaceholder: 'API キーの HTTP ヘッダー名',
         apiValuePlaceholder: 'API キーを入力してください',
+        api_key_query: 'クエリパラメータ',
+        queryParamPlaceholder: 'APIキーのクエリパラメータ名',
+        api_key_header: 'ヘッダー',
       },
       key: 'キー',
       value: '値',
+      queryParam: 'クエリパラメータ',
+      queryParamTooltip: 'APIキーのクエリパラメータとして渡す名前、例えば「https://example.com/test?key=API_KEY」の「key」。',
     },
     authHeaderPrefix: {
       title: '認証タイプ',

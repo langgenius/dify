@@ -1,7 +1,8 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 export enum PluginType {
   tool = 'tool',
   model = 'model',
@@ -118,6 +119,9 @@ export type PluginDetail = {
   latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
+  status: 'active' | 'deleted'
+  deprecated_reason: string
+  alternative_plugin_id: string
 }
 
 export type PluginInfoFromMarketPlace = {
@@ -165,6 +169,11 @@ export enum PermissionType {
 export type Permissions = {
   install_permission: PermissionType
   debug_permission: PermissionType
+}
+
+export type ReferenceSetting = {
+  permission: Permissions
+  auto_upgrade: AutoUpdateConfig
 }
 
 export type UpdateFromMarketPlacePayload = {
@@ -343,6 +352,9 @@ export type InstalledLatestVersionResponse = {
     [plugin_id: string]: {
       unique_identifier: string
       version: string
+      status: 'active' | 'deleted'
+      deprecated_reason: string
+      alternative_plugin_id: string
     } | null
   }
 }

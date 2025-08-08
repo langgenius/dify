@@ -53,8 +53,9 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
-  const handleResize = useCallback((width: number) => {
-    localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+  const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
+    if (source === 'user')
+      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
     setPanelWidth(width)
   }, [setPanelWidth])
   const maxPanelWidth = useMemo(() => {
@@ -74,7 +75,9 @@ const DebugAndPreview = () => {
     triggerDirection: 'left',
     minWidth: 400,
     maxWidth: maxPanelWidth,
-    onResize: debounce(handleResize),
+    onResize: debounce((width: number) => {
+      handleResize(width, 'user')
+    }),
   })
 
   return (
@@ -87,7 +90,7 @@ const DebugAndPreview = () => {
       <div
         ref={containerRef}
         className={cn(
-          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-components-panel-bg shadow-xl',
         )}
         style={{ width: `${panelWidth}px` }}
       >

@@ -185,7 +185,7 @@ class WorkflowConverter:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=WorkflowType.from_app_mode(new_app_mode).value,
-            version="draft",
+            version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
             features=json.dumps(features),
             created_by=account_id,
@@ -620,7 +620,7 @@ class WorkflowConverter:
         """
         api_based_extension = (
             db.session.query(APIBasedExtension)
-            .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
+            .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .first()
         )
 

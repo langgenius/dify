@@ -7,7 +7,7 @@ import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
@@ -130,7 +130,7 @@ const EndpointCard = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
+  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
 
   return (
     <div className='rounded-xl bg-background-section-burn p-0.5'>
