@@ -11,7 +11,6 @@ from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
 
 
-
 @shared_task(queue="conversation")
 def delete_conversation(conversation_id: str) -> None:
     """
@@ -37,17 +36,13 @@ def delete_conversation(conversation_id: str) -> None:
             ToolConversationVariables.conversation_id == conversation_id
         ).delete(synchronize_session=False)
 
-        db.session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(
+        db.session.query(ToolFile).where(ToolFile.conversation_id == conversation_id).delete(synchronize_session=False)
+
+        db.session.query(ConversationVariable).where(ConversationVariable.conversation_id == conversation_id).delete(
             synchronize_session=False
         )
 
-        db.session.query(ConversationVariable).where(
-            ConversationVariable.conversation_id == conversation_id
-        ).delete(synchronize_session=False)
-
-        db.session.query(Message).where(Message.conversation_id == conversation_id).delete(
-            synchronize_session=False
-        )
+        db.session.query(Message).where(Message.conversation_id == conversation_id).delete(synchronize_session=False)
 
         db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
             synchronize_session=False

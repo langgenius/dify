@@ -177,7 +177,12 @@ class ConversationService:
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         try:
-            logger.info("Initiating conversation deletion for app_name %s, conversation_id: %s, user_id %s", app_model.name, conversation_id, user.id)
+            logger.info(
+                "Initiating conversation deletion for app_name %s, conversation_id: %s, user_id %s",
+                app_model.name,
+                conversation_id,
+                user.id,
+            )
             delete_conversation.delay(conversation_id)
 
         except Exception as e:
