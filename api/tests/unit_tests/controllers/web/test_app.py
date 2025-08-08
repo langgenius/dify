@@ -32,8 +32,18 @@ class TestAppParameterApi:
 
         # Mock the output_form method to return test data
         workflow.output_form.return_value = [
-            {"name": "output1", "type": "string", "description": "First output variable"},
-            {"name": "output2", "type": "number", "description": "Second output variable"},
+            {
+                "end_id": "end1",
+                "outputs": [
+                    {"name": "output1", "type": "string", "description": "First output variable"},
+                ],
+            },
+            {
+                "end_id": "end2",
+                "outputs": [
+                    {"name": "output2", "type": "number", "description": "Second output variable"},
+                ],
+            },
         ]
 
         # Mock the user_input_form method
@@ -149,9 +159,19 @@ class TestAppParameterApi:
         """Test that multiple outputs in workflow_output_form are handled correctly."""
         # Arrange
         mock_workflow.output_form.return_value = [
-            {"name": "output1", "type": "string", "description": "First output"},
-            {"name": "output2", "type": "number", "description": "Second output"},
-            {"name": "output3", "type": "boolean", "description": "Third output"},
+            {
+                "end_id": "end1",
+                "outputs": [
+                    {"name": "output1", "type": "string", "description": "First output"},
+                    {"name": "output2", "type": "number", "description": "Second output"},
+                ],
+            },
+            {
+                "end_id": "end2",
+                "outputs": [
+                    {"name": "output3", "type": "boolean", "description": "Third output"},
+                ],
+            },
         ]
         mock_app_model.workflow = mock_workflow
 
@@ -256,9 +276,19 @@ class TestWorkflowOutputForm:
 
         # Assert
         expected_outputs = [
-            {"name": "output1", "type": "string", "description": "First output"},
-            {"name": "output2", "type": "number", "description": "Second output"},
-            {"name": "output3", "type": "boolean", "description": "Third output"},
+            {
+                "end_id": "end1",
+                "outputs": [
+                    {"name": "output1", "type": "string", "description": "First output"},
+                    {"name": "output2", "type": "number", "description": "Second output"},
+                ],
+            },
+            {
+                "end_id": "end2",
+                "outputs": [
+                    {"name": "output3", "type": "boolean", "description": "Third output"},
+                ],
+            },
         ]
         assert result == expected_outputs
 

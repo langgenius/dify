@@ -320,7 +320,19 @@ class Workflow(Base):
         return variables
 
     def output_form(self) -> list:
-        """Get workflow output form from end nodes."""
+        """Get workflow output form from End nodes.
+
+        Workflow execution can branch and end at different End nodes. To help
+        callers map output schemas to their corresponding End nodes, this
+        method returns an array where each element contains the End node ID and
+        its output schema.
+
+        Return format:
+        [
+            { "end_id": "<end-node-id>", "outputs": [ ... ] },
+            ...
+        ]
+        """
         if not self.graph:
             return []
 
@@ -333,14 +345,19 @@ class Workflow(Base):
         if not end_nodes:
             return []
 
-        # Get outputs from all end nodes
-        outputs = []
+        # Collect outputs grouped by their End node
+        results = []
         for end_node in end_nodes:
             end_node_outputs = end_node.get("data", {}).get("outputs", [])
-            for output in end_node_outputs:
-                outputs.append(output)
+            if not end_node_outputs:
+                # Skip End nodes without declared outputs
+                continue
+            results.append({
+                "end_id": end_node.get("id"),
+                "outputs": end_node_outputs,
+            })
 
-        return outputs
+        return results
 
     @property
     def unique_hash(self) -> str:
