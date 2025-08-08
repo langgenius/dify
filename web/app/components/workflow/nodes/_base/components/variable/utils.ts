@@ -1023,7 +1023,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
         return c.variable_selector || []
       }) || []
       res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap((c) => {
-        const selectors = []
+        const selectors: ValueSelector[] = []
         if (c.variable_selector)
           selectors.push(c.variable_selector)
         // Handle sub-variable conditions
