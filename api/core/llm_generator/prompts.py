@@ -409,6 +409,8 @@ Both your input and output should be in JSON format.
 
 When you are modifying the code, you should remember:
 - Do not use print, this not work in dify sandbox.
+- Do not try dangerous call like deleting files. It's PROHIBITED.
+- Do not use any library that is not built-in in with Python.
 - Get inputs from the parameters of the function and have explicit type annotations.
 - Write proper imports at the top of the code.
 - Use return statement to return the result.
