@@ -7,8 +7,10 @@ import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useDebounce, useKeyPress } from 'ahooks'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
+import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { RiSearchLine } from '@remixicon/react'
-import { Actions, type SearchResult, matchAction, searchAnything } from './actions'
+import { Actions as AllActions, type SearchResult, matchAction, searchAnything } from './actions'
+import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 import { useQuery } from '@tanstack/react-query'
 import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
@@ -23,10 +25,25 @@ const GotoAnything: FC<Props> = ({
 }) => {
   const router = useRouter()
   const defaultLocale = useGetLanguage()
+  const { isWorkflowPage } = useGotoAnythingContext()
   const [show, setShow] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [cmdVal, setCmdVal] = useState<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Filter actions based on context
+  const Actions = useMemo(() => {
+    // Create a filtered copy of actions based on current page context
+    if (isWorkflowPage) {
+      // Include all actions on workflow pages
+      return AllActions
+    }
+    else {
+      // Exclude node action on non-workflow pages
+      const { app, knowledge, plugin } = AllActions
+      return { app, knowledge, plugin }
+    }
+  }, [isWorkflowPage])
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
@@ -88,14 +105,22 @@ const GotoAnything: FC<Props> = ({
 
   // Handle navigation to selected result
   const handleNavigate = useCallback((result: SearchResult) => {
-    if (result.path)
-      router.push(result.path)
     setShow(false)
     setSearchQuery('')
 
     switch (result.type) {
       case 'plugin':
         setActivePlugin(result.data)
+        break
+      case 'workflow-node':
+        // Handle workflow node selection and navigation
+        if (result.metadata?.nodeId)
+          selectWorkflowNode(result.metadata.nodeId, true)
+
+        break
+      default:
+        if (result.path)
+          router.push(result.path)
     }
   }, [router])
 
@@ -124,7 +149,7 @@ const GotoAnything: FC<Props> = ({
     acc[result.type].push(result)
     return acc
   }, {} as { [key: string]: typeof searchResults }),
-     [searchResults])
+    [searchResults])
 
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQueryDebouncedValue.trim())
@@ -138,7 +163,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     </div>)
-  }, [searchResults, searchQueryDebouncedValue])
+  }, [searchResults, searchQueryDebouncedValue, Actions])
 
   const defaultUI = useMemo(() => {
     if (searchQueryDebouncedValue.trim())
@@ -157,7 +182,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     </div>)
-  }, [searchResults, searchQueryDebouncedValue])
+  }, [searchQueryDebouncedValue, Actions])
 
   useEffect(() => {
     if (show) {
@@ -290,4 +315,15 @@ const GotoAnything: FC<Props> = ({
   )
 }
 
-export default GotoAnything
+/**
+ * GotoAnything component with context provider
+ */
+const GotoAnythingWithContext: FC<Props> = (props) => {
+  return (
+    <GotoAnythingProvider>
+      <GotoAnything {...props} />
+    </GotoAnythingProvider>
+  )
+}
+
+export default GotoAnythingWithContext
