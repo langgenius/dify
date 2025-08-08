@@ -26,8 +26,9 @@ const GotoAnything: FC<Props> = ({
   const router = useRouter()
   const defaultLocale = useGetLanguage()
   const { isWorkflowPage } = useGotoAnythingContext()
-  const [show, setShow] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [show, setShow] = useState<boolean>(false)
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const lastSearchQuery = useRef<string>('')
   const [cmdVal, setCmdVal] = useState<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -94,7 +95,7 @@ const GotoAnything: FC<Props> = ({
         )
       },
       placeholderData: (previousData) => {
-        if (searchQueryDebouncedValue)
+        if (searchQueryDebouncedValue && !!lastSearchQuery)
           return previousData
 
         return []
@@ -148,7 +149,7 @@ const GotoAnything: FC<Props> = ({
 
     acc[result.type].push(result)
     return acc
-  }, {} as { [key: string]: typeof searchResults }),
+  }, {} as { [key: string]: SearchResult[] }),
     [searchResults])
 
   const emptyResult = useMemo(() => {
@@ -192,6 +193,7 @@ const GotoAnything: FC<Props> = ({
     }
     return () => {
       setCmdVal('')
+      lastSearchQuery.current = ''
     }
   }, [show])
 
@@ -221,6 +223,7 @@ const GotoAnything: FC<Props> = ({
                 placeholder='Search or type @ for commands...'
                 onChange={(e) => {
                   setCmdVal('')
+                  lastSearchQuery.current = searchQuery
                   setSearchQuery(e.target.value)
                 }}
                 className='flex-1 !border-0 !bg-transparent !shadow-none'
@@ -311,7 +314,6 @@ const GotoAnything: FC<Props> = ({
         )
       }
     </>
-
   )
 }
 
