@@ -225,7 +225,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     try {
       let apiRes: GenRes
       let hasError = false
-      if (isBasicMode && !currentPrompt) {
+      if (isBasicMode || !currentPrompt) {
         const { error, ...res } = await generateBasicAppFistTimeRule({
           instruction,
           model_config: model,
