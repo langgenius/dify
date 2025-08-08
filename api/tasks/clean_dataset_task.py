@@ -61,9 +61,12 @@ def clean_dataset_task(
         if doc_form is None:
             # Use default paragraph index type for empty datasets to enable vector database cleanup
             from core.rag.index_processor.constant.index_type import IndexType
+
             doc_form = IndexType.PARAGRAPH_INDEX
-            logging.info(click.style(f"No documents found, using default index type for cleanup: {doc_form}", fg="yellow"))
-        
+            logging.info(
+                click.style(f"No documents found, using default index type for cleanup: {doc_form}", fg="yellow")
+            )
+
         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
         index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
 
