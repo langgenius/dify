@@ -203,7 +203,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       [{ mode: 'completion' }, t('app.types.completion')],
     ],
     t('app.types.workflow'),
-  ), [t])
+  ), [t, appDetail])
 
   if (!appDetail)
     return null
