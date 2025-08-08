@@ -172,7 +172,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted == False)
+        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted is False)
 
         if args["keyword"]:
             keyword_filter = "%{}%".format(args["keyword"])
