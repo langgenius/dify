@@ -12,6 +12,8 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 
 class ToolProviderController(ABC):
+    entity: ToolProviderEntity
+
     def __init__(self, entity: ToolProviderEntity) -> None:
         self.entity = entity
 

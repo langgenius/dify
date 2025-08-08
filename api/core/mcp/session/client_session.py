@@ -1,4 +1,3 @@
-import queue
 from datetime import timedelta
 from typing import Any, Protocol
 
@@ -86,8 +85,8 @@ class ClientSession(
 ):
     def __init__(
         self,
-        read_stream: queue.Queue,
-        write_stream: queue.Queue,
+        read_stream,
+        write_stream,
         read_timeout_seconds: timedelta | None = None,
         sampling_callback: SamplingFnT | None = None,
         list_roots_callback: ListRootsFnT | None = None,
