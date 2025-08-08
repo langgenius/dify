@@ -1,10 +1,10 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isEqual } from 'lodash-es'
 import {
   getConnectedEdges,
   getOutgoers,
-  useEdges,
-  useStoreApi,
+  useStore,
 } from 'reactflow'
 import { useToolIcon } from '../../../../hooks'
 import BlockIcon from '../../../../block-icon'
@@ -26,12 +26,21 @@ const NextStep = ({
   const { t } = useTranslation()
   const data = selectedNode.data
   const toolIcon = useToolIcon(data)
-  const store = useStoreApi()
   const branches = useMemo(() => {
     return data._targetBranches || []
   }, [data])
-  const edges = useEdges()
-  const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
+  const edges = useStore(s => s.edges.map(edge => ({
+    id: edge.id,
+    source: edge.source,
+    sourceHandle: edge.sourceHandle,
+    target: edge.target,
+    targetHandle: edge.targetHandle,
+  })), isEqual)
+  const nodes = useStore(s => s.getNodes().map(node => ({
+    id: node.id,
+    data: node.data,
+  })), isEqual)
+  const outgoers = getOutgoers(selectedNode as Node, nodes as Node[], edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
 
   const list = useMemo(() => {

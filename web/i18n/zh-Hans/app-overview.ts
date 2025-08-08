@@ -1,6 +1,6 @@
 const translation = {
   welcome: {
-    firstStepTip: '开始之前,',
+    firstStepTip: '开始之前，',
     enterKeyTip: '请先在下方输入你的 OpenAI API Key',
     getKeyTip: '从 OpenAI 获取你的 API Key',
     placeholder: '你的 OpenAI API Key（例如 sk-xxxx）',
@@ -9,11 +9,11 @@ const translation = {
     cloud: {
       trial: {
         title: '您正在使用 {{providerName}} 的试用配额。',
-        description: '试用配额仅供您测试使用。 在试用配额用完之前，请自行设置模型提供商或购买额外配额。',
+        description: '试用配额仅供您测试使用。在试用配额用完之前，请自行设置模型提供商或购买额外配额。',
       },
       exhausted: {
-        title: '您的试用额度已用完，请设置您的APIKey。',
-        description: '您的试用配额已用完。 请设置您自己的模型提供商或购买额外配额。',
+        title: '您的试用额度已用完，请设置您的 APIKey。',
+        description: '您的试用配额已用完。请设置您自己的模型提供商或购买额外配额。',
       },
     },
     selfHost: {
@@ -30,7 +30,7 @@ const translation = {
   overview: {
     title: '概览',
     appInfo: {
-      explanation: '开箱即用的 AI WebApp',
+      explanation: '开箱即用的 AI web app',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
       launch: '启动',
@@ -39,19 +39,19 @@ const translation = {
       preUseReminder: '使用前请先打开开关',
       settings: {
         entry: '设置',
-        title: 'WebApp 设置',
-        modalTip: '客户端 WebApp 设置。',
-        webName: 'WebApp 名称',
-        webDesc: 'WebApp 描述',
+        title: 'web app 设置',
+        modalTip: '客户端 web app 设置。',
+        webName: 'web app 名称',
+        webDesc: 'web app 描述',
         webDescTip: '以下文字将展示在客户端中，对应用进行说明和使用上的基本引导',
-        webDescPlaceholder: '请输入 WebApp 的描述',
+        webDescPlaceholder: '请输入 web app 的描述',
         language: '语言',
         workflow: {
           title: '工作流',
           subTitle: '工作流详情',
           show: '显示',
           hide: '隐藏',
-          showDesc: '在 WebApp 中展示或者隐藏工作流详情',
+          showDesc: '在 web app 中展示或者隐藏工作流详情',
         },
         chatColorTheme: '聊天颜色主题',
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
@@ -60,14 +60,14 @@ const translation = {
         invalidPrivacyPolicy: '无效的隐私政策链接，请使用以 http 或 https 开头的有效链接',
         sso: {
           label: '单点登录认证',
-          title: 'WebApp SSO 认证',
+          title: 'web app SSO 认证',
           description: '启用后，所有用户都需要先进行 SSO 认证才能访问',
-          tooltip: '联系管理员以开启 WebApp SSO 认证',
+          tooltip: '联系管理员以开启 web app SSO 认证',
         },
         more: {
           entry: '展示更多设置',
           copyright: '版权',
-          copyrightTip: '在 WebApp 中展示版权信息',
+          copyrightTip: '在 web app 中展示版权信息',
           copyrightTooltip: '请升级到专业版或者更高',
           copyRightPlaceholder: '请输入作者或组织名称',
           privacyPolicy: '隐私政策',
@@ -96,7 +96,7 @@ const translation = {
       customize: {
         way: '方法',
         entry: '定制化',
-        title: '定制化 AI WebApp',
+        title: '定制化 AI web app',
         explanation: '你可以定制化 Web App 前端以符合你的情景与风格需求',
         way1: {
           name: 'Fork 客户端代码修改后部署到 Vercel（推荐）',

@@ -10,13 +10,12 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
-import { RiCheckLine } from '@remixicon/react'
-import Badge from '@/app/components/base/badge'
 
 type Props = {
   provider: ToolWithProvider
   payload: Tool
   disabled?: boolean
+  isAdded?: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -25,6 +24,7 @@ const ToolItem: FC<Props> = ({
   payload,
   onSelect,
   disabled,
+  isAdded,
 }) => {
   const { t } = useTranslation()
 
@@ -34,6 +34,7 @@ const ToolItem: FC<Props> = ({
     <Tooltip
       key={payload.name}
       position='right'
+      needsDelay={false}
       popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
       popupContent={(
         <div>
@@ -71,18 +72,16 @@ const ToolItem: FC<Props> = ({
             output_schema: payload.output_schema,
             paramSchemas: payload.parameters,
             params,
+            meta: provider.meta,
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary', disabled && 'opacity-30')}>{payload.label[language]}</div>
-        {disabled && <Badge
-          className='flex h-5 items-center space-x-0.5 text-text-tertiary'
-          uppercase
-        >
-          <RiCheckLine className='h-3 w-3 ' />
-          <div>{t('tools.addToolModal.added')}</div>
-        </Badge>
-        }
+        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+          <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
+        </div>
+        {isAdded && (
+          <div className='system-xs-regular mr-4 text-text-tertiary'>{t('tools.addToolModal.added')}</div>
+        )}
       </div>
     </Tooltip >
   )

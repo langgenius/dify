@@ -215,6 +215,34 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Moderazione dei contenuti abilitata',
+    },
+    fileUpload: {
+      title: 'Caricamento File',
+      description: 'La casella di input della chat consente di caricare immagini, documenti e altri file.',
+      supportedTypes: 'Tipi di File Supportati',
+      numberLimit: 'Caricamenti massimi',
+      modalTitle: 'Impostazione Caricamento File',
+    },
+    imageUpload: {
+      title: 'Caricamento Immagine',
+      description: 'Consente di caricare immagini.',
+      supportedTypes: 'Tipi di File Supportati',
+      numberLimit: 'Caricamenti massimi',
+      modalTitle: 'Impostazione Caricamento Immagine',
+    },
+    bar: {
+      empty: 'Abilita funzionalità per migliorare l\'esperienza utente dell\'app web',
+      enableText: 'Funzionalità Abilitate',
+      manage: 'Gestisci',
+    },
+    documentUpload: {
+      title: 'Documento',
+      description: 'Abilitare Documento consentirà al modello di accettare documenti e rispondere a domande su di essi.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Abilitare Audio consentirà al modello di elaborare file audio per trascrizione e analisi.',
     },
   },
   automatic: {
@@ -253,6 +281,7 @@ const translation = {
       'Per favore attendi che la risposta all\'attività batch sia completata.',
     notSelectModel: 'Per favore scegli un modello',
     waitForImgUpload: 'Per favore attendi il caricamento dell\'immagine',
+    waitForFileUpload: 'Attendi il caricamento del file o dei file',
   },
   chatSubTitle: 'Istruzioni',
   completionSubTitle: 'Prompt di prefisso',
@@ -314,13 +343,42 @@ const translation = {
     'inputPlaceholder': 'Per favore inserisci',
     'content': 'Contenuto',
     'required': 'Richiesto',
+    'hide': 'Nascondi',
     'errorMsg': {
-      varNameRequired: 'Il nome della variabile è richiesto',
       labelNameRequired: 'Il nome dell\'etichetta è richiesto',
       varNameCanBeRepeat: 'Il nome della variabile non può essere ripetuto',
       atLeastOneOption: 'È richiesta almeno un\'opzione',
       optionRepeat: 'Ci sono opzioni ripetute',
     },
+    'defaultValue': 'Valore predefinito',
+    'noDefaultValue': 'Nessun valore predefinito',
+    'selectDefaultValue': 'Seleziona valore predefinito',
+    'file': {
+      image: {
+        name: 'Immagine',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Documento',
+      },
+      video: {
+        name: 'Video',
+      },
+      custom: {
+        createPlaceholder: '  Estensione del file, ad esempio .doc',
+        description: 'Specificare altri tipi di file.',
+        name: 'Altri tipi di file',
+      },
+      supportFileTypes: 'Tipi di file di supporto',
+    },
+    'single-file': 'File singolo',
+    'uploadFileTypes': 'Caricare i tipi di file',
+    'maxNumberOfUploads': 'Numero massimo di caricamenti',
+    'multi-files': 'Elenco file',
+    'both': 'Ambedue',
+    'localUpload': 'Caricamento locale',
   },
   vision: {
     name: 'Visione',
@@ -341,6 +399,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Limite di caricamento',
     },
+    onlySupportVisionModelTip: 'Supporta solo i modelli di visione',
   },
   voice: {
     name: 'Voce',
@@ -364,6 +423,7 @@ const translation = {
     placeholder:
       'Scrivi qui il tuo messaggio introduttivo, puoi usare variabili, prova a scrivere {{variable}}.',
     openingQuestion: 'Domande iniziali',
+    openingQuestionPlaceholder: 'Puoi usare variabili, prova a digitare {{variable}}.',
     noDataPlaceHolder:
       'Iniziare la conversazione con l\'utente può aiutare l\'IA a stabilire un legame più stretto con loro nelle applicazioni conversazionali.',
     varTip: 'Puoi usare variabili, prova a scrivere {{variable}}',
@@ -420,6 +480,7 @@ const translation = {
       'Usato per impostare la soglia di somiglianza per il filtraggio dei chunk.',
     retrieveChangeTip:
       'Modificare la modalità di indicizzazione e la modalità di recupero può influenzare le applicazioni associate a questa Conoscenza.',
+    embeddingModelRequired: 'È necessario un modello di incorporamento configurato',
   },
   debugAsSingleModel: 'Debug come modello singolo',
   debugAsMultipleModel: 'Debug come modelli multipli',
@@ -466,6 +527,79 @@ const translation = {
       enabled: 'Abilitato',
     },
   },
+  codegen: {
+    noDataLine1: 'Descrivi il tuo caso d\'uso a sinistra,',
+    noDataLine2: 'L\'anteprima del codice verrà mostrata qui.',
+    generate: 'Generare',
+    resTitle: 'Codice generato',
+    overwriteConfirmTitle: 'Sovrascrivere il codice esistente?',
+    applyChanges: 'Applica modifiche',
+    title: 'Generatore di codice',
+    overwriteConfirmMessage: 'Questa azione sovrascriverà il codice esistente. Vuoi continuare?',
+    description: 'Il generatore di codice utilizza modelli configurati per generare codice di alta qualità in base alle istruzioni dell\'utente. Si prega di fornire istruzioni chiare e dettagliate.',
+    instruction: 'Disposizioni',
+    instructionPlaceholder: 'Inserisci una descrizione dettagliata del codice che desideri generare.',
+    generatedCodeTitle: 'Codice generato',
+    loading: 'Generazione del codice...',
+    apply: 'Applicare',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        instruction: 'Un bot in grado di generare ed eseguire il debug del codice in base alle istruzioni',
+        name: 'Debugger Python',
+      },
+      translation: {
+        instruction: 'Un traduttore in grado di tradurre in più lingue',
+        name: 'Traduzione',
+      },
+      professionalAnalyst: {
+        name: 'Analista professionista',
+        instruction: 'Estrai informazioni, identifica i rischi e distilla le informazioni chiave da report lunghi in un unico memo',
+      },
+      excelFormulaExpert: {
+        name: 'Esperto di formule per Excel',
+        instruction: 'Un chatbot che può aiutare gli utenti inesperti a comprendere, utilizzare e creare formule Excel basate sulle istruzioni dell\'utente',
+      },
+      travelPlanning: {
+        name: 'Pianificazione del viaggio',
+        instruction: 'Il Travel Planning Assistant è uno strumento intelligente progettato per aiutare gli utenti a pianificare facilmente i loro viaggi',
+      },
+      SQLSorcerer: {
+        name: 'Stregone SQL',
+        instruction: 'Trasforma il linguaggio di tutti i giorni in query SQL',
+      },
+      GitGud: {
+        instruction: 'Generare comandi Git appropriati in base alle azioni di controllo della versione descritte dall\'utente',
+        name: 'Git gud',
+      },
+      meetingTakeaways: {
+        name: 'Conclusioni sulle riunioni',
+        instruction: 'Distilla le riunioni in riassunti concisi che includono argomenti di discussione, punti chiave e punti d\'azione',
+      },
+      writingsPolisher: {
+        name: 'Lucidatrice per scrittura',
+        instruction: 'Usa tecniche avanzate di copyediting per migliorare i tuoi scritti',
+      },
+    },
+    instruction: 'Disposizioni',
+    noDataLine1: 'Descrivi il tuo caso d\'uso a sinistra,',
+    title: 'Generatore di prompt',
+    instructionPlaceHolder: 'Scrivi istruzioni chiare e specifiche.',
+    loading: 'Orchestrare l\'applicazione per te...',
+    apply: 'Applicare',
+    overwriteMessage: 'L\'applicazione di questo prompt sovrascriverà la configurazione esistente.',
+    description: 'Il generatore di prompt utilizza il modello configurato per ottimizzare i prompt per una qualità superiore e una struttura migliore. Si prega di scrivere istruzioni chiare e dettagliate.',
+    overwriteTitle: 'Sovrascrivere la configurazione esistente?',
+    resTitle: 'Prompt generato',
+    generate: 'Generare',
+    noDataLine2: 'L\'anteprima dell\'orchestrazione verrà visualizzata qui.',
+    tryIt: 'Provalo',
+  },
+  warningMessage: {
+    timeoutExceeded: 'I risultati non vengono visualizzati a causa del timeout. Si prega di fare riferimento ai registri per raccogliere risultati completi.',
+  },
+  noResult: 'L\'output verrà visualizzato qui.',
 }
 
 export default translation

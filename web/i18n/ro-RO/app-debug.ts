@@ -197,6 +197,34 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Moderarea conținutului activată',
+    },
+    fileUpload: {
+      title: 'Încărcare fișier',
+      description: 'Caseta de intrare chat permite încărcarea de imagini, documente și alte fișiere.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare fișier',
+    },
+    imageUpload: {
+      title: 'Încărcare imagine',
+      description: 'Permite încărcarea imaginilor.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare imagine',
+    },
+    bar: {
+      empty: 'Activează funcții pentru a îmbunătăți experiența utilizatorilor aplicației web',
+      enableText: 'Funcții activate',
+      manage: 'Gestionează',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Activarea Documentului va permite modelului să primească documente și să răspundă la întrebări despre ele.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Activarea Audio va permite modelului să proceseze fișiere audio pentru transcriere și analiză.',
     },
   },
   automatic: {
@@ -231,6 +259,7 @@ const translation = {
       'Vă rugăm să așteptați finalizarea sarcinii în lot.',
     notSelectModel: 'Vă rugăm să alegeți un model',
     waitForImgUpload: 'Vă rugăm să așteptați încărcarea imaginii',
+    waitForFileUpload: 'Vă rugăm să așteptați încărcarea fișierului / fișierelor',
   },
   chatSubTitle: 'Instrucțiuni',
   completionSubTitle: 'Prefix prompt',
@@ -285,13 +314,43 @@ const translation = {
     'labelName': 'Nume etichetă',
     'inputPlaceholder': 'Vă rugăm să introduceți',
     'required': 'Obligatoriu',
+    'hide': 'Ascundeți',
     'errorMsg': {
-      varNameRequired: 'Numele variabilei este obligatoriu',
       labelNameRequired: 'Numele etichetei este obligatoriu',
       varNameCanBeRepeat: 'Numele variabilei nu poate fi repetat',
       atLeastOneOption: 'Este necesară cel puțin o opțiune',
       optionRepeat: 'Există opțiuni repetate',
     },
+    'defaultValue': 'Valoare implicită',
+    'noDefaultValue': 'Fără valoare implicită',
+    'selectDefaultValue': 'Selectați valoarea implicită',
+    'file': {
+      image: {
+        name: 'Imagine',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Document',
+      },
+      video: {
+        name: 'Video',
+      },
+      custom: {
+        createPlaceholder: '  Extensia fișierului, de exemplu .doc',
+        name: 'Alte tipuri de fișiere',
+        description: 'Specificați alte tipuri de fișiere.',
+      },
+      supportFileTypes: 'Tipuri de fișiere de asistență',
+    },
+    'content': 'Conținut',
+    'single-file': 'Un singur fișier',
+    'multi-files': 'Lista de fișiere',
+    'uploadFileTypes': 'Încărcați tipuri de fișiere',
+    'localUpload': 'Încărcare locală',
+    'maxNumberOfUploads': 'Numărul maxim de încărcări',
+    'both': 'Ambii',
   },
   vision: {
     name: 'Viziune',
@@ -311,6 +370,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Limită de încărcare',
     },
+    onlySupportVisionModelTip: 'Acceptă doar modele vizuale',
   },
   voice: {
     name: 'Voce',
@@ -381,6 +441,7 @@ const translation = {
     score_threshold: 'Prag scor',
     score_thresholdTip: 'Utilizat pentru a seta pragul de similitudine pentru filtrarea bucăților.',
     retrieveChangeTip: 'Modificarea modului de indexare și a modului de recuperare poate afecta aplicațiile asociate cu aceste Cunoștințe.',
+    embeddingModelRequired: 'Este necesar un model de încorporare configurat',
   },
   debugAsSingleModel: 'Depanare ca Model Unic',
   debugAsMultipleModel: 'Depanare ca Modele Multiple',
@@ -422,6 +483,79 @@ const translation = {
       enabled: 'Activat',
     },
   },
+  codegen: {
+    overwriteConfirmTitle: 'Suprascrierea codului existent?',
+    resTitle: 'Cod generat',
+    instruction: 'Instrucţiuni',
+    description: 'Generatorul de cod utilizează modele configurate pentru a genera cod de înaltă calitate pe baza instrucțiunilor dvs. Vă rugăm să oferiți instrucțiuni clare și detaliate.',
+    generatedCodeTitle: 'Cod generat',
+    apply: 'Aplica',
+    noDataLine2: 'Previzualizarea codului va fi afișată aici.',
+    noDataLine1: 'Descrieți cazul de utilizare din stânga,',
+    instructionPlaceholder: 'Introduceți descrierea detaliată a codului pe care doriți să îl generați.',
+    generate: 'Genera',
+    title: 'Generator de coduri',
+    applyChanges: 'Aplicarea modificărilor',
+    overwriteConfirmMessage: 'Această acțiune va suprascrie codul existent. Vrei să continui?',
+    loading: 'Generarea codului...',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        name: 'Depanator Python',
+        instruction: 'Un bot care vă poate genera și depana codul pe baza instrucțiunilor dvs.',
+      },
+      translation: {
+        instruction: 'Un traducător care poate traduce mai multe limbi',
+        name: 'Traducere',
+      },
+      professionalAnalyst: {
+        name: 'Analist profesionist',
+        instruction: 'Extrageți informații, identificați riscurile și distilați informațiile cheie din rapoartele lungi într-o singură notă',
+      },
+      excelFormulaExpert: {
+        name: 'Expert în formule Excel',
+        instruction: 'Un chatbot care poate ajuta utilizatorii începători să înțeleagă, să utilizeze și să creeze formule Excel pe baza instrucțiunilor utilizatorului',
+      },
+      travelPlanning: {
+        name: 'Planificarea călătoriei',
+        instruction: 'Asistentul de planificare a călătoriilor este un instrument inteligent conceput pentru a ajuta utilizatorii să-și planifice călătoriile fără efort',
+      },
+      SQLSorcerer: {
+        name: 'Vrăjitor SQL',
+        instruction: 'Transformați limbajul de zi cu zi în interogări SQL',
+      },
+      GitGud: {
+        instruction: 'Generați comenzi Git adecvate pe baza acțiunilor de control al versiunii descrise de utilizator',
+        name: 'Git gud',
+      },
+      meetingTakeaways: {
+        instruction: 'Distilați întâlnirile în rezumate concise, inclusiv subiecte de discuție, concluzii cheie și elemente de acțiune',
+        name: 'Concluzii ale întâlnirilor',
+      },
+      writingsPolisher: {
+        name: 'Șlefuitor de scris',
+        instruction: 'Utilizați tehnici avansate de editare pentru a vă îmbunătăți scrierile',
+      },
+    },
+    apply: 'Aplica',
+    generate: 'Genera',
+    resTitle: 'Solicitare generată',
+    tryIt: 'Încearcă-l',
+    overwriteTitle: 'Înlocuiți configurația existentă?',
+    description: 'Generatorul de solicitări utilizează modelul configurat pentru a optimiza solicitările pentru o calitate superioară și o structură mai bună. Vă rugăm să scrieți instrucțiuni clare și detaliate.',
+    instruction: 'Instrucţiuni',
+    loading: 'Orchestrarea aplicației pentru dvs....',
+    noDataLine1: 'Descrieți cazul de utilizare din stânga,',
+    title: 'Generator de solicitări',
+    instructionPlaceHolder: 'Scrieți instrucțiuni clare și specifice.',
+    noDataLine2: 'Previzualizarea orchestrației va fi afișată aici.',
+    overwriteMessage: 'Aplicarea acestei solicitări va înlocui configurația existentă.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete.',
+  },
+  noResult: 'Ieșirea va fi afișată aici.',
 }
 
 export default translation

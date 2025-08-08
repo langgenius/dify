@@ -1,10 +1,11 @@
+from collections.abc import Sequence
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import NodeRunResult
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class RunCompletedEvent(BaseModel):
@@ -17,7 +18,7 @@ class RunStreamChunkEvent(BaseModel):
 
 
 class RunRetrieverResourceEvent(BaseModel):
-    retriever_resources: list[dict] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
 
 
@@ -37,11 +38,3 @@ class RunRetryEvent(BaseModel):
     error: str = Field(..., description="error")
     retry_index: int = Field(..., description="Retry attempt number")
     start_at: datetime = Field(..., description="Retry start time")
-
-
-class SingleStepRetryEvent(NodeRunResult):
-    """Single step retry event"""
-
-    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RETRY
-
-    elapsed_time: float = Field(..., description="elapsed time")

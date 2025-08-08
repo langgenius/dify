@@ -68,23 +68,34 @@ const ConfigCredential: FC<Props> = ({
                   text={t('tools.createTool.authMethod.types.none')}
                   value={AuthType.none}
                   isChecked={tempCredential.auth_type === AuthType.none}
-                  onClick={value => setTempCredential({ ...tempCredential, auth_type: value as AuthType })}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                  })}
                 />
                 <SelectItem
-                  text={t('tools.createTool.authMethod.types.api_key')}
-                  value={AuthType.apiKey}
-                  isChecked={tempCredential.auth_type === AuthType.apiKey}
+                  text={t('tools.createTool.authMethod.types.api_key_header')}
+                  value={AuthType.apiKeyHeader}
+                  isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                   onClick={value => setTempCredential({
-                    ...tempCredential,
                     auth_type: value as AuthType,
                     api_key_header: tempCredential.api_key_header || 'Authorization',
                     api_key_value: tempCredential.api_key_value || '',
                     api_key_header_prefix: tempCredential.api_key_header_prefix || AuthHeaderPrefix.custom,
                   })}
                 />
+                <SelectItem
+                  text={t('tools.createTool.authMethod.types.api_key_query')}
+                  value={AuthType.apiKeyQuery}
+                  isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                    api_key_query_param: tempCredential.api_key_query_param || 'key',
+                    api_key_value: tempCredential.api_key_value || '',
+                  })}
+                />
               </div>
             </div>
-            {tempCredential.auth_type === AuthType.apiKey && (
+            {tempCredential.auth_type === AuthType.apiKeyHeader && (
               <>
                 <div>
                   <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.authHeaderPrefix.title')}</div>
@@ -125,6 +136,35 @@ const ConfigCredential: FC<Props> = ({
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
                     placeholder={t('tools.createTool.authMethod.types.apiKeyPlaceholder')!}
+                  />
+                </div>
+                <div>
+                  <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.authMethod.value')}</div>
+                  <Input
+                    value={tempCredential.api_key_value}
+                    onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
+                    placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
+                  />
+                </div>
+              </>)}
+            {tempCredential.auth_type === AuthType.apiKeyQuery && (
+              <>
+                <div>
+                  <div className='system-sm-medium flex items-center py-2 text-text-primary'>
+                    {t('tools.createTool.authMethod.queryParam')}
+                    <Tooltip
+                      popupContent={
+                        <div className='w-[261px] text-text-tertiary'>
+                          {t('tools.createTool.authMethod.queryParamTooltip')}
+                        </div>
+                      }
+                      triggerClassName='ml-0.5 w-4 h-4'
+                    />
+                  </div>
+                  <Input
+                    value={tempCredential.api_key_query_param}
+                    onChange={e => setTempCredential({ ...tempCredential, api_key_query_param: e.target.value })}
+                    placeholder={t('tools.createTool.authMethod.types.queryParamPlaceholder')!}
                   />
                 </div>
                 <div>

@@ -103,13 +103,19 @@ function unicodeToChar(text: string) {
   if (!text)
     return ''
 
-  return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
+  return text.replace(/\\u([0-9a-f]{4})/g, (_match, p1) => {
     return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
 
-function requiredWebSSOLogin() {
-  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
+function requiredWebSSOLogin(message?: string, code?: number) {
+  const params = new URLSearchParams()
+  params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
+  if (message)
+    params.append('message', message)
+  if (code)
+    params.append('code', String(code))
+  globalThis.location.href = `${globalThis.location.origin}${basePath}/webapp-signin?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -397,12 +403,17 @@ export const ssePost = async (
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
-                if (data.code === 'web_sso_auth_required')
+                if (data.code === 'web_app_access_denied')
+                  requiredWebSSOLogin(data.message, 403)
+
+                if (data.code === 'web_sso_auth_required') {
+                  removeAccessToken()
                   requiredWebSSOLogin()
+                }
 
                 if (data.code === 'unauthorized') {
                   removeAccessToken()
-                  globalThis.location.reload()
+                  requiredWebSSOLogin()
                 }
               }
             })
@@ -426,29 +437,29 @@ export const ssePost = async (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
@@ -475,7 +486,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // special code
       const { code, message } = errRespData
       // webapp sso
+      if (code === 'web_app_access_denied') {
+        requiredWebSSOLogin(message, 403)
+        return Promise.reject(err)
+      }
       if (code === 'web_sso_auth_required') {
+        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -491,7 +507,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
         removeAccessToken()
-        globalThis.location.reload()
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {

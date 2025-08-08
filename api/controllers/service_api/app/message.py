@@ -1,8 +1,8 @@
 import json
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -15,7 +15,11 @@ from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
-from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
 
 
@@ -65,7 +69,7 @@ class MessageListApi(Resource):
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
+        except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
 
@@ -87,10 +91,22 @@ class MessageFeedbackApi(Resource):
                 rating=args.get("rating"),
                 content=args.get("content"),
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
+
+
+class AppGetFeedbacksApi(Resource):
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get All Feedbacks of an app"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, default=1, location="args")
+        parser.add_argument("limit", type=int_range(1, 101), required=False, default=20, location="args")
+        args = parser.parse_args()
+        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
+        return {"data": feedbacks}
 
 
 class MessageSuggestedApi(Resource):
@@ -105,7 +121,7 @@ class MessageSuggestedApi(Resource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise BadRequest("Suggested Questions Is Disabled.")
@@ -119,3 +135,4 @@ class MessageSuggestedApi(Resource):
 api.add_resource(MessageListApi, "/messages")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
+api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")

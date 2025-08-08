@@ -1,10 +1,9 @@
 import logging
-from datetime import UTC, datetime
 from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
@@ -13,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
@@ -80,7 +80,7 @@ class OAuthCallback(Resource):
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.RequestException as e:
             error_text = e.response.text if e.response else str(e)
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
+            logging.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -110,7 +110,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+            account.initialized_at = naive_utc_now()
             db.session.commit()
 
         try:
@@ -148,15 +148,15 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     account = _get_account_by_openid_or_email(provider, user_info)
 
     if account:
-        tenant = TenantService.get_join_tenants(account)
-        if not tenant:
+        tenants = TenantService.get_join_tenants(account)
+        if not tenants:
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
+                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(new_tenant, account, role="owner")
+                account.current_tenant = new_tenant
+                tenant_was_created.send(new_tenant)
 
     if not account:
         if not FeatureService.get_system_features().is_allow_register:

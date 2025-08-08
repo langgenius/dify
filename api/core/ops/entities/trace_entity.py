@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
 
 class BaseTraceInfo(BaseModel):
@@ -14,6 +14,7 @@ class BaseTraceInfo(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     metadata: dict[str, Any]
+    trace_id: Optional[str] = None
 
     @field_validator("inputs", "outputs")
     @classmethod
@@ -24,10 +25,13 @@ class BaseTraceInfo(BaseModel):
             return v
         return ""
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
+    model_config = ConfigDict(protected_namespaces=())
+
+    @field_serializer("start_time", "end_time")
+    def serialize_datetime(self, dt: datetime | None) -> str | None:
+        if dt is None:
+            return None
+        return dt.isoformat()
 
 
 class WorkflowTraceInfo(BaseTraceInfo):

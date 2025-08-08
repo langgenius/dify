@@ -48,7 +48,6 @@ const Installed: FC<Props> = ({
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
@@ -105,12 +104,12 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const { langeniusVersionInfo } = useAppContext()
+  const { langGeniusVersionInfo } = useAppContext()
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langeniusVersionInfo.current_version)
+    if (!langGeniusVersionInfo.current_version)
       return true
-    return gte(langeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
-  }, [langeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
+    return gte(langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
+  }, [langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
 
   return (
     <>
@@ -124,7 +123,7 @@ const Installed: FC<Props> = ({
             />
           </p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular flex items-center gap-1 text-text-secondary text-text-warning'>
+            <p className='system-md-regular flex items-center gap-1 text-text-warning'>
               {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}

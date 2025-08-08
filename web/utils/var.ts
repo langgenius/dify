@@ -1,4 +1,4 @@
-import { MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
+import { MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
 import {
   CONTEXT_PLACEHOLDER_TEXT,
   HISTORY_PLACEHOLDER_TEXT,
@@ -108,3 +108,25 @@ export const getVars = (value: string) => {
 // Set the value of basePath
 // example: /dify
 export const basePath = ''
+
+export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
+  const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })
+  if (params) {
+    Object.keys(params).forEach((key) => {
+      const value = params[key]
+      if (value !== undefined && value !== null)
+        searchParams.append(key, value)
+    })
+  }
+  return `${MARKETPLACE_URL_PREFIX}${path}?${searchParams.toString()}`
+}
+
+export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {
+  const start = input.selectionStart
+  const end = input.selectionEnd
+
+  input.value = input.value.replaceAll(' ', '_')
+
+  if (start !== null && end !== null)
+    input.setSelectionRange(start, end)
+}

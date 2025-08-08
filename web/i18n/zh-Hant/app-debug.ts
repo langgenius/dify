@@ -25,7 +25,7 @@ const translation = {
     debugConfig: '除錯',
     addFeature: '新增功能',
     automatic: '產生',
-    stopResponding: '停止響應',
+    stopResponding: '停止回應',
     agree: '贊同',
     disagree: '反對',
     cancelAgree: '取消贊同',
@@ -123,7 +123,7 @@ const translation = {
         ok: '好的',
         contextVarNotEmpty: '上下文查詢變數不能為空',
         deleteContextVarTitle: '刪除變數“{{varName}}”？',
-        deleteContextVarTip: '該變數已被設定為上下文查詢變數，刪除該變數將影響知識庫的正常使用。 如果您仍需要刪除它，請在上下文部分中重新選擇它。',
+        deleteContextVarTip: '該變數已被設定為上下文查詢變數，刪除該變數將影響知識庫的正常使用。如果您仍需要刪除它，請在上下文部分中重新選擇它。',
       },
     },
     tools: {
@@ -197,6 +197,34 @@ const translation = {
           after: '中配置 OpenAI API 金鑰。',
         },
       },
+      contentEnableLabel: '內容審查已啟用',
+    },
+    fileUpload: {
+      title: '檔案上傳',
+      description: '聊天輸入框支援上傳檔案。類型包括圖片、文件以及其它類型',
+      supportedTypes: '支援的檔案類型',
+      numberLimit: '最大上傳數',
+      modalTitle: '檔案上傳設定',
+    },
+    imageUpload: {
+      title: '圖片上傳',
+      description: '支援上傳圖片',
+      supportedTypes: '支援的檔案類型',
+      numberLimit: '最大上傳數',
+      modalTitle: '圖片上傳設定',
+    },
+    bar: {
+      empty: '開啟功能增強 web app 使用者體驗',
+      enableText: '功能已開啟',
+      manage: '管理',
+    },
+    documentUpload: {
+      title: '文件',
+      description: '啟用文件後，模型可以接收文件並回答關於它們的問題。',
+    },
+    audioUpload: {
+      title: '音訊',
+      description: '啟用音訊後，模型可以處理音訊檔案進行轉錄和分析。',
     },
   },
   resetConfig: {
@@ -211,6 +239,7 @@ const translation = {
     waitForBatchResponse: '請等待批次任務完成',
     notSelectModel: '請選擇模型',
     waitForImgUpload: '請等待圖片上傳完成',
+    waitForFileUpload: '請等待檔案上傳完成',
   },
   chatSubTitle: '提示詞',
   completionSubTitle: '字首提示詞',
@@ -264,6 +293,7 @@ const translation = {
     'inputPlaceholder': '請輸入',
     'labelName': '顯示名稱',
     'required': '必填',
+    'hide': '隱藏',
     'errorMsg': {
       varNameRequired: '變數名稱必填',
       labelNameRequired: '顯示名稱必填',
@@ -271,6 +301,36 @@ const translation = {
       atLeastOneOption: '至少需要一個選項',
       optionRepeat: '選項不能重複',
     },
+    'defaultValue': '預設值',
+    'noDefaultValue': '無預設值',
+    'selectDefaultValue': '選擇預設值',
+    'file': {
+      image: {
+        name: '圖像',
+      },
+      audio: {
+        name: '音訊',
+      },
+      document: {
+        name: '公文',
+      },
+      video: {
+        name: '視頻',
+      },
+      custom: {
+        name: '其他文件類型',
+        description: '指定其他檔案類型。',
+        createPlaceholder: '檔擴展名，例如 .doc',
+      },
+      supportFileTypes: '支援檔案類型',
+    },
+    'both': '雙',
+    'uploadFileTypes': '上傳檔類型',
+    'multi-files': '檔案清單',
+    'content': '內容',
+    'localUpload': '本地上傳',
+    'single-file': '單個檔',
+    'maxNumberOfUploads': '最大上傳次數',
   },
   vision: {
     name: '視覺',
@@ -279,9 +339,9 @@ const translation = {
     visionSettings: {
       title: '視覺設定',
       resolution: '解析度',
-      resolutionTooltip: `低解析度模式將使模型接收影象的低解析度版本，尺寸為512 x 512，並使用65 Tokens 來表示影象。這樣可以使API更快地返回響應，並在不需要高細節的用例中消耗更少的輸入。
+      resolutionTooltip: `低解析度模式將使模型接收影象的低解析度版本，尺寸為 512 x 512，並使用 65 Tokens 來表示影象。這樣可以使 API 更快地返回響應，並在不需要高細節的用例中消耗更少的輸入。
       \n
-      高解析度模式將首先允許模型檢視低解析度影象，然後根據輸入影象的大小建立512畫素的詳細裁剪影象。每個詳細裁剪影象使用兩倍的預算總共為129 Tokens。`,
+      高解析度模式將首先允許模型檢視低解析度影象，然後根據輸入影象的大小建立 512 畫素的詳細裁剪影象。每個詳細裁剪影象使用兩倍的預算總共為 129 Tokens。`,
       high: '高',
       low: '低',
       uploadMethod: '上傳方式',
@@ -290,6 +350,7 @@ const translation = {
       url: 'URL',
       uploadLimit: '上傳數量限制',
     },
+    onlySupportVisionModelTip: '僅支持視覺模型',
   },
   voice: {
     name: '音色',
@@ -312,9 +373,10 @@ const translation = {
     writeOpener: '編寫開場白',
     placeholder: '在這裡寫下你的開場白，你可以使用變數，嘗試輸入 {{variable}}。',
     openingQuestion: '開場問題',
+    openingQuestionPlaceholder: '可以使用變量，嘗試輸入 {{variable}}。',
     noDataPlaceHolder:
       '在對話型應用中，讓 AI 主動說第一段話可以拉近與使用者間的距離。',
-    varTip: '你可以使用變數， 試試輸入 {{variable}}',
+    varTip: '你可以使用變數，試試輸入 {{variable}}',
     tooShort: '對話前提示詞至少 20 字才能生成開場白',
     notIncludeKey: '字首提示詞中不包含變數 {{key}}。請在字首提示詞中新增該變數',
   },
@@ -342,9 +404,9 @@ const translation = {
   result: '結果',
   datasetConfig: {
     settingTitle: '召回設定',
-    knowledgeTip: '點選 “+” 按鈕新增知識庫',
+    knowledgeTip: '點選“+”按鈕新增知識庫',
     retrieveOneWay: {
-      title: 'N選1召回',
+      title: 'N 選 1 召回',
       description: '根據使用者意圖和知識庫描述，由 Agent 自主判斷選擇最匹配的單個知識庫來查詢相關文字，適合知識庫區分度大且知識庫數量偏少的應用。',
     },
     retrieveMultiWay: {
@@ -358,6 +420,7 @@ const translation = {
     score_threshold: 'Score 閾值',
     score_thresholdTip: '用於設定文字片段篩選的相似度閾值。',
     retrieveChangeTip: '修改索引模式和檢索模式可能會影響與該知識庫關聯的應用程式。',
+    embeddingModelRequired: '需要配置的嵌入模型',
   },
   debugAsSingleModel: '單一模型進行除錯',
   debugAsMultipleModel: '多個模型進行除錯',
@@ -399,6 +462,79 @@ const translation = {
       enabled: '啟用',
     },
   },
+  codegen: {
+    resTitle: '生成的代碼',
+    apply: '應用',
+    overwriteConfirmMessage: '此作將覆蓋現有代碼。你想繼續嗎？',
+    instruction: '指示',
+    instructionPlaceholder: '輸入要生成的代碼的詳細說明。',
+    generate: '生成',
+    noDataLine2: '代碼預覽將在此處顯示。',
+    applyChanges: '應用更改',
+    noDataLine1: '在左側描述您的用例，',
+    overwriteConfirmTitle: '覆蓋現有代碼？',
+    title: '代碼生成器',
+    generatedCodeTitle: '生成的代碼',
+    loading: '產生代碼...',
+    description: '代碼生成器使用配置的模型根據您的指令生成高質量的代碼。請提供清晰詳細的說明。',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        instruction: '可以根據您的指令生成和調試代碼的機器人',
+        name: 'Python 調試器',
+      },
+      translation: {
+        name: '譯本',
+        instruction: '可以翻譯多種語言的翻譯器',
+      },
+      professionalAnalyst: {
+        instruction: '提取見解、識別風險並將長報告中的關鍵資訊提煉成單個備忘錄',
+        name: '專業分析師',
+      },
+      excelFormulaExpert: {
+        name: 'Excel公式專家',
+        instruction: '一個聊天機器人，可以説明新手使用者根據使用者指令理解、使用和創建Excel公式',
+      },
+      travelPlanning: {
+        instruction: '旅行計劃助手是一款智慧工具，旨在説明用戶輕鬆計劃他們的旅行',
+        name: '旅行計劃',
+      },
+      SQLSorcerer: {
+        instruction: '將日常語言轉換為 SQL 查詢',
+        name: 'SQL 巫師',
+      },
+      GitGud: {
+        instruction: '根據使用者描述的版本控制作生成適當的 Git 命令',
+        name: '吉特古德',
+      },
+      meetingTakeaways: {
+        name: '會議要點',
+        instruction: '將會議提煉成簡潔的摘要，包括討論主題、關鍵要點和行動專案',
+      },
+      writingsPolisher: {
+        instruction: '使用先進的文案編輯技術來改進您的寫作',
+        name: '書寫拋光機',
+      },
+    },
+    overwriteMessage: '應用此提示將覆蓋現有配置。',
+    tryIt: '試試看',
+    noDataLine1: '在左側描述您的用例，',
+    instruction: '指示',
+    description: '提示生成器使用配置的模型來優化提示，以獲得更高的品質和更好的結構。請寫出清晰詳細的說明。',
+    generate: '生成',
+    apply: '應用',
+    instructionPlaceHolder: '寫出清晰具體的說明。',
+    overwriteTitle: '覆蓋現有配置？',
+    title: '提示生成器',
+    loading: '為您編排應用程式...',
+    noDataLine2: '業務流程預覽將在此處顯示。',
+    resTitle: '生成的提示',
+  },
+  warningMessage: {
+    timeoutExceeded: '由於超時，不顯示結果。請參閱日誌以收集完整結果。',
+  },
+  noResult: '輸出將顯示在此處。',
 }
 
 export default translation

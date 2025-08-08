@@ -40,7 +40,7 @@ const TabSlider: FC<TabSliderProps> = ({
     const newIndex = options.findIndex(option => option.value === value)
     setActiveIndex(newIndex)
     updateSliderStyle(newIndex)
-  }, [value, options, pluginList])
+  }, [value, options, pluginList?.total])
 
   return (
     <div className={cn(className, 'relative inline-flex items-center justify-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5')}>
@@ -69,13 +69,13 @@ const TabSlider: FC<TabSliderProps> = ({
           {option.text}
           {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
-            && (pluginList?.plugins.length ?? 0) > 0
+            && (pluginList?.total ?? 0) > 0
             && <Badge
               size='s'
               uppercase={true}
               state={BadgeState.Default}
             >
-              {pluginList?.plugins.length}
+              {pluginList?.total}
             </Badge>
           }
         </div>

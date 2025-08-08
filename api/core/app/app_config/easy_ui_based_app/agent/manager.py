@@ -39,6 +39,7 @@ class AgentConfigManager:
                         "provider_id": tool["provider_id"],
                         "tool_name": tool["tool_name"],
                         "tool_parameters": tool.get("tool_parameters", {}),
+                        "credential_id": tool.get("credential_id", None),
                     }
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
@@ -75,7 +76,7 @@ class AgentConfigManager:
                     strategy=strategy,
                     prompt=agent_prompt_entity,
                     tools=agent_tools,
-                    max_iteration=agent_dict.get("max_iteration", 5),
+                    max_iteration=agent_dict.get("max_iteration", 10),
                 )
 
         return None

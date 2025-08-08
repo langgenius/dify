@@ -9,9 +9,10 @@ import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n-config/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import { useDocLink } from '@/context/i18n'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -20,8 +21,8 @@ type IState = {
   timezone: string
 }
 
-type IAction =
-  | { type: 'failed', payload: null }
+type IAction
+  = | { type: 'failed', payload: null }
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }
@@ -51,6 +52,7 @@ const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
 
 const OneMoreStep = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -101,7 +103,6 @@ const OneMoreStep = () => {
                     </div>
                   </div>
                 }
-                needsDelay
               >
                 <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
               </Tooltip>
@@ -164,7 +165,7 @@ const OneMoreStep = () => {
             <Link
               className='system-xs-medium text-text-accent-secondary'
               target='_blank' rel='noopener noreferrer'
-              href={'https://docs.dify.ai/user-agreement/open-source'}
+              href={docLink('/policies/agreement/README')}
             >{t('login.license.link')}</Link>
           </div>
         </div>

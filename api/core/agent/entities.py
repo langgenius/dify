@@ -16,6 +16,7 @@ class AgentToolEntity(BaseModel):
     tool_name: str
     tool_parameters: dict[str, Any] = Field(default_factory=dict)
     plugin_unique_identifier: str | None = None
+    credential_id: str | None = None
 
 
 class AgentPromptEntity(BaseModel):
@@ -82,7 +83,7 @@ class AgentEntity(BaseModel):
     strategy: Strategy
     prompt: Optional[AgentPromptEntity] = None
     tools: Optional[list[AgentToolEntity]] = None
-    max_iteration: int = 5
+    max_iteration: int = 10
 
 
 class AgentInvokeMessage(ToolInvokeMessage):

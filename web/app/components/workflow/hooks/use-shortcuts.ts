@@ -11,6 +11,7 @@ import {
   useEdgesInteractions,
   useNodesInteractions,
   useNodesSyncDraft,
+  useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
   useWorkflowStartRun,
@@ -24,6 +25,8 @@ export const useShortcuts = (): void => {
     handleNodesDelete,
     handleHistoryBack,
     handleHistoryForward,
+    dimOtherNodes,
+    undimAllNodes,
   } = useNodesInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
@@ -35,6 +38,7 @@ export const useShortcuts = (): void => {
     handleModePointer,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
+  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const {
     zoomTo,
@@ -145,6 +149,16 @@ export const useShortcuts = (): void => {
     }
   }, { exactMatch: true, useCapture: true })
 
+  useKeyPress('f', (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleToggleMaximizeCanvas()
+    }
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
@@ -199,4 +213,35 @@ export const useShortcuts = (): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  // Shift ↓
+  useKeyPress(
+    'shift',
+    (e) => {
+      console.log('Shift down', e)
+      if (shouldHandleShortcut(e))
+        dimOtherNodes()
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keydown'],
+    },
+  )
+
+  // Shift ↑
+  useKeyPress(
+    (e) => {
+      return e.key === 'Shift'
+    },
+    (e) => {
+      if (shouldHandleShortcut(e))
+        undimAllNodes()
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keyup'],
+    },
+  )
 }

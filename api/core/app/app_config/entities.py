@@ -104,11 +104,13 @@ class VariableEntity(BaseModel):
     Variable Entity.
     """
 
+    # `variable` records the name of the variable in user inputs.
     variable: str
     label: str
     description: str = ""
     type: VariableEntityType
     required: bool = False
+    hide: bool = False
     max_length: Optional[int] = None
     options: Sequence[str] = Field(default_factory=list)
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
@@ -146,6 +148,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",

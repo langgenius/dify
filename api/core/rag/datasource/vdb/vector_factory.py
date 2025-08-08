@@ -1,3 +1,5 @@
+import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -12,6 +14,8 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Whitelist
+
+logger = logging.getLogger(__name__)
 
 
 class AbstractVectorFactory(ABC):
@@ -43,7 +47,7 @@ class Vector:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
                 whitelist = (
                     db.session.query(Whitelist)
-                    .filter(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
+                    .where(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
                     .one_or_none()
                 )
                 if whitelist:
@@ -164,13 +168,33 @@ class Vector:
                 from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
 
                 return HuaweiCloudVectorFactory
+            case VectorType.MATRIXONE:
+                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
+
+                return MatrixoneVectorFactory
+            case VectorType.CLICKZETTA:
+                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+                return ClickzettaVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
     def create(self, texts: Optional[list] = None, **kwargs):
         if texts:
-            embeddings = self._embeddings.embed_documents([document.page_content for document in texts])
-            self._vector_processor.create(texts=texts, embeddings=embeddings, **kwargs)
+            start = time.time()
+            logger.info("start embedding %s texts %s", len(texts), start)
+            batch_size = 1000
+            total_batches = len(texts) + batch_size - 1
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i : i + batch_size]
+                batch_start = time.time()
+                logger.info("Processing batch %s/%s (%s texts)", i // batch_size + 1, total_batches, len(batch))
+                batch_embeddings = self._embeddings.embed_documents([document.page_content for document in batch])
+                logger.info(
+                    "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
+                )
+                self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
+            logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
@@ -199,7 +223,7 @@ class Vector:
         self._vector_processor.delete()
         # delete collection redis cache
         if self._vector_processor.collection_name:
-            collection_exist_cache_key = "vector_indexing_{}".format(self._vector_processor.collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._vector_processor.collection_name}"
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:

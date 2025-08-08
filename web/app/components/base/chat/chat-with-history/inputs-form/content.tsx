@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from '@/app/components/base/input'
@@ -36,9 +36,11 @@ const InputsFormContent = ({ showTip }: Props) => {
     })
   }, [newConversationInputsRef, handleNewConversationInputsChange, currentConversationInputs, setCurrentConversationInputs])
 
+  const visibleInputsForms = inputsForms.filter(form => form.hide !== true)
+
   return (
     <div className='space-y-4'>
-      {inputsForms.map(form => (
+      {visibleInputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
           <div className='flex h-6 items-center gap-1'>
             <div className='system-md-semibold text-text-secondary'>{form.label}</div>
@@ -71,7 +73,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           {form.type === InputVarType.select && (
             <PortalSelect
               popupClassName='w-[200px]'
-              value={inputsFormValue?.[form.variable]}
+              value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
               items={form.options.map((option: string) => ({ value: option, name: option }))}
               onSelect={item => handleFormChange(form.variable, item.value as string)}
               placeholder={form.label}
@@ -112,4 +114,4 @@ const InputsFormContent = ({ showTip }: Props) => {
   )
 }
 
-export default InputsFormContent
+export default memo(InputsFormContent)

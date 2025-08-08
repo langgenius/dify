@@ -46,6 +46,18 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
     code = 400
 
 
+class WorkspaceMembersLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to add member because the maximum workspace's member limit was exceeded"
+    code = 400
+
+
+class WorkspacesLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create workspace because the maximum workspace limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."
@@ -115,7 +127,7 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
-class CompilanceRateLimitError(BaseHTTPException):
-    error_code = "compilance_rate_limit"
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."
     code = 429

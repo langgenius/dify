@@ -191,7 +191,7 @@ class ProviderConfiguration(BaseModel):
 
         provider_record = (
             db.session.query(Provider)
-            .filter(
+            .where(
                 Provider.tenant_id == self.tenant_id,
                 Provider.provider_type == ProviderType.CUSTOM.value,
                 Provider.provider_name.in_(provider_names),
@@ -351,7 +351,7 @@ class ProviderConfiguration(BaseModel):
 
         provider_model_record = (
             db.session.query(ProviderModel)
-            .filter(
+            .where(
                 ProviderModel.tenant_id == self.tenant_id,
                 ProviderModel.provider_name.in_(provider_names),
                 ProviderModel.model_name == model,
@@ -481,7 +481,7 @@ class ProviderConfiguration(BaseModel):
 
         return (
             db.session.query(ProviderModelSetting)
-            .filter(
+            .where(
                 ProviderModelSetting.tenant_id == self.tenant_id,
                 ProviderModelSetting.provider_name.in_(provider_names),
                 ProviderModelSetting.model_type == model_type.to_origin_model_type(),
@@ -560,7 +560,7 @@ class ProviderConfiguration(BaseModel):
 
         return (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(provider_names),
                 LoadBalancingModelConfig.model_type == model_type.to_origin_model_type(),
@@ -583,7 +583,7 @@ class ProviderConfiguration(BaseModel):
 
         load_balancing_config_count = (
             db.session.query(LoadBalancingModelConfig)
-            .filter(
+            .where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
                 LoadBalancingModelConfig.provider_name.in_(provider_names),
                 LoadBalancingModelConfig.model_type == model_type.to_origin_model_type(),
@@ -627,7 +627,7 @@ class ProviderConfiguration(BaseModel):
 
         model_setting = (
             db.session.query(ProviderModelSetting)
-            .filter(
+            .where(
                 ProviderModelSetting.tenant_id == self.tenant_id,
                 ProviderModelSetting.provider_name.in_(provider_names),
                 ProviderModelSetting.model_type == model_type.to_origin_model_type(),
@@ -693,7 +693,7 @@ class ProviderConfiguration(BaseModel):
 
         preferred_model_provider = (
             db.session.query(TenantPreferredModelProvider)
-            .filter(
+            .where(
                 TenantPreferredModelProvider.tenant_id == self.tenant_id,
                 TenantPreferredModelProvider.provider_name.in_(provider_names),
             )
@@ -754,7 +754,7 @@ class ProviderConfiguration(BaseModel):
         :param only_active: return active model only
         :return:
         """
-        provider_models = self.get_provider_models(model_type, only_active)
+        provider_models = self.get_provider_models(model_type, only_active, model)
 
         for provider_model in provider_models:
             if provider_model.model == model:
@@ -763,12 +763,13 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def get_provider_models(
-        self, model_type: Optional[ModelType] = None, only_active: bool = False
+        self, model_type: Optional[ModelType] = None, only_active: bool = False, model: Optional[str] = None
     ) -> list[ModelWithProviderEntity]:
         """
         Get provider models.
         :param model_type: model type
         :param only_active: only active models
+        :param model: model name
         :return:
         """
         model_provider_factory = ModelProviderFactory(self.tenant_id)
@@ -791,7 +792,10 @@ class ProviderConfiguration(BaseModel):
             )
         else:
             provider_models = self._get_custom_provider_models(
-                model_types=model_types, provider_schema=provider_schema, model_setting_map=model_setting_map
+                model_types=model_types,
+                provider_schema=provider_schema,
+                model_setting_map=model_setting_map,
+                model=model,
             )
 
         if only_active:
@@ -896,38 +900,37 @@ class ProviderConfiguration(BaseModel):
                                 credentials=copy_credentials,
                             )
                         except Exception as ex:
-                            logger.warning(f"get custom model schema failed, {ex}")
+                            logger.warning("get custom model schema failed, %s", ex)
+                            continue
 
-                            if not custom_model_schema:
-                                continue
+                        if not custom_model_schema:
+                            continue
 
-                            if custom_model_schema.model_type not in model_types:
-                                continue
+                        if custom_model_schema.model_type not in model_types:
+                            continue
 
-                            status = ModelStatus.ACTIVE
-                            if (
-                                custom_model_schema.model_type in model_setting_map
-                                and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                            ):
-                                model_setting = model_setting_map[custom_model_schema.model_type][
-                                    custom_model_schema.model
-                                ]
-                                if model_setting.enabled is False:
-                                    status = ModelStatus.DISABLED
+                        status = ModelStatus.ACTIVE
+                        if (
+                            custom_model_schema.model_type in model_setting_map
+                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
+                        ):
+                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                            if model_setting.enabled is False:
+                                status = ModelStatus.DISABLED
 
-                            provider_models.append(
-                                ModelWithProviderEntity(
-                                    model=custom_model_schema.model,
-                                    label=custom_model_schema.label,
-                                    model_type=custom_model_schema.model_type,
-                                    features=custom_model_schema.features,
-                                    fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                    model_properties=custom_model_schema.model_properties,
-                                    deprecated=custom_model_schema.deprecated,
-                                    provider=SimpleModelProviderEntity(self.provider),
-                                    status=status,
-                                )
+                        provider_models.append(
+                            ModelWithProviderEntity(
+                                model=custom_model_schema.model,
+                                label=custom_model_schema.label,
+                                model_type=custom_model_schema.model_type,
+                                features=custom_model_schema.features,
+                                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                                model_properties=custom_model_schema.model_properties,
+                                deprecated=custom_model_schema.deprecated,
+                                provider=SimpleModelProviderEntity(self.provider),
+                                status=status,
                             )
+                        )
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
@@ -944,6 +947,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
+        model: Optional[str] = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
@@ -996,7 +1000,8 @@ class ProviderConfiguration(BaseModel):
         for model_configuration in self.custom_configuration.models:
             if model_configuration.model_type not in model_types:
                 continue
-
+            if model and model != model_configuration.model:
+                continue
             try:
                 custom_model_schema = self.get_model_schema(
                     model_type=model_configuration.model_type,
@@ -1004,7 +1009,7 @@ class ProviderConfiguration(BaseModel):
                     credentials=model_configuration.credentials,
                 )
             except Exception as ex:
-                logger.warning(f"get custom model schema failed, {ex}")
+                logger.warning("get custom model schema failed, %s", ex)
                 continue
 
             if not custom_model_schema:

@@ -168,6 +168,55 @@ const translation = {
   documentsDisabled: '{{num}} Dokumente deaktiviert - seit über 30 Tagen inaktiv',
   allKnowledge: 'Alles Wissen',
   allKnowledgeDescription: 'Wählen Sie diese Option aus, um das gesamte Wissen in diesem Arbeitsbereich anzuzeigen. Nur der Workspace-Besitzer kann das gesamte Wissen verwalten.',
+  metadata: {
+    createMetadata: {
+      namePlaceholder: 'Metadatenname hinzufügen',
+      back: 'Zurück',
+      title: 'Neue Metadaten',
+      name: 'Name',
+      type: 'Art',
+    },
+    checkName: {
+      empty: 'Der Metadatenname darf nicht leer sein.',
+      invalid: 'Der Metadatenname darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten und muss mit einem Kleinbuchstaben beginnen.',
+      tooLong: 'Der Metadatenname darf {{max}} Zeichen nicht überschreiten.',
+    },
+    batchEditMetadata: {
+      editMetadata: 'Metadaten bearbeiten',
+      multipleValue: 'Mehrwert',
+      applyToAllSelectDocument: 'Auf alle ausgewählten Dokumente anwenden',
+      applyToAllSelectDocumentTip: 'Erstellen Sie automatisch alle oben bearbeiteten und neuen Metadaten für alle ausgewählten Dokumente, andernfalls wird die Bearbeitung der Metadaten nur auf Dokumente angewendet, die bereits Metadaten enthalten.',
+      editDocumentsNum: 'Bearbeiten von {{num}} Dokumenten',
+    },
+    selectMetadata: {
+      manageAction: 'Verwalten',
+      search: 'Metadaten durchsuchen',
+      newAction: 'Neue Metadaten',
+    },
+    datasetMetadata: {
+      name: 'Name',
+      disabled: 'Deaktiviert',
+      description: 'Sie können alle Metadaten in diesem Wissen hier verwalten. Änderungen werden mit jedem Dokument synchronisiert.',
+      deleteContent: 'Bist du sicher, dass du die Metadaten "{{name}}" löschen möchtest?',
+      addMetaData: 'Metadaten hinzufügen',
+      deleteTitle: 'Bestätigen Sie das Löschen',
+      values: '{{num}} Werte',
+      builtIn: 'Eingebaut',
+      rename: 'Umbenennen',
+      builtInDescription: 'Integrierte Metadaten werden automatisch extrahiert und generiert. Sie müssen vor der Verwendung aktiviert werden und können nicht bearbeitet werden.',
+      namePlaceholder: 'Metadatenname',
+    },
+    documentMetadata: {
+      startLabeling: 'Labeling starten',
+      technicalParameters: 'Technische Parameter',
+      documentInformation: 'Dokumentinformationen',
+      metadataToolTip: 'Metadaten dienen als ein entscheidender Filter, der die Genauigkeit und Relevanz der Informationsbeschaffung verbessert. Sie können die Metadaten für dieses Dokument hier ändern und hinzufügen.',
+    },
+    chooseTime: 'Wählen Sie eine Zeit...',
+    metadata: 'Metadaten',
+    addMetadata: 'Metadaten hinzufügen',
+  },
+  embeddingModelNotAvailable: 'Das Einbettungsmodell ist nicht verfügbar.',
 }
 
 export default translation

@@ -168,6 +168,55 @@ const translation = {
   localDocs: 'Documente locale',
   allKnowledge: 'Toate cunoștințele',
   allKnowledgeDescription: 'Selectați pentru a afișa toate cunoștințele din acest spațiu de lucru. Doar proprietarul spațiului de lucru poate gestiona toate cunoștințele.',
+  metadata: {
+    createMetadata: {
+      name: 'Nume',
+      type: 'Tip',
+      back: 'Înapoi',
+      namePlaceholder: 'Adăugați numele de metadate',
+      title: 'Metadate noi',
+    },
+    checkName: {
+      invalid: 'Numele metadatelor poate conține doar litere mici, cifre și underscore și trebuie să înceapă cu o literă mică.',
+      empty: 'Numele metadatelor nu poate fi gol',
+      tooLong: 'Numele metadatelor nu poate depăși {{max}} caractere',
+    },
+    batchEditMetadata: {
+      multipleValue: 'Valoare multiplă',
+      editMetadata: 'Editează metadatele',
+      applyToAllSelectDocument: 'Aplică la toate documentele selectate',
+      editDocumentsNum: 'Editarea {{num}} documente',
+      applyToAllSelectDocumentTip: 'Creează automat toate metadatele editate și noi de mai sus pentru toate documentele selectate, altfel editarea metadatelor se va aplica doar documentelor care au aceste metadate.',
+    },
+    selectMetadata: {
+      manageAction: 'Gestionează',
+      search: 'Căutare metadate',
+      newAction: 'Metadate noi',
+    },
+    datasetMetadata: {
+      deleteTitle: 'Confirmă ștergerea',
+      namePlaceholder: 'Numele metadata',
+      builtIn: 'Încărcat în',
+      values: '{{num}} Valori',
+      name: 'Nume',
+      disabled: 'Dezactivat',
+      deleteContent: 'Ești sigur că vrei să ștergi metadata „{{name}}”?}',
+      builtInDescription: 'Metadatele încorporate sunt extrase și generate automat. Acestea trebuie să fie activate înainte de utilizare și nu pot fi editate.',
+      description: 'Puteți gestiona toate metadatele în această cunoaștere aici. Modificările vor fi sincronizate cu fiecare document.',
+      addMetaData: 'Adăugați Metadate',
+      rename: 'Renumire',
+    },
+    documentMetadata: {
+      startLabeling: 'Începe etichetarea',
+      documentInformation: 'Informații despre document',
+      technicalParameters: 'Parametrii tehnici',
+      metadataToolTip: 'Metadata serve ca un filtru critic care îmbunătățește acuratețea și relevanța recuperării informațiilor. Puteți modifica și adăuga metadata pentru acest document aici.',
+    },
+    metadata: 'Metadate',
+    addMetadata: 'Adăugați Metadate',
+    chooseTime: 'Alege o oră...',
+  },
+  embeddingModelNotAvailable: 'Modelul de încorporare nu este disponibil.',
 }
 
 export default translation

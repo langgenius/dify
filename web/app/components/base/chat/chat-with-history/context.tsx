@@ -18,10 +18,8 @@ import type {
 import { noop } from 'lodash-es'
 
 export type ChatWithHistoryContextValue = {
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
+  appMeta?: AppMeta | null
+  appData?: AppData | null
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -57,6 +55,11 @@ export type ChatWithHistoryContextValue = {
   setIsResponding: (state: boolean) => void,
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
+  allInputsHidden: boolean,
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -90,5 +93,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setIsResponding: noop,
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
+  allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

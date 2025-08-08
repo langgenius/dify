@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
@@ -22,8 +22,8 @@ class DatasetMetadataCreateApi(Resource):
     @marshal_with(dataset_metadata_fields)
     def post(self, dataset_id):
         parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         metadata_args = MetadataArgs(**args)
 
@@ -56,7 +56,7 @@ class DatasetMetadataApi(Resource):
     @marshal_with(dataset_metadata_fields)
     def patch(self, dataset_id, metadata_id):
         parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         dataset_id_str = str(dataset_id)
@@ -127,7 +127,7 @@ class DocumentMetadataEditApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         parser = reqparse.RequestParser()
-        parser.add_argument("operation_data", type=list, required=True, nullable=True, location="json")
+        parser.add_argument("operation_data", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         metadata_args = MetadataOperationData(**args)
 

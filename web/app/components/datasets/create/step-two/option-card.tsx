@@ -21,7 +21,7 @@ type OptionCardHeaderProps = {
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
   return <div className={classNames(
-    'flex h-full overflow-hidden rounded-t-xl relative',
+    'relative flex h-full overflow-hidden rounded-t-xl',
     isActive && activeClassName,
     !disabled && 'cursor-pointer',
   )}>
@@ -34,7 +34,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
       </div>
     </div>
     <TriangleArrow
-      className={classNames('absolute left-4 -bottom-1.5 text-transparent', isActive && 'text-components-panel-bg')}
+      className={classNames('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
     />
     <div className='flex-1 space-y-0.5 py-3 pr-4'>
       <div className='system-md-semibold text-text-secondary'>{title}</div>
@@ -70,7 +70,7 @@ export const OptionCard: FC<OptionCardProps> = (
       (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border',
-      disabled && 'opacity-50 pointer-events-none',
+      disabled && 'pointer-events-none opacity-50',
       className,
     )}
     style={{

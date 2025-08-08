@@ -54,6 +54,12 @@ const translation = {
     viewDetails: 'Poglej podrobnosti',
     copied: 'Kopirati',
     in: 'v',
+    downloadFailed: 'Prenos ni uspel. Prosim, poskusite znova pozneje.',
+    more: 'Več',
+    downloadSuccess: 'Prenos končan.',
+    format: 'Format',
+    selectAll: 'Izberi vse',
+    deSelectAll: 'Odberi vse',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -145,6 +151,8 @@ const translation = {
     newDataset: 'Ustvari znanje',
     tools: 'Orodja',
     exploreMarketplace: 'Raziščite Marketplace',
+    appDetail: 'Podrobnosti o aplikaciji',
+    account: 'Račun',
   },
   userProfile: {
     settings: 'Nastavitve',
@@ -157,6 +165,9 @@ const translation = {
     community: 'Skupnost',
     about: 'O nas',
     logout: 'Odjava',
+    support: 'Podpora',
+    github: 'GitHub',
+    compliance: 'Skladnost',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -206,6 +217,32 @@ const translation = {
     deleteSuccessTip: 'Vaš račun potrebuje čas, da dokonča brisanje. Ko bo vse končano, vam bomo poslali e-pošto.',
     feedbackTitle: 'Povratne informacije',
     deleteLabel: 'Za potrditev spodaj vnesite svoj e-poštni naslov',
+    workspaceName: 'Ime delovnega prostora',
+    workspaceIcon: 'Ikona delovnega prostora',
+    editWorkspaceInfo: 'Uredi informacije o delovnem prostoru',
+    changeEmail: {
+      emailPlaceholder: 'Vnesite nov e-poštni naslov',
+      title: 'Spremeni e-pošto',
+      changeTo: 'Spremeni v {{email}}',
+      continue: 'Nadaljuj',
+      codeLabel: 'Koda za potrditev',
+      sendVerifyCode: 'Pošlji kode za preverjanje',
+      verifyNew: 'Potrdite svoj nov email',
+      resend: 'Ponovno pošlji',
+      resendTip: 'Niste prejeli kode?',
+      resendCount: 'Ponovno pošlji čez {{count}}s',
+      emailLabel: 'Nova e-pošta',
+      existingEmail: 'Uporabnik s to e-pošto že obstaja.',
+      content4: 'Pravkar smo vam poslali začasno verifikacijsko kodo na <email>{{email}}</email>.',
+      content1: 'Če boste nadaljevali, bomo na <email>{{email}}</email> poslali verifikacijsko kodo za ponovno overitev.',
+      codePlaceholder: 'Prilepite 6-mestno kodo',
+      verifyEmail: 'Potrdite svoj trenutni e-poštni naslov',
+      content3: 'Vnesite nov e-poštni naslov in poslali vam bomo kodo za preverjanje.',
+      newEmail: 'Ustvarite nov e-poštni naslov',
+      content2: 'Vaš trenutni elektronski naslov je <email>{{email}}</email>. Koda za preverjanje je bila poslana na ta elektronski naslov.',
+      authTip: 'Ko bo vaš e-poštni naslov spremenjen, se računi Google ali GitHub, povezani z vašim starim e-poštnim naslovom, ne bodo mogli več prijaviti v ta račun.',
+      unAvailableEmail: 'Ta e-pošta trenutno ni na voljo.',
+    },
   },
   members: {
     team: 'Ekipa',
@@ -247,6 +284,26 @@ const translation = {
     disInvite: 'Prekliči povabilo',
     deleteMember: 'Izbriši člana',
     you: '(Vi)',
+    transferModal: {
+      codeLabel: 'Koda za potrditev',
+      resendTip: 'Niste prejeli kode?',
+      continue: 'Nadaljuj',
+      transferLabel: 'Prenesite lastništvo delovnega prostora na',
+      resend: 'Ponovno pošlji',
+      verifyEmail: 'Potrdite svoj trenutni e-poštni naslov',
+      codePlaceholder: 'Prilepite 6-mestno kodo',
+      transferPlaceholder: 'Izberite člana delovnega prostora…',
+      transfer: 'Prenos lastništva delovnega prostora',
+      resendCount: 'Ponovno pošlji čez {{count}}s',
+      verifyContent2: 'Na ta e-poštni naslov bomo poslali začasno verifikacijsko kodo za ponovno overitev.',
+      warningTip: 'Postali boste član administracije, novi lastnik pa bo imel popoln nadzor.',
+      warning: 'Pripravljate se prenesti lastništvo nad "{{workspace}}". To začne veljati takoj in tega ni mogoče razveljaviti.',
+      title: 'Prenos lastništva delovnega prostora',
+      sendVerifyCode: 'Pošlji kode za preverjanje',
+      sendTip: 'Če boste nadaljevali, bomo na <email>{{email}}</email> poslali verifikacijsko kodo za ponovno overitev.',
+      verifyContent: 'Vaš trenutni e-poštni naslov je <email>{{email}}</email>.',
+    },
+    transferOwnership: 'Prenos lastništva',
   },
   integrations: {
     connected: 'Povezano',
@@ -452,7 +509,6 @@ const translation = {
     apiBasedExtension: {
       title: 'Razširitve API omogočajo centralizirano upravljanje API, kar poenostavi konfiguracijo za enostavno uporabo v aplikacijah Dify.',
       link: 'Naučite se, kako razviti svojo API razširitev.',
-      linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
       add: 'Dodaj API razširitev',
       selector: {
         title: 'API razširitev',
@@ -635,6 +691,7 @@ const translation = {
       title: 'Pojem',
       changeAuthorizedPages: 'Spreminjanje pooblaščenih strani',
       sync: 'Sinhroniziranje',
+      integratedAlert: 'Notion je integriran prek notranjih poverilnic, ni potrebno ponovno avtorizirati.',
     },
     website: {
       active: 'Dejaven',
@@ -681,7 +738,6 @@ const translation = {
     type: 'Vrsta',
     link: 'Preberite, kako razvijete lastno razširitev API-ja.',
     title: 'Razširitve API zagotavljajo centralizirano upravljanje API, kar poenostavlja konfiguracijo za enostavno uporabo v aplikacijah Dify.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'Dodajanje razširitve API-ja',
   },
   about: {
@@ -746,6 +802,7 @@ const translation = {
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
     thinking: 'Razmišljanje...',
     thought: 'Misel',
+    resend: 'Ponovno pošlji',
   },
   promptEditor: {
     context: {
@@ -832,10 +889,31 @@ const translation = {
   license: {
     expiring_plural: 'Poteče v {{count}} dneh',
     expiring: 'Poteče v enem dnevu',
+    unlimited: 'Brez omejitev',
   },
   pagination: {
     perPage: 'Elementi na stran',
   },
+  theme: {
+    theme: 'Tema',
+    light: 'svetloba',
+    auto: 'sistem',
+    dark: 'temno',
+  },
+  compliance: {
+    sandboxUpgradeTooltip: 'Na voljo je le z načrtom Professional ali Team.',
+    gdpr: 'GDPR DPA',
+    soc2Type2: 'Poročilo SOC 2 Tip II',
+    professionalUpgradeTooltip: 'Na voljo je le s Team načrtom ali višjim.',
+    iso27001: 'Certifikacija ISO 27001:2022',
+    soc2Type1: 'Poročilo SOC 2 Tip I',
+  },
+  imageInput: {
+    supportedFormats: 'Podpira PNG, JPG, JPEG, WEBP in GIF',
+    browse: 'brskati',
+    dropImageHere: 'Tukaj spustite svojo sliko ali',
+  },
+  you: 'Ti',
 }
 
 export default translation

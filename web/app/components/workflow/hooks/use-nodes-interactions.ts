@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type {
@@ -60,6 +60,8 @@ import {
   useWorkflowReadOnly,
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
+import useInspectVarsCrud from './use-inspect-vars-crud'
+import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -288,7 +290,9 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store, workflowStore, getNodesReadOnly])
 
-  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
+  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
+    if(initShowLastRunTab)
+      workflowStore.setState({ initShowLastRunTab: true })
     const {
       getNodes,
       setNodes,
@@ -530,6 +534,8 @@ export const useNodesInteractions = () => {
     setEnteringNodePayload(undefined)
   }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
 
+  const { deleteNodeInspectorVars } = useInspectVarsCrud()
+
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (getNodesReadOnly())
       return
@@ -551,6 +557,7 @@ export const useNodesInteractions = () => {
     if (currentNode.data.type === BlockEnum.Start)
       return
 
+    deleteNodeInspectorVars(nodeId)
     if (currentNode.data.type === BlockEnum.Iteration) {
       const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
 
@@ -655,7 +662,7 @@ export const useNodesInteractions = () => {
 
     else
       saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
+  }, [getNodesReadOnly, store, deleteNodeInspectorVars, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {
@@ -1524,6 +1531,135 @@ export const useNodesInteractions = () => {
     setNodes(nodes)
   }, [redo, store, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
+  const [isDimming, setIsDimming] = useState(false)
+  /** Add opacity-30 to all nodes except the nodeId */
+  const dimOtherNodes = useCallback(() => {
+    if (isDimming)
+      return
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+
+    const selectedNode = nodes.find(n => n.data.selected)
+    if (!selectedNode)
+      return
+
+    setIsDimming(true)
+
+    // const workflowNodes = useStore(s => s.getNodes())
+    const workflowNodes = nodes
+
+    const usedVars = getNodeUsedVars(selectedNode)
+    const dependencyNodes: Node[] = []
+    usedVars.forEach((valueSelector) => {
+      const node = workflowNodes.find(node => node.id === valueSelector?.[0])
+      if (node) {
+        if (!dependencyNodes.includes(node))
+          dependencyNodes.push(node)
+      }
+    })
+
+    const outgoers = getOutgoers(selectedNode as Node, nodes as Node[], edges)
+    for (let currIdx = 0; currIdx < outgoers.length; currIdx++) {
+      const node = outgoers[currIdx]
+      const outgoersForNode = getOutgoers(node, nodes as Node[], edges)
+      outgoersForNode.forEach((item) => {
+        const existed = outgoers.some(v => v.id === item.id)
+        if (!existed)
+          outgoers.push(item)
+      })
+    }
+
+    const dependentNodes: Node[] = []
+    outgoers.forEach((node) => {
+      const usedVars = getNodeUsedVars(node)
+      const used = usedVars.some(v => v?.[0] === selectedNode.id)
+      if (used) {
+        const existed = dependentNodes.some(v => v.id === node.id)
+        if (!existed)
+          dependentNodes.push(node)
+      }
+    })
+
+    const dimNodes = [...dependencyNodes, ...dependentNodes, selectedNode]
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((n) => {
+        const dimNode = dimNodes.find(v => v.id === n.id)
+        if (!dimNode)
+          n.data._dimmed = true
+      })
+    })
+
+    setNodes(newNodes)
+
+    const tempEdges: Edge[] = []
+
+    dependencyNodes.forEach((n) => {
+      tempEdges.push({
+        id: `tmp_${n.id}-source-${selectedNode.id}-target`,
+        type: CUSTOM_EDGE,
+        source: n.id,
+        sourceHandle: 'source_tmp',
+        target: selectedNode.id,
+        targetHandle: 'target_tmp',
+        animated: true,
+        data: {
+          sourceType: n.data.type,
+          targetType: selectedNode.data.type,
+          _isTemp: true,
+          _connectedNodeIsHovering: true,
+        },
+      })
+    })
+    dependentNodes.forEach((n) => {
+      tempEdges.push({
+        id: `tmp_${selectedNode.id}-source-${n.id}-target`,
+        type: CUSTOM_EDGE,
+        source: selectedNode.id,
+        sourceHandle: 'source_tmp',
+        target: n.id,
+        targetHandle: 'target_tmp',
+        animated: true,
+        data: {
+          sourceType: selectedNode.data.type,
+          targetType: n.data.type,
+          _isTemp: true,
+          _connectedNodeIsHovering: true,
+        },
+      })
+    })
+
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((e) => {
+        e.data._dimmed = true
+      })
+      draft.push(...tempEdges)
+    })
+    setEdges(newEdges)
+  }, [isDimming, store])
+
+  /** Restore all nodes to full opacity */
+  const undimAllNodes = useCallback(() => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    setIsDimming(false)
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((n) => {
+        n.data._dimmed = false
+      })
+    })
+
+    setNodes(newNodes)
+
+    const newEdges = produce(edges.filter(e => !e.data._isTemp), (draft) => {
+      draft.forEach((e) => {
+        e.data._dimmed = false
+      })
+    })
+    setEdges(newEdges)
+  }, [store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -1548,5 +1684,7 @@ export const useNodesInteractions = () => {
     handleNodeDisconnect,
     handleHistoryBack,
     handleHistoryForward,
+    dimOtherNodes,
+    undimAllNodes,
   }
 }

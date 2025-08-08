@@ -31,6 +31,7 @@ type NodesExtraData = {
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: any
+  defaultRunInputData?: Record<string, any>
 }
 export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
   [BlockEnum.Start]: {
@@ -68,6 +69,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: LLMDefault.getAvailablePrevNodes,
     getAvailableNextNodes: LLMDefault.getAvailableNextNodes,
     checkValid: LLMDefault.checkValid,
+    defaultRunInputData: LLMDefault.defaultRunInputData,
   },
   [BlockEnum.KnowledgeRetrieval]: {
     author: 'Dify',
@@ -408,7 +410,6 @@ export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
-export const MAX_TREE_DEPTH = 50
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
 export const AUTO_LAYOUT_OFFSET = {
   x: -42,
@@ -436,14 +437,6 @@ export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
 export const NODE_LAYOUT_MIN_DISTANCE = 100
 
-let maxParallelLimit = 10
-
-if (process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT && process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT !== '')
-  maxParallelLimit = Number.parseInt(process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT)
-else if (globalThis.document?.body?.getAttribute('data-public-max-parallel-limit') && globalThis.document.body.getAttribute('data-public-max-parallel-limit') !== '')
-  maxParallelLimit = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-parallel-limit') as string)
-
-export const PARALLEL_LIMIT = maxParallelLimit
 export const PARALLEL_DEPTH_LIMIT = 3
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
@@ -479,6 +472,10 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     variable: 'text',
     type: VarType.string,
   },
+  {
+    variable: 'usage',
+    type: VarType.object,
+  },
 ]
 
 export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
@@ -499,6 +496,10 @@ export const QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
   {
     variable: 'class_name',
     type: VarType.string,
+  },
+  {
+    variable: 'usage',
+    type: VarType.object,
   },
 ]
 
@@ -544,6 +545,10 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
   {
     variable: '__reason',
     type: VarType.string,
+  },
+  {
+    variable: '__usage',
+    type: VarType.object,
   },
 ]
 

@@ -70,7 +70,6 @@ const translation = {
   activated: 'Đăng nhập ngay',
   adminInitPassword: 'Mật khẩu khởi tạo quản trị viên',
   validate: 'Xác thực',
-  sso: 'Tiếp tục với SSO',
   checkCode: {
     checkYourEmail: 'Kiểm tra email của bạn',
     verify: 'Xác minh',
@@ -82,7 +81,7 @@ const translation = {
     useAnotherMethod: 'Sử dụng phương pháp khác',
     emptyCode: 'Mã là bắt buộc',
     verificationCodePlaceholder: 'Nhập mã gồm 6 chữ số',
-    tips: 'Chúng tôi gửi mã xác minh đến <strong>{{email}}</strong>',
+    tipsPrefix: 'Chúng tôi gửi mã xác minh đến',
   },
   back: 'Lưng',
   withSSO: 'Tiếp tục với SSO',
@@ -105,6 +104,12 @@ const translation = {
   licenseExpired: 'Giấy phép đã hết hạn',
   licenseExpiredTip: 'Giấy phép Dify Enterprise cho không gian làm việc của bạn đã hết hạn. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
   licenseLostTip: 'Không thể kết nối máy chủ cấp phép Dify. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
+  webapp: {
+    noLoginMethod: 'Phương thức xác thực chưa được cấu hình cho ứng dụng web',
+    noLoginMethodTip: 'Vui lòng liên hệ với quản trị viên hệ thống để thêm phương thức xác thực.',
+    disabled: 'Xác thực webapp đã bị vô hiệu hóa. Vui lòng liên hệ với quản trị hệ thống để kích hoạt nó. Bạn có thể thử sử dụng ứng dụng trực tiếp.',
+    login: 'Đăng nhập',
+  },
 }
 
 export default translation

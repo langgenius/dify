@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,9 +33,12 @@ type Props = {
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const { inputs, setInputs } = useStore(s => ({
+    inputs: s.inputs,
+    setInputs: s.setInputs,
+  }))
   const fileSettings = useFeatures(s => s.features.file)
   const nodes = useNodes<StartNodeType>()
-  const inputs = useStore(s => s.inputs)
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
@@ -43,6 +47,24 @@ const InputsPanel = ({ onRun }: Props) => {
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
+
+  const initialInputs = useMemo(() => {
+    const initInputs: Record<string, any> = {}
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          initInputs[variable.variable] = variable.default
+      })
+    }
+    return initInputs
+  }, [startVariables])
+
+  useEffect(() => {
+    setInputs({
+      ...initialInputs,
+      ...inputs,
+    })
+  }, [initialInputs])
 
   const variables = useMemo(() => {
     const data = startVariables || []

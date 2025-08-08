@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useNodes } from 'reactflow'
+import { useStore as useReactflowStore } from 'reactflow'
 import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -22,21 +22,21 @@ import {
   BlockEnum,
   InputVarType,
 } from '@/app/components/workflow/types'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useToastContext } from '@/app/components/base/toast'
-import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
+import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSelector as useAppSelector } from '@/context/app-context'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const systemFeatures = useAppSelector(state => state.systemFeatures)
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -44,9 +44,9 @@ const FeaturesTrigger = () => {
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
-  const nodes = useNodes<StartNodeType>()
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  const startVariables = startNode?.data.variables
+  const startVariables = useReactflowStore(
+    s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
+  )
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -85,19 +85,14 @@ const FeaturesTrigger = () => {
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      if (systemFeatures.enable_web_sso_switch_component) {
-        const ssoRes = await fetchAppSSO({ appId: appID! })
-        setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-      }
-      else {
-        setAppDetail({ ...res })
-      }
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+  }, [appID, setAppDetail])
   const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
+  const updatePublishedWorkflow = useInvalidateAppWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
@@ -107,6 +102,7 @@ const FeaturesTrigger = () => {
 
       if (res) {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
+        updatePublishedWorkflow(appID!)
         updateAppDetail()
         workflowStore.getState().setPublishedAt(res.created_at)
         resetWorkflowVersionHistory()
@@ -115,7 +111,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [handleCheckBeforePublish, notify, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
+  }, [handleCheckBeforePublish, publishWorkflow, notify, t, updatePublishedWorkflow, appID, updateAppDetail, workflowStore, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -128,7 +124,13 @@ const FeaturesTrigger = () => {
 
   return (
     <>
-      <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+      <Button
+        className={cn(
+          'text-components-button-secondary-text',
+          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+        )}
+        onClick={handleShowFeatures}
+      >
         <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
         {t('workflow.common.features')}
       </Button>

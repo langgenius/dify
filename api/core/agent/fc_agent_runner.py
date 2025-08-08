@@ -45,17 +45,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
-        # fix metadata filter not work
-        if app_config.dataset is not None:
-            metadata_filtering_conditions = app_config.dataset.retrieve_config.metadata_filtering_conditions
-            for key, dataset_retriever_tool in tool_instances.items():
-                if hasattr(dataset_retriever_tool, "retrieval_tool"):
-                    dataset_retriever_tool.retrieval_tool.metadata_filtering_conditions = metadata_filtering_conditions
-
         assert app_config.agent
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
@@ -72,6 +65,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage = final_llm_usage_dict["usage"]
                 llm_usage.prompt_tokens += usage.prompt_tokens
                 llm_usage.completion_tokens += usage.completion_tokens
+                llm_usage.total_tokens += usage.total_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
                 llm_usage.total_price += usage.total_price
@@ -86,7 +80,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 prompt_messages_tools = []
 
             message_file_ids: list[str] = []
-            agent_thought = self.create_agent_thought(
+            agent_thought_id = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
             )
 
@@ -120,7 +114,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 for chunk in chunks:
                     if is_first_chunk:
                         self.queue_manager.publish(
-                            QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                            QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                         )
                         is_first_chunk = False
                     # check if there is any tool call
@@ -178,7 +172,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     result.message.content = ""
 
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
                 yield LLMResultChunk(
@@ -211,7 +205,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought,
+                agent_thought_id=agent_thought_id,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -222,7 +216,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage=current_llm_usage,
             )
             self.queue_manager.publish(
-                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
             )
 
             final_answer += response + "\n"
@@ -282,7 +276,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought,
+                    agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
@@ -297,7 +291,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     messages_ids=message_file_ids,
                 )
                 self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
 
             # update prompt tool

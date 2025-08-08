@@ -58,7 +58,7 @@ const translation = {
     processData: '数据处理',
     input: '输入',
     output: '输出',
-    jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
+    jinjaEditorPlaceholder: '输入“/”或“{”插入变量',
     viewOnly: '只读',
     showRunHistory: '显示运行历史',
     enableJinja: '开启支持 Jinja 模板',
@@ -113,6 +113,7 @@ const translation = {
     openInExplore: '在“探索”中打开',
     loadMore: '加载更多',
     noHistory: '没有历史版本',
+    tagBound: '使用此标签的应用数量',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -127,6 +128,8 @@ const translation = {
       value: '值',
       valuePlaceholder: '变量值',
       secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
+      description: '描述',
+      descriptionPlaceholder: '变量的描述',
     },
     export: {
       title: '导出 Secret 类型环境变量？',
@@ -210,7 +213,6 @@ const translation = {
     startRun: '开始运行',
     running: '运行中',
     testRunIteration: '测试运行迭代',
-    testRunLoop: '测试运行循环',
     back: '返回',
     iteration: '迭代',
     loop: '循环',
@@ -230,6 +232,8 @@ const translation = {
     'utilities': '工具',
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
+    'allAdded': '已添加全部',
+    'addAll': '添加全部',
   },
   blocks: {
     'start': '开始',
@@ -271,7 +275,7 @@ const translation = {
     'variable-aggregator': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
     'iteration': '对列表对象执行多次步骤直至输出所有结果。',
     'loop': '循环执行一段逻辑直到满足结束条件或者到达循环次数上限。',
-    'loop-end': '相当于“break” 此节点没有配置项，当循环体内运行到此节点后循环终止。',
+    'loop-end': '相当于“break”此节点没有配置项，当循环体内运行到此节点后循环终止。',
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
@@ -283,6 +287,18 @@ const translation = {
     zoomTo50: '缩放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
+    alignNodes: '对齐节点',
+    alignLeft: '左对齐',
+    alignCenter: '居中对齐',
+    alignRight: '右对齐',
+    alignTop: '顶部对齐',
+    alignMiddle: '中部对齐',
+    alignBottom: '底部对齐',
+    vertical: '垂直方向',
+    horizontal: '水平方向',
+    distributeHorizontal: '水平等间距',
+    distributeVertical: '垂直等间距',
+    selectionAlignment: '选择对齐',
   },
   variableReference: {
     noAvailableVars: '没有可用变量',
@@ -307,6 +323,9 @@ const translation = {
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
+    moveToThisNode: '定位至此节点',
+    maximize: '最大化画布',
+    minimize: '退出最大化',
   },
   nodes: {
     common: {
@@ -363,6 +382,10 @@ const translation = {
         times: '次',
         ms: '毫秒',
         retries: '{{num}} 重试次数',
+      },
+      typeSwitch: {
+        input: '输入值',
+        variable: '使用变量',
       },
     },
     start: {
@@ -537,8 +560,12 @@ const translation = {
         writePlaceholder: '输入写入超时（以秒为单位）',
       },
       curl: {
-        title: '导入cURL',
+        title: '导入 cURL',
         placeholder: '粘贴 cURL 字符串',
+      },
+      verifySSL: {
+        title: '验证 SSL 证书',
+        warningTooltip: '不建议在生产环境中禁用 SSL 验证。这仅应在开发或测试中使用，因为它会使连接容易受到诸如中间人攻击等安全威胁。',
       },
     },
     code: {
@@ -547,6 +574,7 @@ const translation = {
       advancedDependencies: '高级依赖',
       advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
       searchDependencies: '搜索依赖',
+      syncFunctionSignature: '同步函数签名至代码',
     },
     templateTransform: {
       inputVars: '输入变量',
@@ -575,8 +603,8 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
-        'in': '是',
-        'not in': '不是',
+        'in': '在',
+        'not in': '不在',
         'all of': '全部是',
         'exists': '存在',
         'not exists': '不存在',
@@ -651,8 +679,11 @@ const translation = {
       'assignedVarsDescription': '赋值变量必须是可写入的变量，例如会话变量。',
     },
     tool: {
-      toAuthorize: '授权',
+      authorize: '授权',
       inputVars: '输入变量',
+      settings: '设置',
+      insertPlaceholder1: '键入',
+      insertPlaceholder2: '插入变量',
       outputVars: {
         text: '工具生成的内容',
         files: {
@@ -660,9 +691,9 @@ const translation = {
           type: '支持类型。现在只支持图片',
           transfer_method: '传输方式。值为 remote_url 或 local_file',
           url: '图片链接',
-          upload_file_id: '上传文件ID',
+          upload_file_id: '上传文件 ID',
         },
-        json: '工具生成的json',
+        json: '工具生成的 json',
       },
     },
     questionClassifiers: {
@@ -670,6 +701,7 @@ const translation = {
       inputVars: '输入变量',
       outputVars: {
         className: '分类名称',
+        usage: '模型用量信息',
       },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
@@ -683,6 +715,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '输入变量',
+      outputVars: {
+        isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
+        errorReason: '错误原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取参数',
       importFromTool: '从工具导入',
       addExtractParameter: '添加提取参数',
@@ -702,8 +739,6 @@ const translation = {
       advancedSetting: '高级设置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根据模型对于 Function calling 或 Prompt 的指令响应能力选择合适的推理模式',
-      isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
-      errorReason: '错误原因',
     },
     iteration: {
       deleteTitle: '删除迭代节点？',
@@ -739,6 +774,9 @@ const translation = {
       loop_one: '{{count}} 个循环',
       loop_other: '{{count}} 个循环',
       currentLoop: '当前循环',
+      comma: '，',
+      error_one: '{{count}}个失败',
+      error_other: '{{count}}个失败',
       breakCondition: '循环终止条件',
       breakConditionTip: '支持引用终止条件循环内的变量和会话变量。',
       loopMaxCount: '最大循环次数',
@@ -784,7 +822,7 @@ const translation = {
       outputVars: {
         text: '提取的文本',
       },
-      supportFileTypes: '支持的文件类型: {{types}}。',
+      supportFileTypes: '支持的文件类型：{{types}}。',
       learnMore: '了解更多',
     },
     listFilter: {
@@ -859,9 +897,9 @@ const translation = {
           type: '支持类型。现在只支持图片',
           transfer_method: '传输方式。值为 remote_url 或 local_file',
           url: '图片链接',
-          upload_file_id: '上传文件ID',
+          upload_file_id: '上传文件 ID',
         },
-        json: 'agent 生成的json',
+        json: 'agent 生成的 json',
       },
       checkList: {
         strategyNotSelected: '未选择策略',
@@ -873,6 +911,8 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+      clickToViewParameterSchema: '点击查看参数 schema',
+      parameterSchema: '参数 Schema',
     },
   },
   tracing: {
@@ -892,6 +932,7 @@ const translation = {
     defaultName: '未命名',
     nameThisVersion: '命名',
     editVersionInfo: '编辑信息',
+    copyId: '复制 ID',
     editField: {
       title: '标题',
       releaseNotes: '发布说明',
@@ -908,6 +949,45 @@ const translation = {
       deleteFailure: '删除失败',
       updateSuccess: '版本信息已更新',
       updateFailure: '更新失败',
+      copyIdSuccess: 'ID 已复制到剪贴板',
+    },
+  },
+  debug: {
+    settingsTab: '设置',
+    lastRunTab: '上次运行',
+    relationsTab: '关系',
+    noData: {
+      description: '上次运行的结果将显示在这里',
+      runThisNode: '运行此节点',
+    },
+    variableInspect: {
+      title: '变量检查',
+      emptyTip: '在画布上逐步浏览节点或逐步运行节点后，您可以在变量检查中查看节点变量的当前值',
+      emptyLink: '了解更多',
+      clearAll: '重置所有',
+      clearNode: '清除缓存',
+      resetConversationVar: '重置会话变量为默认值',
+      view: '查看记录',
+      edited: '已编辑',
+      reset: '还原至上一次运行',
+      trigger: {
+        normal: '变量检查',
+        running: '缓存中',
+        stop: '停止运行',
+        cached: '查看缓存',
+        clear: '清除',
+      },
+      envNode: '环境变量',
+      chatNode: '会话变量',
+      systemNode: '系统变量',
+    },
+    relations: {
+      dependencies: '依赖',
+      dependents: '被依赖',
+      dependenciesDescription: '本节点依赖的其他节点',
+      dependentsDescription: '依赖于本节点的其他节点',
+      noDependencies: '无依赖',
+      noDependents: '无被依赖',
     },
   },
 }

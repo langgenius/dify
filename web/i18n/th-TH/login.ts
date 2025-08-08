@@ -79,7 +79,6 @@ const translation = {
   validate: 'ตรวจ สอบ',
   checkCode: {
     checkYourEmail: 'ตรวจสอบอีเมลของคุณ',
-    tips: 'เราส่งรหัสยืนยันไปที่ <strong>{{email}}</strong>',
     validTime: 'โปรดทราบว่ารหัสนี้ใช้ได้นาน 5 นาที',
     verificationCode: 'รหัสยืนยัน',
     verificationCodePlaceholder: 'ป้อนรหัส 6 หลัก',
@@ -89,6 +88,7 @@ const translation = {
     useAnotherMethod: 'ใช้วิธีอื่น',
     emptyCode: 'ต้องใช้รหัส',
     invalidCode: 'รหัสไม่ถูกต้อง',
+    tipsPrefix: 'เราส่งรหัสตรวจสอบไปยัง',
   },
   resetPassword: 'รีเซ็ตรหัสผ่าน',
   resetPasswordDesc: 'พิมพ์อีเมลที่คุณใช้ลงทะเบียนบน Dify แล้วเราจะส่งอีเมลรีเซ็ตรหัสผ่านให้คุณ',
@@ -104,6 +104,12 @@ const translation = {
   licenseLostTip: 'เชื่อมต่อเซิร์ฟเวอร์ใบอนุญาต Dify ไม่สําเร็จ โปรดติดต่อผู้ดูแลระบบของคุณเพื่อใช้ Dify ต่อไป',
   licenseInactive: 'ใบอนุญาตไม่ใช้งาน',
   licenseInactiveTip: 'สิทธิ์การใช้งาน Dify Enterprise สําหรับพื้นที่ทํางานของคุณไม่ได้ใช้งาน โปรดติดต่อผู้ดูแลระบบของคุณเพื่อใช้ Dify ต่อไป',
+  webapp: {
+    noLoginMethodTip: 'กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มวิธีการตรวจสอบสิทธิ์.',
+    noLoginMethod: 'ไม่ได้กำหนดวิธีการตรวจสอบสิทธิ์สำหรับเว็บแอป',
+    disabled: 'การรับรองความถูกต้องของเว็บแอปถูกปิดใช้งาน โปรดติดต่อผู้ดูแลระบบเพื่อเปิดใช้งาน คุณสามารถลองใช้แอปโดยตรงได้',
+    login: 'เข้าสู่ระบบ',
+  },
 }
 
 export default translation

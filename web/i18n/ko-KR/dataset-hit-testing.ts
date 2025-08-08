@@ -2,7 +2,6 @@ const translation = {
   title: '검색 테스트',
   desc: '주어진 쿼리 텍스트에 기반하여 지식의 검색 효과를 테스트합니다.',
   dateTimeFormat: 'YYYY/MM/DD HH:mm',
-  recents: '최근 결과',
   table: {
     header: {
       source: '소스',
@@ -13,7 +12,7 @@ const translation = {
   input: {
     title: '소스 텍스트',
     placeholder: '텍스트를 입력하세요. 간결한 설명문이 좋습니다.',
-    countWarning: '최대 200자까지 입력할 수 있습니다.',
+    countWarning: '최대 200 자까지 입력할 수 있습니다.',
     indexWarning: '고품질 지식만.',
     testing: '테스트 중',
   },
@@ -29,7 +28,7 @@ const translation = {
   records: '레코드',
   hitChunks: '{{num}}개의 자식 청크를 히트했습니다.',
   keyword: '키워드',
-  chunkDetail: '청크 디테일(Chunk Detail)',
+  chunkDetail: '청크 디테일 (Chunk Detail)',
 }
 
 export default translation

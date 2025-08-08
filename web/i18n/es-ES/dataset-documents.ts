@@ -29,6 +29,9 @@ const translation = {
       delete: 'Eliminar',
       enableWarning: 'El archivo archivado no puede habilitarse',
       sync: 'Sincronizar',
+      resume: 'Reanudar',
+      pause: 'Pausa',
+      download: 'Descargar archivo',
     },
     index: {
       enable: 'Habilitar',
@@ -340,7 +343,6 @@ const translation = {
     keywords: 'Palabras clave',
     addKeyWord: 'Agregar palabra clave',
     keywordError: 'La longitud máxima de la palabra clave es 20',
-    characters: 'caracteres',
     hitCount: 'Cantidad de recuperación',
     vectorHash: 'Hash de vector: ',
     questionPlaceholder: 'agregar pregunta aquí',
@@ -375,6 +377,7 @@ const translation = {
     editChildChunk: 'Editar fragmento secundario',
     regeneratingTitle: 'Regeneración de fragmentos secundarios',
     editedAt: 'Editado en',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     searchResults_zero: 'RESULTADO',
     clearFilter: 'Borrar filtro',
     newChildChunk: 'Nuevo fragmento secundario',
@@ -389,6 +392,8 @@ const translation = {
     characters_one: 'carácter',
     regenerationSuccessMessage: 'Puede cerrar esta ventana.',
     regenerationConfirmTitle: '¿Desea regenerar fragmentos secundarios?',
+    keywordEmpty: 'La palabra clave no puede estar vacía',
+    keywordDuplicate: 'La palabra clave ya existe',
   },
 }
 

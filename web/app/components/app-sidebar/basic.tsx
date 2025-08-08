@@ -2,6 +2,10 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '../base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  Code,
+  WindowCursor,
+} from '@/app/components/base/icons/src/vender/workflow'
 
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
@@ -14,23 +18,11 @@ export type IAppBasicProps = {
   textStyle?: { main?: string; extra?: string }
   isExtraInLine?: boolean
   mode?: string
+  hideType?: boolean
 }
-
-const ApiSvg = <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M8.5 3.5C8.5 4.60457 9.39543 5.5 10.5 5.5C11.6046 5.5 12.5 4.60457 12.5 3.5C12.5 2.39543 11.6046 1.5 10.5 1.5C9.39543 1.5 8.5 2.39543 8.5 3.5Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  <path d="M12.5 9C12.5 10.1046 13.3954 11 14.5 11C15.6046 11 16.5 10.1046 16.5 9C16.5 7.89543 15.6046 7 14.5 7C13.3954 7 12.5 7.89543 12.5 9Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  <path d="M8.5 3.5H5.5L3.5 6.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  <path d="M8.5 14.5C8.5 15.6046 9.39543 16.5 10.5 16.5C11.6046 16.5 12.5 15.6046 12.5 14.5C12.5 13.3954 11.6046 12.5 10.5 12.5C9.39543 12.5 8.5 13.3954 8.5 14.5Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  <path d="M8.5 14.5H5.5L3.5 11.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  <path d="M12.5 9H1.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-</svg>
 
 const DatasetSvg = <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path fillRule="evenodd" clipRule="evenodd" d="M0.833497 5.13481C0.833483 4.69553 0.83347 4.31654 0.858973 4.0044C0.88589 3.67495 0.94532 3.34727 1.10598 3.03195C1.34567 2.56155 1.72812 2.17909 2.19852 1.93941C2.51384 1.77875 2.84152 1.71932 3.17097 1.6924C3.48312 1.6669 3.86209 1.66691 4.30137 1.66693L7.62238 1.66684C8.11701 1.66618 8.55199 1.66561 8.95195 1.80356C9.30227 1.92439 9.62134 2.12159 9.88607 2.38088C10.1883 2.67692 10.3823 3.06624 10.603 3.50894L11.3484 5.00008H14.3679C15.0387 5.00007 15.5924 5.00006 16.0434 5.03691C16.5118 5.07518 16.9424 5.15732 17.3468 5.36339C17.974 5.68297 18.4839 6.19291 18.8035 6.82011C19.0096 7.22456 19.0917 7.65515 19.13 8.12356C19.1668 8.57455 19.1668 9.12818 19.1668 9.79898V13.5345C19.1668 14.2053 19.1668 14.7589 19.13 15.2099C19.0917 15.6784 19.0096 16.1089 18.8035 16.5134C18.4839 17.1406 17.974 17.6505 17.3468 17.9701C16.9424 18.1762 16.5118 18.2583 16.0434 18.2966C15.5924 18.3334 15.0387 18.3334 14.3679 18.3334H5.63243C4.96163 18.3334 4.40797 18.3334 3.95698 18.2966C3.48856 18.2583 3.05798 18.1762 2.65353 17.9701C2.02632 17.6505 1.51639 17.1406 1.19681 16.5134C0.990734 16.1089 0.908597 15.6784 0.870326 15.2099C0.833478 14.7589 0.833487 14.2053 0.833497 13.5345V5.13481ZM7.51874 3.33359C8.17742 3.33359 8.30798 3.34447 8.4085 3.37914C8.52527 3.41942 8.63163 3.48515 8.71987 3.57158C8.79584 3.64598 8.86396 3.7579 9.15852 4.34704L9.48505 5.00008L2.50023 5.00008C2.50059 4.61259 2.50314 4.34771 2.5201 4.14012C2.5386 3.91374 2.57 3.82981 2.59099 3.7886C2.67089 3.6318 2.79837 3.50432 2.95517 3.42442C2.99638 3.40343 3.08031 3.37203 3.30669 3.35353C3.54281 3.33424 3.85304 3.33359 4.3335 3.33359H7.51874Z" fill="#444CE7" />
-</svg>
-
-const WebappSvg = <svg width="16" height="18" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M14.375 5.45825L7.99998 8.99992M7.99998 8.99992L1.62498 5.45825M7.99998 8.99992L8 16.1249M14.75 12.0439V5.95603C14.75 5.69904 14.75 5.57055 14.7121 5.45595C14.6786 5.35457 14.6239 5.26151 14.5515 5.18299C14.4697 5.09424 14.3574 5.03184 14.1328 4.90704L8.58277 1.8237C8.37007 1.70553 8.26372 1.64645 8.15109 1.62329C8.05141 1.60278 7.9486 1.60278 7.84891 1.62329C7.73628 1.64645 7.62993 1.70553 7.41723 1.8237L1.86723 4.90704C1.64259 5.03184 1.53026 5.09424 1.44847 5.18299C1.37612 5.26151 1.32136 5.35457 1.28786 5.45595C1.25 5.57055 1.25 5.69904 1.25 5.95603V12.0439C1.25 12.3008 1.25 12.4293 1.28786 12.5439C1.32136 12.6453 1.37612 12.7384 1.44847 12.8169C1.53026 12.9056 1.64259 12.968 1.86723 13.0928L7.41723 16.1762C7.62993 16.2943 7.73628 16.3534 7.84891 16.3766C7.9486 16.3971 8.05141 16.3971 8.15109 16.3766C8.26372 16.3534 8.37007 16.2943 8.58277 16.1762L14.1328 13.0928C14.3574 12.968 14.4697 12.9056 14.5515 12.8169C14.6239 12.7384 14.6786 12.6453 14.7121 12.5439C14.75 12.4293 14.75 12.3008 14.75 12.0439Z" stroke="#155EEF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 </svg>
 
 const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -48,13 +40,17 @@ const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xm
 
 const ICON_MAP = {
   app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  api: <AppIcon innerIcon={ApiSvg} className='border !border-purple-200 !bg-purple-50' />,
+  api: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md'>
+    <Code className='h-4 w-4 text-text-primary-on-surface' />
+  </div>,
   dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
-  webapp: <AppIcon innerIcon={WebappSvg} className='border !border-primary-200 !bg-primary-100' />,
+  webapp: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
+  <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
+</div>,
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, isExtraInLine, mode = 'expand', iconType = 'app', hideType }: IAppBasicProps) {
   const { t } = useTranslation()
 
   return (
@@ -88,9 +84,10 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        {isExtraInLine ? (
+        {!hideType && isExtraInLine && (
           <div className="system-2xs-medium-uppercase flex text-text-tertiary">{type}</div>
-        ) : (
+        )}
+        {!hideType && !isExtraInLine && (
           <div className='system-2xs-medium-uppercase text-text-tertiary'>{isExternal ? t('dataset.externalTag') : type}</div>
         )}
       </div>}

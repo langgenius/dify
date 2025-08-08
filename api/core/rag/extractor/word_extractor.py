@@ -19,7 +19,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class WordExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        content = self.parse_docx(self.file_path, "storage")
+        content = self.parse_docx(self.file_path)
         return [
             Document(
                 page_content=content,
@@ -76,8 +76,7 @@ class WordExtractor(BaseExtractor):
         parsed = urlparse(url)
         return bool(parsed.netloc) and bool(parsed.scheme)
 
-    def _extract_images_from_docx(self, doc, image_folder):
-        os.makedirs(image_folder, exist_ok=True)
+    def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
 
@@ -117,7 +116,7 @@ class WordExtractor(BaseExtractor):
                     extension=str(image_ext),
                     mime_type=mime_type or "",
                     created_by=self.user_id,
-                    created_by_role=CreatedByRole.ACCOUNT,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
@@ -190,27 +189,12 @@ class WordExtractor(BaseExtractor):
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
 
-    def _parse_paragraph(self, paragraph, image_map):
-        paragraph_content = []
-        for run in paragraph.runs:
-            if run.element.xpath(".//a:blip"):
-                for blip in run.element.xpath(".//a:blip"):
-                    embed_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
-                    if embed_id:
-                        rel_target = run.part.rels[embed_id].target_ref
-                        if rel_target in image_map:
-                            paragraph_content.append(image_map[rel_target])
-            if run.text.strip():
-                paragraph_content.append(run.text.strip())
-        return " ".join(paragraph_content) if paragraph_content else ""
-
-    def parse_docx(self, docx_path, image_folder):
+    def parse_docx(self, docx_path):
         doc = DocxDocument(docx_path)
-        os.makedirs(image_folder, exist_ok=True)
 
         content = []
 
-        image_map = self._extract_images_from_docx(doc, image_folder)
+        image_map = self._extract_images_from_docx(doc)
 
         hyperlinks_url = None
         url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
@@ -225,7 +209,7 @@ class WordExtractor(BaseExtractor):
                         xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
-                            if x_child is None:
+                            if x is None:
                                 continue
                             if x.tag.endswith("instrText"):
                                 if x.text is None:
@@ -239,9 +223,11 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             for run in paragraph.runs:
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
+                    # Process drawing type images
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
+                    has_drawing = False
                     for drawing in drawing_elements:
                         blip_elements = drawing.findall(
                             ".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
@@ -253,6 +239,34 @@ class WordExtractor(BaseExtractor):
                             if embed_id:
                                 image_part = doc.part.related_parts.get(embed_id)
                                 if image_part in image_map:
+                                    has_drawing = True
+                                    paragraph_content.append(image_map[image_part])
+                    # Process pict type images
+                    shape_elements = run.element.findall(
+                        ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
+                    )
+                    for shape in shape_elements:
+                        # Find image data in VML
+                        shape_image = shape.find(
+                            ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}binData"
+                        )
+                        if shape_image is not None and shape_image.text:
+                            image_id = shape_image.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
+                                    paragraph_content.append(image_map[image_part])
+                        # Find imagedata element in VML
+                        image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
+                        if image_data is not None:
+                            image_id = image_data.get("id") or image_data.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
                                     paragraph_content.append(image_map[image_part])
                 if run.text.strip():
                     paragraph_content.append(run.text.strip())

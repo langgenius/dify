@@ -18,6 +18,15 @@ type Props = {
   onSaved: (value: Record<string, any>) => void
 }
 
+const extractDefaultValues = (schemas: any[]) => {
+  const result: Record<string, any> = {}
+  for (const field of schemas) {
+    if (field.default !== undefined)
+      result[field.name] = field.default
+  }
+  return result
+}
+
 const EndpointModal: FC<Props> = ({
   formSchemas,
   defaultValues = {},
@@ -26,7 +35,10 @@ const EndpointModal: FC<Props> = ({
 }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
-  const [tempCredential, setTempCredential] = React.useState<any>(defaultValues)
+  const initialValues = Object.keys(defaultValues).length > 0
+    ? defaultValues
+    : extractDefaultValues(formSchemas)
+  const [tempCredential, setTempCredential] = React.useState<any>(initialValues)
 
   const handleSave = () => {
     for (const field of formSchemas) {
@@ -35,7 +47,22 @@ const EndpointModal: FC<Props> = ({
         return
       }
     }
-    onSaved(tempCredential)
+
+    // Fix: Process boolean fields to ensure they are sent as proper boolean values
+    const processedCredential = { ...tempCredential }
+    formSchemas.forEach((field) => {
+      if (field.type === 'boolean' && processedCredential[field.name] !== undefined) {
+        const value = processedCredential[field.name]
+        if (typeof value === 'string')
+          processedCredential[field.name] = value === 'true' || value === '1' || value === 'True'
+         else if (typeof value === 'number')
+          processedCredential[field.name] = value === 1
+         else if (typeof value === 'boolean')
+          processedCredential[field.name] = value
+      }
+    })
+
+    onSaved(processedCredential)
   }
 
   return (

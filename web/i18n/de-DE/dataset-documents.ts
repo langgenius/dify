@@ -28,6 +28,9 @@ const translation = {
       delete: 'Löschen',
       enableWarning: 'Archivierte Datei kann nicht aktiviert werden',
       sync: 'Synchronisieren',
+      resume: 'Fortsetzen',
+      pause: 'Pause',
+      download: 'Datei herunterladen',
     },
     index: {
       enable: 'Aktivieren',
@@ -144,7 +147,6 @@ const translation = {
         journalConferenceName: 'Zeitschrift/Konferenzname',
         volumeIssuePage: 'Band/Ausgabe/Seite',
         DOI: 'DOI',
-        topicKeywords: 'Themen/Schlüsselwörter',
         abstract: 'Zusammenfassung',
         topicsKeywords: 'Themen/Stichworte',
       },
@@ -341,7 +343,6 @@ const translation = {
     keywords: 'Schlüsselwörter',
     addKeyWord: 'Schlüsselwort hinzufügen',
     keywordError: 'Die maximale Länge des Schlüsselworts beträgt 20',
-    characters: 'Zeichen',
     hitCount: 'Abrufanzahl',
     vectorHash: 'Vektor-Hash: ',
     questionPlaceholder: 'Frage hier hinzufügen',
@@ -382,6 +383,7 @@ const translation = {
     chunkAdded: '1 Stück hinzugefügt',
     expandChunks: 'Blöcke erweitern',
     editedAt: 'Bearbeitet am',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     addChunk: 'Block hinzufügen',
     addAnother: 'Fügen Sie eine weitere hinzu',
     regeneratingTitle: 'Regenerieren von untergeordneten Blöcken',
@@ -390,6 +392,8 @@ const translation = {
     addChildChunk: 'Untergeordneten Block hinzufügen',
     regenerationConfirmTitle: 'Möchten Sie untergeordnete Chunks regenerieren?',
     searchResults_one: 'ERGEBNIS',
+    keywordEmpty: 'Das Schlüsselwort darf nicht leer sein.',
+    keywordDuplicate: 'Das Schlüsselwort existiert bereits',
   },
 }
 

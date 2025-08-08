@@ -121,9 +121,15 @@ class UnsupportedFileTypeError(BaseHTTPException):
     code = 415
 
 
-class WebSSOAuthRequiredError(BaseHTTPException):
+class WebAppAuthRequiredError(BaseHTTPException):
     error_code = "web_sso_auth_required"
-    description = "Web SSO authentication required."
+    description = "Web app authentication required."
+    code = 401
+
+
+class WebAppAuthAccessDeniedError(BaseHTTPException):
+    error_code = "web_app_access_denied"
+    description = "You do not have permission to access this web app."
     code = 401
 
 
@@ -133,3 +139,13 @@ class InvokeRateLimitError(BaseHTTPException):
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429
+
+
+class NotFoundError(BaseHTTPException):
+    error_code = "not_found"
+    code = 404
+
+
+class InvalidArgumentError(BaseHTTPException):
+    error_code = "invalid_param"
+    code = 400

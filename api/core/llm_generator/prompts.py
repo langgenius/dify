@@ -1,61 +1,20 @@
-# Written by YORKI MINAKO🤡, Edited by Xiaoyi
-CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is.
-Notice: the language type user uses could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
-ENSURE your output is in the SAME language as the user's input!
-Your output is restricted only to: (Input language) Intention + Subject(short as possible)
-Your output MUST be a valid JSON.
+# Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
+CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
-Tip: When the user's question is directed at you (the language model), you can add an emoji to make it more fun.
+1. Detect Input Language
+Automatically identify the language of the user’s input (e.g. English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.).
 
+2. Generate Title
+- Combine Intention + Subject into a single, as-short-as-possible phrase.
+- The title must be natural, friendly, and in the same language as the input.
+- If the input is a direct question to the model, you may add an emoji at the end.
 
-example 1:
-User Input: hi, yesterday i had some burgers.
+3. Output Format
+Return **only** a valid JSON object with these exact keys and no additional text:
 {
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "sharing yesterday's food"
-}
-
-example 2:
-User Input: hello
-{
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "Greeting myself☺️"
-}
-
-
-example 3:
-User Input: why mmap file: oom
-{
-  "Language Type": "The user's input is written in pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "Asking about the reason for mmap file: oom"
-}
-
-
-example 4:
-User Input: www.convinceme.yesterday-you-ate-seafood.tv讲了什么？
-{
-  "Language Type": "The user's input English-Chinese mixed",
-  "Your Reasoning": "The English-part is an URL, the main intention is still written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "询问网站www.convinceme.yesterday-you-ate-seafood.tv"
-}
-
-example 5:
-User Input: why小红的年龄is老than小明？
-{
-  "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English parts are filler words, the main intention is written in Chinese, besides, Chinese occupies a greater \"actual meaning\" than English, so the language of my output must be using Chinese.",
-  "Your Output": "询问小红和小明的年龄"
-}
-
-example 6:
-User Input: yo, 你今天咋样？
-{
-  "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English-part is a subjective particle, the main intention is written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "查询今日我的状态☺️"
+  "Language Type": "<Detected language>",
+  "Your Reasoning": "<Brief explanation in that language>",
+  "Your Output": "<Intention + Subject>"
 }
 
 User Input:
@@ -331,4 +290,22 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 }
 
 Now, generate a JSON Schema based on my description
+"""  # noqa: E501
+
+STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
+constraints:
+    - You must output in JSON format.
+    - Do not output boolean value, use string type instead.
+    - Do not output integer or float value, use number type instead.
+eg:
+    Here is the JSON schema:
+    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
+
+    Here is the user's question:
+    My name is John Doe and I am 30 years old.
+
+    output:
+    {"name": "John Doe", "age": 30}
+Here is the JSON schema:
+{{schema}}
 """  # noqa: E501

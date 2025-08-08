@@ -1,7 +1,8 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 export enum PluginType {
   tool = 'tool',
   model = 'model',
@@ -36,6 +37,7 @@ export type PluginEndpointDeclaration = {
 export type EndpointItem = {
   path: string
   method: string
+  hidden?: boolean
 }
 
 export type EndpointListItem = {
@@ -93,7 +95,11 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
-  badges: string[]
+  badges: string[],
+  verification: {
+    authorized_category: 'langgenius' | 'partner' | 'community'
+  },
+  from: Dependency['type']
 }
 
 export type PluginDetail = {
@@ -113,6 +119,9 @@ export type PluginDetail = {
   latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
+  status: 'active' | 'deleted'
+  deprecated_reason: string
+  alternative_plugin_id: string
 }
 
 export type PluginInfoFromMarketPlace = {
@@ -144,7 +153,11 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
-  badges: string[]
+  badges: string[],
+  verification: {
+    authorized_category: 'langgenius' | 'partner' | 'community'
+  },
+  from: Dependency['type']
 }
 
 export enum PermissionType {
@@ -156,6 +169,11 @@ export enum PermissionType {
 export type Permissions = {
   install_permission: PermissionType
   debug_permission: PermissionType
+}
+
+export type ReferenceSetting = {
+  permission: Permissions
+  auto_upgrade: AutoUpdateConfig
 }
 
 export type UpdateFromMarketPlacePayload = {
@@ -324,11 +342,19 @@ export type InstalledPluginListResponse = {
   plugins: PluginDetail[]
 }
 
+export type InstalledPluginListWithTotalResponse = {
+  plugins: PluginDetail[]
+  total: number
+}
+
 export type InstalledLatestVersionResponse = {
   versions: {
     [plugin_id: string]: {
       unique_identifier: string
       version: string
+      status: 'active' | 'deleted'
+      deprecated_reason: string
+      alternative_plugin_id: string
     } | null
   }
 }
@@ -448,9 +474,14 @@ export type StrategyDeclaration = {
   strategies: StrategyDetail[]
 }
 
+export type PluginMeta = {
+  version: string // the version of dify sdk
+}
+
 export type StrategyPluginDetail = {
   provider: string
   plugin_unique_identifier: string
   plugin_id: string
   declaration: StrategyDeclaration
+  meta: PluginMeta
 }

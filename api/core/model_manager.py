@@ -535,14 +535,22 @@ class LBModelManager:
 
             if dify_config.DEBUG:
                 logger.info(
-                    f"Model LB\nid: {config.id}\nname:{config.name}\n"
-                    f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"
-                    f"model_type: {self._model_type.value}\nmodel: {self._model}"
+                    """Model LB
+id: %s
+name:%s
+tenant_id: %s
+provider: %s
+model_type: %s
+model: %s""",
+                    config.id,
+                    config.name,
+                    self._tenant_id,
+                    self._provider,
+                    self._model_type.value,
+                    self._model,
                 )
 
             return config
-
-        return None
 
     def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
         """

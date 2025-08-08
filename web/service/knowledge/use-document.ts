@@ -5,9 +5,12 @@ import {
 import { del, get, patch } from '../base'
 import { useInvalid } from '../use-base'
 import type { MetadataType, SortType } from '../datasets'
+import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
+import type { CommonResponse, FileDownloadResponse } from '@/models/common'
+// Download document with authentication (sends Authorization header)
+import Toast from '@/app/components/base/toast'
 
 const NAME_SPACE = 'knowledge/document'
 
@@ -94,6 +97,21 @@ export const useSyncDocument = () => {
   })
 }
 
+// Download document with authentication (sends Authorization header)
+export const useDocumentDownload = () => {
+  return useMutation({
+    mutationFn: async ({ datasetId, documentId }: { datasetId: string; documentId: string }) => {
+      // The get helper automatically adds the Authorization header from localStorage
+      return get<FileDownloadResponse>(`/datasets/${datasetId}/documents/${documentId}/upload-file`)
+    },
+    onError: (error: any) => {
+      // Show a toast notification if download fails
+      const message = error?.message || 'Download failed.'
+      Toast.notify({ type: 'error', message })
+    },
+  })
+}
+
 export const useSyncWebsite = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
@@ -129,4 +147,24 @@ export const useDocumentMetadata = (payload: {
 
 export const useInvalidDocumentDetailKey = () => {
   return useInvalid(useDocumentDetailKey)
+}
+
+export const useDocumentPause = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return pauseDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentResume = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
 }

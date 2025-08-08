@@ -1,4 +1,4 @@
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
@@ -17,6 +17,7 @@ from core.plugin.entities.request import (
     RequestInvokeApp,
     RequestInvokeEncrypt,
     RequestInvokeLLM,
+    RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
     RequestInvokeParameterExtractorNode,
     RequestInvokeQuestionClassifierNode,
@@ -29,7 +30,7 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from libs.helper import compact_generate_response
+from libs.helper import length_prefixed_response
 from models.account import Account, Tenant
 from models.model import EndUser
 
@@ -44,7 +45,22 @@ class PluginInvokeLLMApi(Resource):
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
+
+
+class PluginInvokeLLMWithStructuredOutputApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @get_user_tenant
+    @plugin_data(payload_type=RequestInvokeLLMWithStructuredOutput)
+    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeLLMWithStructuredOutput):
+        def generator():
+            response = PluginModelBackwardsInvocation.invoke_llm_with_structured_output(
+                user_model.id, tenant_model, payload
+            )
+            return PluginModelBackwardsInvocation.convert_to_event_stream(response)
+
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeTextEmbeddingApi(Resource):
@@ -101,7 +117,7 @@ class PluginInvokeTTSApi(Resource):
             )
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeSpeech2TextApi(Resource):
@@ -159,10 +175,11 @@ class PluginInvokeToolApi(Resource):
                     provider=payload.provider,
                     tool_name=payload.tool,
                     tool_parameters=payload.tool_parameters,
+                    credential_id=payload.credential_id,
                 ),
             )
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeParameterExtractorNodeApi(Resource):
@@ -228,7 +245,7 @@ class PluginInvokeAppApi(Resource):
             files=payload.files,
         )
 
-        return compact_generate_response(PluginAppBackwardsInvocation.convert_to_event_stream(response))
+        return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 
 class PluginInvokeEncryptApi(Resource):
@@ -291,6 +308,7 @@ class PluginFetchAppInfoApi(Resource):
 
 
 api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
+api.add_resource(PluginInvokeLLMWithStructuredOutputApi, "/invoke/llm/structured-output")
 api.add_resource(PluginInvokeTextEmbeddingApi, "/invoke/text-embedding")
 api.add_resource(PluginInvokeRerankApi, "/invoke/rerank")
 api.add_resource(PluginInvokeTTSApi, "/invoke/tts")

@@ -32,7 +32,7 @@ def create_app() -> DifyApp:
     initialize_extensions(app)
     end_time = time.perf_counter()
     if dify_config.DEBUG:
-        logging.info(f"Finished create_app ({round((end_time - start_time) * 1000, 2)} ms)")
+        logging.info("Finished create_app (%s ms)", round((end_time - start_time) * 1000, 2))
     return app
 
 
@@ -54,7 +54,7 @@ def initialize_extensions(app: DifyApp):
         ext_otel,
         ext_proxy_fix,
         ext_redis,
-        ext_repositories,
+        ext_request_logging,
         ext_sentry,
         ext_set_secretkey,
         ext_storage,
@@ -75,7 +75,6 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
-        ext_repositories,
         ext_celery,
         ext_login,
         ext_mail,
@@ -85,20 +84,21 @@ def initialize_extensions(app: DifyApp):
         ext_blueprints,
         ext_commands,
         ext_otel,
+        ext_request_logging,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]
         is_enabled = ext.is_enabled() if hasattr(ext, "is_enabled") else True
         if not is_enabled:
             if dify_config.DEBUG:
-                logging.info(f"Skipped {short_name}")
+                logging.info("Skipped %s", short_name)
             continue
 
         start_time = time.perf_counter()
         ext.init_app(app)
         end_time = time.perf_counter()
         if dify_config.DEBUG:
-            logging.info(f"Loaded {short_name} ({round((end_time - start_time) * 1000, 2)} ms)")
+            logging.info("Loaded %s (%s ms)", short_name, round((end_time - start_time) * 1000, 2))
 
 
 def create_migrations_app():

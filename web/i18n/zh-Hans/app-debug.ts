@@ -123,7 +123,7 @@ const translation = {
         ok: '好的',
         contextVarNotEmpty: '上下文查询变量不能为空',
         deleteContextVarTitle: '删除变量“{{varName}}”？',
-        deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响知识库的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
+        deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响知识库的正常使用。如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
     },
     tools: {
@@ -163,7 +163,7 @@ const translation = {
     moderation: {
       title: '内容审查',
       description: '您可以调用审查 API 或者维护敏感词库来使模型更安全地输出。',
-      contentEnableLabel: '启用审查内容',
+      contentEnableLabel: '内容审查已启用',
       allEnabled: '输入内容和输出内容',
       inputEnabled: '输入内容',
       outputEnabled: '输出内容',
@@ -214,13 +214,17 @@ const translation = {
       modalTitle: '图片上传设置',
     },
     bar: {
-      empty: '开启功能增强 webapp 用户体验',
+      empty: '开启功能增强 web app 用户体验',
       enableText: '功能已开启',
       manage: '管理',
     },
     documentUpload: {
       title: '文档',
       description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
+    },
+    audioUpload: {
+      title: '音频',
+      description: '启用音频后，模型可以处理音频文件进行转录和分析。',
     },
   },
   codegen: {
@@ -250,7 +254,6 @@ const translation = {
     noDataLine1: '在左侧描述您的用例，',
     noDataLine2: '编排预览将在此处显示。',
     apply: '应用',
-    noData: '在左侧描述您的用例，编排预览将在此处显示。',
     loading: '为您编排应用程序中…',
     overwriteTitle: '覆盖现有配置？',
     overwriteMessage: '应用此提示将覆盖现有配置。',
@@ -307,6 +310,9 @@ const translation = {
     waitForImgUpload: '请等待图片上传完成',
     waitForFileUpload: '请等待文件上传完成',
   },
+  warningMessage: {
+    timeoutExceeded: '由于超时，结果未显示。请参考日志获取完整结果。',
+  },
   chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
   promptTip:
@@ -361,6 +367,7 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'hide': '隐藏',
     'file': {
       supportFileTypes: '支持的文件类型',
       image: {
@@ -393,6 +400,9 @@ const translation = {
       atLeastOneOption: '至少需要一个选项',
       optionRepeat: '选项不能重复',
     },
+    'defaultValue': '默认值',
+    'noDefaultValue': '无默认值',
+    'selectDefaultValue': '选择默认值',
   },
   vision: {
     name: '视觉',
@@ -402,9 +412,9 @@ const translation = {
     visionSettings: {
       title: '视觉设置',
       resolution: '分辨率',
-      resolutionTooltip: `低分辨率模式将使模型接收图像的低分辨率版本，尺寸为512 x 512，并使用65 Tokens 来表示图像。这样可以使API更快地返回响应，并在不需要高细节的用例中消耗更少的输入。
+      resolutionTooltip: `低分辨率模式将使模型接收图像的低分辨率版本，尺寸为 512 x 512，并使用 65 Tokens 来表示图像。这样可以使 API 更快地返回响应，并在不需要高细节的用例中消耗更少的输入。
       \n
-      高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建512像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为129 Tokens。`,
+      高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建 512 像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为 129 Tokens。`,
       high: '高',
       low: '低',
       uploadMethod: '上传方式',
@@ -435,9 +445,10 @@ const translation = {
     writeOpener: '编写开场白',
     placeholder: '在这里写下你的开场白，你可以使用变量，尝试输入 {{variable}}。',
     openingQuestion: '开场问题',
+    openingQuestionPlaceholder: '可以使用变量，尝试输入 {{variable}}。',
     noDataPlaceHolder:
       '在对话型应用中，让 AI 主动说第一段话可以拉近与用户间的距离。',
-    varTip: '你可以使用变量， 试试输入 {{variable}}',
+    varTip: '你可以使用变量，试试输入 {{variable}}',
     tooShort: '对话前提示词至少 20 字才能生成开场白',
     notIncludeKey: '前缀提示词中不包含变量 {{key}}。请在前缀提示词中添加该变量',
   },
@@ -466,9 +477,9 @@ const translation = {
   noResult: '输出结果展示在这',
   datasetConfig: {
     settingTitle: '召回设置',
-    knowledgeTip: '点击 “+” 按钮添加知识库',
+    knowledgeTip: '点击“+”按钮添加知识库',
     retrieveOneWay: {
-      title: 'N选1召回',
+      title: 'N 选 1 召回',
       description: '根据用户意图和知识库描述，由 Agent 自主判断选择最匹配的单个知识库来查询相关文本，适合知识库区分度大且知识库数量偏少的应用。',
     },
     retrieveMultiWay: {

@@ -7,6 +7,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderTyp
 from core.tools.errors import ToolInvokeError
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 from core.workflow.nodes.answer import AnswerStreamGenerateRoute
 from core.workflow.nodes.end import EndStreamParam
@@ -14,7 +15,8 @@ from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.tool.entities import ToolNodeData
-from models import UserFrom, WorkflowNodeExecutionStatus, WorkflowType
+from core.workflow.system_variable import SystemVariable
+from models import UserFrom, WorkflowType
 
 
 def _create_tool_node():
@@ -33,15 +35,16 @@ def _create_tool_node():
         version="1",
     )
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables=SystemVariable.empty(),
         user_inputs={},
     )
+    node_config = {
+        "id": "1",
+        "data": data.model_dump(),
+    }
     node = ToolNode(
         id="1",
-        config={
-            "id": "1",
-            "data": data.model_dump(),
-        },
+        config=node_config,
         graph_init_params=GraphInitParams(
             tenant_id="1",
             app_id="1",
@@ -69,6 +72,8 @@ def _create_tool_node():
             start_at=0,
         ),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
     return node
 
 
@@ -106,5 +111,5 @@ def test_tool_node_on_tool_invoke_error(monkeypatch: pytest.MonkeyPatch):
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert "oops" in result.error
-    assert "Failed to transform tool message:" in result.error
+    assert "Failed to invoke tool" in result.error
     assert result.error_type == "ToolInvokeError"

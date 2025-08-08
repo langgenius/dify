@@ -8,6 +8,7 @@ import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
 import sonar from 'eslint-plugin-sonarjs'
+import oxlint from 'eslint-plugin-oxlint'
 
 // import reactRefresh from 'eslint-plugin-react-refresh'
 
@@ -38,7 +39,6 @@ export default combine(
       'style/brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
       'style/dot-location': ['error', 'property'],
       'style/object-curly-newline': ['error', { consistent: true, multiline: true }],
-      'style/object-property-newline': ['error', { allowMultiplePropertiesPerLine: true }],
       'style/template-curly-spacing': ['error', 'never'],
       'style/keyword-spacing': 'off',
 
@@ -82,6 +82,7 @@ export default combine(
       '**/.next/',
       '**/public/*',
       '**/*.json',
+      '**/*.js',
     ],
   },
   {
@@ -167,7 +168,7 @@ export default combine(
       'sonarjs/max-lines': 'warn', // max 1000 lines
       'sonarjs/no-variable-usage-before-declaration': 'error',
       // security
-      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
       'sonarjs/no-hardcoded-passwords': 'off', // detect the wrong code that is not password.
       'sonarjs/no-hardcoded-secrets': 'off',
       'sonarjs/pseudo-random': 'off',
@@ -213,7 +214,7 @@ export default combine(
     settings: {
       tailwindcss: {
         // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn'],
+        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
         config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
         cssFiles: [
           '**/*.css',
@@ -246,4 +247,5 @@ export default combine(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
+  oxlint.configs['flat/recommended'],
 )

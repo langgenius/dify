@@ -213,6 +213,34 @@ const translation = {
           after: '',
         },
       },
+      contentEnableLabel: 'Włączono moderowanie treści',
+    },
+    fileUpload: {
+      title: 'Przesyłanie plików',
+      description: 'Pole wprowadzania czatu umożliwia przesyłanie obrazów, dokumentów i innych plików.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania plików',
+    },
+    imageUpload: {
+      title: 'Przesyłanie obrazów',
+      description: 'Umożliwia przesyłanie obrazów.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania obrazów',
+    },
+    bar: {
+      empty: 'Włącz funkcje aby poprawić doświadczenie użytkownika aplikacji webowej',
+      enableText: 'Funkcje włączone',
+      manage: 'Zarządzaj',
+    },
+    documentUpload: {
+      title: 'Dokument',
+      description: 'Włączenie Dokumentu pozwoli modelowi na przyjmowanie dokumentów i odpowiadanie na pytania o nich.',
+    },
+    audioUpload: {
+      title: 'Dźwięk',
+      description: 'Włączenie Dźwięku pozwoli modelowi na przetwarzanie plików audio do transkrypcji i analizy.',
     },
   },
   automatic: {
@@ -250,6 +278,7 @@ const translation = {
     waitForBatchResponse: 'Proszę czekać na odpowiedź na zadanie wsadowe.',
     notSelectModel: 'Proszę wybrać model',
     waitForImgUpload: 'Proszę czekać na przesłanie obrazu',
+    waitForFileUpload: 'Poczekaj na przesłanie pliku/plików',
   },
   chatSubTitle: 'Instrukcje',
   completionSubTitle: 'Prefix Monitu',
@@ -309,13 +338,43 @@ const translation = {
     'labelName': 'Nazwa etykiety',
     'inputPlaceholder': 'Proszę wpisać',
     'required': 'Wymagane',
+    'hide': 'Ukryj',
     'errorMsg': {
-      varNameRequired: 'Wymagana nazwa zmiennej',
       labelNameRequired: 'Wymagana nazwa etykiety',
       varNameCanBeRepeat: 'Nazwa zmiennej nie może się powtarzać',
       atLeastOneOption: 'Wymagana jest co najmniej jedna opcja',
       optionRepeat: 'Powtarzają się opcje',
     },
+    'defaultValue': 'Wartość domyślna',
+    'noDefaultValue': 'Brak wartości domyślnej',
+    'selectDefaultValue': 'Wybierz wartość domyślną',
+    'file': {
+      image: {
+        name: 'Obraz',
+      },
+      audio: {
+        name: 'Dźwięk',
+      },
+      document: {
+        name: 'Dokument',
+      },
+      video: {
+        name: 'Wideo',
+      },
+      custom: {
+        description: 'Określ inne typy plików.',
+        createPlaceholder: '  Rozszerzenie pliku, np. .doc',
+        name: 'Inne typy plików',
+      },
+      supportFileTypes: 'Obsługa typów plików',
+    },
+    'both': 'Obie',
+    'localUpload': 'Przesyłanie lokalne',
+    'uploadFileTypes': 'Typy przesyłanych plików',
+    'maxNumberOfUploads': 'Maksymalna liczba przesyłanych plików',
+    'single-file': 'Pojedynczy plik',
+    'content': 'Zawartość',
+    'multi-files': 'Lista plików',
   },
   vision: {
     name: 'Wizja',
@@ -336,6 +395,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Limit przesyłania',
     },
+    onlySupportVisionModelTip: 'Obsługuje tylko modele wizyjne',
   },
   voice: {
     name: 'Głos',
@@ -359,6 +419,7 @@ const translation = {
     placeholder:
       'Tutaj napisz swoją wiadomość wprowadzającą, możesz użyć zmiennych, spróbuj wpisać {{variable}}.',
     openingQuestion: 'Pytania otwierające',
+    openingQuestionPlaceholder: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}.',
     noDataPlaceHolder:
       'Rozpoczynanie rozmowy z użytkownikiem może pomóc AI nawiązać bliższe połączenie z nim w aplikacjach konwersacyjnych.',
     varTip: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}',
@@ -415,6 +476,7 @@ const translation = {
       'Używany do ustawienia progu podobieństwa dla filtrowania fragmentów.',
     retrieveChangeTip:
       'Modyfikacja trybu indeksowania i odzyskiwania może wpłynąć na aplikacje powiązane z tą Wiedzą.',
+    embeddingModelRequired: 'Wymagany jest skonfigurowany model osadzania',
   },
   debugAsSingleModel: 'Debuguj jako pojedynczy model',
   debugAsMultipleModel: 'Debuguj jako wiele modeli',
@@ -461,6 +523,79 @@ const translation = {
       enabled: 'Włączone',
     },
   },
+  codegen: {
+    generate: 'Stworzyć',
+    applyChanges: 'Stosowanie zmian',
+    loading: 'Generowanie kodu...',
+    generatedCodeTitle: 'Wygenerowany kod',
+    description: 'Generator kodów używa skonfigurowanych modeli do generowania wysokiej jakości kodu na podstawie Twoich instrukcji. Podaj jasne i szczegółowe instrukcje.',
+    resTitle: 'Wygenerowany kod',
+    title: 'Generator kodów',
+    overwriteConfirmMessage: 'Ta akcja spowoduje zastąpienie istniejącego kodu. Czy chcesz kontynuować?',
+    instruction: 'Instrukcje',
+    apply: 'Zastosować',
+    instructionPlaceholder: 'Wprowadź szczegółowy opis kodu, który chcesz wygenerować.',
+    noDataLine2: 'W tym miejscu zostanie wyświetlony podgląd kodu.',
+    noDataLine1: 'Opisz swój przypadek użycia po lewej stronie,',
+    overwriteConfirmTitle: 'Nadpisać istniejący kod?',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        name: 'Debuger języka Python',
+        instruction: 'Bot, który może generować i debugować kod na podstawie instrukcji',
+      },
+      translation: {
+        name: 'Tłumaczenie',
+        instruction: 'Tłumacz, który może tłumaczyć wiele języków',
+      },
+      professionalAnalyst: {
+        instruction: 'Wyodrębniaj szczegółowe informacje, identyfikuj ryzyko i destyluj kluczowe informacje z długich raportów w jednej notatce',
+        name: 'Zawodowy analityk',
+      },
+      excelFormulaExpert: {
+        name: 'Ekspert ds. formuł programu Excel',
+        instruction: 'Chatbot, który może pomóc początkującym użytkownikom zrozumieć, używać i tworzyć formuły Excela na podstawie instrukcji użytkownika',
+      },
+      travelPlanning: {
+        name: 'Planowanie podróży',
+        instruction: 'Asystent planowania podróży to inteligentne narzędzie zaprojektowane, aby pomóc użytkownikom w łatwym planowaniu podróży',
+      },
+      SQLSorcerer: {
+        instruction: 'Przekształć język potoczny w zapytania SQL',
+        name: 'Czarownik SQL',
+      },
+      GitGud: {
+        instruction: 'Generowanie odpowiednich poleceń usługi Git na podstawie opisanych przez użytkownika akcji kontroli wersji',
+        name: 'Git gud',
+      },
+      meetingTakeaways: {
+        name: 'Wnioski ze spotkania',
+        instruction: 'Podziel spotkania na zwięzłe podsumowania, w tym tematy dyskusji, kluczowe wnioski i działania',
+      },
+      writingsPolisher: {
+        instruction: 'Korzystaj z zaawansowanych technik redakcyjnych, aby ulepszyć swoje teksty',
+        name: 'Polerka do pisania',
+      },
+    },
+    instructionPlaceHolder: 'Napisz jasne i konkretne instrukcje.',
+    instruction: 'Instrukcje',
+    generate: 'Stworzyć',
+    tryIt: 'Spróbuj',
+    overwriteMessage: 'Zastosowanie tego monitu spowoduje zastąpienie istniejącej konfiguracji.',
+    resTitle: 'Wygenerowany monit',
+    noDataLine1: 'Opisz swój przypadek użycia po lewej stronie,',
+    title: 'Generator podpowiedzi',
+    apply: 'Zastosować',
+    overwriteTitle: 'Nadpisać istniejącą konfigurację?',
+    loading: 'Orkiestracja aplikacji dla Ciebie...',
+    description: 'Generator podpowiedzi używa skonfigurowanego modelu do optymalizacji podpowiedzi w celu uzyskania wyższej jakości i lepszej struktury. Napisz jasne i szczegółowe instrukcje.',
+    noDataLine2: 'W tym miejscu zostanie wyświetlony podgląd orkiestracji.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki.',
+  },
+  noResult: 'W tym miejscu zostaną wyświetlone dane wyjściowe.',
 }
 
 export default translation

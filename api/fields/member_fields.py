@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from libs.helper import AvatarUrlField, TimestampField
 

@@ -1,4 +1,4 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify 클라우드</a> ·
@@ -53,11 +53,6 @@
 
 **1. 워크플로우**:
     다음 기능들을 비롯한 다양한 기능을 활용하여 시각적 캔버스에서 강력한 AI 워크플로우를 구축하고 테스트하세요.
-
-
-  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
-
 
 **2. 포괄적인 모델 지원:**: 
 
@@ -200,6 +195,7 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 - [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Terraform을 사용한 배포
 
@@ -218,13 +214,26 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 ##### AWS 
 - [KevinZhao의 AWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
+#### Alibaba Cloud
+
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+
+[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)를 통해 원클릭으로 Dify를 Alibaba Cloud에 배포할 수 있습니다
+
+#### AKS에 배포하기 위해 Azure Devops Pipeline 사용
+
+[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
+
+
 ## 기여
 
 코드에 기여하고 싶은 분들은 [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요.
 동시에 Dify를 소셜 미디어와 행사 및 컨퍼런스에 공유하여 지원하는 것을 고려해 주시기 바랍니다.
 
 
-> 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요. 
+> 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요. 
 
 **기여자**
 
@@ -234,7 +243,7 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 ## 커뮤니티 & 연락처
 
-* [Github 토론](https://github.com/langgenius/dify/discussions). 피드백 공유 및 질문하기에 적합합니다.
+* [GitHub 토론](https://github.com/langgenius/dify/discussions). 피드백 공유 및 질문하기에 적합합니다.
 * [GitHub 이슈](https://github.com/langgenius/dify/issues). Dify.AI 사용 중 발견한 버그와 기능 제안에 적합합니다. [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요. 
 * [디스코드](https://discord.gg/FngNHpbcY7). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
 * [트위터](https://twitter.com/dify_ai). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.

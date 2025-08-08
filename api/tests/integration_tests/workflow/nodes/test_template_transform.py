@@ -5,13 +5,14 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 
@@ -60,7 +61,7 @@ def test_execute_code(setup_code_executor_mock):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -75,6 +76,7 @@ def test_execute_code(setup_code_executor_mock):
         graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config=config,
     )
+    node.init_node_data(config.get("data", {}))
 
     # execute node
     result = node._run()

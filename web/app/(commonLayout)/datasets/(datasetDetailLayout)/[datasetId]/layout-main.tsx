@@ -25,12 +25,12 @@ import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -44,9 +44,9 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -56,38 +56,53 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
   }, [isMobile, setShowTips])
 
   return <div>
-    {hasRelatedApps && (
-      <>
-        {!isMobile && (
-          <Tooltip
-            position='right'
-            noDecoration
-            needsDelay
-            popupContent={
-              <LinkedAppsPanel
-                relatedApps={relatedApps.data}
-                isMobile={isMobile}
-              />
-            }
-          >
-            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-              <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-              <RiInformation2Line className='h-4 w-4' />
-            </div>
-          </Tooltip>
-        )}
-
-        {isMobile && <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
-          {relatedAppsTotal || '--'}
-          <PaperClipIcon className='h-4 w-4 text-text-secondary' />
-        </div>}
-      </>
-    )}
-    {!hasRelatedApps && !expand && (
+    {/* Related apps for desktop */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (hasRelatedApps && !isMobile)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
       <Tooltip
         position='right'
         noDecoration
-        needsDelay
+        popupContent={
+          <LinkedAppsPanel
+            relatedApps={relatedApps?.data || []}
+            isMobile={isMobile}
+          />
+        }
+      >
+        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
+          <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
+          <RiInformation2Line className='h-4 w-4' />
+        </div>
+      </Tooltip>
+    </div>
+
+    {/* Related apps for mobile */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (hasRelatedApps && isMobile)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
+      <div className={classNames('pb-2 pt-4 text-xs font-medium uppercase text-text-tertiary', 'flex items-center justify-center gap-1 whitespace-nowrap !px-0')}>
+        {relatedAppsTotal || '--'}
+        <PaperClipIcon className='h-4 w-4 text-text-secondary' />
+      </div>
+    </div>
+
+    {/* No related apps tooltip */}
+    <div className={classNames(
+      'transition-all duration-200 ease-in-out',
+      (!hasRelatedApps && !expand)
+        ? 'w-auto opacity-100'
+        : 'pointer-events-none h-0 w-0 overflow-hidden opacity-0',
+    )}>
+      <Tooltip
+        position='right'
+        noDecoration
         popupContent={
           <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
             <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
@@ -96,11 +111,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
             <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
             <a
               className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={
-                locale === LanguagesSupported[1]
-                  ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                  : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
-              }
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target='_blank' rel='noopener noreferrer'
             >
               <RiBookOpenLine className='mr-1 text-text-accent' />
@@ -109,12 +120,12 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </div>
         }
       >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
+        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 whitespace-nowrap text-text-secondary'>
           <span>{t('common.datasetMenus.noRelatedApp')}</span>
           <RiInformation2Line className='h-4 w-4' />
         </div>
       </Tooltip>
-    )}
+    </div>
   </div>
 }
 
@@ -158,10 +169,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
 
-  useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
   const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 

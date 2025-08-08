@@ -1,6 +1,6 @@
 import React from 'react'
 import type { ReactNode } from 'react'
-import SwrInitor from '@/app/components/swr-initor'
+import SwrInitializer from '@/app/components/swr-initializer'
 import { AppContextProvider } from '@/context/app-context'
 import GA, { GaType } from '@/app/components/base/ga'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
@@ -13,7 +13,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GA gaType={GaType.admin} />
-      <SwrInitor>
+      <SwrInitializer>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -26,13 +26,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
-      </SwrInitor>
+      </SwrInitializer>
     </>
   )
 }
-
-export const metadata = {
-  title: 'Dify',
-}
-
 export default Layout

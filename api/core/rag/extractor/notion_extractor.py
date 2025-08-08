@@ -1,5 +1,6 @@
 import json
 import logging
+import operator
 from typing import Any, Optional, cast
 
 import requests
@@ -79,55 +80,73 @@ class NotionExtractor(BaseExtractor):
     def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
         """Get all the pages from a Notion database."""
         assert self._notion_access_token is not None, "Notion access token is required"
-        res = requests.post(
-            DATABASE_URL_TMPL.format(database_id=database_id),
-            headers={
-                "Authorization": "Bearer " + self._notion_access_token,
-                "Content-Type": "application/json",
-                "Notion-Version": "2022-06-28",
-            },
-            json=query_dict,
-        )
-
-        data = res.json()
 
         database_content = []
-        if "results" not in data or data["results"] is None:
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            current_query = query_dict.copy()
+            if next_cursor:
+                current_query["start_cursor"] = next_cursor
+
+            res = requests.post(
+                DATABASE_URL_TMPL.format(database_id=database_id),
+                headers={
+                    "Authorization": "Bearer " + self._notion_access_token,
+                    "Content-Type": "application/json",
+                    "Notion-Version": "2022-06-28",
+                },
+                json=current_query,
+            )
+
+            response_data = res.json()
+
+            if "results" not in response_data or response_data["results"] is None:
+                break
+
+            for result in response_data["results"]:
+                properties = result["properties"]
+                data = {}
+                value: Any
+                for property_name, property_value in properties.items():
+                    type = property_value["type"]
+                    if type == "multi_select":
+                        value = []
+                        multi_select_list = property_value[type]
+                        for multi_select in multi_select_list:
+                            value.append(multi_select["name"])
+                    elif type in {"rich_text", "title"}:
+                        if len(property_value[type]) > 0:
+                            value = property_value[type][0]["plain_text"]
+                        else:
+                            value = ""
+                    elif type in {"select", "status"}:
+                        if property_value[type]:
+                            value = property_value[type]["name"]
+                        else:
+                            value = ""
+                    else:
+                        value = property_value[type]
+                    data[property_name] = value
+                row_dict = {k: v for k, v in data.items() if v}
+                row_content = ""
+                for key, value in sorted(row_dict.items(), key=operator.itemgetter(0)):
+                    if isinstance(value, dict):
+                        value_dict = {k: v for k, v in value.items() if v}
+                        value_content = "".join(f"{k}:{v} " for k, v in value_dict.items())
+                        row_content = row_content + f"{key}:{value_content}\n"
+                    else:
+                        row_content = row_content + f"{key}:{value}\n"
+                if "url" in result:
+                    row_content = row_content + f"Row Page URL:{result.get('url', '')}\n"
+                database_content.append(row_content)
+
+            has_more = response_data.get("has_more", False)
+            next_cursor = response_data.get("next_cursor")
+
+        if not database_content:
             return []
-        for result in data["results"]:
-            properties = result["properties"]
-            data = {}
-            value: Any
-            for property_name, property_value in properties.items():
-                type = property_value["type"]
-                if type == "multi_select":
-                    value = []
-                    multi_select_list = property_value[type]
-                    for multi_select in multi_select_list:
-                        value.append(multi_select["name"])
-                elif type in {"rich_text", "title"}:
-                    if len(property_value[type]) > 0:
-                        value = property_value[type][0]["plain_text"]
-                    else:
-                        value = ""
-                elif type in {"select", "status"}:
-                    if property_value[type]:
-                        value = property_value[type]["name"]
-                    else:
-                        value = ""
-                else:
-                    value = property_value[type]
-                data[property_name] = value
-            row_dict = {k: v for k, v in data.items() if v}
-            row_content = ""
-            for key, value in row_dict.items():
-                if isinstance(value, dict):
-                    value_dict = {k: v for k, v in value.items() if v}
-                    value_content = "".join(f"{k}:{v} " for k, v in value_dict.items())
-                    row_content = row_content + f"{key}:{value_content}\n"
-                else:
-                    row_content = row_content + f"{key}:{value}\n"
-            database_content.append(row_content)
 
         return [Document(page_content="\n".join(database_content))]
 
@@ -315,9 +334,10 @@ class NotionExtractor(BaseExtractor):
         last_edited_time = self.get_notion_last_edited_time()
         data_source_info = document_model.data_source_info_dict
         data_source_info["last_edited_time"] = last_edited_time
-        update_params = {DocumentModel.data_source_info: json.dumps(data_source_info)}
 
-        DocumentModel.query.filter_by(id=document_model.id).update(update_params)
+        db.session.query(DocumentModel).filter_by(id=document_model.id).update(
+            {DocumentModel.data_source_info: json.dumps(data_source_info)}
+        )  # type: ignore
         db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:
@@ -347,14 +367,18 @@ class NotionExtractor(BaseExtractor):
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
+        data_source_binding = (
+            db.session.query(DataSourceOauthBinding)
+            .where(
+                db.and_(
+                    DataSourceOauthBinding.tenant_id == tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.disabled == False,
+                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
+                )
             )
-        ).first()
+            .first()
+        )
 
         if not data_source_binding:
             raise Exception(

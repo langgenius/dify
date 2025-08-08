@@ -22,13 +22,13 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style("Start sync document: {}".format(document_id), fg="green"))
+    logging.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
+        logging.info(click.style(f"Document not found: {document_id}", fg="red"))
         db.session.close()
         return
 
@@ -44,14 +44,18 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == document.tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+        data_source_binding = (
+            db.session.query(DataSourceOauthBinding)
+            .where(
+                db.and_(
+                    DataSourceOauthBinding.tenant_id == document.tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.disabled == False,
+                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                )
             )
-        ).first()
+            .first()
+        )
         if not data_source_binding:
             raise ValueError("Data source binding not found.")
 
@@ -73,13 +77,13 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
             # delete all document segment and index
             try:
-                dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
                 if not dataset:
                     raise Exception("Dataset not found")
                 index_type = document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+                segments = db.session.query(DocumentSegment).where(DocumentSegment.document_id == document_id).all()
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index
@@ -104,10 +108,10 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 indexing_runner = IndexingRunner()
                 indexing_runner.run([document])
                 end_at = time.perf_counter()
-                logging.info(
-                    click.style("update document: {} latency: {}".format(document.id, end_at - start_at), fg="green")
-                )
+                logging.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
             except DocumentIsPausedError as ex:
                 logging.info(click.style(str(ex), fg="yellow"))
             except Exception:
-                pass
+                logging.exception("document_indexing_sync_task failed, document_id: %s", document_id)
+            finally:
+                db.session.close()

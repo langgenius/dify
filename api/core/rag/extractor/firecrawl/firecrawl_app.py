@@ -22,6 +22,7 @@ class FirecrawlApp:
             "formats": ["markdown"],
             "onlyMainContent": True,
             "timeout": 30000,
+            "integration": "dify",
         }
         if params:
             json_data.update(params)
@@ -39,7 +40,7 @@ class FirecrawlApp:
     def crawl_url(self, url, params=None) -> str:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/crawl-post
         headers = self._prepare_headers()
-        json_data = {"url": url}
+        json_data = {"url": url, "integration": "dify"}
         if params:
             json_data.update(params)
         response = self._post_request(f"{self.base_url}/v1/crawl", json_data, headers)
@@ -49,7 +50,6 @@ class FirecrawlApp:
             return cast(str, job_id)
         else:
             self._handle_error(response, "start crawl job")
-            # FIXME: unreachable code for mypy
             return ""  # unreachable
 
     def check_crawl_status(self, job_id) -> dict[str, Any]:
@@ -82,7 +82,6 @@ class FirecrawlApp:
                 )
         else:
             self._handle_error(response, "check crawl status")
-            # FIXME: unreachable code for mypy
             return {}  # unreachable
 
     def _format_crawl_status_response(
@@ -126,4 +125,31 @@ class FirecrawlApp:
 
     def _handle_error(self, response, action) -> None:
         error_message = response.json().get("error", "Unknown error occurred")
-        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")
+        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
+
+    def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/search
+        headers = self._prepare_headers()
+        json_data = {
+            "query": query,
+            "limit": 5,
+            "lang": "en",
+            "country": "us",
+            "timeout": 60000,
+            "ignoreInvalidURLs": False,
+            "scrapeOptions": {},
+            "integration": "dify",
+        }
+        if params:
+            json_data.update(params)
+        response = self._post_request(f"{self.base_url}/v1/search", json_data, headers)
+        if response.status_code == 200:
+            response_data = response.json()
+            if not response_data.get("success"):
+                raise Exception(f"Search failed. Error: {response_data.get('warning', 'Unknown error')}")
+            return cast(dict[str, Any], response_data)
+        elif response.status_code in {402, 409, 500, 429, 408}:
+            self._handle_error(response, "perform search")
+            return {}  # Avoid additional exception after handling error
+        else:
+            raise Exception(f"Failed to perform search. Status code: {response.status_code}")

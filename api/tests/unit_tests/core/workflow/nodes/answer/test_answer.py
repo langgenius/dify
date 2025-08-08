@@ -4,14 +4,15 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.answer.answer_node import AnswerNode
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_execute_answer():
@@ -50,27 +51,32 @@ def test_execute_answer():
 
     # construct variable pool
     pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
     )
     pool.add(["start", "weather"], "sunny")
     pool.add(["llm", "text"], "You are a helpful AI.")
 
+    node_config = {
+        "id": "answer",
+        "data": {
+            "title": "123",
+            "type": "answer",
+            "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        },
+    }
+
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config={
-            "id": "answer",
-            "data": {
-                "title": "123",
-                "type": "answer",
-                "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
-            },
-        },
+        config=node_config,
     )
+
+    # Initialize node data
+    node.init_node_data(node_config["data"])
 
     # Mock db.session.close()
     db.session.close = MagicMock()

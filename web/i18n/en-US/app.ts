@@ -23,6 +23,10 @@ const translation = {
   importFromDSLFile: 'From DSL file',
   importFromDSLUrl: 'From URL',
   importFromDSLUrlPlaceholder: 'Paste DSL link here',
+  dslUploader: {
+    button: 'Drag and drop file, or',
+    browse: 'Browse',
+  },
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:
     'Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.',
@@ -47,13 +51,13 @@ const translation = {
     completionUserDescription: 'Quickly build an AI assistant for text generation tasks with simple configuration.',
     agentShortDescription: 'Intelligent agent with reasoning and autonomous tool use',
     agentUserDescription: 'An intelligent agent capable of iterative reasoning and autonomous tool use to achieve task goals.',
-    workflowShortDescription: 'Orchestration for single-turn automation tasks',
-    workflowUserDescription: 'Workflow orchestration for single-round tasks like automation and batch processing.',
+    workflowShortDescription: 'Agentic flow for intelligent automations',
+    workflowUserDescription: 'Visually build autonomous AI workflows with drag-and-drop simplicity.',
     workflowWarning: 'Currently in beta',
-    advancedShortDescription: 'Workflow for complex multi-turn dialogues with memory',
-    advancedUserDescription: 'Workflow orchestration for multi-round complex dialogue tasks with memory capabilities.',
-    chooseAppType: 'Choose App Type',
-    forBeginners: 'FOR BEGINNERS',
+    advancedShortDescription: 'Workflow enhanced for multi-turn chats',
+    advancedUserDescription: 'Workflow with additional memory features and a chatbot interface.',
+    chooseAppType: 'Choose an App Type',
+    forBeginners: 'More basic app types',
     forAdvanced: 'FOR ADVANCED USERS',
     noIdeaTip: 'No ideas? Check out our templates',
     captionName: 'App Name & Icon',
@@ -87,6 +91,7 @@ const translation = {
     appCreateDSLErrorPart3: 'Current application DSL version: ',
     appCreateDSLErrorPart4: 'System-supported DSL version: ',
     appCreateFailed: 'Failed to create app',
+    dropDSLToCreateApp: 'Drop DSL file here to create app',
   },
   newAppFromTemplate: {
     byCategories: 'BY CATEGORIES',
@@ -112,9 +117,9 @@ const translation = {
     image: 'Image',
   },
   answerIcon: {
-    title: 'Use WebApp icon to replace 🤖',
-    description: 'Whether to use the WebApp icon to replace 🤖 in the shared application',
-    descriptionInExplore: 'Whether to use the WebApp icon to replace 🤖 in Explore',
+    title: 'Use web app icon to replace 🤖',
+    description: 'Whether to use the web app icon to replace 🤖 in the shared application',
+    descriptionInExplore: 'Whether to use the web app icon to replace 🤖 in Explore',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
@@ -149,6 +154,14 @@ const translation = {
       notConfigured: 'Config provider to enable tracing',
       moreProvider: 'More Provider',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Enterprise-grade LLM observability, online & offline evaluation, monitoring, and experimentation—powered by OpenTelemetry. Purpose-built for LLM & agent-driven applications.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Open-source & OpenTelemetry-based observability, evaluation, prompt engineering and experimentation platform for your LLM workflows and agents.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
@@ -164,6 +177,10 @@ const translation = {
     weave: {
       title: 'Weave',
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
+    },
+    aliyun: {
+      title: 'Cloud Monitor',
+      description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
     inUse: 'In use',
     configProvider: {
@@ -195,6 +212,46 @@ const translation = {
     modelNotSupported: 'Model not supported',
     modelNotSupportedTip: 'The current model does not support this feature and is automatically downgraded to prompt injection.',
   },
+  accessControl: 'Web App Access Control',
+  accessItemsDescription: {
+    anyone: 'Anyone can access the web app (no login required)',
+    specific: 'Only specific members within the platform can access the web app',
+    organization: 'All members within the platform can access the web app',
+    external: 'Only authenticated external users can access the web app',
+  },
+  accessControlDialog: {
+    title: 'Web App Access Control',
+    description: 'Set web app access permissions',
+    accessLabel: 'Who has access',
+    accessItems: {
+      anyone: 'Anyone with the link',
+      specific: 'Specific members within the platform',
+      organization: 'All members within the platform',
+      external: 'Authenticated external users',
+    },
+    groups_one: '{{count}} GROUP',
+    groups_other: '{{count}} GROUPS',
+    members_one: '{{count}} MEMBER',
+    members_other: '{{count}} MEMBERS',
+    noGroupsOrMembers: 'No groups or members selected',
+    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the web app.',
+    operateGroupAndMember: {
+      searchPlaceholder: 'Search groups and members',
+      allMembers: 'All members',
+      expand: 'Expand',
+      noResult: 'No result',
+    },
+    updateSuccess: 'Update successfully',
+  },
+  publishApp: {
+    title: 'Who can access web app',
+    notSet: 'Not set',
+    notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
+  },
+  noAccessPermission: 'No permission to access web app',
+  maxActiveRequests: 'Max concurrent requests',
+  maxActiveRequestsPlaceholder: 'Enter 0 for unlimited',
+  maxActiveRequestsTip: 'Maximum number of concurrent active requests per app (0 for unlimited)',
 }
 
 export default translation

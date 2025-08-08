@@ -1,8 +1,8 @@
 import io
 
 from flask import request, send_file
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -12,7 +12,9 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
-from models.account import TenantPluginPermission
+from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
@@ -41,12 +43,16 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=False, location="args", default=1)
+        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
+        args = parser.parse_args()
         try:
-            plugins = PluginService.list(tenant_id)
+            plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
-        return jsonable_encoder({"plugins": plugins})
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class PluginListLatestVersionsApi(Resource):
@@ -493,6 +499,150 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+class PluginFetchDynamicSelectOptionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        # check if the user is admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = current_user.current_tenant_id
+        user_id = current_user.id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser.add_argument("provider", type=str, required=True, location="args")
+        parser.add_argument("action", type=str, required=True, location="args")
+        parser.add_argument("parameter", type=str, required=True, location="args")
+        parser.add_argument("provider_type", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options(
+                tenant_id,
+                user_id,
+                args["plugin_id"],
+                args["provider"],
+                args["action"],
+                args["parameter"],
+                args["provider_type"],
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
+class PluginChangePreferencesApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        req = reqparse.RequestParser()
+        req.add_argument("permission", type=dict, required=True, location="json")
+        req.add_argument("auto_upgrade", type=dict, required=True, location="json")
+        args = req.parse_args()
+
+        tenant_id = user.current_tenant_id
+
+        permission = args["permission"]
+
+        install_permission = TenantPluginPermission.InstallPermission(permission.get("install_permission", "everyone"))
+        debug_permission = TenantPluginPermission.DebugPermission(permission.get("debug_permission", "everyone"))
+
+        auto_upgrade = args["auto_upgrade"]
+
+        strategy_setting = TenantPluginAutoUpgradeStrategy.StrategySetting(
+            auto_upgrade.get("strategy_setting", "fix_only")
+        )
+        upgrade_time_of_day = auto_upgrade.get("upgrade_time_of_day", 0)
+        upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode(auto_upgrade.get("upgrade_mode", "exclude"))
+        exclude_plugins = auto_upgrade.get("exclude_plugins", [])
+        include_plugins = auto_upgrade.get("include_plugins", [])
+
+        # set permission
+        set_permission_result = PluginPermissionService.change_permission(
+            tenant_id,
+            install_permission,
+            debug_permission,
+        )
+        if not set_permission_result:
+            return jsonable_encoder({"success": False, "message": "Failed to set permission"})
+
+        # set auto upgrade strategy
+        set_auto_upgrade_strategy_result = PluginAutoUpgradeService.change_strategy(
+            tenant_id,
+            strategy_setting,
+            upgrade_time_of_day,
+            upgrade_mode,
+            exclude_plugins,
+            include_plugins,
+        )
+        if not set_auto_upgrade_strategy_result:
+            return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
+
+        return jsonable_encoder({"success": True})
+
+
+class PluginFetchPreferencesApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        permission = PluginPermissionService.get_permission(tenant_id)
+        permission_dict = {
+            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
+            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+        }
+
+        if permission:
+            permission_dict["install_permission"] = permission.install_permission
+            permission_dict["debug_permission"] = permission.debug_permission
+
+        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id)
+        auto_upgrade_dict = {
+            "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.DISABLED,
+            "upgrade_time_of_day": 0,
+            "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            "exclude_plugins": [],
+            "include_plugins": [],
+        }
+
+        if auto_upgrade:
+            auto_upgrade_dict = {
+                "strategy_setting": auto_upgrade.strategy_setting,
+                "upgrade_time_of_day": auto_upgrade.upgrade_time_of_day,
+                "upgrade_mode": auto_upgrade.upgrade_mode,
+                "exclude_plugins": auto_upgrade.exclude_plugins,
+                "include_plugins": auto_upgrade.include_plugins,
+            }
+
+        return jsonable_encoder({"permission": permission_dict, "auto_upgrade": auto_upgrade_dict})
+
+
+class PluginAutoUpgradeExcludePluginApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        # exclude one single plugin
+        tenant_id = current_user.current_tenant_id
+
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_id", type=str, required=True, location="json")
+        args = req.parse_args()
+
+        return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
@@ -517,3 +667,9 @@ api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marke
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+
+api.add_resource(PluginFetchPreferencesApi, "/workspaces/current/plugin/preferences/fetch")
+api.add_resource(PluginChangePreferencesApi, "/workspaces/current/plugin/preferences/change")
+api.add_resource(PluginAutoUpgradeExcludePluginApi, "/workspaces/current/plugin/preferences/autoupgrade/exclude")

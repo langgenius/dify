@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Kullanıcı adınız',
   forget: 'Şifrenizi mi unuttunuz?',
   signBtn: 'Giriş yap',
-  sso: 'SSO ile devam et',
   installBtn: 'Kurulum',
   setAdminAccount: 'Yönetici hesabı ayarlama',
   setAdminAccountDesc: 'Yönetici hesabı için maksimum ayrıcalıklar, uygulama oluşturma ve LLM sağlayıcılarını yönetme gibi işlemler için kullanılabilir.',
@@ -81,8 +80,8 @@ const translation = {
     verificationCodePlaceholder: '6 haneli kodu girin',
     useAnotherMethod: 'Başka bir yöntem kullanın',
     didNotReceiveCode: 'Kodu almadınız mı?',
-    tips: '<strong>{{email}}</strong> adresine bir doğrulama kodu gönderiyoruz',
     resend: 'Tekrar Gönder',
+    tipsPrefix: 'Bir doğrulama kodu gönderiyoruz',
   },
   enterYourName: 'Lütfen kullanıcı adınızı giriniz',
   resetPassword: 'Şifre Sıfırlama',
@@ -105,6 +104,12 @@ const translation = {
   licenseExpired: 'Lisansın Süresi Doldu',
   licenseLost: 'Lisans Kaybedildi',
   licenseInactive: 'Lisans Etkin Değil',
+  webapp: {
+    disabled: 'Web uygulaması kimlik doğrulaması devre dışı. Lütfen bu özelliği etkinleştirmesi için sistem yöneticisi ile iletişime geçin. Uygulamayı doğrudan kullanmayı deneyebilirsiniz.',
+    noLoginMethod: 'Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış',
+    noLoginMethodTip: 'Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.',
+    login: 'Giriş',
+  },
 }
 
 export default translation

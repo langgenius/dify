@@ -85,7 +85,6 @@ class BaiduVector(BaseVector):
             end = min(start + batch_size, total_count)
             rows = []
             assert len(metadatas) == total_count, "metadatas length should be equal to total_count"
-            # FIXME do you need this assert?
             for i in range(start, end, 1):
                 row = Row(
                     id=metadatas[i].get("doc_id", str(uuid.uuid4())),
@@ -204,9 +203,9 @@ class BaiduVector(BaseVector):
 
     def _create_table(self, dimension: int) -> None:
         # Try to grab distributed lock and create table
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=60):
-            table_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            table_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(table_exist_cache_key):
                 return
 

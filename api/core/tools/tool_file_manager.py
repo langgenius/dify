@@ -4,6 +4,7 @@ import hmac
 import logging
 import os
 import time
+from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
@@ -34,9 +35,10 @@ class ToolFileManager:
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
         """
-        sign file to get a temporary url
+        sign file to get a temporary url for plugin access
         """
-        base_url = dify_config.FILES_URL
+        # Use internal URL for plugin/tool file access in Docker environments
+        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
         file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
         timestamp = str(int(time.time()))
@@ -158,7 +160,7 @@ class ToolFileManager:
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
-                .filter(
+                .where(
                     ToolFile.id == id,
                 )
                 .first()
@@ -182,7 +184,7 @@ class ToolFileManager:
         with Session(self._engine, expire_on_commit=False) as session:
             message_file: MessageFile | None = (
                 session.query(MessageFile)
-                .filter(
+                .where(
                     MessageFile.id == id,
                 )
                 .first()
@@ -202,7 +204,7 @@ class ToolFileManager:
 
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
-                .filter(
+                .where(
                     ToolFile.id == tool_file_id,
                 )
                 .first()
@@ -215,7 +217,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str):
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Optional[Generator], Optional[ToolFile]]:
         """
         get file binary
 
@@ -226,7 +228,7 @@ class ToolFileManager:
         with Session(self._engine, expire_on_commit=False) as session:
             tool_file: ToolFile | None = (
                 session.query(ToolFile)
-                .filter(
+                .where(
                     ToolFile.id == tool_file_id,
                 )
                 .first()

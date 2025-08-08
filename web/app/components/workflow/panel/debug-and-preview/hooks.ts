@@ -8,7 +8,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { uniqBy } from 'lodash-es'
-import { useWorkflowRun } from '../../hooks'
+import {
+  useSetWorkflowVarsWithValue,
+  useWorkflowRun,
+} from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import { useWorkflowStore } from '../../store'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
@@ -30,6 +33,8 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useParams } from 'next/navigation'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -53,6 +58,9 @@ export const useChat = (
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
+  const { appId } = useParams()
+  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const {
@@ -84,7 +92,7 @@ export const useChat = (
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         }
       }
       else {
@@ -93,7 +101,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         })
       }
     }
@@ -288,6 +296,8 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
+          fetchInspectVars()
+          invalidAllLastRun()
 
           if (hasError) {
             if (errorMessage) {
@@ -491,7 +501,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled, fetchInspectVars, invalidAllLastRun])
 
   return {
     conversationId: conversationId.current,

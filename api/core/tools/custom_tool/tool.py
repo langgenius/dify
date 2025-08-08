@@ -1,7 +1,8 @@
 import json
 from collections.abc import Generator
+from dataclasses import dataclass
 from os import getenv
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -20,10 +21,21 @@ API_TOOL_DEFAULT_TIMEOUT = (
 )
 
 
-class ApiTool(Tool):
-    api_bundle: ApiToolBundle
-    provider_id: str
+@dataclass
+class ParsedResponse:
+    """Represents a parsed HTTP response with type information"""
 
+    content: Union[str, dict]
+    is_json: bool
+
+    def to_string(self) -> str:
+        """Convert response to string format for credential validation"""
+        if isinstance(self.content, dict):
+            return json.dumps(self.content, ensure_ascii=False)
+        return str(self.content)
+
+
+class ApiTool(Tool):
     """
     Api tool
     """
@@ -61,7 +73,9 @@ class ApiTool(Tool):
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        return self.validate_and_parse_response(response)
+        parsed_response = self.validate_and_parse_response(response)
+        # For credential validation, always return as string
+        return parsed_response.to_string()
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.API
@@ -78,8 +92,8 @@ class ApiTool(Tool):
         if "auth_type" not in credentials:
             raise ToolProviderCredentialValidationError("Missing auth_type")
 
-        if credentials["auth_type"] == "api_key":
-            api_key_header = "api_key"
+        if credentials["auth_type"] in ("api_key_header", "api_key"):  # backward compatibility:
+            api_key_header = "Authorization"
 
             if "api_key_header" in credentials:
                 api_key_header = credentials["api_key_header"]
@@ -100,6 +114,11 @@ class ApiTool(Tool):
 
             headers[api_key_header] = credentials["api_key_value"]
 
+        elif credentials["auth_type"] == "api_key_query":
+            # For query parameter authentication, we don't add anything to headers
+            # The query parameter will be added in do_http_request method
+            pass
+
         needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
@@ -110,23 +129,36 @@ class ApiTool(Tool):
 
         return headers
 
-    def validate_and_parse_response(self, response: httpx.Response) -> str:
+    def validate_and_parse_response(self, response: httpx.Response) -> ParsedResponse:
         """
-        validate the response
+        validate the response and return parsed content with type information
+
+        :return: ParsedResponse with content and is_json flag
         """
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
                 raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
-                return "Empty response from the tool, please check your parameters and try again."
+                return ParsedResponse(
+                    "Empty response from the tool, please check your parameters and try again.", False
+                )
+
+            # Check content type
+            content_type = response.headers.get("content-type", "").lower()
+            is_json_content_type = "application/json" in content_type
+
+            # Try to parse as JSON
             try:
-                response = response.json()
-                try:
-                    return json.dumps(response, ensure_ascii=False)
-                except Exception:
-                    return json.dumps(response)
+                json_response = response.json()
+                # If content-type indicates JSON, return as JSON object
+                if is_json_content_type:
+                    return ParsedResponse(json_response, True)
+                else:
+                    # If content-type doesn't indicate JSON, treat as text regardless of content
+                    return ParsedResponse(response.text, False)
             except Exception:
-                return response.text
+                # Not valid JSON, return as text
+                return ParsedResponse(response.text, False)
         else:
             raise ValueError(f"Invalid response type {type(response)}")
 
@@ -154,6 +186,15 @@ class ApiTool(Tool):
         cookies = {}
         files = []
 
+        # Add API key to query parameters if auth_type is api_key_query
+        if self.runtime and self.runtime.credentials:
+            credentials = self.runtime.credentials
+            if credentials.get("auth_type") == "api_key_query":
+                api_key_query_param = credentials.get("api_key_query_param", "key")
+                api_key_value = credentials.get("api_key_value")
+                if api_key_value:
+                    params[api_key_query_param] = api_key_value
+
         # check parameters
         for parameter in self.api_bundle.openapi.get("parameters", []):
             value = self.get_parameter_value(parameter, parameters)
@@ -168,7 +209,7 @@ class ApiTool(Tool):
                 cookies[parameter["name"]] = value
 
             elif parameter["in"] == "header":
-                headers[parameter["name"]] = value
+                headers[parameter["name"]] = str(value)
 
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
@@ -213,7 +254,8 @@ class ApiTool(Tool):
                         elif "default" in property:
                             body[name] = property["default"]
                         else:
-                            body[name] = None
+                            # omit optional parameters that weren't provided, instead of setting them to None
+                            pass
                     break
 
         # replace path parameters
@@ -357,7 +399,14 @@ class ApiTool(Tool):
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
         # validate response
-        response = self.validate_and_parse_response(response)
+        parsed_response = self.validate_and_parse_response(response)
 
-        # assemble invoke message
-        yield self.create_text_message(response)
+        # assemble invoke message based on response type
+        if parsed_response.is_json and isinstance(parsed_response.content, dict):
+            yield self.create_json_message(parsed_response.content)
+        else:
+            # Convert to string if needed and create text message
+            text_response = (
+                parsed_response.content if isinstance(parsed_response.content, str) else str(parsed_response.content)
+            )
+            yield self.create_text_message(text_response)

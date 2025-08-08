@@ -1,4 +1,4 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">Introducing Dify Workflow File Upload: Recreate Google NotebookLM Podcast</a>
@@ -54,7 +54,7 @@
   <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
-Dify is an open-source LLM app development platform. Its intuitive interface combines agentic AI workflow, RAG pipeline, agent capabilities, model management, observability features, and more, allowing you to quickly move from prototype to production.
+Dify is an open-source platform for developing LLM applications. Its intuitive interface combines agentic AI workflows, RAG pipelines, agent capabilities, model management, observability features, and more—allowing you to quickly move from prototype to production.
 
 ## Quick start
 
@@ -65,7 +65,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 </br>
 
-The easiest way to start the Dify server is through [docker compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
+The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
 
 ```bash
 cd dify
@@ -86,8 +86,6 @@ Please refer to our [FAQ](https://docs.dify.ai/getting-started/install-self-host
 
 **1. Workflow**:
 Build and test powerful AI workflows on a visual canvas, leveraging all the following features and beyond.
-
-https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
 
 **2. Comprehensive model support**:
 Seamless integration with hundreds of proprietary / open-source LLMs from dozens of inference providers and self-hosted solutions, covering GPT, Mistral, Llama3, and any OpenAI API-compatible models. A full list of supported model providers can be found [here](https://docs.dify.ai/getting-started/readme/model-providers).
@@ -207,6 +205,7 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### Using Terraform for Deployment
 
@@ -228,16 +227,29 @@ Deploy Dify to AWS with [CDK](https://aws.amazon.com/cdk/)
 
 - [AWS CDK by @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
+#### Using Alibaba Cloud Computing Nest
+
+Quickly deploy Dify to Alibaba cloud with [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88) 
+
+#### Using Alibaba Cloud Data Management
+
+One-Click deploy Dify to Alibaba Cloud with [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) 
+
+#### Deploy to AKS with Azure Devops Pipeline
+
+One-Click deploy Dify to AKS with [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 
+
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
 
-> We are looking for contributors to help translate Dify into languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
+> We are looking for contributors to help translate Dify into languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
 
 ## Community & contact
 
-- [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
+- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
 - [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 - [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
 - [X(Twitter)](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
@@ -254,8 +266,8 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ## Security disclosure
 
-To protect your privacy, please avoid posting security issues on GitHub. Instead, send your questions to security@dify.ai and we will provide you with a more detailed answer.
+To protect your privacy, please avoid posting security issues on GitHub. Instead, report issues to security@dify.ai, and our team will respond with detailed answer.
 
 ## License
 
-This repository is available under the [Dify Open Source License](LICENSE), which is essentially Apache 2.0 with a few additional restrictions.
+This repository is licensed under the [Dify Open Source License](LICENSE), based on Apache 2.0 with additional conditions.

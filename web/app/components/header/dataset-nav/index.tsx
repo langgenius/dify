@@ -14,7 +14,6 @@ import Nav from '../nav'
 import type { NavItem } from '../nav/nav-selector'
 import { fetchDatasetDetail, fetchDatasets } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
-import { basePath } from '@/utils/var'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -48,7 +47,7 @@ const DatasetNav = () => {
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
-      curNav={currentDataset as Omit<NavItem, 'link'>}
+      curNav={currentDataset as any}
       navs={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
@@ -57,8 +56,9 @@ const DatasetNav = () => {
         icon_background: dataset.icon_background,
       })) as NavItem[]}
       createText={t('common.menus.newDataset')}
-      onCreate={() => router.push(`${basePath}/datasets/create`)}
+      onCreate={() => router.push('/datasets/create')}
       onLoadmore={handleLoadmore}
+      isApp={false}
     />
   )
 }

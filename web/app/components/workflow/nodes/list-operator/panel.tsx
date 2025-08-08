@@ -78,6 +78,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                 varType={itemVarType}
                 hasSubVariable={hasSubVariable}
                 readOnly={readOnly}
+                nodeId={id}
               />
             )
             : null}
@@ -97,16 +98,14 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.extract_by?.enabled
             ? (
               <div className='flex items-center justify-between'>
-                {hasSubVariable && (
-                  <div className='mr-2 grow'>
-                    <ExtractInput
-                      value={inputs.extract_by.serial as string}
-                      onChange={handleExtractsChange}
-                      readOnly={readOnly}
-                      nodeId={id}
-                    />
-                  </div>
-                )}
+                <div className='mr-2 grow'>
+                  <ExtractInput
+                    value={inputs.extract_by.serial as string}
+                    onChange={handleExtractsChange}
+                    readOnly={readOnly}
+                    nodeId={id}
+                  />
+                </div>
               </div>
             )
             : null}

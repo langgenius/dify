@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,12 +22,11 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { useToastContext } from '@/app/components/base/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
-import { getLocaleOnClient } from '@/i18n'
 import { noop } from 'lodash-es'
-
+import DifyLogo from '../components/base/logo/dify-logo'
+import { useDocLink } from '@/context/i18n'
 const EducationApplyAge = () => {
   const { t } = useTranslation()
-  const locale = getLocaleOnClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
@@ -42,14 +40,7 @@ const EducationApplyAge = () => {
   const updateEducationStatus = useInvalidateEducationStatus()
   const { notify } = useToastContext()
   const router = useRouter()
-
-  const docLink = useMemo(() => {
-    if (locale === 'zh-Hans')
-      return 'https://docs.dify.ai/zh-hans/getting-started/dify-for-education'
-    if (locale === 'ja-JP')
-      return 'https://docs.dify.ai/ja-jp/getting-started/dify-for-education'
-    return 'https://docs.dify.ai/getting-started/dify-for-education'
-  }, [locale])
+  const docLink = useDocLink()
 
   const handleModalConfirm = () => {
     setShowModal(undefined)
@@ -93,12 +84,8 @@ const EducationApplyAge = () => {
           }}
         >
         </div>
-        <div className='mt-[-349px] flex h-[88px] items-center justify-between px-8 py-6'>
-          <img
-            src='/logo/logo-site-dark.png'
-            alt='dify logo'
-            className='h-10'
-          />
+        <div className='mt-[-349px] box-content flex h-7 items-center justify-between p-6'>
+          <DifyLogo size='large' style='monochromeWhite' />
         </div>
         <div className='mx-auto max-w-[720px] px-8 pb-[180px]'>
           <div className='mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface'>
@@ -170,7 +157,7 @@ const EducationApplyAge = () => {
           <div className='mb-4 mt-5 h-[1px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]'></div>
           <a
             className='system-xs-regular flex items-center text-text-accent'
-            href={docLink}
+            href={docLink('/getting-started/dify-for-education')}
             target='_blank'
           >
             {t('education.learn')}

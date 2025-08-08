@@ -26,7 +26,7 @@ class Mail:
 
         match mail_type:
             case "resend":
-                import resend  # type: ignore
+                import resend
 
                 api_key = dify_config.RESEND_API_KEY
                 if not api_key:
@@ -54,8 +54,17 @@ class Mail:
                     use_tls=dify_config.SMTP_USE_TLS,
                     opportunistic_tls=dify_config.SMTP_OPPORTUNISTIC_TLS,
                 )
+            case "sendgrid":
+                from libs.sendgrid import SendGridClient
+
+                if not dify_config.SENDGRID_API_KEY:
+                    raise ValueError("SENDGRID_API_KEY is required for SendGrid mail type")
+
+                self._client = SendGridClient(
+                    sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
+                )
             case _:
-                raise ValueError("Unsupported mail type {}".format(mail_type))
+                raise ValueError(f"Unsupported mail type {mail_type}")
 
     def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:

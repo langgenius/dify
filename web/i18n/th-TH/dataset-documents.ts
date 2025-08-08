@@ -29,6 +29,9 @@ const translation = {
       delete: 'ลบ',
       enableWarning: 'ไม่สามารถเปิดใช้งานไฟล์ที่เก็บถาวรได้',
       sync: 'ซิงค์',
+      pause: 'หยุด',
+      resume: 'ดำเนิน',
+      download: 'ดาวน์โหลดไฟล์',
     },
     index: {
       enable: 'เปิด',
@@ -50,7 +53,7 @@ const translation = {
     empty: {
       title: 'ยังไม่มีเอกสาร',
       upload: {
-        tip: 'คุณสามารถอัปโหลดไฟล์ ซิงค์จากเว็บไซต์ หรือจากแอป webb เช่น Notion, GitHub เป็นต้น',
+        tip: 'คุณสามารถอัปโหลดไฟล์ ซิงค์จากเว็บไซต์ หรือจากแอป web เช่น Notion, GitHub เป็นต้น',
       },
       sync: {
         tip: 'Dify จะดาวน์โหลดไฟล์จาก Notion ของคุณเป็นระยะและดําเนินการให้เสร็จสมบูรณ์',
@@ -361,6 +364,7 @@ const translation = {
     edited: 'แก้ไข',
     addChunk: 'เพิ่มก้อน',
     editedAt: 'แก้ไขที่',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     childChunks_other: 'ก้อนเด็ก',
     editChildChunk: 'แก้ไข Child Chunk',
     parentChunk: 'ผู้ปกครอง-ก้อน',
@@ -388,6 +392,8 @@ const translation = {
     searchResults_other: 'ผลลัพธ์',
     regenerationSuccessMessage: 'คุณสามารถปิดหน้าต่างนี้ได้',
     childChunks_one: 'ก้อนเด็ก',
+    keywordDuplicate: 'คำสำคัญมีอยู่แล้ว',
+    keywordEmpty: 'คีย์เวิร์ดไม่สามารถว่างเปล่าได้',
   },
 }
 

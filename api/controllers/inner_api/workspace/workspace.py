@@ -1,6 +1,6 @@
 import json
 
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
@@ -29,7 +29,19 @@ class EnterpriseWorkspace(Resource):
 
         tenant_was_created.send(tenant)
 
-        return {"message": "enterprise workspace created."}
+        resp = {
+            "id": tenant.id,
+            "name": tenant.name,
+            "plan": tenant.plan,
+            "status": tenant.status,
+            "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
+            "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
+        }
+
+        return {
+            "message": "enterprise workspace created.",
+            "tenant": resp,
+        }
 
 
 class EnterpriseWorkspaceNoOwnerEmail(Resource):

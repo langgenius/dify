@@ -29,6 +29,9 @@ const translation = {
       delete: 'Elimina',
       enableWarning: 'Il file archiviato non può essere abilitato',
       sync: 'Sincronizza',
+      resume: 'Riprendi',
+      pause: 'Pausa',
+      download: 'Scarica file',
     },
     index: {
       enable: 'Abilita',
@@ -378,6 +381,7 @@ const translation = {
     regenerationConfirmTitle: 'Si desidera rigenerare i blocchi figlio?',
     chunks_other: 'BLOCCHI',
     editedAt: 'A cura di',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     collapseChunks: 'Comprimi blocchi',
     clearFilter: 'Cancella filtro',
     chunks_one: 'PEZZO',
@@ -391,6 +395,8 @@ const translation = {
     regenerationSuccessMessage: 'È possibile chiudere questa finestra.',
     childChunkAdded: '1 blocco figlio aggiunto',
     childChunks_other: 'BLOCCHI FIGLIO',
+    keywordEmpty: 'La parola chiave non può essere vuota',
+    keywordDuplicate: 'La parola chiave esiste già',
   },
 }
 

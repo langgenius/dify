@@ -168,6 +168,55 @@ const translation = {
   documentsDisabled: '{{num}} tài liệu bị vô hiệu hóa - không hoạt động trong hơn 30 ngày',
   allKnowledge: 'Tất cả kiến thức',
   allKnowledgeDescription: 'Chọn để hiển thị tất cả kiến thức trong không gian làm việc này. Chỉ Chủ sở hữu không gian làm việc mới có thể quản lý tất cả kiến thức.',
+  metadata: {
+    createMetadata: {
+      name: 'Tên',
+      namePlaceholder: 'Thêm tên siêu dữ liệu',
+      type: 'Loại',
+      title: 'Siêu dữ liệu mới',
+      back: 'Quay lại',
+    },
+    checkName: {
+      invalid: 'Tên siêu dữ liệu chỉ có thể chứa chữ cái thường, số và dấu gạch dưới, và phải bắt đầu bằng một chữ cái thường.',
+      empty: 'Tên siêu dữ liệu không được để trống',
+      tooLong: 'Tên siêu dữ liệu không được vượt quá {{max}} ký tự',
+    },
+    batchEditMetadata: {
+      applyToAllSelectDocumentTip: 'Tự động tạo tất cả các siêu dữ liệu đã chỉnh sửa và mới cho tất cả các tài liệu được chọn, nếu không, việc chỉnh sửa siêu dữ liệu sẽ chỉ áp dụng cho các tài liệu có nó.',
+      multipleValue: 'Nhiều giá trị',
+      editDocumentsNum: 'Chỉnh sửa {{num}} tài liệu',
+      applyToAllSelectDocument: 'Áp dụng cho tất cả các tài liệu đã chọn',
+      editMetadata: 'Chỉnh sửa siêu dữ liệu',
+    },
+    selectMetadata: {
+      manageAction: 'Quản lý',
+      search: 'Tìm kiếm siêu dữ liệu',
+      newAction: 'Siêu dữ liệu mới',
+    },
+    datasetMetadata: {
+      disabled: 'Tắt',
+      rename: 'Đổi tên',
+      namePlaceholder: 'Tên siêu dữ liệu',
+      builtIn: 'Tích hợp sẵn',
+      deleteTitle: 'Xác nhận để xóa',
+      name: 'Tên',
+      values: '{{num}} Giá trị',
+      description: 'Bạn có thể quản lý tất cả metadata trong kiến thức này ở đây. Những thay đổi sẽ được đồng bộ hóa đến mọi tài liệu.',
+      deleteContent: 'Bạn có chắc chắn muốn xóa siêu dữ liệu "{{name}}" không?',
+      builtInDescription: 'Siêu dữ liệu được tích hợp sẵn sẽ tự động được trích xuất và tạo ra. Nó phải được bật trước khi sử dụng và không thể chỉnh sửa.',
+      addMetaData: 'Thêm siêu dữ liệu',
+    },
+    documentMetadata: {
+      documentInformation: 'Thông tin tài liệu',
+      technicalParameters: 'Các Thông Số Kỹ Thuật',
+      metadataToolTip: 'Dữ liệu siêu thông tin đóng vai trò là một bộ lọc quan trọng giúp nâng cao độ chính xác và tính liên quan của việc truy xuất thông tin. Bạn có thể chỉnh sửa và thêm dữ liệu siêu thông tin cho tài liệu này ở đây.',
+      startLabeling: 'Bắt đầu gán nhãn',
+    },
+    addMetadata: 'Thêm siêu dữ liệu',
+    chooseTime: 'Chọn một thời gian...',
+    metadata: 'Siêu dữ liệu',
+  },
+  embeddingModelNotAvailable: 'Mô hình nhúng không khả dụng.',
 }
 
 export default translation

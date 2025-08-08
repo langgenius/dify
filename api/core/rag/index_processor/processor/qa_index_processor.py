@@ -104,7 +104,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
         # check file type
-        if not file.filename.endswith(".csv"):
+        if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
 
         try:

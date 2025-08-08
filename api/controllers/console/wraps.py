@@ -4,7 +4,7 @@ import time
 from functools import wraps
 
 from flask import abort, request
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -37,6 +37,17 @@ def only_edition_cloud(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         if dify_config.EDITION != "CLOUD":
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def only_edition_enterprise(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.ENTERPRISE_ENABLED:
             abort(404)
 
         return view(*args, **kwargs)
@@ -218,6 +229,32 @@ def email_password_login_enabled(view):
     def decorated(*args, **kwargs):
         features = FeatureService.get_system_features()
         if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated
+
+
+def enable_change_email(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_change_email:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
+
+    return decorated
+
+
+def is_allow_transfer_owner(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if features.is_allow_transfer_workspace:
             return view(*args, **kwargs)
 
         # otherwise, return 403

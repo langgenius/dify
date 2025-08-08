@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource, marshal_with  # type: ignore
+from flask_restful import Resource, marshal_with
 
 import services
 from controllers.common.errors import FilenameNotExistsError
@@ -20,17 +20,16 @@ class FileApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     @marshal_with(file_fields)
     def post(self, app_model: App, end_user: EndUser):
-        file = request.files["file"]
-
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
 
-        if not file.mimetype:
-            raise UnsupportedFileTypeError()
-
         if len(request.files) > 1:
             raise TooManyFilesError()
+
+        file = request.files["file"]
+        if not file.mimetype:
+            raise UnsupportedFileTypeError()
 
         if not file.filename:
             raise FilenameNotExistsError

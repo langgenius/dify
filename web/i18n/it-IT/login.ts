@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Il tuo nome utente',
   forget: 'Hai dimenticato la password?',
   signBtn: 'Accedi',
-  sso: 'Continua con SSO',
   installBtn: 'Configura',
   setAdminAccount: 'Impostazione di un account amministratore',
   setAdminAccountDesc:
@@ -91,8 +90,8 @@ const translation = {
     validTime: 'Tieni presente che il codice è valido per 5 minuti',
     didNotReceiveCode: 'Non hai ricevuto il codice?',
     checkYourEmail: 'Controlla la tua email',
-    tips: 'Inviamo un codice di verifica a <strong>{{email}}</strong>',
     useAnotherMethod: 'Usa un altro metodo',
+    tipsPrefix: 'Inviamo un codice di verifica a',
   },
   or: 'O',
   back: 'Indietro',
@@ -115,6 +114,12 @@ const translation = {
   licenseExpiredTip: 'La licenza Dify Enterprise per la tua area di lavoro è scaduta. Contatta il tuo amministratore per continuare a utilizzare Dify.',
   licenseInactiveTip: 'La licenza Dify Enterprise per la tua area di lavoro è inattiva. Contatta il tuo amministratore per continuare a utilizzare Dify.',
   licenseInactive: 'Licenza inattiva',
+  webapp: {
+    noLoginMethod: 'Metodo di autenticazione non configurato per l\'app web',
+    noLoginMethodTip: 'Si prega di contattare l\'amministratore del sistema per aggiungere un metodo di autenticazione.',
+    disabled: 'L\'autenticazione dell\'app web è disabilitata. Si prega di contattare l\'amministratore di sistema per abilitarla. Puoi provare a utilizzare l\'app direttamente.',
+    login: 'Accesso',
+  },
 }
 
 export default translation

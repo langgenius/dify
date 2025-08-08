@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Vaše uporabniško ime',
   forget: 'Ste pozabili geslo?',
   signBtn: 'Prijava',
-  sso: 'Nadaljujte z SSO',
   installBtn: 'Namesti',
   setAdminAccount: 'Nastavitev administratorskega računa',
   setAdminAccountDesc: 'Najvišje pravice za administratorski račun, ki se lahko uporablja za ustvarjanje aplikacij in upravljanje LLM ponudnikov itd.',
@@ -76,13 +75,13 @@ const translation = {
     verificationCodePlaceholder: 'Vnesite 6-mestno kodo',
     resend: 'Poslati',
     verificationCode: 'Koda za preverjanje',
-    tips: 'Kodo za preverjanje pošljemo na <strong>{{email}}</strong>',
     verify: 'Preveriti',
     validTime: 'Upoštevajte, da je koda veljavna 5 minut',
     checkYourEmail: 'Preverjanje e-pošte',
     didNotReceiveCode: 'Niste prejeli kode?',
     invalidCode: 'Neveljavna koda',
     useAnotherMethod: 'Uporabite drug način',
+    tipsPrefix: 'Pošljemo kodo za preverjanje na',
   },
   useVerificationCode: 'Uporaba kode za preverjanje',
   licenseInactive: 'Licenca je neaktivna',
@@ -105,6 +104,12 @@ const translation = {
   withSSO: 'Nadaljujte z enotno prijavo',
   licenseLostTip: 'Povezava z licenčnim strežnikom Dify ni uspela. Če želite še naprej uporabljati Dify, se obrnite na skrbnika.',
   licenseInactiveTip: 'Licenca Dify Enterprise za vaš delovni prostor je neaktivna. Če želite še naprej uporabljati Dify, se obrnite na skrbnika.',
+  webapp: {
+    noLoginMethod: 'Metoda overjanja ni nastavljena za spletno aplikacijo',
+    noLoginMethodTip: 'Prosimo, da se obrnete na sistemskega skrbnika, da dodate metodo za avtentikacijo.',
+    disabled: 'Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.',
+    login: 'Prijava',
+  },
 }
 
 export default translation

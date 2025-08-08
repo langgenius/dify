@@ -20,6 +20,7 @@ import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils'
 import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
@@ -31,6 +32,9 @@ const WorkflowPreview = () => {
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const showInputsPanel = useStore(s => s.showInputsPanel)
+  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
+  const panelWidth = useStore(s => s.previewPanelWidth)
+  const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
@@ -48,7 +52,6 @@ const WorkflowPreview = () => {
       switchTab('DETAIL')
   }, [workflowRunningData])
 
-  const [panelWidth, setPanelWidth] = useState(420)
   const [isResizing, setIsResizing] = useState(false)
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -63,10 +66,14 @@ const WorkflowPreview = () => {
   const resize = useCallback((e: MouseEvent) => {
     if (isResizing) {
       const newWidth = window.innerWidth - e.clientX
-      if (newWidth > 420 && newWidth < 1024)
-        setPanelWidth(newWidth)
+      // width constraints: 400 <= width <= maxAllowed (canvas - reserved 400)
+      const reservedCanvasWidth = 400
+      const maxAllowed = workflowCanvasWidth ? (workflowCanvasWidth - reservedCanvasWidth) : 1024
+
+      if (newWidth >= 400 && newWidth <= maxAllowed)
+        setPreviewPanelWidth(newWidth)
     }
-  }, [isResizing])
+  }, [isResizing, workflowCanvasWidth, setPreviewPanelWidth])
 
   useEffect(() => {
     window.addEventListener('mousemove', resize)
@@ -78,9 +85,9 @@ const WorkflowPreview = () => {
   }, [resize, stopResizing])
 
   return (
-    <div className={`
-      relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl
-    `}
+    <div className={
+      'relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+    }
       style={{ width: `${panelWidth}px` }}
     >
       <div
@@ -88,7 +95,7 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
-        {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
+        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at)}`}
         <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>

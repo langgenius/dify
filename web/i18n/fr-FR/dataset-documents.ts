@@ -28,6 +28,9 @@ const translation = {
       delete: 'Supprimer',
       enableWarning: 'Le fichier archivé ne peut pas être activé',
       sync: 'Synchroniser',
+      pause: 'Pause',
+      resume: 'Reprendre',
+      download: 'Télécharger le fichier',
     },
     index: {
       enable: 'Activer',
@@ -372,6 +375,7 @@ const translation = {
     expandChunks: 'Développer des blocs',
     characters_other: 'caractères',
     editedAt: 'Édité le',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     searchResults_other: 'RÉSULTATS',
     regenerationSuccessMessage: 'Vous pouvez fermer cette fenêtre.',
     parentChunks_one: 'MORCEAU PARENT',
@@ -389,6 +393,8 @@ const translation = {
     searchResults_zero: 'RÉSULTAT',
     empty: 'Aucun Chunk trouvé',
     editChildChunk: 'Modifier le morceau enfant',
+    keywordDuplicate: 'Le mot-clé existe déjà',
+    keywordEmpty: 'Le mot-clé ne peut pas être vide.',
   },
 }
 

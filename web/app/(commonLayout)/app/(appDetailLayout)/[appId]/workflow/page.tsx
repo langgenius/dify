@@ -1,5 +1,3 @@
-'use client'
-
 import WorkflowApp from '@/app/components/workflow-app'
 
 const Page = () => {

@@ -168,6 +168,55 @@ const translation = {
   enable: 'Etkinleştirmek',
   allKnowledge: 'Tüm Bilgiler',
   allKnowledgeDescription: 'Bu çalışma alanındaki tüm bilgileri görüntülemek için seçin. Yalnızca Çalışma Alanı Sahibi tüm bilgileri yönetebilir.',
+  metadata: {
+    createMetadata: {
+      namePlaceholder: 'Meta veri adı ekleyin',
+      back: 'Geri',
+      name: 'İsim',
+      type: 'Yaz',
+      title: 'Yeni Veriler',
+    },
+    checkName: {
+      empty: 'Meta veri adı boş olamaz',
+      invalid: 'Meta verisi adı yalnızca küçük harfler, sayılar ve alt çizgiler içerebilir ve küçük bir harfle başlamalıdır.',
+      tooLong: 'Meta veri adı {{max}} karakteri geçemez',
+    },
+    batchEditMetadata: {
+      multipleValue: 'Birden Fazla Değer',
+      applyToAllSelectDocumentTip: 'Seçilen tüm belgeler için yukarıda düzenlenmiş ve yeni olan tüm meta verileri otomatik olarak oluşturun, aksi takdirde meta verileri düzenlemek yalnızca bununla ilgili belgelere uygulanacaktır.',
+      editDocumentsNum: '{{num}} belge düzenleniyor',
+      editMetadata: 'Meta Verileri Düzenle',
+      applyToAllSelectDocument: 'Seçilen tüm belgelere uygula',
+    },
+    selectMetadata: {
+      newAction: 'Yeni Veriler',
+      manageAction: 'Yönet',
+      search: 'Arama meta verileri',
+    },
+    datasetMetadata: {
+      disabled: 'Devre dışı bırakıldı.',
+      builtIn: 'Yerleşik',
+      values: '{{num}} Değerler',
+      builtInDescription: 'Yerleşik meta veriler otomatik olarak çıkarılır ve oluşturulur. Kullanımdan önce etkinleştirilmesi gerekir ve düzenlenemez.',
+      rename: 'Yeniden Adlandır',
+      addMetaData: 'Meta Verileri Ekle',
+      name: 'İsim',
+      deleteContent: 'Bu {{name}} meta verisini silmek istediğinizden emin misiniz?',
+      namePlaceholder: 'Meta veri adı',
+      deleteTitle: 'Silmek için onayla',
+      description: 'Bu bilgideki tüm meta verileri yönetebilirsiniz. Değişiklikler her belgeye senkronize edilecektir.',
+    },
+    documentMetadata: {
+      documentInformation: 'Belge Bilgisi',
+      metadataToolTip: 'Meta veriler, bilgi alma doğruluğunu ve geçerliliğini artıran önemli bir filtre görevi görür. Bu belgede meta verileri burada değiştirebilir ve ekleyebilirsiniz.',
+      startLabeling: 'Etiketlemeye Başla',
+      technicalParameters: 'Teknik Parametreler',
+    },
+    metadata: 'Veri Seti',
+    addMetadata: 'Meta Verileri Ekle',
+    chooseTime: 'Bir zaman seçin...',
+  },
+  embeddingModelNotAvailable: 'Gömme modeli mevcut değil.',
 }
 
 export default translation

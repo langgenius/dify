@@ -26,7 +26,7 @@ class AnnotationReplyFeature:
         :return:
         """
         annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_record.id).first()
+            db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id).first()
         )
 
         if not annotation_setting:
@@ -83,7 +83,7 @@ class AnnotationReplyFeature:
 
                     return annotation
         except Exception as e:
-            logger.warning(f"Query annotation failed, exception: {str(e)}.")
+            logger.warning("Query annotation failed, exception: %s.", str(e))
             return None
 
         return None

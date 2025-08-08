@@ -9,8 +9,6 @@ const translation = {
   table: {
     header: {
       question: '質問',
-      match: 'マッチ',
-      response: '応答',
       answer: '回答',
       createdAt: '作成日時',
       hits: 'ヒット数',
@@ -18,7 +16,8 @@ const translation = {
       addAnnotation: '注釈を追加',
       bulkImport: '一括インポート',
       bulkExport: '一括エクスポート',
-      clearAll: 'すべての注釈をクリア',
+      clearAll: 'すべて削除',
+      clearAllConfirm: 'すべての寸法を削除?',
     },
   },
   editModal: {
@@ -42,9 +41,9 @@ const translation = {
   },
   batchModal: {
     title: '一括インポート',
-    csvUploadTitle: 'CSVファイルをここにドラッグ＆ドロップするか、',
+    csvUploadTitle: 'CSV ファイルをここにドラッグ＆ドロップするか、',
     browse: '参照',
-    tip: 'CSVファイルは以下の構造に準拠する必要があります:',
+    tip: 'CSV ファイルは以下の構造に準拠する必要があります：',
     question: '質問',
     answer: '回答',
     contentTitle: 'チャンクの内容',
@@ -70,7 +69,6 @@ const translation = {
     noHitHistory: 'ヒット履歴はありません',
   },
   hitHistoryTable: {
-    question: '質問',
     query: 'クエリ',
     match: '一致',
     response: '応答',
@@ -85,6 +83,16 @@ const translation = {
     configConfirmBtn: '保存',
   },
   embeddingModelSwitchTip: '注釈テキストのベクトル化モデルです。モデルを切り替えると再埋め込みが行われ、追加のコストが発生します。',
+  list: {
+    delete: {
+      title: '本当に削除しますか？',
+    },
+  },
+  batchAction: {
+    cancel: 'キャンセル',
+    delete: '削除する',
+    selected: '選択された',
+  },
 }
 
 export default translation

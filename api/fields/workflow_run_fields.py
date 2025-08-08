@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -19,7 +19,6 @@ workflow_run_for_log_fields = {
 
 workflow_run_for_list_fields = {
     "id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "status": fields.String,
     "elapsed_time": fields.Float,
@@ -36,7 +35,6 @@ advanced_chat_workflow_run_for_list_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
     "message_id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "status": fields.String,
     "elapsed_time": fields.Float,
@@ -63,7 +61,6 @@ workflow_run_pagination_fields = {
 
 workflow_run_detail_fields = {
     "id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "graph": fields.Raw(attribute="graph_dict"),
     "inputs": fields.Raw(attribute="inputs_dict"),

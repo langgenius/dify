@@ -32,6 +32,7 @@ import {
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
+import CopyID from '../tool/components/copy-id'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -44,10 +45,14 @@ import AddVariablePopupWithPosition from './components/add-variable-popup-with-p
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '../../block-selector/types'
 
 type BaseNodeProps = {
   children: ReactElement
-} & NodeProps
+  id: NodeProps['id']
+  data: NodeProps['data']
+}
 
 const BaseNode: FC<BaseNodeProps> = ({
   id,
@@ -89,6 +94,9 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
+  const { hasNodeInspectVars } = useInspectVarsCrud()
+  const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
+  const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
     showRunningBorder,
@@ -98,11 +106,11 @@ const BaseNode: FC<BaseNodeProps> = ({
   } = useMemo(() => {
     return {
       showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
-      showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
+      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
-  }, [data._runningStatus, showSelectedBorder])
+  }, [data._runningStatus, hasVarValue, showSelectedBorder])
 
   const LoopIndex = useMemo(() => {
     let text = ''
@@ -135,6 +143,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
+        data._dimmed && 'opacity-30',
       )}
       ref={nodeRef}
       style={{
@@ -260,12 +269,12 @@ const BaseNode: FC<BaseNodeProps> = ({
             data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
           }
           {
-            (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
+            isLoading && (
               <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
             )
           }
           {
-            data._runningStatus === NodeRunningStatus.Succeeded && (
+            (!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)) && (
               <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
             )
           }
@@ -315,6 +324,11 @@ const BaseNode: FC<BaseNodeProps> = ({
             </div>
           )
         }
+        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
+          <div className='px-3 pb-2'>
+            <CopyID content={data.provider_id || ''} />
+          </div>
+        )}
       </div>
     </div>
   )

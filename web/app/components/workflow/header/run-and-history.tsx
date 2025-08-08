@@ -19,6 +19,9 @@ import cn from '@/utils/classnames'
 import {
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import useTheme from '@/hooks/use-theme'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
@@ -26,6 +29,16 @@ const RunMode = memo(() => {
   const { handleStopRun } = useWorkflowRun()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+
+  const handleStop = () => {
+    handleStopRun(workflowRunningData?.task_id || '')
+  }
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   return (
     <>
@@ -59,7 +72,7 @@ const RunMode = memo(() => {
         isRunning && (
           <div
             className='ml-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
-            onClick={() => handleStopRun(workflowRunningData?.task_id || '')}
+            onClick={handleStop}
           >
             <StopCircle className='h-4 w-4 text-components-button-ghost-text' />
           </div>
@@ -90,21 +103,27 @@ const PreviewMode = memo(() => {
 PreviewMode.displayName = 'PreviewMode'
 
 const RunAndHistory: FC = () => {
+  const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
-      {
-        !isChatMode && <RunMode />
-      }
-      {
-        isChatMode && <PreviewMode />
-      }
-      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
-      <ViewHistory />
-      <Checklist disabled={nodesReadOnly} />
-    </div>
+    <>
+      <div className={cn(
+        'flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs',
+        theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+      )}>
+        {
+          !isChatMode && <RunMode />
+        }
+        {
+          isChatMode && <PreviewMode />
+        }
+        <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
+        <ViewHistory />
+        <Checklist disabled={nodesReadOnly} />
+      </div>
+    </>
   )
 }
 

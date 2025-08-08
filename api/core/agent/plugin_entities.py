@@ -41,6 +41,7 @@ class AgentStrategyParameter(PluginParameter):
         APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
         TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
+        ANY = CommonParameterType.ANY.value
 
         # deprecated, should not use.
         SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
@@ -85,7 +86,7 @@ class AgentStrategyEntity(BaseModel):
     description: I18nObject = Field(..., description="The description of the agent strategy")
     output_schema: Optional[dict] = None
     features: Optional[list[AgentFeature]] = None
-
+    meta_version: Optional[str] = None
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

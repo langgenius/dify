@@ -2,7 +2,7 @@ import base64
 import secrets
 
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -167,6 +167,8 @@ class ForgotPasswordResetApi(Resource):
                 interface_language=languages[0],
             )
         except WorkSpaceNotAllowedCreateError:
+            pass
+        except WorkspacesLimitExceededError:
             pass
         except AccountRegisterError:
             raise AccountInFreezeError()

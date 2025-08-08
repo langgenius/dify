@@ -1,9 +1,10 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
@@ -65,6 +66,8 @@ class BaseNodeEvent(GraphEngineEvent):
     """iteration id if node is in iteration"""
     in_loop_id: Optional[str] = None
     """loop id if node is in loop"""
+    # The version of the node, or "1" if not specified.
+    node_version: str = "1"
 
 
 class NodeRunStartedEvent(BaseNodeEvent):
@@ -82,7 +85,7 @@ class NodeRunStreamChunkEvent(BaseNodeEvent):
 
 
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):
-    retriever_resources: list[dict] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
 
 

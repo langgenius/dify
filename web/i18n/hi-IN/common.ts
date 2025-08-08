@@ -54,6 +54,12 @@ const translation = {
     in: 'में',
     copied: 'कॉपी किया गया',
     viewDetails: 'विवरण देखें',
+    more: 'अधिक',
+    downloadSuccess: 'डाउनलोड पूरा हुआ।',
+    downloadFailed: 'डाउनलोड विफल। कृपया बाद में पुनः प्रयास करें।',
+    format: 'फॉर्मेट',
+    selectAll: 'सभी चुनें',
+    deSelectAll: 'सभी चयन हटाएँ',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -150,6 +156,8 @@ const translation = {
     newDataset: 'ज्ञान बनाएं',
     tools: 'उपकरण',
     exploreMarketplace: 'मार्केटप्लेस का अन्वेषण करें',
+    appDetail: 'ऐप विवरण',
+    account: 'खाता',
   },
   userProfile: {
     settings: 'सेटिंग्स',
@@ -162,6 +170,9 @@ const translation = {
     community: 'समुदाय',
     about: 'के बारे में',
     logout: 'लॉग आउट',
+    compliance: 'अनुपालन',
+    github: 'गिटहब',
+    support: 'समर्थन',
   },
   settings: {
     accountGroup: 'खाता',
@@ -212,6 +223,32 @@ const translation = {
     permanentlyDeleteButton: 'खाता स्थायी रूप से हटाएं',
     verificationPlaceholder: '6-अंकीय कोड पेस्ट करें',
     deleteSuccessTip: 'आपके खाते को हटाने का काम पूरा करने के लिए समय चाहिए. जब यह सब हो जाएगा तो हम आपको ईमेल करेंगे।',
+    workspaceIcon: 'कार्यस्थल आइकन',
+    editWorkspaceInfo: 'कार्यक्षेत्र की जानकारी संपादित करें',
+    workspaceName: 'कार्यस्थल का नाम',
+    changeEmail: {
+      title: 'ईमेल बदलें',
+      codePlaceholder: '6 अंकों का कोड पेस्ट करें',
+      continue: 'जारी रखें',
+      emailPlaceholder: 'नई ईमेल दर्ज करें',
+      changeTo: '{{email}} में परिवर्तन करें',
+      resendCount: '{{count}} सेकंड में दोबारा भेजें',
+      resend: 'फिर से भेजें',
+      newEmail: 'एक नया ईमेल पता सेट करें',
+      codeLabel: 'पुष्टि कोड',
+      verifyNew: 'अपने नए ईमेल की पुष्टि करें',
+      resendTip: 'कोई कोड नहीं मिला?',
+      verifyEmail: 'अपने वर्तमान ईमेल की पुष्टि करें',
+      existingEmail: 'इस ईमेल के साथ एक उपयोगकर्ता पहले से मौजूद है।',
+      sendVerifyCode: 'सत्यापन कोड भेजें',
+      content3: 'एक नया ईमेल दर्ज करें और हम आपको एक सत्यापन कोड भेजेंगे।',
+      emailLabel: 'नया ईमेल',
+      content4: 'हमने आपको <email>{{email}}</email> पर एक अस्थायी सत्यापन कोड भेजा है।',
+      content2: 'आपका वर्तमान ईमेल है <email>{{email}}</email>. सत्यापन कोड इस ईमेल पते पर भेजा गया है।',
+      authTip: 'एक बार जब आपका ईमेल बदल दिया जाता है, तो आपके पुराने ईमेल से जुड़े Google या GitHub खाते इस खाते में लॉग इन नहीं कर सकेंगे।',
+      content1: 'अगर आप जारी रखते हैं, तो हम सत्यापन के लिए <email>{{email}}</email> पर एक सत्यापन कोड भेजेंगे।',
+      unAvailableEmail: 'यह ईमेल अस्थायी रूप से अनुपलब्ध है।',
+    },
   },
   members: {
     team: 'टीम',
@@ -256,6 +293,26 @@ const translation = {
     you: '(आप)',
     datasetOperator: 'ज्ञान व्यवस्थापक',
     datasetOperatorTip: 'केवल नॉलेज बेस प्रबंधित कर सकते हैं',
+    transferModal: {
+      codePlaceholder: '6 अंकों का कोड पेस्ट करें',
+      transferPlaceholder: 'एक कार्यक्षेत्र सदस्य चुनें…',
+      resendTip: 'कोड प्राप्त नहीं हुआ?',
+      verifyContent: 'आपका वर्तमान ईमेल <email>{{email}}</email> है।',
+      sendVerifyCode: 'सत्यापन कोड भेजें',
+      verifyEmail: 'अपने वर्तमान ईमेल की पुष्टि करें',
+      codeLabel: 'पुष्टिकरण कोड',
+      warning: 'आप "{{workspace}}" की स्वामित्व स्थानांतरित करने वाले हैं। यह तुरंत प्रभावी होता है और इसे पूर्ववत नहीं किया जा सकता।',
+      title: 'वर्कस्पेस का मालिकाना हक स्थानांतरित करें',
+      resend: 'फिर से भेजें',
+      resendCount: '{{count}} सेकंड में दोबारा भेजें',
+      transferLabel: 'कार्यक्षेत्र की स्वामित्व स्थानांतरित करें',
+      sendTip: 'अगर आप जारी रखते हैं, तो हम सत्यापन के लिए <email>{{email}}</email> पर एक कोड भेजेंगे।',
+      continue: 'जारी रखें',
+      transfer: 'कार्यस्थान स्वामित्व स्थानांतरित करें',
+      verifyContent2: 'हम इस ईमेल पर पुनः प्रमाणन के लिए एक अस्थायी सत्यापन कोड भेजेंगे।',
+      warningTip: 'आप एक प्रशासनिक सदस्य बन जाएंगे, और नए मालिक के पास पूरी नियंत्रण होगा।',
+    },
+    transferOwnership: 'स्वामित्व हस्तांतरित करें',
   },
   integrations: {
     connected: 'कनेक्टेड',
@@ -455,6 +512,7 @@ const translation = {
         addPages: 'पृष्ठ जोड़ें',
         preview: 'पूर्वावलोकन',
       },
+      integratedAlert: 'नोट्शन आंतरिक प्रमाण पत्र के माध्यम से एकीकृत है, फिर से प्रमाणित करने की आवश्यकता नहीं है।',
     },
     website: {
       title: 'वेबसाइट',
@@ -476,7 +534,6 @@ const translation = {
     title:
       'एपीआई एक्सटेंशन केंद्रीकृत एपीआई प्रबंधन प्रदान करते हैं, जो Dify के अनुप्रयोगों में आसान उपयोग के लिए कॉन्फ़िगरेशन को सरल बनाते हैं।',
     link: 'अपना खुद का एपीआई एक्सटेंशन कैसे विकसित करें, यह जानें।',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'एपीआई एक्सटेंशन जोड़ें',
     selector: {
       title: 'एपीआई एक्सटेंशन',
@@ -565,6 +622,7 @@ const translation = {
     inputPlaceholder: 'बॉट से बात करें',
     thought: 'विचार',
     thinking: 'सोचते हुए...',
+    resend: 'फिर से भेजें',
   },
   promptEditor: {
     placeholder:
@@ -655,10 +713,31 @@ const translation = {
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',
     expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+    unlimited: 'असीमित',
   },
   pagination: {
     perPage: 'प्रति पृष्ठ आइटम',
   },
+  theme: {
+    light: 'रोशनी',
+    theme: 'थीम',
+    auto: 'प्रणाली',
+    dark: 'अंधेरा',
+  },
+  compliance: {
+    iso27001: 'आईएसओ 27001:2022 प्रमाणन',
+    gdpr: 'जीडीपीआर डीपीए',
+    soc2Type1: 'SOC 2 प्रकार I रिपोर्ट',
+    professionalUpgradeTooltip: 'केवल टीम योजना या उससे ऊपर के साथ उपलब्ध है।',
+    soc2Type2: 'SOC 2 प्रकार II रिपोर्ट',
+    sandboxUpgradeTooltip: 'केवल पेशेवर या टीम योजना के साथ उपलब्ध है।',
+  },
+  imageInput: {
+    supportedFormats: 'PNG, JPG, JPEG, WEBP और GIF का समर्थन करता है',
+    browse: 'ब्राउज़ करें',
+    dropImageHere: 'अपनी छवि यहाँ छोड़ें, या',
+  },
+  you: 'आप',
 }
 
 export default translation

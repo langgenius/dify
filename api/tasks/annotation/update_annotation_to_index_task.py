@@ -25,7 +25,7 @@ def update_annotation_to_index_task(
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
-    logging.info(click.style("Start update index for annotation: {}".format(annotation_id), fg="green"))
+    logging.info(click.style(f"Start update index for annotation: {annotation_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -51,7 +51,7 @@ def update_annotation_to_index_task(
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Build index successful for annotation: {} latency: {}".format(annotation_id, end_at - start_at),
+                f"Build index successful for annotation: {annotation_id} latency: {end_at - start_at}",
                 fg="green",
             )
         )

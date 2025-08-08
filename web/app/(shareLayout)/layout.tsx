@@ -1,17 +1,15 @@
-import React from 'react'
-import type { FC } from 'react'
-import type { Metadata } from 'next'
+import type { FC, PropsWithChildren } from 'react'
+import WebAppStoreProvider from '@/context/web-app-context'
+import Splash from './components/splash'
 
-export const metadata: Metadata = {
-  icons: 'data:,', // prevent browser from using default favicon
-}
-
-const Layout: FC<{
-  children: React.ReactNode
-}> = ({ children }) => {
+const Layout: FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="h-full min-w-[300px] pb-[env(safe-area-inset-bottom)]">
-      {children}
+      <WebAppStoreProvider>
+        <Splash>
+          {children}
+        </Splash>
+      </WebAppStoreProvider>
     </div>
   )
 }

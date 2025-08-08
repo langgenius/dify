@@ -46,9 +46,19 @@ const OPTION_MAP = {
           ? `,
   baseUrl: '${url}${basePath}'`
           : ''},
+  inputs: {
+    // You can define the inputs from the Start node here
+    // key is the variable name
+    // e.g.
+    // name: "NAME"
+  },
   systemVariables: {
     // user_id: 'YOU CAN DEFINE USER ID HERE',
     // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+  },
+  userVariables: {
+    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
+    // name: 'YOU CAN DEFINE USER NAME HERE',
   },
  }
 </script>
@@ -86,10 +96,10 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
   const [option, setOption] = useState<Option>('iframe')
   const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
 
-  const { langeniusVersionInfo } = useAppContext()
+  const { langGeniusVersionInfo } = useAppContext()
   const themeBuilder = useThemeContext()
   themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? null, siteInfo?.chat_color_theme_inverted ?? false)
-  const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
     if (option === 'chromePlugin') {
       const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')

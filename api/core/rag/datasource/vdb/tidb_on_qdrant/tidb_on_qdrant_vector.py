@@ -49,6 +49,7 @@ class TidbOnQdrantConfig(BaseModel):
     root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
+    replication_factor: int = 1
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith("path:"):
@@ -103,9 +104,9 @@ class TidbOnQdrantVector(BaseVector):
             self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(self, collection_name: str, vector_size: int):
-        lock_name = "vector_indexing_lock_{}".format(collection_name)
+        lock_name = f"vector_indexing_lock_{collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             collection_name = collection_name or uuid.uuid4().hex
@@ -134,6 +135,7 @@ class TidbOnQdrantVector(BaseVector):
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
+                    replication_factor=self._client_config.replication_factor,
                 )
 
                 # create group_id payload index
@@ -416,13 +418,13 @@ class TidbOnQdrantVector(BaseVector):
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
         tidb_auth_binding = (
-            db.session.query(TidbAuthBinding).filter(TidbAuthBinding.tenant_id == dataset.tenant_id).one_or_none()
+            db.session.query(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id).one_or_none()
         )
         if not tidb_auth_binding:
             with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
                 tidb_auth_binding = (
                     db.session.query(TidbAuthBinding)
-                    .filter(TidbAuthBinding.tenant_id == dataset.tenant_id)
+                    .where(TidbAuthBinding.tenant_id == dataset.tenant_id)
                     .one_or_none()
                 )
                 if tidb_auth_binding:
@@ -431,7 +433,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 else:
                     idle_tidb_auth_binding = (
                         db.session.query(TidbAuthBinding)
-                        .filter(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
+                        .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
                         .one_or_none()
                     )
@@ -484,6 +486,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
             ),
         )
 

@@ -49,6 +49,13 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
+export const hasValidChildren = (children: any): boolean => {
+  return children && (
+    (Array.isArray(children) && children.length > 0)
+    || (!Array.isArray(children) && Object.keys((children as StructuredOutput)?.schema?.properties || {}).length > 0)
+  )
+}
+
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
@@ -134,18 +141,71 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   const { children } = obj
   const isStructuredOutput = !!(children as StructuredOutput)?.schema?.properties
 
+  let childrenResult: Var[] | StructuredOutput | undefined
+
+  if (isStructuredOutput) {
+    childrenResult = findExceptVarInStructuredOutput(children, filterVar)
+  }
+  else if (Array.isArray(children)) {
+    childrenResult = children
+      .map((item: Var) => {
+        const { children: itemChildren } = item
+        const currSelector = [...value_selector, item.variable]
+
+        if (!itemChildren) {
+          return {
+            item,
+            filteredObj: null,
+            passesFilter: filterVar(item, currSelector),
+          }
+        }
+
+        const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false)
+        const itemHasValidChildren = hasValidChildren(filteredObj.children)
+
+        let passesFilter
+        if ((item.type === VarType.object || item.type === VarType.file) && itemChildren)
+          passesFilter = itemHasValidChildren || filterVar(item, currSelector)
+        else
+          passesFilter = itemHasValidChildren
+
+        return {
+          item,
+          filteredObj,
+          passesFilter,
+        }
+      })
+      .filter(({ passesFilter }) => passesFilter)
+      .map(({ item, filteredObj }) => {
+        const { children: itemChildren } = item
+        if (!itemChildren || !filteredObj)
+          return item
+
+        return {
+          ...item,
+          children: filteredObj.children,
+        }
+      })
+
+    if (isFile && Array.isArray(childrenResult)) {
+      if (childrenResult.length === 0) {
+        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
+          variable: key,
+          type: key === 'size' ? VarType.number : VarType.string,
+        }))
+      }
+    }
+  }
+  else {
+    childrenResult = []
+  }
+
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: isStructuredOutput ? findExceptVarInStructuredOutput(children, filterVar) : children.filter((item: Var) => {
-      const { children } = item
-      const currSelector = [...value_selector, item.variable]
-      if (!children)
-        return filterVar(item, currSelector)
-      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-      return obj.children && (obj.children as Var[])?.length > 0
-    }),
+    children: childrenResult,
   }
+
   return res
 }
 
@@ -447,6 +507,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          description: env.description,
         }
       }) as Var[]
       break
@@ -457,7 +518,7 @@ const formatItem = (
         return {
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
-          des: chatVar.description,
+          description: chatVar.description,
         }
       }) as Var[]
       break
@@ -562,8 +623,20 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // Sort nodes in reverse chronological order (most recent first)
+  const sortedNodes = [...nodes].sort((a, b) => {
+    if (a.data.type === BlockEnum.Start) return 1
+    if (b.data.type === BlockEnum.Start) return -1
+    if (a.data.type === 'env') return 1
+    if (b.data.type === 'env') return -1
+    if (a.data.type === 'conversation') return 1
+    if (b.data.type === 'conversation') return -1
+    // sort nodes by x position
+    return (b.position?.x || 0) - (a.position?.x || 0)
+  })
+
   const res = [
-    ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
+    ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
   ].map((node) => {
@@ -584,21 +657,23 @@ const getIterationItemType = ({
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
+  const isChatVar = isConversationVar(valueSelector)
 
   const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
+
   if (!targetVar)
     return VarType.string
 
   let arrayType: VarType = VarType.string
 
   let curr: any = targetVar.vars
-  if (isSystem) {
+  if (isSystem || isChatVar) {
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
-    for (let i = 1; i < valueSelector.length - 1; i++) {
+    for (let i = 1; i < valueSelector.length; i++) {
       const key = valueSelector[i]
-      const isLast = i === valueSelector.length - 2
+      const isLast = i === valueSelector.length - 1
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)
@@ -616,7 +691,7 @@ const getIterationItemType = ({
     case VarType.arrayObject:
       return VarType.object
     case VarType.array:
-      return VarType.any
+      return VarType.arrayObject // Use more specific type instead of any
     case VarType.arrayFile:
       return VarType.file
     default:
@@ -920,9 +995,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.Answer: {
-      res = (data as AnswerNodeType).variables?.map((v) => {
-        return v.value_selector
-      })
+      res = matchNotSystemVars([(data as AnswerNodeType).answer])
       break
     }
     case BlockEnum.LLM: {
@@ -949,6 +1022,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).map(c => c.variable_selector || []))
       break
     }
     case BlockEnum.Code: {
@@ -968,6 +1042,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
+
+      const classes = payload.classes.map(c => c.name)
+      res.push(...matchNotSystemVars(classes))
       break
     }
     case BlockEnum.HttpRequest: {
@@ -1062,13 +1139,13 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
       break
     }
     case BlockEnum.Code: {
-      const targetVar = (data as CodeNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      const targetVar = (data as CodeNodeType).variables?.find(v => Array.isArray(v.value_selector) && v.value_selector && v.value_selector.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = targetVar.variable
       break
     }
     case BlockEnum.TemplateTransform: {
-      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => Array.isArray(v.value_selector) && v.value_selector && v.value_selector.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = targetVar.variable
       break

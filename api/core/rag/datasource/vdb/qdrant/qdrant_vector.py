@@ -46,6 +46,8 @@ class QdrantConfig(BaseModel):
     root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
+    replication_factor: int = 1
+    write_consistency_factor: int = 1
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith("path:"):
@@ -93,9 +95,9 @@ class QdrantVector(BaseVector):
             self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(self, collection_name: str, vector_size: int):
-        lock_name = "vector_indexing_lock_{}".format(collection_name)
+        lock_name = f"vector_indexing_lock_{collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             collection_name = collection_name or uuid.uuid4().hex
@@ -119,11 +121,14 @@ class QdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
+
                 self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
+                    replication_factor=self._client_config.replication_factor,
+                    write_consistency_factor=self._client_config.write_consistency_factor,
                 )
 
                 # create group_id payload index
@@ -438,7 +443,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
         if dataset.collection_binding_id:
             dataset_collection_binding = (
                 db.session.query(DatasetCollectionBinding)
-                .filter(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                .where(DatasetCollectionBinding.id == dataset.collection_binding_id)
                 .one_or_none()
             )
             if dataset_collection_binding:
@@ -466,5 +471,6 @@ class QdrantVectorFactory(AbstractVectorFactory):
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
             ),
         )

@@ -1,9 +1,9 @@
 import uuid
 
-import pandas as pd
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -13,8 +13,6 @@ from controllers.console.datasets.error import (
     ChildChunkDeleteIndexError,
     ChildChunkIndexingError,
     InvalidActionError,
-    NoFileUploadedError,
-    TooManyFilesError,
 )
 from controllers.console.wraps import (
     account_initialization_required,
@@ -26,10 +24,12 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import login_required
 from models.dataset import ChildChunk, DocumentSegment
+from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
@@ -74,26 +74,31 @@ class DatasetDocumentSegmentListApi(Resource):
         hit_count_gte = args["hit_count_gte"]
         keyword = args["keyword"]
 
-        query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).order_by(DocumentSegment.position.asc())
+        query = (
+            select(DocumentSegment)
+            .where(
+                DocumentSegment.document_id == str(document_id),
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
+            )
+            .order_by(DocumentSegment.position.asc())
+        )
 
         if status_list:
-            query = query.filter(DocumentSegment.status.in_(status_list))
+            query = query.where(DocumentSegment.status.in_(status_list))
 
         if hit_count_gte is not None:
-            query = query.filter(DocumentSegment.hit_count >= hit_count_gte)
+            query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         if args["enabled"].lower() != "all":
             if args["enabled"].lower() == "true":
-                query = query.filter(DocumentSegment.enabled == True)
+                query = query.where(DocumentSegment.enabled == True)
             elif args["enabled"].lower() == "false":
-                query = query.filter(DocumentSegment.enabled == False)
+                query = query.where(DocumentSegment.enabled == False)
 
-        segments = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         response = {
             "data": marshal(segments.items, segment_fields),
@@ -177,7 +182,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
 
-        document_indexing_cache_key = "document_{}_indexing".format(document.id)
+        document_indexing_cache_key = f"document_{document.id}_indexing"
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
@@ -276,9 +281,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -320,9 +327,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -354,37 +363,28 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        # get file from request
-        file = request.files["file"]
-        # check file
-        if "file" not in request.files:
-            raise NoFileUploadedError()
 
-        if len(request.files) > 1:
-            raise TooManyFilesError()
+        parser = reqparse.RequestParser()
+        parser.add_argument("upload_file_id", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        upload_file_id = args["upload_file_id"]
+
+        upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
+        if not upload_file:
+            raise NotFound("UploadFile not found.")
+
         # check file type
-        if not file.filename.endswith(".csv"):
+        if not upload_file.name or not upload_file.name.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
 
         try:
-            # Skip the first row
-            df = pd.read_csv(file)
-            result = []
-            for index, row in df.iterrows():
-                if document.doc_form == "qa_model":
-                    data = {"content": row.iloc[0], "answer": row.iloc[1]}
-                else:
-                    data = {"content": row.iloc[0]}
-                result.append(data)
-            if len(result) == 0:
-                raise ValueError("The CSV file is empty.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = "segment_batch_import_{}".format(str(job_id))
+            indexing_cache_key = f"segment_batch_import_{str(job_id)}"
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_create_segment_to_index_task.delay(
-                str(job_id), result, dataset_id, document_id, current_user.current_tenant_id, current_user.id
+                str(job_id), upload_file_id, dataset_id, document_id, current_user.current_tenant_id, current_user.id
             )
         except Exception as e:
             return {"error": str(e)}, 500
@@ -395,7 +395,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     def get(self, job_id):
         job_id = str(job_id)
-        indexing_cache_key = "segment_batch_import_{}".format(job_id)
+        indexing_cache_key = f"segment_batch_import_{job_id}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
@@ -423,9 +423,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
@@ -478,9 +480,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         parser = reqparse.RequestParser()
@@ -523,9 +527,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -567,16 +573,20 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = (
+            db.session.query(ChildChunk)
+            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -612,16 +622,20 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = (
+            db.session.query(ChildChunk)
+            .where(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor

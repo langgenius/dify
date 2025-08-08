@@ -30,6 +30,7 @@ const translation = {
       description: ' dotyczące metody doboru.',
       longDescription:
         ' dotyczące metody doboru, możesz to zmienić w dowolnym momencie w ustawieniach wiedzy.',
+      method: 'Metoda pozyskiwania',
     },
     save: 'Zapisz',
     permissionsInvitedMembers: 'Częściowi członkowie zespołu',
