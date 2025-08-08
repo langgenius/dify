@@ -1022,15 +1022,13 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
-      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap(c => {
+      res.push(...((data as IfElseNodeType).cases || []).flatMap(c => (c.conditions || [])).flatMap((c) => {
         const selectors = []
-        if (c.variable_selector) {
+        if (c.variable_selector)
           selectors.push(c.variable_selector)
-        }
         // Handle sub-variable conditions
-        if (c.sub_variable_condition && c.sub_variable_condition.conditions) {
+        if (c.sub_variable_condition && c.sub_variable_condition.conditions)
           selectors.push(...c.sub_variable_condition.conditions.map(subC => subC.variable_selector || []).filter(sel => sel.length > 0))
-        }
         return selectors
       }))
       break
@@ -1275,7 +1273,6 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
               caseItem.conditions = caseItem.conditions.map((c) => {
                 if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
                   c.variable_selector = newVarSelector
-                
                 // Handle sub-variable conditions
                 if (c.sub_variable_condition && c.sub_variable_condition.conditions) {
                   c.sub_variable_condition.conditions = c.sub_variable_condition.conditions.map((subC) => {
