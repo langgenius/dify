@@ -245,7 +245,9 @@ class ConversationService:
         except Exception as e:
             db.session.rollback()
             raise e
-
+        finally:
+            if db.session.is_active:
+                db.session.rollback()
     @classmethod
     def get_conversational_variable(
         cls,
