@@ -20,7 +20,9 @@ def delete_conversation(conversation_id: str) -> None:
         conversation_id: conversation Id
     """
 
-    logging.info(click.style(f"Starting to delete conversation data from db for conversation_id {conversation_id}", fg="green"))
+    logging.info(
+        click.style(f"Starting to delete conversation data from db for conversation_id {conversation_id}", fg="green")
+    )
     start_at = time.perf_counter()
 
     try:
