@@ -15,7 +15,7 @@ type PageSelectorProps = {
   canPreview?: boolean
   onPreview?: (selectedPageId: string) => void
   isMultipleChoice?: boolean
-  currentWorkspaceId: string
+  currentCredentialId: string
 }
 
 export type NotionPageTreeItem = {
@@ -42,7 +42,7 @@ const PageSelector = ({
   canPreview = true,
   onPreview,
   isMultipleChoice = true,
-  currentWorkspaceId,
+  currentCredentialId,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
@@ -56,8 +56,7 @@ const PageSelector = ({
         depth: 0,
       }
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWorkspaceId])
+  }, [currentCredentialId])
 
   const searchDataList = list.filter((item) => {
     return item.page_name.includes(searchValue)

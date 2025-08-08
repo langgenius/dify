@@ -16,12 +16,6 @@ type FileListProps = {
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
-  getOnlineDriveFiles: (params: {
-    prefix?: string[]
-    bucket?: string
-    startAfter?: string
-    fileList?: OnlineDriveFile[]
-  }) => void
 }
 
 const List = ({
@@ -33,27 +27,23 @@ const List = ({
   handleOpenFolder,
   isInPipeline,
   isLoading,
-  getOnlineDriveFiles,
 }: FileListProps) => {
   const anchorRef = useRef<HTMLDivElement>(null)
-  const observerRef = useRef<IntersectionObserver>()
+  const observerRef = useRef<IntersectionObserver>(null)
   const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        const { startAfter, isTruncated } = dataSourceStore.getState()
-        if (entries[0].isIntersecting && isTruncated.current && !isLoading) {
-          startAfter.current = fileList[fileList.length - 1].key
-          getOnlineDriveFiles({ startAfter: fileList[fileList.length - 1].key })
-        }
+        const { setStartAfter, isTruncated } = dataSourceStore.getState()
+        if (entries[0].isIntersecting && isTruncated.current && !isLoading)
+          setStartAfter(fileList[fileList.length - 1].key)
       }, {
         rootMargin: '100px',
       })
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchorRef])
 
   const isAllLoading = isLoading && fileList.length === 0 && keywords.length === 0

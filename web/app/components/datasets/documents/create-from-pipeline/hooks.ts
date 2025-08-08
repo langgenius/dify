@@ -87,21 +87,19 @@ export const useLocalFile = () => {
   }
 }
 
-export const useOnlineDocuments = () => {
+export const useOnlineDocument = () => {
   const {
     documentsData,
-    currentWorkspaceId,
     onlineDocuments,
     currentDocument,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     documentsData: state.documentsData,
-    currentWorkspaceId: state.currentWorkspaceId,
     onlineDocuments: state.onlineDocuments,
     currentDocument: state.currentDocument,
   })))
   const dataSourceStore = useDataSourceStore()
 
-  const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
+  const currentWorkspace = documentsData[0]
 
   const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
     const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {

@@ -4,7 +4,6 @@ import { useDataSourceStore } from '../../../../store'
 import Bucket from './bucket'
 import BreadcrumbItem from './item'
 import Dropdown from './dropdown'
-import type { OnlineDriveFile } from '@/models/pipeline'
 
 type BreadcrumbsProps = {
   prefix: string[]
@@ -12,12 +11,6 @@ type BreadcrumbsProps = {
   bucket: string
   searchResultsLength: number
   isInPipeline: boolean
-  getOnlineDriveFiles: (params: {
-    prefix?: string[]
-    bucket?: string
-    startAfter?: string
-    fileList?: OnlineDriveFile[]
-  }) => void
 }
 
 const Breadcrumbs = ({
@@ -26,7 +19,6 @@ const Breadcrumbs = ({
   bucket,
   searchResultsLength,
   isInPipeline,
-  getOnlineDriveFiles,
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
   const dataSourceStore = useDataSourceStore()
@@ -56,23 +48,14 @@ const Breadcrumbs = ({
     setSelectedFileKeys([])
     setBucket('')
     setPrefix([])
-    getOnlineDriveFiles({
-      prefix: [],
-      bucket: '',
-      fileList: [],
-    })
-  }, [dataSourceStore, getOnlineDriveFiles])
+  }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
     const { setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
     setFileList([])
     setSelectedFileKeys([])
     setPrefix([])
-    getOnlineDriveFiles({
-      prefix: [],
-      fileList: [],
-    })
-  }, [dataSourceStore, getOnlineDriveFiles])
+  }, [dataSourceStore])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
     const { prefix, setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
@@ -80,11 +63,7 @@ const Breadcrumbs = ({
     setFileList([])
     setSelectedFileKeys([])
     setPrefix(newPrefix)
-    getOnlineDriveFiles({
-      prefix: newPrefix,
-      fileList: [],
-    })
-  }, [dataSourceStore, getOnlineDriveFiles])
+  }, [dataSourceStore])
 
   return (
     <div className='flex grow items-center overflow-hidden'>

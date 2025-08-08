@@ -20,12 +20,14 @@ type OnlineDocumentsProps = {
   isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
+  onCredentialChange: (credentialId: string) => void
 }
 
 const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  onCredentialChange,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -33,13 +35,11 @@ const OnlineDocuments = ({
     documentsData,
     searchValue,
     selectedPagesId,
-    currentWorkspaceId,
     currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     documentsData: state.documentsData,
     searchValue: state.searchValue,
     selectedPagesId: state.selectedPagesId,
-    currentWorkspaceId: state.currentWorkspaceId,
     currentCredentialId: state.currentCredentialId,
   })))
 
@@ -69,19 +69,21 @@ const OnlineDocuments = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDocuments = useCallback(async () => {
+    const { currentCredentialId } = dataSourceStore.getState()
+    if (!currentCredentialId) return
     ssePost(
       datasourceNodeRunURL,
       {
         body: {
           inputs: {},
+          credential_id: currentCredentialId,
           datasource_type: DatasourceType.onlineDocument,
         },
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setDocumentsData, setCurrentWorkspaceId } = dataSourceStore.getState()
+          const { setDocumentsData } = dataSourceStore.getState()
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
-          setCurrentWorkspaceId(documentsData.data[0].workspace_id)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           Toast.notify({
@@ -94,33 +96,8 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL])
 
   useEffect(() => {
-    const {
-      setDocumentsData,
-      setCurrentWorkspaceId,
-      setSearchValue,
-      setSelectedPagesId,
-      setOnlineDocuments,
-      setCurrentDocument,
-      currentNodeIdRef,
-    } = dataSourceStore.getState()
-    if (nodeId !== currentNodeIdRef.current) {
-      setDocumentsData([])
-      setCurrentWorkspaceId('')
-      setSearchValue('')
-      setSelectedPagesId(new Set())
-      setOnlineDocuments([])
-      setCurrentDocument(undefined)
-      currentNodeIdRef.current = nodeId
-      getOnlineDocuments()
-    }
-    else {
-      // Avoid fetching documents when come back from next step
-      if (!documentsData.length)
-        getOnlineDocuments()
-    }
-  }, [nodeId])
-
-  const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
+    getOnlineDocuments()
+  }, [currentCredentialId])
 
   const handleSearchValueChange = useCallback((value: string) => {
     const { setSearchValue } = dataSourceStore.getState()
@@ -153,7 +130,7 @@ const OnlineDocuments = ({
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
         currentCredentialId={currentCredentialId}
-        onCredentialChange={dataSourceStore.getState().setCurrentCredentialId}
+        onCredentialChange={onCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
       <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
@@ -172,13 +149,13 @@ const OnlineDocuments = ({
               checkedIds={selectedPagesId}
               disabledValue={new Set()}
               searchValue={searchValue}
-              list={currentWorkspace?.pages || []}
+              list={documentsData[0].pages || []}
               pagesMap={PagesMapAndSelectedPagesId}
               onSelect={handleSelectPages}
               canPreview={!isInPipeline}
               onPreview={handlePreviewPage}
               isMultipleChoice={!isInPipeline}
-              currentWorkspaceId={currentWorkspaceId}
+              currentCredentialId={currentCredentialId}
             />
           ) : (
             <div className='flex h-[296px] items-center justify-center'>

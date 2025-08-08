@@ -11,22 +11,21 @@ import Toast from '@/app/components/base/toast'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
+import { CrawlStep } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type OptionsProps = {
   variables: RAGPipelineVariables
-  isRunning: boolean
+  step: CrawlStep
   runDisabled?: boolean
-  controlFoldOptions?: number
   onSubmit: (data: Record<string, any>) => void
 }
 
 const Options = ({
   variables,
-  isRunning,
+  step,
   runDisabled,
-  controlFoldOptions,
   onSubmit,
 }: OptionsProps) => {
   const { t } = useTranslation()
@@ -62,12 +61,18 @@ const Options = ({
   const [fold, {
     toggle: foldToggle,
     setTrue: foldHide,
+    setFalse: foldShow,
   }] = useBoolean(false)
 
   useEffect(() => {
-    if (controlFoldOptions !== 0)
+    // When the step change
+    if (step !== CrawlStep.init)
       foldHide()
-  }, [controlFoldOptions])
+    else
+      foldShow()
+  }, [step])
+
+  const isRunning = useMemo(() => step === CrawlStep.running, [step])
 
   return (
     <form

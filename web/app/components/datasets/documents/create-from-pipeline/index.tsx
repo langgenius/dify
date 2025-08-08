@@ -24,10 +24,15 @@ import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
-import type { InitialDocumentDetail, OnlineDriveFile, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
+import type {
+  InitialDocumentDetail,
+  OnlineDriveFile,
+  PublishedPipelineRunPreviewResponse,
+  PublishedPipelineRunResponse,
+} from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocument, useOnlineDrive, useWebsiteCrawl } from './hooks'
 import DataSourceProvider from './data-source/store/provider'
 import { useDataSourceStore } from './data-source/store'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -67,7 +72,7 @@ const CreateFormPipeline = () => {
     currentDocument,
     PagesMapAndSelectedPagesId,
     hidePreviewOnlineDocument,
-  } = useOnlineDocuments()
+  } = useOnlineDocument()
   const {
     websitePages,
     currentWebsite,

@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CrawlResultItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
@@ -24,8 +24,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
-import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
-import { noop } from 'lodash-es'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -33,15 +32,16 @@ export type WebsiteCrawlProps = {
   nodeId: string
   nodeData: DataSourceNodeType
   isInPipeline?: boolean
+  onCredentialChange: (credentialId: string) => void
 }
 
 const WebsiteCrawl = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  onCredentialChange,
 }: WebsiteCrawlProps) => {
   const { t } = useTranslation()
-  const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
@@ -52,12 +52,20 @@ const WebsiteCrawl = ({
     step,
     checkedCrawlResult,
     previewIndex,
+    currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     crawlResult: state.crawlResult,
     step: state.step,
     checkedCrawlResult: state.websitePages,
     previewIndex: state.previewIndex,
+    currentCredentialId: state.currentCredentialId,
   })))
+
+  const { data: dataSourceAuth } = useGetDataSourceAuth({
+    pluginId: nodeData.plugin_id,
+    provider: nodeData.provider_name,
+  })
+
   const dataSourceStore = useDataSourceStore()
 
   const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
@@ -65,33 +73,6 @@ const WebsiteCrawl = ({
     pipeline_id: pipelineId!,
     node_id: nodeId,
   }, !!pipelineId && !!nodeId)
-
-  useEffect(() => {
-    if (step !== CrawlStep.init)
-      setControlFoldOptions(Date.now())
-  }, [step])
-
-  useEffect(() => {
-    const {
-      setStep,
-      setCrawlResult,
-      setWebsitePages,
-      setPreviewIndex,
-      setCurrentWebsite,
-      currentNodeIdRef,
-    } = dataSourceStore.getState()
-    if (nodeId !== currentNodeIdRef.current) {
-      setStep(CrawlStep.init)
-      setCrawlResult(undefined)
-      setCurrentWebsite(undefined)
-      setWebsitePages([])
-      setPreviewIndex(-1)
-      setCrawledNum(0)
-      setTotalNum(0)
-      setCrawlErrorMessage('')
-      currentNodeIdRef.current = nodeId
-    }
-  }, [nodeId])
 
   const isInit = step === CrawlStep.init
   const isCrawlFinished = step === CrawlStep.finished
@@ -113,7 +94,7 @@ const WebsiteCrawl = ({
   }, [dataSourceStore])
 
   const handleRun = useCallback(async (value: Record<string, any>) => {
-    const { setStep, setCrawlResult } = dataSourceStore.getState()
+    const { setStep, setCrawlResult, currentCredentialId } = dataSourceStore.getState()
 
     setStep(CrawlStep.running)
     ssePost(
@@ -122,6 +103,7 @@ const WebsiteCrawl = ({
         body: {
           inputs: value,
           datasource_type: DatasourceType.websiteCrawl,
+          credential_id: currentCredentialId,
           response_mode: 'streaming',
         },
       },
@@ -165,33 +147,29 @@ const WebsiteCrawl = ({
     })
   }, [setShowAccountSettingModal])
 
+  const handleCredentialChange = useCallback((credentialId: string) => {
+    setCrawledNum(0)
+    setTotalNum(0)
+    setCrawlErrorMessage('')
+    onCredentialChange(credentialId)
+  }, [dataSourceStore, onCredentialChange])
+
   return (
     <div className='flex flex-col'>
       <Header
-        // todo: delete mock data
         docTitle='How to use?'
         docLink='https://docs.dify.ai'
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
-        currentCredentialId={'12345678'}
-        onCredentialChange={noop}
-        credentials={[{
-          avatar_url: 'https://cloud.dify.ai/logo/logo.svg',
-          credential: {
-            credentials: '......',
-          },
-          id: '12345678',
-          is_default: true,
-          name: 'test123',
-          type: CredentialTypeEnum.API_KEY,
-        }]}
+        currentCredentialId={currentCredentialId}
+        onCredentialChange={handleCredentialChange}
+        credentials={dataSourceAuth?.result || []}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options
           variables={paramsConfig?.variables || []}
-          isRunning={isRunning}
-          runDisabled={isFetchingParams}
-          controlFoldOptions={controlFoldOptions}
+          step={step}
+          runDisabled={!currentCredentialId || isFetchingParams}
           onSubmit={handleSubmit}
         />
       </div>

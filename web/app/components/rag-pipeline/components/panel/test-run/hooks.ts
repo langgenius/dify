@@ -5,6 +5,8 @@ import { useNodes } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useCallback, useMemo, useState } from 'react'
+import { useDataSourceStore } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { CrawlStep } from '@/models/datasets'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
@@ -55,4 +57,73 @@ export const useDatasourceOptions = () => {
   }, [datasourceNodes])
 
   return options
+}
+
+export const useOnlineDocument = () => {
+  const dataSourceStore = useDataSourceStore()
+
+  const clearOnlineDocumentData = useCallback(() => {
+    const {
+      setDocumentsData,
+      setSearchValue,
+      setSelectedPagesId,
+      setOnlineDocuments,
+      setCurrentDocument,
+    } = dataSourceStore.getState()
+    setDocumentsData([])
+    setSearchValue('')
+    setSelectedPagesId(new Set())
+    setOnlineDocuments([])
+    setCurrentDocument(undefined)
+  }, [dataSourceStore])
+
+  return {
+    clearOnlineDocumentData,
+  }
+}
+
+export const useWebsiteCrawl = () => {
+  const dataSourceStore = useDataSourceStore()
+
+  const clearWebsiteCrawlData = useCallback(() => {
+    const {
+      setStep,
+      setCrawlResult,
+      setWebsitePages,
+      setPreviewIndex,
+      setCurrentWebsite,
+    } = dataSourceStore.getState()
+    setStep(CrawlStep.init)
+    setCrawlResult(undefined)
+    setCurrentWebsite(undefined)
+    setWebsitePages([])
+    setPreviewIndex(-1)
+  }, [dataSourceStore])
+
+  return {
+    clearWebsiteCrawlData,
+  }
+}
+
+export const useOnlineDrive = () => {
+  const dataSourceStore = useDataSourceStore()
+
+  const clearOnlineDriveData = useCallback(() => {
+    const {
+      setFileList,
+      setBucket,
+      setPrefix,
+      setKeywords,
+      setSelectedFileKeys,
+    } = dataSourceStore.getState()
+    setFileList([])
+    setBucket('')
+    setPrefix([])
+    setKeywords('')
+    setSelectedFileKeys([])
+  }, [dataSourceStore])
+
+  return {
+    clearOnlineDriveData,
+  }
 }

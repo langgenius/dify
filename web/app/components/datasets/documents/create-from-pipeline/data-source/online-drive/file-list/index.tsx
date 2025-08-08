@@ -17,12 +17,6 @@ type FileListProps = {
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
   isLoading: boolean
-  getOnlineDriveFiles: (params: {
-    prefix?: string[]
-    bucket?: string
-    startAfter?: string
-    fileList?: OnlineDriveFile[]
-  }) => void
 }
 
 const FileList = ({
@@ -38,7 +32,6 @@ const FileList = ({
   handleOpenFolder,
   isInPipeline,
   isLoading,
-  getOnlineDriveFiles,
 }: FileListProps) => {
   const [inputValue, setInputValue] = useState(keywords)
 
@@ -71,7 +64,6 @@ const FileList = ({
         handleInputChange={handleInputChange}
         searchResultsLength={searchResultsLength}
         handleResetKeywords={handleResetKeywords}
-        getOnlineDriveFiles={getOnlineDriveFiles}
       />
       <List
         fileList={fileList}
@@ -82,7 +74,6 @@ const FileList = ({
         handleSelectFile={handleSelectFile}
         isInPipeline={isInPipeline}
         isLoading={isLoading}
-        getOnlineDriveFiles={getOnlineDriveFiles}
       />
     </div>
   )

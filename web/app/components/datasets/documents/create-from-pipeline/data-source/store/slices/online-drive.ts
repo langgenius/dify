@@ -12,7 +12,8 @@ export type OnlineDriveSliceShape = {
   setFileList: (fileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
-  startAfter: React.RefObject<string>
+  startAfter: string
+  setStartAfter: (startAfter: string) => void
   isTruncated: React.RefObject<boolean>
   previewOnlineDriveFileRef: React.RefObject<OnlineDriveFile | undefined>
 }
@@ -44,7 +45,10 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
     setBucket: (bucket: string) => set(() => ({
       bucket,
     })),
-    startAfter: { current: '' },
+    startAfter: '',
+    setStartAfter: (startAfter: string) => set(() => ({
+      startAfter,
+    })),
     isTruncated: { current: false },
     previewOnlineDriveFileRef: { current: undefined },
   })
