@@ -8,6 +8,7 @@ import type { UserAction } from '../types'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import ButtonStyleDropdown from './button-style-dropdown'
+import { genActionId } from '../utils'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -23,6 +24,21 @@ const UserActionItem: FC<Props> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
+
+  const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.value.trim())
+      onChange({ ...data, id: genActionId() })
+    else
+      onChange({ ...data, id: e.target.value })
+  }
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.value.trim())
+      onChange({ ...data, title: 'Button Text' })
+    else
+      onChange({ ...data, title: e.target.value })
+  }
+
   return (
     <div className='flex items-center gap-1'>
       <div className='shrink-0'>
@@ -30,14 +46,14 @@ const UserActionItem: FC<Props> = ({
           wrapperClassName='w-[120px]'
           value={data.id}
           placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`)}
-          onChange={e => onChange({ ...data, id: e.target.value })}
+          onChange={handleIDChange}
         />
       </div>
       <div className='grow'>
         <Input
           value={data.title}
           placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`)}
-          onChange={e => onChange({ ...data, title: e.target.value })}
+          onChange={handleTextChange}
         />
       </div>
       <ButtonStyleDropdown

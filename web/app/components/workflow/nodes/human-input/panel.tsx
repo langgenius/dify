@@ -18,6 +18,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { VarType } from '@/app/components/workflow/types'
 import type { Var } from '@/app/components/workflow/types'
 import FormContent from './components/form-content'
+import { genActionId } from './utils'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -84,7 +85,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             <ActionButton
               onClick={() => {
                 handleUserActionAdd({
-                  id: 'Action',
+                  id: genActionId(),
                   title: 'Button Text',
                   button_style: UserActionButtonType.Default,
                 })
@@ -99,11 +100,11 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         )}
         {inputs.user_actions.length > 0 && (
           <div className='space-y-2'>
-            {inputs.user_actions.map(action => (
+            {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                key={action.id}
+                key={index}
                 data={action}
-                onChange={handleUserActionChange}
+                onChange={data => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
               />
             ))}

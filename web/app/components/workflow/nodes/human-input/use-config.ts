@@ -24,10 +24,9 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     })
   }
 
-  const handleUserActionChange = (updatedAction: UserAction) => {
+  const handleUserActionChange = (index: number, updatedAction: UserAction) => {
     const newActions = produce(inputs.user_actions, (draft) => {
-      const index = draft.findIndex(a => a.id === updatedAction.id)
-      if (index !== -1)
+      if (draft[index])
         draft[index] = updatedAction
     })
     setInputs({
