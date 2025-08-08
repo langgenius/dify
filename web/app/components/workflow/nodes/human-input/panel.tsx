@@ -36,6 +36,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     handleTimeoutChange,
     handleFormContentChange,
     handleFormInputsChange,
+    handleFormInputItemRename,
     handleFormInputItemRemove,
     editorKey,
   } = useConfig(id, data)
@@ -77,6 +78,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           nodeTitle={inputs.title}
           formInputs={inputs.inputs}
           onFormInputsChange={handleFormInputsChange}
+          onFormInputItemRename={handleFormInputItemRename}
           onFormInputItemRemove={handleFormInputItemRemove}
         />
       </div>

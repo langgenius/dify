@@ -23,6 +23,7 @@ const HITLInputReplacementBlock = ({
   nodeTitle,
   formInputs,
   onFormInputsChange,
+  onFormInputItemRename,
   onFormInputItemRemove,
 }: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
@@ -39,6 +40,7 @@ const HITLInputReplacementBlock = ({
       nodeTitle,
       formInputs || [],
       onFormInputsChange!,
+      onFormInputItemRename,
       onFormInputItemRemove!,
     ))
   }, [nodeTitle, formInputs, onFormInputsChange, onFormInputItemRemove])

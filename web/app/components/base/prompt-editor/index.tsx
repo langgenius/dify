@@ -266,6 +266,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
                 nodeTitle={hitlInputBlock.nodeTitle}
                 formInputs={hitlInputBlock.formInputs}
                 onFormInputsChange={hitlInputBlock.onFormInputsChange}
+                onFormInputItemRename={hitlInputBlock.onFormInputItemRename}
                 onFormInputItemRemove={hitlInputBlock.onFormInputItemRemove}
               />
             </>

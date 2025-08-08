@@ -19,6 +19,7 @@ type Props = {
   isSelected: boolean
   formInput?: FormInputItem
   onChange: (input: FormInputItem) => void
+  onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
 }
 
@@ -36,6 +37,7 @@ const ComponentUI: FC<Props> = ({
     },
   },
   onChange,
+  onRename,
   onRemove,
 }) => {
   const { t } = useTranslation()
@@ -70,9 +72,12 @@ const ComponentUI: FC<Props> = ({
   }, [onRemove, varName])
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
-    onChange(newPayload)
+    if(varName === newPayload.output_variable_name)
+      onChange(newPayload)
+    else
+      onRename(newPayload, varName)
     hideEditModal()
-  }, [onChange])
+  }, [onChange, varName])
 
   return (
     <div
@@ -124,6 +129,7 @@ const ComponentUI: FC<Props> = ({
           className='max-w-[372px] !p-0'
         >
           <InputField
+            isEdit
             payload={formInput}
             onChange={handleChange}
             onCancel={hideEditModal}

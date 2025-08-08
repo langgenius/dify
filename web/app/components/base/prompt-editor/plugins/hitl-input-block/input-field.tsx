@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import Input from '@/app/components/base/input'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import TagLabel from './tag-label'
+// import PromptEditor from '@/app/components/base/prompt-editor'
+// import TagLabel from './tag-label'
 import Button from '../../../button'
 import { useTranslation } from 'react-i18next'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
@@ -10,11 +10,13 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
 type Props = {
+  isEdit: boolean
   payload: FormInputItem
   onChange: (newPayload: FormInputItem) => void
   onCancel: () => void
 }
 const InputField: React.FC<Props> = ({
+  isEdit,
   payload,
   onChange,
   onCancel,
@@ -44,7 +46,7 @@ const InputField: React.FC<Props> = ({
         <div className='system-xs-medium text-text-secondary'>
           {t(`${i18nPrefix}.prePopulateField`)}
         </div>
-        <PromptEditor
+        {/* <PromptEditor
           className='mt-1.5 h-[72px] rounded-lg bg-components-input-bg-normal px-3 py-1'
           placeholder={
           <div className='system-sm-regular mt-1 px-3 text-text-tertiary'>
@@ -63,19 +65,36 @@ const InputField: React.FC<Props> = ({
               setTempPayload(prev => ({ ...prev, prePopulateField: newValue }))
             }
           }
+        /> */}
+        <Input
+          className='mt-1.5'
+          value={tempPayload.placeholder?.value}
+          onChange={(e) => {
+            setTempPayload(prev => ({ ...prev, placeholder: { ...(prev.placeholder || {}), value: e.target.value } } as any))
+          }}
         />
       </div>
       <div className='mt-4 flex justify-end space-x-2'>
         <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-        <Button
-          className='flex'
-          variant='primary'
-          onClick={handleSave}
-        >
-          <span className='mr-1'>{t(`${i18nPrefix}.insert`)}</span>
-          <span className='system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-          <span className=' system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>↩︎</span>
-        </Button>
+        {isEdit ? (
+          <Button
+            variant='primary'
+            onClick={handleSave}
+          >
+            {t('common.operation.save')}
+          </Button>
+        ) : (
+          <Button
+            className='flex'
+            variant='primary'
+            onClick={handleSave}
+          >
+            <span className='mr-1'>{t(`${i18nPrefix}.insert`)}</span>
+            <span className='system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>{getKeyboardKeyNameBySystem('ctrl')}</span>
+            <span className=' system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>↩︎</span>
+          </Button>
+        )}
+
       </div>
     </div>
   )

@@ -14,6 +14,7 @@ type Props = {
   onChange: (value: string) => void
   formInputs: FormInputItem[]
   onFormInputsChange: (payload: FormInputItem[]) => void
+  onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
   nodeTitle: string
   editorKey: number
@@ -25,6 +26,7 @@ const FormContent: FC<Props> = ({
   onChange,
   formInputs,
   onFormInputsChange,
+  onFormInputItemRename,
   onFormInputItemRemove,
   nodeTitle,
   editorKey,
@@ -53,6 +55,7 @@ const FormContent: FC<Props> = ({
           formInputs,
           nodeTitle,
           onFormInputsChange,
+          onFormInputItemRename,
           onFormInputItemRemove,
         }}
         workflowVariableBlock={{

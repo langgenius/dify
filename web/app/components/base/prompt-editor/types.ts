@@ -84,6 +84,7 @@ export type HITLInputBlockType = {
   formInputs?: FormInputItem[]
   onFormInputsChange?: (inputs: FormInputItem[]) => void
   onFormInputItemRemove: (varName: string) => void
+  onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
 }
 
 export type MenuTextMatch = {

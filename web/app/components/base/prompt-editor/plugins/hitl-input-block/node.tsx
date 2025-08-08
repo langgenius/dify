@@ -8,6 +8,7 @@ export type SerializedNode = SerializedLexicalNode & {
   nodeTitle: string
   formInputs: FormInputItem[]
   onFormInputsChange: (inputs: FormInputItem[]) => void
+  onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   onFormInputItemRemove: (varName: string) => void
 }
 
@@ -16,6 +17,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __nodeTitle: string
   __formInputs?: FormInputItem[]
   __onFormInputsChange: (inputs: FormInputItem[]) => void
+  __onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
   __onFormInputItemRemove: (varName: string) => void
 
   isIsolated(): boolean {
@@ -50,6 +52,11 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__onFormInputsChange
   }
 
+  getOnFormInputItemRename(): (payload: FormInputItem, oldName: string) => void {
+    const self = this.getLatest()
+    return self.__onFormInputItemRename
+  }
+
   getOnFormInputItemRemove(): (varName: string) => void {
     const self = this.getLatest()
     return self.__onFormInputItemRemove
@@ -61,6 +68,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       node.__nodeTitle,
       node.__formInputs || [],
       node.__onFormInputsChange,
+      node.__onFormInputItemRename,
       node.__onFormInputItemRemove,
       node.__key,
     )
@@ -70,13 +78,22 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return true
   }
 
-  constructor(varName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, onFormInputItemRemove: (varName: string) => void, key?: NodeKey) {
+  constructor(
+    varName: string,
+    nodeTitle: string,
+    formInputs: FormInputItem[],
+    onFormInputsChange: (inputs: FormInputItem[]) => void,
+    onFormInputItemRename: (payload: FormInputItem, oldName: string) => void,
+    onFormInputItemRemove: (varName: string) => void,
+    key?: NodeKey,
+  ) {
     super(key)
 
     this.__variableName = varName
     this.__nodeTitle = nodeTitle
     this.__formInputs = formInputs
     this.__onFormInputsChange = onFormInputsChange
+    this.__onFormInputItemRename = onFormInputItemRename
     this.__onFormInputItemRemove = onFormInputItemRemove
   }
 
@@ -97,6 +114,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       nodeTitle={this.getNodeTitle()}
       formInputs={this.getFormInputs()}
       onChange={this.getOnFormInputsChange()}
+      onRename={this.getOnFormInputItemRename()}
       onRemove={this.getOnFormInputItemRemove()}
     />
   }
@@ -107,6 +125,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       serializedNode.nodeTitle,
       serializedNode.formInputs,
       serializedNode.onFormInputsChange,
+      serializedNode.onFormInputItemRename,
       serializedNode.onFormInputItemRemove,
     )
 
@@ -121,6 +140,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
       nodeTitle: this.getNodeTitle(),
       formInputs: this.getFormInputs(),
       onFormInputsChange: this.getOnFormInputsChange(),
+      onFormInputItemRename: this.getOnFormInputItemRename(),
       onFormInputItemRemove: this.getOnFormInputItemRemove(),
     }
   }
@@ -130,12 +150,20 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   }
 }
 
-export function $createHITLInputNode(variableName: string, nodeTitle: string, formInputs: FormInputItem[], onFormInputsChange: (inputs: FormInputItem[]) => void, onFormInputItemRemove: (varName: string) => void): HITLInputNode {
+export function $createHITLInputNode(
+  variableName: string,
+  nodeTitle: string,
+  formInputs: FormInputItem[],
+  onFormInputsChange: (inputs: FormInputItem[]) => void,
+  onFormInputItemRename: (payload: FormInputItem, oldName: string) => void,
+  onFormInputItemRemove: (varName: string) => void,
+): HITLInputNode {
   return new HITLInputNode(
     variableName,
     nodeTitle,
     formInputs,
     onFormInputsChange,
+    onFormInputItemRename,
     onFormInputItemRemove,
   )
 }

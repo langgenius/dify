@@ -29,9 +29,6 @@ const HITLInputBlock = memo(({
       throw new Error('HITLInputBlockPlugin: HITLInputBlock not registered on editor')
   }, [editor, onInsert, onDelete])
 
-  // TODO
-  // const createHITLBlockNode = useCallback
-
   return null
 })
 

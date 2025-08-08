@@ -11,6 +11,7 @@ type Props = {
   varName: string
   formInputs?: FormInputItem[]
   onChange: (inputs: FormInputItem[]) => void
+  onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
 }
 
@@ -20,6 +21,7 @@ const HITLInputComponent: FC<Props> = ({
   varName,
   formInputs = [],
   onChange,
+  onRename,
   onRemove,
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
@@ -48,6 +50,7 @@ const HITLInputComponent: FC<Props> = ({
         isSelected={isSelected}
         formInput={payload}
         onChange={handleChange}
+        onRename={onRename}
         onRemove={onRemove}
       />
     </div>
