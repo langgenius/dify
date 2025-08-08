@@ -232,7 +232,9 @@ class ConversationService:
 
             # Delete records from each table in order (to respect foreign keys)
             for table in tables_to_clear:
-                db.session.query(table).where(table.conversation_id == conversation_id).delete(synchronize_session=False)
+                db.session.query(table).where(table.conversation_id == conversation_id).delete(
+                    synchronize_session=False
+                )
 
             db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
 
