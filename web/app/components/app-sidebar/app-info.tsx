@@ -256,8 +256,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           }}
           className='block w-full'
         >
-          <div className={cn('flex rounded-lg', expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1', open && 'bg-state-base-hover', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}>
-            <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}>
+          <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
+            <div className='flex items-center gap-1'>
               <AppIcon
                 size={expand ? 'large' : 'small'}
                 iconType={appDetail.icon_type}
@@ -265,12 +265,21 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
                 background={appDetail.icon_background}
                 imageUrl={appDetail.icon_url}
               />
-              <div className='flex items-center justify-center rounded-md p-0.5'>
-                <div className='flex h-5 w-5 items-center justify-center'>
+              {expand && (
+                <div className='ml-auto flex items-center justify-center rounded-md p-0.5'>
+                  <div className='flex h-5 w-5 items-center justify-center'>
+                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                  </div>
+                </div>
+              )}
+            </div>
+            {!expand && (
+              <div className='flex items-center justify-center'>
+                <div className='flex h-5 w-5 items-center justify-center rounded-md p-0.5'>
                   <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
                 </div>
               </div>
-            </div>
+            )}
             <div className={cn(
               'flex flex-col items-start gap-1 transition-all duration-200 ease-in-out',
               expand
