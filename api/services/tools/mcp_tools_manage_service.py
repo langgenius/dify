@@ -59,8 +59,6 @@ class MCPToolManageService:
         icon_type: str,
         icon_background: str,
         server_identifier: str,
-        timeout: float,
-        sse_read_timeout: float,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
@@ -93,8 +91,6 @@ class MCPToolManageService:
             tools="[]",
             icon=json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon,
             server_identifier=server_identifier,
-            timeout=timeout,
-            sse_read_timeout=sse_read_timeout,
         )
         db.session.add(mcp_tool)
         db.session.commit()
@@ -170,8 +166,6 @@ class MCPToolManageService:
         icon_type: str,
         icon_background: str,
         server_identifier: str,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
 
@@ -203,10 +197,6 @@ class MCPToolManageService:
                     mcp_provider.tools = reconnect_result["tools"]
                     mcp_provider.encrypted_credentials = reconnect_result["encrypted_credentials"]
 
-            if timeout is not None:
-                mcp_provider.timeout = timeout
-            if sse_read_timeout is not None:
-                mcp_provider.sse_read_timeout = sse_read_timeout
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
