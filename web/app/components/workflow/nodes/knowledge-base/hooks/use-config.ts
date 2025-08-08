@@ -40,6 +40,8 @@ export const useConfig = (id: string) => {
     const {
       indexing_technique,
       retrieval_model,
+      chunk_structure,
+      index_chunk_variable_selector,
     } = nodeData?.data
     const { search_method } = retrieval_model || {}
     handleNodeDataUpdate({
@@ -49,6 +51,7 @@ export const useConfig = (id: string) => {
         ...retrieval_model,
         search_method: ((chunkStructure === ChunkStructureEnum.parent_child || chunkStructure === ChunkStructureEnum.question_answer) && !isHighQualitySearchMethod(search_method)) ? RetrievalSearchMethodEnum.semantic : search_method,
       },
+      index_chunk_variable_selector: chunkStructure === chunk_structure ? index_chunk_variable_selector : [],
     })
   }, [handleNodeDataUpdate, getNodeData])
 
