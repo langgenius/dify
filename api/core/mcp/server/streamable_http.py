@@ -3,6 +3,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
+from sqlalchemy import select
+
 from configs import dify_config
 from controllers.web.passport import generate_session_id
 from core.app.app_config.entities import VariableEntity, VariableEntityType
@@ -28,7 +30,8 @@ class MCPServerStreamableHTTPRequestHandler:
     ):
         self.app = app
         self.request = request
-        mcp_server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == self.app.id).first()
+        stmt = select(AppMCPServer).where(AppMCPServer.app_id == self.app.id)
+        mcp_server = db.session.execute(stmt).scalars().first()
         if not mcp_server:
             raise ValueError("MCP server not found")
         self.mcp_server: AppMCPServer = mcp_server

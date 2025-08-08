@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from yarl import URL
 
 import contexts
@@ -197,14 +198,11 @@ class ToolManager:
                 # get specific credentials
                 if is_valid_uuid(credential_id):
                     try:
-                        builtin_provider = (
-                            db.session.query(BuiltinToolProvider)
-                            .where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.id == credential_id,
-                            )
-                            .first()
+                        builtin_provider_stmt = select(BuiltinToolProvider).where(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
                         )
+                        builtin_provider = db.session.execute(builtin_provider_stmt).scalars().first()
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
@@ -316,11 +314,10 @@ class ToolManager:
                 ),
             )
         elif provider_type == ToolProviderType.WORKFLOW:
-            workflow_provider = (
-                db.session.query(WorkflowToolProvider)
-                .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
+            workflow_provider_stmt = select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
+            workflow_provider = db.session.execute(workflow_provider_stmt).scalars().first()
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")

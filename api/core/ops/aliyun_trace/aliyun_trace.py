@@ -5,6 +5,7 @@ from typing import Optional
 from urllib.parse import urljoin
 
 from opentelemetry.trace import Status, StatusCode
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -256,15 +257,15 @@ class AliyunDataTrace(BaseTraceInstance):
             app_id = trace_info.metadata.get("app_id")
             if not app_id:
                 raise ValueError("No app_id found in trace_info metadata")
-
-            app = session.query(App).where(App.id == app_id).first()
+            app_stmt = select(App).where(App.id == app_id)
+            app = db.session.execute(app_stmt).scalars().first()
             if not app:
                 raise ValueError(f"App with id {app_id} not found")
 
             if not app.created_by:
                 raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
-
-            service_account = session.query(Account).where(Account.id == app.created_by).first()
+            account_stmt = select(Account).where(Account.id == app.created_by)
+            service_account = db.session.execute(account_stmt).scalars().first()
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
             current_tenant = (
