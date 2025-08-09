@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'O nó de Fim deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
     tagBound: 'Número de aplicativos usando esta tag',
+    currentView: 'Visualização atual',
+    currentWorkflow: 'Fluxo de trabalho atual',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',

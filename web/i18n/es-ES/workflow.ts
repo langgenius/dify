@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Se debe agregar el nodo Final',
     addBlock: 'Agregar nodo',
     tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
+    currentView: 'Vista actual',
+    currentWorkflow: 'Flujo de trabajo actual',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',

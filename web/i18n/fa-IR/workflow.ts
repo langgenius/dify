@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'باید گره پاسخ اضافه شود',
     addBlock: 'نود اضافه کنید',
     tagBound: 'تعداد برنامه‌هایی که از این برچسب استفاده می‌کنند',
+    currentView: 'نمای فعلی',
+    currentWorkflow: 'گردش کار فعلی',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
