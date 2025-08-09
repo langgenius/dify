@@ -57,7 +57,6 @@ export default function AccountSetting({
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-
   const workplaceGroupItems = (() => {
     if (isCurrentWorkspaceDatasetOperator)
       return []
