@@ -193,7 +193,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       if (isNumber)
         return (varPayload: any) => varPayload.type === VarType.number
       else if (isString)
-        return (varPayload: any) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+        return (varPayload: any) => [VarType.string, VarType.number, VarType.secret, VarType.object].includes(varPayload.type)
       else if (isFile)
         return (varPayload: any) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
       else if (isBoolean)

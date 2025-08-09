@@ -180,7 +180,17 @@ class VariablePool(BaseModel):
             # This ensures that we can keep the id of the system variables intact.
             if self._has(selector):
                 continue
-            self.add(selector, value)  # type: ignore
+            self.add(selector, value)
+
+        # Ensure sys.llm_usage is always added, even if system_variable.llm_usage is None
+        from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.workflow.enums import SystemVariableKey
+
+        llm_usage_selector = (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.LLM_USAGE)
+        if not self._has(llm_usage_selector):
+            llm_usage = system_variable.llm_usage or LLMUsage.empty_usage()
+            llm_usage_dict = llm_usage.model_dump(mode="json")
+            self.add(llm_usage_selector, llm_usage_dict)
 
     @classmethod
     def empty(cls) -> "VariablePool":

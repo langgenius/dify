@@ -155,6 +155,17 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                   </div>
                 }
               />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.llm_usage',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-text-tertiary'>
+                    Object
+                  </div>
+                }
+              />
             </div>
 
           </>
