@@ -58,6 +58,7 @@ import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import Operator from './operator'
+import { useWorkflowSearch } from './hooks/use-workflow-search'
 import Control from './operator/control'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -68,6 +69,7 @@ import NodeContextmenu from './node-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import LimitTips from './limit-tips'
+import { setupScrollToNodeListener } from './utils/node-navigation'
 import {
   useStore,
   useWorkflowStore,
@@ -280,6 +282,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useShortcuts()
+  // Initialize workflow node search functionality
+  useWorkflowSearch()
+
+  // Set up scroll to node event listener using the utility function
+  useEffect(() => {
+    return setupScrollToNodeListener(nodes, reactflow)
+  }, [nodes, reactflow])
+
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   useEffect(() => {
     fetchInspectVars()
