@@ -191,6 +191,8 @@ const translation = {
       cancel: '取消',
       save: '保存',
       confirm: '添加并授权',
+      timeout: '超时时间',
+      sseReadTimeout: 'SSE 读取超时时间',
     },
     delete: '删除 MCP 服务',
     deleteConfirmTitle: '你想要删除 {{mcp}} 吗？',

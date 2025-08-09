@@ -55,13 +55,9 @@ DEFAULT_QUEUE_READ_TIMEOUT = 3
 class StreamableHTTPError(Exception):
     """Base exception for StreamableHTTP transport errors."""
 
-    pass
-
 
 class ResumptionError(StreamableHTTPError):
     """Raised when resumption request is invalid."""
-
-    pass
 
 
 @dataclass
@@ -74,7 +70,7 @@ class RequestContext:
     session_message: SessionMessage
     metadata: ClientMessageMetadata | None
     server_to_client_queue: ServerToClientQueue  # Renamed for clarity
-    sse_read_timeout: timedelta
+    sse_read_timeout: float
 
 
 class StreamableHTTPTransport:
@@ -84,8 +80,8 @@ class StreamableHTTPTransport:
         self,
         url: str,
         headers: dict[str, Any] | None = None,
-        timeout: timedelta = timedelta(seconds=30),
-        sse_read_timeout: timedelta = timedelta(seconds=60 * 5),
+        timeout: float | timedelta = 30,
+        sse_read_timeout: float | timedelta = 60 * 5,
     ) -> None:
         """Initialize the StreamableHTTP transport.
 
@@ -97,8 +93,10 @@ class StreamableHTTPTransport:
         """
         self.url = url
         self.headers = headers or {}
-        self.timeout = timeout
-        self.sse_read_timeout = sse_read_timeout
+        self.timeout = timeout.total_seconds() if isinstance(timeout, timedelta) else timeout
+        self.sse_read_timeout = (
+            sse_read_timeout.total_seconds() if isinstance(sse_read_timeout, timedelta) else sse_read_timeout
+        )
         self.session_id: str | None = None
         self.request_headers = {
             ACCEPT: f"{JSON}, {SSE}",
@@ -186,7 +184,7 @@ class StreamableHTTPTransport:
             with ssrf_proxy_sse_connect(
                 self.url,
                 headers=headers,
-                timeout=httpx.Timeout(self.timeout.seconds, read=self.sse_read_timeout.seconds),
+                timeout=httpx.Timeout(self.timeout, read=self.sse_read_timeout),
                 client=client,
                 method="GET",
             ) as event_source:
@@ -215,7 +213,7 @@ class StreamableHTTPTransport:
         with ssrf_proxy_sse_connect(
             self.url,
             headers=headers,
-            timeout=httpx.Timeout(self.timeout.seconds, read=ctx.sse_read_timeout.seconds),
+            timeout=httpx.Timeout(self.timeout, read=self.sse_read_timeout),
             client=ctx.client,
             method="GET",
         ) as event_source:
@@ -402,8 +400,8 @@ class StreamableHTTPTransport:
 def streamablehttp_client(
     url: str,
     headers: dict[str, Any] | None = None,
-    timeout: timedelta = timedelta(seconds=30),
-    sse_read_timeout: timedelta = timedelta(seconds=60 * 5),
+    timeout: float | timedelta = 30,
+    sse_read_timeout: float | timedelta = 60 * 5,
     terminate_on_close: bool = True,
 ) -> Generator[
     tuple[
@@ -436,7 +434,7 @@ def streamablehttp_client(
         try:
             with create_ssrf_proxy_mcp_http_client(
                 headers=transport.request_headers,
-                timeout=httpx.Timeout(transport.timeout.seconds, read=transport.sse_read_timeout.seconds),
+                timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
             ) as client:
                 # Define callbacks that need access to thread pool
                 def start_get_stream() -> None:

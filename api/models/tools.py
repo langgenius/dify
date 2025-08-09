@@ -278,6 +278,8 @@ class MCPToolProvider(Base):
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=sa.text("CURRENT_TIMESTAMP(0)")
     )
+    timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("30"))
+    sse_read_timeout: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("300"))
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()

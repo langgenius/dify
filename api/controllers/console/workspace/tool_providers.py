@@ -862,6 +862,10 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
+        parser.add_argument(
+            "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
+        )
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -876,6 +880,8 @@ class ToolProviderMCPApi(Resource):
                 icon_background=args["icon_background"],
                 user_id=user.id,
                 server_identifier=args["server_identifier"],
+                timeout=args["timeout"],
+                sse_read_timeout=args["sse_read_timeout"],
             )
         )
 
@@ -891,6 +897,8 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -906,6 +914,8 @@ class ToolProviderMCPApi(Resource):
             icon_type=args["icon_type"],
             icon_background=args["icon_background"],
             server_identifier=args["server_identifier"],
+            timeout=args.get("timeout"),
+            sse_read_timeout=args.get("sse_read_timeout"),
         )
         return {"result": "success"}
 

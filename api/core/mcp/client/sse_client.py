@@ -327,7 +327,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
         )
         response.raise_for_status()
         logger.debug("Client message sent successfully: %s", response.status_code)
-    except Exception as exc:
+    except Exception:
         logger.exception("Error sending message")
         raise
 
