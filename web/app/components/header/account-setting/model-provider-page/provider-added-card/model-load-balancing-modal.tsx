@@ -81,7 +81,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
       const res = await savePredefinedLoadBalancingConfig(
         provider.provider,
         ({
-          ...(data?.credentials ?? {}),
+          ...data?.credentials,
           __model_type: model.model_type,
           __model_name: model.model,
         }),

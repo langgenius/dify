@@ -61,7 +61,7 @@ const AddBlock = ({
       data: {
         ...NODES_INITIAL_DATA[type],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${type}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${type}`),
-        ...(toolDefaultValue || {}),
+        ...toolDefaultValue,
         _isCandidate: true,
       },
       position: {
