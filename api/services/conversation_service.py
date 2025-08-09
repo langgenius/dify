@@ -50,12 +50,16 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
-        # Check if include_ids is not None and not empty to avoid WHERE false condition
-        if include_ids is not None and len(include_ids) > 0:
+        # Check if include_ids is not None to apply filter
+        if include_ids is not None:
+            if len(include_ids) == 0:
+                # If include_ids is empty, return empty result
+                return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
             stmt = stmt.where(Conversation.id.in_(include_ids))
-        # Check if exclude_ids is not None and not empty to avoid WHERE false condition
-        if exclude_ids is not None and len(exclude_ids) > 0:
-            stmt = stmt.where(~Conversation.id.in_(exclude_ids))
+        # Check if exclude_ids is not None to apply filter
+        if exclude_ids is not None:
+            if len(exclude_ids) > 0:
+                stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
