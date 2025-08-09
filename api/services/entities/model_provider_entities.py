@@ -162,6 +162,7 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
     """
 
     provider: SimpleProviderEntityResponse
+    used_by_workflows: list = []
 
     def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
         dump_model = model.model_dump()
