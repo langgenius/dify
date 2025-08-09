@@ -1,3 +1,4 @@
+import ssl
 from datetime import timedelta
 
 import pytz
@@ -35,7 +36,7 @@ def init_app(app: DifyApp) -> Celery:
 
     # Add SSL options to the Celery configuration
     ssl_options = {
-        "ssl_cert_reqs": None,
+        "ssl_cert_reqs": ssl.CERT_NONE,  # Use ssl.CERT_NONE instead of None
         "ssl_ca_certs": None,
         "ssl_certfile": None,
         "ssl_keyfile": None,
