@@ -55,8 +55,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: embeddingsModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()

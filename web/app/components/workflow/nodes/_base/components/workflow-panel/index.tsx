@@ -198,7 +198,6 @@ const BasePanel: FC<BasePanelProps> = ({
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
-    handleStop,
     runInputData,
     runInputDataRef,
     runResult,

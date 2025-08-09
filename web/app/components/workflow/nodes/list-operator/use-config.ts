@@ -36,6 +36,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { inputs, setInputs } = useNodeCrud<ListFilterNodeType>(id, payload)
 
   const { getCurrentVariableType } = useWorkflowVariables()
+
   const getType = useCallback((variable?: ValueSelector) => {
     const varType = getCurrentVariableType({
       parentNode: isInIteration ? iterationNode : loopNode,
@@ -44,7 +45,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       isChatMode,
       isConstant: false,
     })
-    let itemVarType = VarType.string
+    let itemVarType = varType
     switch (varType) {
       case VarType.arrayNumber:
         itemVarType = VarType.number
@@ -58,8 +59,6 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       case VarType.arrayObject:
         itemVarType = VarType.object
         break
-      default:
-        itemVarType = varType
     }
     return { varType, itemVarType }
   }, [availableNodes, getCurrentVariableType, inputs.variable, isChatMode, isInIteration, iterationNode, loopNode])

@@ -81,7 +81,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const echartsRef = useRef<any>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
-  const instanceIdRef = useRef<string>(`chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`) // Unique ID for logging
   const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
   const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null) // For debounce handling
