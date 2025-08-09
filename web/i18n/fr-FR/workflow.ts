@@ -40,6 +40,10 @@ const translation = {
     maxTreeDepth: 'Limite maximale de {{depth}} nœuds par branche',
     workflowProcess: 'Processus de flux de travail',
     notRunning: 'Pas encore en cours d\'exécution',
+    searchNodes: 'Rechercher nœuds, types, entrées, sorties...',
+    noSearchResults: 'Aucun résultat de recherche',
+    searchResults: '{{matched}} sur {{total}} nœuds',
+    searchHint: 'Essayez des mots-clés différents pour "{{query}}"',
     previewPlaceholder: 'Entrez le contenu dans la boîte ci-dessous pour commencer à déboguer le Chatbot',
     effectVarConfirm: {
       title: 'Supprimer la variable',
