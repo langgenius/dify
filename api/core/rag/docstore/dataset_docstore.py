@@ -48,6 +48,7 @@ class DatasetDocumentStore:
         output = {}
         for document_segment in document_segments:
             doc_id = document_segment.index_node_id
+            assert doc_id is not None
             output[doc_id] = Document(
                 page_content=document_segment.content,
                 metadata={
@@ -72,6 +73,7 @@ class DatasetDocumentStore:
         embedding_model = None
         if self._dataset.indexing_technique == "high_quality":
             model_manager = ModelManager()
+            assert self._dataset.embedding_model is not None
             embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
                 provider=self._dataset.embedding_model_provider,

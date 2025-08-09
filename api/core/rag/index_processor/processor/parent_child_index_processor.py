@@ -125,8 +125,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     )
                     .all()
                 )
-                child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
-                vector.delete_by_ids(child_node_ids)
+                child_node_ids_list = [child_node_id[0] for child_node_id in child_node_ids if child_node_id[0]]
+                vector.delete_by_ids(child_node_ids_list)
                 if delete_child_chunks:
                     db.session.query(ChildChunk).where(
                         ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)

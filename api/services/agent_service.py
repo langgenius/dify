@@ -55,12 +55,12 @@ class AgentService:
                 db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
             )
         else:
-            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
+            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()  # type: ignore
 
         if executor:
             executor = executor.name
         else:
-            executor = "Unknown"
+            executor = "Unknown"  # type: ignore
 
         timezone = pytz.timezone(current_user.timezone)
 

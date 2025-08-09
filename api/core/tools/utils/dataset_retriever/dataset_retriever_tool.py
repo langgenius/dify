@@ -81,6 +81,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             document_ids_filter = None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
+            assert dataset.retrieval_model is not None
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,

@@ -46,6 +46,8 @@ class ApiKeyAuthService:
         )
         if not data_source_api_key_bindings:
             return None
+        if data_source_api_key_bindings.credentials is None:
+            return None
         credentials = json.loads(data_source_api_key_bindings.credentials)
         return credentials
 

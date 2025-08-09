@@ -92,6 +92,7 @@ class BaseApiKeyListResource(Resource):
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_user.current_tenant_id
         api_token.token = key
+        assert self.resource_type is not None
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
