@@ -74,6 +74,8 @@ const translation = {
     exportPNG: 'PNG で出力',
     exportJPEG: 'JPEG で出力',
     exportSVG: 'SVG で出力',
+    currentView: '現在のビュー',
+    currentWorkflow: '現在のワークフロー',
     model: 'モデル',
     workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
