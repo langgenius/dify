@@ -470,6 +470,12 @@ const translation = {
         title: 'Структурована схема виходу',
         doc: 'Дізнайтеся більше про структурований вихід',
       },
+      reasoningFormat: {
+        separated: 'Окремі теги для думок',
+        tagged: 'Продовжуйте думати про мітки',
+        title: 'Увімкніть розділення тегів для міркування',
+        tooltip: 'Витягніть вміст з тегів think і зберігайте його в полі reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Змінна запиту',

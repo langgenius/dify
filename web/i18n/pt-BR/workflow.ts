@@ -470,6 +470,12 @@ const translation = {
         apply: 'Aplicar',
         required: 'obrigatório',
       },
+      reasoningFormat: {
+        tagged: 'Mantenha as tags de pensamento',
+        title: 'Ativar separação de tags de raciocínio',
+        separated: 'Separe as tags de pensamento',
+        tooltip: 'Extraia o conteúdo das tags de pensamento e armazene-o no campo reasoning_content.',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Variável de consulta',

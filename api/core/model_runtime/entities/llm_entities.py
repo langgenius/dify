@@ -130,6 +130,7 @@ class LLMResult(BaseModel):
     message: AssistantPromptMessage
     usage: LLMUsage
     system_fingerprint: Optional[str] = None
+    reasoning_content: Optional[str] = None
 
 
 class LLMStructuredOutput(BaseModel):
