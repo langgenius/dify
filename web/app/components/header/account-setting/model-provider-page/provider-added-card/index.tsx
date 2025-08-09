@@ -22,13 +22,16 @@ import CredentialPanel from './credential-panel'
 import QuotaPanel from './quota-panel'
 import ModelList from './model-list'
 import AddModelButton from './add-model-button'
+import ModelReferencesPopup from '../model-references-popup'
 import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
+import ShowModelReferencesButton from './show-model-references-button'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
+
 type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
@@ -45,6 +48,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
   const [modelList, setModelList] = useState<ModelItem[]>([])
+  const [showModelReferences, setShowModelReferences] = useState(false)
   const configurationMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
@@ -157,6 +161,15 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 <span className='system-xs-medium text-text-secondary'>{t('common.modelProvider.configureTip')}</span>
               </div>
             )}
+            <div className='grow'></div>
+            {
+              !notConfigured && isCurrentWorkspaceManager && (
+                <ShowModelReferencesButton
+                  onClick={() => setShowModelReferences(true)}
+                  className='flex'
+                />
+              )
+            }
             {
               configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
                 <AddModelButton
@@ -179,6 +192,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           />
         )
       }
+      <ModelReferencesPopup
+        isOpen={showModelReferences}
+        onClose={() => setShowModelReferences(false)}
+        provider={provider.provider}
+        providerName={provider.label.en_US || provider.provider}
+      />
     </div>
   )
 }
