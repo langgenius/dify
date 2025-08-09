@@ -50,6 +50,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from models.engine import Session
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
@@ -215,16 +216,16 @@ class ToolManager:
                 # fallback to the default provider
                 if builtin_provider is None:
                     # use the default provider
-                    builtin_provider = (
-                        db.session.query(BuiltinToolProvider)
-                        .where(
-                            BuiltinToolProvider.tenant_id == tenant_id,
-                            (BuiltinToolProvider.provider == str(provider_id_entity))
-                            | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
+                    with Session() as session:
+                        builtin_provider = session.scalar(
+                            sa.select(BuiltinToolProvider)
+                            .where(
+                                BuiltinToolProvider.tenant_id == tenant_id,
+                                (BuiltinToolProvider.provider == str(provider_id_entity))
+                                | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
+                            )
+                            .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                         )
-                        .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                        .first()
-                    )
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"no default provider for {provider_id}")
             else:

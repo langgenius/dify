@@ -773,7 +773,6 @@ class GraphEngine:
                 # Yield any new events
                 while yielded_count < len(self._collected_events):
                     yield self._collected_events[yielded_count]
-                    logger.debug("yield %r", self._collected_events[yielded_count])
                     yielded_count += 1
 
             # Small sleep to avoid busy waiting
