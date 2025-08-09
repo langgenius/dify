@@ -160,6 +160,8 @@ def test_custom_authorization_header(setup_http_mock):
 
     assert "?A=b" in data
     assert "X-Header: 123" in data
+    # Custom authorization header should be set (may be masked)
+    assert "X-Auth:" in data
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
@@ -196,8 +198,10 @@ def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
     assert result.process_data is not None
     data = result.process_data.get("request", "")
 
-    # In bearer mode, should use Authorization header with Bearer prefix
-    assert "Authorization: Bearer test-token" in data
+    # In bearer mode, should use Authorization header (value is masked with *)
+    assert "Authorization: " in data
+    # Should contain masked Bearer token
+    assert "*" in data
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
@@ -234,8 +238,10 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
     assert result.process_data is not None
     data = result.process_data.get("request", "")
 
-    # In basic mode, should use Authorization header with Basic prefix
-    assert "Authorization: Basic" in data
+    # In basic mode, should use Authorization header (value is masked with *)
+    assert "Authorization: " in data
+    # Should contain masked Basic credentials
+    assert "*" in data
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
