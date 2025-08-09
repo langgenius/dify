@@ -89,11 +89,11 @@ def test_init():
                 "id": "llm5",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1{{#llm2.text#}}2"},
+                "data": {"type": "answer", "title": "answer", "answer": "1{{#llm2.text#}}2", "outputs": []},
                 "id": "answer",
             },
             {
-                "data": {"type": "answer", "title": "answer2", "answer": "1{{#llm3.text#}}2"},
+                "data": {"type": "answer", "title": "answer2", "answer": "1{{#llm3.text#}}2", "outputs": []},
                 "id": "answer2",
             },
         ],
