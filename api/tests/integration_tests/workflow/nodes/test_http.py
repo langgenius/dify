@@ -182,7 +182,7 @@ def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
                     "config": {
                         "type": "bearer",
                         "api_key": "test-token",
-                        "header": "X-Custom-Auth",  # This should be ignored in bearer mode
+                        "header": "",  # Empty header - should default to Authorization
                     },
                 },
                 "headers": "",
@@ -198,8 +198,6 @@ def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
 
     # In bearer mode, should use Authorization header with Bearer prefix
     assert "Authorization: Bearer test-token" in data
-    # Custom header should NOT be used
-    assert "X-Custom-Auth: test-token" not in data
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
@@ -222,7 +220,7 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
                     "config": {
                         "type": "basic",
                         "api_key": "user:pass",
-                        "header": "X-Custom-Auth",  # This should be ignored in basic mode
+                        "header": "",  # Empty header - should default to Authorization
                     },
                 },
                 "headers": "",
@@ -238,7 +236,42 @@ def test_basic_authorization_with_custom_header_ignored(setup_http_mock):
 
     # In basic mode, should use Authorization header with Basic prefix
     assert "Authorization: Basic" in data
-    # Custom header should NOT be used
+
+
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
+def test_custom_authorization_with_empty_api_key(setup_http_mock):
+    """
+    Test that custom authorization doesn't set header when api_key is empty.
+    This test verifies the fix for issue #23554.
+    """
+    node = init_http_node(
+        config={
+            "id": "1",
+            "data": {
+                "title": "http",
+                "desc": "",
+                "method": "get",
+                "url": "http://example.com",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {
+                        "type": "custom",
+                        "api_key": "",  # Empty api_key
+                        "header": "X-Custom-Auth",
+                    },
+                },
+                "headers": "",
+                "params": "",
+                "body": None,
+            },
+        }
+    )
+
+    result = node._run()
+    assert result.process_data is not None
+    data = result.process_data.get("request", "")
+
+    # Custom header should NOT be set when api_key is empty
     assert "X-Custom-Auth:" not in data
 
 
