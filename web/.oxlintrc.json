@@ -1,0 +1,12 @@
+{
+    "plugins": [
+        "unicorn"
+    ],
+    "rules": {
+        "unicorn/no-useless-fallback-in-spread": "error"
+    },
+    "ignorePatterns": [
+        "public/**",
+        "i18-n-config/**"
+    ]
+}
