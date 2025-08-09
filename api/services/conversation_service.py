@@ -23,7 +23,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
-from tasks.delete_conversation_task import delete_conversation
+from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
 
@@ -182,13 +182,15 @@ class ConversationService:
                 app_model.name,
                 conversation_id,
             )
-            delete_conversation.delay(conversation_id)
+
+            db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
+            db.session.commit()
+
+            delete_conversation_related_data.delay(conversation_id)
 
         except Exception as e:
             db.session.rollback()
             raise e
-        finally:
-            db.session.close()
 
     @classmethod
     def get_conversational_variable(

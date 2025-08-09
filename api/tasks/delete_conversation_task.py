@@ -6,13 +6,13 @@ from celery import shared_task  # type: ignore
 
 from extensions.ext_database import db
 from models import ConversationVariable
-from models.model import Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import Message, MessageAnnotation, MessageFeedback
 from models.tools import ToolConversationVariables, ToolFile
 from models.web import PinnedConversation
 
 
 @shared_task(queue="conversation")
-def delete_conversation(conversation_id: str) -> None:
+def delete_conversation_related_data(conversation_id: str) -> None:
     """
     Delete related data conversation in correct order from datatbase to respect foreign key constraints
 
@@ -49,8 +49,6 @@ def delete_conversation(conversation_id: str) -> None:
         db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation_id).delete(
             synchronize_session=False
         )
-
-        db.session.query(Conversation).where(Conversation.id == conversation_id).delete(synchronize_session=False)
 
         db.session.commit()
 
