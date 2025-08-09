@@ -94,11 +94,9 @@ class DifyCoreRepositoryFactory:
     def _validate_constructor_signature(repository_class: type, required_params: list[str]) -> None:
         """
         Validate that a repository class constructor accepts required parameters.
-
         Args:
             repository_class: The class to validate
             required_params: List of required parameter names
-
         Raises:
             RepositoryImportError: If the constructor doesn't accept required parameters
         """
@@ -158,10 +156,8 @@ class DifyCoreRepositoryFactory:
         try:
             repository_class = cls._import_class(class_path)
             cls._validate_repository_interface(repository_class, WorkflowExecutionRepository)
-            cls._validate_constructor_signature(
-                repository_class, ["session_factory", "user", "app_id", "triggered_from"]
-            )
 
+            # All repository types now use the same constructor parameters
             return repository_class(  # type: ignore[no-any-return]
                 session_factory=session_factory,
                 user=user,
@@ -204,10 +200,8 @@ class DifyCoreRepositoryFactory:
         try:
             repository_class = cls._import_class(class_path)
             cls._validate_repository_interface(repository_class, WorkflowNodeExecutionRepository)
-            cls._validate_constructor_signature(
-                repository_class, ["session_factory", "user", "app_id", "triggered_from"]
-            )
 
+            # All repository types now use the same constructor parameters
             return repository_class(  # type: ignore[no-any-return]
                 session_factory=session_factory,
                 user=user,
