@@ -118,6 +118,8 @@ const translation = {
     addBlock: 'Aggiungi nodo',
     needAnswerNode: 'Deve essere aggiunto il nodo di risposta',
     tagBound: 'Numero di app che utilizzano questo tag',
+    currentWorkflow: 'Flusso di lavoro corrente',
+    currentView: 'Vista corrente',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',

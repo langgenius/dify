@@ -117,6 +117,8 @@ const translation = {
     addBlock: 'नोड जोड़ें',
     needEndNode: 'अंत नोड जोड़ा जाना चाहिए',
     tagBound: 'इस टैग का उपयोग करने वाले ऐप्स की संख्या',
+    currentView: 'वर्तमान दृश्य',
+    currentWorkflow: 'वर्तमान कार्यप्रवाह',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',

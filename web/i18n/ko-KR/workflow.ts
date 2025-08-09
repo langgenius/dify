@@ -118,6 +118,8 @@ const translation = {
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
     tagBound: '이 태그를 사용하는 앱 수',
+    currentView: '현재 보기',
+    currentWorkflow: '현재 워크플로',
   },
   env: {
     envPanelTitle: '환경 변수',
