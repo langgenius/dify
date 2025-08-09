@@ -1,5 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, create_engine
+from sqlalchemy.orm import sessionmaker
+
+from configs import dify_config
 
 POSTGRES_INDEXES_NAMING_CONVENTION = {
     "ix": "%(column_0_label)s_idx",
@@ -23,3 +26,6 @@ metadata = MetaData(naming_convention=POSTGRES_INDEXES_NAMING_CONVENTION)
 #
 # Whenever possible, avoid this pattern in new code.
 db = SQLAlchemy(metadata=metadata)
+
+engine = create_engine(dify_config.SQLALCHEMY_DATABASE_URI)
+Session = sessionmaker(bind=engine)

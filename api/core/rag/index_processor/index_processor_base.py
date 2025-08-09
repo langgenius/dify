@@ -1,10 +1,9 @@
 """Abstract interface for document loader implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from configs import dify_config
-from core.model_manager import ModelInstance
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.models.document import Document
 from core.rag.splitter.fixed_text_splitter import (
@@ -13,6 +12,9 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
+
+if TYPE_CHECKING:
+    from core.model_manager import ModelInstance
 
 
 class BaseIndexProcessor(ABC):
@@ -51,7 +53,7 @@ class BaseIndexProcessor(ABC):
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: Optional["ModelInstance"],
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.

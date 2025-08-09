@@ -4,14 +4,12 @@ from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.events import NodeRunResult
+from core.workflow.graph import BaseNodeData, Node, RetryConfig
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
@@ -46,15 +44,15 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     selector = item.value
     if not isinstance(selector, list):
         raise InvalidDataError(f"selector is not a list, {node_id=}, {item=}")
-    if len(selector) < MIN_SELECTORS_LENGTH:
+    if len(selector) < SELECTORS_LENGTH:
         raise InvalidDataError(f"selector too short, {node_id=}, {item=}")
     selector_str = ".".join(selector)
     key = f"{node_id}.#{selector_str}#"
     mapping[key] = selector
 
 
-class VariableAssignerNode(BaseNode):
-    _node_type = NodeType.VARIABLE_ASSIGNER
+class VariableAssignerNode(Node):
+    node_type = NodeType.VARIABLE_ASSIGNER
 
     _node_data: VariableAssignerNodeData
 

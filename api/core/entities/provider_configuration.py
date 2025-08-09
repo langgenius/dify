@@ -27,7 +27,6 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from models.provider import (
     LoadBalancingModelConfig,
@@ -184,6 +183,8 @@ class ProviderConfiguration(BaseModel):
         Get custom provider credentials.
         """
         # get provider
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -344,6 +345,8 @@ class ProviderConfiguration(BaseModel):
         Get custom model credentials.
         """
         # get provider model
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -474,6 +477,8 @@ class ProviderConfiguration(BaseModel):
         """
         Get provider model setting.
         """
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -553,6 +558,8 @@ class ProviderConfiguration(BaseModel):
         """
         Get load balancing config.
         """
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -576,6 +583,8 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -620,6 +629,8 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -686,6 +697,8 @@ class ProviderConfiguration(BaseModel):
             return
 
         # get preferred provider
+        from core.plugin.entities.plugin import ModelProviderID
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -1107,6 +1120,8 @@ class ProviderConfigurations(BaseModel):
         return list(self.values())
 
     def __getitem__(self, key):
+        from core.plugin.entities.plugin import ModelProviderID
+
         if "/" not in key:
             key = str(ModelProviderID(key))
 
@@ -1122,6 +1137,8 @@ class ProviderConfigurations(BaseModel):
         return iter(self.configurations.values())
 
     def get(self, key, default=None) -> ProviderConfiguration | None:
+        from core.plugin.entities.plugin import ModelProviderID
+
         if "/" not in key:
             key = str(ModelProviderID(key))
 

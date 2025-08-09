@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -9,10 +9,9 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAp
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.ops.ops_trace_manager import TraceQueueManager
 
 
-class InvokeFrom(Enum):
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """
@@ -114,7 +113,8 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional[TraceQueueManager] = None
+    # Using Any to avoid circular import with TraceQueueManager
+    trace_manager: Optional[Any] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):

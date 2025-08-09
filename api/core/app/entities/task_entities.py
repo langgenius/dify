@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities.node_entities import AgentNodeStrategyInit
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.events import AgentNodeStrategyInit
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -71,8 +71,6 @@ class StreamEvent(Enum):
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
     NODE_RETRY = "node_retry"
-    PARALLEL_BRANCH_STARTED = "parallel_branch_started"
-    PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
     ITERATION_STARTED = "iteration_started"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
@@ -440,54 +438,6 @@ class NodeRetryStreamResponse(StreamResponse):
         }
 
 
-class ParallelBranchStartStreamResponse(StreamResponse):
-    """
-    ParallelBranchStartStreamResponse entity
-    """
-
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        parallel_id: str
-        parallel_branch_id: str
-        parent_parallel_id: Optional[str] = None
-        parent_parallel_start_node_id: Optional[str] = None
-        iteration_id: Optional[str] = None
-        loop_id: Optional[str] = None
-        created_at: int
-
-    event: StreamEvent = StreamEvent.PARALLEL_BRANCH_STARTED
-    workflow_run_id: str
-    data: Data
-
-
-class ParallelBranchFinishedStreamResponse(StreamResponse):
-    """
-    ParallelBranchFinishedStreamResponse entity
-    """
-
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-
-        parallel_id: str
-        parallel_branch_id: str
-        parent_parallel_id: Optional[str] = None
-        parent_parallel_start_node_id: Optional[str] = None
-        iteration_id: Optional[str] = None
-        loop_id: Optional[str] = None
-        status: str
-        error: Optional[str] = None
-        created_at: int
-
-    event: StreamEvent = StreamEvent.PARALLEL_BRANCH_FINISHED
-    workflow_run_id: str
-    data: Data
-
-
 class IterationNodeStartStreamResponse(StreamResponse):
     """
     NodeStartStreamResponse entity
@@ -501,7 +451,6 @@ class IterationNodeStartStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         created_at: int
         extras: dict = {}
         metadata: Mapping = {}
@@ -527,7 +476,6 @@ class IterationNodeNextStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         index: int
         created_at: int
         pre_iteration_output: Optional[Any] = None
@@ -555,7 +503,6 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         outputs: Optional[Mapping] = None
         created_at: int
         extras: Optional[dict] = None
@@ -588,7 +535,6 @@ class LoopNodeStartStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         created_at: int
         extras: dict = {}
         metadata: Mapping = {}
@@ -614,7 +560,6 @@ class LoopNodeNextStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         index: int
         created_at: int
         pre_loop_output: Optional[Any] = None
@@ -642,7 +587,6 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
-        title: str
         outputs: Optional[Mapping] = None
         created_at: int
         extras: Optional[dict] = None

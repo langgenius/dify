@@ -1,4 +1,4 @@
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,

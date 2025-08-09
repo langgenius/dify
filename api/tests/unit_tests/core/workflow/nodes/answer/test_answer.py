@@ -3,44 +3,41 @@ import uuid
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
 from core.workflow.nodes.answer.answer_node import AnswerNode
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowType
 
 
 def test_execute_answer():
     graph_config = {
         "edges": [
             {
-                "id": "start-source-llm-target",
+                "id": "start-source-answer-target",
                 "source": "start",
-                "target": "llm",
+                "target": "answer",
             },
         ],
         "nodes": [
-            {"data": {"type": "start"}, "id": "start"},
+            {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
                 "data": {
-                    "type": "llm",
+                    "title": "123",
+                    "type": "answer",
+                    "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
                 },
-                "id": "llm",
+                "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(graph_config=graph_config)
-
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -50,13 +47,24 @@ def test_execute_answer():
     )
 
     # construct variable pool
-    pool = VariablePool(
+    variable_pool = VariablePool(
         system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
+        conversation_variables=[],
     )
-    pool.add(["start", "weather"], "sunny")
-    pool.add(["llm", "text"], "You are a helpful AI.")
+    variable_pool.add(["start", "weather"], "sunny")
+    variable_pool.add(["llm", "text"], "You are a helpful AI.")
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # create node factory
+    node_factory = DifyNodeFactory(
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     node_config = {
         "id": "answer",
@@ -70,8 +78,7 @@ def test_execute_answer():
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
+        graph_runtime_state=graph_runtime_state,
         config=node_config,
     )
 

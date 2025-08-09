@@ -26,7 +26,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .engine import db
+from .engine import Session, db
 from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
     ApiRequest,
@@ -150,6 +150,7 @@ __all__ = [
     "ProviderType",
     "RecommendedApp",
     "SavedMessage",
+    "Session",
     "Site",
     "Tag",
     "TagBinding",

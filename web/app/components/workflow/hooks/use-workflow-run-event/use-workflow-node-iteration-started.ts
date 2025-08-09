@@ -35,9 +35,14 @@ export const useWorkflowNodeIterationStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
+    // Get the title from the graph node instead of using the title from the event
+    const graphNode = nodes.find(node => node.id === data.node_id)
+    const nodeTitle = graphNode?.data?.title || data.title
+
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.tracing!.push({
         ...data,
+        title: nodeTitle, // Use the title from the graph node
         status: NodeRunningStatus.Running,
       })
     }))

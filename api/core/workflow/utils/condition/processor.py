@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
 

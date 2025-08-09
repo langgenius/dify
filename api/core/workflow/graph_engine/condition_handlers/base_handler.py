@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
 
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.graph_engine.entities.run_condition import RunCondition
-from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, RouteNodeState, RunCondition
+from core.workflow.graph import Graph
 
 
 class RunConditionHandler(ABC):

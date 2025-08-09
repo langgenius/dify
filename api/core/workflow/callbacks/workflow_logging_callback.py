@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.graph_engine.entities.event import (
+from core.workflow.events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -19,9 +19,6 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
-    ParallelBranchRunFailedEvent,
-    ParallelBranchRunStartedEvent,
-    ParallelBranchRunSucceededEvent,
 )
 
 from .base_workflow_callback import WorkflowCallback
@@ -56,10 +53,6 @@ class WorkflowLoggingCallback(WorkflowCallback):
             self.on_workflow_node_execute_failed(event=event)
         elif isinstance(event, NodeRunStreamChunkEvent):
             self.on_node_text_chunk(event=event)
-        elif isinstance(event, ParallelBranchRunStartedEvent):
-            self.on_workflow_parallel_started(event=event)
-        elif isinstance(event, ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent):
-            self.on_workflow_parallel_completed(event=event)
         elif isinstance(event, IterationRunStartedEvent):
             self.on_workflow_iteration_started(event=event)
         elif isinstance(event, IterationRunNextEvent):
@@ -81,124 +74,78 @@ class WorkflowLoggingCallback(WorkflowCallback):
         """
         self.print_text("\n[NodeRunStartedEvent]", color="yellow")
         self.print_text(f"Node ID: {event.node_id}", color="yellow")
-        self.print_text(f"Node Title: {event.node_data.title}", color="yellow")
+        self.print_text(f"Node Title: {event.node_title}", color="yellow")
         self.print_text(f"Type: {event.node_type.value}", color="yellow")
 
     def on_workflow_node_execute_succeeded(self, event: NodeRunSucceededEvent) -> None:
         """
         Workflow node execute succeeded
         """
-        route_node_state = event.route_node_state
+        # Direct access to event attributes instead of route_node_state
 
         self.print_text("\n[NodeRunSucceededEvent]", color="green")
         self.print_text(f"Node ID: {event.node_id}", color="green")
-        self.print_text(f"Node Title: {event.node_data.title}", color="green")
         self.print_text(f"Type: {event.node_type.value}", color="green")
 
-        if route_node_state.node_run_result:
-            node_run_result = route_node_state.node_run_result
-            self.print_text(
-                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
-                color="green",
-            )
-            self.print_text(
-                f"Process Data: "
-                f"{jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
-                color="green",
-            )
-            self.print_text(
-                f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
-                color="green",
-            )
-            self.print_text(
-                f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}",
-                color="green",
-            )
+        node_run_result = event.node_run_result
+        self.print_text(
+            f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
+            color="green",
+        )
+        self.print_text(
+            f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
+            color="green",
+        )
+        self.print_text(
+            f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
+            color="green",
+        )
+        self.print_text(
+            f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}",
+            color="green",
+        )
 
     def on_workflow_node_execute_failed(self, event: NodeRunFailedEvent) -> None:
         """
         Workflow node execute failed
         """
-        route_node_state = event.route_node_state
+        # Direct access to event attributes instead of route_node_state
 
         self.print_text("\n[NodeRunFailedEvent]", color="red")
         self.print_text(f"Node ID: {event.node_id}", color="red")
-        self.print_text(f"Node Title: {event.node_data.title}", color="red")
         self.print_text(f"Type: {event.node_type.value}", color="red")
 
-        if route_node_state.node_run_result:
-            node_run_result = route_node_state.node_run_result
-            self.print_text(f"Error: {node_run_result.error}", color="red")
-            self.print_text(
-                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
-                color="red",
-            )
-            self.print_text(
-                f"Process Data: "
-                f"{jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
-                color="red",
-            )
-            self.print_text(
-                f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
-                color="red",
-            )
+        node_run_result = event.node_run_result
+        self.print_text(f"Error: {node_run_result.error}", color="red")
+        self.print_text(
+            f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
+            color="red",
+        )
+        self.print_text(
+            f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
+            color="red",
+        )
+        self.print_text(
+            f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
+            color="red",
+        )
 
     def on_node_text_chunk(self, event: NodeRunStreamChunkEvent) -> None:
         """
         Publish text chunk
         """
-        route_node_state = event.route_node_state
-        if not self.current_node_id or self.current_node_id != route_node_state.node_id:
-            self.current_node_id = route_node_state.node_id
+        # Direct access to event attributes instead of route_node_state
+        if not self.current_node_id or self.current_node_id != event.node_id:
+            self.current_node_id = event.node_id
             self.print_text("\n[NodeRunStreamChunkEvent]")
-            self.print_text(f"Node ID: {route_node_state.node_id}")
+            self.print_text(f"Node ID: {event.node_id}")
 
-            node_run_result = route_node_state.node_run_result
-            if node_run_result:
-                self.print_text(
-                    f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}"
-                )
+            node_run_result = event.node_run_result
+            self.print_text(
+                f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}"
+            )
 
         self.print_text(event.chunk_content, color="pink", end="")
-
-    def on_workflow_parallel_started(self, event: ParallelBranchRunStartedEvent) -> None:
-        """
-        Publish parallel started
-        """
-        self.print_text("\n[ParallelBranchRunStartedEvent]", color="blue")
-        self.print_text(f"Parallel ID: {event.parallel_id}", color="blue")
-        self.print_text(f"Branch ID: {event.parallel_start_node_id}", color="blue")
-        if event.in_iteration_id:
-            self.print_text(f"Iteration ID: {event.in_iteration_id}", color="blue")
-        if event.in_loop_id:
-            self.print_text(f"Loop ID: {event.in_loop_id}", color="blue")
-
-    def on_workflow_parallel_completed(
-        self, event: ParallelBranchRunSucceededEvent | ParallelBranchRunFailedEvent
-    ) -> None:
-        """
-        Publish parallel completed
-        """
-        if isinstance(event, ParallelBranchRunSucceededEvent):
-            color = "blue"
-        elif isinstance(event, ParallelBranchRunFailedEvent):
-            color = "red"
-
-        self.print_text(
-            "\n[ParallelBranchRunSucceededEvent]"
-            if isinstance(event, ParallelBranchRunSucceededEvent)
-            else "\n[ParallelBranchRunFailedEvent]",
-            color=color,
-        )
-        self.print_text(f"Parallel ID: {event.parallel_id}", color=color)
-        self.print_text(f"Branch ID: {event.parallel_start_node_id}", color=color)
-        if event.in_iteration_id:
-            self.print_text(f"Iteration ID: {event.in_iteration_id}", color=color)
-        if event.in_loop_id:
-            self.print_text(f"Loop ID: {event.in_loop_id}", color=color)
-
-        if isinstance(event, ParallelBranchRunFailedEvent):
-            self.print_text(f"Error: {event.error}", color=color)
 
     def on_workflow_iteration_started(self, event: IterationRunStartedEvent) -> None:
         """

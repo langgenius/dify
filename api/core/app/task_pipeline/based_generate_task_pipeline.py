@@ -37,7 +37,7 @@ class BasedGenerateTaskPipeline:
         stream: bool,
     ) -> None:
         self._application_generate_entity = application_generate_entity
-        self._queue_manager = queue_manager
+        self.queue_manager = queue_manager
         self._start_at = time.perf_counter()
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
@@ -113,7 +113,7 @@ class BasedGenerateTaskPipeline:
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                queue_manager=self._queue_manager,
+                queue_manager=self.queue_manager,
             )
         return None
 

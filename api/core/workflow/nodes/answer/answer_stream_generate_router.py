@@ -1,4 +1,7 @@
+from typing import TYPE_CHECKING
+
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     AnswerStreamGenerateRoute,
@@ -6,8 +9,10 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+
+if TYPE_CHECKING:
+    from core.workflow.graph import Edge
 
 
 class AnswerStreamGeneratorRouter:
@@ -15,7 +20,7 @@ class AnswerStreamGeneratorRouter:
     def init(
         cls,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
     ) -> AnswerStreamGenerateRoute:
         """
         Get stream generate routes.
@@ -101,7 +106,7 @@ class AnswerStreamGeneratorRouter:
     def _fetch_answers_dependencies(
         cls,
         answer_node_ids: list[str],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
         node_id_config_mapping: dict[str, dict],
     ) -> dict[str, list[str]]:
         """
@@ -132,7 +137,7 @@ class AnswerStreamGeneratorRouter:
         current_node_id: str,
         answer_node_id: str,
         node_id_config_mapping: dict[str, dict],
-        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        reverse_edge_mapping: dict[str, list["Edge"]],  # type: ignore[name-defined]
         answer_dependencies: dict[str, list[str]],
     ) -> None:
         """
@@ -146,7 +151,7 @@ class AnswerStreamGeneratorRouter:
         """
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
         for edge in reverse_edges:
-            source_node_id = edge.source_node_id
+            source_node_id = edge.tail
             if source_node_id not in node_id_config_mapping:
                 continue
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")

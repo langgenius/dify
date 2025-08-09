@@ -1,0 +1,18 @@
+[importlinter]
+root_packages = 
+    core
+
+[importlinter:contract:workflow-layers]
+name = Workflow packages layers
+type=layers
+layers = 
+    core.workflow.graph_engine
+    core.workflow.nodes
+    core.workflow.graph
+    core.workflow.entities
+    core.workflow.events
+    core.workflow.enums
+ignore_imports = 
+    core.workflow.graph.graph -> core.workflow.nodes.node_factory
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine

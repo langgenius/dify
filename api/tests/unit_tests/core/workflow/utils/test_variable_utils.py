@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.variables.segments import ObjectSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.utils.variable_utils import append_variables_recursively
 
 
@@ -18,16 +18,17 @@ class TestAppendVariablesRecursively:
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
         # Check that the main variable is added
-        main_var = pool.get([node_id] + variable_key_list)
+        main_var = pool.get([node_id, "output"])
         assert main_var is not None
         assert main_var.value == variable_value
 
-        # Check that nested variables are added recursively
-        name_var = pool.get([node_id] + variable_key_list + ["name"])
+        # With the new behavior, nested values are accessed through the main variable
+        # They are not added as separate variables
+        name_var = pool.get([node_id, "output", "name"])
         assert name_var is not None
         assert name_var.value == "John"
 
-        age_var = pool.get([node_id] + variable_key_list + ["age"])
+        age_var = pool.get([node_id, "output", "age"])
         assert age_var is not None
         assert age_var.value == 30
 
@@ -44,17 +45,17 @@ class TestAppendVariablesRecursively:
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
         # Check that the main variable is added
-        main_var = pool.get([node_id] + variable_key_list)
+        main_var = pool.get([node_id, "result"])
         assert main_var is not None
         assert isinstance(main_var, ObjectSegment)
         assert main_var.value == obj_data
 
-        # Check that nested variables are added recursively
-        status_var = pool.get([node_id] + variable_key_list + ["status"])
+        # With the new behavior, nested values are accessed through the main variable
+        status_var = pool.get([node_id, "result", "status"])
         assert status_var is not None
         assert status_var.value == "success"
 
-        code_var = pool.get([node_id] + variable_key_list + ["code"])
+        code_var = pool.get([node_id, "result", "code"])
         assert code_var is not None
         assert code_var.value == 200
 
@@ -74,29 +75,20 @@ class TestAppendVariablesRecursively:
 
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
-        # Check deeply nested variables
-        name_var = pool.get([node_id] + variable_key_list + ["user", "profile", "name"])
-        assert name_var is not None
-        assert name_var.value == "Alice"
+        # Check that the main variable is added
+        main_var = pool.get([node_id, "data"])
+        assert main_var is not None
+        assert main_var.value == variable_value
 
-        email_var = pool.get([node_id] + variable_key_list + ["user", "profile", "email"])
-        assert email_var is not None
-        assert email_var.value == "alice@example.com"
-
-        theme_var = pool.get([node_id] + variable_key_list + ["user", "settings", "theme"])
-        assert theme_var is not None
-        assert theme_var.value == "dark"
-
-        notifications_var = pool.get([node_id] + variable_key_list + ["user", "settings", "notifications"])
-        assert notifications_var is not None
-        assert notifications_var.value == 1  # Boolean True is converted to integer 1
-
-        version_var = pool.get([node_id] + variable_key_list + ["metadata", "version"])
-        assert version_var is not None
-        assert version_var.value == "1.0"
+        # With the new behavior, nested values are accessed through the main variable
+        user_var = pool.get([node_id, "data", "user"])
+        assert user_var is not None
+        assert isinstance(user_var.value, dict)
+        assert "profile" in user_var.value
+        assert "settings" in user_var.value
 
     def test_append_non_dict_value(self):
-        """Test appending a non-dictionary value (should not recurse)"""
+        """Test appending a non-dictionary value"""
         pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["simple"]
@@ -105,15 +97,15 @@ class TestAppendVariablesRecursively:
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
         # Check that only the main variable is added
-        main_var = pool.get([node_id] + variable_key_list)
+        main_var = pool.get([node_id, "simple"])
         assert main_var is not None
         assert main_var.value == variable_value
 
-        # Ensure no additional variables are created
+        # Ensure only one variable is created
         assert len(pool.variable_dictionary[node_id]) == 1
 
     def test_append_segment_non_object_value(self):
-        """Test appending a Segment that is not ObjectSegment (should not recurse)"""
+        """Test appending a Segment that is not ObjectSegment"""
         pool = VariablePool.empty()
         node_id = "test_node"
         variable_key_list = ["text"]
@@ -122,12 +114,12 @@ class TestAppendVariablesRecursively:
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
         # Check that only the main variable is added
-        main_var = pool.get([node_id] + variable_key_list)
+        main_var = pool.get([node_id, "text"])
         assert main_var is not None
         assert isinstance(main_var, StringSegment)
         assert main_var.value == "Hello World"
 
-        # Ensure no additional variables are created
+        # Ensure only one variable is created
         assert len(pool.variable_dictionary[node_id]) == 1
 
     def test_append_empty_dict_value(self):
@@ -140,9 +132,9 @@ class TestAppendVariablesRecursively:
         append_variables_recursively(pool, node_id, variable_key_list, variable_value)
 
         # Check that the main variable is added
-        main_var = pool.get([node_id] + variable_key_list)
+        main_var = pool.get([node_id, "empty"])
         assert main_var is not None
         assert main_var.value == {}
 
-        # Ensure only the main variable is created (no recursion for empty dict)
+        # Ensure only one variable is created
         assert len(pool.variable_dictionary[node_id]) == 1

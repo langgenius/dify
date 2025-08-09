@@ -144,7 +144,8 @@ class DatabaseConfig(BaseSettings):
         default="postgresql",
     )
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS

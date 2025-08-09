@@ -6,11 +6,9 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.entities import AssistantPromptMessage
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
@@ -18,7 +16,6 @@ from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from models.workflow import WorkflowType
 from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
@@ -53,7 +50,6 @@ def init_parameter_extractor_node(config: dict):
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
