@@ -983,6 +983,7 @@ const translation = {
       chatNode: 'Conversation',
       systemNode: 'System',
     },
+    lastOutput: 'Last Output',
     relations: {
       dependencies: 'Dependencies',
       dependents: 'Dependents',
