@@ -86,8 +86,8 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto rounded-t-xl bg-background-body outline-none'>
-      <div className='sticky top-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-y-2 rounded-t-xl border-b border-solid border-b-divider-regular bg-background-body px-6 py-2'>
+    <div ref={containerRef} className={`scroll-container relative flex grow flex-col overflow-y-auto rounded-t-xl outline-none ${activeTab === 'dataset' ? 'bg-background-body' : 'bg-components-panel-bg'}`}>
+      <div className={`sticky top-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-y-2 rounded-t-xl border-b border-solid border-b-divider-regular px-6 py-2 ${activeTab === 'dataset' ? 'bg-background-body' : 'bg-components-panel-bg'}`}>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}
