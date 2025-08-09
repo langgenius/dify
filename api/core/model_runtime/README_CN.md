@@ -7,7 +7,7 @@
 
 ## 功能介绍
 
-- 支持 5 种模型类型的能力调用
+- 支持 6 种模型类型的能力调用
 
   - `LLM` - LLM 文本补全、对话，预计算 tokens 能力
   - `Text Embedding Model` - 文本 Embedding，预计算 tokens 能力
