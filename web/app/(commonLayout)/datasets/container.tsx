@@ -86,8 +86,8 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex h-[80px] shrink-0 flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
+    <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto rounded-t-xl bg-components-panel-bg'>
+      <div className='sticky top-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-y-2 rounded-t-xl border-b border-solid border-b-divider-regular bg-components-panel-bg px-6 py-2'>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}
