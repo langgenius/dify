@@ -169,13 +169,55 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
     """Extract text from a file based on its file extension."""
     match file_extension:
         case (
-            ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml" |
-            ".c" | ".h" | ".cpp" | ".hpp" | ".cc" | ".cxx" | ".c++" |
-            ".py" | ".js" | ".ts" | ".jsx" | ".tsx" | ".java" | ".php" | ".rb" |
-            ".go" | ".rs" | ".swift" | ".kt" | ".scala" | ".sh" | ".bash" |
-            ".bat" | ".ps1" | ".sql" | ".r" | ".m" | ".pl" | ".lua" | ".vim" |
-            ".asm" | ".s" | ".css" | ".scss" | ".less" | ".sass" |
-            ".ini" | ".cfg" | ".conf" | ".toml" | ".env" | ".log" | ".vtt"
+            ".txt"
+            | ".markdown"
+            | ".md"
+            | ".html"
+            | ".htm"
+            | ".xml"
+            | ".c"
+            | ".h"
+            | ".cpp"
+            | ".hpp"
+            | ".cc"
+            | ".cxx"
+            | ".c++"
+            | ".py"
+            | ".js"
+            | ".ts"
+            | ".jsx"
+            | ".tsx"
+            | ".java"
+            | ".php"
+            | ".rb"
+            | ".go"
+            | ".rs"
+            | ".swift"
+            | ".kt"
+            | ".scala"
+            | ".sh"
+            | ".bash"
+            | ".bat"
+            | ".ps1"
+            | ".sql"
+            | ".r"
+            | ".m"
+            | ".pl"
+            | ".lua"
+            | ".vim"
+            | ".asm"
+            | ".s"
+            | ".css"
+            | ".scss"
+            | ".less"
+            | ".sass"
+            | ".ini"
+            | ".cfg"
+            | ".conf"
+            | ".toml"
+            | ".env"
+            | ".log"
+            | ".vtt"
         ):
             return _extract_text_from_plain_text(file_content)
         case ".json":
