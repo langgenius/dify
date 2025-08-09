@@ -114,6 +114,8 @@ const translation = {
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
     tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
+    currentWorkflow: 'Quy trình làm việc hiện tại',
+    currentView: 'Hiện tại View',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',

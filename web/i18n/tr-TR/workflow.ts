@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
     tagBound: 'Bu etiketi kullanan uygulama sayısı',
+    currentView: 'Geçerli Görünüm',
+    currentWorkflow: 'Mevcut İş Akışı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',

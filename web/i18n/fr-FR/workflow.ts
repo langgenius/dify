@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'Le nœud de réponse doit être ajouté.',
     addBlock: 'Ajouter un nœud',
     tagBound: 'Nombre d\'applications utilisant cette étiquette',
+    currentView: 'Vue actuelle',
+    currentWorkflow: 'Flux de travail actuel',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',

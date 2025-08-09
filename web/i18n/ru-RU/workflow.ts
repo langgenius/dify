@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'В узел ответа необходимо добавить',
     needEndNode: 'Узел конца должен быть добавлен',
     tagBound: 'Количество приложений, использующих этот тег',
+    currentView: 'Текущий вид',
+    currentWorkflow: 'Текущий рабочий процесс',
   },
   env: {
     envPanelTitle: 'Переменные среды',

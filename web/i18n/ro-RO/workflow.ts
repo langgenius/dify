@@ -114,6 +114,8 @@ const translation = {
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
     needEndNode: 'Nodul de sfârșit trebuie adăugat',
     tagBound: 'Numărul de aplicații care folosesc acest tag',
+    currentView: 'Vizualizare curentă',
+    currentWorkflow: 'Flux de lucru curent',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',

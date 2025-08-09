@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
     tagBound: 'Кількість додатків, що використовують цей тег',
+    currentView: 'Поточний вигляд',
+    currentWorkflow: 'Поточний робочий процес',
   },
   env: {
     envPanelTitle: 'Змінні середовища',

@@ -114,6 +114,8 @@ const translation = {
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
     tagBound: '使用此標籤的應用程式數量',
+    currentView: '當前檢視',
+    currentWorkflow: '當前工作流程',
   },
   env: {
     envPanelTitle: '環境變數',

@@ -114,6 +114,8 @@ const translation = {
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
     tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
+    currentWorkflow: 'เวิร์กโฟลว์ปัจจุบัน',
+    currentView: 'ปัจจุบัน View',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
