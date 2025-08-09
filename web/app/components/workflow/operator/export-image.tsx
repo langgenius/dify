@@ -29,7 +29,7 @@ const ExportImage: FC = () => {
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
 
-  const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', wholeWorkflow = false) => {
+  const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
     if (!appDetail)
       return
 
@@ -51,7 +51,7 @@ const ExportImage: FC = () => {
       let dataUrl
       let filename = `${appDetail.name}`
 
-      if (wholeWorkflow) {
+      if (currentWorkflow) {
         // Get all nodes and their bounds
         const nodes = reactFlow.getNodes()
         const nodesBounds = getNodesBounds(nodes)
@@ -139,7 +139,7 @@ const ExportImage: FC = () => {
         }
       }
 
-      if (wholeWorkflow) {
+      if (currentWorkflow) {
         // For whole workflow, show preview first
         setPreviewUrl(dataUrl)
         setPreviewTitle(`${filename}.${type}`)
@@ -226,7 +226,7 @@ const ExportImage: FC = () => {
               <div className='border-border-divider mx-2 my-1 border-t' />
 
               <div className='px-2 py-1 text-xs font-medium text-text-tertiary'>
-                {t('workflow.common.wholeWorkflow')}
+                {t('workflow.common.currentWorkflow')}
               </div>
               <div
                 className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'

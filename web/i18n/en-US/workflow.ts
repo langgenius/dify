@@ -75,7 +75,7 @@ const translation = {
     exportJPEG: 'Export as JPEG',
     exportSVG: 'Export as SVG',
     currentView: 'Current View',
-    wholeWorkflow: 'Whole Workflow',
+    currentWorkflow: 'Whole Workflow',
     model: 'Model',
     workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
