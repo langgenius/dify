@@ -49,7 +49,8 @@ const GotoAnything: FC<Props> = ({
 
   // Handle keyboard shortcuts
   const handleToggleModal = useCallback((e: KeyboardEvent) => {
-    if (isEventTargetInputArea(e.target as HTMLElement))
+    // Allow closing when modal is open, even if focus is in the search input
+    if (!show && isEventTargetInputArea(e.target as HTMLElement))
       return
     e.preventDefault()
     setShow((prev) => {
@@ -59,7 +60,7 @@ const GotoAnything: FC<Props> = ({
       }
       return !prev
     })
-  }, [])
+  }, [show])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.k`, handleToggleModal, {
     exactMatch: true,
@@ -184,11 +185,11 @@ const GotoAnything: FC<Props> = ({
     return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
       <div>
         <div className='text-sm font-medium'>Search for anything</div>
-        <div className='mt-2 space-y-1 text-xs text-text-quaternary'>
+        <div className='mt-3 space-y-2 text-xs text-text-quaternary'>
           {Object.values(Actions).map(action => (
-            <div key={action.key}>
-              <span className='rounded bg-gray-200 px-1.5 py-0.5 font-mono text-gray-400 dark:bg-gray-300 dark:text-gray-700'>{action.shortcut}</span>{' '}
-              {action.description}
+            <div key={action.key} className='flex items-center gap-2'>
+              <span className='inline-flex items-center rounded bg-gray-200 px-2 py-1 font-mono text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200'>{action.shortcut}</span>
+              <span>{action.description}</span>
             </div>
           ))}
         </div>
@@ -241,17 +242,17 @@ const GotoAnything: FC<Props> = ({
                   autoFocus
                 />
                 {searchMode !== 'general' && (
-                  <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'>
+                  <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'>
                     <span>{searchMode.replace('@', '').toUpperCase()}</span>
                     <span className='opacity-60'>only</span>
                   </div>
                 )}
               </div>
               <div className='text-xs text-text-quaternary'>
-                <span className='system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
+                <span className='system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100'>
                   {isMac() ? '⌘' : 'Ctrl'}
                 </span>
-                <span className='system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
+                <span className='system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-800 dark:text-gray-100'>
                   K
                 </span>
               </div>
