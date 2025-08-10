@@ -843,10 +843,9 @@ class ProviderConfiguration(BaseModel):
                     continue
 
                 status = ModelStatus.ACTIVE
-                if m.model in model_setting_map:
-                    model_setting = model_setting_map[m.model_type][m.model]
-                    if model_setting.enabled is False:
-                        status = ModelStatus.DISABLED
+                model_setting = model_setting_map.get(m.model_type, {}).get(m.model)
+                if model_setting and model_setting.enabled is False:
+                    status = ModelStatus.DISABLED
 
                 provider_models.append(
                     ModelWithProviderEntity(
