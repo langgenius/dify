@@ -97,10 +97,14 @@ class WorkflowRunService:
         self,
         app_model: App,
         run_id: str,
-        user: Account | EndUser,
+        user: Optional[Account | EndUser] = None,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
+        
+        :param app_model: app model
+        :param run_id: workflow run id
+        :param user: optional user for tenant validation, if None uses app_model.tenant_id
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
@@ -110,10 +114,13 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # Get tenant_id from user
-        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
-        if tenant_id is None:
-            raise ValueError("User tenant_id cannot be None")
+        # Get tenant_id from user if provided, otherwise use app_model.tenant_id
+        if user is not None:
+            tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+            if tenant_id is None:
+                raise ValueError("User tenant_id cannot be None")
+        else:
+            tenant_id = app_model.tenant_id
 
         return self._node_execution_service_repo.get_executions_by_workflow_run(
             tenant_id=tenant_id,

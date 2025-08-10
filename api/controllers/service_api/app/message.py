@@ -10,11 +10,12 @@ from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, EndUser, Message
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,
@@ -109,6 +110,51 @@ class AppGetFeedbacksApi(Resource):
         return {"data": feedbacks}
 
 
+class MessageDetailApi(Resource):
+    message_detail_fields = {
+        "id": fields.String,
+        "conversation_id": fields.String,
+        "parent_message_id": fields.String,
+        "inputs": FilesContainedField,
+        "query": fields.String,
+        "answer": fields.String(attribute="re_sign_file_url_answer"),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
+        "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
+        "retriever_resources": fields.Raw(
+            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
+            if obj.message_metadata
+            else []
+        ),
+        "workflow_run_id": fields.String,
+        "status": fields.String,
+        "error": fields.String,
+        "created_at": TimestampField,
+        "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
+    }
+
+    @validate_app_token
+    @marshal_with(message_detail_fields)
+    def get(self, app_model: App, message_id):
+        """
+        Get message detail including workflow_run_id
+        """
+        message_id = str(message_id)
+
+        try:
+            # 直接查询消息，不需要用户验证
+            message = db.session.query(Message).filter(
+                Message.id == message_id,
+                Message.app_id == app_model.id
+            ).first()
+            
+            if not message:
+                raise MessageNotExistsError()
+                
+            return message
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+
+
 class MessageSuggestedApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, message_id):
@@ -133,6 +179,7 @@ class MessageSuggestedApi(Resource):
 
 
 api.add_resource(MessageListApi, "/messages")
+api.add_resource(MessageDetailApi, "/messages/<uuid:message_id>")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
 api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")

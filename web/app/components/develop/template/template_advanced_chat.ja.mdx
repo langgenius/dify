@@ -1503,6 +1503,194 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/messages/{message_id}'
+  method='GET'
+  title='メッセージ詳細を取得'
+  name='#get-message-detail'
+/>
+<Row>
+  <Col>
+    メッセージIDによってメッセージの詳細情報を取得します。ワークフロー実行IDなどの重要な情報が含まれます。
+
+    ### パスパラメータ
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        メッセージID、チャットインターフェースのレスポンスまたはイベントストリームから取得可能
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    メッセージの詳細情報を返します。以下の主要フィールドが含まれます：
+    - `id` (string) メッセージID
+    - `conversation_id` (string) 会話ID
+    - `workflow_run_id` (string) ワークフロー実行ID（メッセージがワークフロー実行から来る場合）
+    - `inputs` (object) メッセージ入力内容
+    - `query` (string) ユーザークエリ内容
+    - `answer` (string) アシスタント返信内容
+    - `status` (string) メッセージステータス
+    - `created_at` (timestamp) メッセージ作成時間
+    - その他のメッセージ関連フィールド...
+
+    ### エラー
+    - 401, `unauthorized`, 認証失敗
+    - 404, `message_not_found`, メッセージが見つかりません
+    - 500, サーバー内部エラー
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages/{message_id}"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c",
+      "conversation_id": "49045336-89bc-457b-b54d-a1e30eaa4d73",
+      "workflow_run_id": "3c4655be-6e43-453e-8cbd-0ae23d5738b3",
+      "inputs": {
+        "query": "こんにちは"
+      },
+      "query": "こんにちは",
+      "answer": "こんにちは！私はあなたのAIアシスタントです。何かお手伝いできることはありますか？",
+      "status": "normal",
+      "created_at": "2025-08-10T14:55:56.632003",
+      "updated_at": "2025-08-10T14:55:57.856024"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/node-executions'
+  method='GET'
+  title='ノード実行リストを取得'
+  name='#node-executions'
+/>
+<Row>
+  <Col>
+    ワークフロー実行IDに基づいてノード実行リストを取得し、ワークフロー内の各ノードの実行状態と結果を確認するために使用されます。
+
+    ### クエリパラメータ
+    <Properties>
+      <Property name='workflow_run_id' type='string' key='workflow_run_id'>
+        ワークフロー実行ID（必須）。以下の方法で取得可能：
+        <br />• ワークフロー実行開始時の `workflow_started` イベントの `workflow_run_id` フィールド
+        <br />• ワークフロー実行完了時の `workflow_finished` イベントの `workflow_run_id` フィールド  
+        <br />• ワークフロー実行インターフェースレスポンスの `workflow_run_id` フィールド
+        <br />• ノード実行出力の `sys.workflow_run_id` フィールド
+        <br />• メッセージ詳細インターフェース：`GET /messages/{message_id}` でメッセージの `workflow_run_id` フィールドを取得
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    ノード実行リストを返します。各ノード実行には以下のフィールドが含まれます：
+    - `id` (string) ノード実行ID
+    - `node_id` (string) ノードID
+    - `node_type` (string) ノードタイプ
+    - `title` (string) ノード名
+    - `index` (int) 実行シーケンス番号
+    - `predecessor_node_id` (string) 前置ノードID
+    - `inputs` (object) ノード入力内容、入力内容と同じ
+    - `process_data` (object) ノードプロセスデータ
+    - `outputs` (object) ノード出力内容、入力内容と同じ
+    - `status` (string) 実行状態：`running` / `succeeded` / `failed` / `stopped`
+    - `error` (string) エラー理由（実行失敗の場合）
+    - `elapsed_time` (float) ノード実行時間（秒）
+    - `execution_metadata` (object) 実行メタデータ
+    - `created_at` (timestamp) ノード実行開始時間
+
+    ### エラー
+    - 400, `invalid_param`, パラメータ入力異常
+    - 401, `unauthorized`, 認証失敗
+    - 404, `workflow_run_not_found`, ワークフロー実行が見つかりません
+    - 500, サーバー内部エラー
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/node-executions"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "dfjasklfjdslag",
+          "node_id": "start",
+          "node_type": "start",
+          "title": "Start",
+          "index": 0,
+          "predecessor_node_id": null,
+          "inputs": {},
+          "process_data": {},
+          "outputs": {
+            "query": "こんにちは"
+          },
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 0.324,
+          "execution_metadata": {
+            "total_tokens": 63127864,
+            "total_price": 2.378,
+            "currency": "USD"
+          },
+          "created_at": "2025-08-10T14:55:56.632003"
+        },
+        {
+          "id": "fdljewklfklgejlglsd",
+          "node_id": "llm",
+          "node_type": "llm",
+          "title": "LLM",
+          "index": 1,
+          "predecessor_node_id": "start",
+          "inputs": {
+            "query": "こんにちは"
+          },
+          "process_data": {},
+          "outputs": {
+            "text": "こんにちは！私はあなたのAIアシスタントです。何かお手伝いできることはありますか？"
+          },
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 1.247,
+          "execution_metadata": {
+            "total_tokens": 150,
+            "total_price": 0.003,
+            "currency": "USD"
+          },
+          "created_at": "2025-08-10T14:55:57.856024"
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/meta'
   method='GET'
   title='アプリケーションのメタ情報を取得'

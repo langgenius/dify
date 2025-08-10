@@ -1710,6 +1710,194 @@ ___
 ---
 
 <Heading
+  url='/messages/{message_id}'
+  method='GET'
+  title='Get Message Detail'
+  name='#get-message-detail'
+/>
+<Row>
+  <Col>
+    Get detailed information of a message by message ID, including workflow run ID and other key information.
+
+    ### Path Parameters
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID, can be obtained from chat interface response or event stream
+      </Property>
+    </Properties>
+
+    ### Response
+    Returns detailed information of the message, including the following key fields:
+    - `id` (string) Message ID
+    - `conversation_id` (string) Conversation ID
+    - `workflow_run_id` (string) Workflow run ID (if message comes from workflow execution)
+    - `inputs` (object) Message input content
+    - `query` (string) User query content
+    - `answer` (string) Assistant reply content
+    - `status` (string) Message status
+    - `created_at` (timestamp) Message creation time
+    - Other message-related fields...
+
+    ### Errors
+    - 401, `unauthorized`, Authentication failed
+    - 404, `message_not_found`, Message not found
+    - 500, Internal server error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages/{message_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/messages/{message_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/messages/{message_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c",
+      "conversation_id": "49045336-89bc-457b-b54d-a1e30eaa4d73",
+      "workflow_run_id": "3c4655be-6e43-453e-8cbd-0ae23d5738b3",
+      "inputs": {
+        "query": "Hello"
+      },
+      "query": "Hello",
+      "answer": "Hello! I'm your AI assistant. How can I help you today?",
+      "status": "normal",
+      "created_at": "2025-08-10T14:55:56.632003",
+      "updated_at": "2025-08-10T14:55:57.856024"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/node-executions'
+  method='GET'
+  title='Get Node Execution List'
+  name='#node-executions'
+/>
+<Row>
+  <Col>
+    Get the node execution list based on workflow run ID, used to view the execution status and results of each node in the workflow.
+
+    ### Query Parameters
+    <Properties>
+      <Property name='workflow_run_id' type='string' key='workflow_run_id'>
+        Workflow run ID (required). Can be obtained through the following methods:
+        <br />• `workflow_run_id` field in the `workflow_started` event when workflow execution starts
+        <br />• `workflow_run_id` field in the `workflow_finished` event when workflow execution completes  
+        <br />• `workflow_run_id` field in the workflow run interface response
+        <br />• `sys.workflow_run_id` field in node execution output
+        <br />• Through message detail interface: `GET /messages/{message_id}` to get the message's `workflow_run_id` field
+      </Property>
+    </Properties>
+
+    ### Response
+    Returns a list of node executions. Each node execution includes the following fields:
+    - `id` (string) Node execution ID
+    - `node_id` (string) Node ID
+    - `node_type` (string) Node type
+    - `title` (string) Node name
+    - `index` (int) Execution sequence number
+    - `predecessor_node_id` (string) Predecessor node ID
+    - `inputs` (object) Node input content, same as input content
+    - `process_data` (object) Node process data
+    - `outputs` (object) Node output content, same as input content
+    - `status` (string) Execution status: `running` / `succeeded` / `failed` / `stopped`
+    - `error` (string) Error reason (if execution failed)
+    - `elapsed_time` (float) Node execution time (seconds)
+    - `execution_metadata` (object) Execution metadata
+    - `created_at` (timestamp) Node execution start time
+
+    ### Errors
+    - 400, `invalid_param`, Invalid parameter input
+    - 401, `unauthorized`, Authentication failed
+    - 404, `workflow_run_not_found`, Workflow run not found
+    - 500, Internal server error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/node-executions"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/node-executions?workflow_run_id=3c4655be-6e43-453e-8cbd-0ae23d5738b3' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "dfjasklfjdslag",
+          "node_id": "start",
+          "node_type": "start",
+          "title": "Start",
+          "index": 0,
+          "predecessor_node_id": null,
+          "inputs": {},
+          "process_data": {},
+          "outputs": {
+            "query": "Hello"
+          },
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 0.324,
+          "execution_metadata": {
+            "total_tokens": 63127864,
+            "total_price": 2.378,
+            "currency": "USD"
+          },
+          "created_at": "2025-08-10T14:55:56.632003"
+        },
+        {
+          "id": "fdljewklfklgejlglsd",
+          "node_id": "llm",
+          "node_type": "llm",
+          "title": "LLM",
+          "index": 1,
+          "predecessor_node_id": "start",
+          "inputs": {
+            "query": "Hello"
+          },
+          "process_data": {},
+          "outputs": {
+            "text": "Hello! I'm your AI assistant. How can I help you today?"
+          },
+          "status": "succeeded",
+          "error": null,
+          "elapsed_time": 1.247,
+          "execution_metadata": {
+            "total_tokens": 150,
+            "total_price": 0.003,
+            "currency": "USD"
+          },
+          "created_at": "2025-08-10T14:55:57.856024"
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/apps/annotations/{annotation_id}'
   method='PUT'
   title='Update Annotation'
