@@ -256,7 +256,6 @@ const translation = {
     searchTemporarilyUnavailable: '検索が一時的に利用できません',
     servicesUnavailableMessage: '一部の検索サービスで問題が発生している可能性があります。しばらくしてからもう一度お試しください。',
     someServicesUnavailable: '一部の検索サービスが利用できません',
-    onlyLabel: 'のみ',
     resultCount: '{{count}} 件の結果',
     resultCount_other: '{{count}} 件の結果',
     inScope: '{{scope}}s 内',

@@ -257,7 +257,6 @@ const translation = {
     searchTemporarilyUnavailable: 'Search temporarily unavailable',
     servicesUnavailableMessage: 'Some search services may be experiencing issues. Try again in a moment.',
     someServicesUnavailable: 'Some search services unavailable',
-    onlyLabel: 'only',
     resultCount: '{{count}} result',
     resultCount_other: '{{count}} results',
     inScope: 'in {{scope}}s',

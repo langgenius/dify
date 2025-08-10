@@ -256,7 +256,6 @@ const translation = {
     searchTemporarilyUnavailable: '搜索暂时不可用',
     servicesUnavailableMessage: '某些搜索服务可能遇到问题，请稍后再试。',
     someServicesUnavailable: '某些搜索服务不可用',
-    onlyLabel: '仅',
     resultCount: '{{count}} 个结果',
     resultCount_other: '{{count}} 个结果',
     inScope: '在 {{scope}}s 中',

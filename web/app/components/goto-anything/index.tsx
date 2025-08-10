@@ -262,7 +262,6 @@ const GotoAnything: FC<Props> = ({
                 {searchMode !== 'general' && (
                   <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'>
                     <span>{searchMode.replace('@', '').toUpperCase()}</span>
-                    <span className='opacity-60'>{t('app.gotoAnything.onlyLabel')}</span>
                   </div>
                 )}
               </div>
