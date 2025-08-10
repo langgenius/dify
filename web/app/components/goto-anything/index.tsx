@@ -49,7 +49,8 @@ const GotoAnything: FC<Props> = ({
 
   // Handle keyboard shortcuts
   const handleToggleModal = useCallback((e: KeyboardEvent) => {
-    if (isEventTargetInputArea(e.target as HTMLElement))
+    // Allow closing when modal is open, even if focus is in the search input
+    if (!show && isEventTargetInputArea(e.target as HTMLElement))
       return
     e.preventDefault()
     setShow((prev) => {
@@ -59,7 +60,7 @@ const GotoAnything: FC<Props> = ({
       }
       return !prev
     })
-  }, [])
+  }, [show])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.k`, handleToggleModal, {
     exactMatch: true,
