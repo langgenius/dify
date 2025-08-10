@@ -62,7 +62,7 @@ const GotoAnything: FC<Props> = ({
     })
   }, [])
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.g`, handleToggleModal, {
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.k`, handleToggleModal, {
     exactMatch: true,
     useCapture: true,
   })
@@ -218,7 +218,7 @@ const GotoAnything: FC<Props> = ({
                   {isMac() ? '⌘' : 'Ctrl'}
                 </span>
                 <span className='system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
-                 G
+                  K
                 </span>
               </div>
             </div>
