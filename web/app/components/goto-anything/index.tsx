@@ -165,7 +165,15 @@ const GotoAnything: FC<Props> = ({
         <div>
           <div className='text-sm font-medium'>
             {isCommandSearch
-              ? t(`app.gotoAnything.emptyState.no${commandType.charAt(0).toUpperCase() + commandType.slice(1)}sFound`)
+              ? (() => {
+                const keyMap: Record<string, string> = {
+                  app: 'app.gotoAnything.emptyState.noAppsFound',
+                  plugin: 'app.gotoAnything.emptyState.noPluginsFound',
+                  knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
+                  node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
+                }
+                return t(keyMap[commandType] || 'app.gotoAnything.noResults')
+              })()
               : t('app.gotoAnything.noResults')
             }
           </div>
