@@ -49,6 +49,6 @@ export type ActionItem = {
   search: (
     query: string,
     searchTerm: string,
-    locale: string,
+    locale?: string,
   ) => (Promise<SearchResult[]> | SearchResult[])
 }

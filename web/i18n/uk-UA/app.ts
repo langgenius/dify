@@ -248,6 +248,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Введіть 0 для необмеженого',
   maxActiveRequests: 'Максимальна кількість одночасних запитів',
   maxActiveRequestsTip: 'Максимальна кількість одночасних активних запитів на додаток (0 для необмеженої кількості)',
+  gotoAnything: {
+    actions: {
+      searchApplications: 'Пошук додатків',
+      searchKnowledgeBases: 'Пошук по базах знань',
+      searchWorkflowNodes: 'Вузли документообігу пошуку',
+      searchApplicationsDesc: 'Шукайте та переходьте до своїх програм',
+      searchPluginsDesc: 'Пошук і навігація до ваших плагінів',
+      searchWorkflowNodesHelp: 'Ця функція працює лише під час перегляду робочого процесу. Спочатку перейдіть до робочого процесу.',
+      searchPlugins: 'Пошукові плагіни',
+      searchKnowledgeBasesDesc: 'Шукайте та переходьте до своїх баз знань',
+      searchWorkflowNodesDesc: 'Знаходьте вузли в поточному робочому процесі та переходьте до них за іменем або типом',
+    },
+    emptyState: {
+      noPluginsFound: 'Плагінів не знайдено',
+      noKnowledgeBasesFound: 'Баз знань не знайдено',
+      noAppsFound: 'Не знайдено додатків',
+      noWorkflowNodesFound: 'Вузли бізнес-процесу не знайдено',
+    },
+    groups: {
+      knowledgeBases: 'Бази знань',
+      plugins: 'Плагіни',
+      apps: 'Програми',
+      workflowNodes: 'Вузли документообігу',
+    },
+    searching: 'Пошук...',
+    searchTitle: 'Шукайте що завгодно',
+    searchFailed: 'Пошук не вдався',
+    clearToSearchAll: 'Clear @ для пошуку всіх',
+    noResults: 'Результатів не знайдено',
+    searchPlaceholder: 'Виконайте пошук або введіть @ для команд...',
+    searchTemporarilyUnavailable: 'Пошук тимчасово недоступний',
+    useAtForSpecific: 'Використовуйте @ для конкретних типів',
+    someServicesUnavailable: 'Деякі пошукові сервіси недоступні',
+    servicesUnavailableMessage: 'У деяких пошукових службах можуть виникати проблеми. Повторіть спробу за мить.',
+  },
 }
 
 export default translation
