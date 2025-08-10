@@ -161,7 +161,7 @@ class PluginToolManager(BasePluginClient):
                         del files[chunk_id]
                         # Skip yielding this message
                         raise ValueError(
-                            f"File is too large which reached the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes")
+                            f"File is too large exceeding the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes")
 
                     # Append the blob data to the buffer
                     files[chunk_id].data[
