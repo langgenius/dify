@@ -842,6 +842,7 @@ class ProviderConfiguration(BaseModel):
                 if m.model_type != model_type:
                     continue
 
+                status = ModelStatus.ACTIVE
                 if m.model_type in model_setting_map and m.model in model_setting_map[m.model_type]:
                     model_setting = model_setting_map[m.model_type][m.model]
                     if model_setting.enabled is False:
