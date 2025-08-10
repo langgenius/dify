@@ -1,11 +1,12 @@
-import hashlib
 import json
 import logging
 import uuid
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional
 
 import pymongo
 from pydantic import BaseModel, model_validator
+from pymongo.collection import Collection
 from pymongo.errors import OperationFailure
 
 from configs import dify_config
@@ -39,6 +40,10 @@ class MongoVectorConfig(BaseModel):
 
 
 class MongoVector(BaseVector):
+    client: pymongo.MongoClient
+    db: pymongo.database.Database
+    collection: Collection
+
     def __init__(self, collection_name: str, config: MongoVectorConfig):
         super().__init__(collection_name)
         self.config = config
@@ -53,12 +58,12 @@ class MongoVector(BaseVector):
     def _create_mongo_client(self) -> pymongo.MongoClient:
         """Creates a MongoDB client from the provided connection URI."""
         try:
-            client = pymongo.MongoClient(self.config.mongo_uri)
+            client: pymongo.MongoClient = pymongo.MongoClient(self.config.mongo_uri)
             # The ismaster command is cheap and does not require auth.
-            client.admin.command('ismaster')
+            client.admin.command("ismaster")
             return client
-        except Exception as e:
-            logging.error(f"Failed to connect to MongoDB: {e}")
+        except Exception:
+            logging.exception("Failed to connect to MongoDB.")
             raise
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -125,8 +130,7 @@ class MongoVector(BaseVector):
             raise ValueError("top_k must be a positive integer")
 
         document_ids_filter = kwargs.get("document_ids_filter")
-
-        vector_search_stage = {
+        vector_search_stage: dict[str, Any] = {
             "$vectorSearch": {
                 "index": self.index_name,
                 "path": EMBEDDING_FIELD,
@@ -139,12 +143,10 @@ class MongoVector(BaseVector):
         # Add filter if document_ids_filter is provided
         if document_ids_filter:
             vector_search_stage["$vectorSearch"]["filter"] = {
-                f"{METADATA_FIELD}.document_id": {
-                    "$in": document_ids_filter
-                }
+                f"{METADATA_FIELD}.document_id": {"$in": document_ids_filter}
             }
 
-        pipeline = [
+        pipeline: list[Mapping[str, Any]] = [
             vector_search_stage,
             {
                 "$project": {
@@ -155,7 +157,6 @@ class MongoVector(BaseVector):
                 }
             },
         ]
-
         results = self.collection.aggregate(pipeline)
         docs = []
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -174,37 +175,22 @@ class MongoVector(BaseVector):
             raise ValueError("top_k must be a positive integer")
 
         document_ids_filter = kwargs.get("document_ids_filter")
+        search_clause: dict[str, Any] = {"text": {"query": query, "path": {"wildcard": "*"}}}
 
-        search_clause = {
-            "text": {
-                "query": query,
-                "path": {"wildcard": "*"}
-            }
-        }
-
+        search_operator: dict[str, Any]
         # If a filter is provided, wrap the search clause in a compound operator
         if document_ids_filter:
             search_operator = {
                 "compound": {
                     "must": [search_clause],
-                    "filter": [{
-                        "in": {
-                            "path": f"{METADATA_FIELD}.document_id",
-                            "value": document_ids_filter
-                        }
-                    }]
+                    "filter": [{"in": {"path": f"{METADATA_FIELD}.document_id", "value": document_ids_filter}}],
                 }
             }
         else:
             search_operator = search_clause
 
-        pipeline = [
-            {
-                "$search": {
-                    "index": self.index_name,
-                    **search_operator
-                }
-            },
+        pipeline: Sequence[Mapping[str, Any]] = [
+            {"$search": {"index": self.index_name, **search_operator}},
             {"$limit": top_k},
             {
                 "$project": {
@@ -226,7 +212,7 @@ class MongoVector(BaseVector):
     def delete(self) -> None:
         """Drops the entire collection from the database."""
         self.collection.drop()
-        logging.info(f"Dropped collection: {self.collection.name}")
+        logging.info("Dropped collection: %s", self.collection.name)
         # Atlas Search indexes are dropped automatically with the collection.
 
     def _create_collection(self, dimension: int):
@@ -236,21 +222,26 @@ class MongoVector(BaseVector):
         """
         cache_key = f"vector_indexing_{self._collection_name}"
         lock_name = f"{cache_key}_lock"
-        with redis_client.lock(lock_name, timeout=180): # Increased timeout for index creation
+        with redis_client.lock(lock_name, timeout=180):  # Increased timeout for index creation
             if redis_client.get(cache_key):
                 return
 
-            existing_indexes = {idx["name"] for idx in self.collection.list_search_indexes()}
+            try:
+                existing_indexes = {idx["name"] for idx in self.collection.list_search_indexes()}
+            except OperationFailure:
+                # This can happen if the collection doesn't exist yet, which is fine.
+                existing_indexes = set()
+
             if self.index_name in existing_indexes:
                 redis_client.set(cache_key, 1, ex=3600)
                 return
 
             # Define a single Atlas Search index for both vector and text search
-            index_model = {
+            index_model: dict[str, Any] = {
                 "name": self.index_name,
                 "definition": {
                     "mappings": {
-                        "dynamic": True, # Allow dynamic indexing for flexibility
+                        "dynamic": True,  # Allow dynamic indexing for flexibility
                         "fields": {
                             EMBEDDING_FIELD: {
                                 "type": "vector",
@@ -269,9 +260,9 @@ class MongoVector(BaseVector):
             except OperationFailure as e:
                 # Handle cases where index creation is already in progress
                 if "already exists" in str(e).lower():
-                     logging.warning("Index creation command failed because index '%s' already exists.", self.index_name)
+                    logging.warning("Index creation command failed because index '%s' already exists.", self.index_name)
                 else:
-                    logging.error("Failed to create Atlas Search index: %s", e)
+                    logging.exception("Failed to create Atlas Search index.")
                     raise e
 
             redis_client.set(cache_key, 1, ex=3600)
@@ -287,10 +278,18 @@ class MongoVectorFactory(AbstractVectorFactory):
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.MONGODB, collection_name))
 
+        mongo_uri: Optional[str] = dify_config.MONGO_URI
+        mongo_database: Optional[str] = dify_config.MONGO_DATABASE
+
+        if not mongo_uri:
+            raise ValueError("MONGO_URI environment variable is not set.")
+        if not mongo_database:
+            raise ValueError("MONGO_DATABASE environment variable is not set.")
+
         return MongoVector(
             collection_name=collection_name,
             config=MongoVectorConfig(
-                mongo_uri=dify_config.MONGO_URI,
-                database=dify_config.MONGO_DATABASE,
+                mongo_uri=mongo_uri,
+                database=mongo_database,
             ),
         )

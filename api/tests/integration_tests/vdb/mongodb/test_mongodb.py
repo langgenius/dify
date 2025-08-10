@@ -11,6 +11,7 @@ class MongoVectorTest(AbstractVectorTest):
     """
     Test class for the MongoVector vector store implementation.
     """
+
     def __init__(self):
         super().__init__()
         # It's a good practice to use environment variables for configuration,
@@ -30,7 +31,7 @@ class MongoVectorTest(AbstractVectorTest):
 def test_mongodb(setup_mock_redis):
     """
     This function initializes and runs the test suite for MongoVector.
-    
+
     The `setup_mock_redis` fixture is used to mock Redis interactions,
     such as the lock used during index creation, allowing the test to run
     without a live Redis instance.
