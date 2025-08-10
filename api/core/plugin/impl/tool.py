@@ -167,9 +167,7 @@ class PluginToolManager(BasePluginClient):
                         )
 
                     # Append the blob data to the buffer
-                    files[chunk_id].data[
-                        files[chunk_id].bytes_written: size_with_chunk_written
-                    ] = blob_data
+                    files[chunk_id].data[files[chunk_id].bytes_written : size_with_chunk_written] = blob_data
                     files[chunk_id].bytes_written += file_chunk_size
             else:
                 yield resp
