@@ -28,7 +28,6 @@ const GotoAnything: FC<Props> = ({
   const { isWorkflowPage } = useGotoAnythingContext()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const lastSearchQuery = useRef<string>('')
   const [cmdVal, setCmdVal] = useState<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -79,28 +78,31 @@ const GotoAnything: FC<Props> = ({
     wait: 300,
   })
 
+  const searchMode = useMemo(() => {
+    const query = searchQueryDebouncedValue.toLowerCase()
+    const action = matchAction(query, Actions)
+    return action ? action.key : 'general'
+  }, [searchQueryDebouncedValue, Actions])
+
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
-      queryKey: ['goto-anything', 'search-result', searchQueryDebouncedValue],
+      queryKey: [
+        'goto-anything',
+        'search-result',
+        searchQueryDebouncedValue,
+        searchMode,
+        isWorkflowPage,
+        defaultLocale,
+        Object.keys(Actions).sort().join(','),
+      ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
-
-        // Handle @ commands using Actions
         const action = matchAction(query, Actions)
-
-        return await searchAnything(
-          defaultLocale,
-          query,
-          action,
-        )
-      },
-      placeholderData: (previousData) => {
-        if (searchQueryDebouncedValue && !!lastSearchQuery.current)
-          return previousData
-
-        return []
+        return await searchAnything(defaultLocale, query, action)
       },
       enabled: !!searchQueryDebouncedValue,
+      staleTime: 30000,
+      gcTime: 300000,
     },
   )
 
@@ -136,18 +138,44 @@ const GotoAnything: FC<Props> = ({
     [searchResults])
 
   const emptyResult = useMemo(() => {
-    if (searchResults.length || !searchQueryDebouncedValue.trim())
+    if (searchResults.length || !searchQueryDebouncedValue.trim() || isLoading)
       return null
 
-    return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
-      <div>
-        <div className='text-sm font-medium'>No results found</div>
-        <div className='mt-1 text-xs text-text-quaternary'>
-          Try {Object.values(Actions).map(action => action.shortcut).join(', ')} for specific searches
+    const isCommandSearch = searchMode !== 'general'
+    const commandType = isCommandSearch ? searchMode.replace('@', '') : ''
+
+    if (isError) {
+      return (
+        <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+          <div>
+            <div className='text-sm font-medium text-red-500'>Search temporarily unavailable</div>
+            <div className='mt-1 text-xs text-text-quaternary'>
+              Some search services may be experiencing issues. Try again in a moment.
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+        <div>
+          <div className='text-sm font-medium'>
+            {isCommandSearch
+              ? `No ${commandType}s found`
+              : 'No results found'
+            }
+          </div>
+          <div className='mt-1 text-xs text-text-quaternary'>
+            {isCommandSearch
+              ? `Try a different search term or remove the ${searchMode} filter`
+              : `Try ${Object.values(Actions).map(action => action.shortcut).join(', ')} for specific searches`
+            }
+          </div>
         </div>
       </div>
-    </div>)
-  }, [searchResults, searchQueryDebouncedValue, Actions])
+    )
+  }, [searchResults, searchQueryDebouncedValue, Actions, searchMode, isLoading, isError])
 
   const defaultUI = useMemo(() => {
     if (searchQueryDebouncedValue.trim())
@@ -176,7 +204,6 @@ const GotoAnything: FC<Props> = ({
     }
     return () => {
       setCmdVal('')
-      lastSearchQuery.current = ''
     }
   }, [show])
 
@@ -200,19 +227,26 @@ const GotoAnything: FC<Props> = ({
           >
             <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
               <RiSearchLine className='h-4 w-4 text-text-quaternary' />
-              <Input
-                ref={inputRef}
-                value={searchQuery}
-                placeholder='Search or type @ for commands...'
-                onChange={(e) => {
-                  setCmdVal('')
-                  lastSearchQuery.current = searchQuery
-                  setSearchQuery(e.target.value)
-                }}
-                className='flex-1 !border-0 !bg-transparent !shadow-none'
-                wrapperClassName='flex-1 !border-0 !bg-transparent'
-                autoFocus
-              />
+              <div className='flex flex-1 items-center gap-2'>
+                <Input
+                  ref={inputRef}
+                  value={searchQuery}
+                  placeholder='Search or type @ for commands...'
+                  onChange={(e) => {
+                    setCmdVal('')
+                    setSearchQuery(e.target.value)
+                  }}
+                  className='flex-1 !border-0 !bg-transparent !shadow-none'
+                  wrapperClassName='flex-1 !border-0 !bg-transparent'
+                  autoFocus
+                />
+                {searchMode !== 'general' && (
+                  <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'>
+                    <span>{searchMode.replace('@', '').toUpperCase()}</span>
+                    <span className='opacity-60'>only</span>
+                  </div>
+                )}
+              </div>
               <div className='text-xs text-text-quaternary'>
                 <span className='system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
                   {isMac() ? '⌘' : 'Ctrl'}
@@ -277,11 +311,29 @@ const GotoAnything: FC<Props> = ({
               )}
             </Command.List>
 
-            {!!searchResults.length && (
+            {(!!searchResults.length || isError) && (
               <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
                 <div className='flex items-center justify-between'>
-                  <span>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
-                  <span></span>
+                  <span>
+                    {isError ? (
+                      <span className='text-red-500'>Some search services unavailable</span>
+                    ) : (
+                      <>
+                        {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                        {searchMode !== 'general' && (
+                          <span className='ml-2 opacity-60'>
+                            in {searchMode.replace('@', '')}s
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </span>
+                  <span className='opacity-60'>
+                    {searchMode !== 'general'
+                      ? 'Clear @ to search all'
+                      : 'Use @ for specific types'
+                    }
+                  </span>
                 </div>
               </div>
             )}

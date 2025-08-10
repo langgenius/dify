@@ -24,7 +24,37 @@ export const searchAnything = async (
   if (query.startsWith('@'))
     return []
 
-  return (await Promise.all(Object.values(Actions).map(actionItem => actionItem.search(query, query, locale)))).flat()
+  // Use Promise.allSettled to handle partial failures gracefully
+  const searchPromises = Object.values(Actions).map(async (action) => {
+    try {
+      const results = await action.search(query, query, locale)
+      return { success: true, data: results, actionType: action.key }
+    }
+ catch (error) {
+      console.warn(`Search failed for ${action.key}:`, error)
+      return { success: false, data: [], actionType: action.key, error }
+    }
+  })
+
+  const settledResults = await Promise.allSettled(searchPromises)
+
+  const allResults: SearchResult[] = []
+  const failedActions: string[] = []
+
+  settledResults.forEach((result, index) => {
+    if (result.status === 'fulfilled' && result.value.success) {
+      allResults.push(...result.value.data)
+    }
+ else {
+      const actionKey = Object.values(Actions)[index]?.key || 'unknown'
+      failedActions.push(actionKey)
+    }
+  })
+
+  if (failedActions.length > 0)
+    console.warn(`Some search actions failed: ${failedActions.join(', ')}`)
+
+  return allResults
 }
 
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
