@@ -35,7 +35,7 @@ export const knowledgeAction: ActionItem = {
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
   // action,
-  search: async (_, searchTerm = '') => {
+  search: async (_, searchTerm = '', locale) => {
     const response = await fetchDatasets({
       url: '/datasets',
       params: {

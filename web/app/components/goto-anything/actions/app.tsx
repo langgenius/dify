@@ -38,7 +38,7 @@ export const appAction: ActionItem = {
   title: 'Search Applications',
   description: 'Search and navigate to your applications',
   // action,
-  search: async (_, searchTerm = '') => {
+  search: async (_, searchTerm = '', locale) => {
     const response = (await fetchAppList({
       url: 'apps',
       params: {

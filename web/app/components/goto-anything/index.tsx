@@ -13,6 +13,7 @@ import { Actions as AllActions, type SearchResult, matchAction, searchAnything }
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 import { useQuery } from '@tanstack/react-query'
 import { useGetLanguage } from '@/context/i18n'
+import { useTranslation } from 'react-i18next'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import type { Plugin } from '../plugins/types'
 import { Command } from 'cmdk'
@@ -26,6 +27,7 @@ const GotoAnything: FC<Props> = ({
   const router = useRouter()
   const defaultLocale = useGetLanguage()
   const { isWorkflowPage } = useGotoAnythingContext()
+  const { t } = useTranslation()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('')
@@ -149,9 +151,9 @@ const GotoAnything: FC<Props> = ({
       return (
         <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
           <div>
-            <div className='text-sm font-medium text-red-500'>Search temporarily unavailable</div>
+            <div className='text-sm font-medium text-red-500'>{t('app.gotoAnything.searchTemporarilyUnavailable')}</div>
             <div className='mt-1 text-xs text-text-quaternary'>
-              Some search services may be experiencing issues. Try again in a moment.
+              {t('app.gotoAnything.servicesUnavailableMessage')}
             </div>
           </div>
         </div>
@@ -163,14 +165,14 @@ const GotoAnything: FC<Props> = ({
         <div>
           <div className='text-sm font-medium'>
             {isCommandSearch
-              ? `No ${commandType}s found`
-              : 'No results found'
+              ? t(`app.gotoAnything.emptyState.no${commandType.charAt(0).toUpperCase() + commandType.slice(1)}sFound`)
+              : t('app.gotoAnything.noResults')
             }
           </div>
           <div className='mt-1 text-xs text-text-quaternary'>
             {isCommandSearch
-              ? `Try a different search term or remove the ${searchMode} filter`
-              : `Try ${Object.values(Actions).map(action => action.shortcut).join(', ')} for specific searches`
+              ? t('app.gotoAnything.emptyState.tryDifferentTerm', { mode: searchMode })
+              : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })
             }
           </div>
         </div>
@@ -184,12 +186,20 @@ const GotoAnything: FC<Props> = ({
 
     return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
       <div>
-        <div className='text-sm font-medium'>Search for anything</div>
+        <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
         <div className='mt-3 space-y-2 text-xs text-text-quaternary'>
           {Object.values(Actions).map(action => (
             <div key={action.key} className='flex items-center gap-2'>
               <span className='inline-flex items-center rounded bg-gray-200 px-2 py-1 font-mono text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200'>{action.shortcut}</span>
-              <span>{action.description}</span>
+              <span>{(() => {
+                const keyMap: Record<string, string> = {
+                  '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
+                  '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
+                  '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
+                  '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
+                }
+                return t(keyMap[action.key])
+              })()}</span>
             </div>
           ))}
         </div>
@@ -232,7 +242,7 @@ const GotoAnything: FC<Props> = ({
                 <Input
                   ref={inputRef}
                   value={searchQuery}
-                  placeholder='Search or type @ for commands...'
+                  placeholder={t('app.gotoAnything.searchPlaceholder')}
                   onChange={(e) => {
                     setCmdVal('')
                     setSearchQuery(e.target.value)
@@ -244,7 +254,7 @@ const GotoAnything: FC<Props> = ({
                 {searchMode !== 'general' && (
                   <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'>
                     <span>{searchMode.replace('@', '').toUpperCase()}</span>
-                    <span className='opacity-60'>only</span>
+                    <span className='opacity-60'>{t('app.gotoAnything.onlyLabel')}</span>
                   </div>
                 )}
               </div>
@@ -263,14 +273,14 @@ const GotoAnything: FC<Props> = ({
                 <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-                    <span className="text-sm">Searching...</span>
+                    <span className="text-sm">{t('app.gotoAnything.searching')}</span>
                   </div>
                 </div>
               )}
               {isError && (
                 <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
                   <div>
-                    <div className="text-sm font-medium text-red-500">Search failed</div>
+                    <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchFailed')}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
                       {error.message}
                     </div>
@@ -280,7 +290,15 @@ const GotoAnything: FC<Props> = ({
               {!isLoading && !isError && (
                 <>
                   {Object.entries(groupedResults).map(([type, results], groupIndex) => (
-                    <Command.Group key={groupIndex} heading={`${type}s`} className='p-2 capitalize text-text-secondary'>
+                    <Command.Group key={groupIndex} heading={(() => {
+                      const typeMap: Record<string, string> = {
+                        'app': 'app.gotoAnything.groups.apps',
+                        'plugin': 'app.gotoAnything.groups.plugins',
+                        'knowledge': 'app.gotoAnything.groups.knowledgeBases',
+                        'workflow-node': 'app.gotoAnything.groups.workflowNodes',
+                      }
+                      return t(typeMap[type] || `${type}s`)
+                    })()} className='p-2 capitalize text-text-secondary'>
                       {results.map(result => (
                         <Command.Item
                           key={`${result.type}-${result.id}`}
@@ -317,13 +335,13 @@ const GotoAnything: FC<Props> = ({
                 <div className='flex items-center justify-between'>
                   <span>
                     {isError ? (
-                      <span className='text-red-500'>Some search services unavailable</span>
+                      <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
                     ) : (
                       <>
-                        {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                        {t('app.gotoAnything.resultCount', { count: searchResults.length })}
                         {searchMode !== 'general' && (
                           <span className='ml-2 opacity-60'>
-                            in {searchMode.replace('@', '')}s
+{t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
                           </span>
                         )}
                       </>
@@ -331,8 +349,8 @@ const GotoAnything: FC<Props> = ({
                   </span>
                   <span className='opacity-60'>
                     {searchMode !== 'general'
-                      ? 'Clear @ to search all'
-                      : 'Use @ for specific types'
+                      ? t('app.gotoAnything.clearToSearchAll')
+                      : t('app.gotoAnything.useAtForSpecific')
                     }
                   </span>
                 </div>
