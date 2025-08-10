@@ -214,8 +214,11 @@ const GotoAnything: FC<Props> = ({
                 autoFocus
               />
               <div className='text-xs text-text-quaternary'>
-                <span className='rounded bg-gray-200 px-1.5 py-0.5 font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
-                  {isMac() ? '⌘G' : 'Ctrl+G'}
+                <span className='system-kbd rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
+                  {isMac() ? '⌘' : 'Ctrl'}
+                </span>
+                <span className='system-kbd ml-1 rounded bg-gray-200 px-1 py-[2px] font-mono text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
+                 G
                 </span>
               </div>
             </div>
