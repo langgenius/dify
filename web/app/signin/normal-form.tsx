@@ -144,11 +144,10 @@ const NormalForm = () => {
           </div>
 
           {showORLine && <div className="relative mt-6">
-            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className='h-px w-full bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
-            </div>
-            <div className="relative flex justify-center">
-              <span className="system-xs-medium-uppercase px-2 text-text-tertiary">{t('login.or')}</span>
+            <div className="flex items-center">
+              <div className="h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
+              <span className="system-xs-medium-uppercase px-3 text-text-tertiary">{t('login.or')}</span>
+              <div className="h-px flex-1 bg-gradient-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
             </div>
           </div>}
           {
