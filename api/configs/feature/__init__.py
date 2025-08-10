@@ -655,6 +655,11 @@ class ToolConfig(BaseSettings):
         default=3600,
     )
 
+    TOOL_FILE_MAX_SIZE: PositiveInt = Field(
+        description="Maximum size in bytes for tool generated files",
+        default=30 * 1024 * 1024,
+    )
+
 
 class MailConfig(BaseSettings):
     """

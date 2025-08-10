@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from configs import dify_config
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
@@ -149,8 +150,8 @@ class PluginToolManager(BasePluginClient):
                         meta=resp.meta,
                     )
                 else:
-                    # Check if file is too large (30MB limit)
-                    if files[chunk_id].bytes_written + len(blob_data) > 30 * 1024 * 1024:
+                    # Check if file is too large
+                    if files[chunk_id].bytes_written + len(blob_data) > dify_config.TOOL_FILE_MAX_SIZE:
                         # Delete the file if it's too large
                         del files[chunk_id]
                         # Skip yielding this message
