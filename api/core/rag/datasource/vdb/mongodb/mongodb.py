@@ -278,8 +278,8 @@ class MongoVectorFactory(AbstractVectorFactory):
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.MONGODB, collection_name))
 
-        mongo_uri: Optional[str] = dify_config.MONGO_URI
-        mongo_database: Optional[str] = dify_config.MONGO_DATABASE
+        mongo_uri: Optional[str] = dify_config.get("MONGO_URI", ""),
+        mongo_database: Optional[str] = dify_config.get("MONGO_DATABASE", ""),
 
         if not mongo_uri:
             raise ValueError("MONGO_URI environment variable is not set.")
