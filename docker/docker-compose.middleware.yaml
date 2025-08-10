@@ -185,7 +185,22 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
-
+  mongodb:
+      image: "mongodb/mongodb-atlas-local:latest"
+      restart: always
+      env_file:
+        - ./middleware.env
+      environment:
+        MONGO_URI: ${MONGO_URI}
+      volumes:
+        - ${MONGO_HOST_VOLUME:-./volumes/mongodb}:/data/db
+      ports:
+        - "27017:27017"
+      healthcheck:
+        test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
