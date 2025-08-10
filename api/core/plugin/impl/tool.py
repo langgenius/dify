@@ -156,7 +156,7 @@ class PluginToolManager(BasePluginClient):
                         # Skip yielding this message
                         raise ValueError("File chunk is too large which reached the limit of 8KB")
 
-                    # Check if file is too large
+                    # Check if file size is too large
                     size_with_new_chunk = files[chunk_id].bytes_written + file_chunk_size
                     if size_with_new_chunk > dify_config.TOOL_FILE_MAX_SIZE:
                         # Delete the file if it's too large
