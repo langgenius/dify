@@ -161,11 +161,12 @@ class PluginToolManager(BasePluginClient):
                         del files[chunk_id]
                         # Skip yielding this message
                         raise ValueError(
-                            f"File is too large exceeding the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes")
+                            f"File is too large exceeding the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes"
+                        )
 
                     # Append the blob data to the buffer
                     files[chunk_id].data[
-                        files[chunk_id].bytes_written: files[chunk_id].bytes_written + len(blob_data)
+                        files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)
                     ] = blob_data
                     files[chunk_id].bytes_written += len(blob_data)
             else:
