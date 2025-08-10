@@ -151,12 +151,14 @@ class PluginToolManager(BasePluginClient):
                     )
                 else:
                     # Check if single chunk is too large (8KB limit)
-                    if len(blob_data) > 8192:
+                    file_chunk_size = len(blob_data)
+                    if file_chunk_size > 8192:
                         # Skip yielding this message
                         raise ValueError("File chunk is too large which reached the limit of 8KB")
 
                     # Check if file is too large
-                    if files[chunk_id].bytes_written + len(blob_data) > dify_config.TOOL_FILE_MAX_SIZE:
+                    size_with_chunk_written = files[chunk_id].bytes_written + file_chunk_size
+                    if size_with_chunk_written > dify_config.TOOL_FILE_MAX_SIZE:
                         # Delete the file if it's too large
                         del files[chunk_id]
                         # Skip yielding this message
@@ -166,9 +168,9 @@ class PluginToolManager(BasePluginClient):
 
                     # Append the blob data to the buffer
                     files[chunk_id].data[
-                        files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)
+                        files[chunk_id].bytes_written: size_with_chunk_written
                     ] = blob_data
-                    files[chunk_id].bytes_written += len(blob_data)
+                    files[chunk_id].bytes_written += file_chunk_size
             else:
                 yield resp
 
