@@ -248,6 +248,41 @@ const translation = {
   maxActiveRequests: 'بیشترین درخواست‌های همزمان',
   maxActiveRequestsPlaceholder: 'برای نامحدود، 0 را وارد کنید',
   maxActiveRequestsTip: 'حداکثر تعداد درخواست‌های فعال همزمان در هر برنامه (0 برای نامحدود)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'افزونه های جستجو',
+      searchWorkflowNodes: 'گره های گردش کار جستجو',
+      searchApplications: 'جستجوی برنامه ها',
+      searchKnowledgeBases: 'جستجو در پایگاه های دانش',
+      searchWorkflowNodesHelp: 'این ویژگی فقط هنگام مشاهده گردش کار کار می کند. ابتدا به گردش کار بروید.',
+      searchApplicationsDesc: 'جستجو و پیمایش به برنامه های خود',
+      searchKnowledgeBasesDesc: 'پایگاه های دانش خود را جستجو کرده و به آن ناوبری کنید',
+      searchPluginsDesc: 'افزونه های خود را جستجو کرده و به آنها پیمایش کنید',
+      searchWorkflowNodesDesc: 'گره ها را در گردش کار فعلی بر اساس نام یا نوع پیدا کنید و به آنها بروید',
+    },
+    emptyState: {
+      noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
+      noAppsFound: 'هیچ برنامه ای یافت نشد',
+      noPluginsFound: 'هیچ افزونه ای یافت نشد',
+      noWorkflowNodesFound: 'هیچ گره گردش کاری یافت نشد',
+    },
+    groups: {
+      plugins: 'پلاگین',
+      apps: 'واژهنامه',
+      knowledgeBases: 'پایگاه های دانش',
+      workflowNodes: 'گره های گردش کار',
+    },
+    searching: 'جستجو...',
+    searchFailed: 'جستجو انجام نشد',
+    useAtForSpecific: 'از @ برای انواع خاص استفاده کنید',
+    clearToSearchAll: 'پاک کردن @ برای جستجوی همه',
+    noResults: 'هیچ نتیجه ای یافت نشد',
+    searchTitle: 'هر چیزی را جستجو کنید',
+    searchPlaceholder: 'جستجو یا تایپ @ برای دستورات...',
+    searchTemporarilyUnavailable: 'جستجو به طور موقت در دسترس نیست',
+    servicesUnavailableMessage: 'برخی از سرویس های جستجو ممکن است با مشکل مواجه شوند. یک لحظه دیگر دوباره امتحان کنید.',
+    someServicesUnavailable: 'برخی از سرویس های جستجو دردسترس نیستند',
+  },
 }
 
 export default translation

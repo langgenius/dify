@@ -248,6 +248,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Vnesite 0 za neomejeno',
   maxActiveRequests: 'Maksimalno število hkratnih zahtevkov',
   maxActiveRequestsTip: 'Največje število hkrati aktivnih zahtevkov na aplikacijo (0 za neomejeno)',
+  gotoAnything: {
+    actions: {
+      searchWorkflowNodes: 'Iskanje vozlišč poteka dela',
+      searchKnowledgeBasesDesc: 'Iskanje in krmarjenje do zbirk znanja',
+      searchWorkflowNodesHelp: 'Ta funkcija deluje le pri ogledu poteka dela. Najprej se pomaknite do poteka dela.',
+      searchApplicationsDesc: 'Iskanje in krmarjenje do aplikacij',
+      searchPlugins: 'Iskalni vtičniki',
+      searchApplications: 'Iskanje aplikacij',
+      searchWorkflowNodesDesc: 'Iskanje vozlišč in skok nanje v trenutnem poteku dela po imenu ali vrsti',
+      searchKnowledgeBases: 'Iskanje po zbirkah znanja',
+      searchPluginsDesc: 'Iskanje in krmarjenje do vtičnikov',
+    },
+    emptyState: {
+      noPluginsFound: 'Vtičnikov ni mogoče najti',
+      noWorkflowNodesFound: 'Vozlišča poteka dela niso bila najdena',
+      noKnowledgeBasesFound: 'Zbirk znanja ni mogoče najti',
+      noAppsFound: 'Ni bilo najdenih aplikacij',
+    },
+    groups: {
+      workflowNodes: 'Vozlišča poteka dela',
+      apps: 'Apps',
+      knowledgeBases: 'Baze znanja',
+      plugins: 'Vtičniki',
+    },
+    searching: 'Iskanje...',
+    searchTitle: 'Poiščite karkoli',
+    searchTemporarilyUnavailable: 'Iskanje začasno ni na voljo',
+    someServicesUnavailable: 'Nekatere iskalne storitve niso na voljo',
+    noResults: 'Ni najdenih rezultatov',
+    clearToSearchAll: 'Počisti @ za iskanje vseh',
+    searchPlaceholder: 'Poiščite ali vnesite @ za ukaze ...',
+    searchFailed: 'Iskanje ni uspelo',
+    useAtForSpecific: 'Uporaba znaka @ za določene vrste',
+    servicesUnavailableMessage: 'Pri nekaterih iskalnih storitvah se morda pojavljajo težave. Poskusite znova čez trenutek.',
+  },
 }
 
 export default translation
