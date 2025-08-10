@@ -241,7 +241,7 @@ const GotoAnything: FC<Props> = ({
                   autoFocus
                 />
                 {searchMode !== 'general' && (
-                  <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'>
+                  <div className='flex items-center gap-1 rounded bg-blue-50 px-2 py-[2px] text-xs font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'>
                     <span>{searchMode.replace('@', '').toUpperCase()}</span>
                     <span className='opacity-60'>only</span>
                   </div>
