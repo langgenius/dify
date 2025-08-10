@@ -1,4 +1,3 @@
-from flask import request
 from flask_restful import Resource, reqparse
 
 from controllers.service_api import api
