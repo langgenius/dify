@@ -149,7 +149,7 @@ const GotoAnything: FC<Props> = ({
 
     if (isError) {
       return (
-        <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+        <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
             <div className='text-sm font-medium text-red-500'>{t('app.gotoAnything.searchTemporarilyUnavailable')}</div>
             <div className='mt-1 text-xs text-text-quaternary'>
@@ -161,7 +161,7 @@ const GotoAnything: FC<Props> = ({
     }
 
     return (
-      <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+      <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
         <div>
           <div className='text-sm font-medium'>
             {isCommandSearch
@@ -184,7 +184,7 @@ const GotoAnything: FC<Props> = ({
     if (searchQueryDebouncedValue.trim())
       return null
 
-    return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+    return (<div className="flex items-center justify-center py-8 text-center text-text-tertiary">
       <div>
         <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
         <div className='mt-3 space-y-2 text-xs text-text-quaternary'>
@@ -270,7 +270,7 @@ const GotoAnything: FC<Props> = ({
 
             <Command.List className='max-h-[275px] min-h-[240px] overflow-y-auto'>
               {isLoading && (
-                <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+                <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
                     <span className="text-sm">{t('app.gotoAnything.searching')}</span>
@@ -278,7 +278,7 @@ const GotoAnything: FC<Props> = ({
                 </div>
               )}
               {isError && (
-                <div className="flex items-center justify-center py-12 text-center text-text-tertiary">
+                <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div>
                     <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchFailed')}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
