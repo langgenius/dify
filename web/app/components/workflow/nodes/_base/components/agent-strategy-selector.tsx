@@ -49,7 +49,6 @@ const NotFoundWarn = (props: {
         </p>
       </div>
     }
-    needsDelay
   >
     <div>
       <RiErrorWarningFill className='size-4 text-text-destructive' />
@@ -144,7 +143,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         category: PluginType.agent,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   const pluginRef = useRef<ListRef>(null)

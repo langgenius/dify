@@ -29,8 +29,9 @@ const translation = {
       delete: 'Удалить',
       enableWarning: 'Архивный файл не может быть включен',
       sync: 'Синхронизировать',
-      resume: 'Продовжити',
+      resume: 'Возобновить',
       pause: 'Пауза',
+      download: 'Скачать файл',
     },
     index: {
       enable: 'Включить',
@@ -365,6 +366,7 @@ const translation = {
     parentChunks_one: 'РОДИТЕЛЬСКИЙ БЛОК',
     childChunk: 'Чайлд-Чанк',
     editedAt: 'Отредактировано в',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     editChildChunk: 'Редактирование дочернего фрагмента',
     parentChunks_other: 'РОДИТЕЛЬСКИЕ БЛОКИ',
     regenerationSuccessTitle: 'Регенерация завершена',

@@ -61,7 +61,7 @@ class BaseApiKeyListResource(Resource):
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         keys = (
             db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
+            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
             .all()
         )
         return {"items": keys}
@@ -76,7 +76,7 @@ class BaseApiKeyListResource(Resource):
 
         current_key_count = (
             db.session.query(ApiToken)
-            .filter(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
+            .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
             .count()
         )
 
@@ -117,7 +117,7 @@ class BaseApiKeyResource(Resource):
 
         key = (
             db.session.query(ApiToken)
-            .filter(
+            .where(
                 getattr(ApiToken, self.resource_id_field) == resource_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
@@ -128,7 +128,7 @@ class BaseApiKeyResource(Resource):
         if key is None:
             flask_restful.abort(404, message="API key not found")
 
-        db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
+        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()
 
         return {"result": "success"}, 204

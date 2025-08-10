@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 import type { AppMode } from '@/types/app'
@@ -41,7 +41,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
-  const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
   const [appMode, setAppMode] = useState<AppMode>('advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
@@ -80,15 +79,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       onSuccess()
       onClose()
-      mutateApps()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e.message || t('app.newApp.appCreateFailed'),
+      })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
@@ -298,7 +299,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
   >
     {icon}
     <div className='system-sm-semibold mb-0.5 mt-2 text-text-secondary'>{title}</div>
-    <div className='system-xs-regular text-text-tertiary'>{description}</div>
+    <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={description}>{description}</div>
   </div>
 }
 

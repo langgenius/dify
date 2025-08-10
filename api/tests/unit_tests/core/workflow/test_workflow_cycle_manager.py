@@ -18,10 +18,10 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -67,28 +67,25 @@ def real_app_generate_entity():
 
 @pytest.fixture
 def real_workflow_system_variables():
-    return {
-        SystemVariableKey.QUERY: "test query",
-        SystemVariableKey.CONVERSATION_ID: "test-conversation-id",
-        SystemVariableKey.USER_ID: "test-user-id",
-        SystemVariableKey.APP_ID: "test-app-id",
-        SystemVariableKey.WORKFLOW_ID: "test-workflow-id",
-        SystemVariableKey.WORKFLOW_EXECUTION_ID: "test-workflow-run-id",
-    }
+    return SystemVariable(
+        query="test query",
+        conversation_id="test-conversation-id",
+        user_id="test-user-id",
+        app_id="test-app-id",
+        workflow_id="test-workflow-id",
+        workflow_execution_id="test-workflow-run-id",
+    )
 
 
 @pytest.fixture
 def mock_node_execution_repository():
     repo = MagicMock(spec=WorkflowNodeExecutionRepository)
-    repo.get_by_node_execution_id.return_value = None
-    repo.get_running_executions.return_value = []
     return repo
 
 
 @pytest.fixture
 def mock_workflow_execution_repository():
     repo = MagicMock(spec=WorkflowExecutionRepository)
-    repo.get.return_value = None
     return repo
 
 
@@ -217,8 +214,8 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
         started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+    # Pre-populate the cache with the workflow execution
+    workflow_cycle_manager._workflow_execution_cache[workflow_execution.id_] = workflow_execution
 
     # Call the method
     result = workflow_cycle_manager.handle_workflow_run_success(
@@ -251,11 +248,10 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
         started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+    # Pre-populate the cache with the workflow execution
+    workflow_cycle_manager._workflow_execution_cache[workflow_execution.id_] = workflow_execution
 
-    # Mock get_running_executions to return an empty list
-    workflow_cycle_manager._workflow_node_execution_repository.get_running_executions.return_value = []
+    # No running node executions in cache (empty cache)
 
     # Call the method
     result = workflow_cycle_manager.handle_workflow_run_failed(
@@ -289,8 +285,8 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
         started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+    # Pre-populate the cache with the workflow execution
+    workflow_cycle_manager._workflow_execution_cache[workflow_execution.id_] = workflow_execution
 
     # Create a mock event
     event = MagicMock(spec=QueueNodeStartedEvent)
@@ -342,8 +338,8 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
         started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock the repository get method to return the real execution
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+    # Pre-populate the cache with the workflow execution
+    workflow_cycle_manager._workflow_execution_cache["test-workflow-run-id"] = workflow_execution
 
     # Call the method
     result = workflow_cycle_manager._get_workflow_execution_or_raise_error("test-workflow-run-id")
@@ -351,11 +347,13 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
     # Verify the result
     assert result == workflow_execution
 
-    # Test error case
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = None
+    # Test error case - clear cache
+    workflow_cycle_manager._workflow_execution_cache.clear()
 
     # Expect an error when execution is not found
-    with pytest.raises(ValueError):
+    from core.app.task_pipeline.exc import WorkflowRunNotFoundError
+
+    with pytest.raises(WorkflowRunNotFoundError):
         workflow_cycle_manager._get_workflow_execution_or_raise_error("non-existent-id")
 
 
@@ -384,8 +382,8 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
         created_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock the repository to return the node execution
-    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
+    # Pre-populate the cache with the node execution
+    workflow_cycle_manager._node_execution_cache["test-node-execution-id"] = node_execution
 
     # Call the method
     result = workflow_cycle_manager.handle_workflow_node_execution_success(
@@ -414,8 +412,8 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
         started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
-    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+    # Pre-populate the cache with the workflow execution
+    workflow_cycle_manager._workflow_execution_cache[workflow_execution.id_] = workflow_execution
 
     # Call the method
     result = workflow_cycle_manager.handle_workflow_run_partial_success(
@@ -462,8 +460,8 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
         created_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
-    # Mock the repository to return the node execution
-    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
+    # Pre-populate the cache with the node execution
+    workflow_cycle_manager._node_execution_cache["test-node-execution-id"] = node_execution
 
     # Call the method
     result = workflow_cycle_manager.handle_workflow_node_execution_failed(

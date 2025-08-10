@@ -17,7 +17,7 @@ def update_tidb_serverless_status_task():
         # check the number of idle tidb serverless
         tidb_serverless_list = (
             db.session.query(TidbAuthBinding)
-            .filter(TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING")
+            .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING")
             .all()
         )
         if len(tidb_serverless_list) == 0:
@@ -29,9 +29,7 @@ def update_tidb_serverless_status_task():
         click.echo(click.style(f"Error: {e}", fg="red"))
 
     end_at = time.perf_counter()
-    click.echo(
-        click.style("Update tidb serverless status task success latency: {}".format(end_at - start_at), fg="green")
-    )
+    click.echo(click.style(f"Update tidb serverless status task success latency: {end_at - start_at}", fg="green"))
 
 
 def update_clusters(tidb_serverless_list: list[TidbAuthBinding]):

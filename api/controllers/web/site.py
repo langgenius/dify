@@ -57,7 +57,7 @@ class AppSiteApi(WebApiResource):
     def get(self, app_model, end_user):
         """Retrieve app site info."""
         # get site
-        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:
             raise Forbidden()

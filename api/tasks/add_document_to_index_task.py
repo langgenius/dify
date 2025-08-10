@@ -22,19 +22,20 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
-    logging.info(click.style("Start add document to index: {}".format(dataset_document_id), fg="green"))
+    logging.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document_id).first()
+    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
     if not dataset_document:
-        logging.info(click.style("Document not found: {}".format(dataset_document_id), fg="red"))
+        logging.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
         db.session.close()
         return
 
     if dataset_document.indexing_status != "completed":
+        db.session.close()
         return
 
-    indexing_cache_key = "document_{}_indexing".format(dataset_document.id)
+    indexing_cache_key = f"document_{dataset_document.id}_indexing"
 
     try:
         dataset = dataset_document.dataset
@@ -43,7 +44,7 @@ def add_document_to_index_task(dataset_document_id: str):
 
         segments = (
             db.session.query(DocumentSegment)
-            .filter(
+            .where(
                 DocumentSegment.document_id == dataset_document.id,
                 DocumentSegment.enabled == False,
                 DocumentSegment.status == "completed",
@@ -86,12 +87,10 @@ def add_document_to_index_task(dataset_document_id: str):
         index_processor.load(dataset, documents)
 
         # delete auto disable log
-        db.session.query(DatasetAutoDisableLog).filter(
-            DatasetAutoDisableLog.document_id == dataset_document.id
-        ).delete()
+        db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == dataset_document.id).delete()
 
         # update segment to enable
-        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == dataset_document.id).update(
+        db.session.query(DocumentSegment).where(DocumentSegment.document_id == dataset_document.id).update(
             {
                 DocumentSegment.enabled: True,
                 DocumentSegment.disabled_at: None,
@@ -103,9 +102,7 @@ def add_document_to_index_task(dataset_document_id: str):
 
         end_at = time.perf_counter()
         logging.info(
-            click.style(
-                "Document added to index: {} latency: {}".format(dataset_document.id, end_at - start_at), fg="green"
-            )
+            click.style(f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green")
         )
     except Exception as e:
         logging.exception("add document to index failed")
@@ -116,3 +113,4 @@ def add_document_to_index_task(dataset_document_id: str):
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()

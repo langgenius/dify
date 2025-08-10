@@ -13,7 +13,7 @@ import { fetchSupportFileTypes } from '@/service/datasets'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 

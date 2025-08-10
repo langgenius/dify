@@ -164,7 +164,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       if (totalPages < currPage + 1)
         setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentsRes])
 
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
@@ -178,7 +177,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       invalidChunkList()
       invalidChildChunkList()
     }, 5000)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const documentsWithProgress = useMemo(() => {
@@ -273,6 +271,13 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+
+  // Clear selection when search changes to avoid confusion
+  useEffect(() => {
+    if (searchValue !== query.keyword)
+      setSelectedIds([])
+  }, [searchValue, query.keyword])
+
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
   }, { wait: 500 })

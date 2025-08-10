@@ -21,21 +21,21 @@ def enable_segment_to_index_task(segment_id: str):
 
     Usage: enable_segment_to_index_task.delay(segment_id)
     """
-    logging.info(click.style("Start enable segment to index: {}".format(segment_id), fg="green"))
+    logging.info(click.style(f"Start enable segment to index: {segment_id}", fg="green"))
     start_at = time.perf_counter()
 
-    segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
+    segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
     if not segment:
-        logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
+        logging.info(click.style(f"Segment not found: {segment_id}", fg="red"))
         db.session.close()
         return
 
     if segment.status != "completed":
-        logging.info(click.style("Segment is not completed, enable is not allowed: {}".format(segment_id), fg="red"))
+        logging.info(click.style(f"Segment is not completed, enable is not allowed: {segment_id}", fg="red"))
         db.session.close()
         return
 
-    indexing_cache_key = "segment_{}_indexing".format(segment.id)
+    indexing_cache_key = f"segment_{segment.id}_indexing"
 
     try:
         document = Document(
@@ -51,17 +51,17 @@ def enable_segment_to_index_task(segment_id: str):
         dataset = segment.dataset
 
         if not dataset:
-            logging.info(click.style("Segment {} has no dataset, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
             return
 
         dataset_document = segment.document
 
         if not dataset_document:
-            logging.info(click.style("Segment {} has no document, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
             return
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            logging.info(click.style("Segment {} document status is invalid, pass.".format(segment.id), fg="cyan"))
+            logging.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
             return
 
         index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
@@ -85,9 +85,7 @@ def enable_segment_to_index_task(segment_id: str):
         index_processor.load(dataset, [document])
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style("Segment enabled to index: {} latency: {}".format(segment.id, end_at - start_at), fg="green")
-        )
+        logging.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
     except Exception as e:
         logging.exception("enable segment to index failed")
         segment.enabled = False

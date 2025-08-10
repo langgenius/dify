@@ -177,7 +177,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           <div className='flex justify-between border-t border-divider-subtle p-4 pt-3'>
             <Button className='w-[72px]' onClick={onClear}>{t('common.operation.clear')}</Button>
             {canNotRun && (
-              <Tooltip popupContent={t('appDebug.otherError.promptNoBeEmpty')} needsDelay>
+              <Tooltip popupContent={t('appDebug.otherError.promptNoBeEmpty')}>
                 <Button
                   variant="primary"
                   disabled={canNotRun}

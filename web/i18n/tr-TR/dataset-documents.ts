@@ -31,6 +31,7 @@ const translation = {
       sync: 'Senkronize et',
       pause: 'Duraklat',
       resume: 'Devam Et',
+      download: 'Dosyayı İndir',
     },
     index: {
       enable: 'Etkinleştir',
@@ -389,6 +390,7 @@ const translation = {
     searchResults_zero: 'SONUÇ',
     chunks_other: 'Parçalar',
     editedAt: 'Şurada düzenlendi:',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     addChildChunk: 'Alt Parça Ekle',
     keywordDuplicate: 'Anahtar kelime zaten var',
     keywordEmpty: 'Anahtar kelime boş olamaz',

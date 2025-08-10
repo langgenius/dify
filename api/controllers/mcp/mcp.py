@@ -30,7 +30,7 @@ class MCPAppApi(Resource):
 
         request_id = args.get("id")
 
-        server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
+        server = db.session.query(AppMCPServer).where(AppMCPServer.server_code == server_code).first()
         if not server:
             return helper.compact_generate_response(
                 create_mcp_error_response(request_id, types.INVALID_REQUEST, "Server Not Found")
@@ -41,7 +41,7 @@ class MCPAppApi(Resource):
                 create_mcp_error_response(request_id, types.INVALID_REQUEST, "Server is not active")
             )
 
-        app = db.session.query(App).filter(App.id == server.app_id).first()
+        app = db.session.query(App).where(App.id == server.app_id).first()
         if not app:
             return helper.compact_generate_response(
                 create_mcp_error_response(request_id, types.INVALID_REQUEST, "App Not Found")

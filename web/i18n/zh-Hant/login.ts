@@ -70,19 +70,18 @@ const translation = {
   activated: '現在登入',
   adminInitPassword: '管理員初始化密碼',
   validate: '驗證',
-  sso: '繼續使用 SSO',
   checkCode: {
     verify: '驗證',
     resend: '發送',
     didNotReceiveCode: '沒有收到驗證碼？',
     emptyCode: '驗證碼是必需的',
     checkYourEmail: '檢查您的電子郵件',
-    tips: '我們將驗證碼發送到 <strong>{{email}}</strong>',
     verificationCodePlaceholder: '輸入 6 位代碼',
     useAnotherMethod: '使用其他方法',
     validTime: '請記住，該代碼的有效期為 5 分鐘',
     verificationCode: '驗證碼',
     invalidCode: '無效代碼',
+    tipsPrefix: '我們發送一個驗證碼到',
   },
   continueWithCode: 'Continue With Code',
   or: '或',
@@ -109,6 +108,7 @@ const translation = {
     noLoginMethod: '未為網絡應用程序配置身份驗證方法',
     noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
     disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
+    login: '登入',
   },
 }
 

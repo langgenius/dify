@@ -103,18 +103,19 @@ const translation = {
     addFailureBranch: 'Добавить ветвь Fail',
     noHistory: 'Без истории',
     loadMore: 'Загрузите больше рабочих процессов',
-    noExist: 'Такой переменной не существует',
     versionHistory: 'История версий',
     exportPNG: 'Экспортировать как PNG',
     exportImage: 'Экспортировать изображение',
     exportJPEG: 'Экспортировать как JPEG',
-    referenceVar: 'Ссылочная переменная',
     exitVersions: 'Выходные версии',
     exportSVG: 'Экспортировать как SVG',
     publishUpdate: 'Опубликовать обновление',
     addBlock: 'Добавить узел',
     needAnswerNode: 'В узел ответа необходимо добавить',
     needEndNode: 'Узел конца должен быть добавлен',
+    tagBound: 'Количество приложений, использующих этот тег',
+    currentView: 'Текущий вид',
+    currentWorkflow: 'Текущий рабочий процесс',
   },
   env: {
     envPanelTitle: 'Переменные среды',
@@ -222,7 +223,6 @@ const translation = {
     'searchTool': 'Поиск инструмента',
     'tools': 'Инструменты',
     'allTool': 'Все',
-    'builtInTool': 'Встроенные',
     'customTool': 'Пользовательские',
     'workflowTool': 'Рабочий процесс',
     'question-understand': 'Понимание вопроса',
@@ -234,6 +234,8 @@ const translation = {
     'agent': 'Агентская стратегия',
     'blocks': 'Узлы',
     'searchBlock': 'Поиск узла',
+    'addAll': 'Добавить всё',
+    'allAdded': 'Все добавлено',
   },
   blocks: {
     'start': 'Начало',
@@ -287,6 +289,18 @@ const translation = {
     zoomTo50: 'Масштаб 50%',
     zoomTo100: 'Масштаб 100%',
     zoomToFit: 'По размеру',
+    alignTop: 'Вверх',
+    alignBottom: 'Вниз',
+    alignRight: 'Вправо',
+    distributeHorizontal: 'Распределить по горизонтали',
+    alignMiddle: 'По центру',
+    vertical: 'Вертикальный',
+    alignCenter: 'Центр',
+    alignLeft: 'Влево',
+    selectionAlignment: 'Выравнивание выделения',
+    horizontal: 'Горизонтальный',
+    alignNodes: 'Выравнивание узлов',
+    distributeVertical: 'Распределить по вертикали',
   },
   panel: {
     userInputField: 'Поле ввода пользователя',
@@ -364,7 +378,10 @@ const translation = {
         retryFailedTimes: 'Повторные попытки {{times}} не увенчались успехом',
         retries: '{{число}} Повторных попыток',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Входное значение',
+        variable: 'Используйте переменную',
+      },
     },
     start: {
       required: 'обязательно',
@@ -491,6 +508,7 @@ const translation = {
           search: 'Поиск метаданных',
         },
         title: 'Фильтрация метаданных',
+        tip: 'Фильтрация метаданных — это процесс использования атрибутов метаданных (таких как теги, категории или права доступа) для уточнения и контроля извлечения соответствующей информации внутри системы.',
       },
     },
     http: {
@@ -551,6 +569,7 @@ const translation = {
       advancedDependencies: 'Расширенные зависимости',
       advancedDependenciesTip: 'Добавьте сюда некоторые предварительно загруженные зависимости, которые занимают больше времени для потребления или не являются встроенными по умолчанию',
       searchDependencies: 'Поиск зависимостей',
+      syncFunctionSignature: 'Синхронизировать сигнатуру функции с кодом',
     },
     templateTransform: {
       inputVars: 'Входные переменные',
@@ -579,7 +598,6 @@ const translation = {
         'not empty': 'не пусто',
         'null': 'null',
         'not null': 'не null',
-        'regex match': 'Совпадение с регулярным выражением',
         'all of': 'все',
         'not in': 'не в',
         'not exists': 'не существует',
@@ -602,7 +620,6 @@ const translation = {
       },
       select: 'Выбирать',
       addSubVariable: 'Подпеременная',
-      condition: 'Условие',
     },
     variableAssigner: {
       title: 'Назначить переменные',
@@ -670,6 +687,9 @@ const translation = {
         json: 'json, сгенерированный инструментом',
       },
       authorize: 'Авторизовать',
+      settings: 'Настройки',
+      insertPlaceholder2: 'вставьте переменную',
+      insertPlaceholder1: 'Наберите или нажмите',
     },
     questionClassifiers: {
       model: 'модель',
@@ -854,6 +874,8 @@ const translation = {
       pluginNotFoundDesc: 'Этот плагин устанавливается с GitHub. Пожалуйста, перейдите в раздел Плагины для переустановки',
       configureModel: 'Сконфигурировать модель',
       maxIterations: 'Максимальное количество итераций',
+      parameterSchema: 'Схема параметров',
+      clickToViewParameterSchema: 'Нажмите, чтобы просмотреть схему параметров',
     },
     loop: {
       ErrorMethod: {
@@ -919,6 +941,7 @@ const translation = {
       deleteSuccess: 'Версия удалена',
       updateFailure: 'Не удалось обновить версию',
       restoreFailure: 'Не удалось восстановить версию',
+      copyIdSuccess: 'ID скопирован в буфер обмена',
     },
     latest: 'Последний',
     restorationTip: 'После восстановления версии текущий черновик будет перезаписан.',
@@ -929,6 +952,7 @@ const translation = {
     currentDraft: 'Текущий проект',
     releaseNotesPlaceholder: 'Опишите, что изменилось',
     defaultName: 'Без названия версия',
+    copyId: 'Копировать ID',
   },
   debug: {
     noData: {
@@ -958,6 +982,15 @@ const translation = {
     },
     lastRunTab: 'Последний запуск',
     settingsTab: 'Настройки',
+    relations: {
+      dependencies: 'Зависимости',
+      dependents: 'Иждивенцев',
+      noDependencies: 'Нет зависимостей',
+      dependentsDescription: 'Узлы, которые полагаются на этот узел',
+      noDependents: 'Отсутствие иждивенцев',
+      dependenciesDescription: 'Узлы, на которые опирается этот узел',
+    },
+    relationsTab: 'Отношения',
   },
 }
 

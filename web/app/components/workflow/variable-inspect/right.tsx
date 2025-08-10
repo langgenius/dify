@@ -14,12 +14,11 @@ import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Loading from '@/app/components/base/loading'
 import type { currentVarType } from './panel'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type Props = {
   currentNodeVar?: currentVarType
@@ -86,15 +85,14 @@ const Right = ({
         <div className='flex w-0 grow items-center gap-1'>
           {currentNodeVar && (
             <>
-              {currentNodeVar.nodeType === VarInInspectType.environment && (
-                <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
-              )}
-              {currentNodeVar.nodeType === VarInInspectType.conversation && (
-                <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
-              )}
-              {currentNodeVar.nodeType === VarInInspectType.system && (
-                <Variable02 className='h-4 w-4 shrink-0 text-text-accent' />
-              )}
+              {
+                [VarInInspectType.environment, VarInInspectType.conversation, VarInInspectType.system].includes(currentNodeVar.nodeType as VarInInspectType) && (
+                  <VariableIconWithColor
+                    variableCategory={currentNodeVar.nodeType as VarInInspectType}
+                    className='size-4'
+                  />
+                )
+              }
               {currentNodeVar.nodeType !== VarInInspectType.environment && currentNodeVar.nodeType !== VarInInspectType.conversation && currentNodeVar.nodeType !== VarInInspectType.system && (
                 <>
                   <BlockIcon
