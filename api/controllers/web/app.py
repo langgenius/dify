@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse
+from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields
 from controllers.web import api
@@ -75,14 +76,14 @@ class AppWebAuthPermission(Resource):
         try:
             auth_header = request.headers.get("Authorization")
             if auth_header is None:
-                raise
+                raise Unauthorized("Authorization header is missing.")
             if " " not in auth_header:
-                raise
+                raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
             auth_scheme, tk = auth_header.split(None, 1)
             auth_scheme = auth_scheme.lower()
             if auth_scheme != "bearer":
-                raise
+                raise Unauthorized("Authorization scheme must be 'Bearer'")
 
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")

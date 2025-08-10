@@ -2,6 +2,8 @@ from collections.abc import Mapping
 
 from pydantic import TypeAdapter
 
+from extensions.ext_logging import get_request_id
+
 
 class PluginDaemonError(Exception):
     """Base class for all plugin daemon errors."""
@@ -11,7 +13,7 @@ class PluginDaemonError(Exception):
 
     def __str__(self) -> str:
         # returns the class name and description
-        return f"{self.__class__.__name__}: {self.description}"
+        return f"req_id: {get_request_id()} {self.__class__.__name__}: {self.description}"
 
 
 class PluginDaemonInternalError(PluginDaemonError):

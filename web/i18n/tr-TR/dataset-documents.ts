@@ -31,6 +31,7 @@ const translation = {
       sync: 'Senkronize et',
       pause: 'Duraklat',
       resume: 'Devam Et',
+      download: 'Dosyayı İndir',
     },
     index: {
       enable: 'Etkinleştir',

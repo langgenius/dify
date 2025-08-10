@@ -197,6 +197,7 @@ const translation = {
           after: 'Sorry, but you didn\'t provide a text to translate. Could you please provide the text?',
         },
       },
+      contentEnableLabel: 'Modération de contenu activée',
     },
     fileUpload: {
       title: 'Téléchargement de fichier',
@@ -241,6 +242,7 @@ const translation = {
       'Veuillez attendre que la réponse à la tâche en lot soit terminée.',
     notSelectModel: 'Veuillez choisir un modèle',
     waitForImgUpload: 'Veuillez attendre que l\'image soit téléchargée',
+    waitForFileUpload: 'Veuillez patienter pendant le téléchargement du/des fichier(s)',
   },
   chatSubTitle: 'Instructions',
   completionSubTitle: 'Indicatif de Prompt',
@@ -305,6 +307,33 @@ const translation = {
     'defaultValue': 'Valeur par défaut',
     'noDefaultValue': 'Aucune valeur par défaut',
     'selectDefaultValue': 'Sélectionner la valeur par défaut',
+    'file': {
+      image: {
+        name: 'Image',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Document',
+      },
+      video: {
+        name: 'Vidéo',
+      },
+      custom: {
+        description: 'Spécifiez d’autres types de fichiers.',
+        name: 'Autres types de fichiers',
+        createPlaceholder: '  Extension de fichier, par exemple .doc',
+      },
+      supportFileTypes: 'Types de fichiers de support',
+    },
+    'content': 'Contenu',
+    'uploadFileTypes': 'Types de fichiers de téléchargement',
+    'multi-files': 'Liste des fichiers',
+    'both': 'Les deux',
+    'maxNumberOfUploads': 'Nombre maximal de téléchargements',
+    'localUpload': 'Téléchargement local',
+    'single-file': 'En file indienne',
   },
   vision: {
     name: 'Vision',
@@ -324,6 +353,7 @@ const translation = {
       url: 'URL',
       uploadLimit: 'Limite de téléchargement',
     },
+    onlySupportVisionModelTip: 'Ne prend en charge que les modèles de vision',
   },
   voice: {
     name: 'Voix',
@@ -395,6 +425,7 @@ const translation = {
     score_threshold: 'Seuil de Score',
     score_thresholdTip: 'Utilisé pour définir le seuil de similarité pour le filtrage des morceaux.',
     retrieveChangeTip: 'La modification du mode d\'indexation et du mode de récupération peut affecter les applications associées à cette Connaissance.',
+    embeddingModelRequired: 'Un modèle d’incorporation configuré est requis',
   },
   debugAsSingleModel: 'Déboguer comme Modèle Unique',
   debugAsMultipleModel: 'Déboguer en tant que Modèles Multiples',
@@ -436,6 +467,79 @@ const translation = {
       enabled: 'Activé',
     },
   },
+  codegen: {
+    noDataLine1: 'Décrivez votre cas d’utilisation sur la gauche,',
+    instruction: 'Instructions',
+    generate: 'Générer',
+    noDataLine2: 'L’aperçu du code s’affichera ici.',
+    resTitle: 'Code généré',
+    applyChanges: 'Appliquer les modifications',
+    overwriteConfirmTitle: 'Écraser le code existant ?',
+    description: 'Le générateur de code utilise des modèles configurés pour générer un code de haute qualité basé sur vos instructions. Veuillez fournir des instructions claires et détaillées.',
+    loading: 'Génération de code...',
+    overwriteConfirmMessage: 'Cette action remplacera le code existant. Voulez-vous continuer ?',
+    generatedCodeTitle: 'Code généré',
+    apply: 'Appliquer',
+    title: 'Générateur de code',
+    instructionPlaceholder: 'Entrez une description détaillée du code que vous souhaitez générer.',
+  },
+  generate: {
+    template: {
+      pythonDebugger: {
+        name: 'Débogueur Python',
+        instruction: 'Un bot capable de générer et de déboguer votre code en fonction de vos instructions',
+      },
+      translation: {
+        name: 'Traduction',
+        instruction: 'Un traducteur capable de traduire en plusieurs langues',
+      },
+      professionalAnalyst: {
+        instruction: 'Extrayez des informations, identifiez les risques et distillez les informations clés des rapports longs dans un seul mémo',
+        name: 'Analyste professionnel',
+      },
+      excelFormulaExpert: {
+        name: 'Expert en formules Excel',
+        instruction: 'Un chatbot qui peut aider les utilisateurs novices à comprendre, utiliser et créer des formules Excel basées sur les instructions de l’utilisateur',
+      },
+      travelPlanning: {
+        instruction: 'L’assistant de planification de voyage est un outil intelligent conçu pour aider les utilisateurs à planifier sans effort leurs voyages',
+        name: 'Planification de voyage',
+      },
+      SQLSorcerer: {
+        instruction: 'Transformez le langage quotidien en requêtes SQL',
+        name: 'Sorcier SQL',
+      },
+      GitGud: {
+        name: 'Git gud',
+        instruction: 'Générer des commandes Git appropriées en fonction des actions de contrôle de version décrites par l’utilisateur',
+      },
+      meetingTakeaways: {
+        name: 'Points à retenir de la réunion',
+        instruction: 'Distillez les réunions en résumés concis comprenant les sujets de discussion, les points clés à retenir et les actions à prendre',
+      },
+      writingsPolisher: {
+        name: 'Polisseuse d’écriture',
+        instruction: 'Utilisez des techniques de révision avancées pour améliorer vos écrits',
+      },
+    },
+    instruction: 'Instructions',
+    generate: 'Générer',
+    tryIt: 'Essaie',
+    overwriteTitle: 'Remplacer la configuration existante ?',
+    noDataLine2: 'L’aperçu de l’orchestration s’affichera ici.',
+    overwriteMessage: 'L’application de cette invite remplacera la configuration existante.',
+    noDataLine1: 'Décrivez votre cas d’utilisation sur la gauche,',
+    instructionPlaceHolder: 'Rédigez des instructions claires et précises.',
+    title: 'Générateur d’invites',
+    apply: 'Appliquer',
+    resTitle: 'Invite générée',
+    loading: 'Orchestrer l’application pour vous...',
+    description: 'Le générateur d’invites utilise le modèle configuré pour optimiser les invites afin d’obtenir une meilleure qualité et une meilleure structure. Veuillez rédiger des instructions claires et détaillées.',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets.',
+  },
+  noResult: 'La sortie sera affichée ici.',
 }
 
 export default translation

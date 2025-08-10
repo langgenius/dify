@@ -23,7 +23,6 @@ import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
@@ -44,6 +43,7 @@ import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import type { Tool } from '@/app/components/tools/types'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -138,7 +138,6 @@ const VarReferencePicker: FC<Props> = ({
   useEffect(() => {
     if (triggerRef.current)
       setTriggerWidth(triggerRef.current.clientWidth)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerRef.current])
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
@@ -149,7 +148,6 @@ const VarReferencePicker: FC<Props> = ({
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   const hasValue = !isConstant && value.length > 0
 
@@ -359,8 +357,33 @@ const VarReferencePicker: FC<Props> = ({
         options: dynamicOptions,
       }
     }
-    return schema
-  }, [dynamicOptions])
+
+    // If we don't have dynamic options but we have a selected value, create a temporary option to preserve the selection during loading
+    if (isLoading && value && typeof value === 'string') {
+      const preservedOptions = [{
+        value,
+        label: { en_US: value, zh_Hans: value },
+        show_on: [],
+      }]
+      return {
+        ...schema,
+        options: preservedOptions,
+      }
+    }
+
+    // Default case: return schema with empty options
+    return {
+      ...schema,
+      options: [],
+    }
+  }, [schema, dynamicOptions, isLoading, value])
+
+  const variableCategory = useMemo(() => {
+    if (isEnv) return 'environment'
+    if (isChatVar) return 'conversation'
+    if (isLoopVar) return 'loop'
+    return 'system'
+  }, [isEnv, isChatVar, isLoopVar])
 
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
@@ -458,10 +481,11 @@ const VarReferencePicker: FC<Props> = ({
                                     </div>
                                   )}
                                   <div className='flex items-center text-text-accent'>
-                                    {!hasValue && <Variable02 className='h-3.5 w-3.5' />}
                                     {isLoading && <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />}
-                                    {isEnv && <Env className='h-3.5 w-3.5 text-util-colors-violet-violet-600' />}
-                                    {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+                                    <VariableIconWithColor
+                                      variableCategory={variableCategory}
+                                      isExceptionVariable={isException}
+                                    />
                                     <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>

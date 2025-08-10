@@ -82,6 +82,7 @@ export default combine(
       '**/.next/',
       '**/public/*',
       '**/*.json',
+      '**/*.js',
     ],
   },
   {
@@ -162,7 +163,7 @@ export default combine(
       'sonarjs/single-char-in-character-classes': 'off',
       'sonarjs/anchor-precedence': 'warn',
       'sonarjs/updated-loop-counter': 'off',
-      'sonarjs/no-dead-store': 'warn',
+      'sonarjs/no-dead-store': 'error',
       'sonarjs/no-duplicated-branches': 'warn',
       'sonarjs/max-lines': 'warn', // max 1000 lines
       'sonarjs/no-variable-usage-before-declaration': 'error',

@@ -29,6 +29,10 @@ type IToastContext = {
   close: () => void
 }
 
+export type ToastHandle = {
+  clear?: VoidFunction
+}
+
 export const ToastContext = createContext<IToastContext>({} as IToastContext)
 export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
@@ -46,7 +50,7 @@ const Toast = ({
 
   return <div className={classNames(
     className,
-    'fixed w-[360px] rounded-xl my-4 mx-8 flex-grow z-[9999] overflow-hidden',
+    'fixed z-[9999] mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
     size === 'md' ? 'p-3' : 'p-2',
     'border border-components-panel-border-subtle bg-components-panel-bg-blur shadow-sm',
     'top-0',
@@ -127,11 +131,21 @@ Toast.notify = ({
   className,
   customComponent,
   onClose,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>) => {
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>): ToastHandle => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
+  const toastHandler: ToastHandle = {}
+
   if (typeof window === 'object') {
     const holder = document.createElement('div')
     const root = createRoot(holder)
+
+    toastHandler.clear = () => {
+      if (holder) {
+        root.unmount()
+        holder.remove()
+      }
+      onClose?.()
+    }
 
     root.render(
       <ToastContext.Provider value={{
@@ -148,14 +162,10 @@ Toast.notify = ({
       </ToastContext.Provider>,
     )
     document.body.appendChild(holder)
-    setTimeout(() => {
-      if (holder) {
-        root.unmount()
-        holder.remove()
-      }
-      onClose?.()
-    }, duration || defaultDuring)
+    setTimeout(toastHandler.clear, duration || defaultDuring)
   }
+
+  return toastHandler
 }
 
 export default Toast

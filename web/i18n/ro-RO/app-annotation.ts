@@ -83,6 +83,16 @@ const translation = {
     configConfirmBtn: 'Salvează',
   },
   embeddingModelSwitchTip: 'Model de vectorizare a textului anotației, schimbarea modelelor va fi reîncorporată, rezultând costuri suplimentare.',
+  list: {
+    delete: {
+      title: 'Ești sigur că vrei să ștergi?',
+    },
+  },
+  batchAction: {
+    cancel: 'Anulează',
+    delete: 'Șterge',
+    selected: 'Selectat',
+  },
 }
 
 export default translation

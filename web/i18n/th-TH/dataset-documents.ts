@@ -31,6 +31,7 @@ const translation = {
       sync: 'ซิงค์',
       pause: 'หยุด',
       resume: 'ดำเนิน',
+      download: 'ดาวน์โหลดไฟล์',
     },
     index: {
       enable: 'เปิด',

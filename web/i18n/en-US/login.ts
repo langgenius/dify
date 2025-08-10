@@ -79,7 +79,7 @@ const translation = {
   validate: 'Validate',
   checkCode: {
     checkYourEmail: 'Check your email',
-    tips: 'We send a verification code to <strong>{{email}}</strong>',
+    tipsPrefix: 'We send a verification code to ',
     validTime: 'Bear in mind that the code is valid for 5 minutes',
     verificationCode: 'Verification code',
     verificationCodePlaceholder: 'Enter 6-digit code',
