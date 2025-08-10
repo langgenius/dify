@@ -194,7 +194,7 @@ class ProviderConfiguration(BaseModel):
             Provider.provider_type == ProviderType.CUSTOM.value,
             Provider.provider_name.in_(provider_names),
         )
-        provider_record = db.session.execute(stmt).scalars().first()
+        provider_record = db.session.scalar(stmt)
 
         return provider_record
 
@@ -351,7 +351,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.model_name == model,
             ProviderModel.model_type == model_type.to_origin_model_type(),
         )
-        provider_model_record = db.session.execute(stmt).scalars().first()
+        provider_model_record = db.session.scalar(stmt)
 
         return provider_model_record
 
@@ -623,7 +623,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModelSetting.model_type == model_type.to_origin_model_type(),
             ProviderModelSetting.model_name == model,
         )
-        model_setting = db.session.execute(stmt).scalars().first()
+        model_setting = db.session.scalar(stmt)
 
         if model_setting:
             model_setting.load_balancing_enabled = False
@@ -683,7 +683,7 @@ class ProviderConfiguration(BaseModel):
             TenantPreferredModelProvider.tenant_id == self.tenant_id,
             TenantPreferredModelProvider.provider_name.in_(provider_names),
         )
-        preferred_model_provider = db.session.execute(stmt).scalars().first()
+        preferred_model_provider = db.session.scalar(stmt)
 
         if preferred_model_provider:
             preferred_model_provider.preferred_provider_type = provider_type.value

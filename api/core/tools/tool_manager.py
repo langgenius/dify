@@ -202,7 +202,7 @@ class ToolManager:
                             BuiltinToolProvider.tenant_id == tenant_id,
                             BuiltinToolProvider.id == credential_id,
                         )
-                        builtin_provider = db.session.execute(builtin_provider_stmt).scalars().first()
+                        builtin_provider = db.session.scalar(builtin_provider_stmt)
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
@@ -317,7 +317,7 @@ class ToolManager:
             workflow_provider_stmt = select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
-            workflow_provider = db.session.execute(workflow_provider_stmt).scalars().first()
+            workflow_provider = db.session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")

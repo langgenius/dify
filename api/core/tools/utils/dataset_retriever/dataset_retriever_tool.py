@@ -58,7 +58,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
     def _run(self, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
-        dataset = db.session.execute(dataset_stmt).scalars().first()
+        dataset = db.session.scalar(dataset_stmt)
 
         if not dataset:
             return ""
@@ -193,7 +193,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = db.session.execute(dataset_document_stmt).scalars().first()  # type: ignore
+                            document = db.session.scalar(dataset_document_stmt)  # type: ignore
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,

@@ -335,7 +335,7 @@ class BaseAgentRunner(AppRunner):
         Save agent thought
         """
         stmt = select(MessageAgentThought).where(MessageAgentThought.id == agent_thought_id)
-        agent_thought = db.session.execute(stmt).scalars().first()
+        agent_thought = db.session.scalar(stmt)
         if not agent_thought:
             raise ValueError("agent thought not found")
 

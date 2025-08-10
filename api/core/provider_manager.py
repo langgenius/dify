@@ -276,7 +276,7 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type.to_origin_model_type(),
         )
-        default_model = db.session.execute(stmt).scalars().first()
+        default_model = db.session.scalar(stmt)
 
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
@@ -363,7 +363,7 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type.to_origin_model_type(),
         )
-        default_model = db.session.execute(stmt).scalars().first()
+        default_model = db.session.scalar(stmt)
 
         # create or update TenantDefaultModel record
         if default_model:
@@ -536,7 +536,7 @@ class ProviderManager:
                                 Provider.provider_type == ProviderType.SYSTEM.value,
                                 Provider.quota_type == ProviderQuotaType.TRIAL.value,
                             )
-                            existed_provider_record = db.session.execute(stmt).scalars().first()
+                            existed_provider_record = db.session.scalar(stmt)
                             if not existed_provider_record:
                                 continue
 

@@ -34,7 +34,7 @@ class ApiExternalDataTool(ExternalDataTool):
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        api_based_extension = db.session.execute(stmt).scalars().first()
+        api_based_extension = db.session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
@@ -56,7 +56,7 @@ class ApiExternalDataTool(ExternalDataTool):
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        api_based_extension = db.session.execute(stmt).scalars().first()
+        api_based_extension = db.session.scalar(stmt)
 
         if not api_based_extension:
             raise ValueError(

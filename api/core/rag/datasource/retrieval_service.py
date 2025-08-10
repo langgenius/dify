@@ -129,7 +129,7 @@ class RetrievalService:
         metadata_filtering_conditions: Optional[dict] = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
-        dataset = db.session.execute(stmt).scalars().first()
+        dataset = db.session.scalar(stmt)
         if not dataset:
             return []
         metadata_condition = (
@@ -319,7 +319,7 @@ class RetrievalService:
                     # Handle parent-child documents
                     child_index_node_id = document.metadata.get("doc_id")
                     child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id == child_index_node_id)
-                    child_chunk = db.session.execute(child_chunk_stmt).scalars().first()
+                    child_chunk = db.session.scalar(child_chunk_stmt)
 
                     if not child_chunk:
                         continue
@@ -384,7 +384,7 @@ class RetrievalService:
                         DocumentSegment.status == "completed",
                         DocumentSegment.index_node_id == index_node_id,
                     )
-                    segment = db.session.execute(document_segment_stmt).scalars().first()
+                    segment = db.session.scalar(document_segment_stmt)
 
                     if not segment:
                         continue

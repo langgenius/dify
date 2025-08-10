@@ -91,6 +91,6 @@ class ApiModeration(Moderation):
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        extension = db.session.execute(stmt).scalars().first()
+        extension = db.session.scalar(stmt)
 
         return extension

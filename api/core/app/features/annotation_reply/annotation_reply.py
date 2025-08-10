@@ -28,7 +28,7 @@ class AnnotationReplyFeature:
         :return:
         """
         stmt = select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_record.id)
-        annotation_setting = db.session.execute(stmt).scalars().first()
+        annotation_setting = db.session.scalar(stmt)
 
         if not annotation_setting:
             return None

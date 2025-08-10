@@ -373,7 +373,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         Document.enabled == True,
                         Document.archived == False,
                     )
-                    document = db.session.execute(stmt).scalars().first()
+                    document = db.session.scalar(stmt)
                     if dataset and document:
                         source = {
                             "metadata": {

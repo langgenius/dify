@@ -195,10 +195,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         get the user by user id
         """
         stmt = select(EndUser).where(EndUser.id == user_id)
-        user = db.session.execute(stmt).scalars().first()
+        user = db.session.scalar(stmt)
         if not user:
             stmt = select(Account).where(Account.id == user_id)
-            user = db.session.execute(stmt).scalars().first()
+            user = db.session.scalar(stmt)
 
         if not user:
             raise ValueError("user not found")

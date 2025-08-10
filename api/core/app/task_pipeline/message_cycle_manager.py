@@ -84,7 +84,7 @@ class MessageCycleManager:
         with flask_app.app_context():
             # get conversation and message
             stmt = select(Conversation).where(Conversation.id == conversation_id)
-            conversation = db.session.execute(stmt).scalars().first()
+            conversation = db.session.scalar(stmt)
 
             if not conversation:
                 return
@@ -144,7 +144,7 @@ class MessageCycleManager:
         :return:
         """
         stmt = select(MessageFile).where(MessageFile.id == event.message_file_id)
-        message_file = db.session.execute(stmt).scalars().first()
+        message_file = db.session.scalar(stmt)
 
         if message_file and message_file.url is not None:
             # get tool file id

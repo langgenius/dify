@@ -52,7 +52,7 @@ class DatasetIndexToolCallbackHandler:
             if document.metadata is not None:
                 document_id = document.metadata["document_id"]
                 dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
-                dataset_document = db.session.execute(dataset_document_stmt).scalars().first()
+                dataset_document = db.session.scalar(dataset_document_stmt)
                 if not dataset_document:
                     _logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s",
@@ -65,7 +65,7 @@ class DatasetIndexToolCallbackHandler:
                         ChildChunk.dataset_id == dataset_document.dataset_id,
                         ChildChunk.document_id == dataset_document.id,
                     )
-                    child_chunk = db.session.execute(child_chunk_stmt).scalars().first()
+                    child_chunk = db.session.scalar(child_chunk_stmt)
                     if child_chunk:
                         segment = (
                             db.session.query(DocumentSegment)

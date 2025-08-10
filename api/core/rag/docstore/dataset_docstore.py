@@ -230,6 +230,6 @@ class DatasetDocumentStore:
         stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )
-        document_segment = db.session.execute(stmt).scalars().first()
+        document_segment = db.session.scalar(stmt)
 
         return document_segment

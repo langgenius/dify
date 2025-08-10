@@ -376,7 +376,7 @@ class NotionExtractor(BaseExtractor):
                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
             )
         )
-        data_source_binding = db.session.execute(stmt).scalars().first()
+        data_source_binding = db.session.scalar(stmt)
 
         if not data_source_binding:
             raise Exception(

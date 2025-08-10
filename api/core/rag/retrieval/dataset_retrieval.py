@@ -136,7 +136,7 @@ class DatasetRetrieval:
         for dataset_id in dataset_ids:
             # get dataset from dataset id
             dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.execute(dataset_stmt).scalars().first()
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:
@@ -246,7 +246,7 @@ class DatasetRetrieval:
                             DatasetDocument.enabled == True,
                             DatasetDocument.archived == False,
                         )
-                        document = db.session.execute(dataset_document_stmt).scalars().first()
+                        document = db.session.scalar(dataset_document_stmt)
                         if dataset and document:
                             source = RetrievalSourceMetadata(
                                 dataset_id=dataset.id,
@@ -326,7 +326,7 @@ class DatasetRetrieval:
         if dataset_id:
             # get retrieval model config
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            dataset = db.session.execute(dataset_stmt).scalars().first()
+            dataset = db.session.scalar(dataset_stmt)
             if dataset:
                 results = []
                 if dataset.provider == "external":
@@ -516,7 +516,7 @@ class DatasetRetrieval:
                 dataset_document_stmt = select(DatasetDocument).where(
                     DatasetDocument.id == document.metadata["document_id"]
                 )
-                dataset_document = db.session.execute(dataset_document_stmt).scalars().first()
+                dataset_document = db.session.scalar(dataset_document_stmt)
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                         child_chunk_stmt = select(ChildChunk).where(
@@ -524,7 +524,7 @@ class DatasetRetrieval:
                             ChildChunk.dataset_id == dataset_document.dataset_id,
                             ChildChunk.document_id == dataset_document.id,
                         )
-                        child_chunk = db.session.execute(child_chunk_stmt).scalars().first()
+                        child_chunk = db.session.scalar(child_chunk_stmt)
                         if child_chunk:
                             segment = (
                                 db.session.query(DocumentSegment)
@@ -596,7 +596,7 @@ class DatasetRetrieval:
         with flask_app.app_context():
             with Session(db.engine) as session:
                 dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-                dataset = db.session.execute(dataset_stmt).scalars().first()
+                dataset = db.session.scalar(dataset_stmt)
 
             if not dataset:
                 return []
@@ -682,7 +682,7 @@ class DatasetRetrieval:
         for dataset_id in dataset_ids:
             # get dataset from dataset id
             dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.execute(dataset_stmt).scalars().first()
+            dataset = db.session.scalar(dataset_stmt)
 
             # pass if dataset is not available
             if not dataset:

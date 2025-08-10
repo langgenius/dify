@@ -115,7 +115,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         Document.enabled == True,
                         Document.archived == False,
                     )
-                    document = db.session.execute(document_stmt).scalars().first()
+                    document = db.session.scalar(document_stmt)
                     if dataset and document:
                         source = RetrievalSourceMetadata(
                             position=resource_number,
@@ -158,7 +158,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
     ):
         with flask_app.app_context():
             stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.execute(stmt).scalars().first()
+            dataset = db.session.scalar(stmt)
 
             if not dataset:
                 return []

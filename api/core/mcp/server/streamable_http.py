@@ -31,7 +31,7 @@ class MCPServerStreamableHTTPRequestHandler:
         self.app = app
         self.request = request
         stmt = select(AppMCPServer).where(AppMCPServer.app_id == self.app.id)
-        mcp_server = db.session.execute(stmt).scalars().first()
+        mcp_server = db.session.scalar(stmt)
         if not mcp_server:
             raise ValueError("MCP server not found")
         self.mcp_server: AppMCPServer = mcp_server

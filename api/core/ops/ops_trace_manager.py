@@ -226,7 +226,7 @@ class OpsTraceManager:
             return None
         # decrypt_token
         stmt = select(App).where(App.id == app_id)
-        app = db.session.execute(stmt).scalars().first()
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("App not found")
 
@@ -294,18 +294,18 @@ class OpsTraceManager:
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
         message_stmt = select(Message).where(Message.id == message_id)
-        message_data = db.session.execute(message_stmt).scalars().first()
+        message_data = db.session.scalar(message_stmt)
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
         conversation_stmt = select(Conversation).where(Conversation.id == conversation_id)
-        conversation_data = db.session.execute(conversation_stmt).scalars().first()
+        conversation_data = db.session.scalar(conversation_stmt)
         if not conversation_data:
             return None
 
         if conversation_data.app_model_config_id:
             config_stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
-            app_model_config = db.session.execute(config_stmt).scalars().first()
+            app_model_config = db.session.scalar(config_stmt)
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
             app_model_config = conversation_data.override_model_configs
 

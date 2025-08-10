@@ -45,7 +45,7 @@ class ChatAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.execute(stmt).scalars().first()
+        app_record = db.session.scalar(stmt)
         if not app_record:
             raise ValueError("App not found")
 

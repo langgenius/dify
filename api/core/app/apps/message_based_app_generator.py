@@ -88,7 +88,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
-            app_model_config = db.session.execute(stmt).scalars().first()
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -255,7 +255,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :return: conversation
         """
         stmt = select(Conversation).where(Conversation.id == conversation_id)
-        conversation = db.session.execute(stmt).scalars().first()
+        conversation = db.session.scalar(stmt)
 
         if not conversation:
             raise ConversationNotExistsError("Conversation not exists")
@@ -269,7 +269,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :return: message
         """
         stmt = select(Message).where(Message.id == message_id)
-        message = db.session.execute(stmt).scalars().first()
+        message = db.session.scalar(stmt)
 
         if message is None:
             raise MessageNotExistsError("Message not exists")

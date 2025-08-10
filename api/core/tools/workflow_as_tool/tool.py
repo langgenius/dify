@@ -140,7 +140,7 @@ class WorkflowTool(Tool):
             )
         else:
             stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
-            workflow = db.session.execute(stmt).scalars().first()
+            workflow = db.session.scalar(stmt)
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -152,7 +152,7 @@ class WorkflowTool(Tool):
         get the app by app id
         """
         stmt = select(App).where(App.id == app_id)
-        app = db.session.execute(stmt).scalars().first()
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("app not found")
 

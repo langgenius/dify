@@ -60,7 +60,7 @@ class IndexingRunner:
                 stmt = select(DatasetProcessRule).where(
                     DatasetProcessRule.id == dataset_document.dataset_process_rule_id
                 )
-                processing_rule = db.session.execute(stmt).scalars().first()
+                processing_rule = db.session.scalar(stmt)
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
@@ -122,7 +122,7 @@ class IndexingRunner:
             db.session.commit()
             # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-            processing_rule = db.session.execute(stmt).scalars().first()
+            processing_rule = db.session.scalar(stmt)
             if not processing_rule:
                 raise ValueError("no process rule found")
 
@@ -206,7 +206,7 @@ class IndexingRunner:
             # build index
             # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-            processing_rule = db.session.execute(stmt).scalars().first()
+            processing_rule = db.session.scalar(stmt)
 
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -309,7 +309,7 @@ class IndexingRunner:
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
                     stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
-                    image_file = db.session.execute(stmt).scalars().first()
+                    image_file = db.session.scalar(stmt)
                     if image_file is None:
                         continue
                     try:

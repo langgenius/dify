@@ -254,7 +254,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
             Message.from_account_id == (user.id if isinstance(user, Account) else None),
         )
-        message = db.session.execute(stmt).scalars().first()
+        message = db.session.scalar(stmt)
 
         if not message:
             raise MessageNotExistsError()

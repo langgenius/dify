@@ -216,7 +216,7 @@ class Jieba(BaseKeyword):
         stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == dataset_id, DocumentSegment.index_node_id == node_id
         )
-        document_segment = db.session.execute(stmt).scalars().first()
+        document_segment = db.session.scalar(stmt)
         if document_segment:
             document_segment.keywords = keywords
             db.session.add(document_segment)
