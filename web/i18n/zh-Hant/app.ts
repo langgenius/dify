@@ -285,6 +285,9 @@ const translation = {
     someServicesUnavailable: '某些搜索服務不可用',
     useAtForSpecific: '對特定類型使用 @',
     searchTemporarilyUnavailable: '搜索暫時不可用',
+    selectSearchType: '選擇要搜索的內容',
+    commandHint: '鍵入 @ 按類別流覽',
+    searchHint: '開始輸入以立即搜索所有內容',
   },
 }
 

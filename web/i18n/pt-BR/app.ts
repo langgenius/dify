@@ -286,6 +286,9 @@ const translation = {
     useAtForSpecific: 'Use @ para tipos específicos',
     clearToSearchAll: 'Desmarque @ para pesquisar tudo',
     searchFailed: 'Falha na pesquisa',
+    searchHint: 'Comece a digitar para pesquisar tudo instantaneamente',
+    commandHint: 'Digite @ para navegar por categoria',
+    selectSearchType: 'Escolha o que pesquisar',
   },
 }
 

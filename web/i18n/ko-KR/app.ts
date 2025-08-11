@@ -306,6 +306,9 @@ const translation = {
     searchFailed: '검색 실패',
     searchPlaceholder: '명령을 검색하거나 @를 입력합니다...',
     clearToSearchAll: '@를 지우면 모두 검색됩니다.',
+    selectSearchType: '검색할 항목 선택',
+    commandHint: '@를 입력하여 카테고리별로 찾아봅니다.',
+    searchHint: '즉시 모든 것을 검색하려면 입력을 시작하세요.',
   },
 }
 
