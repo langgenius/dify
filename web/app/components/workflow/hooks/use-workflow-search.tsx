@@ -46,9 +46,9 @@ export const useWorkflowSearch = () => {
 
   // Create search function for workflow nodes
   const searchWorkflowNodes = useCallback((query: string) => {
-    if (!searchableNodes.length || !query.trim()) return []
+    if (!searchableNodes.length) return []
 
-    const searchTerm = query.toLowerCase()
+    const searchTerm = query.toLowerCase().trim()
 
     const results = searchableNodes
       .map((node) => {
@@ -58,11 +58,18 @@ export const useWorkflowSearch = () => {
 
         let score = 0
 
-        if (titleMatch.startsWith(searchTerm)) score += 100
-        else if (titleMatch.includes(searchTerm)) score += 50
-        else if (typeMatch === searchTerm) score += 80
-        else if (typeMatch.includes(searchTerm)) score += 30
-        else if (descMatch.includes(searchTerm)) score += 20
+        // If no search term, show all nodes with base score
+        if (!searchTerm) {
+          score = 1
+        }
+ else {
+          // Score based on search relevance
+          if (titleMatch.startsWith(searchTerm)) score += 100
+          else if (titleMatch.includes(searchTerm)) score += 50
+          else if (typeMatch === searchTerm) score += 80
+          else if (typeMatch.includes(searchTerm)) score += 30
+          else if (descMatch.includes(searchTerm)) score += 20
+        }
 
         return score > 0
           ? {
@@ -89,6 +96,11 @@ export const useWorkflowSearch = () => {
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
+        // If no search term, sort alphabetically
+        if (!searchTerm)
+          return a.title.localeCompare(b.title)
+
+        // Sort by relevance when searching
         const aTitle = a.title.toLowerCase()
         const bTitle = b.title.toLowerCase()
 
