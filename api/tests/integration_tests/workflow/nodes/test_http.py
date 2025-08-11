@@ -49,8 +49,8 @@ def init_http_node(config: dict):
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["a", "b123", "args1"], 1)
-    variable_pool.add(["a", "b123", "args2"], 2)
+    variable_pool.add(["a", "args1"], 1)
+    variable_pool.add(["a", "args2"], 2)
 
     node = HttpRequestNode(
         id=str(uuid.uuid4()),
