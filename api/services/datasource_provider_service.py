@@ -383,6 +383,7 @@ class DatasourceProviderService:
         tenant_id: str,
         provider_id: DatasourceProviderID,
         avatar_url: str | None,
+        expire_at: int,
         credentials: dict,
         credential_id: str,
     ) -> None:
@@ -433,6 +434,7 @@ class DatasourceProviderService:
                     if key in provider_credential_secret_variables:
                         credentials[key] = encrypter.encrypt_token(tenant_id, value)
 
+                target_provider.expires_at = expire_at
                 target_provider.encrypted_credentials = credentials
                 target_provider.avatar_url = avatar_url or target_provider.avatar_url
                 session.commit()
@@ -443,6 +445,7 @@ class DatasourceProviderService:
         tenant_id: str,
         provider_id: DatasourceProviderID,
         avatar_url: str | None,
+        expire_at: int,
         credentials: dict,
     ) -> None:
         """
@@ -500,6 +503,7 @@ class DatasourceProviderService:
                     auth_type=credential_type.value,
                     encrypted_credentials=credentials,
                     avatar_url=avatar_url or "default",
+                    expires_at=expire_at,
                 )
                 session.add(datasource_provider)
                 session.commit()

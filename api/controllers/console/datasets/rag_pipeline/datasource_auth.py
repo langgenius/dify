@@ -110,6 +110,7 @@ class DatasourceOAuthCallback(Resource):
                 provider_id=datasource_provider_id,
                 avatar_url=oauth_response.metadata.get("avatar_url") or None,
                 name=oauth_response.metadata.get("name") or None,
+                expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
                 credential_id=context.get("credential_id"),
             )
@@ -119,6 +120,7 @@ class DatasourceOAuthCallback(Resource):
                 provider_id=datasource_provider_id,
                 avatar_url=oauth_response.metadata.get("avatar_url") or None,
                 name=oauth_response.metadata.get("name") or None,
+                expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
             )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
