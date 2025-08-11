@@ -60,7 +60,7 @@ class ToolLabelManager:
             ToolLabelBinding.tool_id == provider_id,
             ToolLabelBinding.tool_type == controller.provider_type.value,
         )
-        labels = db.session.execute(stmt).scalars().all()
+        labels = db.session.scalars(stmt).all()
 
         return list(labels)
 

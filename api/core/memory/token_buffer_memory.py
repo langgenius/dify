@@ -68,7 +68,7 @@ class TokenBufferMemory:
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             msgfile_stmt = select(MessageFile).where(MessageFile.message_id == message.id)
-            files = db.session.execute(msgfile_stmt).scalars().all()
+            files = db.session.scalars(msgfile_stmt).all()
             if files:
                 file_extra_config = None
                 if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:

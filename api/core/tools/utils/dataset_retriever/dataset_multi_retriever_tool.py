@@ -93,7 +93,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.enabled == True,
             DocumentSegment.index_node_id.in_(index_node_ids),
         )
-        segments = db.session.execute(document_segment_stmt).scalars().all()
+        segments = db.session.scalars(document_segment_stmt).all()
 
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}

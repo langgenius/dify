@@ -714,7 +714,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             WorkflowNodeExecutionModel.process_data,
             WorkflowNodeExecutionModel.execution_metadata,
         ).where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
-        workflow_nodes = db.session.execute(stmt).scalars().all()
+        workflow_nodes = db.session.scalars(stmt).all()
         return workflow_nodes
 
     def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
