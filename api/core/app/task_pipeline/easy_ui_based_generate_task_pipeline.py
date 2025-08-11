@@ -257,7 +257,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         Process stream response.
         :return:
         """
-        for message in self._queue_manager.listen():
+        for message in self.queue_manager.listen():
             if publisher:
                 publisher.publish(message)
             event = message.event
@@ -499,7 +499,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if self._output_moderation_handler.should_direct_output():
                 # stop subscribe new token when output moderation should direct output
                 self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
-                self._queue_manager.publish(
+                self.queue_manager.publish(
                     QueueLLMChunkEvent(
                         chunk=LLMResultChunk(
                             model=self._task_state.llm_result.model,
@@ -513,7 +513,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     PublishFrom.TASK_PIPELINE,
                 )
 
-                self._queue_manager.publish(
+                self.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
                 return True

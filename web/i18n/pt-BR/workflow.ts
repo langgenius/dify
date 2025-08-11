@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'O nó de Fim deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
     tagBound: 'Número de aplicativos usando esta tag',
+    currentView: 'Visualização atual',
+    currentWorkflow: 'Fluxo de trabalho atual',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -989,6 +991,10 @@ const translation = {
       noDependencies: 'Sem dependências',
     },
     relationsTab: 'Relações',
+    noMatchingInputsFound: 'Nenhuma entrada correspondente encontrada na última execução.',
+    copyLastRunError: 'Falha ao copiar as entradas da última execução',
+    noLastRunFound: 'Nenhuma execução anterior encontrada.',
+    copyLastRun: 'Copiar Última Execução',
   },
 }
 

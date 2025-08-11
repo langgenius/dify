@@ -114,6 +114,8 @@ const translation = {
     exportImage: '匯出圖像',
     exportJPEG: '匯出為 JPEG',
     tagBound: '使用此標籤的應用程式數量',
+    currentView: '當前檢視',
+    currentWorkflow: '當前工作流程',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -989,6 +991,10 @@ const translation = {
       noDependencies: '無依賴',
       noDependents: '無被依賴',
     },
+    copyLastRun: '複製上一次運行',
+    copyLastRunError: '未能複製上一次運行的輸入',
+    noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
+    noLastRunFound: '沒有找到之前的運行',
   },
 }
 

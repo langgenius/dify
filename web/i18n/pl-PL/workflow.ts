@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
     tagBound: 'Liczba aplikacji korzystających z tego tagu',
+    currentWorkflow: 'Bieżący przepływ pracy',
+    currentView: 'Bieżący widok',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -989,6 +991,10 @@ const translation = {
       noDependencies: 'Brak zależności',
     },
     relationsTab: 'Stosunków',
+    copyLastRun: 'Kopiuj ostatnie uruchomienie',
+    noLastRunFound: 'Nie znaleziono poprzedniego biegu.',
+    noMatchingInputsFound: 'Nie znaleziono pasujących danych wejściowych z ostatniego uruchomienia',
+    copyLastRunError: 'Nie udało się skopiować danych wejściowych z ostatniego uruchomienia',
   },
 }
 

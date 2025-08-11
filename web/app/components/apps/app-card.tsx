@@ -117,8 +117,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
     }
-    catch {
-      notify({ type: 'error', message: t('app.editFailed') })
+    catch (e: any) {
+      notify({
+        type: 'error',
+        message: e.message || t('app.editFailed'),
+      })
     }
   }, [app.id, notify, onRefresh, t])
 
@@ -364,7 +367,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
           <div
-            className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
+            className='line-clamp-2'
             title={app.description}
           >
             {app.description}
