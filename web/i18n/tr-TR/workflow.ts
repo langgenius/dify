@@ -992,6 +992,10 @@ const translation = {
       noDependencies: 'Bağımlılık yok',
     },
     relationsTab: 'Ilişkiler',
+    copyLastRun: 'Son Çalışmayı Kopyala',
+    noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
+    noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
+    copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
   },
 }
 

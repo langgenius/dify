@@ -991,6 +991,10 @@ const translation = {
       dependenciesDescription: 'Nœuds sur lesquels repose ce nœud',
     },
     relationsTab: 'Relations',
+    copyLastRun: 'Copier la dernière exécution',
+    noLastRunFound: 'Aucune exécution précédente trouvée',
+    noMatchingInputsFound: 'Aucune entrée correspondante trouvée dans la dernière exécution.',
+    copyLastRunError: 'Échec de la copie des entrées de la dernière exécution',
   },
 }
 
