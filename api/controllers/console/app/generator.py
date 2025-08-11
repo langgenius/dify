@@ -125,34 +125,35 @@ class InstructionGenerateApi(Resource):
         args = parser.parse_args()
 
         try:
-            if args["current"] == "" and args["node_id"] != "": # Generate from nothing for a workflow node
+            if args["current"] == "" and args["node_id"] != "":  # Generate from nothing for a workflow node
                 from models import App, db
                 from services.workflow_service import WorkflowService
+
                 app = db.session.query(App).filter(App.id == args["flow_id"]).first()
                 if not app:
-                    return { "error": f"app {args['flow_id']} not found" }, 400
+                    return {"error": f"app {args['flow_id']} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)
                 if not workflow:
-                    return { "error": f"workflow {args['flow_id']} not found" }, 400
-                nodes:Sequence = workflow.graph_dict["nodes"]
+                    return {"error": f"workflow {args['flow_id']} not found"}, 400
+                nodes: Sequence = workflow.graph_dict["nodes"]
                 node = [node for node in nodes if node["id"] == args["node_id"]]
                 if len(node) == 0:
-                    return { "error": f"node {args['node_id']} not found" }, 400
-                node_type=node[0]["data"]["type"]
+                    return {"error": f"node {args['node_id']} not found"}, 400
+                node_type = node[0]["data"]["type"]
                 match node_type:
                     case "llm":
                         return LLMGenerator.generate_rule_config(
                             current_user.current_tenant_id,
                             instruction=args["instruction"],
                             model_config=args["model_config"],
-                            no_variable=True
+                            no_variable=True,
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_user.current_tenant_id,
                             instruction=args["instruction"],
                             model_config=args["model_config"],
-                            no_variable=True
+                            no_variable=True,
                         )
                     case "code":
                         return LLMGenerator.generate_code(
@@ -162,8 +163,8 @@ class InstructionGenerateApi(Resource):
                             code_language=args["language"],
                         )
                     case _:
-                        return { "error": f"invalid node type: {node_type}"}
-            if args["node_id"] == "" and args["current"] != "": # For legacy app without a workflow
+                        return {"error": f"invalid node type: {node_type}"}
+            if args["node_id"] == "" and args["current"] != "":  # For legacy app without a workflow
                 return LLMGenerator.instruction_modify_legacy(
                     tenant_id=current_user.current_tenant_id,
                     flow_id=args["flow_id"],
@@ -172,7 +173,7 @@ class InstructionGenerateApi(Resource):
                     model_config=args["model_config"],
                     ideal_output=args["ideal_output"],
                 )
-            if args["node_id"] != "" and args["current"] != "": # For workflow node
+            if args["node_id"] != "" and args["current"] != "":  # For workflow node
                 return LLMGenerator.instruction_modify_workflow(
                     tenant_id=current_user.current_tenant_id,
                     flow_id=args["flow_id"],
@@ -182,7 +183,7 @@ class InstructionGenerateApi(Resource):
                     model_config=args["model_config"],
                     ideal_output=args["ideal_output"],
                 )
-            return { "error": "incompatible parameters" }, 400
+            return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -191,6 +192,7 @@ class InstructionGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+
 
 class InstructionGenerationTemplateApi(Resource):
     @setup_required
@@ -203,10 +205,12 @@ class InstructionGenerationTemplateApi(Resource):
         match args["type"]:
             case "prompt":
                 from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_PROMPT
-                return { "data": INSTRUCTION_GENERATE_TEMPLATE_PROMPT }
+
+                return {"data": INSTRUCTION_GENERATE_TEMPLATE_PROMPT}
             case "code":
                 from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_CODE
-                return { "data": INSTRUCTION_GENERATE_TEMPLATE_CODE }
+
+                return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args['type']}")
 

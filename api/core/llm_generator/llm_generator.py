@@ -397,18 +397,12 @@ class LLMGenerator:
 
     @staticmethod
     def instruction_modify_legacy(
-        tenant_id: str,
-        flow_id: str,
-        current: str,
-        instruction: str,
-        model_config: dict,
-        ideal_output: str | None
+        tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ) -> dict:
         app: App | None = db.session.query(App).filter(App.id == flow_id).first()
-        last_run: Message | None = (db.session.query(Message)
-                             .filter(Message.app_id == flow_id)
-                             .order_by(Message.created_at.desc())
-                             .first())
+        last_run: Message | None = (
+            db.session.query(Message).filter(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
+        )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,
@@ -418,7 +412,7 @@ class LLMGenerator:
                 error_message="",
                 instruction=instruction,
                 node_type="llm",
-                ideal_output=ideal_output
+                ideal_output=ideal_output,
             )
         last_run_dict = {
             "query": last_run.query,
@@ -433,7 +427,7 @@ class LLMGenerator:
             error_message=str(last_run.error),
             instruction=instruction,
             node_type="llm",
-            ideal_output=ideal_output
+            ideal_output=ideal_output,
         )
 
     @staticmethod
@@ -444,30 +438,28 @@ class LLMGenerator:
         current: str,
         instruction: str,
         model_config: dict,
-        ideal_output: str | None
+        ideal_output: str | None,
     ) -> dict:
         from services.workflow_service import WorkflowService
+
         app: App | None = db.session.query(App).filter(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
-        last_run = WorkflowService().get_node_last_run(
-            app_model=app,
-            workflow=workflow,
-            node_id=node_id
-        )
+        last_run = WorkflowService().get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)
         try:
             node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
         except Exception:
             try:
-                node_type = \
-                    [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"]["type"]
+                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"][
+                    "type"
+                ]
             except Exception:
                 node_type = "llm"
 
-        if not last_run: # Node is not executed yet
+        if not last_run:  # Node is not executed yet
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,
                 model_config=model_config,
@@ -476,25 +468,29 @@ class LLMGenerator:
                 error_message="",
                 instruction=instruction,
                 node_type=node_type,
-                ideal_output=ideal_output
+                ideal_output=ideal_output,
             )
+
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
             raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
             if not raw_agent_log:
                 return []
             parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
+
             def dict_of_event(event: AgentLogEvent) -> dict:
                 return {
                     "status": event.status,
                     "error": event.error,
                     "data": event.data,
                 }
+
             return [dict_of_event(event) for event in parsed]
+
         last_run_dict = {
             "inputs": last_run.inputs_dict,
             "status": last_run.status,
             "error": last_run.error,
-            "agent_log": agent_log_of(last_run)
+            "agent_log": agent_log_of(last_run),
         }
 
         return LLMGenerator.__instruction_modify_common(
@@ -505,10 +501,8 @@ class LLMGenerator:
             error_message=last_run.error,
             instruction=instruction,
             node_type=last_run.node_type,
-            ideal_output=ideal_output
+            ideal_output=ideal_output,
         )
-
-
 
     @staticmethod
     def __instruction_modify_common(
@@ -519,7 +513,7 @@ class LLMGenerator:
         error_message: str | None,
         instruction: str,
         node_type: str,
-        ideal_output: str | None
+        ideal_output: str | None,
     ) -> dict:
         LAST_RUN = "{{#last_run#}}"
         CURRENT = "{{#current#}}"
@@ -532,7 +526,7 @@ class LLMGenerator:
         if ERROR_MESSAGE in injected_instruction:
             injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
         model_instance = ModelManager().get_model_instance(
-            tenant_id = tenant_id,
+            tenant_id=tenant_id,
             model_type=ModelType.LLM,
             provider=model_config.get("provider", ""),
             model=model_config.get("name", ""),
@@ -545,15 +539,17 @@ class LLMGenerator:
             case _:
                 system_prompt = LLM_MODIFY_PROMPT_SYSTEM
         prompt_messages = [
-            SystemPromptMessage(content=system_prompt)
-            ,UserPromptMessage(content=json.dumps(
-                {
-                    "current": current,
-                    "last_run": last_run,
-                    "instruction": injected_instruction,
-                    "ideal_output": ideal_output,
-                }
-            ))
+            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(
+                content=json.dumps(
+                    {
+                        "current": current,
+                        "last_run": last_run,
+                        "instruction": injected_instruction,
+                        "ideal_output": ideal_output,
+                    }
+                )
+            ),
         ]
         model_parameters = {"temperature": 0.4}
 
@@ -568,14 +564,11 @@ class LLMGenerator:
             generated_raw = cast(str, response.message.content)
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return {**json.loads(generated_raw[first_brace:last_brace + 1])}
+            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
 
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
-            logging.exception(
-                "Failed to invoke LLM model, model: "+ json.dumps(model_config.get('name')),
-                exc_info=e
-            )
+            logging.exception("Failed to invoke LLM model, model: " + json.dumps(model_config.get("name")), exc_info=e)
             return {"error": f"An unexpected error occurred: {str(e)}"}
