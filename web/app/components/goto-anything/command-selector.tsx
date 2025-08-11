@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useEffect } from 'react'
 import { Command } from 'cmdk'
 import { useTranslation } from 'react-i18next'
 import type { ActionItem } from './actions/types'
@@ -6,10 +7,46 @@ import type { ActionItem } from './actions/types'
 type Props = {
   actions: Record<string, ActionItem>
   onCommandSelect: (commandKey: string) => void
+  searchFilter?: string
+  commandValue?: string
+  onCommandValueChange?: (value: string) => void
 }
 
-const CommandSelector: FC<Props> = ({ actions, onCommandSelect }) => {
+const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange }) => {
   const { t } = useTranslation()
+
+  const filteredActions = Object.values(actions).filter((action) => {
+    if (!searchFilter)
+      return true
+    const filterLower = searchFilter.toLowerCase()
+    return action.shortcut.toLowerCase().includes(filterLower)
+      || action.key.toLowerCase().includes(filterLower)
+  })
+
+  useEffect(() => {
+    if (filteredActions.length > 0 && onCommandValueChange) {
+      const currentValueExists = filteredActions.some(action => action.shortcut === commandValue)
+      if (!currentValueExists)
+        onCommandValueChange(filteredActions[0].shortcut)
+    }
+  }, [searchFilter, filteredActions.length])
+
+  if (filteredActions.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+          <div>
+            <div className="text-sm font-medium text-text-tertiary">
+              {t('app.gotoAnything.noMatchingCommands')}
+            </div>
+            <div className="mt-1 text-xs text-text-quaternary">
+              {t('app.gotoAnything.tryDifferentSearch')}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4">
@@ -17,7 +54,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect }) => {
         {t('app.gotoAnything.selectSearchType')}
       </div>
       <Command.Group className="space-y-1">
-        {Object.values(actions).map(action => (
+        {filteredActions.map(action => (
           <Command.Item
             key={action.key}
             value={action.shortcut}
