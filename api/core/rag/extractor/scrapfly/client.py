@@ -12,11 +12,9 @@ class ScrapflyAPIClient:
 
     def init_session(self):
         session = requests.Session()
-        session.headers.update({
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "Scrapfly-Dify-Plugin"
-        })
+        session.headers.update(
+            {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "Scrapfly-Dify-Plugin"}
+        )
         return session
 
     def process_response(self, response: Response) -> dict:
@@ -30,13 +28,9 @@ class ScrapflyAPIClient:
         Scrape a single URL using Scrapfly API
         """
         options = options or {}
-        
-        params = {
-            "key": self.api_key,
-            "url": url,
-            "format": "json"
-        }
-        
+
+        params = {"key": self.api_key, "url": url, "format": "json"}
+
         # Add optional parameters
         if options.get("render_js", False):
             params["render_js"] = "true"
@@ -52,9 +46,7 @@ class ScrapflyAPIClient:
             params["timeout"] = str(options["timeout"])
 
         response = self.session.get(
-            urljoin(self.base_url, "/scrape"),
-            params=params,
-            timeout=options.get("timeout", 30)
+            urljoin(self.base_url, "/scrape"), params=params, timeout=options.get("timeout", 30)
         )
-        
+
         return self.process_response(response)

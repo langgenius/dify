@@ -26,9 +26,9 @@ class ScrapflyAuth(ApiKeyAuthBase):
         params = {
             "key": self.api_key,
             "url": "https://httpbin.org/json",  # Simple test URL
-            "format": "json"
+            "format": "json",
         }
-        
+
         try:
             response = requests.get(url, params=params, timeout=10)
             if response.status_code == 200:

@@ -22,7 +22,7 @@ class ScrapflyWebExtractor(BaseExtractor):
         tenant_id: str,
         mode: str = "scrape",
         only_main_content: bool = True,
-        job_id: Optional[str] = None
+        job_id: Optional[str] = None,
     ):
         """Initialize with url, tenant_id and mode."""
         self._url = url
@@ -34,11 +34,9 @@ class ScrapflyWebExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         """Extract content from the URL."""
         documents = []
-        
+
         # Scrapfly only supports scrape mode (single page extraction)
-        scrape_data = WebsiteService.get_scrape_url_data(
-            "scrapfly", self._url, self.tenant_id, self.only_main_content
-        )
+        scrape_data = WebsiteService.get_scrape_url_data("scrapfly", self._url, self.tenant_id, self.only_main_content)
 
         if scrape_data:
             document = Document(
@@ -50,5 +48,5 @@ class ScrapflyWebExtractor(BaseExtractor):
                 },
             )
             documents.append(document)
-        
+
         return documents
