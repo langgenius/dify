@@ -265,9 +265,11 @@ const translation = {
       noAppsFound: 'ไม่พบแอป',
       noWorkflowNodesFound: 'ไม่พบโหนดเวิร์กโฟลว์',
       noKnowledgeBasesFound: 'ไม่พบฐานความรู้',
+      tryDifferentTerm: 'ลองใช้คำค้นหาที่แตกต่างออกไปหรือลบตัวกรอง {{mode}}',
+      trySpecificSearch: 'ลองใช้ {{shortcuts}} สำหรับการค้นหาเฉพาะ',
     },
     groups: {
-      apps: 'ปพลิ เค ชัน',
+      apps: 'แอปพลิเคชัน',
       knowledgeBases: 'ฐานความรู้',
       plugins: 'ปลั๊กอิน',
       workflowNodes: 'โหนดเวิร์กโฟลว์',
@@ -285,6 +287,9 @@ const translation = {
     searchHint: 'เริ่มพิมพ์เพื่อค้นหาทุกอย่างได้ทันที',
     selectSearchType: 'เลือกสิ่งที่จะค้นหา',
     commandHint: 'พิมพ์ @ เพื่อเรียกดูตามหมวดหมู่',
+    resultCount: '{{count}} ผลลัพธ์',
+    resultCount_other: '{{count}} ผลลัพธ์',
+    inScope: 'ใน {{scope}}s',
   },
 }
 
