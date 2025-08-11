@@ -23,6 +23,7 @@ const translation = {
     uploader: {
       title: 'Prześlij plik tekstowy',
       button: 'Przeciągnij i upuść pliki lub foldery lub',
+      buttonSingleFile: 'Przeciągnij i upuść plik lub',
       browse: 'Przeglądaj',
       tip: 'Obsługuje {{supportTypes}}. Maksymalnie {{size}}MB każdy.',
       validation: {

@@ -33,6 +33,7 @@ const translation = {
     uploader: {
       title: 'อัปโหลดไฟล์',
       button: 'ลากและวางไฟล์หรือโฟลเดอร์หรือ',
+      buttonSingleFile: 'ลากและวางไฟล์หรือ',
       browse: 'เล็ม',
       tip: 'รองรับ {{supportTypes}} สูงสุด {{size}}MB แต่ละตัว',
       validation: {

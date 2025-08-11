@@ -330,17 +330,17 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests")
-    ] = 10
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
+        ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
+    )
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=60, description="Maximum read timeout in seconds for HTTP requests")
-    ] = 60
+    HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=60
+    )
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum write timeout in seconds for HTTP requests")
-    ] = 20
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=20
+    )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for binary data in HTTP requests",
