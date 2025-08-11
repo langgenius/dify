@@ -1572,12 +1572,32 @@ class UploadFile(Base):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # Its value is derived from the `CreatorUserRole` enumeration.
     created_by_role: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'account'::character varying")
     )
+
+    # The `created_by` field stores the ID of the entity that created this upload file.
+    #
+    # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
+    # Otherwise, it corresponds to `EndUser.id`.
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # The fields `used` and `used_by` are not consistently maintained.
+    #
+    # When using this model in new code, ensure the following:
+    #
+    # 1. Set `used` to `true` when the file is utilized.
+    # 2. Assign `used_by` to the corresponding `Account.id` or `EndUser.id` based on the `created_by_role`.
+    # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
+    #
+    # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+
+    # `used_by` may indicate the ID of the user who utilized this file.
     used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
