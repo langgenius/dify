@@ -38,16 +38,21 @@ export const appAction: ActionItem = {
   title: 'Search Applications',
   description: 'Search and navigate to your applications',
   // action,
-  search: async (_, searchTerm = '', locale) => {
-    const response = (await fetchAppList({
-      url: 'apps',
-      params: {
-        page: 1,
-        name: searchTerm,
-      },
-    }))
-    const apps = response.data || []
-
-    return parser(apps)
+  search: async (_, searchTerm = '', _locale) => {
+    try {
+      const response = await fetchAppList({
+        url: 'apps',
+        params: {
+          page: 1,
+          name: searchTerm,
+        },
+      })
+      const apps = response?.data || []
+      return parser(apps)
+    }
+    catch (error) {
+      console.warn('App search failed:', error)
+      return []
+    }
   },
 }
