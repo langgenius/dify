@@ -28,8 +28,8 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState<string>(dataset.description)
-  const [externalKnowledgeId, setExternalKnowledgeId] = useState<string>(dataset.external_knowledge_info.external_knowledge_id)
-  const [externalKnowledgeApiId, setExternalKnowledgeApiId] = useState<string>(dataset.external_knowledge_info.external_knowledge_api_id)
+  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
 
   const onConfirm: MouseEventHandler = async () => {
     if (!name.trim()) {
