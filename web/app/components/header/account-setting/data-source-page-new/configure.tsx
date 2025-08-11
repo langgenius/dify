@@ -73,7 +73,7 @@ const Configure = ({
         <PortalToFollowElemContent className='z-[61]'>
           <div className='w-[240px] space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg'>
             {
-              canOAuth && (
+              !!canOAuth && (
                 <AddOAuthButton
                   {...oAuthButtonProps}
                   onUpdate={onUpdate}
@@ -89,7 +89,7 @@ const Configure = ({
               )
             }
             {
-              canApiKey && canOAuth && (
+              !!canApiKey && !!canOAuth && (
                 <div className='system-2xs-medium-uppercase flex h-4 items-center p-2 text-text-quaternary'>
                   <div className='mr-2 h-[1px] grow bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
                   OR
@@ -98,7 +98,7 @@ const Configure = ({
               )
             }
             {
-              canApiKey && (
+              !!canApiKey && (
                 <AddApiKeyButton
                   {...apiKeyButtonProps}
                   formSchemas={item.credential_schema}

@@ -6,14 +6,15 @@ export type OnlineDriveSliceShape = {
   setPrefix: (prefix: string[]) => void
   keywords: string
   setKeywords: (keywords: string) => void
-  selectedFileKeys: string[]
-  setSelectedFileKeys: (selectedFileKeys: string[]) => void
+  selectedFileIds: string[]
+  setSelectedFileIds: (selectedFileIds: string[]) => void
   fileList: OnlineDriveFile[]
   setFileList: (fileList: OnlineDriveFile[]) => void
   bucket: string
   setBucket: (bucket: string) => void
-  startAfter: string
-  setStartAfter: (startAfter: string) => void
+  nextPageParameters: Record<string, any>
+  currentNextPageParametersRef: React.RefObject<Record<string, any>>
+  setNextPageParameters: (nextPageParameters: Record<string, any>) => void
   isTruncated: React.RefObject<boolean>
   previewOnlineDriveFileRef: React.RefObject<OnlineDriveFile | undefined>
 }
@@ -28,14 +29,14 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
     setKeywords: (keywords: string) => set(() => ({
       keywords,
     })),
-    selectedFileKeys: [],
-    setSelectedFileKeys: (selectedFileKeys: string[]) => {
+    selectedFileIds: [],
+    setSelectedFileIds: (selectedFileIds: string[]) => {
       set(() => ({
-        selectedFileKeys,
+        selectedFileIds,
       }))
-      const key = selectedFileKeys[0]
+      const id = selectedFileIds[0]
       const { fileList, previewOnlineDriveFileRef } = get()
-      previewOnlineDriveFileRef.current = fileList.find(file => file.key === key)
+      previewOnlineDriveFileRef.current = fileList.find(file => file.id === id)
     },
     fileList: [],
     setFileList: (fileList: OnlineDriveFile[]) => set(() => ({
@@ -45,9 +46,10 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
     setBucket: (bucket: string) => set(() => ({
       bucket,
     })),
-    startAfter: '',
-    setStartAfter: (startAfter: string) => set(() => ({
-      startAfter,
+    nextPageParameters: {},
+    currentNextPageParametersRef: { current: {} },
+    setNextPageParameters: (nextPageParameters: Record<string, any>) => set(() => ({
+      nextPageParameters,
     })),
     isTruncated: { current: false },
     previewOnlineDriveFileRef: { current: undefined },

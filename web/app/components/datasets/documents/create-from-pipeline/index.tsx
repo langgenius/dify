@@ -82,7 +82,7 @@ const CreateFormPipeline = () => {
   } = useWebsiteCrawl()
   const {
     fileList: onlineDriveFileList,
-    selectedFileKeys,
+    selectedFileIds,
     selectedOnlineDriveFileList,
     clearOnlineDriveData,
   } = useOnlineDrive()
@@ -113,9 +113,9 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     if (datasourceType === DatasourceType.onlineDrive)
-      return isShowVectorSpaceFull || !selectedFileKeys.length
+      return isShowVectorSpaceFull || !selectedFileIds.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileKeys.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList.length, allFileLoaded, onlineDocuments.length, websitePages.length, selectedFileIds.length])
 
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
@@ -149,8 +149,8 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDocument)
       return onlineDocuments.length
     if (datasourceType === DatasourceType.onlineDrive)
-      return selectedFileKeys.length
-  }, [datasourceType, onlineDocuments.length, selectedFileKeys.length])
+      return selectedFileIds.length
+  }, [datasourceType, onlineDocuments.length, selectedFileIds.length])
 
   const tip = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
@@ -209,10 +209,10 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket } = dataSourceStore.getState()
-      const { key } = previewOnlineDriveFileRef.current!
+      const { id } = previewOnlineDriveFileRef.current!
       datasourceInfoList.push({
         bucket,
-        key,
+        id,
         credential_id: currentCredentialId,
       })
     }
@@ -273,7 +273,7 @@ const CreateFormPipeline = () => {
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       if (datasourceType === DatasourceType.onlineDrive) {
-        selectedFileKeys.forEach((key) => {
+        selectedFileIds.forEach((key) => {
           datasourceInfoList.push({
             bucket,
             key,
@@ -296,7 +296,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileKeys, websitePages])
+  }, [dataSourceStore, datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, selectedFileIds, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -340,9 +340,9 @@ const CreateFormPipeline = () => {
     const {
       onlineDocuments,
       fileList: onlineDriveFileList,
-      selectedFileKeys,
+      selectedFileIds,
       setOnlineDocuments,
-      setSelectedFileKeys,
+      setSelectedFileIds,
       setSelectedPagesId,
     } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.onlineDocument) {
@@ -360,11 +360,11 @@ const CreateFormPipeline = () => {
     if (datasourceType === DatasourceType.onlineDrive) {
       const allKeys = onlineDriveFileList.filter((item) => {
         return item.type !== 'bucket'
-      }).map(file => file.key)
-      if (selectedFileKeys.length < allKeys.length)
-        setSelectedFileKeys(allKeys)
+      }).map(file => file.id)
+      if (selectedFileIds.length < allKeys.length)
+        setSelectedFileIds(allKeys)
       else
-        setSelectedFileKeys([])
+        setSelectedFileIds([])
     }
   }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 

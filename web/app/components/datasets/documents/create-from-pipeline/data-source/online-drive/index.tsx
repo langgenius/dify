@@ -32,19 +32,19 @@ const OnlineDrive = ({
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const {
-    startAfter,
+    nextPageParameters,
     prefix,
     keywords,
     bucket,
-    selectedFileKeys,
+    selectedFileIds,
     fileList,
     currentCredentialId,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
-    startAfter: state.startAfter,
+    nextPageParameters: state.nextPageParameters,
     prefix: state.prefix,
     keywords: state.keywords,
     bucket: state.bucket,
-    selectedFileKeys: state.selectedFileKeys,
+    selectedFileIds: state.selectedFileIds,
     fileList: state.fileList,
     currentCredentialId: state.currentCredentialId,
   })))
@@ -61,7 +61,7 @@ const OnlineDrive = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDriveFiles = useCallback(async () => {
-    const { startAfter, prefix, bucket, fileList, currentCredentialId } = dataSourceStore.getState()
+    const { nextPageParameters, prefix, bucket, fileList, currentCredentialId } = dataSourceStore.getState()
     const prefixString = prefix.length > 0 ? `${prefix.join('/')}/` : ''
     setIsLoading(true)
     ssePost(
@@ -71,7 +71,7 @@ const OnlineDrive = ({
           inputs: {
             prefix: prefixString,
             bucket,
-            start_after: startAfter,
+            next_page_parameters: nextPageParameters,
             max_keys: 30, // Adjust as needed
           },
           datasource_type: DatasourceType.onlineDrive,
@@ -80,10 +80,15 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setFileList, isTruncated } = dataSourceStore.getState()
-          const { fileList: newFileList, isTruncated: newIsTruncated } = convertOnlineDriveData(documentsData.data, prefix, bucket)
+          const { setFileList, isTruncated, currentNextPageParametersRef } = dataSourceStore.getState()
+          const {
+            fileList: newFileList,
+            isTruncated: newIsTruncated,
+            nextPageParameters: newNextPageParameters,
+          } = convertOnlineDriveData(documentsData.data, prefix, bucket)
           setFileList([...fileList, ...newFileList])
           isTruncated.current = newIsTruncated
+          currentNextPageParametersRef.current = newNextPageParameters
           setIsLoading(false)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
@@ -107,11 +112,11 @@ const OnlineDrive = ({
     else {
       getOnlineDriveFiles()
     }
-  }, [startAfter, prefix, bucket, currentCredentialId])
+  }, [nextPageParameters, prefix, bucket, currentCredentialId])
 
   const onlineDriveFileList = useMemo(() => {
     if (keywords)
-      return fileList.filter(file => file.key.toLowerCase().includes(keywords.toLowerCase()))
+      return fileList.filter(file => file.name.toLowerCase().includes(keywords.toLowerCase()))
     return fileList
   }, [fileList, keywords])
 
@@ -127,33 +132,32 @@ const OnlineDrive = ({
   }, [dataSourceStore])
 
   const handleSelectFile = useCallback((file: OnlineDriveFile) => {
-    const { selectedFileKeys, setSelectedFileKeys } = dataSourceStore.getState()
+    const { selectedFileIds, setSelectedFileIds } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.bucket) return
-    const newSelectedFileList = produce(selectedFileKeys, (draft) => {
-      if (draft.includes(file.key)) {
-        const index = draft.indexOf(file.key)
+    const newSelectedFileList = produce(selectedFileIds, (draft) => {
+      if (draft.includes(file.id)) {
+        const index = draft.indexOf(file.id)
         draft.splice(index, 1)
       }
       else {
         if (isInPipeline && draft.length >= 1) return
-        draft.push(file.key)
+        draft.push(file.id)
       }
     })
-    setSelectedFileKeys(newSelectedFileList)
+    setSelectedFileIds(newSelectedFileList)
   }, [dataSourceStore, isInPipeline])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
-    const { prefix, setPrefix, setBucket, setFileList, setSelectedFileKeys } = dataSourceStore.getState()
+    const { prefix, setPrefix, setBucket, setFileList, setSelectedFileIds } = dataSourceStore.getState()
     if (file.type === OnlineDriveFileType.file) return
     setFileList([])
     if (file.type === OnlineDriveFileType.bucket) {
-      setBucket(file.displayName)
+      setBucket(file.name)
     }
     else {
-      setSelectedFileKeys([])
-      const displayName = file.displayName.endsWith('/') ? file.displayName.slice(0, -1) : file.displayName
+      setSelectedFileIds([])
       const newPrefix = produce(prefix, (draft) => {
-        draft.push(displayName)
+        draft.push(file.name)
       })
       setPrefix(newPrefix)
     }
@@ -178,7 +182,7 @@ const OnlineDrive = ({
       />
       <FileList
         fileList={onlineDriveFileList}
-        selectedFileKeys={selectedFileKeys}
+        selectedFileIds={selectedFileIds}
         prefix={prefix}
         keywords={keywords}
         bucket={bucket}

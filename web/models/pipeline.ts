@@ -282,8 +282,8 @@ export enum OnlineDriveFileType {
 }
 
 export type OnlineDriveFile = {
-  key: string
-  displayName: string
+  id: string
+  name: string
   size?: number
   type: OnlineDriveFileType
 }

@@ -13,14 +13,17 @@ export type DataSourceNodeError = {
 }
 
 export type OnlineDriveFile = {
-  key: string
+  id: string
+  name: string
   size: number
+  type: 'file' | 'folder'
 }
 
 export type OnlineDriveData = {
   bucket: string
   files: OnlineDriveFile[]
   is_truncated: boolean
+  next_page_parameters: Record<string, any>
 }
 
 export type DataSourceNodeCompletedResponse = {

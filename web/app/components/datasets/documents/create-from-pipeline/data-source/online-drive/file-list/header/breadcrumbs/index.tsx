@@ -43,25 +43,25 @@ const Breadcrumbs = ({
   }, [displayBreadcrumbNum, prefix])
 
   const handleBackToBucketList = useCallback(() => {
-    const { setFileList, setSelectedFileKeys, setPrefix, setBucket } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileIds, setPrefix, setBucket } = dataSourceStore.getState()
     setFileList([])
-    setSelectedFileKeys([])
+    setSelectedFileIds([])
     setBucket('')
     setPrefix([])
   }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
-    const { setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
+    const { setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
     setFileList([])
-    setSelectedFileKeys([])
+    setSelectedFileIds([])
     setPrefix([])
   }, [dataSourceStore])
 
   const handleClickBreadcrumb = useCallback((index: number) => {
-    const { prefix, setFileList, setSelectedFileKeys, setPrefix } = dataSourceStore.getState()
+    const { prefix, setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
     const newPrefix = prefix.slice(0, index + 1)
     setFileList([])
-    setSelectedFileKeys([])
+    setSelectedFileIds([])
     setPrefix(newPrefix)
   }, [dataSourceStore])
 

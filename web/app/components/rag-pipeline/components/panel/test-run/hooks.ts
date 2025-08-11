@@ -114,13 +114,13 @@ export const useOnlineDrive = () => {
       setBucket,
       setPrefix,
       setKeywords,
-      setSelectedFileKeys,
+      setSelectedFileIds,
     } = dataSourceStore.getState()
     setFileList([])
     setBucket('')
     setPrefix([])
     setKeywords('')
-    setSelectedFileKeys([])
+    setSelectedFileIds([])
   }, [dataSourceStore])
 
   return {

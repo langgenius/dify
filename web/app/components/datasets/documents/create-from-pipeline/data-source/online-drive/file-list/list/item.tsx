@@ -1,7 +1,7 @@
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import FileIcon from './file-icon'
 import { formatFileSize } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
@@ -26,8 +26,9 @@ const Item = ({
   onOpen,
 }: ItemProps) => {
   const { t } = useTranslation()
-  const isBucket = file.type === 'bucket'
-  const isFolder = file.type === 'folder'
+  const { id, name, type, size } = file
+  const isBucket = useMemo(() => type === 'bucket', [type])
+  const isFolder = useMemo(() => type === 'folder', [type])
 
   const Wrapper = disabled ? Tooltip : React.Fragment
 
@@ -55,7 +56,7 @@ const Item = ({
         <Checkbox
           className='shrink-0'
           disabled={disabled}
-          id={file.key}
+          id={id}
           checked={isSelected}
           onCheck={handleSelect}
         />
@@ -78,15 +79,15 @@ const Item = ({
             'flex grow items-center gap-x-1 overflow-hidden py-0.5',
             disabled && 'opacity-30',
           )}>
-          <FileIcon type={file.type} fileName={file.displayName} className='shrink-0' />
+          <FileIcon type={type} fileName={name} className='shrink-0' />
           <span
             className='system-sm-medium grow truncate text-text-secondary'
-            title={file.displayName}
+            title={name}
           >
-            {file.displayName}
+            {name}
           </span>
-          {!isFolder && typeof file.size === 'number' && (
-            <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(file.size)}</span>
+          {!isFolder && typeof size === 'number' && (
+            <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(size)}</span>
           )}
         </div>
       </Wrapper>

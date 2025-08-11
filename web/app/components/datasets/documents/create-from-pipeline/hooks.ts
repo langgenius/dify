@@ -188,16 +188,16 @@ export const useWebsiteCrawl = () => {
 export const useOnlineDrive = () => {
   const {
     fileList,
-    selectedFileKeys,
+    selectedFileIds,
   } = useDataSourceStoreWithSelector(useShallow(state => ({
     fileList: state.fileList,
-    selectedFileKeys: state.selectedFileKeys,
+    selectedFileIds: state.selectedFileIds,
   })))
   const dataSourceStore = useDataSourceStore()
 
   const selectedOnlineDriveFileList = useMemo(() => {
-    return selectedFileKeys.map(key => fileList.find(item => item.key === key)!)
-  }, [fileList, selectedFileKeys])
+    return selectedFileIds.map(key => fileList.find(item => item.key === key)!)
+  }, [fileList, selectedFileIds])
 
   const clearOnlineDriveData = useCallback(() => {
     const {
@@ -205,18 +205,18 @@ export const useOnlineDrive = () => {
       setBucket,
       setPrefix,
       setKeywords,
-      setSelectedFileKeys,
+      setSelectedFileIds,
     } = dataSourceStore.getState()
     setFileList([])
     setBucket('')
     setPrefix([])
     setKeywords('')
-    setSelectedFileKeys([])
+    setSelectedFileIds([])
   }, [dataSourceStore])
 
   return {
     fileList,
-    selectedFileKeys,
+    selectedFileIds,
     selectedOnlineDriveFileList,
     clearOnlineDriveData,
   }

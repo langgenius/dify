@@ -9,7 +9,7 @@ import { useDataSourceStore } from '../../../store'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
-  selectedFileKeys: string[]
+  selectedFileIds: string[]
   keywords: string
   isInPipeline: boolean
   isLoading: boolean
@@ -20,7 +20,7 @@ type FileListProps = {
 
 const List = ({
   fileList,
-  selectedFileKeys,
+  selectedFileIds,
   keywords,
   handleResetKeywords,
   handleSelectFile,
@@ -35,9 +35,9 @@ const List = ({
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        const { setStartAfter, isTruncated } = dataSourceStore.getState()
+        const { setNextPageParameters, currentNextPageParametersRef, isTruncated } = dataSourceStore.getState()
         if (entries[0].isIntersecting && isTruncated.current && !isLoading)
-          setStartAfter(fileList[fileList.length - 1].key)
+          setNextPageParameters(currentNextPageParametersRef.current)
       }, {
         rootMargin: '100px',
       })
@@ -72,10 +72,10 @@ const List = ({
         <div className='flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5'>
           {
             fileList.map((file) => {
-              const isSelected = selectedFileKeys.includes(file.key)
+              const isSelected = selectedFileIds.includes(file.id)
               return (
                 <Item
-                  key={file.key}
+                  key={file.id}
                   file={file}
                   isSelected={isSelected}
                   onSelect={handleSelectFile}
