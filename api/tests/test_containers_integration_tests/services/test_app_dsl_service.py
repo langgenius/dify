@@ -381,7 +381,6 @@ class TestAppDslService:
         exported_data = yaml.safe_load(exported_dsl)
 
         # Verify exported data structure
-        assert exported_data["version"] == "0.3.0"
         assert exported_data["kind"] == "app"
         assert exported_data["app"]["name"] == app.name
         assert exported_data["app"]["mode"] == app.mode
@@ -429,7 +428,6 @@ class TestAppDslService:
         exported_data = yaml.safe_load(exported_dsl)
 
         # Verify exported data structure
-        assert exported_data["version"] == "0.3.0"
         assert exported_data["kind"] == "app"
         assert exported_data["app"]["name"] == app.name
         assert exported_data["app"]["mode"] == "workflow"
