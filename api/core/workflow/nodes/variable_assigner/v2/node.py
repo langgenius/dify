@@ -7,11 +7,9 @@ from core.variables import SegmentType, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.graph import BaseNodeData, Node, RetryConfig
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
@@ -53,8 +51,8 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     mapping[key] = selector
 
 
-class VariableAssignerNode(BaseNode):
-    _node_type = NodeType.VARIABLE_ASSIGNER
+class VariableAssignerNode(Node):
+    node_type = NodeType.VARIABLE_ASSIGNER
 
     _node_data: VariableAssignerNodeData
 

@@ -26,7 +26,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper

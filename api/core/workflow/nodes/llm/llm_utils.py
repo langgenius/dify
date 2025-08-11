@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from typing import Optional, cast
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -17,10 +16,10 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
-from models import db
+from models.engine import Session
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 
@@ -97,7 +96,7 @@ def fetch_memory(
         return None
     conversation_id = conversation_id_variable.value
 
-    with Session(db.engine, expire_on_commit=False) as session:
+    with Session(expire_on_commit=False) as session:
         stmt = select(Conversation).where(Conversation.app_id == app_id, Conversation.id == conversation_id)
         conversation = session.scalar(stmt)
         if not conversation:
@@ -136,7 +135,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
+        with Session() as session:
             stmt = (
                 update(Provider)
                 .where(

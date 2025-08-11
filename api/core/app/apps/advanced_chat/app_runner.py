@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
@@ -24,7 +25,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -82,17 +83,27 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         if self.application_generate_entity.single_iteration_run:
             # if only single iteration run is requested
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=self._workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=dict(self.application_generate_entity.single_iteration_run.inputs),
+                graph_runtime_state=graph_runtime_state,
             )
         elif self.application_generate_entity.single_loop_run:
             # if only single loop run is requested
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=VariablePool.empty(),
+                start_at=time.time(),
+            )
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_loop(
                 workflow=self._workflow,
                 node_id=self.application_generate_entity.single_loop_run.node_id,
                 user_inputs=dict(self.application_generate_entity.single_loop_run.inputs),
+                graph_runtime_state=graph_runtime_state,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -144,7 +155,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=self._workflow.graph_dict)
+            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+            graph = self._init_graph(
+                graph_config=self._workflow.graph_dict,
+                graph_runtime_state=graph_runtime_state,
+                workflow_id=self._workflow.id,
+                tenant_id=self._workflow.tenant_id,
+            )
 
         db.session.close()
 
@@ -164,7 +181,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ),
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
+            graph_runtime_state=graph_runtime_state,
         )
 
         generator = workflow_entry.run(

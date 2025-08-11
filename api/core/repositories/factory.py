@@ -153,7 +153,6 @@ class DifyCoreRepositoryFactory:
             RepositoryImportError: If the configured repository cannot be created
         """
         class_path = dify_config.CORE_WORKFLOW_EXECUTION_REPOSITORY
-        logger.debug("Creating WorkflowExecutionRepository from: %s", class_path)
 
         try:
             repository_class = cls._import_class(class_path)
@@ -199,7 +198,6 @@ class DifyCoreRepositoryFactory:
             RepositoryImportError: If the configured repository cannot be created
         """
         class_path = dify_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY
-        logger.debug("Creating WorkflowNodeExecutionRepository from: %s", class_path)
 
         try:
             repository_class = cls._import_class(class_path)
