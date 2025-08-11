@@ -286,6 +286,9 @@ const translation = {
     searchTitle: 'Busca cualquier cosa',
     someServicesUnavailable: 'Algunos servicios de búsqueda no están disponibles',
     servicesUnavailableMessage: 'Algunos servicios de búsqueda pueden estar experimentando problemas. Inténtalo de nuevo en un momento.',
+    searchHint: 'Empieza a escribir para buscar todo al instante',
+    commandHint: 'Escriba @ para buscar por categoría',
+    selectSearchType: 'Elige qué buscar',
   },
 }
 

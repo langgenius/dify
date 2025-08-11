@@ -263,7 +263,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         for i in range(5):
-            test_value = StringSegment(value=fake.numerify("value##"))
+            test_value = StringSegment(value=fake.numerify("value######"))
             self._create_test_variable(
                 db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, fake.word(), test_value, fake=fake
             )
@@ -480,7 +480,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         for i in range(3):
-            test_value = StringSegment(value=fake.numerify("value##"))
+            test_value = StringSegment(value=fake.numerify("value######"))
             self._create_test_variable(
                 db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, fake.word(), test_value, fake=fake
             )
@@ -515,7 +515,7 @@ class TestWorkflowDraftVariableService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         node_id = fake.word()
         for i in range(2):
-            test_value = StringSegment(value=fake.numerify("node_value##"))
+            test_value = StringSegment(value=fake.numerify("node_value######"))
             self._create_test_variable(
                 db_session_with_containers, app.id, node_id, fake.word(), test_value, "node", fake=fake
             )

@@ -288,6 +288,9 @@ const translation = {
     useAtForSpecific: 'Verwenden von @ für bestimmte Typen',
     searchTitle: 'Suchen Sie nach irgendetwas',
     searching: 'Suche...',
+    selectSearchType: 'Wählen Sie aus, wonach gesucht werden soll',
+    commandHint: 'Geben Sie @ ein, um nach Kategorie zu suchen',
+    searchHint: 'Beginnen Sie mit der Eingabe, um alles sofort zu durchsuchen',
   },
 }
 

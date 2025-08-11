@@ -282,6 +282,9 @@ const translation = {
     noResults: 'Sonuç bulunamadı',
     servicesUnavailableMessage: 'Bazı arama hizmetlerinde sorunlar yaşanıyor olabilir. Kısa bir süre sonra tekrar deneyin.',
     searching: 'Araştırıcı...',
+    selectSearchType: 'Ne arayacağınızı seçin',
+    searchHint: 'Her şeyi anında aramak için yazmaya başlayın',
+    commandHint: 'Kategoriye göre göz atmak için @ yazın',
   },
 }
 

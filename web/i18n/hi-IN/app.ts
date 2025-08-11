@@ -286,6 +286,9 @@ const translation = {
     searchPlaceholder: 'कमांड के लिए खोजें या टाइप करें @...',
     searchTemporarilyUnavailable: 'खोज अस्थायी रूप से उपलब्ध नहीं है',
     servicesUnavailableMessage: 'कुछ खोज सेवाएँ समस्याओं का सामना कर सकती हैं। थोड़ी देर बाद फिर से प्रयास करें।',
+    commandHint: '@ का उपयोग कर श्रेणी के अनुसार ब्राउज़ करें',
+    selectSearchType: 'खोजने के लिए क्या चुनें',
+    searchHint: 'सब कुछ तुरंत खोजने के लिए टाइप करना शुरू करें',
   },
 }
 
