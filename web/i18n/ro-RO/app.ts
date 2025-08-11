@@ -252,6 +252,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Introduceți 0 pentru nelimitat',
   maxActiveRequests: 'Maxime cereri simultane',
   maxActiveRequestsTip: 'Numărul maxim de cereri active concurente pe aplicație (0 pentru nelimitat)',
+  gotoAnything: {
+    actions: {
+      searchKnowledgeBasesDesc: 'Căutați și navigați la bazele de cunoștințe',
+      searchWorkflowNodes: 'Căutare în noduri de flux de lucru',
+      searchKnowledgeBases: 'Căutare în baze de cunoștințe',
+      searchApplicationsDesc: 'Căutați și navigați la aplicațiile dvs.',
+      searchApplications: 'Căutare aplicații',
+      searchPluginsDesc: 'Căutați și navigați la plugin-urile dvs.',
+      searchWorkflowNodesDesc: 'Găsiți și treceți la nodurile din fluxul de lucru curent după nume sau tip',
+      searchWorkflowNodesHelp: 'Această caracteristică funcționează numai atunci când vizualizați un flux de lucru. Navigați mai întâi la un flux de lucru.',
+      searchPlugins: 'Căutare plugin-uri',
+    },
+    emptyState: {
+      noAppsFound: 'Nu s-au găsit aplicații',
+      noPluginsFound: 'Nu au fost găsite plugin-uri',
+      noWorkflowNodesFound: 'Nu au fost găsite noduri de flux de lucru',
+      noKnowledgeBasesFound: 'Nu au fost găsite baze de cunoștințe',
+    },
+    groups: {
+      knowledgeBases: 'Baze de cunoștințe',
+      workflowNodes: 'Noduri de flux de lucru',
+      plugins: 'Pluginuri',
+      apps: 'Aplicații',
+    },
+    useAtForSpecific: 'Utilizați @ pentru anumite tipuri',
+    searchTemporarilyUnavailable: 'Căutare temporar indisponibilă',
+    searchPlaceholder: 'Căutați sau tastați @ pentru comenzi...',
+    searchTitle: 'Căutați orice',
+    searching: 'Căutarea...',
+    noResults: 'Nu s-au găsit rezultate',
+    searchFailed: 'Căutarea a eșuat',
+    servicesUnavailableMessage: 'Este posibil ca unele servicii de căutare să întâmpine probleme. Încercați din nou într-o clipă.',
+    someServicesUnavailable: 'Unele servicii de căutare nu sunt disponibile',
+    clearToSearchAll: 'Ștergeți @ pentru a căuta toate',
+  },
 }
 
 export default translation

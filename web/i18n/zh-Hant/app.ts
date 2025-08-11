@@ -251,6 +251,41 @@ const translation = {
   maxActiveRequestsPlaceholder: '輸入 0 以表示無限',
   maxActiveRequests: '同時最大請求數',
   maxActiveRequestsTip: '每個應用程式可同時活躍請求的最大數量（0為無限制）',
+  gotoAnything: {
+    actions: {
+      searchWorkflowNodes: '搜索工作流節點',
+      searchPluginsDesc: '搜索並導航到您的外掛程式',
+      searchApplications: '搜索應用程式',
+      searchKnowledgeBases: '搜索知識庫',
+      searchKnowledgeBasesDesc: '搜索並導航到您的知識庫',
+      searchWorkflowNodesHelp: '此功能僅在查看工作流時有效。首先導航到工作流。',
+      searchApplicationsDesc: '搜索並導航到您的應用程式',
+      searchPlugins: '搜索外掛程式',
+      searchWorkflowNodesDesc: '按名稱或類型查找並跳轉到當前工作流中的節點',
+    },
+    emptyState: {
+      noAppsFound: '未找到應用',
+      noWorkflowNodesFound: '未找到工作流節點',
+      noKnowledgeBasesFound: '未找到知識庫',
+      noPluginsFound: '未找到外掛程式',
+    },
+    groups: {
+      apps: '應用程式',
+      knowledgeBases: '知識庫',
+      plugins: '外掛程式',
+      workflowNodes: '工作流節點',
+    },
+    searchPlaceholder: '搜尋或鍵入 @ 以取得命令...',
+    searching: '搜索。。。',
+    searchTitle: '搜索任何內容',
+    noResults: '未找到結果',
+    clearToSearchAll: '清除 @ 以搜尋全部',
+    searchFailed: '搜索失敗',
+    servicesUnavailableMessage: '某些搜索服務可能遇到問題。稍後再試一次。',
+    someServicesUnavailable: '某些搜索服務不可用',
+    useAtForSpecific: '對特定類型使用 @',
+    searchTemporarilyUnavailable: '搜索暫時不可用',
+  },
 }
 
 export default translation
