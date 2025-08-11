@@ -2,23 +2,25 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import Tuple, Set, Dict, IO
+from typing import IO
 
-def _parse_set(env_key: str, default_csv: str) -> Set[str]:
+
+def _parse_set(env_key: str, default_csv: str) -> set[str]:
     raw = os.getenv(env_key, default_csv)
     return {s.strip().lower() for s in raw.split(",") if s.strip()}
 
-ALLOWED_EXTS: Set[str] = _parse_set(
+
+ALLOWED_EXTS: set[str] = _parse_set(
     "PLUGIN_UPLOAD_ALLOWED_EXTS",
     ".png,.jpg,.jpeg,.gif,.pdf,.txt,.csv,.json",
 )
 
-BLOCKED_SUFFIXES: Set[str] = _parse_set(
+BLOCKED_SUFFIXES: set[str] = _parse_set(
     "PLUGIN_UPLOAD_BLOCKED_SUFFIXES",
     ".php,.jsp,.exe,.sh,.bat,.js,.html,.htm",
 )
 
-EXT_TO_MIME: Dict[str, str] = {
+EXT_TO_MIME: dict[str, str] = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -31,15 +33,18 @@ EXT_TO_MIME: Dict[str, str] = {
 
 _RTL_CTRL = re.compile(r"[\u200e\u200f\u202a-\u202e]")
 
+
 def normalize_filename(name: str) -> str:
     name = unicodedata.normalize("NFKC", name or "")
     name = _RTL_CTRL.sub("", name)
     name = name.replace("\\", "/").split("/")[-1]
     return name
 
-def split_suffixes(name: str) -> Tuple[str, list]:
+
+def split_suffixes(name: str) -> tuple[str, list]:
     p = Path(name)
     return p.name, [s.lower() for s in p.suffixes]
+
 
 def is_safe_suffixes(suffixes: list) -> bool:
     if not suffixes:
@@ -53,8 +58,10 @@ def is_safe_suffixes(suffixes: list) -> bool:
         return False
     return True
 
+
 def canonical_mimetype(ext: str) -> str:
     return EXT_TO_MIME.get(ext.lower(), "application/octet-stream")
+
 
 def sniff_ok(stream: IO[bytes], ext: str) -> bool:
     try:
@@ -63,8 +70,10 @@ def sniff_ok(stream: IO[bytes], ext: str) -> bool:
         pos = None
     head = stream.read(16)
     if pos is not None:
-        try: stream.seek(pos)
-        except Exception: pass
+        try:
+            stream.seek(pos)
+        except Exception:
+            pass
 
     ext = ext.lower()
     if ext == ".png":
