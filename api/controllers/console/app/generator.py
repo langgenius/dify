@@ -1,4 +1,3 @@
-import os
 from collections.abc import Sequence
 
 from flask_login import current_user

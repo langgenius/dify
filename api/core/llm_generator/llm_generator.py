@@ -453,7 +453,6 @@ class LLMGenerator:
         workflow = WorkflowService().get_draft_workflow(app_model=app)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
-        workflow.graph_dict
         last_run = WorkflowService().get_node_last_run(
             app_model=app,
             workflow=workflow,
@@ -463,7 +462,8 @@ class LLMGenerator:
             node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
         except Exception:
             try:
-                node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"]["type"]
+                node_type = \
+                    [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"]["type"]
             except Exception:
                 node_type = "llm"
 
@@ -575,6 +575,7 @@ class LLMGenerator:
             return {"error": f"Failed to generate code. Error: {error}"}
         except Exception as e:
             logging.exception(
-                f"Failed to invoke LLM model, model: {model_config.get('name')}"
+                "Failed to invoke LLM model, model: "+ json.dumps(model_config.get('name')),
+                exc_info=e
             )
             return {"error": f"An unexpected error occurred: {str(e)}"}
