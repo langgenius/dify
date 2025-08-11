@@ -50,7 +50,6 @@ class PluginUploadFileApi(Resource):
 
         if not verify_plugin_file_signature(
             filename=filename,
-            mimetype=mimetype,
             mimetype=declared_mimetype,
             tenant_id=tenant_id,
             user_id=user_id,
