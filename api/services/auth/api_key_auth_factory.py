@@ -21,6 +21,10 @@ class ApiKeyAuthFactory:
                 from services.auth.watercrawl.watercrawl import WatercrawlAuth
 
                 return WatercrawlAuth
+            case AuthType.SCRAPFLY:
+                from services.auth.scrapfly.scrapfly import ScrapflyAuth
+
+                return ScrapflyAuth
             case AuthType.JINA:
                 from services.auth.jina.jina import JinaAuth
 

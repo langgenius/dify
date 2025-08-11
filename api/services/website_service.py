@@ -8,6 +8,7 @@ from flask_login import current_user
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
+from core.rag.extractor.scrapfly.provider import ScrapflyProvider
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -151,6 +152,8 @@ class WebsiteService:
             return cls._crawl_with_firecrawl(request=request, api_key=api_key, config=config)
         elif request.provider == "watercrawl":
             return cls._crawl_with_watercrawl(request=request, api_key=api_key, config=config)
+        elif request.provider == "scrapfly":
+            return cls._crawl_with_scrapfly(request=request, api_key=api_key, config=config)
         elif request.provider == "jinareader":
             return cls._crawl_with_jinareader(request=request, api_key=api_key)
         else:
@@ -242,6 +245,8 @@ class WebsiteService:
             return cls._get_firecrawl_status(api_request.job_id, api_key, config)
         elif api_request.provider == "watercrawl":
             return cls._get_watercrawl_status(api_request.job_id, api_key, config)
+        elif api_request.provider == "scrapfly":
+            return cls._get_scrapfly_status(api_request.job_id, api_key, config)
         elif api_request.provider == "jinareader":
             return cls._get_jinareader_status(api_request.job_id, api_key)
         else:
@@ -317,6 +322,8 @@ class WebsiteService:
             return cls._get_firecrawl_url_data(job_id, url, api_key, config)
         elif provider == "watercrawl":
             return cls._get_watercrawl_url_data(job_id, url, api_key, config)
+        elif provider == "scrapfly":
+            return cls._get_scrapfly_url_data(job_id, url, api_key, config)
         elif provider == "jinareader":
             return cls._get_jinareader_url_data(job_id, url, api_key)
         else:
@@ -391,6 +398,8 @@ class WebsiteService:
             return cls._scrape_with_firecrawl(request=request, api_key=api_key, config=config)
         elif request.provider == "watercrawl":
             return cls._scrape_with_watercrawl(request=request, api_key=api_key, config=config)
+        elif request.provider == "scrapfly":
+            return cls._scrape_with_scrapfly(request=request, api_key=api_key, config=config)
         else:
             raise ValueError("Invalid provider")
 
@@ -403,3 +412,63 @@ class WebsiteService:
     @classmethod
     def _scrape_with_watercrawl(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
         return WaterCrawlProvider(api_key=api_key, base_url=config.get("base_url")).scrape_url(request.url)
+
+    @classmethod
+    def _crawl_with_scrapfly(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
+        """
+        Scrapfly doesn't support crawling, only single-page scraping.
+        Return immediate completion status.
+        """
+        # Since Scrapfly is immediate scraping, return completed status
+        return {
+            "status": "completed",
+            "job_id": "scrapfly_immediate",
+            "data": [cls._scrape_with_scrapfly_internal(request, api_key, config)]
+        }
+
+    @classmethod
+    def _get_scrapfly_status(cls, job_id: str, api_key: str, config: dict) -> dict[str, Any]:
+        """
+        Scrapfly doesn't have job status since it's immediate.
+        Return completed status for compatibility.
+        """
+        return {
+            "status": "completed",
+            "job_id": job_id,
+            "total": 1,
+            "current": 1,
+            "data": [],
+            "time_consuming": 0,
+        }
+
+    @classmethod
+    def _get_scrapfly_url_data(cls, job_id: str, url: str, api_key: str, config: dict) -> dict[str, Any] | None:
+        """
+        For Scrapfly, since it's immediate scraping, just scrape the URL directly.
+        """
+        request = ScrapeRequest(provider="scrapfly", url=url, tenant_id="", only_main_content=True)
+        return cls._scrape_with_scrapfly(request, api_key, config)
+
+    @classmethod
+    def _scrape_with_scrapfly(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
+        """Scrape a single URL using Scrapfly."""
+        scrapfly_provider = ScrapflyProvider(api_key=api_key, base_url=config.get("base_url"))
+        
+        options = {
+            "render_js": True,  # Enable JavaScript rendering by default
+            "asp": True,       # Enable anti-scraping protection
+            "only_main_content": request.only_main_content
+        }
+        
+        return scrapfly_provider.scrape_url(request.url, options)
+
+    @classmethod
+    def _scrape_with_scrapfly_internal(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
+        """Internal method for crawl compatibility."""
+        scrape_request = ScrapeRequest(
+            provider="scrapfly",
+            url=request.url,
+            tenant_id="",
+            only_main_content=request.options.only_main_content
+        )
+        return cls._scrape_with_scrapfly(scrape_request, api_key, config)

@@ -16,7 +16,7 @@ class WebsiteCrawlApi(Resource):
         parser.add_argument(
             "provider",
             type=str,
-            choices=["firecrawl", "watercrawl", "jinareader"],
+            choices=["firecrawl", "watercrawl", "scrapfly", "jinareader"],
             required=True,
             nullable=True,
             location="json",
@@ -46,7 +46,7 @@ class WebsiteCrawlStatusApi(Resource):
     def get(self, job_id: str):
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "provider", type=str, choices=["firecrawl", "watercrawl", "jinareader"], required=True, location="args"
+            "provider", type=str, choices=["firecrawl", "watercrawl", "scrapfly", "jinareader"], required=True, location="args"
         )
         args = parser.parse_args()
 

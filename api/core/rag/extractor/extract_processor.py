@@ -17,6 +17,7 @@ from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
+from core.rag.extractor.scrapfly.extractor import ScrapflyWebExtractor
 from core.rag.extractor.text_extractor import TextExtractor
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
@@ -191,6 +192,15 @@ class ExtractProcessor:
                     tenant_id=extract_setting.website_info.tenant_id,
                     mode=extract_setting.website_info.mode,
                     only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "scrapfly":
+                extractor = ScrapflyWebExtractor(
+                    url=extract_setting.website_info.url,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                    job_id=extract_setting.website_info.job_id,
                 )
                 return extractor.extract()
             elif extract_setting.website_info.provider == "jinareader":
