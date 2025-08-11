@@ -253,6 +253,41 @@ const translation = {
   maxActiveRequests: 'Maksymalne równoczesne żądania',
   maxActiveRequestsPlaceholder: 'Wprowadź 0, aby uzyskać nielimitowane',
   maxActiveRequestsTip: 'Maksymalna liczba jednoczesnych aktywnych żądań na aplikację (0 dla nieograniczonej)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'Szukaj wtyczek',
+      searchWorkflowNodesHelp: 'Ta funkcja działa tylko podczas wyświetlania przepływu pracy. Najpierw przejdź do przepływu pracy.',
+      searchApplicationsDesc: 'Wyszukiwanie aplikacji i przechodzenie do nich',
+      searchPluginsDesc: 'Wyszukiwanie i przechodzenie do wtyczek',
+      searchApplications: 'Szukaj aplikacji',
+      searchKnowledgeBasesDesc: 'Wyszukiwanie i przechodzenie do baz wiedzy',
+      searchWorkflowNodesDesc: 'Znajdowanie węzłów w bieżącym przepływie pracy i przechodzenie do nich według nazwy lub typu',
+      searchKnowledgeBases: 'Szukaj w bazach wiedzy',
+      searchWorkflowNodes: 'Wyszukiwanie węzłów przepływu pracy',
+    },
+    emptyState: {
+      noAppsFound: 'Nie znaleziono aplikacji',
+      noKnowledgeBasesFound: 'Nie znaleziono baz wiedzy',
+      noWorkflowNodesFound: 'Nie znaleziono węzłów przepływu pracy',
+      noPluginsFound: 'Nie znaleziono wtyczek',
+    },
+    groups: {
+      apps: 'Aplikacje',
+      workflowNodes: 'Węzły przepływu pracy',
+      knowledgeBases: 'Bazy wiedzy',
+      plugins: 'Wtyczki',
+    },
+    useAtForSpecific: 'Użyj @ dla określonych typów',
+    searchPlaceholder: 'Wyszukaj lub wpisz @ dla poleceń...',
+    searching: 'Wyszukiwanie...',
+    noResults: 'Nie znaleziono wyników',
+    searchTitle: 'Szukaj czegokolwiek',
+    someServicesUnavailable: 'Niektóre usługi wyszukiwania są niedostępne',
+    clearToSearchAll: 'Wyczyść @, aby przeszukać wszystko',
+    searchTemporarilyUnavailable: 'Wyszukiwanie chwilowo niedostępne',
+    servicesUnavailableMessage: 'W przypadku niektórych usług wyszukiwania mogą występować problemy. Spróbuj ponownie za chwilę.',
+    searchFailed: 'Wyszukiwanie nie powiodło się',
+  },
 }
 
 export default translation

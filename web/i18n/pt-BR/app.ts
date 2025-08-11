@@ -252,6 +252,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Digite 0 para ilimitado',
   maxActiveRequests: 'Máximo de solicitações simultâneas',
   maxActiveRequestsTip: 'Número máximo de solicitações ativas simultâneas por aplicativo (0 para ilimitado)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'Pesquisar Plugins',
+      searchApplicationsDesc: 'Pesquise e navegue até seus aplicativos',
+      searchPluginsDesc: 'Pesquise e navegue até seus plug-ins',
+      searchKnowledgeBases: 'Pesquisar bases de conhecimento',
+      searchApplications: 'Aplicativos de pesquisa',
+      searchWorkflowNodesDesc: 'Localizar e ir para nós no fluxo de trabalho atual por nome ou tipo',
+      searchWorkflowNodesHelp: 'Esse recurso só funciona ao visualizar um fluxo de trabalho. Navegue até um fluxo de trabalho primeiro.',
+      searchKnowledgeBasesDesc: 'Pesquise e navegue até suas bases de conhecimento',
+      searchWorkflowNodes: 'Nós de fluxo de trabalho de pesquisa',
+    },
+    emptyState: {
+      noAppsFound: 'Nenhum aplicativo encontrado',
+      noPluginsFound: 'Nenhum plugin encontrado',
+      noWorkflowNodesFound: 'Nenhum nó de fluxo de trabalho encontrado',
+      noKnowledgeBasesFound: 'Nenhuma base de conhecimento encontrada',
+    },
+    groups: {
+      apps: 'Apps',
+      knowledgeBases: 'Bases de conhecimento',
+      plugins: 'Plugins',
+      workflowNodes: 'Nós de fluxo de trabalho',
+    },
+    searching: 'Procurando...',
+    searchTitle: 'Pesquisar qualquer coisa',
+    someServicesUnavailable: 'Alguns serviços de pesquisa indisponíveis',
+    searchTemporarilyUnavailable: 'Pesquisa temporariamente indisponível',
+    servicesUnavailableMessage: 'Alguns serviços de pesquisa podem estar enfrentando problemas. Tente novamente em um momento.',
+    searchPlaceholder: 'Pesquise ou digite @ para comandos...',
+    noResults: 'Nenhum resultado encontrado',
+    useAtForSpecific: 'Use @ para tipos específicos',
+    clearToSearchAll: 'Desmarque @ para pesquisar tudo',
+    searchFailed: 'Falha na pesquisa',
+  },
 }
 
 export default translation
