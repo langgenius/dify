@@ -92,7 +92,12 @@ class ScrapflyProvider:
         html_content = re.sub(r'<h3[^>]*>(.*?)</h3>', r'### \1\n', html_content, flags=re.DOTALL | re.IGNORECASE)
         html_content = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n\n', html_content, flags=re.DOTALL | re.IGNORECASE)
         html_content = re.sub(r'<br[^>]*>', '\n', html_content, flags=re.IGNORECASE)
-        html_content = re.sub(r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>(.*?)</a>', r'[\2](\1)', html_content, flags=re.DOTALL | re.IGNORECASE)
+        html_content = re.sub(
+            r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>(.*?)</a>',
+            r'[\2](\1)',
+            html_content,
+            flags=re.DOTALL | re.IGNORECASE
+        )
         
         # Remove remaining HTML tags
         html_content = re.sub(r'<[^>]+>', '', html_content)

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from services.website_service import WebsiteService
@@ -14,7 +16,14 @@ class ScrapflyWebExtractor(BaseExtractor):
         only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """
 
-    def __init__(self, url: str, tenant_id: str, mode: str = "scrape", only_main_content: bool = True, job_id: str = None):
+    def __init__(
+        self,
+        url: str,
+        tenant_id: str,
+        mode: str = "scrape",
+        only_main_content: bool = True,
+        job_id: Optional[str] = None
+    ):
         """Initialize with url, tenant_id and mode."""
         self._url = url
         self.tenant_id = tenant_id
