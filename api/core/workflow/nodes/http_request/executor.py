@@ -91,7 +91,7 @@ class Executor:
         self.auth = node_data.authorization
         self.timeout = timeout
         self.ssl_verify = node_data.ssl_verify
-        self.params = []
+        self.params = None
         self.headers = {}
         self.content = None
         self.files = None
@@ -139,7 +139,8 @@ class Executor:
                 (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
             )
 
-        self.params = result
+        if result:
+            self.params = result
 
     def _init_headers(self):
         """

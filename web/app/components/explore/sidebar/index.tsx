@@ -49,7 +49,6 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
-  const isChatSelected = lastSegment === 'chat'
   const { installedApps, setInstalledApps, setIsFetchingInstalledApps } = useContext(ExploreContext)
   const { isFetching: isFetchingInstalledApps, data: ret, refetch: fetchInstalledAppList } = useGetInstalledApps()
   const { mutateAsync: uninstallApp } = useUninstallApp()

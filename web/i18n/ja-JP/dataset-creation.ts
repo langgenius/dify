@@ -31,6 +31,7 @@ const translation = {
     uploader: {
       title: 'テキストファイルをアップロード',
       button: 'ファイルまたはフォルダをドラッグアンドドロップする',
+      buttonSingleFile: 'ファイルをドラッグアンドドロップする',
       browse: '参照',
       tip: '{{supportTypes}}をサポートしています。1 つあたりの最大サイズは{{size}}MB です。',
       validation: {

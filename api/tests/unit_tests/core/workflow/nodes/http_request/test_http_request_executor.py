@@ -49,7 +49,7 @@ def test_executor_with_json_body_and_number_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"number": 42}
     assert executor.data is None
     assert executor.files is None
@@ -102,7 +102,7 @@ def test_executor_with_json_body_and_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"name": "John Doe", "age": 30, "email": "john@example.com"}
     assert executor.data is None
     assert executor.files is None
@@ -157,7 +157,7 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json == {"object": {"name": "John Doe", "age": 30, "email": "john@example.com"}}
     assert executor.data is None
     assert executor.files is None
@@ -245,7 +245,7 @@ def test_executor_with_form_data():
     assert executor.url == "https://api.example.com/upload"
     assert "Content-Type" in executor.headers
     assert "multipart/form-data" in executor.headers["Content-Type"]
-    assert executor.params == []
+    assert executor.params is None
     assert executor.json is None
     # '__multipart_placeholder__' is expected when no file inputs exist,
     # to ensure the request is treated as multipart/form-data by the backend.

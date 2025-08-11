@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'จากไฟล์ DSL',
   importFromDSLUrl: 'จาก URL',
   importFromDSLUrlPlaceholder: 'วางลิงค์ DSL ที่นี่',
+  dslUploader: {
+    button: 'ลากและวางไฟล์ หรือ',
+    browse: 'เรียกดู',
+  },
   deleteAppConfirmTitle: 'ลบโปรเจกต์นี้?',
   deleteAppConfirmContent: 'การลบโปรเจกนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงโปรเจกต์ของคุณอีกต่อไป และการกําหนดค่าต่างๆและบันทึกทั้งหมดจะถูกลบอย่างถาวร',
   appDeleted: 'โปรเจกต์ถูกลบ',
@@ -244,6 +248,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'ใส่ 0 สำหรับไม่จำกัด',
   maxActiveRequests: 'จำนวนคำขอพร้อมกันสูงสุด',
   maxActiveRequestsTip: 'จำนวนการร้องขอที่ใช้งานพร้อมกันสูงสุดต่อแอป (0 หมายถึงไม่จำกัด)',
+  gotoAnything: {
+    actions: {
+      searchKnowledgeBases: 'ค้นหาฐานความรู้',
+      searchPlugins: 'ค้นหาปลั๊กอิน',
+      searchWorkflowNodes: 'ค้นหาโหนดเวิร์กโฟลว์',
+      searchApplications: 'ค้นหาแอปพลิเคชัน',
+      searchKnowledgeBasesDesc: 'ค้นหาและนําทางไปยังฐานความรู้ของคุณ',
+      searchPluginsDesc: 'ค้นหาและนําทางไปยังปลั๊กอินของคุณ',
+      searchApplicationsDesc: 'ค้นหาและนําทางไปยังแอปพลิเคชันของคุณ',
+      searchWorkflowNodesHelp: 'คุณลักษณะนี้ใช้ได้เฉพาะเมื่อดูเวิร์กโฟลว์เท่านั้น นําทางไปยังเวิร์กโฟลว์ก่อน',
+      searchWorkflowNodesDesc: 'ค้นหาและข้ามไปยังโหนดในเวิร์กโฟลว์ปัจจุบันตามชื่อหรือประเภท',
+    },
+    emptyState: {
+      noPluginsFound: 'ไม่พบปลั๊กอิน',
+      noAppsFound: 'ไม่พบแอป',
+      noWorkflowNodesFound: 'ไม่พบโหนดเวิร์กโฟลว์',
+      noKnowledgeBasesFound: 'ไม่พบฐานความรู้',
+    },
+    groups: {
+      apps: 'ปพลิ เค ชัน',
+      knowledgeBases: 'ฐานความรู้',
+      plugins: 'ปลั๊กอิน',
+      workflowNodes: 'โหนดเวิร์กโฟลว์',
+    },
+    searchTitle: 'ค้นหาอะไรก็ได้',
+    searchFailed: 'การค้นหาล้มเหลว',
+    useAtForSpecific: 'ใช้ @ สําหรับบางประเภท',
+    noResults: 'ไม่พบผลลัพธ์',
+    searchTemporarilyUnavailable: 'การค้นหาไม่พร้อมใช้งานชั่วคราว',
+    someServicesUnavailable: 'บริการค้นหาบางบริการไม่พร้อมใช้งาน',
+    clearToSearchAll: 'ล้าง @ เพื่อค้นหาทั้งหมด',
+    searchPlaceholder: 'ค้นหาหรือพิมพ์ @ สําหรับคําสั่ง...',
+    servicesUnavailableMessage: 'บริการค้นหาบางบริการอาจประสบปัญหา ลองอีกครั้งในอีกสักครู่',
+    searching: 'กำลังค้นหา...',
+  },
 }
 
 export default translation

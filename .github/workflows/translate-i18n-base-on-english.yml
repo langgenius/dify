@@ -1,9 +1,10 @@
 name: Check i18n Files and Create PR
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
+    paths:
+      - 'web/i18n/en-US/*.ts'
 
 permissions:
   contents: write
@@ -11,7 +12,7 @@ permissions:
 
 jobs:
   check-and-update:
-    if: github.event.pull_request.merged == true
+    if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # last 2 commits
+          fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for file changes in i18n/en-US
@@ -31,6 +32,13 @@ jobs:
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
+            file_args=""
+            for file in $changed_files; do
+              filename=$(basename "$file" .ts)
+              file_args="$file_args --file=$filename"
+            done
+            echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
+            echo "File arguments: $file_args"
           else
             echo "FILES_CHANGED=false" >> $GITHUB_ENV
           fi
@@ -55,7 +63,7 @@ jobs:
 
       - name: Generate i18n translations
         if: env.FILES_CHANGED == 'true'
-        run: pnpm run auto-gen-i18n
+        run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
 
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'
