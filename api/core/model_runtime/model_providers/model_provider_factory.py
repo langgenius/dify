@@ -257,11 +257,6 @@ class ModelProviderFactory:
         # scan all providers
         plugin_model_provider_entities = self.get_plugin_model_providers()
 
-        # convert provider_configs to dict
-        provider_credentials_dict = {}
-        for provider_config in provider_configs:
-            provider_credentials_dict[provider_config.provider] = provider_config.credentials
-
         # traverse all model_provider_extensions
         providers = []
         for plugin_model_provider_entity in plugin_model_provider_entities:
