@@ -269,6 +269,8 @@ const translation = {
       noKnowledgeBasesFound: 'Không tìm thấy cơ sở kiến thức',
       noPluginsFound: 'Không tìm thấy plugin',
       noAppsFound: 'Không tìm thấy ứng dụng nào',
+      tryDifferentTerm: 'Thử từ khóa tìm kiếm khác hoặc xóa bộ lọc {{mode}}',
+      trySpecificSearch: 'Thử {{shortcuts}} để tìm kiếm cụ thể',
     },
     groups: {
       plugins: 'Plugin',
@@ -289,6 +291,9 @@ const translation = {
     searchHint: 'Bắt đầu nhập để tìm kiếm mọi thứ ngay lập tức',
     commandHint: 'Nhập @ để duyệt theo danh mục',
     selectSearchType: 'Chọn nội dung để tìm kiếm',
+    resultCount: '{{count}} kết quả',
+    resultCount_other: '{{count}} kết quả',
+    inScope: 'trong {{scope}}s',
   },
 }
 

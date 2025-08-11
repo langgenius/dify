@@ -269,6 +269,8 @@ const translation = {
       noKnowledgeBasesFound: 'Базы знаний не найдены',
       noAppsFound: 'Приложения не найдены',
       noWorkflowNodesFound: 'Узлы расчетной схемы не найдены',
+      tryDifferentTerm: 'Попробуйте другой поисковый термин или удалите фильтр {{mode}}',
+      trySpecificSearch: 'Попробуйте {{shortcuts}} для конкретного поиска',
     },
     groups: {
       knowledgeBases: 'Базы знаний',
@@ -289,6 +291,9 @@ const translation = {
     searchHint: 'Начните печатать, чтобы мгновенно искать все',
     commandHint: 'Введите @ для просмотра по категориям',
     selectSearchType: 'Выберите, что искать',
+    resultCount: '{{count}} результат',
+    resultCount_other: '{{count}} результатов',
+    inScope: 'в {{scope}}s',
   },
 }
 

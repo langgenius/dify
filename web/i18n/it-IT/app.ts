@@ -275,6 +275,8 @@ const translation = {
       noAppsFound: 'Nessuna app trovata',
       noWorkflowNodesFound: 'Nessun nodo del flusso di lavoro trovato',
       noPluginsFound: 'Nessun plugin trovato',
+      tryDifferentTerm: 'Prova un termine di ricerca diverso o rimuovi il filtro {{mode}}',
+      trySpecificSearch: 'Prova {{shortcuts}} per ricerche specifiche',
     },
     groups: {
       knowledgeBases: 'Basi di conoscenza',
@@ -284,7 +286,7 @@ const translation = {
     },
     searchTitle: 'Cerca qualsiasi cosa',
     searchPlaceholder: 'Cerca o digita @ per i comandi...',
-    searching: 'Indagatore...',
+    searching: 'Ricerca in corso...',
     searchTemporarilyUnavailable: 'Ricerca temporaneamente non disponibile',
     searchFailed: 'Ricerca non riuscita',
     servicesUnavailableMessage: 'Alcuni servizi di ricerca potrebbero riscontrare problemi. Riprova tra un attimo.',
@@ -295,6 +297,9 @@ const translation = {
     selectSearchType: 'Scegli cosa cercare',
     commandHint: 'Digita @ per sfogliare per categoria',
     searchHint: 'Inizia a digitare per cercare tutto all\'istante',
+    resultCount: '{{count}} risultato',
+    resultCount_other: '{{count}} risultati',
+    inScope: 'in {{scope}}s',
   },
 }
 

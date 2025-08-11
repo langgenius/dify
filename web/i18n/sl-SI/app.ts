@@ -269,10 +269,12 @@ const translation = {
       noWorkflowNodesFound: 'Vozlišča poteka dela niso bila najdena',
       noKnowledgeBasesFound: 'Zbirk znanja ni mogoče najti',
       noAppsFound: 'Ni bilo najdenih aplikacij',
+      tryDifferentTerm: 'Poskusite z drugim iskalnim izrazom ali odstranite filter {{mode}}',
+      trySpecificSearch: 'Poskusite {{shortcuts}} za specifična iskanja',
     },
     groups: {
       workflowNodes: 'Vozlišča poteka dela',
-      apps: 'Apps',
+      apps: 'Aplikacije',
       knowledgeBases: 'Baze znanja',
       plugins: 'Vtičniki',
     },
@@ -289,6 +291,9 @@ const translation = {
     commandHint: 'Vnesite @ za brskanje po kategoriji',
     selectSearchType: 'Izberite, kaj želite iskati',
     searchHint: 'Začnite tipkati, da takoj preiščete vse',
+    resultCount: '{{count}} rezultat',
+    resultCount_other: '{{count}} rezultatov',
+    inScope: 'v {{scope}}s',
   },
 }
 
