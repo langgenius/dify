@@ -39,7 +39,7 @@ const TagsFilter = ({
   const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags(t)
+  const { tags: options } = useTags(t)
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
@@ -47,7 +47,6 @@ const TagsFilter = ({
     else
       onTagsChange([...tags, id])
   }
-  const selectedTagsLength = tags.length
 
   return (
     <PortalToFollowElem

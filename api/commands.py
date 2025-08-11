@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from constants.languages import languages
@@ -186,8 +186,8 @@ def migrate_annotation_vector_database():
             )
             if not apps:
                 break
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for app in apps:
@@ -313,8 +313,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for dataset in datasets:
@@ -566,8 +566,8 @@ def old_metadata_migration():
                 .order_by(DatasetDocument.created_at.desc())
             )
             documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not documents:
             break
         for document in documents:

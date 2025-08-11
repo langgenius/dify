@@ -120,6 +120,13 @@ class ObjectSegment(Segment):
 
 class ArraySegment(Segment):
     @property
+    def text(self) -> str:
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
+        return super().text
+
+    @property
     def markdown(self) -> str:
         items = []
         for item in self.value:
@@ -155,6 +162,9 @@ class ArrayStringSegment(ArraySegment):
 
     @property
     def text(self) -> str:
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
         return json.dumps(self.value, ensure_ascii=False)
 
 

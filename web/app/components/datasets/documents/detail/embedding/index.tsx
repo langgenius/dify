@@ -286,7 +286,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
         {/* progress bar */}
         <div className={cn(
           'flex h-2 w-full items-center overflow-hidden rounded-md border border-components-progress-bar-border',
-          isEmbedding ? 'bg-components-progress-bar-bg bg-opacity-50' : 'bg-components-progress-bar-bg',
+          isEmbedding ? 'bg-components-progress-bar-bg/50' : 'bg-components-progress-bar-bg',
         )}>
           <div
             className={cn(

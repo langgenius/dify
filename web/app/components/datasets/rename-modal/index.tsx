@@ -29,8 +29,8 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState<string>(dataset.description)
-  const [externalKnowledgeId] = useState<string>(dataset.external_knowledge_info.external_knowledge_id)
-  const [externalKnowledgeApiId] = useState<string>(dataset.external_knowledge_info.external_knowledge_api_id)
+  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
     dataset.icon_info?.icon_type === 'image'
       ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }

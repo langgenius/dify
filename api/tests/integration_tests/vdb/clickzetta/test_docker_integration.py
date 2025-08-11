@@ -2,6 +2,7 @@
 """
 Test Clickzetta integration in Docker environment
 """
+
 import os
 import time
 
@@ -20,7 +21,7 @@ def test_clickzetta_connection():
             service=os.getenv("CLICKZETTA_SERVICE", "api.clickzetta.com"),
             workspace=os.getenv("CLICKZETTA_WORKSPACE", "test_workspace"),
             vcluster=os.getenv("CLICKZETTA_VCLUSTER", "default"),
-            database=os.getenv("CLICKZETTA_SCHEMA", "dify")
+            database=os.getenv("CLICKZETTA_SCHEMA", "dify"),
         )
 
         with conn.cursor() as cursor:
@@ -36,7 +37,7 @@ def test_clickzetta_connection():
 
             # Check if test collection exists
             test_collection = "collection_test_dataset"
-            if test_collection in [t[1] for t in tables if t[0] == 'dify']:
+            if test_collection in [t[1] for t in tables if t[0] == "dify"]:
                 cursor.execute(f"DESCRIBE dify.{test_collection}")
                 columns = cursor.fetchall()
                 print(f"✓ Table structure for {test_collection}:")
@@ -54,6 +55,7 @@ def test_clickzetta_connection():
     except Exception as e:
         print(f"✗ Connection test failed: {e}")
         return False
+
 
 def test_dify_api():
     """Test Dify API with Clickzetta backend"""
@@ -83,6 +85,7 @@ def test_dify_api():
         print(f"✗ API test failed: {e}")
         return False
 
+
 def verify_table_structure():
     """Verify the table structure meets Dify requirements"""
     print("\n=== Verifying Table Structure ===")
@@ -91,15 +94,10 @@ def verify_table_structure():
         "id": "VARCHAR",
         "page_content": "VARCHAR",
         "metadata": "VARCHAR",  # JSON stored as VARCHAR in Clickzetta
-        "vector": "ARRAY<FLOAT>"
+        "vector": "ARRAY<FLOAT>",
     }
 
-    expected_metadata_fields = [
-        "doc_id",
-        "doc_hash",
-        "document_id",
-        "dataset_id"
-    ]
+    expected_metadata_fields = ["doc_id", "doc_hash", "document_id", "dataset_id"]
 
     print("✓ Expected table structure:")
     for col, dtype in expected_columns.items():
@@ -116,6 +114,7 @@ def verify_table_structure():
     print("  - Functional index on metadata->>'$.document_id' (recommended)")
 
     return True
+
 
 def main():
     """Run all tests"""
@@ -137,9 +136,9 @@ def main():
             results.append((test_name, False))
 
     # Summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("Test Summary:")
-    print("="*50)
+    print("=" * 50)
 
     passed = sum(1 for _, success in results if success)
     total = len(results)
@@ -160,6 +159,7 @@ def main():
     else:
         print("\n⚠️  Some tests failed. Please check the errors above.")
         return 1
+
 
 if __name__ == "__main__":
     exit(main())
