@@ -269,9 +269,11 @@ const translation = {
       noPluginsFound: 'Nenhum plugin encontrado',
       noWorkflowNodesFound: 'Nenhum nó de fluxo de trabalho encontrado',
       noKnowledgeBasesFound: 'Nenhuma base de conhecimento encontrada',
+      tryDifferentTerm: 'Tente um termo de pesquisa diferente ou remova o filtro {{mode}}',
+      trySpecificSearch: 'Tente {{shortcuts}} para pesquisas específicas',
     },
     groups: {
-      apps: 'Apps',
+      apps: 'Aplicativos',
       knowledgeBases: 'Bases de conhecimento',
       plugins: 'Plugins',
       workflowNodes: 'Nós de fluxo de trabalho',
@@ -289,6 +291,9 @@ const translation = {
     searchHint: 'Comece a digitar para pesquisar tudo instantaneamente',
     commandHint: 'Digite @ para navegar por categoria',
     selectSearchType: 'Escolha o que pesquisar',
+    resultCount: '{{count}} resultado',
+    resultCount_other: '{{count}} resultados',
+    inScope: 'em {{scope}}s',
   },
 }
 

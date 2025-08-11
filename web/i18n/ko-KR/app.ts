@@ -289,6 +289,8 @@ const translation = {
       noPluginsFound: '플러그인을 찾을 수 없습니다.',
       noKnowledgeBasesFound: '기술 자료를 찾을 수 없습니다.',
       noWorkflowNodesFound: '워크플로 노드를 찾을 수 없습니다.',
+      tryDifferentTerm: '다른 검색어를 시도하거나 {{mode}} 필터를 제거하세요',
+      trySpecificSearch: '특정 검색을 위해 {{shortcuts}}를 사용해보세요',
     },
     groups: {
       apps: '앱',
@@ -309,6 +311,9 @@ const translation = {
     selectSearchType: '검색할 항목 선택',
     commandHint: '@를 입력하여 카테고리별로 찾아봅니다.',
     searchHint: '즉시 모든 것을 검색하려면 입력을 시작하세요.',
+    resultCount: '{{count}} 개 결과',
+    resultCount_other: '{{count}} 개 결과',
+    inScope: '{{scope}}s 내에서',
   },
 }
 
