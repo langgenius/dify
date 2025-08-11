@@ -1,11 +1,12 @@
 import logging
 import os
 import tempfile
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Union
 
 import openpyxl
 import pypdf
 from docx import Document as DocxDocument
+from pptx import Presentation
 
 from services.errors.file import SensitiveDocumentError
 
@@ -17,23 +18,43 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(
-        cls, extension, content, blocked_levels: Optional[list[str]] = None
+        cls,
+        extension: str,
+        content: bytes,
+        blocked_levels: Optional[Union[list[str], Callable[[], list[str]]]] = None,
     ) -> Optional[str]:
-        blocked_levels_lower = {level.lower() for level in blocked_levels}
+        # Normalize extension to ensure it starts with a dot
+        normalized_extension = extension if extension.startswith(".") else f".{extension}"
+
+        # Resolve blocked levels which may be None or a callable
+        resolved_levels: list[str] = []
+        if blocked_levels is None:
+            resolved_levels = []
+        elif callable(blocked_levels):
+            try:
+                resolved_levels = blocked_levels() or []
+            except Exception:
+                resolved_levels = []
+        else:
+            resolved_levels = blocked_levels or []
+
+        blocked_levels_lower: set[str] = {level.lower() for level in resolved_levels}
 
         try:
-            with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(suffix=normalized_extension, delete=False) as temp_file:
                 temp_file.write(content)
                 temp_file.flush()
                 temp_path = temp_file.name
 
             try:
-                metadata = cls._extract_metadata(temp_path, extension)
+                metadata = cls._extract_metadata(temp_path, normalized_extension)
 
                 detected_sensitivity = cls._check_metadata_sensitivity(metadata, blocked_levels_lower)
 
                 if detected_sensitivity:
-                    raise SensitiveDocumentError(f"sensitive info detected : {detected_sensitivity}")
+                    raise SensitiveDocumentError(
+                        f"sensitive info detected : {detected_sensitivity}"
+                    )
 
                 return detected_sensitivity
 
@@ -52,7 +73,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
         """Extract metadata from document based on file type."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             if extension.lower() in {".docx", ".doc"}:
                 metadata.update(cls._extract_word_metadata(file_path))
@@ -72,7 +93,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_word_metadata(cls, file_path: str) -> dict[str, Any]:
         """Extract metadata from Word documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             doc = DocxDocument(file_path)
             # Extract core properties
@@ -108,7 +129,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_pdf_metadata(cls, file_path: str) -> dict[str, Any]:
         """Extract metadata from PDF documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             with open(file_path, "rb") as file:
                 pdf_reader = pypdf.PdfReader(file)
@@ -123,7 +144,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_excel_metadata(cls, file_path: str) -> dict[str, Any]:
         """Extract metadata from Excel documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             workbook = openpyxl.load_workbook(file_path)
             # Extract core properties
@@ -156,7 +177,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_powerpoint_metadata(cls, file_path: str) -> dict[str, Any]:
         """Extract metadata from PowerPoint documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             pres = Presentation(file_path)
             # Extract core properties
@@ -177,7 +198,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_text_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
         """Extract metadata from text-based documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             # Read file content with encoding detection
             content = ""
@@ -205,7 +226,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_markdown_frontmatter(cls, content: str) -> dict[str, Any]:
         """Extract metadata from Markdown frontmatter (YAML/TOML)."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             # Check for YAML frontmatter
             if content.startswith("---"):
@@ -258,7 +279,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_csv_headers(cls, content: str) -> dict[str, Any]:
         """Extract metadata from CSV headers."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             lines = content.split("\n")
             if lines:
@@ -287,7 +308,7 @@ class DocumentSensitivityService:
     @classmethod
     def _extract_txt_metadata(cls, content: str) -> dict[str, Any]:
         """Extract metadata from plain text files."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             lines = content.split("\n")
             # Look for metadata-like patterns in first few lines
@@ -314,7 +335,9 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _check_metadata_sensitivity(cls, metadata: dict[str, Any], blocked_levels: set) -> Optional[str]:
+    def _check_metadata_sensitivity(
+        cls, metadata: dict[str, Any], blocked_levels: set[str]
+    ) -> Optional[str]:
         """
         Check metadata for sensitivity indicators.
 
@@ -324,21 +347,28 @@ class DocumentSensitivityService:
         for field in ["sensitivity", "classification", "mip_label", "category"]:
             if field in metadata:
                 value = metadata[field]
-                if any(blocked in value for blocked in blocked_levels):
-                    return value
+                value_str = str(value)
+                if any(blocked in value_str for blocked in blocked_levels):
+                    return value_str
         # Check other metadata fields for sensitivity keywords
         sensitive_fields = ["subject", "comments", "keywords"]
         for field in sensitive_fields:
             if field in metadata:
                 value = metadata[field]
+                value_str = str(value)
                 for blocked in blocked_levels:
-                    if blocked in value:
+                    if blocked in value_str:
                         return blocked
         # Check custom properties for MIP labels or sensitivity indicators
         for key, value in metadata.items():
             value_str = str(value)
             # Look for Microsoft Information Protection patterns
-            if "msip_label" in key or "sensitivity" in key or "classification" in key or "confidential" in key:
+            if (
+                "msip_label" in key
+                or "sensitivity" in key
+                or "classification" in key
+                or "confidential" in key
+            ):
                 for blocked in blocked_levels:
                     if blocked in value_str:
                         return blocked
