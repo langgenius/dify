@@ -78,7 +78,12 @@ class PluginUploadFileApi(Resource):
             try:
                 file.stream.seek(0)
             except Exception:
-                pass
+        # Seek to the beginning of the file stream before processing
+        try:
+            file.stream.seek(0)
+        except Exception:
+            pass
+        try:
             tool_file = ToolFileManager().create_file_by_raw(
                 user_id=user.id,
                 tenant_id=tenant_id,
