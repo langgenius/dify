@@ -18,7 +18,13 @@ export const searchAnything = async (
 ): Promise<SearchResult[]> => {
   if (actionItem) {
     const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
-    return await actionItem.search(query, searchTerm, locale)
+    try {
+      return await actionItem.search(query, searchTerm, locale)
+    }
+    catch (error) {
+      console.warn(`Search failed for ${actionItem.key}:`, error)
+      return []
+    }
   }
 
   if (query.startsWith('@'))
