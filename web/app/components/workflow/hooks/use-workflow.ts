@@ -444,7 +444,7 @@ export const useFetchToolsData = () => {
         workflowTools: workflowTools || [],
       })
     }
-    if(type === 'mcp') {
+    if (type === 'mcp') {
       const mcpTools = await fetchAllMCPTools()
 
       workflowStore.setState({
@@ -500,18 +500,17 @@ export const useToolIcon = (data: Node['data']) => {
   const mcpTools = useStore(s => s.mcpTools)
 
   const toolIcon = useMemo(() => {
-    if(!data)
+    if (!data)
       return ''
     if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
+      let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
       else if (data.provider_type === CollectionType.mcp)
         targetTools = mcpTools
-      else
-        targetTools = workflowTools
+
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
   }, [data, buildInTools, customTools, mcpTools, workflowTools])

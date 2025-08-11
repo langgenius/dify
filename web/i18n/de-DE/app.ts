@@ -166,6 +166,10 @@ const translation = {
     description: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
   },
   importFromDSLUrlPlaceholder: 'DSL-Link hier einfügen',
+  dslUploader: {
+    button: 'Datei per Drag & Drop ablegen oder',
+    browse: 'Durchsuchen',
+  },
   duplicate: 'Duplikat',
   importFromDSL: 'Import von DSL',
   importDSL: 'DSL-Datei importieren',

@@ -213,7 +213,7 @@ const translation = {
           after: 'में कॉन्फ़िगर किए गए ओपनएआई एपीआई कुंजी की आवश्यकता होती है।',
         },
       },
-      contentEnableLabel: 'मध्य स्तर की सामग्री सक्षम की गई',
+      contentEnableLabel: 'सामग्री मॉडरेशन सक्षम है',
     },
     fileUpload: {
       numberLimit: 'मैक्स अपलोड करता है',
