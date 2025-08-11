@@ -165,7 +165,7 @@ class DatasourceNode(BaseNode):
                         datasource_runtime.online_drive_download_file(
                             user_id=self.user_id,
                             request=OnlineDriveDownloadFileRequest(
-                                key=datasource_info.get("key"),
+                                id=datasource_info.get("id"),
                                 bucket=datasource_info.get("bucket"),
                             ),
                             provider_type=datasource_type,

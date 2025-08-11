@@ -359,5 +359,5 @@ class OnlineDriveDownloadFileRequest(BaseModel):
     Get online driver file
     """
 
-    key: str = Field(..., description="The name of the file")
+    id: str = Field(..., description="The id of the file")
     bucket: Optional[str] = Field(None, description="The name of the bucket")
