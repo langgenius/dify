@@ -116,15 +116,11 @@ class OracleVector(BaseVector):
                 dsn=self.config.dsn,
                 config_dir=self.config.config_dir,
                 wallet_location=self.config.wallet_location,
-                wallet_password=self.config.wallet_password
+                wallet_password=self.config.wallet_password,
             )
             return connection
         else:
-            connection = oracledb.connect(
-                user=self.config.user,
-                password=self.config.password,
-                dsn=self.config.dsn
-            )
+            connection = oracledb.connect(user=self.config.user, password=self.config.password, dsn=self.config.dsn)
             return connection
 
     def _create_connection_pool(self, config: OracleVectorConfig):
