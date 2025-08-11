@@ -404,8 +404,8 @@ class LLMGenerator:
         model_config: dict,
         ideal_output: str | None
     ) -> dict:
-        app: App = db.session.query(App).filter(App.id == flow_id).first()
-        last_run: Message = (db.session.query(Message)
+        app: App | None = db.session.query(App).filter(App.id == flow_id).first()
+        last_run: Message | None = (db.session.query(Message)
                              .filter(Message.app_id == flow_id)
                              .order_by(Message.created_at.desc())
                              .first())
@@ -447,7 +447,7 @@ class LLMGenerator:
         ideal_output: str | None
     ) -> dict:
         from services.workflow_service import WorkflowService
-        app: App = db.session.query(App).filter(App.id == flow_id).first()
+        app: App | None = db.session.query(App).filter(App.id == flow_id).first()
         if not app:
             raise ValueError("App not found.")
         workflow = WorkflowService().get_draft_workflow(app_model=app)
@@ -460,7 +460,7 @@ class LLMGenerator:
             node_id=node_id
         )
         try:
-            node_type = last_run.node_type
+            node_type = cast(WorkflowNodeExecutionModel, last_run).node_type
         except Exception:
             try:
                 node_type = [it for it in workflow.graph_dict["graph"]["nodes"] if it["id"] == node_id][0]["data"]["type"]
@@ -568,7 +568,7 @@ class LLMGenerator:
             generated_raw = cast(str, response.message.content)
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return json.loads(generated_raw[first_brace:last_brace+1])
+            return {**json.loads(generated_raw[first_brace:last_brace + 1])}
 
         except InvokeError as e:
             error = str(e)

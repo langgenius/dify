@@ -133,6 +133,8 @@ class InstructionGenerateApi(Resource):
                 if not app:
                     return { "error": f"app {args['flow_id']} not found" }, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app)
+                if not workflow:
+                    return { "error": f"workflow {args['flow_id']} not found" }, 400
                 nodes:Sequence = workflow.graph_dict["nodes"]
                 node = [node for node in nodes if node["id"] == args["node_id"]]
                 if len(node) == 0:
