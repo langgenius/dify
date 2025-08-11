@@ -286,6 +286,9 @@ const translation = {
     searchPlaceholder: 'Recherchez ou tapez @ pour les commandes...',
     searchFailed: 'Echec de la recherche',
     noResults: 'Aucun résultat trouvé',
+    commandHint: 'Tapez @ pour parcourir par catégorie',
+    selectSearchType: 'Choisissez les éléments de recherche',
+    searchHint: 'Commencez à taper pour tout rechercher instantanément',
   },
 }
 

@@ -292,6 +292,9 @@ const translation = {
     noResults: 'Nessun risultato trovato',
     useAtForSpecific: 'Utilizzare @ per tipi specifici',
     clearToSearchAll: 'Cancella @ per cercare tutto',
+    selectSearchType: 'Scegli cosa cercare',
+    commandHint: 'Digita @ per sfogliare per categoria',
+    searchHint: 'Inizia a digitare per cercare tutto all\'istante',
   },
 }
 

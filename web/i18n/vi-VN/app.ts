@@ -286,6 +286,9 @@ const translation = {
     useAtForSpecific: 'Sử dụng @ cho các loại cụ thể',
     someServicesUnavailable: 'Một số dịch vụ tìm kiếm không khả dụng',
     servicesUnavailableMessage: 'Một số dịch vụ tìm kiếm có thể gặp sự cố. Thử lại trong giây lát.',
+    searchHint: 'Bắt đầu nhập để tìm kiếm mọi thứ ngay lập tức',
+    commandHint: 'Nhập @ để duyệt theo danh mục',
+    selectSearchType: 'Chọn nội dung để tìm kiếm',
   },
 }
 
