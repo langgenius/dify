@@ -254,6 +254,41 @@ const translation = {
   maxActiveRequests: 'Maximale gleichzeitige Anfragen',
   maxActiveRequestsPlaceholder: 'Geben Sie 0 für unbegrenzt ein',
   maxActiveRequestsTip: 'Maximale Anzahl gleichzeitiger aktiver Anfragen pro App (0 für unbegrenzt)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'Such-Plugins',
+      searchKnowledgeBases: 'Wissensdatenbanken durchsuchen',
+      searchWorkflowNodes: 'Workflow-Knoten durchsuchen',
+      searchKnowledgeBasesDesc: 'Suchen und navigieren Sie zu Ihren Wissensdatenbanken',
+      searchApplications: 'Anwendungen suchen',
+      searchWorkflowNodesHelp: 'Diese Funktion funktioniert nur, wenn ein Workflow angezeigt wird. Navigieren Sie zuerst zu einem Workflow.',
+      searchApplicationsDesc: 'Suchen und navigieren Sie zu Ihren Anwendungen',
+      searchPluginsDesc: 'Suchen und navigieren Sie zu Ihren Plugins',
+      searchWorkflowNodesDesc: 'Suchen und Springen zu Knoten im aktuellen Workflow nach Name oder Typ',
+    },
+    emptyState: {
+      noPluginsFound: 'Keine Plugins gefunden',
+      noWorkflowNodesFound: 'Keine Workflow-Knoten gefunden',
+      noKnowledgeBasesFound: 'Keine Wissensdatenbanken gefunden',
+      noAppsFound: 'Keine Apps gefunden',
+    },
+    groups: {
+      knowledgeBases: 'Wissensdatenbanken',
+      plugins: 'Plugins',
+      apps: 'Apps',
+      workflowNodes: 'Workflow-Knoten',
+    },
+    clearToSearchAll: 'Löschen Sie @, um alle zu durchsuchen',
+    searchTemporarilyUnavailable: 'Suche vorübergehend nicht verfügbar',
+    searchFailed: 'Suche fehlgeschlagen',
+    someServicesUnavailable: 'Einige Suchdienste sind nicht verfügbar',
+    servicesUnavailableMessage: 'Bei einigen Suchdiensten können Probleme auftreten. Versuchen Sie es gleich noch einmal.',
+    noResults: 'Keine Ergebnisse gefunden',
+    searchPlaceholder: 'Suchen Sie nach Befehlen, oder geben Sie @ ein...',
+    useAtForSpecific: 'Verwenden von @ für bestimmte Typen',
+    searchTitle: 'Suchen Sie nach irgendetwas',
+    searching: 'Suche...',
+  },
 }
 
 export default translation

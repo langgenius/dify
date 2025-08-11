@@ -252,6 +252,41 @@ const translation = {
   maxActiveRequests: 'Максимальное количество параллельных запросов',
   maxActiveRequestsPlaceholder: 'Введите 0 для неограниченного количества',
   maxActiveRequestsTip: 'Максимальное количество одновременно активных запросов на одно приложение (0 для неограниченного количества)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'Поисковые плагины',
+      searchKnowledgeBases: 'Поиск в базах знаний',
+      searchApplications: 'Поиск приложений',
+      searchKnowledgeBasesDesc: 'Поиск и переход к базам знаний',
+      searchPluginsDesc: 'Поиск и переход к вашим плагинам',
+      searchWorkflowNodes: 'Поиск узлов рабочего процесса',
+      searchApplicationsDesc: 'Поиск и переход к приложениям',
+      searchWorkflowNodesHelp: 'Эта функция работает только при просмотре рабочего процесса. Сначала перейдите к рабочему процессу.',
+      searchWorkflowNodesDesc: 'Поиск узлов в текущем рабочем процессе и переход к ним по имени или типу',
+    },
+    emptyState: {
+      noPluginsFound: 'Плагины не найдены',
+      noKnowledgeBasesFound: 'Базы знаний не найдены',
+      noAppsFound: 'Приложения не найдены',
+      noWorkflowNodesFound: 'Узлы расчетной схемы не найдены',
+    },
+    groups: {
+      knowledgeBases: 'Базы знаний',
+      plugins: 'Плагины',
+      apps: 'Приложения',
+      workflowNodes: 'Узлы рабочих процессов',
+    },
+    searching: 'Поиск...',
+    noResults: 'Ничего не найдено',
+    searchFailed: 'Ошибка поиска',
+    searchTitle: 'Ищите что угодно',
+    useAtForSpecific: 'Используйте @ для определенных типов',
+    clearToSearchAll: 'Очистите @ для поиска по всем',
+    searchTemporarilyUnavailable: 'Поиск временно недоступен',
+    searchPlaceholder: 'Найдите или введите @ для команд...',
+    someServicesUnavailable: 'Некоторые поисковые сервисы недоступны',
+    servicesUnavailableMessage: 'В некоторых поисковых службах могут возникать проблемы. Повторите попытку через мгновение.',
+  },
 }
 
 export default translation

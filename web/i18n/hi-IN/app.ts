@@ -252,6 +252,41 @@ const translation = {
   maxActiveRequests: 'अधिकतम समवर्ती अनुरोध',
   maxActiveRequestsPlaceholder: 'असीमित के लिए 0 दर्ज करें',
   maxActiveRequestsTip: 'प्रति ऐप सक्रिय अनुरोधों की अधिकतम संख्या (असीमित के लिए 0)',
+  gotoAnything: {
+    actions: {
+      searchPlugins: 'खोज प्लगइन्स',
+      searchWorkflowNodes: 'खोज कार्यप्रवाह नोड्स',
+      searchKnowledgeBases: 'ज्ञान आधार खोजें',
+      searchApplications: 'अनुसंधान एप्लिकेशन',
+      searchPluginsDesc: 'अपने प्लगइन्स को खोजें और नेविगेट करें',
+      searchWorkflowNodesDesc: 'वर्तमान कार्यप्रवाह में नाम या प्रकार द्वारा नोड्स को खोजें और उन पर कूदें',
+      searchKnowledgeBasesDesc: 'अपने ज्ञान आधारों की खोज करें और उन्हें नेविगेट करें',
+      searchApplicationsDesc: 'अपने अनुप्रयोगों की खोज करें और उन्हें नेविगेट करें',
+      searchWorkflowNodesHelp: 'यह सुविधा केवल तब काम करती है जब आप एक कार्यप्रवाह देख रहे हों। पहले एक कार्यप्रवाह पर जाएं।',
+    },
+    emptyState: {
+      noPluginsFound: 'कोई प्लगइन नहीं मिले',
+      noAppsFound: 'कोई ऐप्स नहीं मिले',
+      noKnowledgeBasesFound: 'कोई ज्ञान आधार नहीं मिले',
+      noWorkflowNodesFound: 'कोई कार्यप्रवाह नोड नहीं मिला',
+    },
+    groups: {
+      apps: 'ऐप्स',
+      knowledgeBases: 'ज्ञान आधार',
+      plugins: 'प्लगइन्स',
+      workflowNodes: 'कार्यप्रवाह नोड्स',
+    },
+    noResults: 'कोई परिणाम नहीं मिले',
+    clearToSearchAll: 'साफ़ @ सभी खोजने के लिए',
+    searchTitle: 'किसी भी चीज़ की खोज करें',
+    useAtForSpecific: '@ का उपयोग विशिष्ट प्रकारों के लिए करें',
+    someServicesUnavailable: 'कुछ खोज सेवाएँ उपलब्ध नहीं हैं',
+    searching: 'खोजना...',
+    searchFailed: 'खोज विफल रहा',
+    searchPlaceholder: 'कमांड के लिए खोजें या टाइप करें @...',
+    searchTemporarilyUnavailable: 'खोज अस्थायी रूप से उपलब्ध नहीं है',
+    servicesUnavailableMessage: 'कुछ खोज सेवाएँ समस्याओं का सामना कर सकती हैं। थोड़ी देर बाद फिर से प्रयास करें।',
+  },
 }
 
 export default translation
