@@ -66,6 +66,7 @@ const translation = {
     more: '更多',
     selectAll: '全选',
     deSelectAll: '取消全选',
+    config: '配置',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
