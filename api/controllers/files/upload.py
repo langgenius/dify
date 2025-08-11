@@ -73,10 +73,6 @@ class PluginUploadFileApi(Resource):
                 )
             except Exception:
                 pass
-        try:
-            try:
-                file.stream.seek(0)
-            except Exception:
         # Seek to the beginning of the file stream before processing
         try:
             file.stream.seek(0)
@@ -87,7 +83,6 @@ class PluginUploadFileApi(Resource):
                 user_id=user.id,
                 tenant_id=tenant_id,
                 file_binary=file.read(),
-                mimetype=mimetype,
                 filename=filename,
                 conversation_id=None,
             )
