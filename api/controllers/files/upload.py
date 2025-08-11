@@ -11,11 +11,8 @@ from controllers.inner_api.plugin.wraps import get_user
 from controllers.service_api.app.error import FileTooLargeError
 from core.file.helpers import verify_plugin_file_signature
 from core.file.safe_upload import (
-    canonical_mimetype,
-    is_safe_suffixes,
-    normalize_filename,
-    sniff_ok,
-    split_suffixes,
+    normalize_filename, split_suffixes, is_safe_suffixes,
+    sniff_ok, _detect_with_filetype, choose_server_mime,
 )
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import file_fields
@@ -66,13 +63,14 @@ class PluginUploadFileApi(Resource):
         safe_ext = suffixes[-1]
         if not sniff_ok(file.stream, safe_ext):
             raise UnsupportedFileTypeError()
-        server_mimetype = canonical_mimetype(safe_ext)
-        if declared_mimetype and declared_mimetype.lower() != server_mimetype.lower():
+        det_ext, det_mime = _detect_with_filetype(file.stream)
+        server_mimetype = choose_server_mime(safe_ext, det_mime)
+        if det_ext and det_ext != safe_ext:
             try:
                 current_app.logger.warning(
                     "PluginUpload: mimetype mismatch: declared=%s server=%s tenant=%s user=%s name=%s",
-                    declared_mimetype,
-                    server_mimetype,
+                    safe_ext, 
+                    det_ext,
                     tenant_id,
                     user_id,
                     filename,
