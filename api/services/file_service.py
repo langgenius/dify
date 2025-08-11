@@ -24,6 +24,7 @@ from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
 from .errors.file import FileTooLargeError, UnsupportedFileTypeError
+from services.document_sensitivity_service import DocumentSensitivityService
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -65,6 +66,14 @@ class FileService:
         current_tenant_id = extract_tenant_id(user)
 
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+
+        if dify_config.ENABLE_DOCUMENT_SENSITIVITY_CHECK:
+            blocked_levels = dify_config.BLOCKED_SENSITIVITY_LEVELS
+            DocumentSensitivityService.check_document_sensitivity(
+                extension=f".{extension}",
+                content=content,
+                blocked_levels=blocked_levels
+            )
 
         # save file to storage
         storage.save(file_key, content)

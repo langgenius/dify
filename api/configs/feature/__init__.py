@@ -299,6 +299,24 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    ENABLE_DOCUMENT_SENSITIVITY_CHECK: bool = Field(
+        description=(
+            "Enable checking document metadata for sensitivity labels "
+            "before upload"
+        ),
+        default=False,
+    )
+
+    inner_BLOCKED_SENSITIVITY_LEVELS: str = Field(
+        description="",
+        validation_alias=AliasChoices("BLOCKED_SENSITIVITY_LEVELS"),
+        default="*",
+    )
+
+    @computed_field
+    def BLOCKED_SENSITIVITY_LEVELS(self) -> list[str]:
+        return self.inner_BLOCKED_SENSITIVITY_LEVELS.split(",")
+
 
 class HttpConfig(BaseSettings):
     """

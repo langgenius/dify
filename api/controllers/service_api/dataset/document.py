@@ -4,6 +4,7 @@ from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
+from services.errors.file import SensitiveDocumentError
 
 import services
 from controllers.common.errors import FilenameNotExistsError
@@ -246,13 +247,17 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        upload_file = FileService.upload_file(
-            filename=file.filename,
-            content=file.read(),
-            mimetype=file.mimetype,
-            user=current_user,
-            source="datasets",
-        )
+        try:
+            upload_file = FileService.upload_file(
+                filename=file.filename,
+                content=file.read(),
+                mimetype=file.mimetype,
+                user=current_user,
+                source="datasets",
+            )
+        except services.errors.file.SensitiveDocumentError as sensitive_error:
+            raise SensitiveDocumentError(sensitive_error.description)
+
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},

@@ -11,3 +11,7 @@ class FileTooLargeError(BaseServiceError):
 
 class UnsupportedFileTypeError(BaseServiceError):
     pass
+
+
+class SensitiveDocumentError(BaseServiceError):
+    pass
