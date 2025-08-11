@@ -46,14 +46,14 @@ class BaseTraceInstance(ABC):
         with Session(db.engine, expire_on_commit=False) as session:
             # Get the app to find its creator
             app_stmt = select(App).where(App.id == app_id)
-            app = session.execute(app_stmt).scalars().first()
+            app = session.scalar(app_stmt)
             if not app:
                 raise ValueError(f"App with id {app_id} not found")
 
             if not app.created_by:
                 raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
             account_stmt = select(Account).where(Account.id == app.created_by)
-            service_account = session.execute(account_stmt).scalars().first()
+            service_account = session.scalar(account_stmt)
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
 
