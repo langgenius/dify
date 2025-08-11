@@ -142,6 +142,10 @@ match dify_config.VECTOR_STORE:
         from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
 
         VECTOR_FACTORY_CLS = MatrixoneVectorFactory
+    case VectorType.CLICKZETTA:
+        from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+        VECTOR_FACTORY_CLS = ClickzettaVectorFactory
     case _:
         raise ValueError(f"Vector store {dify_config.VECTOR_STORE} is not supported.")
 

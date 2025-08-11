@@ -41,7 +41,7 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 400:
+    if description and len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
@@ -113,7 +113,7 @@ class DatasetListApi(Resource):
         )
         parser.add_argument(
             "description",
-            type=str,
+            type=_validate_description_length,
             nullable=True,
             required=False,
             default="",
@@ -683,6 +683,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
                 | VectorType.MATRIXONE
+                | VectorType.CLICKZETTA
             ):
                 return {
                     "retrieval_method": [
@@ -731,6 +732,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TENCENT
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.MATRIXONE
+                | VectorType.CLICKZETTA
             ):
                 return {
                     "retrieval_method": [
