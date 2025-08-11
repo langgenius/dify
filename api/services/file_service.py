@@ -22,9 +22,9 @@ from libs.helper import extract_tenant_id
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
+from services.document_sensitivity_service import DocumentSensitivityService
 
 from .errors.file import FileTooLargeError, UnsupportedFileTypeError
-from services.document_sensitivity_service import DocumentSensitivityService
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -70,9 +70,7 @@ class FileService:
         if dify_config.ENABLE_DOCUMENT_SENSITIVITY_CHECK:
             blocked_levels = dify_config.BLOCKED_SENSITIVITY_LEVELS
             DocumentSensitivityService.check_document_sensitivity(
-                extension=f".{extension}",
-                content=content,
-                blocked_levels=blocked_levels
+                extension=f".{extension}", content=content, blocked_levels=blocked_levels
             )
 
         # save file to storage

@@ -21,9 +21,9 @@ from services.file_service import FileService
 from .error import (
     FileTooLargeError,
     NoFileUploadedError,
+    SensitiveDocumentError,
     TooManyFilesError,
     UnsupportedFileTypeError,
-    SensitiveDocumentError,
 )
 
 PREVIEW_WORDS_LIMIT = 3000

@@ -300,10 +300,7 @@ class FileUploadConfig(BaseSettings):
     )
 
     ENABLE_DOCUMENT_SENSITIVITY_CHECK: bool = Field(
-        description=(
-            "Enable checking document metadata for sensitivity labels "
-            "before upload"
-        ),
+        description=("Enable checking document metadata for sensitivity labels before upload"),
         default=False,
     )
 
