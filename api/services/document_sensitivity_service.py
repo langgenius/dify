@@ -1,7 +1,8 @@
 import logging
 import os
 import tempfile
-from typing import Any, Optional, Callable, Union
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 import openpyxl
 import pypdf
@@ -52,9 +53,7 @@ class DocumentSensitivityService:
                 detected_sensitivity = cls._check_metadata_sensitivity(metadata, blocked_levels_lower)
 
                 if detected_sensitivity:
-                    raise SensitiveDocumentError(
-                        f"sensitive info detected : {detected_sensitivity}"
-                    )
+                    raise SensitiveDocumentError(f"sensitive info detected : {detected_sensitivity}")
 
                 return detected_sensitivity
 
@@ -335,9 +334,7 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _check_metadata_sensitivity(
-        cls, metadata: dict[str, Any], blocked_levels: set[str]
-    ) -> Optional[str]:
+    def _check_metadata_sensitivity(cls, metadata: dict[str, Any], blocked_levels: set[str]) -> Optional[str]:
         """
         Check metadata for sensitivity indicators.
 
@@ -363,12 +360,7 @@ class DocumentSensitivityService:
         for key, value in metadata.items():
             value_str = str(value)
             # Look for Microsoft Information Protection patterns
-            if (
-                "msip_label" in key
-                or "sensitivity" in key
-                or "classification" in key
-                or "confidential" in key
-            ):
+            if "msip_label" in key or "sensitivity" in key or "classification" in key or "confidential" in key:
                 for blocked in blocked_levels:
                     if blocked in value_str:
                         return blocked
