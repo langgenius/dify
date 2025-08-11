@@ -991,6 +991,10 @@ const translation = {
       noDependencies: '依存元なし',
       noDependents: '依存先なし',
     },
+    copyLastRun: '最後の実行をコピー',
+    noLastRunFound: '以前の実行が見つかりませんでした。',
+    copyLastRunError: '最後の実行の入力をコピーできませんでした',
+    noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
   },
 }
 
