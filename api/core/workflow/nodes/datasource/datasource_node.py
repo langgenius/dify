@@ -123,19 +123,12 @@ class DatasourceNode(BaseNode):
 
         try:
             datasource_provider_service = DatasourceProviderService()
-            if datasource_info.get("credential_id"):
-                credentials = datasource_provider_service.get_real_credential_by_id(
-                    tenant_id=self.tenant_id,
-                    credential_id=datasource_info.get("credential_id"),
-                    provider=node_data.provider_name,
-                    plugin_id=node_data.plugin_id,
-                )
-            else:
-                credentials = datasource_provider_service.get_default_credentials(
-                    tenant_id=self.tenant_id,
-                    provider=node_data.provider_name,
-                    plugin_id=node_data.plugin_id,
-                )
+            credentials = datasource_provider_service.get_datasource_credentials(
+                tenant_id=self.tenant_id,
+                provider=node_data.provider_name,
+                plugin_id=node_data.plugin_id,
+                credential_id=datasource_info.get("credential_id"),
+            )
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)

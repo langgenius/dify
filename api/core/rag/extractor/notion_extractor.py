@@ -373,7 +373,7 @@ class NotionExtractor(BaseExtractor):
         if not credential_id:
             raise Exception(f"No credential id found for tenant {tenant_id}")
         datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_real_credential_by_id(
+        credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",

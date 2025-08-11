@@ -125,7 +125,7 @@ class WebsiteService:
         elif provider == "jinareader":
             plugin_id = "langgenius/jina_datasource"
         datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_default_real_credential(
+        credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=tenant_id,
             provider=provider,
             plugin_id=plugin_id,

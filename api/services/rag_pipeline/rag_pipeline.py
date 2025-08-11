@@ -522,7 +522,7 @@ class RagPipelineService:
                 datasource_type=DatasourceProviderType(datasource_type),
             )
             datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_real_credential_by_id(
+            credentials = datasource_provider_service.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
@@ -666,7 +666,7 @@ class RagPipelineService:
                 datasource_type=DatasourceProviderType(datasource_type),
             )
             datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_real_credential_by_id(
+            credentials = datasource_provider_service.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),

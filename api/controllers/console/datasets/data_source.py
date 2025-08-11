@@ -121,7 +121,7 @@ class DataSourceNotionListApi(Resource):
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_real_credential_by_id(
+        credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_user.current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
@@ -206,7 +206,7 @@ class DataSourceNotionApi(Resource):
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_real_credential_by_id(
+        credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_user.current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
