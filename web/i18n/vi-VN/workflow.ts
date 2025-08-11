@@ -991,6 +991,10 @@ const translation = {
       dependentsDescription: 'Các nút dựa vào nút này',
     },
     relationsTab: 'Mối quan hệ',
+    noLastRunFound: 'Không tìm thấy lần chạy trước',
+    noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
+    copyLastRun: 'Sao chép lần chạy cuối',
+    copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
   },
 }
 

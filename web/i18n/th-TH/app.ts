@@ -281,6 +281,7 @@ const translation = {
     clearToSearchAll: 'ล้าง @ เพื่อค้นหาทั้งหมด',
     searchPlaceholder: 'ค้นหาหรือพิมพ์ @ สําหรับคําสั่ง...',
     servicesUnavailableMessage: 'บริการค้นหาบางบริการอาจประสบปัญหา ลองอีกครั้งในอีกสักครู่',
+    searching: 'กำลังค้นหา...',
   },
 }
 
