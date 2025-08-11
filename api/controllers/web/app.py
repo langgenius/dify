@@ -87,7 +87,14 @@ class AppWebAuthPermission(Resource):
 
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
+        except Unauthorized:
+            # Re-raise Unauthorized exceptions to return proper 401 status
+            # This ensures authentication failures are properly communicated to the client
+            raise
         except Exception as e:
+            # Only catch non-authentication related exceptions to fallback to visitor mode
+            # This allows other unexpected errors to be handled gracefully while maintaining
+            # proper authentication error handling
             pass
 
         features = FeatureService.get_system_features()
