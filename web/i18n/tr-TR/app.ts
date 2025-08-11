@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'DSL dosyasından',
   importFromDSLUrl: 'URL\'den',
   importFromDSLUrlPlaceholder: 'DSL bağlantısını buraya yapıştır',
+  dslUploader: {
+    button: 'Dosyayı sürükleyip bırakın veya',
+    browse: 'Gözat',
+  },
   deleteAppConfirmTitle: 'Bu uygulamayı silmek istiyor musunuz?',
   deleteAppConfirmContent: 'Uygulamanın silinmesi geri alınamaz. Kullanıcılar artık uygulamanıza erişemeyecek ve tüm prompt yapılandırmaları ile loglar kalıcı olarak silinecektir.',
   appDeleted: 'Uygulama silindi',
@@ -244,6 +248,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Sınırsız için 0 girin',
   maxActiveRequests: 'Maksimum eş zamanlı istekler',
   maxActiveRequestsTip: 'Her uygulama için maksimum eşzamanlı aktif istek sayısı (sınırsız için 0)',
+  gotoAnything: {
+    actions: {
+      searchKnowledgeBasesDesc: 'Bilgi bankalarınızda arama yapın ve bu forumlara gidin',
+      searchWorkflowNodesDesc: 'Geçerli iş akışındaki düğümleri ada veya türe göre bulun ve atlayın',
+      searchApplications: 'Arama Uygulamaları',
+      searchKnowledgeBases: 'Bilgi Bankalarında Ara',
+      searchWorkflowNodes: 'Arama İş Akışı Düğümleri',
+      searchPluginsDesc: 'Eklentilerinizi arayın ve eklentilerinize gidin',
+      searchPlugins: 'Arama Eklentileri',
+      searchWorkflowNodesHelp: 'Bu özellik yalnızca bir iş akışını görüntülerken çalışır. Önce bir iş akışına gidin.',
+      searchApplicationsDesc: 'Uygulamalarınızı arayın ve uygulamalarınıza gidin',
+    },
+    emptyState: {
+      noAppsFound: 'Uygulama bulunamadı',
+      noWorkflowNodesFound: 'İş akışı düğümü bulunamadı',
+      noKnowledgeBasesFound: 'Bilgi bankası bulunamadı',
+      noPluginsFound: 'Eklenti bulunamadı',
+    },
+    groups: {
+      apps: 'Apps',
+      plugins: 'Eklentiler',
+      knowledgeBases: 'Bilgi Tabanları',
+      workflowNodes: 'İş Akışı Düğümleri',
+    },
+    searchFailed: 'Arama başarısız oldu',
+    clearToSearchAll: 'Tümünü aramak için @ işaretini kaldırın',
+    someServicesUnavailable: 'Bazı arama hizmetleri kullanılamıyor',
+    searchPlaceholder: 'Komutlar için @ arayın veya yazın...',
+    useAtForSpecific: 'Belirli türler için @ kullanın',
+    searchTemporarilyUnavailable: 'Arama geçici olarak kullanılamıyor',
+    searchTitle: 'Her şeyi arayın',
+    noResults: 'Sonuç bulunamadı',
+    servicesUnavailableMessage: 'Bazı arama hizmetlerinde sorunlar yaşanıyor olabilir. Kısa bir süre sonra tekrar deneyin.',
+    searching: 'Araştırıcı...',
+  },
 }
 
 export default translation

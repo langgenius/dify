@@ -256,7 +256,7 @@ class WorkflowDraftVariableService:
     def _reset_node_var_or_sys_var(
         self, workflow: Workflow, variable: WorkflowDraftVariable
     ) -> WorkflowDraftVariable | None:
-        # If a variable does not allow updating, it makes no sence to resetting it.
+        # If a variable does not allow updating, it makes no sense to reset it.
         if not variable.editable:
             return variable
         # No execution record for this variable, delete the variable instead.
@@ -478,7 +478,7 @@ def _batch_upsert_draft_variable(
                 "node_execution_id": stmt.excluded.node_execution_id,
             },
         )
-    elif _UpsertPolicy.IGNORE:
+    elif policy == _UpsertPolicy.IGNORE:
         stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
     else:
         raise Exception("Invalid value for update policy.")

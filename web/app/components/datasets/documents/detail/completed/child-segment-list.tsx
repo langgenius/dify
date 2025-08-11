@@ -84,20 +84,19 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       const count = text === '--' ? 0 : total
       return `${count} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFullDocMode, total, childChunks.length, inputValue])
 
   return (
     <div className={classNames(
       'flex flex-col',
       contentOpacity,
-      isParagraphMode ? 'pt-1 pb-2' : 'px-3 grow',
+      isParagraphMode ? 'pb-2 pt-1' : 'grow px-3',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
       {isFullDocMode ? <Divider type='horizontal' className='my-1 h-[1px] bg-divider-subtle' /> : null}
-      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky -top-2 left-0 bg-background-default' : '')}>
+      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'sticky -top-2 left-0 bg-background-default pb-3 pt-2' : '')}>
         <div className={classNames(
-          'h-7 flex items-center pl-1 pr-3 rounded-lg',
+          'flex h-7 items-center rounded-lg pl-1 pr-3',
           isParagraphMode && 'cursor-pointer',
           (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg',
           isFullDocMode && 'pl-0',
@@ -117,11 +116,11 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
               : null
           }
           <span className='system-sm-semibold-uppercase text-text-secondary'>{totalText}</span>
-          <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
+          <span className={classNames('pl-1.5 text-xs font-medium text-text-quaternary', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
             type='button'
             className={classNames(
-              'px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase',
+              'system-xs-semibold-uppercase px-1.5 py-1 text-components-button-secondary-accent-text',
               isParagraphMode ? 'hidden group-hover/card:inline-block' : '',
               (isFullDocMode && isLoading) ? 'text-components-button-secondary-accent-text-disabled' : '',
             )}
@@ -147,14 +146,14 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       </div>
       {isLoading ? <FullDocListSkeleton /> : null}
       {((isFullDocMode && !isLoading) || !collapsed)
-        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow mb-6' : 'items-center')}>
+        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
           {isParagraphMode && (
             <div className='self-stretch'>
               <Divider type='vertical' className='mx-[7px] w-[2px] bg-text-accent-secondary' />
             </div>
           )}
           {childChunks.length > 0
-            ? <FormattedText className={classNames('w-full !leading-6 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+            ? <FormattedText className={classNames('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
               {childChunks.map((childChunk) => {
                 const edited = childChunk.updated_at !== childChunk.created_at
                 const focused = currChildChunk?.childChunkInfo?.id === childChunk.id

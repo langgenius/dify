@@ -169,7 +169,11 @@ const translation = {
     descriptionInExplore: 'Utilisation de l’icône web app pour remplacer 🤖 dans Explore',
   },
   importFromDSLUrlPlaceholder: 'Collez le lien DSL ici',
-  importFromDSL: 'Importation à partir d’une DSL',
+  dslUploader: {
+    button: 'Glisser-déposer un fichier, ou',
+    browse: 'Parcourir',
+  },
+  importFromDSL: 'Importation à partir d\'une DSL',
   importFromDSLUrl: 'À partir de l’URL',
   importFromDSLFile: 'À partir d’un fichier DSL',
   mermaid: {
@@ -248,6 +252,41 @@ const translation = {
   maxActiveRequestsPlaceholder: 'Entrez 0 pour illimité',
   maxActiveRequests: 'Nombre maximal de requêtes simultanées',
   maxActiveRequestsTip: 'Nombre maximum de requêtes actives concurrentes par application (0 pour illimité)',
+  gotoAnything: {
+    actions: {
+      searchPluginsDesc: 'Recherchez et naviguez vers vos plugins',
+      searchKnowledgeBasesDesc: 'Recherchez et accédez à vos bases de connaissances',
+      searchWorkflowNodesDesc: 'Recherchez et accédez aux nœuds du flux de travail actuel par nom ou type',
+      searchApplicationsDesc: 'Recherchez et accédez à vos applications',
+      searchPlugins: 'Plugins de recherche',
+      searchWorkflowNodes: 'Rechercher des nœuds de workflow',
+      searchKnowledgeBases: 'Rechercher dans les bases de connaissances',
+      searchApplications: 'Rechercher des applications',
+      searchWorkflowNodesHelp: 'Cette fonctionnalité ne fonctionne que lors de l’affichage d’un flux de travail. Accédez d’abord à un flux de travail.',
+    },
+    emptyState: {
+      noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
+      noAppsFound: 'Aucune application trouvée',
+      noPluginsFound: 'Aucun plugin trouvé',
+      noWorkflowNodesFound: 'Aucun nœud de workflow trouvé',
+    },
+    groups: {
+      apps: 'Apps',
+      workflowNodes: 'Nœuds de flux de travail',
+      knowledgeBases: 'Bases de connaissances',
+      plugins: 'Plug-ins',
+    },
+    someServicesUnavailable: 'Certains services de recherche indisponibles',
+    servicesUnavailableMessage: 'Certains services de recherche peuvent rencontrer des problèmes. Réessayez dans un instant.',
+    useAtForSpecific: 'Utilisez @ pour des types spécifiques',
+    searchTemporarilyUnavailable: 'Recherche temporairement indisponible',
+    searchTitle: 'Recherchez n’importe quoi',
+    clearToSearchAll: 'Effacer @ pour rechercher tout',
+    searching: 'Recherche...',
+    searchPlaceholder: 'Recherchez ou tapez @ pour les commandes...',
+    searchFailed: 'Echec de la recherche',
+    noResults: 'Aucun résultat trouvé',
+  },
 }
 
 export default translation
