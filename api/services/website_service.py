@@ -423,7 +423,7 @@ class WebsiteService:
         return {
             "status": "completed",
             "job_id": "scrapfly_immediate",
-            "data": [cls._scrape_with_scrapfly_internal(request, api_key, config)]
+            "data": [cls._scrape_with_scrapfly_internal(request, api_key, config)],
         }
 
     @classmethod
@@ -453,22 +453,19 @@ class WebsiteService:
     def _scrape_with_scrapfly(cls, request: ScrapeRequest, api_key: str, config: dict) -> dict[str, Any]:
         """Scrape a single URL using Scrapfly."""
         scrapfly_provider = ScrapflyProvider(api_key=api_key, base_url=config.get("base_url"))
-        
+
         options = {
             "render_js": True,  # Enable JavaScript rendering by default
-            "asp": True,       # Enable anti-scraping protection
-            "only_main_content": request.only_main_content
+            "asp": True,  # Enable anti-scraping protection
+            "only_main_content": request.only_main_content,
         }
-        
+
         return scrapfly_provider.scrape_url(request.url, options)
 
     @classmethod
     def _scrape_with_scrapfly_internal(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
         """Internal method for crawl compatibility."""
         scrape_request = ScrapeRequest(
-            provider="scrapfly",
-            url=request.url,
-            tenant_id="",
-            only_main_content=request.options.only_main_content
+            provider="scrapfly", url=request.url, tenant_id="", only_main_content=request.options.only_main_content
         )
         return cls._scrape_with_scrapfly(scrape_request, api_key, config)

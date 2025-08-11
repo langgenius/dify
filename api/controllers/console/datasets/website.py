@@ -50,7 +50,7 @@ class WebsiteCrawlStatusApi(Resource):
             type=str,
             choices=["firecrawl", "watercrawl", "scrapfly", "jinareader"],
             required=True,
-            location="args"
+            location="args",
         )
         args = parser.parse_args()
 
