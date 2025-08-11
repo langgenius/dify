@@ -1,5 +1,7 @@
 import { memo } from 'react'
 import {
+  RiInformationLine,
+  RiInformationOffLine,
   RiMicLine,
   RiSendPlane2Fill,
 } from '@remixicon/react'
@@ -8,7 +10,7 @@ import type {
 } from '../../types'
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import Button from '@/app/components/base/button'
-import ActionButton from '@/app/components/base/action-button'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
@@ -18,6 +20,8 @@ type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
+  continueAsk?: boolean
+  onContinueAskChange: (isContinue: boolean) => void
   theme?: Theme | null
 }
 const Operation = (
@@ -25,6 +29,8 @@ const Operation = (
     ref,
     fileConfig,
     speechToTextConfig,
+    continueAsk,
+    onContinueAskChange,
     onShowVoiceInput,
     onSend,
     theme,
@@ -54,6 +60,16 @@ const Operation = (
               </ActionButton>
             )
           }
+          <ActionButton
+                size='l'
+                state={continueAsk ? ActionButtonState.Active : ActionButtonState.Default}
+                onClick={() => {
+                  onContinueAskChange(!continueAsk)
+                }}
+                title="持续问"
+              >
+                {continueAsk ? <RiInformationLine className='h-5 w-5'/> : <RiInformationOffLine className='h-5 w-5' />}
+          </ActionButton>
         </div>
         <Button
           className='ml-3 w-8 px-0'
