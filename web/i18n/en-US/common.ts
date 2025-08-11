@@ -66,6 +66,7 @@ const translation = {
     more: 'More',
     selectAll: 'Select All',
     deSelectAll: 'Deselect All',
+    config: 'Config',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
