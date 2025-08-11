@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Należy dodać węzeł końcowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
     tagBound: 'Liczba aplikacji korzystających z tego tagu',
+    currentWorkflow: 'Bieżący przepływ pracy',
+    currentView: 'Bieżący widok',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',

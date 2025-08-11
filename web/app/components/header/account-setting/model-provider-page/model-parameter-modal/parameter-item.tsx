@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
-import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
@@ -10,7 +9,6 @@ import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
 import TagInput from '@/app/components/base/tag-input'
-import { useTranslation } from 'react-i18next'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 
@@ -28,8 +26,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   onSwitch,
   isInWorkflow,
 }) => {
-  const { t } = useTranslation()
-  const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
 

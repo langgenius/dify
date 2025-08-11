@@ -114,6 +114,8 @@ const translation = {
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
     tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
+    currentWorkflow: 'Aktueller Arbeitsablauf',
+    currentView: 'Aktuelle Ansicht',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
