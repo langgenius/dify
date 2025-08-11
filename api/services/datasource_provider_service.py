@@ -135,7 +135,7 @@ class DatasourceProviderService:
                     datasource_provider=datasource_provider,
                 )
                 datasource_provider.expires_at = refreshed_credentials.expires_at
-                db.session.commit()
+                session.commit()
 
             return self.decrypt_datasource_provider_credentials(
                 tenant_id=tenant_id,
@@ -580,8 +580,8 @@ class DatasourceProviderService:
                     auth_type=CredentialType.API_KEY.value,
                     encrypted_credentials=credentials,
                 )
-                db.session.add(datasource_provider)
-                db.session.commit()
+                session.add(datasource_provider)
+                session.commit()
 
     def extract_secret_variables(self, tenant_id: str, provider_id: str, credential_type: CredentialType) -> list[str]:
         """
