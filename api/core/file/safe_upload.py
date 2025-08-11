@@ -1,4 +1,6 @@
-import os, re, unicodedata
+import os
+import re
+import unicodedata
 from pathlib import Path
 from typing import Tuple, Set, Dict, IO
 
