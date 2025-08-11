@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import type { Plugin } from '../plugins/types'
 import { Command } from 'cmdk'
+import CommandSelector from './command-selector'
 
 type Props = {
   onHide?: () => void
@@ -81,11 +82,15 @@ const GotoAnything: FC<Props> = ({
     wait: 300,
   })
 
+  const isCommandsMode = searchQuery.trim() === '@'
+
   const searchMode = useMemo(() => {
+    if (isCommandsMode) return 'commands'
+
     const query = searchQueryDebouncedValue.toLowerCase()
     const action = matchAction(query, Actions)
     return action ? action.key : 'general'
-  }, [searchQueryDebouncedValue, Actions])
+  }, [searchQueryDebouncedValue, Actions, isCommandsMode])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
@@ -103,11 +108,19 @@ const GotoAnything: FC<Props> = ({
         const action = matchAction(query, Actions)
         return await searchAnything(defaultLocale, query, action)
       },
-      enabled: !!searchQueryDebouncedValue,
+      enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,
       gcTime: 300000,
     },
   )
+
+  const handleCommandSelect = useCallback((commandKey: string) => {
+    setSearchQuery(`${commandKey} `)
+    setCmdVal('')
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 0)
+  }, [])
 
   // Handle navigation to selected result
   const handleNavigate = useCallback((result: SearchResult) => {
@@ -141,7 +154,7 @@ const GotoAnything: FC<Props> = ({
     [searchResults])
 
   const emptyResult = useMemo(() => {
-    if (searchResults.length || !searchQueryDebouncedValue.trim() || isLoading)
+    if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
       return null
 
     const isCommandSearch = searchMode !== 'general'
@@ -186,34 +199,22 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     )
-  }, [searchResults, searchQueryDebouncedValue, Actions, searchMode, isLoading, isError])
+  }, [searchResults, searchQuery, Actions, searchMode, isLoading, isError, isCommandsMode])
 
   const defaultUI = useMemo(() => {
-    if (searchQueryDebouncedValue.trim())
+    if (searchQuery.trim())
       return null
 
-    return (<div className="flex items-center justify-center py-8 text-center text-text-tertiary">
+    return (<div className="flex items-center justify-center py-12 text-center text-text-tertiary">
       <div>
         <div className='text-sm font-medium'>{t('app.gotoAnything.searchTitle')}</div>
-        <div className='mt-3 space-y-2 text-xs text-text-quaternary'>
-          {Object.values(Actions).map(action => (
-            <div key={action.key} className='flex items-center gap-2'>
-              <span className='inline-flex items-center rounded bg-gray-200 px-2 py-1 font-mono text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-200'>{action.shortcut}</span>
-              <span>{(() => {
-                const keyMap: Record<string, string> = {
-                  '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
-                  '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
-                  '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                  '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
-                }
-                return t(keyMap[action.key])
-              })()}</span>
-            </div>
-          ))}
+        <div className='mt-3 space-y-1 text-xs text-text-quaternary'>
+          <div>{t('app.gotoAnything.searchHint')}</div>
+          <div>{t('app.gotoAnything.commandHint')}</div>
         </div>
       </div>
     </div>)
-  }, [searchQueryDebouncedValue, Actions])
+  }, [searchQuery, Actions])
 
   useEffect(() => {
     if (show) {
@@ -296,7 +297,13 @@ const GotoAnything: FC<Props> = ({
               )}
               {!isLoading && !isError && (
                 <>
-                  {Object.entries(groupedResults).map(([type, results], groupIndex) => (
+                  {isCommandsMode ? (
+                    <CommandSelector
+                      actions={Actions}
+                      onCommandSelect={handleCommandSelect}
+                    />
+                  ) : (
+                    Object.entries(groupedResults).map(([type, results], groupIndex) => (
                     <Command.Group key={groupIndex} heading={(() => {
                       const typeMap: Record<string, string> = {
                         'app': 'app.gotoAnything.groups.apps',
@@ -330,9 +337,10 @@ const GotoAnything: FC<Props> = ({
                         </Command.Item>
                       ))}
                     </Command.Group>
-                  ))}
-                  {emptyResult}
-                  {defaultUI}
+                  ))
+                  )}
+                  {!isCommandsMode && emptyResult}
+                  {!isCommandsMode && defaultUI}
                 </>
               )}
             </Command.List>
