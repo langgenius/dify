@@ -23,6 +23,10 @@ const translation = {
   importFromDSLFile: 'DSL ファイルから',
   importFromDSLUrl: 'URL から',
   importFromDSLUrlPlaceholder: 'DSL リンクをここに貼り付けます',
+  dslUploader: {
+    button: 'ファイルをドラッグ＆ドロップするか、',
+    browse: '参照',
+  },
   deleteAppConfirmTitle: 'このアプリを削除しますか？',
   deleteAppConfirmContent:
     'アプリを削除すると、元に戻すことはできません。他のユーザーはもはやこのアプリにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',

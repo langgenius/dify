@@ -172,6 +172,10 @@ const translation = {
   importFromDSLUrl: 'यूआरएल से',
   importFromDSL: 'DSL से आयात करें',
   importFromDSLUrlPlaceholder: 'डीएसएल लिंक यहां पेस्ट करें',
+  dslUploader: {
+    button: 'फ़ाइल खींचकर छोड़ें, या',
+    browse: 'ब्राउज़ करें',
+  },
   mermaid: {
     handDrawn: 'हाथ खींचा',
     classic: 'क्लासिक',

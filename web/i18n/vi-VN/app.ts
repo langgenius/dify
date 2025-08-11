@@ -171,6 +171,10 @@ const translation = {
   importFromDSLFile: 'Từ tệp DSL',
   importFromDSL: 'Nhập từ DSL',
   importFromDSLUrlPlaceholder: 'Dán liên kết DSL vào đây',
+  dslUploader: {
+    button: 'Kéo và thả tệp, hoặc',
+    browse: 'Duyệt',
+  },
   importFromDSLUrl: 'Từ URL',
   mermaid: {
     handDrawn: 'Vẽ tay',

@@ -19,6 +19,10 @@ const translation = {
   importFromDSLFile: 'DSL dosyasından',
   importFromDSLUrl: 'URL\'den',
   importFromDSLUrlPlaceholder: 'DSL bağlantısını buraya yapıştır',
+  dslUploader: {
+    button: 'Dosyayı sürükleyip bırakın veya',
+    browse: 'Gözat',
+  },
   deleteAppConfirmTitle: 'Bu uygulamayı silmek istiyor musunuz?',
   deleteAppConfirmContent: 'Uygulamanın silinmesi geri alınamaz. Kullanıcılar artık uygulamanıza erişemeyecek ve tüm prompt yapılandırmaları ile loglar kalıcı olarak silinecektir.',
   appDeleted: 'Uygulama silindi',
