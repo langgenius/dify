@@ -6,6 +6,7 @@ import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
 import ConfigWatercrawlModal from './config-watercrawl-modal'
+import ConfigScrapflyModal from './config-scrapfly-modal'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
 import cn from '@/utils/classnames'
 import s from '@/app/components/datasets/create/website/index.module.css'
@@ -32,7 +33,6 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
 
   useEffect(() => {
     checkSetApiKey()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [configTarget, setConfigTarget] = useState<DataSourceProvider | null>(null)
@@ -60,6 +60,9 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
 
     if (provider === DataSourceProvider.waterCrawl)
       return 'WaterCrawl'
+
+    if (provider === DataSourceProvider.scrapfly)
+      return 'Scrapfly'
 
     return 'Jina Reader'
   }
@@ -104,6 +107,15 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
                 </div>
               )
             }
+
+            if (item.provider === DataSourceProvider.scrapfly) {
+              return (
+                <div
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
+                  <span className={s.scrapflyLogo}/>
+                </div>
+              )
+            }
             return (
               <div
                 className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
@@ -121,6 +133,9 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
       )}
       {configTarget === DataSourceProvider.waterCrawl && (
         <ConfigWatercrawlModal onSaved={handleAdded} onCancel={hideConfig}/>
+      )}
+      {configTarget === DataSourceProvider.scrapfly && (
+        <ConfigScrapflyModal onSaved={handleAdded} onCancel={hideConfig}/>
       )}
       {configTarget === DataSourceProvider.jinaReader && (
         <ConfigJinaReaderModal onSaved={handleAdded} onCancel={hideConfig}/>

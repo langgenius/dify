@@ -272,6 +272,15 @@ export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
+export const createScrapflyTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.scrapfly,
+    },
+  })
+}
+
 type FileTypesRes = {
   allowed_extensions: string[]
 }

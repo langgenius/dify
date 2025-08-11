@@ -192,6 +192,7 @@ export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
   jinaReader = 'jinareader',
   waterCrawl = 'watercrawl',
+  scrapfly = 'scrapfly',
 }
 
 export type FirecrawlConfig = {
@@ -200,6 +201,11 @@ export type FirecrawlConfig = {
 }
 
 export type WatercrawlConfig = {
+  api_key: string
+  base_url: string
+}
+
+export type ScrapflyConfig = {
   api_key: string
   base_url: string
 }

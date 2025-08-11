@@ -6,13 +6,14 @@ import s from './index.module.css'
 import NoData from './no-data'
 import Firecrawl from './firecrawl'
 import Watercrawl from './watercrawl'
+import Scrapfly from './scrapfly'
 import JinaReader from './jina-reader'
 import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fetchDataSources } from '@/service/datasets'
 import { type DataSourceItem, DataSourceProvider } from '@/models/common'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_SCRAPFLY, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -53,6 +54,7 @@ const Website: FC<Props> = ({
         DataSourceProvider.jinaReader,
         DataSourceProvider.fireCrawl,
         DataSourceProvider.waterCrawl,
+        DataSourceProvider.scrapfly,
       ].includes(item.provider),
     )
 
@@ -64,7 +66,6 @@ const Website: FC<Props> = ({
     checkSetApiKey().then(() => {
       setIsLoaded(true)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
@@ -120,6 +121,18 @@ const Website: FC<Props> = ({
             <span className={cn(s.watercrawlLogo, 'mr-2')}/>
             <span>WaterCrawl</span>
           </button>}
+          {ENABLE_WEBSITE_SCRAPFLY && <button
+            className={cn('flex items-center justify-center rounded-lg px-4 py-2',
+              selectedProvider === DataSourceProvider.scrapfly
+                ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
+            )}
+            onClick={() => setSelectedProvider(DataSourceProvider.scrapfly)}
+          >
+            <span className={cn(s.scrapflyLogo, 'mr-2')}/>
+            <span>Scrapfly</span>
+          </button>}
         </div>
       </div>
       {source && selectedProvider === DataSourceProvider.fireCrawl && (
@@ -134,6 +147,16 @@ const Website: FC<Props> = ({
       )}
       {source && selectedProvider === DataSourceProvider.waterCrawl && (
         <Watercrawl
+          onPreview={onPreview}
+          checkedCrawlResult={checkedCrawlResult}
+          onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+          onJobIdChange={onJobIdChange}
+          crawlOptions={crawlOptions}
+          onCrawlOptionsChange={onCrawlOptionsChange}
+        />
+      )}
+      {source && selectedProvider === DataSourceProvider.scrapfly && (
+        <Scrapfly
           onPreview={onPreview}
           checkedCrawlResult={checkedCrawlResult}
           onCheckedCrawlResultChange={onCheckedCrawlResultChange}

@@ -11,3 +11,10 @@
   background-image: url(../assets/watercrawl.svg);
   background-size: 16px;
 }
+
+.scrapflyLogo {
+  @apply w-4 h-4 bg-center bg-no-repeat inline-block;
+  background-color: #F5FAFF;
+  background-image: url(../assets/scrapfly.svg);
+  background-size: 16px;
+}

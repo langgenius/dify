@@ -6,7 +6,7 @@ import s from './index.module.css'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import Button from '@/app/components/base/button'
 import { DataSourceProvider } from '@/models/common'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_SCRAPFLY, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -36,6 +36,11 @@ const NoData: FC<Props> = ({
       emoji: '💧',
       title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
       description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
+    } : null,
+    [DataSourceProvider.scrapfly]: ENABLE_WEBSITE_SCRAPFLY ? {
+      emoji: <span className={s.scrapflyLogo} />,
+      title: t(`${I18N_PREFIX}.scrapflyNotConfigured`),
+      description: t(`${I18N_PREFIX}.scrapflyNotConfiguredDescription`),
     } : null,
   }
 

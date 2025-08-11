@@ -3,7 +3,7 @@ import DataSourceNotion from './data-source-notion'
 import DataSourceWebsite from './data-source-website'
 import { fetchDataSource } from '@/service/common'
 import { DataSourceProvider } from '@/models/common'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_SCRAPFLY, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 
 export default function DataSourcePage() {
   const { data } = useSWR({ url: 'data-source/integrates' }, fetchDataSource)
@@ -15,6 +15,7 @@ export default function DataSourcePage() {
       {ENABLE_WEBSITE_JINAREADER && <DataSourceWebsite provider={DataSourceProvider.jinaReader} />}
       {ENABLE_WEBSITE_FIRECRAWL && <DataSourceWebsite provider={DataSourceProvider.fireCrawl} />}
       {ENABLE_WEBSITE_WATERCRAWL && <DataSourceWebsite provider={DataSourceProvider.waterCrawl} />}
+      {ENABLE_WEBSITE_SCRAPFLY && <DataSourceWebsite provider={DataSourceProvider.scrapfly} />}
     </div>
   )
 }
