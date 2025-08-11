@@ -171,7 +171,7 @@ def test_template(setup_http_mock):
                 "title": "http",
                 "desc": "",
                 "method": "get",
-                "url": "http://example.com/{{#a.b123.args2#}}",
+                "url": "http://example.com/{{#a.args2#}}",
                 "authorization": {
                     "type": "api-key",
                     "config": {
@@ -180,8 +180,8 @@ def test_template(setup_http_mock):
                         "header": "api-key",
                     },
                 },
-                "headers": "X-Header:123\nX-Header2:{{#a.b123.args2#}}",
-                "params": "A:b\nTemplate:{{#a.b123.args2#}}",
+                "headers": "X-Header:123\nX-Header2:{{#a.args2#}}",
+                "params": "A:b\nTemplate:{{#a.args2#}}",
                 "body": None,
             },
         }
@@ -223,7 +223,7 @@ def test_json(setup_http_mock):
                         {
                             "key": "",
                             "type": "text",
-                            "value": '{"a": "{{#a.b123.args1#}}"}',
+                            "value": '{"a": "{{#a.args1#}}"}',
                         },
                     ],
                 },
@@ -264,12 +264,12 @@ def test_x_www_form_urlencoded(setup_http_mock):
                         {
                             "key": "a",
                             "type": "text",
-                            "value": "{{#a.b123.args1#}}",
+                            "value": "{{#a.args1#}}",
                         },
                         {
                             "key": "b",
                             "type": "text",
-                            "value": "{{#a.b123.args2#}}",
+                            "value": "{{#a.args2#}}",
                         },
                     ],
                 },
@@ -310,12 +310,12 @@ def test_form_data(setup_http_mock):
                         {
                             "key": "a",
                             "type": "text",
-                            "value": "{{#a.b123.args1#}}",
+                            "value": "{{#a.args1#}}",
                         },
                         {
                             "key": "b",
                             "type": "text",
-                            "value": "{{#a.b123.args2#}}",
+                            "value": "{{#a.args2#}}",
                         },
                     ],
                 },
