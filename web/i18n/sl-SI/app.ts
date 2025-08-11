@@ -286,6 +286,9 @@ const translation = {
     searchFailed: 'Iskanje ni uspelo',
     useAtForSpecific: 'Uporaba znaka @ za določene vrste',
     servicesUnavailableMessage: 'Pri nekaterih iskalnih storitvah se morda pojavljajo težave. Poskusite znova čez trenutek.',
+    commandHint: 'Vnesite @ za brskanje po kategoriji',
+    selectSearchType: 'Izberite, kaj želite iskati',
+    searchHint: 'Začnite tipkati, da takoj preiščete vse',
   },
 }
 

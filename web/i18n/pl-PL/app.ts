@@ -287,6 +287,9 @@ const translation = {
     searchTemporarilyUnavailable: 'Wyszukiwanie chwilowo niedostępne',
     servicesUnavailableMessage: 'W przypadku niektórych usług wyszukiwania mogą występować problemy. Spróbuj ponownie za chwilę.',
     searchFailed: 'Wyszukiwanie nie powiodło się',
+    searchHint: 'Zacznij pisać, aby natychmiast wszystko przeszukać',
+    commandHint: 'Wpisz @, aby przeglądać według kategorii',
+    selectSearchType: 'Wybierz, czego chcesz szukać',
   },
 }
 

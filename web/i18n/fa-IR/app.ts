@@ -286,6 +286,9 @@ const translation = {
     searchTemporarilyUnavailable: 'جستجو به طور موقت در دسترس نیست',
     servicesUnavailableMessage: 'برخی از سرویس های جستجو ممکن است با مشکل مواجه شوند. یک لحظه دیگر دوباره امتحان کنید.',
     someServicesUnavailable: 'برخی از سرویس های جستجو دردسترس نیستند',
+    selectSearchType: 'انتخاب کنید چه چیزی را جستجو کنید',
+    commandHint: '@ را برای مرور بر اساس دسته بندی تایپ کنید',
+    searchHint: 'شروع به تایپ کنید تا فورا همه چیز را جستجو کنید',
   },
 }
 

@@ -286,6 +286,9 @@ const translation = {
     useAtForSpecific: 'Використовуйте @ для конкретних типів',
     someServicesUnavailable: 'Деякі пошукові сервіси недоступні',
     servicesUnavailableMessage: 'У деяких пошукових службах можуть виникати проблеми. Повторіть спробу за мить.',
+    selectSearchType: 'Виберіть, що шукати',
+    commandHint: 'Введіть @ для навігації за категоріями',
+    searchHint: 'Почніть вводити текст, щоб миттєво шукати все',
   },
 }
 

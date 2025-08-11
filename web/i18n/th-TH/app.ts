@@ -282,6 +282,9 @@ const translation = {
     searchPlaceholder: 'ค้นหาหรือพิมพ์ @ สําหรับคําสั่ง...',
     servicesUnavailableMessage: 'บริการค้นหาบางบริการอาจประสบปัญหา ลองอีกครั้งในอีกสักครู่',
     searching: 'กำลังค้นหา...',
+    searchHint: 'เริ่มพิมพ์เพื่อค้นหาทุกอย่างได้ทันที',
+    selectSearchType: 'เลือกสิ่งที่จะค้นหา',
+    commandHint: 'พิมพ์ @ เพื่อเรียกดูตามหมวดหมู่',
   },
 }
 

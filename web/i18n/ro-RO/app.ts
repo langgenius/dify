@@ -286,6 +286,9 @@ const translation = {
     servicesUnavailableMessage: 'Este posibil ca unele servicii de căutare să întâmpine probleme. Încercați din nou într-o clipă.',
     someServicesUnavailable: 'Unele servicii de căutare nu sunt disponibile',
     clearToSearchAll: 'Ștergeți @ pentru a căuta toate',
+    selectSearchType: 'Alegeți ce să căutați',
+    commandHint: 'Tastați @ pentru a naviga după categorie',
+    searchHint: 'Începeți să tastați pentru a căuta totul instantaneu',
   },
 }
 
