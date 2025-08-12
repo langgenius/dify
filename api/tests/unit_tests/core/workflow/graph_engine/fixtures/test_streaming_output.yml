@@ -1,0 +1,363 @@
+app:
+  description: 'This workflow receive ''query'' and ''blocking''.
+
+
+    if blocking == 1, the workflow will outputs the result once(because it from the
+    Template Node).
+
+    otherwise, the workflow will outputs the result streaming.'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: test_streaming_output
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.0.30@1f5ecdef108418a467e54da2dcf5de2cf22b47632abc8633194ac9fb96317ede
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1754239042599-source-1754296900311-target
+      source: '1754239042599'
+      sourceHandle: source
+      target: '1754296900311'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: 1754296900311-true-1754239044238-target
+      selected: false
+      source: '1754296900311'
+      sourceHandle: 'true'
+      target: '1754239044238'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: template-transform
+      id: 1754239044238-source-1754296914925-target
+      selected: false
+      source: '1754239044238'
+      sourceHandle: source
+      target: '1754296914925'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: template-transform
+        targetType: end
+      id: 1754296914925-source-1754239058707-target
+      selected: false
+      source: '1754296914925'
+      sourceHandle: source
+      target: '1754239058707'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: 1754296900311-false-17542969329740-target
+      source: '1754296900311'
+      sourceHandle: 'false'
+      target: '17542969329740'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 17542969329740-source-1754296943402-target
+      source: '17542969329740'
+      sourceHandle: source
+      target: '1754296943402'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: query
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: query
+        - label: blocking
+          max_length: 48
+          options: []
+          required: true
+          type: number
+          variable: blocking
+      height: 116
+      id: '1754239042599'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 11c2b96f-7c78-4587-985f-b8addf8825ec
+          role: system
+          text: ''
+        - id: e3b2a1be-f2ad-4d63-bf0f-c4d8cc5189f1
+          role: user
+          text: '{{#1754239042599.query#}}'
+        selected: false
+        title: LLM
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '1754239044238'
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754239042599'
+          - query
+          value_type: string
+          variable: query
+        - value_selector:
+          - '1754296914925'
+          - output
+          value_type: string
+          variable: text
+        selected: false
+        title: End
+        type: end
+      height: 116
+      id: '1754239058707'
+      position:
+        x: 1288
+        y: 282
+      positionAbsolute:
+        x: 1288
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: '='
+            id: 8880c9ae-7394-472e-86bd-45b5d6d0d6ab
+            value: '1'
+            varType: number
+            variable_selector:
+            - '1754239042599'
+            - blocking
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: IF/ELSE
+        type: if-else
+      height: 126
+      id: '1754296900311'
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        template: '{{ arg1 }}'
+        title: Template
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1754239044238'
+          - text
+          value_type: string
+          variable: arg1
+      height: 54
+      id: '1754296914925'
+      position:
+        x: 988
+        y: 282
+      positionAbsolute:
+        x: 988
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: gpt-4o
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 11c2b96f-7c78-4587-985f-b8addf8825ec
+          role: system
+          text: ''
+        - id: e3b2a1be-f2ad-4d63-bf0f-c4d8cc5189f1
+          role: user
+          text: '{{#1754239042599.query#}}'
+        selected: false
+        title: LLM 2
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 90
+      id: '17542969329740'
+      position:
+        x: 684
+        y: 425
+      positionAbsolute:
+        x: 684
+        y: 425
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754239042599'
+          - query
+          value_type: string
+          variable: query
+        - value_selector:
+          - '17542969329740'
+          - text
+          value_type: string
+          variable: text
+        selected: false
+        title: End 2
+        type: end
+      height: 116
+      id: '1754296943402'
+      position:
+        x: 988
+        y: 425
+      positionAbsolute:
+        x: 988
+        y: 425
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -836.2703302502922
+      y: 139.225594124043
+      zoom: 0.8934541349292853

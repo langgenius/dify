@@ -4,18 +4,17 @@ from typing import Any, Literal, Optional, Union
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 
 from .entities import ListOperatorNodeData
 from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
 
 
-class ListOperatorNode(BaseNode):
-    _node_type = NodeType.LIST_OPERATOR
+class ListOperatorNode(Node):
+    node_type = NodeType.LIST_OPERATOR
 
     _node_data: ListOperatorNodeData
 

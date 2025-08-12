@@ -4,16 +4,13 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.event.event import RunCompletedEvent
+from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
+from core.workflow.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowType
 
 
 def init_tool_node(config: dict):
@@ -33,7 +30,6 @@ def init_tool_node(config: dict):
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -86,10 +82,10 @@ def test_tool_variable_invoke():
     # execute node
     result = node._run()
     for item in result:
-        if isinstance(item, RunCompletedEvent):
-            assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.run_result.outputs is not None
-            assert item.run_result.outputs.get("text") is not None
+        if isinstance(item, StreamCompletedEvent):
+            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.node_run_result.outputs is not None
+            assert item.node_run_result.outputs.get("text") is not None
 
 
 def test_tool_mixed_invoke():
@@ -117,7 +113,7 @@ def test_tool_mixed_invoke():
     # execute node
     result = node._run()
     for item in result:
-        if isinstance(item, RunCompletedEvent):
-            assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-            assert item.run_result.outputs is not None
-            assert item.run_result.outputs.get("text") is not None
+        if isinstance(item, StreamCompletedEvent):
+            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.node_run_result.outputs is not None
+            assert item.node_run_result.outputs.get("text") is not None

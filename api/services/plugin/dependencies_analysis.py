@@ -1,7 +1,8 @@
 from configs import dify_config
 from core.helper import marketplace
-from core.plugin.entities.plugin import ModelProviderID, PluginDependency, PluginInstallationSource, ToolProviderID
+from core.plugin.entities.plugin import PluginDependency, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from models.provider_ids import ModelProviderID, ToolProviderID
 
 
 class DependenciesAnalysisService:

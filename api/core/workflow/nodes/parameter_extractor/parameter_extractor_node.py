@@ -26,14 +26,13 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables.types import SegmentType
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities import VariablePool
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base import variable_template_parser
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import ModelConfig, llm_utils
-from core.workflow.utils import variable_template_parser
 from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
@@ -87,12 +86,12 @@ def extract_json(text):
     return None
 
 
-class ParameterExtractorNode(BaseNode):
+class ParameterExtractorNode(Node):
     """
     Parameter Extractor Node.
     """
 
-    _node_type = NodeType.PARAMETER_EXTRACTOR
+    node_type = NodeType.PARAMETER_EXTRACTOR
 
     _node_data: ParameterExtractorNodeData
 

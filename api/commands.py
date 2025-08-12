@@ -13,7 +13,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from constants.languages import languages
-from core.plugin.entities.plugin import ToolProviderID
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
@@ -31,6 +30,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, D
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
+from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
