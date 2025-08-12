@@ -51,7 +51,6 @@ def init_http_node(config: dict):
     )
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
-    variable_pool.add(["a", "args3"], {"nested": "nested_value"})
 
     node = HttpRequestNode(
         id=str(uuid.uuid4()),
@@ -442,28 +441,76 @@ def test_multi_colons_parse(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_nested_object_variable_selector(setup_http_mock):
     """Test variable selector functionality with nested object properties."""
-    node = init_http_node(
-        config={
-            "id": "1",
-            "data": {
-                "title": "http",
-                "desc": "",
-                "method": "get",
-                "url": "http://example.com/{{#a.args2#}}/{{#a.args3.nested#}}",
-                "authorization": {
-                    "type": "api-key",
-                    "config": {
-                        "type": "basic",
-                        "api_key": "ak-xxx",
-                        "header": "api-key",
-                    },
-                },
-                "headers": "X-Header:{{#a.args3.nested#}}",
-                "params": "nested_param:{{#a.args3.nested#}}",
-                "body": None,
+    # Create independent test setup without affecting other tests
+    graph_config = {
+        "edges": [
+            {
+                "id": "start-source-next-target",
+                "source": "start",
+                "target": "1",
             },
-        }
+        ],
+        "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
+            {
+                "id": "1",
+                "data": {
+                    "title": "http",
+                    "desc": "",
+                    "method": "get",
+                    "url": "http://example.com/{{#a.args2#}}/{{#a.args3.nested#}}",
+                    "authorization": {
+                        "type": "api-key",
+                        "config": {
+                            "type": "basic",
+                            "api_key": "ak-xxx",
+                            "header": "api-key",
+                        },
+                    },
+                    "headers": "X-Header:{{#a.args3.nested#}}",
+                    "params": "nested_param:{{#a.args3.nested#}}",
+                    "body": None,
+                },
+            },
+        ],
+    }
+
+    graph = Graph.init(graph_config=graph_config)
+
+    init_params = GraphInitParams(
+        tenant_id="1",
+        app_id="1",
+        workflow_type=WorkflowType.WORKFLOW,
+        workflow_id="1",
+        graph_config=graph_config,
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
     )
+
+    # Create independent variable pool for this test only
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(user_id="aaa", files=[]),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    variable_pool.add(["a", "args1"], 1)
+    variable_pool.add(["a", "args2"], 2)
+    variable_pool.add(["a", "args3"], {"nested": "nested_value"})  # Only for this test
+
+    node = HttpRequestNode(
+        id=str(uuid.uuid4()),
+        graph_init_params=init_params,
+        graph=graph,
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        config=graph_config["nodes"][1],
+    )
+
+    # Initialize node data
+    if "data" in graph_config["nodes"][1]:
+        node.init_node_data(graph_config["nodes"][1]["data"])
 
     result = node._run()
     assert result.process_data is not None
