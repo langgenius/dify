@@ -3,13 +3,11 @@ import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
 import { workflowNodesAction } from './workflow-nodes'
 import type { ActionItem, SearchResult } from './types'
-import { commandAction } from './run'
 
 export const Actions = {
   app: appAction,
   knowledge: knowledgeAction,
   plugin: pluginAction,
-  run: commandAction,
   node: workflowNodesAction,
 }
 

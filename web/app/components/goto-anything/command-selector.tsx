@@ -73,7 +73,6 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                   '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
                   '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
                   '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                  '@run': 'app.gotoAnything.actions.runDesc',
                   '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
                 }
                 return t(keyMap[action.key])
