@@ -84,7 +84,9 @@ const SecretKeyModal = ({
 
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} flex flex-col px-8`}>
-      <XMarkIcon className={`absolute h-6 w-6 cursor-pointer text-text-tertiary ${s.close}`} onClick={onClose} />
+      <div className="-mr-2 -mt-6 mb-4 flex justify-end">
+        <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+      </div>
       <p className='mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
       {!apiKeysList && <div className='mt-4'><Loading /></div>}
       {

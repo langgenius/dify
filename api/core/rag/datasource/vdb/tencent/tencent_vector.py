@@ -246,6 +246,10 @@ class TencentVector(BaseVector):
         return self._get_search_res(res, score_threshold)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = None
+        if document_ids_filter:
+            filter = Filter(Filter.In("metadata.document_id", document_ids_filter))
         if not self._enable_hybrid_search:
             return []
         res = self._client.hybrid_search(
@@ -269,6 +273,7 @@ class TencentVector(BaseVector):
             ),
             retrieve_vector=False,
             limit=kwargs.get("top_k", 4),
+            filter=filter,
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)

@@ -197,7 +197,7 @@ const translation = {
           after: '에 OpenAI API 키가 설정되어 있어야 합니다.',
         },
       },
-      contentEnableLabel: '중간 콘텐츠 사용',
+      contentEnableLabel: '콘텐츠 모더레이션이 활성화됨',
     },
     fileUpload: {
       title: '파일 업로드',

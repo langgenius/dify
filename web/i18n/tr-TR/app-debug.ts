@@ -197,7 +197,7 @@ const translation = {
           after: '',
         },
       },
-      contentEnableLabel: 'Etkin modere içerik',
+      contentEnableLabel: 'İçerik denetimi etkin',
     },
     fileUpload: {
       title: 'Dosya Yükleme',

@@ -197,6 +197,8 @@ const translation = {
       cancel: 'रद्द करें',
       save: 'सहेजें',
       confirm: 'जोड़ें और अधिकृत करें',
+      timeout: 'टाइमआउट',
+      sseReadTimeout: 'एसएसई पढ़ने का टाइमआउट',
     },
     delete: 'MCP सर्वर हटाएँ',
     deleteConfirmTitle: '{mcp} हटाना चाहते हैं?',

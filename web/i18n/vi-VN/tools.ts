@@ -192,6 +192,8 @@ const translation = {
       cancel: 'Hủy',
       save: 'Lưu',
       confirm: 'Thêm & Ủy quyền',
+      sseReadTimeout: 'Thời gian chờ Đọc SSE',
+      timeout: 'Thời gian chờ',
     },
     delete: 'Xóa Máy chủ MCP',
     deleteConfirmTitle: 'Xóa {mcp}?',

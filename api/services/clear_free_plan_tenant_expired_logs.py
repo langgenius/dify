@@ -13,7 +13,19 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
-from models.model import App, Conversation, Message
+from models.model import (
+    App,
+    AppAnnotationHitHistory,
+    Conversation,
+    Message,
+    MessageAgentThought,
+    MessageAnnotation,
+    MessageChain,
+    MessageFeedback,
+    MessageFile,
+)
+from models.web import SavedMessage
+from models.workflow import WorkflowAppLog
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 
@@ -21,6 +33,85 @@ logger = logging.getLogger(__name__)
 
 
 class ClearFreePlanTenantExpiredLogs:
+    @classmethod
+    def _clear_message_related_tables(cls, session: Session, tenant_id: str, batch_message_ids: list[str]) -> None:
+        """
+        Clean up message-related tables to avoid data redundancy.
+        This method cleans up tables that have foreign key relationships with Message.
+
+        Args:
+            session: Database session, the same with the one in process_tenant method
+            tenant_id: Tenant ID for logging purposes
+            batch_message_ids: List of message IDs to clean up
+        """
+        if not batch_message_ids:
+            return
+
+        # Clean up each related table
+        related_tables = [
+            (MessageFeedback, "message_feedbacks"),
+            (MessageFile, "message_files"),
+            (MessageAnnotation, "message_annotations"),
+            (MessageChain, "message_chains"),
+            (MessageAgentThought, "message_agent_thoughts"),
+            (AppAnnotationHitHistory, "app_annotation_hit_histories"),
+            (SavedMessage, "saved_messages"),
+        ]
+
+        for model, table_name in related_tables:
+            # Query records related to expired messages
+            records = (
+                session.query(model)
+                .filter(
+                    model.message_id.in_(batch_message_ids),  # type: ignore
+                )
+                .all()
+            )
+
+            if len(records) == 0:
+                continue
+
+            # Save records before deletion
+            record_ids = [record.id for record in records]
+            try:
+                record_data = []
+                for record in records:
+                    try:
+                        if hasattr(record, "to_dict"):
+                            record_data.append(record.to_dict())
+                        else:
+                            # if record doesn't have to_dict method, we need to transform it to dict manually
+                            record_dict = {}
+                            for column in record.__table__.columns:
+                                record_dict[column.name] = getattr(record, column.name)
+                            record_data.append(record_dict)
+                    except Exception:
+                        logger.exception("Failed to transform %s record: %s", table_name, record.id)
+                        continue
+
+                if record_data:
+                    storage.save(
+                        f"free_plan_tenant_expired_logs/"
+                        f"{tenant_id}/{table_name}/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                        f"-{time.time()}.json",
+                        json.dumps(
+                            jsonable_encoder(record_data),
+                        ).encode("utf-8"),
+                    )
+            except Exception:
+                logger.exception("Failed to save %s records", table_name)
+
+            session.query(model).filter(
+                model.id.in_(record_ids),  # type: ignore
+            ).delete(synchronize_session=False)
+
+            click.echo(
+                click.style(
+                    f"[{datetime.datetime.now()}] Processed {len(record_ids)} "
+                    f"{table_name} records for tenant {tenant_id}"
+                )
+            )
+
     @classmethod
     def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
         with flask_app.app_context():
@@ -58,6 +149,7 @@ class ClearFreePlanTenantExpiredLogs:
                         Message.id.in_(message_ids),
                     ).delete(synchronize_session=False)
 
+                    cls._clear_message_related_tables(session, tenant_id, message_ids)
                     session.commit()
 
                     click.echo(
@@ -198,6 +290,48 @@ class ClearFreePlanTenantExpiredLogs:
                 # If we got fewer than the batch size, we're done
                 if len(workflow_runs) < batch:
                     break
+
+            while True:
+                with Session(db.engine).no_autoflush as session:
+                    workflow_app_logs = (
+                        session.query(WorkflowAppLog)
+                        .filter(
+                            WorkflowAppLog.tenant_id == tenant_id,
+                            WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                        )
+                        .limit(batch)
+                        .all()
+                    )
+
+                    if len(workflow_app_logs) == 0:
+                        break
+
+                    # save workflow app logs
+                    storage.save(
+                        f"free_plan_tenant_expired_logs/"
+                        f"{tenant_id}/workflow_app_logs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                        f"-{time.time()}.json",
+                        json.dumps(
+                            jsonable_encoder(
+                                [workflow_app_log.to_dict() for workflow_app_log in workflow_app_logs],
+                            ),
+                        ).encode("utf-8"),
+                    )
+
+                    workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
+
+                    # delete workflow app logs
+                    session.query(WorkflowAppLog).filter(
+                        WorkflowAppLog.id.in_(workflow_app_log_ids),
+                    ).delete(synchronize_session=False)
+                    session.commit()
+
+                    click.echo(
+                        click.style(
+                            f"[{datetime.datetime.now()}] Processed {len(workflow_app_log_ids)}"
+                            f" workflow app logs for tenant {tenant_id}"
+                        )
+                    )
 
     @classmethod
     def process(cls, days: int, batch: int, tenant_ids: list[str]):

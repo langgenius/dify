@@ -90,6 +90,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from .workspace_api_key import WorkspaceApiKey
 
 __all__ = [
     "APIBasedExtension",
@@ -177,5 +178,6 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
+    "WorkspaceApiKey",
     "db",
 ]

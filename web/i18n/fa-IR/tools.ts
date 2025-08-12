@@ -192,6 +192,8 @@ const translation = {
       cancel: 'لغو',
       save: 'ذخیره',
       confirm: 'افزودن و مجوزدهی',
+      timeout: 'مهلت',
+      sseReadTimeout: 'زمان.out خواندن SSE',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',

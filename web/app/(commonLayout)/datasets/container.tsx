@@ -9,10 +9,10 @@ import { useQuery } from '@tanstack/react-query'
 
 // Components
 import ExternalAPIPanel from '../../components/datasets/external-api/external-api-panel'
-import Datasets from './Datasets'
-import DatasetFooter from './DatasetFooter'
+import Datasets from './datasets'
+import DatasetFooter from './dataset-footer'
 import ApiServer from '../../components/develop/ApiServer'
-import Doc from './Doc'
+import Doc from './doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
@@ -86,8 +86,8 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex h-[80px] shrink-0 flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
+    <div ref={containerRef} className={`scroll-container relative flex grow flex-col overflow-y-auto rounded-t-xl outline-none ${activeTab === 'dataset' ? 'bg-background-body' : 'bg-components-panel-bg'}`}>
+      <div className={`sticky top-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-y-2 rounded-t-xl px-6 py-2 ${activeTab === 'api' ? 'border-b border-solid border-b-divider-regular' : ''} ${activeTab === 'dataset' ? 'bg-background-body' : 'bg-components-panel-bg'}`}>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}

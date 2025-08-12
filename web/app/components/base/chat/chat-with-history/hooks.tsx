@@ -115,8 +115,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [])
 
   useEffect(() => {
-    if (appData?.site.default_language)
-      changeLanguage(appData.site.default_language)
+    const setLocaleFromProps = async () => {
+      if (appData?.site.default_language)
+        await changeLanguage(appData.site.default_language)
+    }
+    setLocaleFromProps()
   }, [appData])
 
   const [sidebarCollapseState, setSidebarCollapseState] = useState<boolean>(false)
