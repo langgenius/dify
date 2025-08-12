@@ -8,8 +8,8 @@ const defaultData = {
   stargazers_count: 98570,
 }
 
-const getStar = async () => {
-  const res = await fetch('https://api.github.com/repos/langgenius/dify')
+const getStar = async (): Promise<GithubRepo> => {
+  const res = await fetch('/console/api/github-stars')
 
   if (!res.ok)
     throw new Error('Failed to fetch github star')
@@ -23,6 +23,7 @@ const GithubStar: FC<{ className: string }> = (props) => {
     queryFn: getStar,
     enabled: process.env.NODE_ENV !== 'development',
     retry: false,
+    staleTime: 30 * 60 * 1000,
     placeholderData: defaultData,
   })
 
