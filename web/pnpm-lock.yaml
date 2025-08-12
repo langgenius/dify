@@ -96,18 +96,9 @@ importers:
       '@lexical/utils':
         specifier: ^0.30.0
         version: 0.30.0
-      '@mdx-js/loader':
-        specifier: ^3.1.0
-        version: 3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
-      '@mdx-js/react':
-        specifier: ^3.1.0
-        version: 3.1.0(@types/react@19.1.8)(react@19.1.0)
       '@monaco-editor/react':
         specifier: ^4.6.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@next/mdx':
-        specifier: ~15.3.5
-        version: 15.3.5(@mdx-js/loader@3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)))(@mdx-js/react@3.1.0(@types/react@19.1.8)(react@19.1.0))
       '@octokit/core':
         specifier: ^6.1.2
         version: 6.1.6
@@ -403,12 +394,21 @@ importers:
       '@happy-dom/jest-environment':
         specifier: ^17.4.4
         version: 17.6.3
+      '@mdx-js/loader':
+        specifier: ^3.1.0
+        version: 3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
+      '@mdx-js/react':
+        specifier: ^3.1.0
+        version: 3.1.0(@types/react@19.1.8)(react@19.1.0)
       '@next/bundle-analyzer':
         specifier: ^15.4.1
         version: 15.4.1
       '@next/eslint-plugin-next':
         specifier: ~15.4.5
         version: 15.4.5
+      '@next/mdx':
+        specifier: ~15.3.5
+        version: 15.3.5(@mdx-js/loader@3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3)))(@mdx-js/react@3.1.0(@types/react@19.1.8)(react@19.1.0))
       '@rgrove/parse-xml':
         specifier: ^4.1.0
         version: 4.2.0
