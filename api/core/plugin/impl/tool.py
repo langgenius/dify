@@ -95,7 +95,7 @@ class PluginToolManager(BasePluginClient):
         Raises:
             ValueError: If chunk or file size limits are exceeded
         """
-        files: dict[str, FileChunk] = {}
+        chunks: dict[str, FileChunk] = {}
 
         for resp in response:
             if resp.type != ToolInvokeMessage.MessageType.BLOB_CHUNK:
@@ -111,24 +111,24 @@ class PluginToolManager(BasePluginClient):
             is_end = resp.message.end
 
             # Initialize buffer for this file if it doesn't exist
-            if chunk_id not in files:
+            if chunk_id not in chunks:
                 if total_length > dify_config.TOOL_FILE_MAX_SIZE:
                     raise ValueError(
                         f"File is too large which reached the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes"
                     )
-                files[chunk_id] = FileChunk(total_length=total_length)
+                chunks[chunk_id] = FileChunk(total_length=total_length)
 
             # Append the blob data to the buffer
-            files[chunk_id] += blob_data
+            chunks[chunk_id] += blob_data
 
             # If this is the final chunk, yield a complete blob message
             if is_end:
                 yield ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.BLOB,
-                    message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data),
+                    message=ToolInvokeMessage.BlobMessage(blob=chunks[chunk_id].data),
                     meta=resp.meta,
                 )
-                del files[chunk_id]
+                del chunks[chunk_id]
 
     def fetch_tool_provider(self, tenant_id: str, provider: str) -> PluginToolProviderEntity:
         """
