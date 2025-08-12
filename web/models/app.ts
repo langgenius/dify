@@ -3,7 +3,7 @@ import type { App, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {
-  id: strin
+  id: string
   name: string
   description: string
   mode: AppMode
