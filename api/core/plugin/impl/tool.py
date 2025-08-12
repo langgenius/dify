@@ -1,13 +1,48 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from configs import dify_config
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
+
+
+class FileChunk(BaseModel):
+    """File chunk buffer for assembling blob data from chunks."""
+
+    bytes_written: int = 0
+    total_length: int
+    data: bytearray = Field(default_factory=bytearray)
+
+    def __iadd__(self, other: bytes) -> "FileChunk":
+        self.data[self.bytes_written : self.bytes_written + len(other)] = other
+        self.bytes_written += len(other)
+        if self.bytes_written > self.total_length:
+            raise ValueError(f"File chunk is too large which reached the limit of {self.total_length} bytes")
+        return self
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_validator("total_length")
+    @classmethod
+    def validate_total_length(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("total_length must be positive")
+        if v > dify_config.TOOL_FILE_MAX_SIZE:
+            raise ValueError(f"total_length exceeds maximum file size of {dify_config.TOOL_FILE_MAX_SIZE} bytes")
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def initialize_data_buffer(cls, values):
+        if isinstance(values, dict):
+            if "data" not in values or values["data"] is None:
+                if "total_length" in values:
+                    values["data"] = bytearray(values["total_length"])
+        return values
 
 
 class PluginToolManager(BasePluginClient):
@@ -41,6 +76,59 @@ class PluginToolManager(BasePluginClient):
                 tool.identity.provider = provider.declaration.identity.name
 
         return response
+
+    def _process_blob_chunks(
+        self,
+        response: Generator[ToolInvokeMessage, None, None],
+        chunk_size_limit: int = 8192,
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Process blob chunks from tool invocation responses.
+
+        Args:
+            response: Generator yielding ToolInvokeMessage instances
+            chunk_size_limit: Maximum size for a single chunk (default 8KB)
+
+        Yields:
+            ToolInvokeMessage: Processed messages with complete blobs assembled from chunks
+
+        Raises:
+            ValueError: If chunk or file size limits are exceeded
+        """
+        files: dict[str, FileChunk] = {}
+
+        for resp in response:
+            if resp.type != ToolInvokeMessage.MessageType.BLOB_CHUNK:
+                yield resp
+                continue
+
+            assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
+
+            # Get blob chunk information
+            chunk_id = resp.message.id
+            total_length = resp.message.total_length
+            blob_data = resp.message.blob
+            is_end = resp.message.end
+
+            # Initialize buffer for this file if it doesn't exist
+            if chunk_id not in files:
+                if total_length > dify_config.TOOL_FILE_MAX_SIZE:
+                    raise ValueError(
+                        f"File is too large which reached the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes"
+                    )
+                files[chunk_id] = FileChunk(total_length=total_length)
+
+            # Append the blob data to the buffer
+            files[chunk_id] += blob_data
+
+            # If this is the final chunk, yield a complete blob message
+            if is_end:
+                yield ToolInvokeMessage(
+                    type=ToolInvokeMessage.MessageType.BLOB,
+                    message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data),
+                    meta=resp.meta,
+                )
+                del files[chunk_id]
 
     def fetch_tool_provider(self, tenant_id: str, provider: str) -> PluginToolProviderEntity:
         """
@@ -114,63 +202,8 @@ class PluginToolManager(BasePluginClient):
             },
         )
 
-        class FileChunk:
-            """
-            Only used for internal processing.
-            """
-
-            bytes_written: int
-            total_length: int
-            data: bytearray
-
-            def __init__(self, total_length: int):
-                self.bytes_written = 0
-                self.total_length = total_length
-                self.data = bytearray(total_length)
-
-        files: dict[str, FileChunk] = {}
-        for resp in response:
-            if resp.type == ToolInvokeMessage.MessageType.BLOB_CHUNK:
-                assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
-                # Get blob chunk information
-                chunk_id = resp.message.id
-                total_length = resp.message.total_length
-                blob_data = resp.message.blob
-                is_end = resp.message.end
-
-                # Initialize buffer for this file if it doesn't exist
-                if chunk_id not in files:
-                    files[chunk_id] = FileChunk(total_length)
-
-                # If this is the final chunk, yield a complete blob message
-                if is_end:
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.BLOB,
-                        message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data),
-                        meta=resp.meta,
-                    )
-                else:
-                    # Check if single chunk is too large (8KB limit)
-                    file_chunk_size = len(blob_data)
-                    if file_chunk_size > 8192:
-                        # Skip yielding this message
-                        raise ValueError("File chunk is too large which reached the limit of 8KB")
-
-                    # Check if file size is too large
-                    size_with_new_chunk = files[chunk_id].bytes_written + file_chunk_size
-                    if size_with_new_chunk > dify_config.TOOL_FILE_MAX_SIZE:
-                        # Delete the file if it's too large
-                        del files[chunk_id]
-                        # Skip yielding this message
-                        raise ValueError(
-                            f"File is too large exceeding the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes"
-                        )
-
-                    # Append the blob data to the buffer
-                    files[chunk_id].data[files[chunk_id].bytes_written : size_with_new_chunk] = blob_data
-                    files[chunk_id].bytes_written += file_chunk_size
-            else:
-                yield resp
+        # Process blob chunks using the handler method
+        return self._process_blob_chunks(response)
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]
