@@ -2,7 +2,6 @@ import logging
 import time
 from typing import Any
 
-from core.plugin.impl.oauth import OAuthHandler
 from flask_login import current_user
 from sqlalchemy.orm import Session
 
@@ -14,6 +13,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
 from core.plugin.entities.plugin import DatasourceProviderID
 from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
@@ -143,7 +143,7 @@ class DatasourceProviderService:
                 plugin_id=plugin_id,
                 provider=provider,
             )
-    
+
     def get_all_datasource_credentials_by_provider(
         self,
         tenant_id: str,

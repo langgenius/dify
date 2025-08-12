@@ -233,9 +233,11 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             dataset_process_rule = DatasetProcessRule(
                 dataset_id=dataset.id,
                 mode="hierarchical",
-                rules=json.dumps({
-                    "parent_mode": parent_childs.parent_mode,
-                }),
+                rules=json.dumps(
+                    {
+                        "parent_mode": parent_childs.parent_mode,
+                    }
+                ),
                 created_by=document.created_by,
             )
             db.session.add(dataset_process_rule)

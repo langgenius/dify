@@ -816,7 +816,7 @@ class DocumentSegment(Base):
             base_url = f"/files/{upload_file_id}/file-preview"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
-        
+
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
         pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?.*?)?"
         matches = re.finditer(pattern, text)

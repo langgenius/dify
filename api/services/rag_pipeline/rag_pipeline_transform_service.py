@@ -307,15 +307,17 @@ class RagPipelineTransformService:
                 if file_id:
                     file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
                     if file:
-                        data_source_info = json.dumps({
-                            "real_file_id": file_id,
-                            "name": file.name,
-                            "size": file.size,
-                            "extension": file.extension,
-                            "mime_type": file.mime_type,
-                            "url": "",
-                            "transfer_method": "local_file",
-                        })
+                        data_source_info = json.dumps(
+                            {
+                                "real_file_id": file_id,
+                                "name": file.name,
+                                "size": file.size,
+                                "extension": file.extension,
+                                "mime_type": file.mime_type,
+                                "url": "",
+                                "transfer_method": "local_file",
+                            }
+                        )
                         document.data_source_info = data_source_info
                         document_pipeline_execution_log = DocumentPipelineExecutionLog(
                             document_id=document.id,
@@ -331,17 +333,19 @@ class RagPipelineTransformService:
                         db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "notion_import":
                 document.data_source_type = "online_document"
-                data_source_info = json.dumps({
-                    "workspace_id": data_source_info_dict.get("notion_workspace_id"),
-                    "page": {
-                        "page_id": data_source_info_dict.get("notion_page_id"),
-                        "page_name": document.name,
-                        "page_icon": data_source_info_dict.get("notion_page_icon"),
-                        "type": data_source_info_dict.get("type"),
-                        "last_edited_time": data_source_info_dict.get("last_edited_time"),
-                        "parent_id": None,
-                    },
-                })
+                data_source_info = json.dumps(
+                    {
+                        "workspace_id": data_source_info_dict.get("notion_workspace_id"),
+                        "page": {
+                            "page_id": data_source_info_dict.get("notion_page_id"),
+                            "page_name": document.name,
+                            "page_icon": data_source_info_dict.get("notion_page_icon"),
+                            "type": data_source_info_dict.get("type"),
+                            "last_edited_time": data_source_info_dict.get("last_edited_time"),
+                            "parent_id": None,
+                        },
+                    }
+                )
                 document.data_source_info = data_source_info
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document.id,
@@ -357,12 +361,14 @@ class RagPipelineTransformService:
                 db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "website_crawl":
                 document.data_source_type = "website_crawl"
-                data_source_info = json.dumps({
-                    "source_url": data_source_info_dict.get("url"),
-                    "content": "",
-                    "title": document.name,
-                    "description": "",
-                })
+                data_source_info = json.dumps(
+                    {
+                        "source_url": data_source_info_dict.get("url"),
+                        "content": "",
+                        "title": document.name,
+                        "description": "",
+                    }
+                )
                 document.data_source_info = data_source_info
                 if data_source_info_dict.get("provider") == "firecrawl":
                     datasource_node_id = firecrawl_node_id

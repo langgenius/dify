@@ -1,4 +1,3 @@
-
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from services.website_service import WebsiteService
@@ -35,9 +34,7 @@ class FirecrawlWebExtractor(BaseExtractor):
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
-            crawl_data = WebsiteService.get_crawl_url_data(
-                self.job_id, "firecrawl", self._url, self.tenant_id
-            )
+            crawl_data = WebsiteService.get_crawl_url_data(self.job_id, "firecrawl", self._url, self.tenant_id)
             if crawl_data is None:
                 return []
             document = Document(

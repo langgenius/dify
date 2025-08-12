@@ -98,6 +98,7 @@ class WebsiteCrawlStatusApiRequest:
 
     provider: str
     job_id: str
+
     @classmethod
     def from_args(cls, args: dict, job_id: str) -> "WebsiteCrawlStatusApiRequest":
         """Create from Flask-RESTful parsed arguments."""
@@ -114,9 +115,7 @@ class WebsiteService:
     """Service class for website crawling operations using different providers."""
 
     @classmethod
-    def _get_credentials_and_config(
-        cls, tenant_id: str, provider: str
-    ) -> tuple[Any, Any]:
+    def _get_credentials_and_config(cls, tenant_id: str, provider: str) -> tuple[Any, Any]:
         """Get and validate credentials for a provider."""
         if provider == "firecrawl":
             plugin_id = "langgenius/firecrawl_datasource"
@@ -158,9 +157,7 @@ class WebsiteService:
         """Crawl a URL using the specified provider with typed request."""
         request = api_request.to_crawl_request()
 
-        api_key, config = cls._get_credentials_and_config(
-            current_user.current_tenant_id, request.provider
-        )
+        api_key, config = cls._get_credentials_and_config(current_user.current_tenant_id, request.provider)
 
         if request.provider == "firecrawl":
             return cls._crawl_with_firecrawl(request=request, api_key=api_key, config=config)
@@ -250,9 +247,7 @@ class WebsiteService:
     @classmethod
     def get_crawl_status_typed(cls, api_request: WebsiteCrawlStatusApiRequest) -> dict[str, Any]:
         """Get crawl status using typed request."""
-        api_key, config = cls._get_credentials_and_config(
-            current_user.current_tenant_id, api_request.provider
-        )
+        api_key, config = cls._get_credentials_and_config(current_user.current_tenant_id, api_request.provider)
 
         if api_request.provider == "firecrawl":
             return cls._get_firecrawl_status(api_request.job_id, api_key, config)
@@ -325,9 +320,7 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def get_crawl_url_data(
-        cls, job_id: str, provider: str, url: str, tenant_id: str
-    ) -> dict[str, Any] | None:
+    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict[str, Any] | None:
         api_key, config = cls._get_credentials_and_config(tenant_id, provider)
 
         if provider == "firecrawl":
@@ -398,14 +391,10 @@ class WebsiteService:
         return None
 
     @classmethod
-    def get_scrape_url_data(
-        cls, provider: str, url: str, tenant_id: str, only_main_content: bool
-    ) -> dict[str, Any]:
+    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict[str, Any]:
         request = ScrapeRequest(provider=provider, url=url, tenant_id=tenant_id, only_main_content=only_main_content)
 
-        api_key, config = cls._get_credentials_and_config(
-            tenant_id=request.tenant_id, provider=request.provider
-        )
+        api_key, config = cls._get_credentials_and_config(tenant_id=request.tenant_id, provider=request.provider)
 
         if request.provider == "firecrawl":
             return cls._scrape_with_firecrawl(request=request, api_key=api_key, config=config)

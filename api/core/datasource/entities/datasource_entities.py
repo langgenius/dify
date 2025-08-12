@@ -127,7 +127,6 @@ class DatasourceEntity(BaseModel):
     description: I18nObject = Field(..., description="The label of the datasource")
     output_schema: Optional[dict] = None
 
-
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
