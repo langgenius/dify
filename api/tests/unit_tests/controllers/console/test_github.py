@@ -11,7 +11,7 @@ class TestGithubStarApi:
     def setup_method(self):
         self.app = Flask(__name__)
         self.api = GithubStarApi()
-        self.fallback_count = 98570
+        self.fallback_count = 110575
 
     @patch("controllers.console.github.redis_client")
     @patch("controllers.console.github.requests.get")

@@ -13,7 +13,7 @@ class GithubStarApi(Resource):
     def get(self):
         cache_key = "github_stars_langgenius_dify"
         cache_ttl = 1800
-        fallback_count = 98570
+        fallback_count = 110575
 
         try:
             cached_data = redis_client.get(cache_key)
