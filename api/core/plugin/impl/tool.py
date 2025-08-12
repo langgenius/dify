@@ -14,7 +14,7 @@ class FileChunk(BaseModel):
     """File chunk buffer for assembling blob data from chunks."""
 
     bytes_written: int = 0
-    total_length: int
+    total_length: int = 0
     data: bytearray = Field(default_factory=bytearray)
 
     def __iadd__(self, other: bytes) -> "FileChunk":
