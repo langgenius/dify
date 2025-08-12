@@ -19,7 +19,9 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(cls, extension: str, content: bytes) -> Optional[str]:
-        blocked_levels_list = dify_config.BLOCKED_SENSITIVITY_LEVELS.split(",")
+        blocked_levels_list = []
+        if dify_config.BLOCKED_SENSITIVITY_LEVELS:
+            blocked_levels_list = dify_config.BLOCKED_SENSITIVITY_LEVELS.split(",")
         blocked_levels_lower = {level.lower() for level in blocked_levels_list}
 
         try:
