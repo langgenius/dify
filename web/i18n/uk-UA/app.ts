@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} результат',
     resultCount_other: '{{count}} результатів',
     inScope: 'у {{scope}}s',
+    noMatchingCommands: 'Відповідних команд не знайдено',
+    tryDifferentSearch: 'Спробуйте інший пошуковий термін',
   },
 }
 

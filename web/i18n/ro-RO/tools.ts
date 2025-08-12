@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Cheie antet HTTP, puteți lăsa "Autorizare" dacă nu știți ce este sau setați-o la o valoare personalizată',
       types: {
         none: 'Niciuna',
-        api_key: 'Cheie API',
         apiKeyPlaceholder: 'Nume antet HTTP pentru cheia API',
         apiValuePlaceholder: 'Introduceți cheia API',
         api_key_header: 'Antet',

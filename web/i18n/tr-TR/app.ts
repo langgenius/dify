@@ -290,6 +290,8 @@ const translation = {
     resultCount: '{{count}} sonuç',
     resultCount_other: '{{count}} sonuç',
     inScope: '{{scope}}s içinde',
+    tryDifferentSearch: 'Farklı bir arama terimi deneyin',
+    noMatchingCommands: 'Eşleşen komut bulunamadı',
   },
 }
 
