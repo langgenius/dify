@@ -196,6 +196,8 @@ const translation = {
       cancel: 'Anuluj',
       save: 'Zapisz',
       confirm: 'Dodaj i autoryzuj',
+      timeout: 'Limit czasu',
+      sseReadTimeout: 'Przekroczenie czasu oczekiwania na odczyt SSE',
     },
     delete: 'Usuń serwer MCP',
     deleteConfirmTitle: 'Usunąć {mcp}?',
