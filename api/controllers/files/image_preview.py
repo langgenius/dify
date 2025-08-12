@@ -6,7 +6,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.files import api
-from controllers.files.error import UnsupportedFileTypeError
+from controllers.common.errors import UnsupportedFileTypeError
 from services.account_service import TenantService
 from services.file_service import FileService
 
