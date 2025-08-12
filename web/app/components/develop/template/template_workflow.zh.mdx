@@ -329,19 +329,21 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
-  url='/workflows/:workflow_id/run'
+  url='/workflows/:identifier/run'
   method='POST'
   title='执行指定版本 workflow'
   name='#Execute-Specific-Workflow'
 />
 <Row>
   <Col>
-    执行指定版本的工作流，通过路径参数指定工作流ID。
+    执行指定版本的工作流，支持通过工作流ID或别名指定版本。
 
     ### Path
-    - `workflow_id` (string) Required 工作流ID，用于指定特定版本的工作流
-      
-      获取方式：可以在版本历史中查询特定版本的工作流ID。
+    - `identifier` (string) Required 工作流标识符
+      - 工作流别名
+      - 工作流ID（UUID格式）
+    
+      系统优先按别名查询，别名不存在时按UUID格式处理。
 
     ### Request Body
       - `inputs` (object) Required
@@ -490,9 +492,9 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="POST" label="/workflows/:workflow_id/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/workflows/:identifier/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \
+    curl -X POST '${props.appDetail.api_base_url}/workflows/{identifier}/run' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{

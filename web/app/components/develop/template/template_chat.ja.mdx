@@ -77,6 +77,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='workflow_id' type='string' key='workflow_id'>
       （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。
       </Property>
+      <Property name='workflow_alias' type='string' key='workflow_alias'>
+      （オプション）ワークフローエイリアス、エイリアスで特定バージョンのワークフローを指定するために使用されます。優先順位：workflow_alias > workflow_id > 最新公開バージョン。
+      </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         （オプション）トレースID。既存の業務システムのトレースコンポーネントと連携し、エンドツーエンドの分散トレーシングを実現するために使用します。指定がない場合、システムが自動的に trace_id を生成します。以下の3つの方法で渡すことができ、優先順位は次のとおりです：<br/>
         - Header：HTTPヘッダー <code>X-Trace-Id</code> で渡す（最優先）。<br/>
@@ -186,6 +189,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - 400, `workflow_not_found`, 指定されたワークフローバージョンが見つかりません
     - 400, `draft_workflow_error`, ドラフトワークフローバージョンは使用できません
     - 400, `workflow_id_format_error`, ワークフローID形式エラー、UUID形式が必要です
+    - 404, `workflow_alias_not_found`, 指定されたワークフローエイリアスが見つかりません
     - 400, `completion_request_error`, テキスト生成に失敗しました
     - 500, 内部サーバーエラー
 

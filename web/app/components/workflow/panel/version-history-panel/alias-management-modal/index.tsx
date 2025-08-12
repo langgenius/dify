@@ -202,7 +202,6 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                     defaultValue={newAliasType}
                     onSelect={(item) => {
                       setNewAliasType(item.value as 'system' | 'custom')
-                      // 切换时设置默认值
                       if (item.value === 'system')
                         setNewAliasName('production')
                        else

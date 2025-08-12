@@ -28,10 +28,12 @@ from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
+from models import db
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_alias_service import WorkflowAliasService
 
 
 class CompletionApi(Resource):
@@ -115,7 +117,10 @@ class ChatApi(Resource):
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
         parser.add_argument("workflow_id", type=str, required=False, location="json")
+        parser.add_argument("workflow_alias", type=str, required=False, location="json")
         args = parser.parse_args()
+
+        self._resolve_workflow_alias(app_model, args)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -157,6 +162,25 @@ class ChatApi(Resource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
+
+    def _resolve_workflow_alias(self, app_model: App, args: dict) -> None:
+        """
+        Resolve workflow_alias to workflow_id
+        Priority: workflow_alias > workflow_id > latest published workflow
+        """
+        if args.get("workflow_alias"):
+            workflow_alias_service = WorkflowAliasService()
+            workflow = workflow_alias_service.get_workflow_by_alias(
+                session=db.session,
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                alias_name=args["workflow_alias"]
+            )
+
+            if not workflow:
+                raise NotFound(f"Workflow with alias '{args['workflow_alias']}' not found")
+
+            args["workflow_id"] = workflow.id
 
 
 class ChatStopApi(Resource):
