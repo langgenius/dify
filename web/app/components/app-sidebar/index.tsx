@@ -127,7 +127,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
             className="shrink-0 px-4 py-3"
           >
             <div
-              className='flex h-6 w-6 cursor-pointer items-center justify-center'
+              className='flex h-6 w-6 cursor-pointer select-none items-center justify-center'
               onClick={() => handleToggle(appSidebarExpand)}
             >
               {
