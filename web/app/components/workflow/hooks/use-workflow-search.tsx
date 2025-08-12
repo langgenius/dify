@@ -7,6 +7,11 @@ import type { CommonNodeType } from '../types'
 import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { setupNodeSelectionListener } from '../utils/node-navigation'
+import { BlockEnum } from '../types'
+import { useStore } from '../store'
+import type { Emoji } from '@/app/components/tools/types'
+import { CollectionType } from '@/app/components/tools/types'
+import { canFindTool } from '@/utils'
 
 /**
  * Hook to register workflow nodes search functionality
@@ -16,6 +21,11 @@ export const useWorkflowSearch = () => {
   const { handleNodeSelect } = useNodesInteractions()
 
   // Filter and process nodes for search
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+
   const searchableNodes = useMemo(() => {
     const filteredNodes = nodes.filter((node) => {
       if (!node.id || !node.data || node.type === 'sticky') return false
@@ -31,6 +41,20 @@ export const useWorkflowSearch = () => {
       .map((node) => {
         const nodeData = node.data as CommonNodeType
 
+        // compute tool icon if node is a Tool
+        let toolIcon: string | Emoji | undefined
+        if (nodeData?.type === BlockEnum.Tool) {
+          let targetTools = workflowTools
+          if (nodeData.provider_type === CollectionType.builtIn)
+            targetTools = buildInTools
+          else if (nodeData.provider_type === CollectionType.custom)
+            targetTools = customTools
+          else if (nodeData.provider_type === CollectionType.mcp)
+            targetTools = mcpTools
+
+          toolIcon = targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, nodeData.provider_id))?.icon
+        }
+
         return {
           id: node.id,
           title: nodeData?.title || nodeData?.type || 'Untitled',
@@ -38,11 +62,12 @@ export const useWorkflowSearch = () => {
           desc: nodeData?.desc || '',
           blockType: nodeData?.type,
           nodeData,
+          toolIcon,
         }
       })
 
     return result
-  }, [nodes])
+  }, [nodes, buildInTools, customTools, workflowTools, mcpTools])
 
   // Create search function for workflow nodes
   const searchWorkflowNodes = useCallback((query: string) => {
@@ -83,6 +108,7 @@ export const useWorkflowSearch = () => {
                   type={node.blockType}
                   className="shrink-0"
                   size="sm"
+                  toolIcon={node.toolIcon}
                 />
               ),
               metadata: {
