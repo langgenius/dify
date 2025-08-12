@@ -653,3 +653,170 @@ def test_if_else_workflow_property_diverse_inputs(query_input):
         f"Branch logic violated. Input: {repr(query_input)}, "
         f"Contains 'hello': {contains_hello}, Expected: {expected_outputs}, Got: {result.actual_outputs}"
     )
+
+
+# Tests for the Layer system
+def test_layer_system_basic():
+    """Test basic layer functionality with DebugLoggingLayer."""
+    from core.workflow.graph_engine.layers import DebugLoggingLayer
+
+    runner = WorkflowRunner()
+
+    # Load a simple echo workflow
+    fixture_data = runner.load_fixture("echo")
+    graph, graph_runtime_state = runner.create_graph_from_fixture(
+        fixture_data, custom_inputs={"query": "test layer system"}
+    )
+
+    # Create engine with layer
+    engine = GraphEngine(
+        tenant_id="test_tenant",
+        app_id="test_app",
+        workflow_id="test_workflow",
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        graph=graph,
+        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
+        graph_runtime_state=graph_runtime_state,
+        max_execution_steps=300,
+        max_execution_time=60,
+        command_channel=InMemoryChannel(),
+    )
+
+    # Add debug logging layer
+    debug_layer = DebugLoggingLayer(level="DEBUG", include_inputs=True, include_outputs=True)
+    engine.layer(debug_layer)
+
+    # Run workflow
+    events = list(engine.run())
+
+    # Verify events were generated
+    assert len(events) > 0
+    assert isinstance(events[0], GraphRunStartedEvent)
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+
+    # Verify layer received context
+    assert debug_layer.graph_runtime_state is not None
+    assert debug_layer.command_channel is not None
+
+    # Verify layer tracked execution stats
+    assert debug_layer.node_count > 0
+    assert debug_layer.success_count > 0
+
+
+def test_layer_chaining():
+    """Test chaining multiple layers."""
+    from core.workflow.graph_engine.layers import DebugLoggingLayer, Layer
+
+    # Create a custom test layer
+    class TestLayer(Layer):
+        def __init__(self):
+            super().__init__()
+            self.events_received = []
+            self.graph_started = False
+            self.graph_ended = False
+
+        def on_graph_start(self):
+            self.graph_started = True
+
+        def on_event(self, event):
+            self.events_received.append(event.__class__.__name__)
+
+        def on_graph_end(self, error):
+            self.graph_ended = True
+
+    runner = WorkflowRunner()
+
+    # Load workflow
+    fixture_data = runner.load_fixture("echo")
+    graph, graph_runtime_state = runner.create_graph_from_fixture(
+        fixture_data, custom_inputs={"query": "test chaining"}
+    )
+
+    # Create engine
+    engine = GraphEngine(
+        tenant_id="test_tenant",
+        app_id="test_app",
+        workflow_id="test_workflow",
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        graph=graph,
+        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
+        graph_runtime_state=graph_runtime_state,
+        max_execution_steps=300,
+        max_execution_time=60,
+        command_channel=InMemoryChannel(),
+    )
+
+    # Chain multiple layers
+    test_layer = TestLayer()
+    debug_layer = DebugLoggingLayer(level="INFO")
+
+    engine.layer(test_layer).layer(debug_layer)
+
+    # Run workflow
+    events = list(engine.run())
+
+    # Verify both layers received events
+    assert test_layer.graph_started
+    assert test_layer.graph_ended
+    assert len(test_layer.events_received) > 0
+
+    # Verify debug layer also worked
+    assert debug_layer.node_count > 0
+
+
+def test_layer_error_handling():
+    """Test that layer errors don't crash the engine."""
+    from core.workflow.graph_engine.layers import Layer
+
+    # Create a layer that throws errors
+    class FaultyLayer(Layer):
+        def on_graph_start(self):
+            raise RuntimeError("Intentional error in on_graph_start")
+
+        def on_event(self, event):
+            raise RuntimeError("Intentional error in on_event")
+
+        def on_graph_end(self, error):
+            raise RuntimeError("Intentional error in on_graph_end")
+
+    runner = WorkflowRunner()
+
+    # Load workflow
+    fixture_data = runner.load_fixture("echo")
+    graph, graph_runtime_state = runner.create_graph_from_fixture(
+        fixture_data, custom_inputs={"query": "test error handling"}
+    )
+
+    # Create engine with faulty layer
+    engine = GraphEngine(
+        tenant_id="test_tenant",
+        app_id="test_app",
+        workflow_id="test_workflow",
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        graph=graph,
+        graph_config=fixture_data.get("workflow", {}).get("graph", {}),
+        graph_runtime_state=graph_runtime_state,
+        max_execution_steps=300,
+        max_execution_time=60,
+        command_channel=InMemoryChannel(),
+    )
+
+    # Add faulty layer
+    engine.layer(FaultyLayer())
+
+    # Run workflow - should not crash despite layer errors
+    events = list(engine.run())
+
+    # Verify workflow still completed successfully
+    assert len(events) > 0
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+    assert events[-1].outputs == {"query": "test error handling"}
