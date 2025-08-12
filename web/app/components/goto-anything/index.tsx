@@ -245,6 +245,7 @@ const GotoAnything: FC<Props> = ({
             className='outline-none'
             value={cmdVal}
             onValueChange={setCmdVal}
+            disablePointerSelection
           >
             <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
               <RiSearchLine className='h-4 w-4 text-text-quaternary' />
@@ -322,7 +323,7 @@ const GotoAnything: FC<Props> = ({
                         <Command.Item
                           key={`${result.type}-${result.id}`}
                           value={result.title}
-                          className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                          className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover-alt aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
                           onSelect={() => handleNavigate(result)}
                         >
                           {result.icon}
