@@ -8,12 +8,11 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
 
 from .exc import (
     CodeNodeError,
@@ -22,8 +21,8 @@ from .exc import (
 )
 
 
-class CodeNode(BaseNode):
-    _node_type = NodeType.CODE
+class CodeNode(Node):
+    node_type = NodeType.CODE
 
     _node_data: CodeNodeData
 
@@ -359,6 +358,7 @@ class CodeNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        _ = graph_config  # Explicitly mark as unused
         # Create typed NodeData from dict
         typed_node_data = CodeNodeData.model_validate(node_data)
 
@@ -366,10 +366,6 @@ class CodeNode(BaseNode):
             node_id + "." + variable_selector.variable: variable_selector.value_selector
             for variable_selector in typed_node_data.variables
         }
-
-    @property
-    def continue_on_error(self) -> bool:
-        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:

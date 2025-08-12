@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from core.workflow.graph_engine.entities.event import GraphEngineEvent
+from core.workflow.graph_events import GraphEngineEvent
 
 
 class WorkflowCallback(ABC):

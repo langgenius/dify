@@ -27,7 +27,6 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from models.provider import (
     LoadBalancingModelConfig,
@@ -37,6 +36,7 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +184,7 @@ class ProviderConfiguration(BaseModel):
         Get custom provider credentials.
         """
         # get provider
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -344,6 +345,7 @@ class ProviderConfiguration(BaseModel):
         Get custom model credentials.
         """
         # get provider model
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -474,6 +476,7 @@ class ProviderConfiguration(BaseModel):
         """
         Get provider model setting.
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -553,6 +556,7 @@ class ProviderConfiguration(BaseModel):
         """
         Get load balancing config.
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -576,6 +580,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -620,6 +625,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -686,6 +692,7 @@ class ProviderConfiguration(BaseModel):
             return
 
         # get preferred provider
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():

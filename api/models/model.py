@@ -6,31 +6,29 @@ from datetime import datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import sign_tool_file
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-
-if TYPE_CHECKING:
-    from models.workflow import Workflow
-
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, func, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
+from core.tools.signature import sign_tool_file
+from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string
 
 from .account import Account, Tenant
 from .base import Base
-from .engine import db
+from .engine import Session, db
 from .enums import CreatorUserRole
+from .provider_ids import GenericProviderID
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 
 class DifySetup(Base):
@@ -163,6 +161,7 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list:
+        from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
         from services.plugin.plugin_service import PluginService
 
@@ -178,6 +177,7 @@ class App(Base):
         tools = agent_mode.get("tools", [])
 
         api_provider_ids: list[str] = []
+
         builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:
@@ -209,7 +209,7 @@ class App(Base):
         if not api_provider_ids and not builtin_provider_ids:
             return []
 
-        with Session(db.engine) as session:
+        with Session() as session:
             if api_provider_ids:
                 existing_api_providers = [
                     api_provider.id
@@ -828,7 +828,8 @@ class Conversation(Base):
 
     @property
     def app(self):
-        return db.session.query(App).where(App.id == self.app_id).first()
+        with Session(expire_on_commit=False) as session:
+            return session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):

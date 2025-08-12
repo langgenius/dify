@@ -1,0 +1,29 @@
+[importlinter]
+root_packages =
+    core
+
+[importlinter:contract:events-independence-contract]
+name = Events should be independent
+type = independence
+modules =
+    core.workflow.graph_events
+    core.workflow.node_events
+ignore_imports =
+    core.workflow.graph_events.base -> core.workflow.node_events
+
+[importlinter:contract:workflow-layers]
+name = Workflow packages layers
+type=layers
+layers =
+    core.workflow.graph_engine
+    core.workflow.graph
+    core.workflow.nodes
+    core.workflow.entities
+ignore_imports =
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
+    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph
+    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+    core.workflow.nodes.node_factory -> core.workflow.graph

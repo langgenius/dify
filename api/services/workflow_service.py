@@ -15,16 +15,13 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from core.workflow.entities import VariablePool, WorkflowNodeExecution
+from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import InNodeEvent
+from core.workflow.graph_events import GraphNodeEventBase
+from core.workflow.node_events import NodeRunResult, StreamCompletedEvent
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import ErrorStrategy
-from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.event.types import NodeEvent
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.system_variable import SystemVariable
@@ -465,7 +462,7 @@ class WorkflowService:
 
     def _handle_node_run_result(
         self,
-        invoke_node_fn: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
+        invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
         start_at: float,
         node_id: str,
     ) -> WorkflowNodeExecution:
@@ -474,8 +471,8 @@ class WorkflowService:
 
             node_run_result: NodeRunResult | None = None
             for event in node_events:
-                if isinstance(event, RunCompletedEvent):
-                    node_run_result = event.run_result
+                if isinstance(event, StreamCompletedEvent):
+                    node_run_result = event.node_run_result
 
                     # sign output files
                     # node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
@@ -484,7 +481,7 @@ class WorkflowService:
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
-            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.continue_on_error:
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node.error_strategy:
                 node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
@@ -525,7 +522,7 @@ class WorkflowService:
             workflow_id="",  # This is a single-step execution, so no workflow ID
             index=1,
             node_id=node_id,
-            node_type=node.type_,
+            node_type=node.node_type,
             title=node.title,
             elapsed_time=time.perf_counter() - start_at,
             created_at=naive_utc_now(),

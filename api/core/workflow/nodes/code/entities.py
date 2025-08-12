@@ -3,8 +3,8 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 from core.helper.code_executor.code_executor import CodeLanguage
-from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.base.entities import VariableSelector
 
 
 class CodeNodeData(BaseNodeData):

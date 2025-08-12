@@ -1,11 +1,17 @@
-from collections.abc import Sequence
-from typing import Any, Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal, NamedTuple
 
 from core.file import FileAttribute, file_manager
 from core.variables import ArrayFileSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
+
+
+class ConditionCheckResult(NamedTuple):
+    inputs: Sequence[Mapping[str, Any]]
+    group_results: Sequence[bool]
+    final_result: bool
 
 
 class ConditionProcessor:
@@ -15,9 +21,9 @@ class ConditionProcessor:
         variable_pool: VariablePool,
         conditions: Sequence[Condition],
         operator: Literal["and", "or"],
-    ):
-        input_conditions = []
-        group_results = []
+    ) -> ConditionCheckResult:
+        input_conditions: list[Mapping[str, Any]] = []
+        group_results: list[bool] = []
 
         for condition in conditions:
             variable = variable_pool.get(condition.variable_selector)
@@ -67,10 +73,10 @@ class ConditionProcessor:
             # Implemented short-circuit evaluation for logical conditions
             if (operator == "and" and not result) or (operator == "or" and result):
                 final_result = result
-                return input_conditions, group_results, final_result
+                return ConditionCheckResult(input_conditions, group_results, final_result)
 
         final_result = all(group_results) if operator == "and" else any(group_results)
-        return input_conditions, group_results, final_result
+        return ConditionCheckResult(input_conditions, group_results, final_result)
 
 
 def _evaluate_condition(

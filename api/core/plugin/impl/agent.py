@@ -2,12 +2,12 @@ from collections.abc import Generator
 from typing import Any, Optional
 
 from core.agent.entities import AgentInvokeMessage
-from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginAgentProviderEntity,
 )
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
 
 
 class PluginAgentClient(BasePluginClient):
