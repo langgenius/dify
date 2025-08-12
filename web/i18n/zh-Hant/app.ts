@@ -293,6 +293,8 @@ const translation = {
     resultCount: '{{count}} 個結果',
     resultCount_other: '{{count}} 個結果',
     inScope: '在 {{scope}}s 中',
+    noMatchingCommands: '未找到匹配的命令',
+    tryDifferentSearch: '嘗試其他搜尋字詞',
   },
 }
 

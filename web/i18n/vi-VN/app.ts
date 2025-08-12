@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} kết quả',
     resultCount_other: '{{count}} kết quả',
     inScope: 'trong {{scope}}s',
+    tryDifferentSearch: 'Thử một cụm từ tìm kiếm khác',
+    noMatchingCommands: 'Không tìm thấy lệnh phù hợp',
   },
 }
 

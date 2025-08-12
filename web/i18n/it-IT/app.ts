@@ -300,6 +300,8 @@ const translation = {
     resultCount: '{{count}} risultato',
     resultCount_other: '{{count}} risultati',
     inScope: 'in {{scope}}s',
+    tryDifferentSearch: 'Prova un termine di ricerca diverso',
+    noMatchingCommands: 'Nessun comando corrispondente trovato',
   },
 }
 

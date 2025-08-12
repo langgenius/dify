@@ -57,6 +57,8 @@ export type Collection = {
   server_url?: string
   updated_at?: number
   server_identifier?: string
+  timeout?: number
+  sse_read_timeout?: number
 }
 
 export type ToolParameter = {

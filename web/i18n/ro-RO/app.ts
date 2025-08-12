@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} rezultat',
     resultCount_other: '{{count}} rezultate',
     inScope: 'în {{scope}}s',
+    noMatchingCommands: 'Nu s-au găsit comenzi potrivite',
+    tryDifferentSearch: 'Încercați un alt termen de căutare',
   },
 }
 
