@@ -30,7 +30,6 @@ import {
 } from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
-  PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -48,6 +47,7 @@ import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/ite
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
 import { canFindTool } from '@/utils'
+import { MAX_PARALLEL_LIMIT } from '@/config'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -270,8 +270,6 @@ export const useWorkflow = () => {
       })
       setNodes(newNodes)
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
@@ -310,9 +308,9 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > PARALLEL_LIMIT - 1) {
+    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
       const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
+      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
       return false
     }
 
@@ -446,7 +444,7 @@ export const useFetchToolsData = () => {
         workflowTools: workflowTools || [],
       })
     }
-    if(type === 'mcp') {
+    if (type === 'mcp') {
       const mcpTools = await fetchAllMCPTools()
 
       workflowStore.setState({
@@ -502,18 +500,17 @@ export const useToolIcon = (data: Node['data']) => {
   const mcpTools = useStore(s => s.mcpTools)
 
   const toolIcon = useMemo(() => {
-    if(!data)
+    if (!data)
       return ''
     if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
+      let targetTools = workflowTools
       if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
       else if (data.provider_type === CollectionType.mcp)
         targetTools = mcpTools
-      else
-        targetTools = workflowTools
+
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
   }, [data, buildInTools, customTools, mcpTools, workflowTools])

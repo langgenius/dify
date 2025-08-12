@@ -193,7 +193,6 @@ const translation = {
     showAppLength: '{{length}}개의 앱 표시',
     delete: '계정 삭제',
     deleteTip: '계정을 삭제하면 모든 데이터가 영구적으로 지워지며 복구할 수 없습니다.',
-    deleteConfirmTip: '확인하려면 등록된 이메일에서 다음 내용을 로 보내주세요 ',
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
     account: '계정',
@@ -233,6 +232,7 @@ const translation = {
       content3: '새로운 이메일을 입력하시면 인증 코드를 보내드립니다.',
       content1: '계속 진행하면, 재인증을 위해 <email>{{email}}</email>로 인증 코드를 전송하겠습니다.',
       authTip: '이메일이 변경되면, 이전 이메일에 연결된 Google 또는 GitHub 계정은 더 이상 이 계정에 로그인할 수 없습니다.',
+      unAvailableEmail: '이 이메일은 일시적으로 사용할 수 없습니다.',
     },
   },
   members: {

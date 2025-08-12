@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         name: '修正のみ',
         selectedDescription: 'パッチバージョンのみの自動更新',
+        description: 'パッチバージョンのみ自動更新 (例: 1.0.1 → 1.0.2)。マイナーバージョンの変更は更新をトリガーしません。',
       },
       latest: {
         name: '最新',

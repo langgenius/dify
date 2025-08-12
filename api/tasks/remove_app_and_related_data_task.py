@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 
 import click
+import sqlalchemy as sa
 from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -201,7 +202,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info(f"Deleted {deleted_count} workflow runs for app {app_id}")
+    logging.info("Deleted %s workflow runs for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
@@ -215,7 +216,7 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         batch_size=1000,
     )
 
-    logging.info(f"Deleted {deleted_count} workflow node executions for app {app_id}")
+    logging.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
@@ -331,7 +332,7 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
 def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
     while True:
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query_sql), params)
+            rs = conn.execute(sa.text(query_sql), params)
             if rs.rowcount == 0:
                 break
 
@@ -342,6 +343,6 @@ def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: s
                     db.session.commit()
                     logging.info(click.style(f"Deleted {name} {record_id}", fg="green"))
                 except Exception:
-                    logging.exception(f"Error occurred while deleting {name} {record_id}")
+                    logging.exception("Error occurred while deleting %s %s", name, record_id)
                     continue
             rs.close()

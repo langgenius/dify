@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
-from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
@@ -141,13 +141,36 @@ class ToolNode(BaseNode):
                 tenant_id=self.tenant_id,
                 node_id=self.node_id,
             )
-        except (PluginDaemonClientSideError, ToolInvokeError) as e:
+        except ToolInvokeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to transform tool message: {str(e)}",
+                    error=f"Failed to invoke tool {node_data.provider_name}: {str(e)}",
+                    error_type=type(e).__name__,
+                )
+            )
+        except PluginInvokeError as e:
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
+                    error="An error occurred in the plugin, "
+                    f"please contact the author of {node_data.provider_name} for help, "
+                    f"error type: {e.get_error_type()}, "
+                    f"error details: {e.get_error_message()}",
+                    error_type=type(e).__name__,
+                )
+            )
+        except PluginDaemonClientSideError as e:
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
+                    error=f"Failed to invoke tool, error: {e.description}",
                     error_type=type(e).__name__,
                 )
             )
@@ -295,6 +318,33 @@ class ToolNode(BaseNode):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+
+                if message.meta:
+                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                else:
+                    transfer_method = FileTransferMethod.TOOL_FILE
+
+                tool_file_id = message.message.text.split("/")[-1].split(".")[0]
+
+                with Session(db.engine) as session:
+                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
+                    tool_file = session.scalar(stmt)
+                    if tool_file is None:
+                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
+
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
+                    "transfer_method": transfer_method,
+                    "url": message.message.text,
+                }
+
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
+                )
+                files.append(file)
+
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
                 yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[node_id, "text"])

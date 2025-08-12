@@ -7,6 +7,7 @@ from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
+import sqlalchemy as sa
 from pydantic import TypeAdapter
 from yarl import URL
 
@@ -206,7 +207,7 @@ class ToolManager:
                         )
                     except Exception as e:
                         builtin_provider = None
-                        logger.info(f"Error getting builtin provider {credential_id}:{e}", exc_info=True)
+                        logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
                     # if the provider has been deleted, raise an error
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
@@ -237,7 +238,7 @@ class ToolManager:
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
-            encrypter, _ = create_provider_encrypter(
+            encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[
                     x.to_basic_provider_config()
@@ -281,6 +282,7 @@ class ToolManager:
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
                 decrypted_credentials = refreshed_credentials.credentials
+                cache.delete()
 
             return cast(
                 BuiltinTool,
@@ -569,7 +571,7 @@ class ToolManager:
                     yield provider
 
                 except Exception:
-                    logger.exception(f"load builtin provider {provider_path}")
+                    logger.exception("load builtin provider %s", provider_path)
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True
@@ -615,7 +617,7 @@ class ToolManager:
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
-        ids = [row.id for row in db.session.execute(db.text(sql), {"tenant_id": tenant_id}).all()]
+        ids = [row.id for row in db.session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
         return db.session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
 
     @classmethod

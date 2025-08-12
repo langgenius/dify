@@ -91,14 +91,16 @@ class DatasetService:
 
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
-                if permitted_dataset_ids:
+                # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                     query = query.where(Dataset.id.in_(permitted_dataset_ids))
                 else:
                     return [], 0
             else:
                 if user.current_role != TenantAccountRole.OWNER or not include_all:
                     # show all datasets that the user has permission to access
-                    if permitted_dataset_ids:
+                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
+                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
                         query = query.where(
                             db.or_(
                                 Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
@@ -127,9 +129,10 @@ class DatasetService:
         if search:
             query = query.where(Dataset.name.ilike(f"%{search}%"))
 
-        if tag_ids:
+        # Check if tag_ids is not empty to avoid WHERE false condition
+        if tag_ids and len(tag_ids) > 0:
             target_ids = TagService.get_target_ids_by_tag_ids("knowledge", tenant_id, tag_ids)
-            if target_ids:
+            if target_ids and len(target_ids) > 0:
                 query = query.where(Dataset.id.in_(target_ids))
             else:
                 return [], 0
@@ -158,6 +161,9 @@ class DatasetService:
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
+        # Check if ids is not empty to avoid WHERE false condition
+        if not ids or len(ids) == 0:
+            return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
@@ -260,7 +266,7 @@ class DatasetService:
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
+                raise ValueError(f"The dataset is unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -364,7 +370,7 @@ class DatasetService:
             raise ValueError("External knowledge api id is required.")
         # Update metadata fields
         dataset.updated_by = user.id if user else None
-        dataset.updated_at = datetime.datetime.utcnow()
+        dataset.updated_at = naive_utc_now()
         db.session.add(dataset)
 
         # Update external knowledge binding
@@ -605,8 +611,9 @@ class DatasetService:
         except ProviderTokenNotInitError:
             # If we can't get the embedding model, preserve existing settings
             logging.warning(
-                f"Failed to initialize embedding model {data['embedding_model_provider']}/{data['embedding_model']}, "
-                f"preserving existing settings"
+                "Failed to initialize embedding model %s/%s, preserving existing settings",
+                data["embedding_model_provider"],
+                data["embedding_model"],
             )
             if dataset.embedding_model_provider and dataset.embedding_model:
                 filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
@@ -649,11 +656,11 @@ class DatasetService:
     @staticmethod
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
-            logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+            logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
-                logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
@@ -662,7 +669,7 @@ class DatasetService:
                         db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
                     )
                     if not user_permission:
-                        logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                        logging.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
@@ -950,6 +957,9 @@ class DocumentService:
 
     @staticmethod
     def delete_documents(dataset: Dataset, document_ids: list[str]):
+        # Check if document_ids is not empty to avoid WHERE false condition
+        if not document_ids or len(document_ids) == 0:
+            return
         documents = db.session.query(Document).where(Document.id.in_(document_ids)).all()
         file_ids = [
             document.data_source_info_dict["upload_file_id"]
@@ -1000,7 +1010,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # set document paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.setnx(indexing_cache_key, "True")
 
     @staticmethod
@@ -1015,7 +1025,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # delete paused flag
-        indexing_cache_key = "document_{}_is_paused".format(document.id)
+        indexing_cache_key = f"document_{document.id}_is_paused"
         redis_client.delete(indexing_cache_key)
         # trigger async task
         recover_document_indexing_task.delay(document.dataset_id, document.id)
@@ -1024,7 +1034,7 @@ class DocumentService:
     def retry_document(dataset_id: str, documents: list[Document]):
         for document in documents:
             # add retry flag
-            retry_indexing_cache_key = "document_{}_is_retried".format(document.id)
+            retry_indexing_cache_key = f"document_{document.id}_is_retried"
             cache_result = redis_client.get(retry_indexing_cache_key)
             if cache_result is not None:
                 raise ValueError("Document is being retried, please try again later")
@@ -1041,7 +1051,7 @@ class DocumentService:
     @staticmethod
     def sync_website_document(dataset_id: str, document: Document):
         # add sync flag
-        sync_indexing_cache_key = "document_{}_is_sync".format(document.id)
+        sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Document is being synced, please try again later")
@@ -1174,12 +1184,13 @@ class DocumentService:
                         )
                     else:
                         logging.warning(
-                            f"Invalid process rule mode: {process_rule.mode}, can not find dataset process rule"
+                            "Invalid process rule mode: %s, can not find dataset process rule",
+                            process_rule.mode,
                         )
                         return
                     db.session.add(dataset_process_rule)
                     db.session.commit()
-            lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
+            lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             with redis_client.lock(lock_name, timeout=600):
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
@@ -1862,7 +1873,7 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error executing async task for document {update_info['document'].id}")
+                    logging.exception("Error executing async task for document %s", update_info["document"].id)
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
                 try:
@@ -1873,7 +1884,7 @@ class DocumentService:
                         redis_client.setex(indexing_cache_key, 600, 1)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logging.exception(f"Error setting cache for document {update_info['document'].id}")
+                    logging.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error
@@ -2001,7 +2012,7 @@ class SegmentService:
             )
             # calc embedding use tokens
             tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
-        lock_name = "add_segment_lock_document_id_{}".format(document.id)
+        lock_name = f"add_segment_lock_document_id_{document.id}"
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
@@ -2029,6 +2040,7 @@ class SegmentService:
 
             db.session.add(segment_document)
             # update document word count
+            assert document.word_count is not None
             document.word_count += segment_document.word_count
             db.session.add(document)
             db.session.commit()
@@ -2048,7 +2060,7 @@ class SegmentService:
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
-        lock_name = "multi_add_segment_lock_document_id_{}".format(document.id)
+        lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
             embedding_model = None
@@ -2113,6 +2125,7 @@ class SegmentService:
                 else:
                     keywords_list.append(None)
             # update document word count
+            assert document.word_count is not None
             document.word_count += increment_word_count
             db.session.add(document)
             try:
@@ -2130,7 +2143,7 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_indexing".format(segment.id)
+        indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
@@ -2174,6 +2187,7 @@ class SegmentService:
                 db.session.commit()
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
@@ -2249,6 +2263,7 @@ class SegmentService:
                 word_count_change = segment.word_count - word_count_change
                 # update document word count
                 if word_count_change != 0:
+                    assert document.word_count is not None
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 db.session.add(segment)
@@ -2300,7 +2315,7 @@ class SegmentService:
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = "segment_{}_delete_indexing".format(segment.id)
+        indexing_cache_key = f"segment_{segment.id}_delete_indexing"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
@@ -2312,12 +2327,16 @@ class SegmentService:
             delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
         db.session.delete(segment)
         # update document word count
+        assert document.word_count is not None
         document.word_count -= segment.word_count
         db.session.add(document)
         db.session.commit()
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
         index_node_ids = (
             db.session.query(DocumentSegment)
             .with_entities(DocumentSegment.index_node_id)
@@ -2337,6 +2356,9 @@ class SegmentService:
 
     @classmethod
     def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+        # Check if segment_ids is not empty to avoid WHERE false condition
+        if not segment_ids or len(segment_ids) == 0:
+            return
         if action == "enable":
             segments = (
                 db.session.query(DocumentSegment)
@@ -2350,9 +2372,9 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
@@ -2360,10 +2382,10 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            enable_segments_to_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         elif action == "disable":
             segments = (
                 db.session.query(DocumentSegment)
@@ -2377,9 +2399,9 @@ class SegmentService:
             )
             if not segments:
                 return
-            real_deal_segmment_ids = []
+            real_deal_segment_ids = []
             for segment in segments:
-                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                indexing_cache_key = f"segment_{segment.id}_indexing"
                 cache_result = redis_client.get(indexing_cache_key)
                 if cache_result is not None:
                     continue
@@ -2387,10 +2409,10 @@ class SegmentService:
                 segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.disabled_by = current_user.id
                 db.session.add(segment)
-                real_deal_segmment_ids.append(segment.id)
+                real_deal_segment_ids.append(segment.id)
             db.session.commit()
 
-            disable_segments_from_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+            disable_segments_from_index_task.delay(real_deal_segment_ids, dataset.id, document.id)
         else:
             raise InvalidActionError()
 
@@ -2398,7 +2420,7 @@ class SegmentService:
     def create_child_chunk(
         cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
     ) -> ChildChunk:
-        lock_name = "add_child_lock_{}".format(segment.id)
+        lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
@@ -2598,7 +2620,8 @@ class SegmentService:
             DocumentSegment.document_id == document_id, DocumentSegment.tenant_id == tenant_id
         )
 
-        if status_list:
+        # Check if status_list is not empty to avoid WHERE false condition
+        if status_list and len(status_list) > 0:
             query = query.where(DocumentSegment.status.in_(status_list))
 
         if keyword:
@@ -2647,7 +2670,7 @@ class SegmentService:
         # check segment
         segment = (
             db.session.query(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == user_id)
+            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
             .first()
         )
         if not segment:

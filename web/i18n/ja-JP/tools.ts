@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'HTTP ヘッダーキー。アイデアがない場合は "Authorization" として残しておいてもかまいません。またはカスタム値に設定できます。',
       types: {
         none: 'なし',
-        api_key: 'API キー',
         apiKeyPlaceholder: 'API キーの HTTP ヘッダー名',
         apiValuePlaceholder: 'API キーを入力してください',
         api_key_query: 'クエリパラメータ',

@@ -19,7 +19,7 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked
+RUN uv sync --locked --no-dev
 
 # production stage
 FROM base AS production
@@ -36,6 +36,11 @@ EXPOSE 5001
 
 # set timezone
 ENV TZ=UTC
+
+# Set UTF-8 locale
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV PYTHONIOENCODING=utf-8
 
 WORKDIR /app/api
 

@@ -271,7 +271,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
-                logger.exception(f"Failed to listen audio message, task_id: {task_id}")
+                logger.exception("Failed to listen audio message, task_id: %s", task_id)
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -568,7 +568,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_partial_success_event(
         self,
@@ -600,7 +600,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             )
 
         yield workflow_finish_resp
-        self._base_task_pipeline._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
         self,
@@ -845,7 +845,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         # Initialize graph runtime state
         graph_runtime_state: Optional[GraphRuntimeState] = None
 
-        for queue_message in self._base_task_pipeline._queue_manager.listen():
+        for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:
@@ -959,11 +959,11 @@ class AdvancedChatAppGenerateTaskPipeline:
         if self._base_task_pipeline._output_moderation_handler:
             if self._base_task_pipeline._output_moderation_handler.should_direct_output():
                 self._task_state.answer = self._base_task_pipeline._output_moderation_handler.get_final_output()
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE
                 )
 
-                self._base_task_pipeline._queue_manager.publish(
+                self._base_task_pipeline.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE
                 )
                 return True

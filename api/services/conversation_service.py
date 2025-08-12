@@ -1,12 +1,15 @@
 from collections.abc import Callable, Sequence
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
+from core.variables.types import SegmentType
+from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
+from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import ConversationVariable
@@ -15,6 +18,7 @@ from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
+    ConversationVariableTypeMismatchError,
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
@@ -46,10 +50,16 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
+        # Check if include_ids is not None to apply filter
         if include_ids is not None:
+            if len(include_ids) == 0:
+                # If include_ids is empty, return empty result
+                return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
             stmt = stmt.where(Conversation.id.in_(include_ids))
+        # Check if exclude_ids is not None to apply filter
         if exclude_ids is not None:
-            stmt = stmt.where(~Conversation.id.in_(exclude_ids))
+            if len(exclude_ids) > 0:
+                stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
@@ -218,3 +228,82 @@ class ConversationService:
         ]
 
         return InfiniteScrollPagination(variables, limit, has_more)
+
+    @classmethod
+    def update_conversation_variable(
+        cls,
+        app_model: App,
+        conversation_id: str,
+        variable_id: str,
+        user: Optional[Union[Account, EndUser]],
+        new_value: Any,
+    ) -> dict:
+        """
+        Update a conversation variable's value.
+
+        Args:
+            app_model: The app model
+            conversation_id: The conversation ID
+            variable_id: The variable ID to update
+            user: The user (Account or EndUser)
+            new_value: The new value for the variable
+
+        Returns:
+            Dictionary containing the updated variable information
+
+        Raises:
+            ConversationNotExistsError: If the conversation doesn't exist
+            ConversationVariableNotExistsError: If the variable doesn't exist
+            ConversationVariableTypeMismatchError: If the new value type doesn't match the variable's expected type
+        """
+        # Verify conversation exists and user has access
+        conversation = cls.get_conversation(app_model, conversation_id, user)
+
+        # Get the existing conversation variable
+        stmt = (
+            select(ConversationVariable)
+            .where(ConversationVariable.app_id == app_model.id)
+            .where(ConversationVariable.conversation_id == conversation.id)
+            .where(ConversationVariable.id == variable_id)
+        )
+
+        with Session(db.engine) as session:
+            existing_variable = session.scalar(stmt)
+            if not existing_variable:
+                raise ConversationVariableNotExistsError()
+
+            # Convert existing variable to Variable object
+            current_variable = existing_variable.to_variable()
+
+            # Validate that the new value type matches the expected variable type
+            expected_type = SegmentType(current_variable.value_type)
+            if not expected_type.is_valid(new_value):
+                inferred_type = SegmentType.infer_segment_type(new_value)
+                raise ConversationVariableTypeMismatchError(
+                    f"Type mismatch: variable '{current_variable.name}' expects {expected_type.value}, "
+                    f"but got {inferred_type.value if inferred_type else 'unknown'} type"
+                )
+
+            # Create updated variable with new value only, preserving everything else
+            updated_variable_dict = {
+                "id": current_variable.id,
+                "name": current_variable.name,
+                "description": current_variable.description,
+                "value_type": current_variable.value_type,
+                "value": new_value,
+                "selector": current_variable.selector,
+            }
+
+            updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
+
+            # Use the conversation variable updater to persist the changes
+            updater = conversation_variable_updater_factory()
+            updater.update(conversation_id, updated_variable)
+            updater.flush()
+
+            # Return the updated variable data
+            return {
+                "created_at": existing_variable.created_at,
+                "updated_at": naive_utc_now(),  # Update timestamp
+                **updated_variable.model_dump(),
+            }

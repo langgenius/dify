@@ -257,6 +257,7 @@ const translation = {
       fixOnly: {
         selectedDescription: 'Sadece yamanın versiyonları için otomatik güncelleme',
         name: 'Sadece Düzelt',
+        description: 'Yalnızca yamanın sürüm güncellemeleri için otomatik güncelleme (örneğin, 1.0.1 → 1.0.2). Küçük sürüm değişiklikleri güncellemeleri tetiklemez.',
       },
       latest: {
         name: 'Son',

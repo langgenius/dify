@@ -25,15 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowTool(Tool):
-    workflow_app_id: str
-    version: str
-    workflow_entities: dict[str, Any]
-    workflow_call_depth: int
-    thread_pool_id: Optional[str] = None
-    workflow_as_tool_id: str
-
-    label: str
-
     """
     Workflow tool.
     """
@@ -142,7 +133,7 @@ class WorkflowTool(Tool):
         if not version:
             workflow = (
                 db.session.query(Workflow)
-                .where(Workflow.app_id == app_id, Workflow.version != "draft")
+                .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
                 .order_by(Workflow.created_at.desc())
                 .first()
             )
@@ -194,7 +185,7 @@ class WorkflowTool(Tool):
 
                             files.append(file_dict)
                     except Exception:
-                        logger.exception(f"Failed to transform file {file}")
+                        logger.exception("Failed to transform file %s", file)
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 

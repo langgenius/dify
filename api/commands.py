@@ -5,10 +5,11 @@ import secrets
 from typing import Any, Optional
 
 import click
+import sqlalchemy as sa
 from flask import current_app
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from constants.languages import languages
@@ -53,13 +54,13 @@ def reset_password(email, new_password, password_confirm):
     account = db.session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
+        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
         return
 
     try:
         valid_password(new_password)
     except:
-        click.echo(click.style("Invalid password. Must match {}".format(password_pattern), fg="red"))
+        click.echo(click.style(f"Invalid password. Must match {password_pattern}", fg="red"))
         return
 
     # generate password salt
@@ -92,13 +93,13 @@ def reset_email(email, new_email, email_confirm):
     account = db.session.query(Account).where(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
+        click.echo(click.style(f"Account not found for email: {email}", fg="red"))
         return
 
     try:
         email_validate(new_email)
     except:
-        click.echo(click.style("Invalid email: {}".format(new_email), fg="red"))
+        click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
     account.email = new_email
@@ -142,7 +143,7 @@ def reset_encrypt_key_pair():
 
         click.echo(
             click.style(
-                "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(tenant.id),
+                f"Congratulations! The asymmetric key pair of workspace {tenant.id} has been reset.",
                 fg="green",
             )
         )
@@ -180,8 +181,8 @@ def migrate_annotation_vector_database():
             )
             if not apps:
                 break
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for app in apps:
@@ -190,14 +191,14 @@ def migrate_annotation_vector_database():
                 f"Processing the {total_count} app {app.id}. " + f"{create_count} created, {skipped_count} skipped."
             )
             try:
-                click.echo("Creating app annotation index: {}".format(app.id))
+                click.echo(f"Creating app annotation index: {app.id}")
                 app_annotation_setting = (
                     db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app.id).first()
                 )
 
                 if not app_annotation_setting:
                     skipped_count = skipped_count + 1
-                    click.echo("App annotation setting disabled: {}".format(app.id))
+                    click.echo(f"App annotation setting disabled: {app.id}")
                     continue
                 # get dataset_collection_binding info
                 dataset_collection_binding = (
@@ -206,7 +207,7 @@ def migrate_annotation_vector_database():
                     .first()
                 )
                 if not dataset_collection_binding:
-                    click.echo("App annotation collection binding not found: {}".format(app.id))
+                    click.echo(f"App annotation collection binding not found: {app.id}")
                     continue
                 annotations = db.session.query(MessageAnnotation).where(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
@@ -252,9 +253,7 @@ def migrate_annotation_vector_database():
                 create_count += 1
             except Exception as e:
                 click.echo(
-                    click.style(
-                        "Error creating app annotation index: {} {}".format(e.__class__.__name__, str(e)), fg="red"
-                    )
+                    click.style(f"Error creating app annotation index: {e.__class__.__name__} {str(e)}", fg="red")
                 )
                 continue
 
@@ -309,8 +308,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
 
         page += 1
         for dataset in datasets:
@@ -319,7 +318,7 @@ def migrate_knowledge_vector_database():
                 f"Processing the {total_count} dataset {dataset.id}. {create_count} created, {skipped_count} skipped."
             )
             try:
-                click.echo("Creating dataset vector database index: {}".format(dataset.id))
+                click.echo(f"Creating dataset vector database index: {dataset.id}")
                 if dataset.index_struct_dict:
                     if dataset.index_struct_dict["type"] == vector_type:
                         skipped_count = skipped_count + 1
@@ -423,9 +422,7 @@ def migrate_knowledge_vector_database():
                 create_count += 1
             except Exception as e:
                 db.session.rollback()
-                click.echo(
-                    click.style("Error creating dataset index: {} {}".format(e.__class__.__name__, str(e)), fg="red")
-                )
+                click.echo(click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red"))
                 continue
 
     click.echo(
@@ -461,7 +458,7 @@ def convert_to_agent_apps():
         """
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query))
+            rs = conn.execute(sa.text(sql_query))
 
             apps = []
             for i in rs:
@@ -476,7 +473,7 @@ def convert_to_agent_apps():
                 break
 
         for app in apps:
-            click.echo("Converting app: {}".format(app.id))
+            click.echo(f"Converting app: {app.id}")
 
             try:
                 app.mode = AppMode.AGENT_CHAT.value
@@ -488,11 +485,11 @@ def convert_to_agent_apps():
                 )
 
                 db.session.commit()
-                click.echo(click.style("Converted app: {}".format(app.id), fg="green"))
+                click.echo(click.style(f"Converted app: {app.id}", fg="green"))
             except Exception as e:
-                click.echo(click.style("Convert app error: {} {}".format(e.__class__.__name__, str(e)), fg="red"))
+                click.echo(click.style(f"Convert app error: {e.__class__.__name__} {str(e)}", fg="red"))
 
-    click.echo(click.style("Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
+    click.echo(click.style(f"Conversion complete. Converted {len(proceeded_app_ids)} agent apps.", fg="green"))
 
 
 @click.command("add-qdrant-index", help="Add Qdrant index.")
@@ -564,8 +561,8 @@ def old_metadata_migration():
                 .order_by(DatasetDocument.created_at.desc())
             )
             documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
-        except NotFound:
-            break
+        except SQLAlchemyError:
+            raise
         if not documents:
             break
         for document in documents:
@@ -665,7 +662,7 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
 
     click.echo(
         click.style(
-            "Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
+            f"Account and tenant created.\nAccount: {email}\nPassword: {new_password}",
             fg="green",
         )
     )
@@ -706,7 +703,7 @@ def fix_app_site_missing():
         sql = """select apps.id as id from apps left join sites on sites.app_id=apps.id
 where sites.id is null limit 1000"""
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql))
+            rs = conn.execute(sa.text(sql))
 
             processed_count = 0
             for i in rs:
@@ -726,16 +723,16 @@ where sites.id is null limit 1000"""
                     if tenant:
                         accounts = tenant.get_accounts()
                         if not accounts:
-                            print("Fix failed for app {}".format(app.id))
+                            print(f"Fix failed for app {app.id}")
                             continue
 
                         account = accounts[0]
-                        print("Fixing missing site for app {}".format(app.id))
+                        print(f"Fixing missing site for app {app.id}")
                         app_was_created.send(app, account=account)
                 except Exception:
                     failed_app_ids.append(app_id)
-                    click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
-                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
+                    click.echo(click.style(f"Failed to fix missing site for app {app_id}", fg="red"))
+                    logging.exception("Failed to fix app related site missing issue, app_id: %s", app_id)
                     continue
 
             if not processed_count:
@@ -920,7 +917,7 @@ def clear_orphaned_file_records(force: bool):
         )
         orphaned_message_files = []
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(query))
+            rs = conn.execute(sa.text(query))
             for i in rs:
                 orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
 
@@ -941,7 +938,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(sa.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
             click.echo(
                 click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
             )
@@ -958,7 +955,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
@@ -978,7 +975,7 @@ def clear_orphaned_file_records(force: bool):
                     f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
             elif ids_table["type"] == "text":
@@ -993,7 +990,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1012,7 +1009,7 @@ def clear_orphaned_file_records(force: bool):
                     f"FROM {ids_table['table']}"
                 )
                 with db.engine.begin() as conn:
-                    rs = conn.execute(db.text(query))
+                    rs = conn.execute(sa.text(query))
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
@@ -1041,7 +1038,7 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style(f"- Deleting orphaned file records in table {files_table['table']}", fg="white"))
             query = f"DELETE FROM {files_table['table']} WHERE {files_table['id_column']} IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple(orphaned_files)})
+                conn.execute(sa.text(query), {"ids": tuple(orphaned_files)})
     except Exception as e:
         click.echo(click.style(f"Error deleting orphaned file records: {str(e)}", fg="red"))
         return
@@ -1111,7 +1108,7 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
             query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
-                rs = conn.execute(db.text(query))
+                rs = conn.execute(sa.text(query))
             for i in rs:
                 all_files_in_tables.append(str(i[0]))
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))

@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
-from urllib.parse import urlparse
 
 import click
+from kombu.utils.url import parse_url  # type: ignore
 from redis import Redis
 
 import app
@@ -10,16 +10,13 @@ from configs import dify_config
 from extensions.ext_database import db
 from libs.email_i18n import EmailType, get_email_i18n_service
 
-# Create a dedicated Redis connection (using the same configuration as Celery)
-celery_broker_url = dify_config.CELERY_BROKER_URL
-
-parsed = urlparse(celery_broker_url)
-host = parsed.hostname or "localhost"
-port = parsed.port or 6379
-password = parsed.password or None
-redis_db = parsed.path.strip("/") or "1"  # type: ignore
-
-celery_redis = Redis(host=host, port=port, password=password, db=redis_db)
+redis_config = parse_url(dify_config.CELERY_BROKER_URL)
+celery_redis = Redis(
+    host=redis_config.get("hostname") or "localhost",
+    port=redis_config.get("port") or 6379,
+    password=redis_config.get("password") or None,
+    db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
+)
 
 
 @app.celery.task(queue="monitor")

@@ -73,13 +73,13 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
-            "schedule": timedelta(days=day),
+            "schedule": crontab(minute="0", hour="2", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK:
         imports.append("schedule.clean_unused_datasets_task")
         beat_schedule["clean_unused_datasets_task"] = {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
-            "schedule": timedelta(days=day),
+            "schedule": crontab(minute="0", hour="3", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK:
         imports.append("schedule.create_tidb_serverless_task")
@@ -97,7 +97,7 @@ def init_app(app: DifyApp) -> Celery:
         imports.append("schedule.clean_messages")
         beat_schedule["clean_messages"] = {
             "task": "schedule.clean_messages.clean_messages",
-            "schedule": timedelta(days=day),
+            "schedule": crontab(minute="0", hour="4", day_of_month=f"*/{day}"),
         }
     if dify_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:
         imports.append("schedule.mail_clean_document_notify_task")

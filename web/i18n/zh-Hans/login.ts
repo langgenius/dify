@@ -77,10 +77,8 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
-  sso: '使用 SSO 继续',
   checkCode: {
     checkYourEmail: '验证您的电子邮件',
-    tips: '验证码已经发送到您的邮箱 <strong>{{email}}</strong>',
     validTime: '请注意验证码 5 分钟内有效',
     verificationCode: '验证码',
     verificationCodePlaceholder: '输入 6 位验证码',
@@ -90,6 +88,7 @@ const translation = {
     useAnotherMethod: '使用其他方式登录',
     emptyCode: '验证码不能为空',
     invalidCode: '验证码无效',
+    tipsPrefix: '我们发送一个验证码到',
   },
   resetPassword: '重置密码',
   resetPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件。',

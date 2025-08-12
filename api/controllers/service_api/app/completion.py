@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_restful import Resource, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.service_api import api
@@ -30,6 +30,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
 
@@ -47,6 +48,9 @@ class CompletionApi(Resource):
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
 
         args = parser.parse_args()
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         streaming = args["response_mode"] == "streaming"
 
@@ -110,7 +114,7 @@ class ChatApi(Resource):
         parser.add_argument("conversation_id", type=uuid_value, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
-
+        parser.add_argument("workflow_id", type=str, required=False, location="json")
         args = parser.parse_args()
 
         external_trace_id = get_external_trace_id(request)
@@ -125,6 +129,12 @@ class ChatApi(Resource):
             )
 
             return helper.compact_generate_response(response)
+        except WorkflowNotFoundError as ex:
+            raise NotFound(str(ex))
+        except IsDraftWorkflowError as ex:
+            raise BadRequest(str(ex))
+        except WorkflowIdFormatError as ex:
+            raise BadRequest(str(ex))
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
