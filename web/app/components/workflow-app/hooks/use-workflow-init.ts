@@ -83,7 +83,6 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {

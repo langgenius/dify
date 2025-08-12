@@ -1,0 +1,32 @@
+from flask_restful import fields
+
+from fields.member_fields import simple_account_fields
+from libs.helper import TimestampField
+
+workflow_alias_fields = {
+    "id": fields.String,
+    "tenant_id": fields.String,
+    "app_id": fields.String,
+    "workflow_id": fields.String,
+    "alias_name": fields.String,
+    "alias_type": fields.String,
+    "created_by": fields.Nested(simple_account_fields, attribute="created_by_account"),
+    "created_at": TimestampField,
+    "updated_at": TimestampField,
+    "is_transferred": fields.Boolean(attribute="_is_transferred", default=False),
+    "old_workflow_id": fields.String(attribute="_old_workflow_id", default=None),
+}
+
+workflow_alias_list_fields = {
+    "items": fields.List(fields.Nested(workflow_alias_fields)),
+    "total": fields.Integer,
+}
+
+workflow_alias_create_fields = {
+    "alias_name": fields.String,
+    "alias_type": fields.String,
+}
+
+workflow_alias_update_fields = {
+    "alias_name": fields.String,
+}

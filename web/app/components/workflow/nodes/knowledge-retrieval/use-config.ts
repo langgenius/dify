@@ -172,7 +172,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
     })
     setInputs(newInput)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProvider?.provider, currentModel, currentRerankModel, rerankDefaultModel])
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
@@ -229,7 +228,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -241,7 +239,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(produce(inputs, (draft) => {
       draft.query_variable_selector = query_variable_selector
     }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {

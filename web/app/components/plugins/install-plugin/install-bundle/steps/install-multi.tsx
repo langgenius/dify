@@ -131,7 +131,6 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMarketplaceDataById])
 
   useEffect(() => {
@@ -156,15 +155,12 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingDataByMeta])
 
   useEffect(() => {
     // get info all failed
     if (infoByMetaError || infoByIdError)
       setErrorIndexes([...errorIndexes, ...marketPlaceInDSLIndex])
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoByMetaError, infoByIdError])
 
   const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
@@ -189,8 +185,6 @@ const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   useEffect(() => {
     if (isLoadedAllData && installedInfo)
       onLoadedAllPlugin(installedInfo!)
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadedAllData, installedInfo])
 
   const handleSelect = useCallback((index: number) => {

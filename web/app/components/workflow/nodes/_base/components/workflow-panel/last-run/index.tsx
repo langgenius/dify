@@ -67,7 +67,6 @@ const LastRun: FC<Props> = ({
       updateNodeRunningStatus(hidePageOneStepFinishedStatus)
       resetHidePageStatus()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOneStepRunSucceed, isOneStepRunFailed, oneStepRunRunningStatus])
 
   useEffect(() => {
@@ -77,7 +76,6 @@ const LastRun: FC<Props> = ({
 
   useEffect(() => {
     resetHidePageStatus()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId])
 
   const handlePageVisibilityChange = useCallback(() => {

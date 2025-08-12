@@ -1,0 +1,94 @@
+from datetime import datetime
+from enum import Enum
+
+import sqlalchemy as sa
+from sqlalchemy import String, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .account import Account
+from .base import Base
+from .types import StringUUID
+
+
+class AliasType(Enum):
+    """Alias type enumeration"""
+    SYSTEM = "system"    # System aliases like 'production', 'staging'
+    CUSTOM = "custom"    # User-defined custom aliases
+
+
+class WorkflowAlias(Base):
+    """
+    Workflow Alias for managing version aliases across different environments.
+
+    This table allows users to assign human-readable aliases to workflow versions,
+    making it easier to manage deployments across different environments.
+
+    Attributes:
+        - id (uuid): Alias ID, primary key
+        - tenant_id (uuid): Workspace ID
+        - app_id (uuid): App ID
+        - workflow_id (uuid): Workflow version ID
+        - alias_name (string): Alias name (e.g., 'production', 'staging', 'v1.0')
+        - alias_type (string): Type of alias ('system' or 'custom')
+
+        - created_by (uuid): Creator ID
+        - created_at (timestamp): Creation time
+        - updated_at (timestamp): Last update time
+    """
+
+    __tablename__ = "workflow_aliases"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="workflow_alias_pkey"),
+        # Ensure alias name is unique within an app
+        sa.UniqueConstraint("app_id", "alias_name", name="unique_workflow_alias_app_name"),
+        # Indexes for better query performance
+        sa.Index("workflow_alias_workflow_idx", "tenant_id", "app_id", "workflow_id"),
+        sa.Index("workflow_alias_tenant_idx", "tenant_id"),
+        sa.Index("workflow_alias_type_idx", "alias_type"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    alias_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    alias_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default=AliasType.CUSTOM.value
+    )
+
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp()
+    )
+
+    @property
+    def created_by_account(self):
+        """Get the account that created this alias"""
+        from .engine import db
+        return db.session.get(Account, self.created_by)
+
+    @property
+    def is_system_alias(self) -> bool:
+        """Check if this is a system alias"""
+        return self.alias_type == AliasType.SYSTEM.value
+
+    @property
+    def is_custom_alias(self) -> bool:
+        """Check if this is a custom alias"""
+        return self.alias_type == AliasType.CUSTOM.value
+
+    def __repr__(self):
+        return (
+            f"<WorkflowAlias(id='{self.id}', app_id='{self.app_id}', "
+            f"alias_name='{self.alias_name}', type='{self.alias_type}')>"
+        )

@@ -18,6 +18,7 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import RestoreConfirmModal from './restore-confirm-modal'
 import DeleteConfirmModal from './delete-confirm-modal'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
+import AliasManagementModal from './alias-management-modal'
 import Toast from '@/app/components/base/toast'
 
 const HISTORY_PER_PAGE = 10
@@ -30,6 +31,7 @@ const VersionHistoryPanel = () => {
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [aliasModalOpen, setAliasModalOpen] = useState(false)
   const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
@@ -38,6 +40,7 @@ const VersionHistoryPanel = () => {
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
+
   const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
   const {
     deleteAllInspectVars,
@@ -107,6 +110,9 @@ const VersionHistoryPanel = () => {
           message: t('workflow.versionHistory.action.copyIdSuccess'),
         })
         break
+      case VersionHistoryContextMenuOptions.manageAlias:
+        setAliasModalOpen(true)
+        break
     }
   }, [t])
 
@@ -120,6 +126,9 @@ const VersionHistoryPanel = () => {
         break
       case VersionHistoryContextMenuOptions.delete:
         setDeleteConfirmOpen(false)
+        break
+      case VersionHistoryContextMenuOptions.manageAlias:
+        setAliasModalOpen(false)
         break
     }
   }, [])
@@ -287,6 +296,11 @@ const VersionHistoryPanel = () => {
         versionInfo={operatedItem}
         onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.edit)}
         onPublish={handleUpdateWorkflow}
+      />)}
+      {aliasModalOpen && operatedItem && (<AliasManagementModal
+        isOpen={aliasModalOpen}
+        versionHistory={operatedItem}
+        onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.manageAlias)}
       />)}
     </div>
   )

@@ -72,7 +72,6 @@ const ValueContent = ({
 
     if (showFileEditor)
       setFileValue(formatFileValue(currentVar))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {

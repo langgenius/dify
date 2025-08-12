@@ -60,7 +60,6 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       })
       syncOutputKeyOrders(defaultConfig.outputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((code: string) => {

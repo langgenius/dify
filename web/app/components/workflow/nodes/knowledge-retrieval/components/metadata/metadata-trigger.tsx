@@ -31,7 +31,6 @@ const MetadataTrigger = ({
           handleRemoveCondition(condition.id)
       })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metadataList, handleRemoveCondition, selectedDatasetsLoaded])
 
   return (

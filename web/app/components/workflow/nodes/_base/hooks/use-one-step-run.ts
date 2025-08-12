@@ -251,7 +251,6 @@ const useOneStepRun = <T>({
       const { isValid } = checkValidWrap()
       setCanShowSingleRun(isValid)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
   useEffect(() => {

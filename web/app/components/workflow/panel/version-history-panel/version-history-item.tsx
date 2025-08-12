@@ -5,6 +5,9 @@ import ContextMenu from './context-menu'
 import cn from '@/utils/classnames'
 import type { VersionHistory } from '@/types/workflow'
 import { type VersionHistoryContextMenuOptions, WorkflowVersion } from '../../types'
+import { useWorkflowAliasList } from '@/service/use-workflow-alias'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Tag from '@/app/components/base/tag'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
@@ -45,6 +48,12 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
   const [open, setOpen] = useState(false)
+  const appDetail = useAppStore.getState().appDetail
+
+  const { data: aliasList } = useWorkflowAliasList({
+    appId: appDetail!.id,
+    workflowId: item.id,
+  })
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
   const formattedVersion = formatVersion(item, latestVersionId)
@@ -102,6 +111,31 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             </div>
           )}
         </div>
+        {!isDraft && aliasList?.items && aliasList.items.length > 0 && (
+          <div className='mt-0.5 flex flex-wrap items-center gap-0.5'>
+            {aliasList.items
+              .sort((a, b) => {
+                if (a.alias_type === 'system' && b.alias_type !== 'system') return -1
+                if (a.alias_type !== 'system' && b.alias_type === 'system') return 1
+                return 0
+              })
+              .slice(0, 2)
+              .map(alias => (
+                <Tag
+                  key={alias.id}
+                  color={alias.alias_type === 'system' ? 'red' : 'green'}
+                  className="px-1.5 py-0.5 text-xs"
+                >
+                  {alias.alias_name}
+                </Tag>
+              ))}
+            {aliasList.items.length > 2 && (
+              <span className="ml-1 text-xs text-text-tertiary">
+                +{aliasList.items.length - 2}
+              </span>
+            )}
+          </div>
+        )}
         {
           !isDraft && (
             <div className='system-xs-regular break-words text-text-secondary'>
@@ -117,7 +151,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           )
         }
       </div>
-      {/* Context Menu */}
       {!isDraft && isHovering && (
         <div className='absolute right-1 top-1'>
           <ContextMenu
