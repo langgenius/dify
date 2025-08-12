@@ -141,7 +141,7 @@ class MessageDetailApi(Resource):
         message_id = str(message_id)
 
         try:
-            # 直接查询消息，不需要用户验证
+            # Direct query message, no user verification required
             message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
 
             if not message:
