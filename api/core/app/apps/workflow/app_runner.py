@@ -2,7 +2,6 @@ import logging
 import time
 from typing import cast
 
-from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -10,7 +9,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
-from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
+from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.system_variable import SystemVariable
@@ -54,8 +53,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         app_config = cast(WorkflowAppConfig, app_config)
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if dify_config.DEBUG:
-            workflow_callbacks.append(WorkflowLoggingCallback())
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run:
