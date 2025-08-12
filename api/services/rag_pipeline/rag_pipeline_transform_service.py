@@ -254,6 +254,7 @@ class RagPipelineTransformService:
                     if plugin_unique_identifier:
                         need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
         if need_install_plugin_unique_identifiers:
+            print(need_install_plugin_unique_identifiers)
             installer_manager.install_from_identifiers(
                 tenant_id,
                 need_install_plugin_unique_identifiers,
