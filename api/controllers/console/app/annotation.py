@@ -3,8 +3,8 @@ from flask_login import current_user
 from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
+from controllers.console import api
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
