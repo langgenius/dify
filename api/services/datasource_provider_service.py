@@ -143,6 +143,69 @@ class DatasourceProviderService:
                 plugin_id=plugin_id,
                 provider=provider,
             )
+    
+    def get_all_datasource_credentials_by_provider(
+        self,
+        tenant_id: str,
+        provider: str,
+        plugin_id: str,
+    ) -> list[dict[str, Any]]:
+        """
+        get all datasource credentials by provider
+        """
+        with Session(db.engine) as session:
+            datasource_providers = (
+                session.query(DatasourceProvider)
+                .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+                .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
+                .all()
+            )
+            if not datasource_providers:
+                return []
+            # refresh the credentials
+            real_credentials_list = []
+            for datasource_provider in datasource_providers:
+                if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
+                    decrypted_credentials = self.decrypt_datasource_provider_credentials(
+                        tenant_id=tenant_id,
+                        datasource_provider=datasource_provider,
+                        plugin_id=plugin_id,
+                        provider=provider,
+                    )
+                    datasource_provider_id = DatasourceProviderID(f"{plugin_id}/{provider}")
+                    provider_name = datasource_provider_id.provider_name
+                    redirect_uri = (
+                        f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/"
+                        f"{datasource_provider_id}/datasource/callback"
+                    )
+                    system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
+                    refreshed_credentials = OAuthHandler().refresh_credentials(
+                        tenant_id=tenant_id,
+                        user_id=current_user.id,
+                        plugin_id=datasource_provider_id.plugin_id,
+                        provider=provider_name,
+                        redirect_uri=redirect_uri,
+                        system_credentials=system_credentials or {},
+                        credentials=decrypted_credentials,
+                    )
+                    datasource_provider.encrypted_credentials = self.encrypt_datasource_provider_credentials(
+                        tenant_id=tenant_id,
+                        raw_credentials=refreshed_credentials.credentials,
+                        provider=provider,
+                        plugin_id=plugin_id,
+                        datasource_provider=datasource_provider,
+                    )
+                    datasource_provider.expires_at = refreshed_credentials.expires_at
+                    real_credentials = self.decrypt_datasource_provider_credentials(
+                        tenant_id=tenant_id,
+                        datasource_provider=datasource_provider,
+                        plugin_id=plugin_id,
+                        provider=provider,
+                    )
+                    real_credentials_list.append(real_credentials)
+            session.commit()
+
+            return real_credentials_list
 
     def update_datasource_provider_name(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, name: str, credential_id: str
