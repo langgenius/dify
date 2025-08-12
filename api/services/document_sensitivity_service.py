@@ -18,19 +18,14 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(
-        cls,
-        extension: str,
-        content: bytes,
-        blocked_levels: Optional[list[str]] = None
+        cls, extension: str, content: bytes, blocked_levels: Optional[list[str]] = None
     ) -> Optional[str]:
         if blocked_levels is None:
             blocked_levels = []
         blocked_levels_lower = {level.lower() for level in blocked_levels}
 
         try:
-            with tempfile.NamedTemporaryFile(
-                suffix=extension, delete=False
-            ) as temp_file:
+            with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temp_file:
                 temp_file.write(content)
                 temp_file.flush()
                 temp_path = temp_file.name
@@ -38,14 +33,10 @@ class DocumentSensitivityService:
             try:
                 metadata = cls._extract_metadata(temp_path, extension)
 
-                detected_sensitivity = cls._check_metadata_sensitivity(
-                    metadata, blocked_levels_lower
-                )
+                detected_sensitivity = cls._check_metadata_sensitivity(metadata, blocked_levels_lower)
 
                 if detected_sensitivity:
-                    raise SensitiveDocumentError(
-                        f"sensitive info detected : {detected_sensitivity}"
-                    )
+                    raise SensitiveDocumentError(f"sensitive info detected : {detected_sensitivity}")
 
                 return detected_sensitivity
 
@@ -62,9 +53,7 @@ class DocumentSensitivityService:
             return None
 
     @classmethod
-    def _extract_metadata(
-        cls, file_path: str, extension: str
-    ) -> dict[str, Any]:
+    def _extract_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
         """Extract metadata from document based on file type."""
         metadata: dict[str, Any] = {}
         try:
@@ -76,9 +65,7 @@ class DocumentSensitivityService:
                 metadata.update(cls._extract_excel_metadata(file_path))
             elif extension.lower() == ".pptx":
                 metadata.update(cls._extract_powerpoint_metadata(file_path))
-            elif extension.lower() in {
-                ".txt", ".md", ".markdown", ".mdx", ".csv"
-            }:
+            elif extension.lower() in {".txt", ".md", ".markdown", ".mdx", ".csv"}:
                 metadata.update(cls._extract_text_metadata(file_path, extension))
         except Exception as e:
             logger.warning("Failed to extract %s metadata: %s", extension, e)
@@ -191,9 +178,7 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _extract_text_metadata(
-        cls, file_path: str, extension: str
-    ) -> dict[str, Any]:
+    def _extract_text_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
         """Extract metadata from text-based documents."""
         metadata: dict[str, Any] = {}
         try:
@@ -332,9 +317,7 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _check_metadata_sensitivity(
-        cls, metadata: dict[str, Any], blocked_levels: set
-    ) -> Optional[str]:
+    def _check_metadata_sensitivity(cls, metadata: dict[str, Any], blocked_levels: set) -> Optional[str]:
         """
         Check metadata for sensitivity indicators.
 
