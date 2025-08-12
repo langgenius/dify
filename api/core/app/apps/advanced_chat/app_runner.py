@@ -6,7 +6,6 @@ from typing import Any, Optional, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -24,7 +23,7 @@ from core.app.features.annotation_reply.annotation_reply import AnnotationReplyF
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
-from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
+from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.system_variable import SystemVariable
@@ -80,8 +79,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             raise ValueError("App not found")
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if dify_config.DEBUG:
-            workflow_callbacks.append(WorkflowLoggingCallback())
 
         if self.application_generate_entity.single_iteration_run:
             # if only single iteration run is requested
