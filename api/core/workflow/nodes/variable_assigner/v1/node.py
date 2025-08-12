@@ -56,7 +56,6 @@ class VariableAssignerNode(Node):
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
         conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
     ) -> None:
         super().__init__(
@@ -64,7 +63,6 @@ class VariableAssignerNode(Node):
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
         )
         self._conv_var_updater_factory = conv_var_updater_factory
 

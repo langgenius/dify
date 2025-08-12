@@ -60,7 +60,6 @@ class Node:
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
     ) -> None:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
@@ -72,7 +71,6 @@ class Node:
         self.invoke_from = InvokeFrom(graph_init_params.invoke_from)
         self.workflow_call_depth = graph_init_params.call_depth
         self.graph_runtime_state = graph_runtime_state
-        self.previous_node_id = previous_node_id
         self.state: NodeState = NodeState.UNKNOWN  # node execution state
 
         node_id = config.get("id")

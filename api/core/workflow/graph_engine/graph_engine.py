@@ -49,6 +49,7 @@ from models.enums import UserFrom
 
 from .entities.commands import AbortCommand, CommandType, GraphEngineCommand
 from .executing_nodes_manager import ExecutingNodesManager
+from .layers.base import Layer
 from .output_registry import OutputRegistry
 from .protocols.command_channel import CommandChannel
 from .response_coordinator import ResponseStreamCoordinator
@@ -163,6 +164,9 @@ class GraphEngine:
         # Key: node_id, Value: retry_count
         self._node_retry_tracker: dict[str, int] = {}
 
+        # Layer system for extensibility
+        self._layers: list[Layer] = []
+
         # Validate that all nodes share the same GraphRuntimeState instance
         # This is critical for thread-safe execution and consistent state management
         expected_state_id = id(self.graph_runtime_state)
@@ -174,6 +178,50 @@ class GraphEngine:
                     f"GraphRuntimeState instance for proper execution."
                 )
 
+    def layer(self, layer: Layer) -> "GraphEngine":
+        """
+        Add a layer to the engine for extending functionality.
+
+        Layers can observe events, access runtime state, and send commands.
+        Multiple layers can be chained using the fluent API.
+
+        Args:
+            layer: The layer instance to add
+
+        Returns:
+            Self for method chaining
+
+        Example:
+            engine.layer(DebugLoggingLayer()).layer(TracingLayer()).run()
+        """
+        self._layers.append(layer)
+        return self
+
+    def _initialize_layers(self) -> None:
+        """Initialize all registered layers with engine context."""
+        for layer in self._layers:
+            try:
+                layer.initialize(self.graph_runtime_state, self.command_channel)
+            except Exception as e:
+                logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
+
+    def _notify_layers_event(self, event: GraphEngineEvent) -> None:
+        """
+        Notify all layers of an event.
+
+        Layer exceptions are caught and logged to prevent disrupting execution.
+
+        Args:
+            event: The event to send to all layers
+        """
+        for layer in self._layers:
+            try:
+                layer.on_event(event)
+            except Exception as e:
+                logger.warning(
+                    "Layer %s failed to process event %s: %s", layer.__class__.__name__, event.__class__.__name__, e
+                )
+
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         """
         Execute the graph and yield events as they occur.
@@ -182,9 +230,20 @@ class GraphEngine:
             Generator yielding GraphEngineEvent instances during execution
         """
         try:
+            # Initialize layers with engine context
+            self._initialize_layers()
+
+            # Notify layers of graph start
+            for layer in self._layers:
+                try:
+                    layer.on_graph_start()
+                except Exception as e:
+                    logger.warning("Layer %s failed on_graph_start: %s", layer.__class__.__name__, e)
+
             # Yield initial start event
             start_event = GraphRunStartedEvent()
             yield start_event
+            self._notify_layers_event(start_event)
 
             # Start execution
             self._start_execution()
@@ -198,6 +257,7 @@ class GraphEngine:
                     reason="Workflow execution aborted by user command",
                     outputs=self.graph_runtime_state.outputs,
                 )
+                self._notify_layers_event(abort_event)
                 yield abort_event
                 return
 
@@ -209,6 +269,7 @@ class GraphEngine:
             success_event = GraphRunSucceededEvent(
                 outputs=self.graph_runtime_state.outputs,
             )
+            self._notify_layers_event(success_event)
             yield success_event
 
         except Exception as e:
@@ -216,10 +277,18 @@ class GraphEngine:
             failure_event = GraphRunFailedEvent(
                 error=str(e),
             )
+            self._notify_layers_event(failure_event)
             yield failure_event
             raise
 
         finally:
+            # Notify layers of graph end
+            for layer in self._layers:
+                try:
+                    layer.on_graph_end(self._error)
+                except Exception as layer_e:
+                    logger.warning("Layer %s failed on_graph_end: %s", layer.__class__.__name__, layer_e)
+
             # Clean up
             self._stop_execution()
 
@@ -329,6 +398,8 @@ class GraphEngine:
         with self._event_collector_lock:
             # Add event to collection
             self._collected_events.append(event)
+            # Notify layers of the event
+            self._notify_layers_event(event)
 
     def _get_event_handler(self, event_type: type[GraphEngineEvent]) -> Callable[[Any], None] | None:
         """

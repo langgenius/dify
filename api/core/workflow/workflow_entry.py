@@ -15,6 +15,7 @@ from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
+from core.workflow.graph_engine.layers import DebugLoggingLayer
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
@@ -87,6 +88,18 @@ class WorkflowEntry:
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
             command_channel=command_channel,
         )
+
+        # Add debug logging layer when in debug mode
+        if dify_config.DEBUG:
+            logger.info("Debug mode enabled - adding DebugLoggingLayer to GraphEngine")
+            debug_layer = DebugLoggingLayer(
+                level="DEBUG",
+                include_inputs=True,
+                include_outputs=True,
+                include_process_data=False,  # Process data can be very verbose
+                logger_name=f"GraphEngine.Debug.{workflow_id[:8]}",  # Use workflow ID prefix for unique logger
+            )
+            self.graph_engine.layer(debug_layer)
 
     def run(
         self,
