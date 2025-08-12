@@ -67,7 +67,7 @@ class AppService:
             if api_key:
                 # Find app IDs with matching API-Key in the database
                 api_token_query = db.select(ApiToken.app_id).where(
-                    ApiToken.tenant_id == tenant_id, ApiToken.type == "app", ApiToken.token.like(f"%{api_key}%")
+                    ApiToken.tenant_id == tenant_id, ApiToken.type == "app", ApiToken.token.like(f"{api_key}%")
                 )
                 app_ids_with_api_key = [row[0] for row in db.session.execute(api_token_query).fetchall()]
 
