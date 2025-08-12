@@ -1,4 +1,5 @@
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType } from '@/app/components/workflow/types'
 
 export const MOCK_DATA = {
   site: {
@@ -52,7 +53,32 @@ export const MOCK_DATA = {
     {{#$output.content#}}
   `,
   // 对每一个字段的描述，参考上方 FormInput 的定义。
-  inputs: ['<FormInput>'],
+  inputs: [
+    {
+      output_variable_name: 'content',
+      type: InputVarType.paragraph,
+      label: 'Name',
+      options: [],
+      max_length: 4096,
+      placeholder: 'Enter your name',
+    },
+    {
+      output_variable_name: 'location',
+      type: InputVarType.textInput,
+      label: 'Location',
+      // placeholder: 'Enter your location',
+      options: [],
+      max_length: 4096,
+    },
+    {
+      output_variable_name: 'season',
+      type: InputVarType.textInput,
+      label: 'Favorite Season',
+      // placeholder: 'Enter your favorite season',
+      options: [],
+      max_length: 4096,
+    },
+  ],
   // 用户对这个表单可采取的操作，参考上方 UserAction 的定义。
   user_actions: [
     {

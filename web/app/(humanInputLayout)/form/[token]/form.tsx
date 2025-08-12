@@ -9,18 +9,19 @@ import {
 } from '@remixicon/react'
 import Loading from '@/app/components/base/loading'
 import AppIcon from '@/app/components/base/app-icon'
-import { Markdown } from '@/app/components/base/markdown'
 import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import ContentItem from './content-item'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
+import { asyncRunSafe } from '@/utils'
 import cn from '@/utils/classnames'
 
 export type FormData = {
   site: any
   form_content: string
-  inputs: FormInputItem[]
+  inputs: GeneratedFormInputItem[]
   user_actions: UserAction[]
   timeout: number
   timeout_unit: 'hour' | 'day'
@@ -32,9 +33,10 @@ const FormContent = () => {
   const { token } = useParams<{ token: string }>()
   useDocumentTitle('')
 
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<FormData>()
+  const [contentList, setContentList] = useState<string[]>([])
   const [inputs, setInputs] = useState({})
   const [success, setSuccess] = useState(false)
   const [expired, setExpired] = useState(false)
@@ -53,10 +55,42 @@ const FormContent = () => {
       return 'ghost'
   }
 
+  const splitByOutputVar = (content: string): string[] => {
+    const outputVarRegex = /({{#\$output\.[^#]+#}})/g
+    const parts = content.split(outputVarRegex)
+    return parts.filter(part => part.length > 0)
+  }
+
+  const initializeInputs = (formInputs: GeneratedFormInputItem[]) => {
+    const initialInputs: Record<string, any> = {}
+    formInputs.forEach((item) => {
+      if (item.type === 'text-input' || item.type === 'paragraph')
+        initialInputs[item.output_variable_name] = ''
+      else
+        initialInputs[item.output_variable_name] = undefined
+    })
+    setInputs(initialInputs)
+  }
+
+  const initializeContentList = (formContent: string) => {
+    const parts = splitByOutputVar(formContent)
+    setContentList(parts)
+  }
+
+  // use immer
+  const handleInputsChange = (name: string, value: any) => {
+    setInputs(prev => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
   const getForm = async (token: string) => {
     try {
       const data = await getHumanInputForm(token)
       setFormData(data)
+      initializeInputs(data.inputs)
+      initializeContentList(data.form_content)
       setIsLoading(false)
     }
     catch (error) {
@@ -70,10 +104,15 @@ const FormContent = () => {
       await submitHumanInputForm(token, { inputs, action: actionID })
       setSuccess(true)
     }
-    catch (error) {
-      console.error(error)
-      setExpired(true)
-      setSubmitted(true)
+    catch (e: any) {
+      if (e.status === 400) {
+        const [, errRespData] = await asyncRunSafe<{ error_code: string }>(e.json())
+        const { error_code } = errRespData || {}
+        if (error_code === 'human_input_form_expired')
+          setExpired(true)
+        if (error_code === 'human_input_form_submitted')
+          setSubmitted(true)
+      }
     }
     finally {
       setIsSubmitting(false)
@@ -185,7 +224,15 @@ const FormContent = () => {
       </div>
       <div className='h-0 w-full grow overflow-y-auto'>
         <div className='border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-sm'>
-          <Markdown content={formData.form_content || ''} />
+          {contentList.map((content, index) => (
+            <ContentItem
+              key={index}
+              content={content}
+              formInputFields={formData.inputs}
+              inputs={inputs}
+              onInputChange={handleInputsChange}
+            />
+          ))}
           <div className='flex flex-wrap gap-1 py-1'>
             {formData.user_actions.map((action: any) => (
               <Button
