@@ -142,14 +142,11 @@ class MessageDetailApi(Resource):
 
         try:
             # 直接查询消息，不需要用户验证
-            message = db.session.query(Message).filter(
-                Message.id == message_id,
-                Message.app_id == app_model.id
-            ).first()
-            
+            message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
+
             if not message:
                 raise MessageNotExistsError()
-                
+
             return message
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

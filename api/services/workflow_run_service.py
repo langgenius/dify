@@ -101,7 +101,7 @@ class WorkflowRunService:
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
-        
+
         :param app_model: app model
         :param run_id: workflow run id
         :param user: optional user for tenant validation, if None uses app_model.tenant_id
