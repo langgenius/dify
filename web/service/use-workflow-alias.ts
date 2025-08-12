@@ -23,7 +23,6 @@ export const useCreateWorkflowAlias = (appId: string) => {
       workflow_id: string
       alias_name: string
       alias_type: 'system' | 'custom'
-      description?: string
     }) => {
       return post<WorkflowAlias>(`/apps/${appId}/workflow-aliases`, {
         body: data,
@@ -43,7 +42,6 @@ export const useUpdateWorkflowAlias = (appId: string) => {
       aliasId: string
       data: {
         alias_name?: string
-        description?: string
       }
     }) => {
       return patch<WorkflowAlias>(`/apps/${appId}/workflow-aliases/${aliasId}`, {

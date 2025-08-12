@@ -4,6 +4,12 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
+from typing import Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flask_sqlalchemy import SQLAlchemy
+    from flask_sqlalchemy.pagination import Pagination
+    from sqlalchemy.orm import scoped_session
 
 from models import Workflow, WorkflowAlias
 from models.workflow_alias import AliasType
@@ -15,7 +21,7 @@ class WorkflowAliasService:
 
     def create_alias(
         self,
-        session: Session,
+        session: Union[Session, "scoped_session"],
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -44,8 +50,8 @@ class WorkflowAliasService:
             existing_alias.workflow_id = workflow_id
             existing_alias.updated_at = func.current_timestamp()
 
-            existing_alias._is_transferred = True
-            existing_alias._old_workflow_id = old_workflow_id
+            setattr(existing_alias, '_is_transferred', True)
+            setattr(existing_alias, '_old_workflow_id', old_workflow_id)
 
             logger.info(
                 "Transferred alias '%s' from workflow %s to workflow %s",
@@ -72,12 +78,12 @@ class WorkflowAliasService:
         )
         return alias
 
-    def get_alias_by_id(self, session: Session, alias_id: str) -> Optional[WorkflowAlias]:
+    def get_alias_by_id(self, session: Union[Session, "scoped_session"], alias_id: str) -> Optional[WorkflowAlias]:
         return session.get(WorkflowAlias, alias_id)
 
     def get_aliases_by_workflow(
         self,
-        session: Session,
+        session: Union[Session, "scoped_session"],
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -96,7 +102,7 @@ class WorkflowAliasService:
 
     def get_workflow_by_alias(
         self,
-        session: Session,
+        session: Union[Session, "scoped_session"],
         tenant_id: str,
         app_id: str,
         alias_name: str,
@@ -118,12 +124,11 @@ class WorkflowAliasService:
 
     def update_alias(
         self,
-        session: Session,
+        session: Union[Session, "scoped_session"],
         alias_id: str,
         tenant_id: str,
         app_id: str,
         alias_name: Optional[str] = None,
-        description: Optional[str] = None,
     ) -> WorkflowAlias:
         alias = session.get(WorkflowAlias, alias_id)
         if not alias or alias.tenant_id != tenant_id or alias.app_id != app_id:
@@ -131,15 +136,13 @@ class WorkflowAliasService:
 
         if alias_name:
             alias.alias_name = alias_name
-        if description is not None:
-            alias.description = description
 
         session.flush()
         return alias
 
     def delete_alias(
         self,
-        session: Session,
+        session: Union[Session, "scoped_session"],
         alias_id: str,
         tenant_id: str,
         app_id: str,

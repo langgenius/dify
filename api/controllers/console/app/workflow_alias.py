@@ -100,13 +100,11 @@ class WorkflowAliasDetailApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("alias_name", type=str, required=False, location="json")
-        parser.add_argument("description", type=str, required=False, location="json")
         args = parser.parse_args()
 
         alias_name = args.get("alias_name")
-        description = args.get("description")
 
-        if not alias_name and description is None:
+        if not alias_name:
             raise BadRequest("No valid fields to update")
 
         workflow_alias_service = WorkflowAliasService()
@@ -118,7 +116,6 @@ class WorkflowAliasDetailApi(Resource):
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 alias_name=alias_name,
-                description=description,
             )
             db.session.commit()
             return alias
