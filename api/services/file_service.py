@@ -68,9 +68,8 @@ class FileService:
         file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
         if dify_config.ENABLE_DOCUMENT_SENSITIVITY_CHECK:
-            blocked_levels = dify_config.BLOCKED_SENSITIVITY_LEVELS()
             DocumentSensitivityService.check_document_sensitivity(
-                extension=f".{extension}", content=content, blocked_levels=blocked_levels
+                extension=f".{extension}", content=content
             )
 
         # save file to storage

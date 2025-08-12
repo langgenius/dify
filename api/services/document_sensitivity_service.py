@@ -7,6 +7,7 @@ import openpyxl
 import pypdf
 from docx import Document as DocxDocument
 from pptx import Presentation
+from configs import dify_config
 
 from services.errors.file import SensitiveDocumentError
 
@@ -18,8 +19,9 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(
-        cls, extension: str, content: bytes, blocked_levels: Optional[list[str]] = None
+        cls, extension: str, content: bytes
     ) -> Optional[str]:
+        blocked_levels = dify_config.BLOCKED_SENSITIVITY_LEVELS
         if blocked_levels is None:
             blocked_levels = []
         blocked_levels_lower = {level.lower() for level in blocked_levels}
