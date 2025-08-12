@@ -1,7 +1,6 @@
 import json
 from unittest.mock import Mock, patch
 
-import pytest
 import requests
 from flask import Flask
 
