@@ -39,7 +39,6 @@ class CotChatAgentRunner(CotAgentRunner):
         Organize user query
         """
         if self.files:
-
             # get image detail config
             image_detail_config = (
                 self.application_generate_entity.file_upload_config.image_config.detail
