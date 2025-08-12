@@ -238,6 +238,7 @@ const GotoAnything: FC<Props> = ({
         }}
         closable={false}
         className='!w-[480px] !p-0'
+        highPriority={true}
       >
         <div className='flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
           <Command
