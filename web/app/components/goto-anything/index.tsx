@@ -82,7 +82,7 @@ const GotoAnything: FC<Props> = ({
     wait: 300,
   })
 
-  const isCommandsMode = searchQuery.trim() === '@'
+  const isCommandsMode = searchQuery.trim() === '@' || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), Actions))
 
   const searchMode = useMemo(() => {
     if (isCommandsMode) return 'commands'
@@ -238,6 +238,7 @@ const GotoAnything: FC<Props> = ({
         }}
         closable={false}
         className='!w-[480px] !p-0'
+        highPriority={true}
       >
         <div className='flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl'>
           <Command
@@ -253,8 +254,9 @@ const GotoAnything: FC<Props> = ({
                   value={searchQuery}
                   placeholder={t('app.gotoAnything.searchPlaceholder')}
                   onChange={(e) => {
-                    setCmdVal('')
                     setSearchQuery(e.target.value)
+                    if (!e.target.value.startsWith('@'))
+                      setCmdVal('')
                   }}
                   className='flex-1 !border-0 !bg-transparent !shadow-none'
                   wrapperClassName='flex-1 !border-0 !bg-transparent'
@@ -301,6 +303,9 @@ const GotoAnything: FC<Props> = ({
                     <CommandSelector
                       actions={Actions}
                       onCommandSelect={handleCommandSelect}
+                      searchFilter={searchQuery.trim().substring(1)}
+                      commandValue={cmdVal}
+                      onCommandValueChange={setCmdVal}
                     />
                   ) : (
                     Object.entries(groupedResults).map(([type, results], groupIndex) => (

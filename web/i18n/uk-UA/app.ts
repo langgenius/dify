@@ -269,6 +269,8 @@ const translation = {
       noKnowledgeBasesFound: 'Баз знань не знайдено',
       noAppsFound: 'Не знайдено додатків',
       noWorkflowNodesFound: 'Вузли бізнес-процесу не знайдено',
+      tryDifferentTerm: 'Спробуйте інший пошуковий термін або видаліть фільтр {{mode}}',
+      trySpecificSearch: 'Спробуйте {{shortcuts}} для конкретного пошуку',
     },
     groups: {
       knowledgeBases: 'Бази знань',
@@ -279,7 +281,7 @@ const translation = {
     searching: 'Пошук...',
     searchTitle: 'Шукайте що завгодно',
     searchFailed: 'Пошук не вдався',
-    clearToSearchAll: 'Clear @ для пошуку всіх',
+    clearToSearchAll: 'Очистіть @ для пошуку всіх',
     noResults: 'Результатів не знайдено',
     searchPlaceholder: 'Виконайте пошук або введіть @ для команд...',
     searchTemporarilyUnavailable: 'Пошук тимчасово недоступний',
@@ -289,6 +291,9 @@ const translation = {
     selectSearchType: 'Виберіть, що шукати',
     commandHint: 'Введіть @ для навігації за категоріями',
     searchHint: 'Почніть вводити текст, щоб миттєво шукати все',
+    resultCount: '{{count}} результат',
+    resultCount_other: '{{count}} результатів',
+    inScope: 'у {{scope}}s',
   },
 }
 

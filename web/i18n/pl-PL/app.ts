@@ -270,6 +270,8 @@ const translation = {
       noKnowledgeBasesFound: 'Nie znaleziono baz wiedzy',
       noWorkflowNodesFound: 'Nie znaleziono węzłów przepływu pracy',
       noPluginsFound: 'Nie znaleziono wtyczek',
+      tryDifferentTerm: 'Spróbuj innego terminu wyszukiwania lub usuń filtr {{mode}}',
+      trySpecificSearch: 'Spróbuj {{shortcuts}} dla konkretnych wyszukiwań',
     },
     groups: {
       apps: 'Aplikacje',
@@ -290,6 +292,9 @@ const translation = {
     searchHint: 'Zacznij pisać, aby natychmiast wszystko przeszukać',
     commandHint: 'Wpisz @, aby przeglądać według kategorii',
     selectSearchType: 'Wybierz, czego chcesz szukać',
+    resultCount: '{{count}} wynik',
+    resultCount_other: '{{count}} wyników',
+    inScope: 'w {{scope}}s',
   },
 }
 

@@ -269,10 +269,12 @@ const translation = {
       noAppsFound: 'هیچ برنامه ای یافت نشد',
       noPluginsFound: 'هیچ افزونه ای یافت نشد',
       noWorkflowNodesFound: 'هیچ گره گردش کاری یافت نشد',
+      tryDifferentTerm: 'یک عبارت جستجوی متفاوت را امتحان کنید یا فیلتر {{mode}} را حذف کنید',
+      trySpecificSearch: '{{shortcuts}} را برای جستجوهای خاص امتحان کنید',
     },
     groups: {
       plugins: 'پلاگین',
-      apps: 'واژهنامه',
+      apps: 'برنامه‌ها',
       knowledgeBases: 'پایگاه های دانش',
       workflowNodes: 'گره های گردش کار',
     },
@@ -289,6 +291,9 @@ const translation = {
     selectSearchType: 'انتخاب کنید چه چیزی را جستجو کنید',
     commandHint: '@ را برای مرور بر اساس دسته بندی تایپ کنید',
     searchHint: 'شروع به تایپ کنید تا فورا همه چیز را جستجو کنید',
+    resultCount: '{{count}} نتیجه',
+    resultCount_other: '{{count}} نتیجه',
+    inScope: 'در {{scope}}s',
   },
 }
 

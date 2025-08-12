@@ -99,13 +99,13 @@ class TokenBufferMemory:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
                     prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-                    prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                     for file in file_objs:
                         prompt_message = file_manager.to_prompt_message_content(
                             file,
                             image_detail_config=detail,
                         )
                         prompt_message_contents.append(prompt_message)
+                    prompt_message_contents.append(TextPromptMessageContent(data=message.query))
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
 
