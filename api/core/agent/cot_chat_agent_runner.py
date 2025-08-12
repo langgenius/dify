@@ -39,8 +39,6 @@ class CotChatAgentRunner(CotAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
-            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             # get image detail config
             image_detail_config = (
@@ -52,6 +50,8 @@ class CotChatAgentRunner(CotAgentRunner):
                 else None
             )
             image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in self.files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
@@ -59,6 +59,7 @@ class CotChatAgentRunner(CotAgentRunner):
                         image_detail_config=image_detail_config,
                     )
                 )
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
