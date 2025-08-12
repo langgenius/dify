@@ -1,12 +1,13 @@
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback } from 'react'
 import FileIcon from './file-icon'
 import { formatFileSize } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
+import type { Placement } from '@floating-ui/react'
 
 type ItemProps = {
   file: OnlineDriveFile
@@ -27,10 +28,16 @@ const Item = ({
 }: ItemProps) => {
   const { t } = useTranslation()
   const { id, name, type, size } = file
-  const isBucket = useMemo(() => type === 'bucket', [type])
-  const isFolder = useMemo(() => type === 'folder', [type])
+
+  const isBucket = type === 'bucket'
+  const isFolder = type === 'folder'
 
   const Wrapper = disabled ? Tooltip : React.Fragment
+  const wrapperProps = disabled ? {
+    popupContent: t('datasetPipeline.onlineDrive.notSupportedFileType'),
+    position: 'top-end' as Placement,
+    offset: { mainAxis: 4, crossAxis: -104 },
+  } : {}
 
   const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
@@ -70,16 +77,14 @@ const Item = ({
         />
       )}
       <Wrapper
-        popupContent={t('datasetPipeline.onlineDrive.notSupportedFileType')}
-        position='top-end'
-        offset={{ mainAxis: 4, crossAxis: -104 }}
+        {...wrapperProps}
       >
         <div
           className={cn(
             'flex grow items-center gap-x-1 overflow-hidden py-0.5',
             disabled && 'opacity-30',
           )}>
-          <FileIcon type={type} fileName={name} className='shrink-0' />
+          <FileIcon type={type} fileName={name} className='shrink-0 transform-gpu' />
           <span
             className='system-sm-medium grow truncate text-text-secondary'
             title={name}

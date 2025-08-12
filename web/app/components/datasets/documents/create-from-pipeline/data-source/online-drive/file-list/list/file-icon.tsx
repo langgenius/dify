@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import { BucketsBlue, Folder } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -18,6 +18,13 @@ const FileIcon = ({
   size = 'md',
   className,
 }: FileIconProps) => {
+  const fileType = useMemo(() => {
+    if (type === OnlineDriveFileType.bucket || type === OnlineDriveFileType.folder)
+      return 'custom'
+
+    return getFileType(fileName)
+  }, [type, fileName])
+
   if (type === OnlineDriveFileType.bucket) {
     return (
       <BucketsBlue className={cn('size-[18px]', className)} />
@@ -33,7 +40,7 @@ const FileIcon = ({
   return (
     <FileTypeIcon
       size={size}
-      type={getFileType(fileName)}
+      type={fileType}
       className={cn('size-[18px]', className)}
     />
   )

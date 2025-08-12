@@ -47,7 +47,7 @@ const List = ({
   }, [anchorRef])
 
   const isAllLoading = isLoading && fileList.length === 0 && keywords.length === 0
-  const isPartLoading = isLoading && fileList.length > 0
+  const isPartialLoading = isLoading && fileList.length > 0
   const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
 
@@ -86,7 +86,7 @@ const List = ({
             })
           }
           {
-            isPartLoading && (
+            isPartialLoading && (
               <div className='flex items-center justify-center py-2'>
                 <RiLoader2Line className='animation-spin size-4 text-text-tertiary' />
               </div>
