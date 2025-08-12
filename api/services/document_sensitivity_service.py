@@ -19,10 +19,10 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(cls, extension: str, content: bytes) -> Optional[str]:
-        blocked_levels = dify_config.BLOCKED_SENSITIVITY_LEVELS
-        if not blocked_levels:
-            blocked_levels = []
-        blocked_levels_lower = {level.lower() for level in blocked_levels}
+        blocked_levels_list = dify_config.BLOCKED_SENSITIVITY_LEVELS
+        if not blocked_levels_list:
+            blocked_levels_list = []
+        blocked_levels_lower = {level.lower() for level in blocked_levels_list}
 
         try:
             with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temp_file:
