@@ -1564,6 +1564,9 @@ class UploadFile(Base):
         sa.Index("upload_file_tenant_idx", "tenant_id"),
     )
 
+    # NOTE: The `id` field is generated within the application to minimize extra roundtrips
+    # (especially when generating `source_url`).
+    # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1622,6 +1625,7 @@ class UploadFile(Base):
         hash: str | None = None,
         source_url: str = "",
     ):
+        self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key
