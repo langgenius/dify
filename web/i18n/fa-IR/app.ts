@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} نتیجه',
     resultCount_other: '{{count}} نتیجه',
     inScope: 'در {{scope}}s',
+    noMatchingCommands: 'هیچ دستوری منطبق یافت نشد',
+    tryDifferentSearch: 'عبارت جستجوی دیگری را امتحان کنید',
   },
 }
 
