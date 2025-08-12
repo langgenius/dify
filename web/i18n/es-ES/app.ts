@@ -269,6 +269,8 @@ const translation = {
       noPluginsFound: 'No se encontraron complementos',
       noWorkflowNodesFound: 'No se encontraron nodos de flujo de trabajo',
       noKnowledgeBasesFound: 'No se han encontrado bases de conocimiento',
+      tryDifferentTerm: 'Intenta un término de búsqueda diferente o elimina el filtro {{mode}}',
+      trySpecificSearch: 'Prueba {{shortcuts}} para búsquedas específicas',
     },
     groups: {
       apps: 'Aplicaciones',
@@ -278,7 +280,7 @@ const translation = {
     },
     clearToSearchAll: 'Borrar @ para buscar todo',
     noResults: 'No se han encontrado resultados',
-    searching: 'Minucioso...',
+    searching: 'Buscando...',
     searchTemporarilyUnavailable: 'La búsqueda no está disponible temporalmente',
     searchFailed: 'Error de búsqueda',
     useAtForSpecific: 'Use @ para tipos específicos',
@@ -286,6 +288,12 @@ const translation = {
     searchTitle: 'Busca cualquier cosa',
     someServicesUnavailable: 'Algunos servicios de búsqueda no están disponibles',
     servicesUnavailableMessage: 'Algunos servicios de búsqueda pueden estar experimentando problemas. Inténtalo de nuevo en un momento.',
+    searchHint: 'Empieza a escribir para buscar todo al instante',
+    commandHint: 'Escriba @ para buscar por categoría',
+    selectSearchType: 'Elige qué buscar',
+    resultCount: '{{count}} resultado',
+    resultCount_other: '{{count}} resultados',
+    inScope: 'en {{scope}}s',
   },
 }
 

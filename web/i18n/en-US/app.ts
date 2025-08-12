@@ -267,6 +267,9 @@ const translation = {
     inScope: 'in {{scope}}s',
     clearToSearchAll: 'Clear @ to search all',
     useAtForSpecific: 'Use @ for specific types',
+    selectSearchType: 'Choose what to search for',
+    searchHint: 'Start typing to search everything instantly',
+    commandHint: 'Type @ to browse by category',
     actions: {
       searchApplications: 'Search Applications',
       searchApplicationsDesc: 'Search and navigate to your applications',

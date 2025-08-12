@@ -268,6 +268,8 @@ const translation = {
       noWorkflowNodesFound: '未找到工作流節點',
       noKnowledgeBasesFound: '未找到知識庫',
       noPluginsFound: '未找到外掛程式',
+      tryDifferentTerm: '嘗試不同的搜索詞或移除 {{mode}} 過濾器',
+      trySpecificSearch: '嘗試使用 {{shortcuts}} 進行特定搜索',
     },
     groups: {
       apps: '應用程式',
@@ -276,7 +278,7 @@ const translation = {
       workflowNodes: '工作流節點',
     },
     searchPlaceholder: '搜尋或鍵入 @ 以取得命令...',
-    searching: '搜索。。。',
+    searching: '搜索中...',
     searchTitle: '搜索任何內容',
     noResults: '未找到結果',
     clearToSearchAll: '清除 @ 以搜尋全部',
@@ -285,6 +287,12 @@ const translation = {
     someServicesUnavailable: '某些搜索服務不可用',
     useAtForSpecific: '對特定類型使用 @',
     searchTemporarilyUnavailable: '搜索暫時不可用',
+    selectSearchType: '選擇要搜索的內容',
+    commandHint: '鍵入 @ 按類別流覽',
+    searchHint: '開始輸入以立即搜索所有內容',
+    resultCount: '{{count}} 個結果',
+    resultCount_other: '{{count}} 個結果',
+    inScope: '在 {{scope}}s 中',
   },
 }
 

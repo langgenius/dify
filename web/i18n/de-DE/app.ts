@@ -271,6 +271,8 @@ const translation = {
       noWorkflowNodesFound: 'Keine Workflow-Knoten gefunden',
       noKnowledgeBasesFound: 'Keine Wissensdatenbanken gefunden',
       noAppsFound: 'Keine Apps gefunden',
+      tryDifferentTerm: 'Versuchen Sie einen anderen Suchbegriff oder entfernen Sie den {{mode}}-Filter',
+      trySpecificSearch: 'Versuchen Sie {{shortcuts}} für spezifische Suchen',
     },
     groups: {
       knowledgeBases: 'Wissensdatenbanken',
@@ -288,6 +290,12 @@ const translation = {
     useAtForSpecific: 'Verwenden von @ für bestimmte Typen',
     searchTitle: 'Suchen Sie nach irgendetwas',
     searching: 'Suche...',
+    selectSearchType: 'Wählen Sie aus, wonach gesucht werden soll',
+    commandHint: 'Geben Sie @ ein, um nach Kategorie zu suchen',
+    searchHint: 'Beginnen Sie mit der Eingabe, um alles sofort zu durchsuchen',
+    resultCount: '{{count}} Ergebnis',
+    resultCount_other: '{{count}} Ergebnisse',
+    inScope: 'in {{scope}}s',
   },
 }
 

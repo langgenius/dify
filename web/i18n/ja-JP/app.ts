@@ -265,6 +265,9 @@ const translation = {
     inScope: '{{scope}}s 内',
     clearToSearchAll: '@ をクリアしてすべてを検索',
     useAtForSpecific: '特定のタイプには @ を使用',
+    selectSearchType: '検索対象を選択',
+    searchHint: '入力を開始してすべてを瞬時に検索',
+    commandHint: '@ を入力してカテゴリ別に参照',
     actions: {
       searchApplications: 'アプリケーションを検索',
       searchApplicationsDesc: 'アプリケーションを検索してナビゲート',

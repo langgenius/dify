@@ -35,16 +35,22 @@ export const knowledgeAction: ActionItem = {
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
   // action,
-  search: async (_, searchTerm = '', locale) => {
-    const response = await fetchDatasets({
-      url: '/datasets',
-      params: {
-        page: 1,
-        limit: 10,
-        keyword: searchTerm,
-      },
-    })
-
-    return parser(response.data)
+  search: async (_, searchTerm = '', _locale) => {
+    try {
+      const response = await fetchDatasets({
+        url: '/datasets',
+        params: {
+          page: 1,
+          limit: 10,
+          keyword: searchTerm,
+        },
+      })
+      const datasets = response?.data || []
+      return parser(datasets)
+    }
+    catch (error) {
+      console.warn('Knowledge search failed:', error)
+      return []
+    }
   },
 }

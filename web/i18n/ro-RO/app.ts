@@ -269,6 +269,8 @@ const translation = {
       noPluginsFound: 'Nu au fost găsite plugin-uri',
       noWorkflowNodesFound: 'Nu au fost găsite noduri de flux de lucru',
       noKnowledgeBasesFound: 'Nu au fost găsite baze de cunoștințe',
+      tryDifferentTerm: 'Încercați un termen de căutare diferit sau eliminați filtrul {{mode}}',
+      trySpecificSearch: 'Încercați {{shortcuts}} pentru căutări specifice',
     },
     groups: {
       knowledgeBases: 'Baze de cunoștințe',
@@ -286,6 +288,12 @@ const translation = {
     servicesUnavailableMessage: 'Este posibil ca unele servicii de căutare să întâmpine probleme. Încercați din nou într-o clipă.',
     someServicesUnavailable: 'Unele servicii de căutare nu sunt disponibile',
     clearToSearchAll: 'Ștergeți @ pentru a căuta toate',
+    selectSearchType: 'Alegeți ce să căutați',
+    commandHint: 'Tastați @ pentru a naviga după categorie',
+    searchHint: 'Începeți să tastați pentru a căuta totul instantaneu',
+    resultCount: '{{count}} rezultat',
+    resultCount_other: '{{count}} rezultate',
+    inScope: 'în {{scope}}s',
   },
 }
 

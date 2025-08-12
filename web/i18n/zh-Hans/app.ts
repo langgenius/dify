@@ -266,6 +266,9 @@ const translation = {
     inScope: '在 {{scope}}s 中',
     clearToSearchAll: '清除 @ 以搜索全部',
     useAtForSpecific: '使用 @ 进行特定类型搜索',
+    selectSearchType: '选择搜索内容',
+    searchHint: '开始输入即可立即搜索所有内容',
+    commandHint: '输入 @ 按类别浏览',
     actions: {
       searchApplications: '搜索应用程序',
       searchApplicationsDesc: '搜索并导航到您的应用程序',

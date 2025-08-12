@@ -269,6 +269,8 @@ const translation = {
       noAppsFound: 'कोई ऐप्स नहीं मिले',
       noKnowledgeBasesFound: 'कोई ज्ञान आधार नहीं मिले',
       noWorkflowNodesFound: 'कोई कार्यप्रवाह नोड नहीं मिला',
+      tryDifferentTerm: 'एक अलग खोज शब्द आज़माएं या {{mode}} फ़िल्टर हटा दें',
+      trySpecificSearch: 'विशिष्ट खोज के लिए {{shortcuts}} आज़माएं',
     },
     groups: {
       apps: 'ऐप्स',
@@ -286,6 +288,12 @@ const translation = {
     searchPlaceholder: 'कमांड के लिए खोजें या टाइप करें @...',
     searchTemporarilyUnavailable: 'खोज अस्थायी रूप से उपलब्ध नहीं है',
     servicesUnavailableMessage: 'कुछ खोज सेवाएँ समस्याओं का सामना कर सकती हैं। थोड़ी देर बाद फिर से प्रयास करें।',
+    commandHint: '@ का उपयोग कर श्रेणी के अनुसार ब्राउज़ करें',
+    selectSearchType: 'खोजने के लिए क्या चुनें',
+    searchHint: 'सब कुछ तुरंत खोजने के लिए टाइप करना शुरू करें',
+    resultCount: '{{count}} परिणाम',
+    resultCount_other: '{{count}} परिणाम',
+    inScope: '{{scope}}s में',
   },
 }
 

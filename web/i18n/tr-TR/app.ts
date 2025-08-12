@@ -265,9 +265,11 @@ const translation = {
       noWorkflowNodesFound: 'İş akışı düğümü bulunamadı',
       noKnowledgeBasesFound: 'Bilgi bankası bulunamadı',
       noPluginsFound: 'Eklenti bulunamadı',
+      tryDifferentTerm: 'Farklı bir arama terimi deneyin veya {{mode}} filtresini kaldırın',
+      trySpecificSearch: 'Belirli aramalar için {{shortcuts}} deneyin',
     },
     groups: {
-      apps: 'Apps',
+      apps: 'Uygulamalar',
       plugins: 'Eklentiler',
       knowledgeBases: 'Bilgi Tabanları',
       workflowNodes: 'İş Akışı Düğümleri',
@@ -281,7 +283,13 @@ const translation = {
     searchTitle: 'Her şeyi arayın',
     noResults: 'Sonuç bulunamadı',
     servicesUnavailableMessage: 'Bazı arama hizmetlerinde sorunlar yaşanıyor olabilir. Kısa bir süre sonra tekrar deneyin.',
-    searching: 'Araştırıcı...',
+    searching: 'Aranıyor...',
+    selectSearchType: 'Ne arayacağınızı seçin',
+    searchHint: 'Her şeyi anında aramak için yazmaya başlayın',
+    commandHint: 'Kategoriye göre göz atmak için @ yazın',
+    resultCount: '{{count}} sonuç',
+    resultCount_other: '{{count}} sonuç',
+    inScope: '{{scope}}s içinde',
   },
 }
 
