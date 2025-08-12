@@ -51,6 +51,7 @@ def init_http_node(config: dict):
     )
     variable_pool.add(["a", "args1"], 1)
     variable_pool.add(["a", "args2"], 2)
+    variable_pool.add(["a", "args3"], {"nested": "nested_value"})
 
     node = HttpRequestNode(
         id=str(uuid.uuid4()),
@@ -436,3 +437,39 @@ def test_multi_colons_parse(setup_http_mock):
     assert 'form-data; name="Redirect"\r\n\r\nhttp://example6.com' in result.process_data.get("request", "")
     # resp = result.outputs
     # assert "http://example3.com" == resp.get("headers", {}).get("referer")
+
+
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
+def test_nested_object_variable_selector(setup_http_mock):
+    """Test variable selector functionality with nested object properties."""
+    node = init_http_node(
+        config={
+            "id": "1",
+            "data": {
+                "title": "http",
+                "desc": "",
+                "method": "get",
+                "url": "http://example.com/{{#a.args2#}}/{{#a.args3.nested#}}",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {
+                        "type": "basic",
+                        "api_key": "ak-xxx",
+                        "header": "api-key",
+                    },
+                },
+                "headers": "X-Header:{{#a.args3.nested#}}",
+                "params": "nested_param:{{#a.args3.nested#}}",
+                "body": None,
+            },
+        }
+    )
+
+    result = node._run()
+    assert result.process_data is not None
+    data = result.process_data.get("request", "")
+
+    # Verify nested object property is correctly resolved
+    assert "/2/nested_value" in data  # URL path should contain resolved nested value
+    assert "X-Header: nested_value" in data  # Header should contain nested value
+    assert "nested_param=nested_value" in data  # Param should contain nested value
