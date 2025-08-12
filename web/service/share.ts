@@ -34,6 +34,7 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -305,4 +306,22 @@ export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
 
 export const getAppAccessModeByAppCode = (appCode: string) => {
   return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
+}
+
+export const getHumanInputForm = (token: string) => {
+  return get<{
+    site: any
+    form_content: string
+    inputs: FormInputItem[]
+    user_actions: UserAction[]
+    timeout: number
+    timeout_unit: 'hour' | 'day'
+  }>(`/api/form/human_input/${token}`)
+}
+
+export const submitHumanInputForm = (token: string, data: {
+  inputs: Record<string, any>
+  action: string
+}) => {
+  return post(`/api/form/human_input/${token}`, { body: data })
 }
