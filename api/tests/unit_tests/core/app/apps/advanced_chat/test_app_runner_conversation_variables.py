@@ -82,6 +82,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.user_id = str(uuid4())
         mock_app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         mock_app_generate_entity.workflow_run_id = str(uuid4())
+        mock_app_generate_entity.task_id = str(uuid4())
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
@@ -126,6 +127,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch.object(runner, "handle_annotation_reply", return_value=False),
             patch("core.app.apps.advanced_chat.app_runner.WorkflowEntry") as mock_workflow_entry_class,
             patch("core.app.apps.advanced_chat.app_runner.GraphRuntimeState") as mock_graph_runtime_state_class,
+            patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
+            patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
             # Setup mocks
             mock_session_class.return_value.__enter__.return_value = mock_session
@@ -217,6 +220,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.user_id = str(uuid4())
         mock_app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         mock_app_generate_entity.workflow_run_id = str(uuid4())
+        mock_app_generate_entity.task_id = str(uuid4())
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
@@ -262,6 +266,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch("core.app.apps.advanced_chat.app_runner.WorkflowEntry") as mock_workflow_entry_class,
             patch("core.app.apps.advanced_chat.app_runner.GraphRuntimeState") as mock_graph_runtime_state_class,
             patch("core.app.apps.advanced_chat.app_runner.ConversationVariable") as mock_conv_var_class,
+            patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
+            patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
             # Setup mocks
             mock_session_class.return_value.__enter__.return_value = mock_session
@@ -367,6 +373,7 @@ class TestAdvancedChatAppRunnerConversationVariables:
         mock_app_generate_entity.user_id = str(uuid4())
         mock_app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
         mock_app_generate_entity.workflow_run_id = str(uuid4())
+        mock_app_generate_entity.task_id = str(uuid4())
         mock_app_generate_entity.call_depth = 0
         mock_app_generate_entity.single_iteration_run = None
         mock_app_generate_entity.single_loop_run = None
@@ -403,6 +410,8 @@ class TestAdvancedChatAppRunnerConversationVariables:
             patch.object(runner, "handle_annotation_reply", return_value=False),
             patch("core.app.apps.advanced_chat.app_runner.WorkflowEntry") as mock_workflow_entry_class,
             patch("core.app.apps.advanced_chat.app_runner.GraphRuntimeState") as mock_graph_runtime_state_class,
+            patch("core.app.apps.advanced_chat.app_runner.redis_client") as mock_redis_client,
+            patch("core.app.apps.advanced_chat.app_runner.RedisChannel") as mock_redis_channel_class,
         ):
             # Setup mocks
             mock_session_class.return_value.__enter__.return_value = mock_session
