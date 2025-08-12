@@ -23,6 +23,7 @@ export const inputVariants = cva(
 
 export type InputProps = {
   showLeftIcon?: boolean
+  leftIcon?: React.ReactNode
   showClearIcon?: boolean
   onClear?: () => void
   disabled?: boolean
@@ -37,6 +38,7 @@ const Input = ({
   disabled,
   destructive,
   showLeftIcon,
+  leftIcon,
   showClearIcon,
   onClear,
   wrapperClassName,
@@ -51,7 +53,7 @@ const Input = ({
   const { t } = useTranslation()
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && (leftIcon || <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />)}
       <input
         style={styleCss}
         className={cn(

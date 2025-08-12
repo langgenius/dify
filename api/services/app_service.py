@@ -18,7 +18,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig, Site
+from models.model import App, AppMode, AppModelConfig, Site, ApiToken
 from models.tools import ApiToolProvider
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -60,6 +60,24 @@ class AppService:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
+
+        # Filter by API-Key
+        if args.get("api_key"):
+            api_key = args["api_key"].strip()
+            if api_key:
+                # Find app IDs with matching API-Key in the database
+                api_token_query = db.select(ApiToken.app_id).where(
+                    ApiToken.tenant_id == tenant_id,
+                    ApiToken.type == "app",
+                    ApiToken.token.like(f"%{api_key}%")
+                )
+                app_ids_with_api_key = [row[0] for row in db.session.execute(api_token_query).fetchall()]
+
+                if app_ids_with_api_key:
+                    filters.append(App.id.in_(app_ids_with_api_key))
+                else:
+                    # No apps match the API-Key, return empty result
+                    return None
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),

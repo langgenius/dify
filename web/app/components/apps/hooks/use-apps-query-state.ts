@@ -5,6 +5,7 @@ type AppsQuery = {
   tagIDs?: string[]
   keywords?: string
   isCreatedByMe?: boolean
+  apiKey?: string
 }
 
 // Parse the query parameters from the URL search string.
@@ -12,12 +13,13 @@ function parseParams(params: ReadonlyURLSearchParams): AppsQuery {
   const tagIDs = params.get('tagIDs')?.split(';')
   const keywords = params.get('keywords') || undefined
   const isCreatedByMe = params.get('isCreatedByMe') === 'true'
-  return { tagIDs, keywords, isCreatedByMe }
+  const apiKey = params.get('apiKey') || undefined
+  return { tagIDs, keywords, isCreatedByMe, apiKey }
 }
 
 // Update the URL search string with the given query parameters.
 function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
-  const { tagIDs, keywords, isCreatedByMe } = query || {}
+  const { tagIDs, keywords, isCreatedByMe, apiKey } = query || {}
 
   if (tagIDs && tagIDs.length > 0)
     current.set('tagIDs', tagIDs.join(';'))
@@ -33,6 +35,11 @@ function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
     current.set('isCreatedByMe', 'true')
   else
     current.delete('isCreatedByMe')
+
+  if (apiKey)
+    current.set('apiKey', apiKey)
+  else
+    current.delete('apiKey')
 }
 
 function useAppsQueryState() {

@@ -12,6 +12,7 @@ import {
   RiDragDropLine,
   RiExchange2Line,
   RiFile4Line,
+  RiKey2Line,
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
@@ -49,6 +50,7 @@ const getKey = (
   isCreatedByMe: boolean,
   tags: string[],
   keywords: string,
+  apiKey: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
     const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords, is_created_by_me: isCreatedByMe } }
@@ -60,6 +62,9 @@ const getKey = (
 
     if (tags.length)
       params.params.tag_ids = tags
+
+    if (apiKey)
+      params.params.api_key = apiKey
 
     return params
   }
@@ -75,10 +80,11 @@ const List = () => {
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false, apiKey: queryApiKey = '' }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const [apiKey, setApiKeyState] = useState(queryApiKey)
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
@@ -88,6 +94,9 @@ const List = () => {
   }, [setQuery])
   const setTagIDs = useCallback((tagIDs: string[]) => {
     setQuery(prev => ({ ...prev, tagIDs }))
+  }, [setQuery])
+  const setApiKey = useCallback((apiKey: string) => {
+    setQuery(prev => ({ ...prev, apiKey }))
   }, [setQuery])
 
   const handleDSLFileDropped = useCallback((file: File) => {
@@ -102,7 +111,7 @@ const List = () => {
   })
 
   const { data, isLoading, error, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords, apiKey),
     fetchAppList,
     {
       revalidateFirstPage: true,
@@ -170,6 +179,14 @@ const List = () => {
     handleTagsUpdate()
   }
 
+  const { run: handleApiKeySearch } = useDebounceFn(() => {
+    setApiKey(apiKey)
+  }, { wait: 500 })
+  const handleApiKeyChange = (value: string) => {
+    setApiKeyState(value)
+    handleApiKeySearch()
+  }
+
   const handleCreatedByMeChange = useCallback(() => {
     const newValue = !isCreatedByMe
     setIsCreatedByMe(newValue)
@@ -205,6 +222,16 @@ const List = () => {
               value={keywords}
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
+            />
+            <Input
+              showLeftIcon
+              leftIcon={<RiKey2Line className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder' />}
+              showClearIcon
+              wrapperClassName='w-[200px]'
+              placeholder={t('app.apiKeySearch')}
+              value={apiKey}
+              onChange={e => handleApiKeyChange(e.target.value)}
+              onClear={() => handleApiKeyChange('')}
             />
           </div>
         </div>

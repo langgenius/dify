@@ -194,6 +194,7 @@ const translation = {
     searchAllTemplate: 'すべてのテンプレートを検索...',
   },
   showMyCreatedAppsOnly: '自分が作成したアプリ',
+  apiKeySearch: 'API-Key 検索...',
   appSelector: {
     label: 'アプリ',
     params: 'アプリパラメータ',

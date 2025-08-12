@@ -201,6 +201,7 @@ const translation = {
     noParams: 'No parameters needed',
   },
   showMyCreatedAppsOnly: 'Created by me',
+  apiKeySearch: 'Search by API-Key...',
   structOutput: {
     moreFillTip: 'Showing max 10 levels of nesting',
     required: 'Required',
