@@ -2,6 +2,7 @@ import logging
 import time
 from typing import Any
 
+from api.services.plugin.plugin_service import PluginService
 from flask_login import current_user
 from sqlalchemy.orm import Session
 
@@ -423,12 +424,17 @@ class DatasourceProviderService:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
                 return encrypter.decrypt(tenant_oauth_client_params.client_params)
 
-            # fallback to system oauth client params
-            oauth_client_params = (
-                session.query(DatasourceOauthParamConfig).filter_by(provider=provider, plugin_id=plugin_id).first()
+            provider_controller = self.provider_manager.fetch_datasource_provider(
+                tenant_id=tenant_id, provider_id=str(datasource_provider_id)
             )
-            if oauth_client_params:
-                return oauth_client_params.system_credentials
+            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
+            if is_verified:
+                # fallback to system oauth client params
+                oauth_client_params = (
+                    session.query(DatasourceOauthParamConfig).filter_by(provider=provider, plugin_id=plugin_id).first()
+                )
+                if oauth_client_params:
+                    return oauth_client_params.system_credentials
 
             raise ValueError(f"Please configure oauth client params(system/tenant) for {plugin_id}/{provider}")
 
