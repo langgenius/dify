@@ -235,10 +235,12 @@ const ChatVariableModal = ({
       return
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
-    // if (type !== ChatVarType.Object && !value)
-    //   return notify({ type: 'error', message: 'value can not be empty' })
+
     if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
+
+    if (description.length > 256)
+      return notify({ type: 'error', message: 'description can not be longer than 256 characters' })
 
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
