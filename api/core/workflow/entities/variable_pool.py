@@ -7,9 +7,8 @@ from pydantic import BaseModel, Field
 
 from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
-from core.variables.consts import MIN_SELECTORS_LENGTH, SELECTORS_LENGTH
-from core.variables.variables import VariableUnion
-from core.variables.segments import FileSegment, NoneSegment, ObjectSegment
+from core.variables.consts import SELECTORS_LENGTH
+from core.variables.segments import FileSegment, ObjectSegment
 from core.variables.variables import RAGPipelineVariableInput, VariableUnion
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
