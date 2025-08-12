@@ -18,6 +18,7 @@ import InstallFromMarketplace from '../plugins/install-plugin/install-from-marke
 import type { Plugin } from '../plugins/types'
 import { Command } from 'cmdk'
 import CommandSelector from './command-selector'
+import { RunCommandProvider } from './actions/run'
 
 type Props = {
   onHide?: () => void
@@ -33,7 +34,11 @@ const GotoAnything: FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
-
+  const handleNavSearch = useCallback((q: string) => {
+    setShow(true)
+    setSearchQuery(q)
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [])
   // Filter actions based on context
   const Actions = useMemo(() => {
     // Create a filtered copy of actions based on current page context
@@ -43,8 +48,8 @@ const GotoAnything: FC<Props> = ({
     }
     else {
       // Exclude node action on non-workflow pages
-      const { app, knowledge, plugin } = AllActions
-      return { app, knowledge, plugin }
+      const { app, knowledge, plugin, run } = AllActions
+      return { app, knowledge, plugin, run }
     }
   }, [isWorkflowPage])
 
@@ -128,6 +133,11 @@ const GotoAnything: FC<Props> = ({
     setSearchQuery('')
 
     switch (result.type) {
+      case 'command': {
+        const action = Object.values(Actions).find(a => a.key === '@run')
+        action?.action?.(result)
+        break
+      }
       case 'plugin':
         setActivePlugin(result.data)
         break
@@ -381,6 +391,7 @@ const GotoAnything: FC<Props> = ({
         </div>
 
       </Modal>
+      <RunCommandProvider onNavSearch={handleNavSearch} />
       {
         activePlugin && (
           <InstallFromMarketplace
