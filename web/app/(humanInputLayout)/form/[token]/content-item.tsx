@@ -3,6 +3,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Input from '@/app/components/base/input'
+import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
@@ -71,6 +72,12 @@ const ContentItem = ({ content, formInputFields, inputs, onInputChange }: Props)
           type="number"
           value={inputs[fieldName]}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}
+        />
+      )}
+      {formInputField.type === 'checkbox' && (
+        <FormInputBoolean
+          value={inputs[fieldName] as boolean}
+          onChange={value => onInputChange(fieldName, value)}
         />
       )}
       {formInputField.type === 'file' && (
