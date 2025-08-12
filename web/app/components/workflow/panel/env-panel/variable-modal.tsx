@@ -62,6 +62,8 @@ const VariableModal = ({
     // Original check for create new variable
     if (!env && envList.some(e => e.name === name))
       return notify({ type: 'error', message: 'name is existed' })
+    if (description.length > 256)
+      return notify({ type: 'error', message: 'description can not be longer than 256 characters' })
 
     onSave({
       id: env ? env.id : uuid4(),

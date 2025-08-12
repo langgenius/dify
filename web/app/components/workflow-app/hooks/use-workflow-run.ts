@@ -341,6 +341,7 @@ export const useWorkflowRun = () => {
 
     featuresStore?.setState({ features: mappedFeatures })
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+    workflowStore.getState().setConversationVariables(publishedWorkflow.conversation_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
