@@ -294,6 +294,8 @@ const translation = {
       knowledgeBases: 'Knowledge Bases',
       workflowNodes: 'Workflow Nodes',
     },
+    noMatchingCommands: 'No matching commands found',
+    tryDifferentSearch: 'Try a different search term',
   },
 }
 

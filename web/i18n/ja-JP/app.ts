@@ -293,6 +293,8 @@ const translation = {
       knowledgeBases: 'ナレッジベース',
       workflowNodes: 'ワークフローノード',
     },
+    noMatchingCommands: '一致するコマンドが見つかりません',
+    tryDifferentSearch: '別の検索語句をお試しください',
   },
 }
 

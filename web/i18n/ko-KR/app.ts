@@ -314,6 +314,8 @@ const translation = {
     resultCount: '{{count}} 개 결과',
     resultCount_other: '{{count}} 개 결과',
     inScope: '{{scope}}s 내에서',
+    tryDifferentSearch: '다른 검색어 사용해 보기',
+    noMatchingCommands: '일치하는 명령을 찾을 수 없습니다.',
   },
 }
 

@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} परिणाम',
     resultCount_other: '{{count}} परिणाम',
     inScope: '{{scope}}s में',
+    tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
+    noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
   },
 }
 

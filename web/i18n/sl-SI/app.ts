@@ -294,6 +294,8 @@ const translation = {
     resultCount: '{{count}} rezultat',
     resultCount_other: '{{count}} rezultatov',
     inScope: 'v {{scope}}s',
+    tryDifferentSearch: 'Poskusite uporabiti drug iskalni izraz',
+    noMatchingCommands: 'Ujemajoči se ukazi niso našli',
   },
 }
 

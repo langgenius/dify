@@ -290,6 +290,8 @@ const translation = {
     resultCount: '{{count}} ผลลัพธ์',
     resultCount_other: '{{count}} ผลลัพธ์',
     inScope: 'ใน {{scope}}s',
+    noMatchingCommands: 'ไม่พบคําสั่งที่ตรงกัน',
+    tryDifferentSearch: 'ลองใช้ข้อความค้นหาอื่น',
   },
 }
 

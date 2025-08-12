@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'Http Başlığı Anahtarı, ne olduğunu bilmiyorsanız "Authorization" olarak bırakabilirsiniz veya özel bir değere ayarlayabilirsiniz',
       types: {
         none: 'Yok',
-        api_key: 'API Anahtarı',
         apiKeyPlaceholder: 'API Anahtarı için HTTP başlık adı',
         apiValuePlaceholder: 'API Anahtarını girin',
         api_key_header: 'Başlık',
