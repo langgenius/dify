@@ -24,7 +24,6 @@ from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import FileService
 
-
 PREVIEW_WORDS_LIMIT = 3000
 
 
