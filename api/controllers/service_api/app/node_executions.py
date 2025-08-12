@@ -21,7 +21,7 @@ class NodeExecutionsApi(Resource):
         try:
             workflow_run_service = WorkflowRunService()
 
-            # 不再需要user参数，直接使用app_model.tenant_id进行查询
+            # No longer need user parameter, query directly using app_model.tenant_id
             node_executions = workflow_run_service.get_workflow_run_node_executions(
                 app_model=app_model, run_id=args["workflow_run_id"], user=None
             )
