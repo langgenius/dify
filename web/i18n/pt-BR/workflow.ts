@@ -991,6 +991,10 @@ const translation = {
       noDependencies: 'Sem dependências',
     },
     relationsTab: 'Relações',
+    noMatchingInputsFound: 'Nenhuma entrada correspondente encontrada na última execução.',
+    copyLastRunError: 'Falha ao copiar as entradas da última execução',
+    noLastRunFound: 'Nenhuma execução anterior encontrada.',
+    copyLastRun: 'Copiar Última Execução',
   },
 }
 
