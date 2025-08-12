@@ -192,6 +192,8 @@ const translation = {
       cancel: 'Отмена',
       save: 'Сохранить',
       confirm: 'Добавить и авторизовать',
+      timeout: 'Тайм-аут',
+      sseReadTimeout: 'Таймаут чтения SSE',
     },
     delete: 'Удалить MCP сервер',
     deleteConfirmTitle: 'Вы действительно хотите удалить {mcp}?',

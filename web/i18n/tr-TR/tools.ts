@@ -192,6 +192,8 @@ const translation = {
       cancel: 'İptal',
       save: 'Kaydet',
       confirm: 'Ekle ve Yetkilendir',
+      timeout: 'Zaman aşımı',
+      sseReadTimeout: 'SSE Okuma Zaman Aşımı',
     },
     delete: 'MCP Sunucusunu Kaldır',
     deleteConfirmTitle: '{mcp} kaldırılsın mı?',

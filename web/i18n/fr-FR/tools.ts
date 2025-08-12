@@ -192,6 +192,8 @@ const translation = {
       cancel: 'Annuler',
       save: 'Enregistrer',
       confirm: 'Ajouter & Authoriser',
+      sseReadTimeout: 'Délai d\'attente de lecture SSE',
+      timeout: 'Délai d\'attente',
     },
     delete: 'Supprimer le Serveur MCP',
     deleteConfirmTitle: 'Souhaitez-vous supprimer {mcp}?',

@@ -192,6 +192,8 @@ const translation = {
       cancel: 'Prekliči',
       save: 'Shrani',
       confirm: 'Dodaj in avtoriziraj',
+      timeout: 'Časovna omejitev',
+      sseReadTimeout: 'SSE časovna omejitev branja',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',
