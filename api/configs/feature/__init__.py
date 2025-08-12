@@ -304,15 +304,10 @@ class FileUploadConfig(BaseSettings):
         default=False,
     )
 
-    inner_BLOCKED_SENSITIVITY_LEVELS: str = Field(
-        description="",
-        validation_alias=AliasChoices("BLOCKED_SENSITIVITY_LEVELS"),
+    BLOCKED_SENSITIVITY_LEVELS: Optional[str] = Field(
+        description="comma separated sensitivity levels",
         default="",
     )
-
-    @computed_field
-    def BLOCKED_SENSITIVITY_LEVELS(self) -> list[str]:
-        return list(self.inner_BLOCKED_SENSITIVITY_LEVELS.split(","))
 
 
 class HttpConfig(BaseSettings):
