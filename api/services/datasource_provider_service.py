@@ -2,7 +2,7 @@ import logging
 import time
 from typing import Any
 
-from api.core.plugin.impl.oauth import OAuthHandler
+from core.plugin.impl.oauth import OAuthHandler
 from flask_login import current_user
 from sqlalchemy.orm import Session
 
