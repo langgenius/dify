@@ -18,14 +18,19 @@ class DocumentSensitivityService:
 
     @classmethod
     def check_document_sensitivity(
-        cls, extension: str, content: str, blocked_levels: Optional[list[str]] = None
+        cls,
+        extension: str,
+        content: bytes,
+        blocked_levels: Optional[list[str]] = None
     ) -> Optional[str]:
         if blocked_levels is None:
             blocked_levels = []
         blocked_levels_lower = {level.lower() for level in blocked_levels}
 
         try:
-            with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as temp_file:
+            with tempfile.NamedTemporaryFile(
+                suffix=extension, delete=False
+            ) as temp_file:
                 temp_file.write(content)
                 temp_file.flush()
                 temp_path = temp_file.name
@@ -33,10 +38,14 @@ class DocumentSensitivityService:
             try:
                 metadata = cls._extract_metadata(temp_path, extension)
 
-                detected_sensitivity = cls._check_metadata_sensitivity(metadata, blocked_levels_lower)
+                detected_sensitivity = cls._check_metadata_sensitivity(
+                    metadata, blocked_levels_lower
+                )
 
                 if detected_sensitivity:
-                    raise SensitiveDocumentError(f"sensitive info detected : {detected_sensitivity}")
+                    raise SensitiveDocumentError(
+                        f"sensitive info detected : {detected_sensitivity}"
+                    )
 
                 return detected_sensitivity
 
@@ -49,11 +58,13 @@ class DocumentSensitivityService:
             raise SensitiveDocumentError()
         except Exception as e:
             # Log the error but don't block upload for metadata extraction failure
-            logger.warning(f"Failed to extract metadata from file {e}")
+            logger.warning("Failed to extract metadata from file %s", e)
             return None
 
     @classmethod
-    def _extract_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
+    def _extract_metadata(
+        cls, file_path: str, extension: str
+    ) -> dict[str, Any]:
         """Extract metadata from document based on file type."""
         metadata: dict[str, Any] = {}
         try:
@@ -65,10 +76,12 @@ class DocumentSensitivityService:
                 metadata.update(cls._extract_excel_metadata(file_path))
             elif extension.lower() == ".pptx":
                 metadata.update(cls._extract_powerpoint_metadata(file_path))
-            elif extension.lower() in {".txt", ".md", ".markdown", ".mdx", ".csv"}:
+            elif extension.lower() in {
+                ".txt", ".md", ".markdown", ".mdx", ".csv"
+            }:
                 metadata.update(cls._extract_text_metadata(file_path, extension))
         except Exception as e:
-            logger.warning(f"Failed to extract {extension} metadata: {e}")
+            logger.warning("Failed to extract %s metadata: %s", extension, e)
 
         return metadata
 
@@ -178,9 +191,11 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _extract_text_metadata(cls, file_path: str, extension: str) -> dict[str, Any]:
+    def _extract_text_metadata(
+        cls, file_path: str, extension: str
+    ) -> dict[str, Any]:
         """Extract metadata from text-based documents."""
-        metadata = {}
+        metadata: dict[str, Any] = {}
         try:
             # Read file content with encoding detection
             content = ""
@@ -202,7 +217,7 @@ class DocumentSensitivityService:
             elif extension.lower() == ".txt":
                 metadata.update(cls._extract_txt_metadata(content))
         except Exception as e:
-            logger.warning(f"Failed to extract text metadata from {extension}: {e}")
+            logger.warning("Failed to extract text metadata from %s: %s", extension, e)
         return metadata
 
     @classmethod
@@ -215,7 +230,7 @@ class DocumentSensitivityService:
                 end_idx = content.find("\n---", 4)
                 if end_idx != -1:
                     frontmatter = content[4:end_idx]
-                    # Parse YAML-like frontmatter manually (simple key: value pairs)
+                    # Parse YAML-like frontmatter manually
                     for line in frontmatter.split("\n"):
                         line = line.strip()
                         if ":" in line and not line.startswith("#"):
@@ -317,14 +332,17 @@ class DocumentSensitivityService:
         return metadata
 
     @classmethod
-    def _check_metadata_sensitivity(cls, metadata: dict[str, Any], blocked_levels: set) -> Optional[str]:
+    def _check_metadata_sensitivity(
+        cls, metadata: dict[str, Any], blocked_levels: set
+    ) -> Optional[str]:
         """
         Check metadata for sensitivity indicators.
 
         Returns the detected sensitivity level if it matches blocked levels.
         """
         # Check direct sensitivity/classification fields
-        for field in ["sensitivity", "classification", "mip_label", "category"]:
+        fields = ["sensitivity", "classification", "mip_label", "category"]
+        for field in fields:
             if field in metadata:
                 value = str(metadata[field]).lower()
                 if any(blocked in value for blocked in blocked_levels):
@@ -341,7 +359,15 @@ class DocumentSensitivityService:
         for key, value in metadata.items():
             value_str = str(value).lower()
             # Look for Microsoft Information Protection patterns
-            if "msip_label" in key or "sensitivity" in key or "classification" in key or "confidential" in key:
+            if any(
+                pattern in key
+                for pattern in [
+                    "msip_label",
+                    "sensitivity",
+                    "classification",
+                    "confidential",
+                ]
+            ):
                 for blocked in blocked_levels:
                     if blocked in value_str:
                         return str(blocked)
