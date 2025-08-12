@@ -309,53 +309,54 @@ class DatasourceMessage(ToolInvokeMessage):
 
 
 #########################
-# Online driver file
+# Online drive file
 #########################
 
 
 class OnlineDriveFile(BaseModel):
     """
-    Online driver file
+    Online drive file
     """
 
-    key: str = Field(..., description="The key of the file")
-    size: int = Field(..., description="The size of the file")
+    id: str = Field(..., description="The file ID")
+    name: str = Field(..., description="The file name")
+    size: int = Field(..., description="The file size")
+    type: str = Field(..., description="The file type: folder or file")
 
 
 class OnlineDriveFileBucket(BaseModel):
     """
-    Online driver file bucket
+    Online drive file bucket
     """
 
-    bucket: Optional[str] = Field(None, description="The bucket of the file")
-    files: list[OnlineDriveFile] = Field(..., description="The files of the bucket")
-    is_truncated: bool = Field(False, description="Whether the bucket has more files")
+    bucket: Optional[str] = Field(None, description="The file bucket")
+    files: list[OnlineDriveFile] = Field(..., description="The file list")
+    is_truncated: bool = Field(False, description="Whether the result is truncated")
+    next_page_parameters: Optional[dict] = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesRequest(BaseModel):
     """
-    Get online driver file list request
+    Get online drive file list request
     """
 
-    prefix: Optional[str] = Field(None, description="File path prefix for filtering eg: 'docs/dify/'")
-    bucket: Optional[str] = Field(None, description="Storage bucket name")
-    max_keys: int = Field(20, description="Maximum number of files to return")
-    start_after: Optional[str] = Field(
-        None, description="Pagination token for continuing from a specific file eg: 'docs/dify/1.txt'"
-    )
+    bucket: Optional[str] = Field(None, description="The file bucket")
+    prefix: str = Field(..., description="The parent folder ID")
+    max_keys: int = Field(20, description="Page size for pagination")
+    next_page_parameters: Optional[dict] = Field(None, description="Parameters for fetching the next page")
 
 
 class OnlineDriveBrowseFilesResponse(BaseModel):
     """
-    Get online driver file list response
+    Get online drive file list response
     """
 
-    result: list[OnlineDriveFileBucket] = Field(..., description="The bucket of the files")
+    result: list[OnlineDriveFileBucket] = Field(..., description="The list of file buckets")
 
 
 class OnlineDriveDownloadFileRequest(BaseModel):
     """
-    Get online driver file
+    Get online drive file
     """
 
     id: str = Field(..., description="The id of the file")
