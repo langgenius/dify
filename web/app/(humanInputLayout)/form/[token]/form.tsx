@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from 'next/navigation'
@@ -7,30 +7,40 @@ import {
   RiCheckboxCircleFill,
   RiInformation2Fill,
 } from '@remixicon/react'
+import Loading from '@/app/components/base/loading'
 import AppIcon from '@/app/components/base/app-icon'
 import { Markdown } from '@/app/components/base/markdown'
-import Button, { } from '@/app/components/base/button'
+import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
 import cn from '@/utils/classnames'
 
-import { MOCK_DATA } from './mock'
-
-const success = true
-
-const expired = true
-
-const submitted = true
+export type FormData = {
+  site: any
+  form_content: string
+  inputs: FormInputItem[]
+  user_actions: UserAction[]
+  timeout: number
+  timeout_unit: 'hour' | 'day'
+}
 
 const FormContent = () => {
   const { t } = useTranslation()
 
-  const { token } = useParams()
+  const { token } = useParams<{ token: string }>()
   useDocumentTitle('')
 
-  const { site } = MOCK_DATA.site
-  const { form_content, user_actions, timeout, timeout_unit } = MOCK_DATA
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState<FormData>()
+  const [inputs, setInputs] = useState({})
+  const [success, setSuccess] = useState(false)
+  const [expired, setExpired] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const site = formData?.site.site
 
   const getButtonStyle = (style: UserActionButtonType) => {
     if (style === UserActionButtonType.Primary)
@@ -41,6 +51,43 @@ const FormContent = () => {
       return 'secondary-accent'
     if (style === UserActionButtonType.Ghost)
       return 'ghost'
+  }
+
+  const getForm = async (token: string) => {
+    try {
+      const data = await getHumanInputForm(token)
+      setFormData(data)
+      setIsLoading(false)
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }
+
+  const submit = async (actionID: string) => {
+    setIsSubmitting(true)
+    try {
+      await submitHumanInputForm(token, { inputs, action: actionID })
+      setSuccess(true)
+    }
+    catch (error) {
+      console.error(error)
+      setExpired(true)
+      setSubmitted(true)
+    }
+    finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  useEffect(() => {
+    getForm(token)
+  }, [token])
+
+  if (isLoading || !formData) {
+    return (
+      <Loading type='app' />
+    )
   }
 
   if (success) {
@@ -138,16 +185,21 @@ const FormContent = () => {
       </div>
       <div className='h-0 w-full grow overflow-y-auto'>
         <div className='border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-sm'>
-          <Markdown content={form_content || ''} />
+          <Markdown content={formData.form_content || ''} />
           <div className='flex flex-wrap gap-1 py-1'>
-            {user_actions.map((action: any) => (
-              <Button key={action.id} variant={getButtonStyle(action.button_style) as any}>
+            {formData.user_actions.map((action: any) => (
+              <Button
+                key={action.id}
+                disabled={isSubmitting}
+                variant={getButtonStyle(action.button_style) as any}
+                onClick={() => submit(action.id)}
+              >
                 {action.title}
               </Button>
             ))}
           </div>
           <div className='system-xs-regular mt-1 text-text-tertiary'>
-            {timeout_unit === 'day' ? t('share.humanInput.timeoutDay', { count: timeout }) : t('share.humanInput.timeoutHour', { count: timeout })}
+            {formData.timeout_unit === 'day' ? t('share.humanInput.timeoutDay', { count: formData.timeout }) : t('share.humanInput.timeoutHour', { count: formData.timeout })}
           </div>
         </div>
         <div className='flex flex-row-reverse px-2 py-3'>
