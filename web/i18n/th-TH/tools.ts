@@ -82,7 +82,6 @@ const translation = {
       keyTooltip: 'Http Header Key คุณสามารถปล่อยให้เป็น "การอนุญาต" ได้หากคุณไม่รู้ว่ามันคืออะไรหรือตั้งค่าเป็นค่าที่กําหนดเอง',
       types: {
         none: 'ไม่มีใคร',
-        api_key: 'คีย์ API',
         apiKeyPlaceholder: 'ชื่อส่วนหัว HTTP สําหรับคีย์ API',
         apiValuePlaceholder: 'ป้อนคีย์ API',
         api_key_header: 'หัวเรื่อง',

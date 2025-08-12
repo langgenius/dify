@@ -86,7 +86,6 @@ const translation = {
         'Http Header Key, Puoi lasciarlo come `Authorization` se non sai cos\'è o impostarlo su un valore personalizzato',
       types: {
         none: 'Nessuno',
-        api_key: 'API Key',
         apiKeyPlaceholder: 'Nome dell\'intestazione HTTP per API Key',
         apiValuePlaceholder: 'Inserisci API Key',
         api_key_query: 'Parametro di query',

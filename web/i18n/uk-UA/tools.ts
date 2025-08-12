@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Ключ HTTP-заголовка. Якщо ви не знаєте, залиште його як "Authorization" або встановіть власне значення',
       types: {
         none: 'Відсутня',
-        api_key: 'API-ключ',
         apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
         apiValuePlaceholder: 'Введіть API-ключ',
         api_key_header: 'Заголовок',

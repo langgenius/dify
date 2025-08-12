@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Clé de l\'en-tête HTTP. Vous pouvez la laisser telle quelle avec "Autorisation" si vous n\'avez aucune idée de ce que c\'est, ou la définir sur une valeur personnalisée.',
       types: {
         none: 'Aucun',
-        api_key: 'Clé API',
         apiKeyPlaceholder: 'Nom de l\'en-tête HTTP pour la clé API',
         apiValuePlaceholder: 'Entrez la clé API',
         api_key_query: 'Paramètre de requête',
