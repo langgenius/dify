@@ -152,7 +152,7 @@ class DebugLoggingLayer(Layer):
         # Node-level events
         elif isinstance(event, NodeRunStartedEvent):
             self.node_count += 1
-            self.logger.info("▶️ Node started: %s (type: %s)", event.node_id, event.node_type)
+            self.logger.info("▶️ Node started: %s - \"%s\" (type: %s)", event.node_id, event.node_title, event.node_type)
 
             if self.include_inputs and event.node_run_result.inputs:
                 self.logger.debug("  Inputs: %s", self._format_dict(event.node_run_result.inputs))
