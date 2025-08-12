@@ -81,7 +81,7 @@ def test_tool_variable_invoke():
 
     ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
 
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], "1+1")
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
     # execute node
     result = node._run()
