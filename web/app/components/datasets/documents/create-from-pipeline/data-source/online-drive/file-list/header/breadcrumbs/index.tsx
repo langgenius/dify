@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDataSourceStore } from '../../../../store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
 import BreadcrumbItem from './item'
 import Dropdown from './dropdown'
+import Drive from './drive'
 
 type BreadcrumbsProps = {
   prefix: string[]
@@ -22,8 +23,9 @@ const Breadcrumbs = ({
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
   const dataSourceStore = useDataSourceStore()
+  const hasBucket = useDataSourceStoreWithSelector(s => s.hasBucket)
   const showSearchResult = !!keywords && searchResultsLength > 0
-  const isRoot = prefix.length === 0 && bucket === ''
+  const showBucketListTitle = prefix.length === 0 && hasBucket && bucket === ''
 
   const displayBreadcrumbNum = useMemo(() => {
     const num = isInPipeline ? 2 : 3
@@ -57,6 +59,13 @@ const Breadcrumbs = ({
     setPrefix([])
   }, [dataSourceStore])
 
+  const handleBackToRoot = useCallback(() => {
+    const { setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
+    setFileList([])
+    setSelectedFileIds([])
+    setPrefix([])
+  }, [dataSourceStore])
+
   const handleClickBreadcrumb = useCallback((index: number) => {
     const { prefix, setFileList, setSelectedFileIds, setPrefix } = dataSourceStore.getState()
     const newPrefix = prefix.slice(0, index + 1)
@@ -75,14 +84,14 @@ const Breadcrumbs = ({
           })}
         </div>
       )}
-      {!showSearchResult && isRoot && (
+      {!showSearchResult && showBucketListTitle && (
         <div className='system-sm-medium text-test-secondary px-[5px]'>
           {t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
         </div>
       )}
-      {!showSearchResult && !isRoot && (
+      {!showSearchResult && !showBucketListTitle && (
         <div className='flex w-full items-center gap-x-0.5 overflow-hidden'>
-          {bucket && (
+          {hasBucket && bucket && (
             <Bucket
               bucketName={bucket}
               handleBackToBucketList={handleBackToBucketList}
@@ -90,6 +99,12 @@ const Breadcrumbs = ({
               isActive={prefix.length === 0}
               disabled={prefix.length === 0}
               showSeparator={prefix.length > 0}
+            />
+          )}
+          {!hasBucket && (
+            <Drive
+              prefix={prefix}
+              handleBackToRoot={handleBackToRoot}
             />
           )}
           {!breadcrumbs.needCollapsed && (

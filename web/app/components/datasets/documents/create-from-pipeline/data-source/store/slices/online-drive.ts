@@ -17,6 +17,8 @@ export type OnlineDriveSliceShape = {
   setNextPageParameters: (nextPageParameters: Record<string, any>) => void
   isTruncated: React.RefObject<boolean>
   previewOnlineDriveFileRef: React.RefObject<OnlineDriveFile | undefined>
+  hasBucket: boolean
+  setHasBucket: (hasBucket: boolean) => void
 }
 
 export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set, get) => {
@@ -53,5 +55,9 @@ export const createOnlineDriveSlice: StateCreator<OnlineDriveSliceShape> = (set,
     })),
     isTruncated: { current: false },
     previewOnlineDriveFileRef: { current: undefined },
+    hasBucket: false,
+    setHasBucket: (hasBucket: boolean) => set(() => ({
+      hasBucket,
+    })),
   })
 }

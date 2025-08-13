@@ -80,15 +80,17 @@ const OnlineDrive = ({
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
-          const { setFileList, isTruncated, currentNextPageParametersRef } = dataSourceStore.getState()
+          const { setFileList, isTruncated, currentNextPageParametersRef, setHasBucket } = dataSourceStore.getState()
           const {
             fileList: newFileList,
             isTruncated: newIsTruncated,
             nextPageParameters: newNextPageParameters,
+            hasBucket: newHasBucket,
           } = convertOnlineDriveData(documentsData.data, prefix, bucket)
           setFileList([...fileList, ...newFileList])
           isTruncated.current = newIsTruncated
           currentNextPageParametersRef.current = newNextPageParameters
+          setHasBucket(newHasBucket)
           setIsLoading(false)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {

@@ -122,6 +122,7 @@ const translation = {
     notConnectedTip: '同步 {{name}} 内容前, 须先绑定 {{name}}。',
     breadcrumbs: {
       allBuckets: '所有云存储桶',
+      allFiles: '所有文件',
       searchResult: '在 "{{folderName}}" 文件夹中找到 {{searchResultsLength}} 个项目',
       searchPlaceholder: '搜索文件...',
     },

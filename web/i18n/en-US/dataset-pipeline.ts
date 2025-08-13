@@ -122,6 +122,7 @@ const translation = {
     notConnectedTip: 'To sync with {{name}}, connection to {{name}} must be established first.',
     breadcrumbs: {
       allBuckets: 'All Cloud Storage Buckets',
+      allFiles: 'All Files',
       searchResult: 'Find {{searchResultsLength}} items in "{{folderName}}" folder',
       searchPlaceholder: 'Search files...',
     },
