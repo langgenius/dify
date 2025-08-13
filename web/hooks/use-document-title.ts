@@ -16,7 +16,7 @@ export default function useDocumentTitle(title: string) {
     }
     else {
       titleStr = `${prefix}Dify`
-      favicon = '${basePath}/favicon.ico'
+      favicon = `${basePath}/favicon.ico`
     }
   }
   useTitle(titleStr)
