@@ -20,7 +20,6 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       return true
     const filterLower = searchFilter.toLowerCase()
     return action.shortcut.toLowerCase().includes(filterLower)
-      || action.key.toLowerCase().includes(filterLower)
   })
 
   useEffect(() => {
