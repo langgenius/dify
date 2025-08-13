@@ -115,10 +115,11 @@ class PluginToolManager(BasePluginClient):
 
             # Initialize buffer for this file if it doesn't exist
             if chunk_id not in chunks:
-                if total_length > dify_config.TOOL_FILE_MAX_SIZE:
-                    raise ValueError(
-                        f"File is too large which reached the limit of {dify_config.TOOL_FILE_MAX_SIZE} bytes"
-                    )
+                validate_size(
+                    actual_size=total_length,
+                    hint="The tool file",
+                    max_size=dify_config.TOOL_FILE_MAX_SIZE,
+                )
                 chunks[chunk_id] = FileChunk(total_length=total_length)
 
             # Append the blob data to the buffer
