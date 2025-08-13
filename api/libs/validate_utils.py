@@ -6,7 +6,7 @@ def bytes_to_str(bytes_size: float) -> str:
     Convert bytes to a human-readable string format.
     If the size is less than 1MB, it returns the size in KB.
     """
-    if bytes_size <=1024 :
+    if bytes_size <= 1024:
         return f"{bytes_size} bytes"
     if bytes_size < 1024 * 1024:
         return f"{bytes_size / 1024:.2f} KB"
