@@ -10,20 +10,17 @@ from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields, feedback_fields
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
-from models.model import App, AppMode, EndUser, Message
+from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.errors.conversation import ConversationNotExistsError
 from services.message_service import MessageService
-from services.conversation_service import ConversationService
 
 
 class MessageListApi(Resource):

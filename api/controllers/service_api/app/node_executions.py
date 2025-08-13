@@ -2,7 +2,7 @@ from flask_restful import Resource, reqparse
 
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
-from controllers.service_api.wraps import validate_app_token, FetchUserArg, WhereisUserArg
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from libs.helper import uuid_value
 from models.model import App, EndUser
 from services.workflow_run_service import WorkflowRunService
