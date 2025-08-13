@@ -137,14 +137,14 @@ class TestBlobChunkProcessing(unittest.TestCase):
         chunk1 = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
             message=ToolInvokeMessage.BlobChunkMessage(
-                id="file1", sequence=0, total_length=2000, blob=b"x" * 600, end=False
+                id="file1", sequence=0, total_length=2048, blob=b"x" * 600, end=False
             ),
         )
 
         chunk2 = ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
             message=ToolInvokeMessage.BlobChunkMessage(
-                id="file1", sequence=1, total_length=2000, blob=b"x" * 600, end=False
+                id="file1", sequence=1, total_length=2048, blob=b"x" * 600, end=False
             ),
         )
 
@@ -156,8 +156,8 @@ class TestBlobChunkProcessing(unittest.TestCase):
         with pytest.raises(ValueError) as exc_info:
             list(self.manager._process_blob_chunks(response_generator()))
 
-        assert "The tool file size should be less than" in str(exc_info.value)
-        assert "1.00 KB" in str(exc_info.value)
+        assert "The tool file size should be less than 1.00 KB" in str(exc_info.value)
+        assert "got 2.00 KB instead" in str(exc_info.value)
 
     def test_multiple_files_concurrent_processing(self):
         """Test processing chunks from multiple files concurrently."""
