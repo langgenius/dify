@@ -34,7 +34,7 @@ const DebugWithSingleModel = (
     ref,
     checkCanSend,
   }: DebugWithSingleModelProps & {
-    ref: React.RefObject<DebugWithSingleModelRefType>;
+    ref: React.RefObject<DebugWithSingleModelRefType | null>;
   },
 ) => {
   const { userProfile } = useAppContext()
