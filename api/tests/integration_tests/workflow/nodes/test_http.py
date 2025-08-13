@@ -164,16 +164,51 @@ def test_custom_authorization_header(setup_http_mock):
     assert "X-Auth:" in data
 
 
-@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_does_not_set_header():
     """Test: In custom authentication mode, when the api_key is empty, no header should be set."""
-    auth_config = {"type": "custom", "header": "X-Custom-Auth", "api_key": ""}
-
-    headers = {}
-    apply_auth(headers, auth_config)
-
+    from core.workflow.nodes.http_request.executor import Executor
+    from core.workflow.nodes.http_request.entities import HttpRequestNodeAuthorization, HttpRequestNodeData, HttpRequestNodeTimeout
+    from core.workflow.entities.variable_pool import VariablePool
+    from core.workflow.system_variable import SystemVariable
+    
+    # Create variable pool
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(user_id="test", files=[]),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    
+    # Create node data with custom auth and empty api_key
+    node_data = HttpRequestNodeData(
+        url="http://example.com",
+        method="get",
+        authorization=HttpRequestNodeAuthorization(
+            type="api-key",
+            config=HttpRequestNodeAuthorization.Config(
+                type="custom",
+                api_key="",  # Empty api_key
+                header="X-Custom-Auth"
+            )
+        ),
+        headers="",
+        params="",
+        body=None,
+        ssl_verify=True
+    )
+    
+    # Create executor
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
+        variable_pool=variable_pool
+    )
+    
+    # Get assembled headers
+    headers = executor._assembling_headers()
+    
+    # When api_key is empty, the custom header should NOT be set
     assert "X-Custom-Auth" not in headers
-    assert len(headers) == 0
 
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
@@ -370,6 +405,7 @@ def test_json(setup_http_mock):
     assert "X-Header: 123" in data
 
 
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_x_www_form_urlencoded(setup_http_mock):
     node = init_http_node(
         config={
@@ -416,6 +452,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
     assert "X-Header: 123" in data
 
 
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_form_data(setup_http_mock):
     node = init_http_node(
         config={
@@ -465,6 +502,7 @@ def test_form_data(setup_http_mock):
     assert "X-Header: 123" in data
 
 
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_none_data(setup_http_mock):
     node = init_http_node(
         config={
@@ -497,6 +535,7 @@ def test_none_data(setup_http_mock):
     assert "123123123" not in data
 
 
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_mock_404(setup_http_mock):
     node = init_http_node(
         config={
@@ -525,6 +564,7 @@ def test_mock_404(setup_http_mock):
     assert "Not Found" in resp.get("body", "")
 
 
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_multi_colons_parse(setup_http_mock):
     node = init_http_node(
         config={

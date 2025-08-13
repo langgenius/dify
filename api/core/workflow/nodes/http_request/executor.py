@@ -276,8 +276,8 @@ class Executor:
                     encoded_credentials = credentials
                 headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
-                if authorization.config.header:
-                    headers[authorization.config.header] = authorization.config.api_key or ""
+                if authorization.config.header and authorization.config.api_key:
+                    headers[authorization.config.header] = authorization.config.api_key
 
         # Handle Content-Type for multipart/form-data requests
         # Fix for issue #22880: Missing boundary when using multipart/form-data
