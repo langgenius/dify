@@ -1,231 +1,23 @@
 """
 Table-driven test framework for GraphEngine workflows.
 
-This framework provides table-driven testing with parallel execution support
-for testing workflows through the GraphEngine.
+This file contains property-based tests and specific workflow tests.
+The core test framework is in test_table_runner.py.
 """
 
 import time
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Optional
 
-import yaml
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphRuntimeState, VariablePool
-from core.workflow.entities.graph_init_params import GraphInitParams
-from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_events import GraphRunStartedEvent, GraphRunSucceededEvent
-from core.workflow.nodes.node_factory import DifyNodeFactory
-from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
-
-@dataclass
-class WorkflowTestCase:
-    """Represents a single test case for table testing."""
-
-    fixture_path: str
-    inputs: dict[str, Any]
-    expected_outputs: dict[str, Any]
-    description: str = ""
-    timeout: float = 30.0
-
-
-@dataclass
-class WorkflowTestResult:
-    """Result of executing a single test case."""
-
-    test_case: WorkflowTestCase
-    success: bool
-    error: Optional[Exception] = None
-    actual_outputs: Optional[dict[str, Any]] = None
-    execution_time: float = 0.0
-
-
-class WorkflowRunner:
-    """Helper class for loading and executing workflow fixtures."""
-
-    def __init__(self, fixtures_dir: Optional[Path] = None):
-        """Initialize the workflow runner."""
-        if fixtures_dir is None:
-            # Default to the fixtures directory relative to this test file
-            test_dir = Path(__file__).parent
-            fixtures_dir = test_dir / "fixtures"
-
-        self.fixtures_dir = Path(fixtures_dir)
-        if not self.fixtures_dir.exists():
-            raise ValueError(f"Fixtures directory does not exist: {self.fixtures_dir}")
-
-    def load_fixture(self, fixture_name: str) -> dict[str, Any]:
-        """Load a YAML fixture file."""
-        if not fixture_name.endswith(".yml") and not fixture_name.endswith(".yaml"):
-            fixture_name = f"{fixture_name}.yml"
-
-        fixture_path = self.fixtures_dir / fixture_name
-        if not fixture_path.exists():
-            raise FileNotFoundError(f"Fixture file not found: {fixture_path}")
-
-        with open(fixture_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
-
-    def create_graph_from_fixture(
-        self, fixture_data: dict[str, Any], custom_inputs: Optional[dict[str, Any]] = None
-    ) -> tuple[Graph, GraphRuntimeState]:
-        """Create a Graph instance from fixture data."""
-        # Extract the workflow graph configuration
-        workflow_config = fixture_data.get("workflow", {})
-        graph_config = workflow_config.get("graph", {})
-
-        if not graph_config:
-            raise ValueError("Fixture missing workflow.graph configuration")
-
-        # Extract workflow type (default to WORKFLOW)
-        app_config = fixture_data.get("app", {})
-        mode = app_config.get("mode", "workflow")
-
-        # Create graph initialization parameters
-        graph_init_params = GraphInitParams(
-            tenant_id="test_tenant",
-            app_id="test_app",
-            workflow_id="test_workflow",
-            graph_config=graph_config,
-            user_id="test_user",
-            user_from="account",
-            invoke_from="web-app",
-            call_depth=0,
-        )
-
-        # Create variable pool with system variables and custom inputs
-        system_variables = SystemVariable(
-            user_id=graph_init_params.user_id,
-            app_id=graph_init_params.app_id,
-            workflow_id=graph_init_params.workflow_id,
-            files=[],
-        )
-        user_inputs = custom_inputs if custom_inputs is not None else {}
-        variable_pool = VariablePool(
-            system_variables=system_variables,
-            user_inputs=user_inputs,
-        )
-
-        # Create graph runtime state
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-        # Create node factory
-        node_factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
-
-        # Create the graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
-
-        # Return both the graph and the graph runtime state
-        return graph, graph_runtime_state
-
-
-class TableTestRunner:
-    """
-    Table-based test runner for executing multiple workflow test cases.
-
-    Supports parallel execution of test cases defined in a table format.
-    """
-
-    def __init__(self, fixtures_dir: Optional[Path] = None, max_workers: int = 4):
-        """Initialize the table test runner."""
-        self.workflow_runner = WorkflowRunner(fixtures_dir)
-        self.max_workers = max_workers
-
-    def run_test_case(self, test_case: WorkflowTestCase) -> WorkflowTestResult:
-        """Execute a single test case."""
-        start_time = time.perf_counter()
-
-        try:
-            # Load fixture data
-            fixture_data = self.workflow_runner.load_fixture(test_case.fixture_path)
-
-            # Create graph from fixture
-            graph, graph_runtime_state = self.workflow_runner.create_graph_from_fixture(fixture_data, test_case.inputs)
-
-            # Get graph config for engine
-            workflow_config = fixture_data.get("workflow", {})
-            graph_config = workflow_config.get("graph", {})
-
-            # Create and run the engine
-            engine = GraphEngine(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_id="test_workflow",
-                user_id="test_user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.WEB_APP,
-                call_depth=0,
-                graph=graph,
-                graph_config=graph_config,
-                graph_runtime_state=graph_runtime_state,
-                max_execution_steps=500,
-                max_execution_time=int(test_case.timeout),
-                command_channel=InMemoryChannel(),
-            )
-
-            # Execute and collect events
-            events = []
-            for event in engine.run():
-                events.append(event)
-
-            # Check execution success
-            has_start = any(isinstance(e, GraphRunStartedEvent) for e in events)
-            success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
-            has_success = len(success_events) > 0
-
-            if not (has_start and has_success):
-                return WorkflowTestResult(
-                    test_case=test_case,
-                    success=False,
-                    error=Exception("Workflow did not complete successfully"),
-                    execution_time=time.perf_counter() - start_time,
-                )
-
-            # Get actual outputs
-            success_event = success_events[-1]
-            actual_outputs = success_event.outputs or {}
-
-            # Validate outputs
-            success = self._validate_outputs(test_case.expected_outputs, actual_outputs)
-
-            return WorkflowTestResult(
-                test_case=test_case,
-                success=success,
-                actual_outputs=actual_outputs,
-                execution_time=time.perf_counter() - start_time,
-            )
-
-        except Exception as e:
-            return WorkflowTestResult(
-                test_case=test_case,
-                success=False,
-                error=e,
-                execution_time=time.perf_counter() - start_time,
-            )
-
-    def _validate_outputs(self, expected_outputs: dict[str, Any], actual_outputs: dict[str, Any]) -> bool:
-        """Validate actual outputs against expected outputs."""
-        for key, expected_value in expected_outputs.items():
-            if key not in actual_outputs:
-                return False
-
-            actual_value = actual_outputs[key]
-            if actual_value != expected_value:
-                return False
-
-        return True
-
-    def run_table_tests(self, test_cases: list[WorkflowTestCase]) -> list[WorkflowTestResult]:
-        """Run multiple test cases as a table test."""
-        return [self.run_test_case(test_case) for test_case in test_cases]
+# Import the test framework from the new module
+from .test_table_runner import TableTestRunner, WorkflowRunner, WorkflowTestCase
 
 
 # Property-based fuzzing tests for the start-end workflow
@@ -241,7 +33,7 @@ def test_echo_workflow_property_basic_strings(query_input):
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="echo",
+        fixture_path="simple_passthrough_workflow",
         inputs={"query": query_input},
         expected_outputs={"query": query_input},
         description=f"Fuzzing test with input: {repr(query_input)[:50]}...",
@@ -271,7 +63,7 @@ def test_echo_workflow_property_bounded_strings(query_input):
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="echo",
+        fixture_path="simple_passthrough_workflow",
         inputs={"query": query_input},
         expected_outputs={"query": query_input},
         description=f"Bounded fuzzing test (len={len(query_input)})",
@@ -313,7 +105,7 @@ def test_echo_workflow_property_diverse_inputs(query_input):
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="echo",
+        fixture_path="simple_passthrough_workflow",
         inputs={"query": query_input},
         expected_outputs={"query": query_input},
         description=f"Diverse input fuzzing: {type(query_input).__name__}",
@@ -339,7 +131,7 @@ def test_echo_workflow_property_large_inputs(query_input):
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="echo",
+        fixture_path="simple_passthrough_workflow",
         inputs={"query": query_input},
         expected_outputs={"query": query_input},
         description=f"Large input test (size: {len(query_input)} chars)",
@@ -370,7 +162,7 @@ def test_echo_workflow_robustness_smoke_test():
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="echo",
+        fixture_path="simple_passthrough_workflow",
         inputs={"query": "smoke test"},
         expected_outputs={"query": "smoke test"},
         description="Smoke test for basic functionality",
@@ -393,34 +185,34 @@ def test_if_else_workflow_true_branch():
 
     test_cases = [
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hello world"},
             expected_outputs={"true": "hello world"},
             description="Basic hello case",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "say hello to everyone"},
             expected_outputs={"true": "say hello to everyone"},
             description="Hello in middle of sentence",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hello"},
             expected_outputs={"true": "hello"},
             description="Just hello",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hellohello"},
             expected_outputs={"true": "hellohello"},
             description="Multiple hello occurrences",
         ),
     ]
 
-    results = runner.run_table_tests(test_cases)
+    suite_result = runner.run_table_tests(test_cases)
 
-    for result in results:
+    for result in suite_result.results:
         assert result.success, f"Test case '{result.test_case.description}' failed: {result.error}"
         # Check that outputs contain ONLY the expected key (true branch)
         assert result.actual_outputs == result.test_case.expected_outputs, (
@@ -439,34 +231,34 @@ def test_if_else_workflow_false_branch():
 
     test_cases = [
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "goodbye world"},
             expected_outputs={"false": "goodbye world"},
             description="Basic goodbye case",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hi there"},
             expected_outputs={"false": "hi there"},
             description="Simple greeting without hello",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": ""},
             expected_outputs={"false": ""},
             description="Empty string",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "test message"},
             expected_outputs={"false": "test message"},
             description="Regular message",
         ),
     ]
 
-    results = runner.run_table_tests(test_cases)
+    suite_result = runner.run_table_tests(test_cases)
 
-    for result in results:
+    for result in suite_result.results:
         assert result.success, f"Test case '{result.test_case.description}' failed: {result.error}"
         # Check that outputs contain ONLY the expected key (false branch)
         assert result.actual_outputs == result.test_case.expected_outputs, (
@@ -485,52 +277,52 @@ def test_if_else_workflow_edge_cases():
 
     test_cases = [
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "Hello world"},
             expected_outputs={"false": "Hello world"},
             description="Capitalized Hello (case sensitive test)",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "HELLO"},
             expected_outputs={"false": "HELLO"},
             description="All caps HELLO (case sensitive test)",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "helllo"},
             expected_outputs={"false": "helllo"},
             description="Typo: helllo (with extra l)",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "helo"},
             expected_outputs={"false": "helo"},
             description="Typo: helo (missing l)",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hello123"},
             expected_outputs={"true": "hello123"},
             description="Hello with numbers",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": "hello!@#"},
             expected_outputs={"true": "hello!@#"},
             description="Hello with special characters",
         ),
         WorkflowTestCase(
-            fixture_path="if-else",
+            fixture_path="conditional_hello_branching_workflow",
             inputs={"query": " hello "},
             expected_outputs={"true": " hello "},
             description="Hello with surrounding spaces",
         ),
     ]
 
-    results = runner.run_table_tests(test_cases)
+    suite_result = runner.run_table_tests(test_cases)
 
-    for result in results:
+    for result in suite_result.results:
         assert result.success, f"Test case '{result.test_case.description}' failed: {result.error}"
         # Check that outputs contain ONLY the expected key
         assert result.actual_outputs == result.test_case.expected_outputs, (
@@ -557,7 +349,7 @@ def test_if_else_workflow_property_basic_strings(query_input):
     expected_outputs = {expected_key: query_input}
 
     test_case = WorkflowTestCase(
-        fixture_path="if-else",
+        fixture_path="conditional_hello_branching_workflow",
         inputs={"query": query_input},
         expected_outputs=expected_outputs,
         description=f"Property test with input: {repr(query_input)[:50]}...",
@@ -590,7 +382,7 @@ def test_if_else_workflow_property_bounded_strings(query_input):
     expected_outputs = {expected_key: query_input}
 
     test_case = WorkflowTestCase(
-        fixture_path="if-else",
+        fixture_path="conditional_hello_branching_workflow",
         inputs={"query": query_input},
         expected_outputs=expected_outputs,
         description=f"Bounded if-else test (len={len(query_input)}, contains_hello={contains_hello})",
@@ -637,7 +429,7 @@ def test_if_else_workflow_property_diverse_inputs(query_input):
     expected_outputs = {expected_key: query_input}
 
     test_case = WorkflowTestCase(
-        fixture_path="if-else",
+        fixture_path="conditional_hello_branching_workflow",
         inputs={"query": query_input},
         expected_outputs=expected_outputs,
         description=f"Diverse if-else test: {type(query_input).__name__} (contains_hello={contains_hello})",
@@ -663,7 +455,7 @@ def test_layer_system_basic():
     runner = WorkflowRunner()
 
     # Load a simple echo workflow
-    fixture_data = runner.load_fixture("echo")
+    fixture_data = runner.load_fixture("simple_passthrough_workflow")
     graph, graph_runtime_state = runner.create_graph_from_fixture(
         fixture_data, custom_inputs={"query": "test layer system"}
     )
@@ -730,7 +522,7 @@ def test_layer_chaining():
     runner = WorkflowRunner()
 
     # Load workflow
-    fixture_data = runner.load_fixture("echo")
+    fixture_data = runner.load_fixture("simple_passthrough_workflow")
     graph, graph_runtime_state = runner.create_graph_from_fixture(
         fixture_data, custom_inputs={"query": "test chaining"}
     )
@@ -788,7 +580,7 @@ def test_layer_error_handling():
     runner = WorkflowRunner()
 
     # Load workflow
-    fixture_data = runner.load_fixture("echo")
+    fixture_data = runner.load_fixture("simple_passthrough_workflow")
     graph, graph_runtime_state = runner.create_graph_from_fixture(
         fixture_data, custom_inputs={"query": "test error handling"}
     )
@@ -820,3 +612,147 @@ def test_layer_error_handling():
     assert len(events) > 0
     assert isinstance(events[-1], GraphRunSucceededEvent)
     assert events[-1].outputs == {"query": "test error handling"}
+
+
+def test_event_sequence_validation():
+    """Test the new event sequence validation feature."""
+    from core.workflow.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
+
+    runner = TableTestRunner()
+
+    # Test 1: Successful event sequence validation
+    test_case_success = WorkflowTestCase(
+        fixture_path="simple_passthrough_workflow",
+        inputs={"query": "test event sequence"},
+        expected_outputs={"query": "test event sequence"},
+        expected_event_sequence=[
+            GraphRunStartedEvent,
+            NodeRunStartedEvent,  # Start node begins
+            NodeRunStreamChunkEvent,  # Start node streaming
+            NodeRunSucceededEvent,  # Start node completes
+            NodeRunStartedEvent,  # End node begins
+            NodeRunSucceededEvent,  # End node completes
+            GraphRunSucceededEvent,  # Graph completes
+        ],
+        description="Test with correct event sequence",
+    )
+
+    result = runner.run_test_case(test_case_success)
+    assert result.success, f"Test should pass with correct event sequence. Error: {result.event_mismatch_details}"
+    assert result.event_sequence_match is True
+    assert result.event_mismatch_details is None
+
+    # Test 2: Failed event sequence validation - wrong order
+    test_case_wrong_order = WorkflowTestCase(
+        fixture_path="simple_passthrough_workflow",
+        inputs={"query": "test wrong order"},
+        expected_outputs={"query": "test wrong order"},
+        expected_event_sequence=[
+            GraphRunStartedEvent,
+            NodeRunSucceededEvent,  # Wrong: expecting success before start
+            NodeRunStreamChunkEvent,
+            NodeRunStartedEvent,
+            NodeRunStartedEvent,
+            NodeRunSucceededEvent,
+            GraphRunSucceededEvent,
+        ],
+        description="Test with incorrect event order",
+    )
+
+    result = runner.run_test_case(test_case_wrong_order)
+    assert not result.success, "Test should fail with incorrect event sequence"
+    assert result.event_sequence_match is False
+    assert result.event_mismatch_details is not None
+    assert "Event mismatch at position" in result.event_mismatch_details
+
+    # Test 3: Failed event sequence validation - wrong count
+    test_case_wrong_count = WorkflowTestCase(
+        fixture_path="simple_passthrough_workflow",
+        inputs={"query": "test wrong count"},
+        expected_outputs={"query": "test wrong count"},
+        expected_event_sequence=[
+            GraphRunStartedEvent,
+            NodeRunStartedEvent,
+            NodeRunSucceededEvent,
+            # Missing the second node's events
+            GraphRunSucceededEvent,
+        ],
+        description="Test with incorrect event count",
+    )
+
+    result = runner.run_test_case(test_case_wrong_count)
+    assert not result.success, "Test should fail with incorrect event count"
+    assert result.event_sequence_match is False
+    assert result.event_mismatch_details is not None
+    assert "Event count mismatch" in result.event_mismatch_details
+
+    # Test 4: No event sequence validation (backward compatibility)
+    test_case_no_validation = WorkflowTestCase(
+        fixture_path="simple_passthrough_workflow",
+        inputs={"query": "test no validation"},
+        expected_outputs={"query": "test no validation"},
+        # No expected_event_sequence provided
+        description="Test without event sequence validation",
+    )
+
+    result = runner.run_test_case(test_case_no_validation)
+    assert result.success, "Test should pass when no event sequence is provided"
+    assert result.event_sequence_match is None
+    assert result.event_mismatch_details is None
+
+
+def test_event_sequence_validation_with_table_tests():
+    """Test event sequence validation with table-driven tests."""
+    from core.workflow.graph_events import NodeRunStartedEvent, NodeRunStreamChunkEvent, NodeRunSucceededEvent
+
+    runner = TableTestRunner()
+
+    test_cases = [
+        WorkflowTestCase(
+            fixture_path="simple_passthrough_workflow",
+            inputs={"query": "test1"},
+            expected_outputs={"query": "test1"},
+            expected_event_sequence=[
+                GraphRunStartedEvent,
+                NodeRunStartedEvent,
+                NodeRunStreamChunkEvent,
+                NodeRunSucceededEvent,
+                NodeRunStartedEvent,
+                NodeRunSucceededEvent,
+                GraphRunSucceededEvent,
+            ],
+            description="Table test 1: Valid sequence",
+        ),
+        WorkflowTestCase(
+            fixture_path="simple_passthrough_workflow",
+            inputs={"query": "test2"},
+            expected_outputs={"query": "test2"},
+            # No event sequence validation for this test
+            description="Table test 2: No sequence validation",
+        ),
+        WorkflowTestCase(
+            fixture_path="simple_passthrough_workflow",
+            inputs={"query": "test3"},
+            expected_outputs={"query": "test3"},
+            expected_event_sequence=[
+                GraphRunStartedEvent,
+                NodeRunStartedEvent,
+                NodeRunStreamChunkEvent,
+                NodeRunSucceededEvent,
+                NodeRunStartedEvent,
+                NodeRunSucceededEvent,
+                GraphRunSucceededEvent,
+            ],
+            description="Table test 3: Valid sequence",
+        ),
+    ]
+
+    suite_result = runner.run_table_tests(test_cases)
+
+    # Check all tests passed
+    for i, result in enumerate(suite_result.results):
+        if i == 1:  # Test 2 has no event sequence validation
+            assert result.event_sequence_match is None
+        else:
+            assert result.event_sequence_match is True
+        assert result.success, f"Test {i + 1} failed: {result.event_mismatch_details or result.error}"

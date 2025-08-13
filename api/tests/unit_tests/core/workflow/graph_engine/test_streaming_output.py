@@ -27,7 +27,7 @@ from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
-from .test_graph_engine import TableTestRunner
+from .test_table_runner import TableTestRunner
 
 
 def create_llm_generator_with_streaming(chunks: list[str], engine: GraphEngine):
@@ -117,7 +117,7 @@ def test_streaming_output_with_blocking_equals_one():
     runner = TableTestRunner()
 
     # Load the workflow configuration
-    fixture_data = runner.workflow_runner.load_fixture("test_streaming_output")
+    fixture_data = runner.workflow_runner.load_fixture("conditional_streaming_vs_template_workflow")
     graph_config = fixture_data.get("workflow", {}).get("graph", {})
 
     # Create engine with blocking=1
@@ -207,7 +207,7 @@ def test_streaming_output_with_blocking_not_equals_one():
     runner = TableTestRunner()
 
     # Load the workflow configuration
-    fixture_data = runner.workflow_runner.load_fixture("test_streaming_output")
+    fixture_data = runner.workflow_runner.load_fixture("conditional_streaming_vs_template_workflow")
     graph_config = fixture_data.get("workflow", {}).get("graph", {})
 
     # Create engine with blocking=2

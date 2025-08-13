@@ -30,7 +30,7 @@ from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
-from .test_graph_engine import TableTestRunner
+from .test_table_runner import TableTestRunner
 
 
 def create_llm_generator_with_delay(chunks: list[str], delay: float = 0.1):
@@ -83,7 +83,7 @@ def test_parallel_streaming_workflow():
     runner = TableTestRunner()
 
     # Load the workflow configuration
-    fixture_data = runner.workflow_runner.load_fixture("test_parallel_streaming")
+    fixture_data = runner.workflow_runner.load_fixture("multilingual_parallel_llm_streaming_workflow")
     workflow_config = fixture_data.get("workflow", {})
     graph_config = workflow_config.get("graph", {})
 

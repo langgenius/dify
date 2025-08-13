@@ -6,7 +6,7 @@ from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 
-from .test_graph_engine import TableTestRunner, WorkflowTestCase
+from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
 def mock_template_transform_run(self):
@@ -45,7 +45,7 @@ class TestVariableAggregator:
             runner = TableTestRunner()
 
             test_case = WorkflowTestCase(
-                fixture_path="test_variable_aggregator",
+                fixture_path="dual_switch_variable_aggregator_workflow",
                 inputs={"switch1": switch1, "switch2": switch2},
                 expected_outputs={"group1": expected_group1, "group2": expected_group2},
                 description=description,
