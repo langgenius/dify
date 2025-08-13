@@ -21,4 +21,4 @@ class TestWeaviateVector(AbstractTestVector):
 
 
 def test_weaviate_vector(setup_mock_redis):
-    TestWeaviateVector().run_all_test()
+    TestWeaviateVector().run_all_tests()
