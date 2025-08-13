@@ -58,6 +58,8 @@ export type Collection = {
   server_url?: string
   updated_at?: number
   server_identifier?: string
+  timeout?: number
+  sse_read_timeout?: number
   is_authorized?: boolean
   provider?: string
 }

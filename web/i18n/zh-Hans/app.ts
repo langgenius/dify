@@ -279,6 +279,19 @@ const translation = {
       searchWorkflowNodes: '搜索工作流节点',
       searchWorkflowNodesDesc: '按名称或类型查找并跳转到当前工作流中的节点',
       searchWorkflowNodesHelp: '此功能仅在查看工作流时有效。首先导航到工作流。',
+      runTitle: '命令',
+      runDesc: '快速执行命令（主题、语言等）',
+      themeCategoryTitle: '主题',
+      themeCategoryDesc: '切换应用主题',
+      themeSystem: '系统主题',
+      themeSystemDesc: '跟随系统外观',
+      themeLight: '浅色主题',
+      themeLightDesc: '使用浅色外观',
+      themeDark: '深色主题',
+      themeDarkDesc: '使用深色外观',
+      languageCategoryTitle: '语言',
+      languageCategoryDesc: '切换界面语言',
+      languageChangeDesc: '更改界面语言',
     },
     emptyState: {
       noAppsFound: '未找到应用',
@@ -294,6 +307,8 @@ const translation = {
       knowledgeBases: '知识库',
       workflowNodes: '工作流节点',
     },
+    noMatchingCommands: '未找到匹配的命令',
+    tryDifferentSearch: '请尝试不同的搜索词',
   },
 }
 

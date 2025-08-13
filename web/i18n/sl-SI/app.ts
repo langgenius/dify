@@ -263,6 +263,19 @@ const translation = {
       searchWorkflowNodesDesc: 'Iskanje vozlišč in skok nanje v trenutnem poteku dela po imenu ali vrsti',
       searchKnowledgeBases: 'Iskanje po zbirkah znanja',
       searchPluginsDesc: 'Iskanje in krmarjenje do vtičnikov',
+      themeCategoryTitle: 'Tema',
+      themeLight: 'Svetla tematika',
+      runTitle: 'Ukazi',
+      themeSystem: 'Sistem tema',
+      themeDarkDesc: 'Uporabite temen način',
+      themeLightDesc: 'Uporabite svetlo prikazovanje',
+      themeCategoryDesc: 'Preklopi temo aplikacije',
+      themeDark: 'Temna tema',
+      languageCategoryDesc: 'Preklopi jezik vmesnika',
+      languageCategoryTitle: 'Jezik',
+      themeSystemDesc: 'Sledite videzu svojega operacijskega sistema',
+      runDesc: 'Zaženi hitre ukaze (teme, jezik, ...)',
+      languageChangeDesc: 'Spremeni jezik vmesnika',
     },
     emptyState: {
       noPluginsFound: 'Vtičnikov ni mogoče najti',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} rezultat',
     resultCount_other: '{{count}} rezultatov',
     inScope: 'v {{scope}}s',
+    tryDifferentSearch: 'Poskusite uporabiti drug iskalni izraz',
+    noMatchingCommands: 'Ujemajoči se ukazi niso našli',
   },
 }
 

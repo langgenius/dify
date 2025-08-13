@@ -278,6 +278,19 @@ const translation = {
       searchWorkflowNodes: 'ワークフローノードを検索',
       searchWorkflowNodesDesc: '現在のワークフロー内のノードを名前またはタイプで検索してジャンプ',
       searchWorkflowNodesHelp: 'この機能はワークフロー表示時のみ利用できます。まずワークフローに移動してください。',
+      themeCategoryTitle: 'テーマ',
+      runTitle: 'コマンド',
+      languageCategoryTitle: '言語',
+      themeLightDesc: '明るい外観を使用する',
+      themeSystemDesc: 'OSの外観に従ってください',
+      themeLight: 'ライトテーマ',
+      themeDark: 'ダークテーマ',
+      languageChangeDesc: 'UI言語を変更する',
+      themeDarkDesc: 'ダークモードを使用する',
+      themeSystem: 'システムテーマ',
+      languageCategoryDesc: 'インターフェース言語を切り替える',
+      themeCategoryDesc: 'アプリケーションのテーマを切り替える',
+      runDesc: 'クイックコマンドを実行する（テーマ、言語、...）',
     },
     emptyState: {
       noAppsFound: 'アプリが見つかりません',
@@ -293,6 +306,8 @@ const translation = {
       knowledgeBases: 'ナレッジベース',
       workflowNodes: 'ワークフローノード',
     },
+    noMatchingCommands: '一致するコマンドが見つかりません',
+    tryDifferentSearch: '別の検索語句をお試しください',
   },
 }
 

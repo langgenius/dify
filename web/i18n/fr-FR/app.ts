@@ -263,6 +263,19 @@ const translation = {
       searchKnowledgeBases: 'Rechercher dans les bases de connaissances',
       searchApplications: 'Rechercher des applications',
       searchWorkflowNodesHelp: 'Cette fonctionnalité ne fonctionne que lors de l\'affichage d\'un flux de travail. Accédez d\'abord à un flux de travail.',
+      runTitle: 'Commandes',
+      languageCategoryTitle: 'Langue',
+      themeSystem: 'Thème du système',
+      themeDark: 'Thème Sombre',
+      themeCategoryTitle: 'Thème',
+      themeLight: 'Thème clair',
+      themeCategoryDesc: 'Changer le thème de l\'application',
+      themeLightDesc: 'Utiliser une apparence légère',
+      languageChangeDesc: 'Changer la langue de l\'interface',
+      themeDarkDesc: 'Utiliser l\'apparence sombre',
+      themeSystemDesc: 'Suivez l\'apparence de votre système d\'exploitation',
+      languageCategoryDesc: 'Changer la langue de l\'interface',
+      runDesc: 'Exécuter des commandes rapides (thème, langue, ...)',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} résultat',
     resultCount_other: '{{count}} résultats',
     inScope: 'dans {{scope}}s',
+    noMatchingCommands: 'Aucune commande correspondante n’a été trouvée',
+    tryDifferentSearch: 'Essayez un autre terme de recherche',
   },
 }
 

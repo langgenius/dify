@@ -263,6 +263,19 @@ const translation = {
       searchKnowledgeBasesDesc: 'अपने ज्ञान आधारों की खोज करें और उन्हें नेविगेट करें',
       searchApplicationsDesc: 'अपने अनुप्रयोगों की खोज करें और उन्हें नेविगेट करें',
       searchWorkflowNodesHelp: 'यह सुविधा केवल तब काम करती है जब आप एक कार्यप्रवाह देख रहे हों। पहले एक कार्यप्रवाह पर जाएं।',
+      themeCategoryTitle: 'थीम',
+      runTitle: 'आदेश',
+      languageCategoryTitle: 'भाषा',
+      languageCategoryDesc: 'इंटरफेस भाषा बदलें',
+      themeSystem: 'सिस्टम थीम',
+      themeLight: 'लाइट थीम',
+      themeDarkDesc: 'अंधेरे रूप का उपयोग करें',
+      themeDark: 'डार्क थीम',
+      themeLightDesc: 'हल्की उपस्थिति का प्रयोग करें',
+      languageChangeDesc: 'यूआई भाषा बदलें',
+      themeCategoryDesc: 'ऐप्लिकेशन थीम बदलें',
+      themeSystemDesc: 'अपने ऑपरेटिंग सिस्टम की उपस्थिति का पालन करें',
+      runDesc: 'त्वरित आदेश चलाएँ (थीम, भाषा, ...)',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} परिणाम',
     resultCount_other: '{{count}} परिणाम',
     inScope: '{{scope}}s में',
+    tryDifferentSearch: 'एक अलग खोज शब्द आजमाएँ',
+    noMatchingCommands: 'कोई मिलती-जुलती कमांड्स नहीं मिलीं',
   },
 }
 

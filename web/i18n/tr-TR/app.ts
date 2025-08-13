@@ -259,6 +259,19 @@ const translation = {
       searchPlugins: 'Arama Eklentileri',
       searchWorkflowNodesHelp: 'Bu özellik yalnızca bir iş akışını görüntülerken çalışır. Önce bir iş akışına gidin.',
       searchApplicationsDesc: 'Uygulamalarınızı arayın ve uygulamalarınıza gidin',
+      languageChangeDesc: 'UI dilini değiştir',
+      themeSystem: 'Sistem Teması',
+      runTitle: 'Komutlar',
+      themeLightDesc: 'Aydınlık görünüm kullan',
+      themeSystemDesc: 'İşletim sisteminizin görünümünü takip edin',
+      languageCategoryTitle: 'Dil',
+      themeCategoryTitle: 'Tema',
+      themeLight: 'Aydınlık Tema',
+      themeDark: 'Karanlık Tema',
+      languageCategoryDesc: 'Arayüz dilini değiştir',
+      themeDarkDesc: 'Koyu görünümü kullan',
+      themeCategoryDesc: 'Uygulama temasını değiştir',
+      runDesc: 'Hızlı komutlar çalıştır (tema, dil, ...)',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',
@@ -290,6 +303,8 @@ const translation = {
     resultCount: '{{count}} sonuç',
     resultCount_other: '{{count}} sonuç',
     inScope: '{{scope}}s içinde',
+    tryDifferentSearch: 'Farklı bir arama terimi deneyin',
+    noMatchingCommands: 'Eşleşen komut bulunamadı',
   },
 }
 

@@ -263,6 +263,19 @@ const translation = {
       searchPlugins: 'Пошукові плагіни',
       searchKnowledgeBasesDesc: 'Шукайте та переходьте до своїх баз знань',
       searchWorkflowNodesDesc: 'Знаходьте вузли в поточному робочому процесі та переходьте до них за іменем або типом',
+      themeSystem: 'Тема системи',
+      languageCategoryTitle: 'Мова',
+      themeCategoryTitle: 'Тема',
+      themeLight: 'Світла тема',
+      runTitle: 'Команди',
+      languageChangeDesc: 'Змінити мову інтерфейсу',
+      themeDark: 'Темний режим',
+      themeDarkDesc: 'Використовуйте темний режим',
+      runDesc: 'Run quick commands (theme, language, ...)',
+      themeCategoryDesc: 'Переключити тему застосунку',
+      themeLightDesc: 'Використовуйте світлий вигляд',
+      themeSystemDesc: 'Дотримуйтесь зовнішнього вигляду вашої операційної системи',
+      languageCategoryDesc: 'Переключити мову інтерфейсу',
     },
     emptyState: {
       noPluginsFound: 'Плагінів не знайдено',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} результат',
     resultCount_other: '{{count}} результатів',
     inScope: 'у {{scope}}s',
+    noMatchingCommands: 'Відповідних команд не знайдено',
+    tryDifferentSearch: 'Спробуйте інший пошуковий термін',
   },
 }
 

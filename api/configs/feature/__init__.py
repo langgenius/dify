@@ -552,12 +552,18 @@ class RepositoryConfig(BaseSettings):
     """
 
     CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Specify as a module path",
+        description="Repository implementation for WorkflowExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
     CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
+        description="Repository implementation for WorkflowNodeExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
+        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_node_execution_repository."
+        "CeleryWorkflowNodeExecutionRepository'",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 

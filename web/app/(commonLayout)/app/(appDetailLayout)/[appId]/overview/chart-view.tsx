@@ -54,6 +54,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
             <SimpleSelect
               items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
               className='mt-0 !w-40'
+              notClearable={true}
               onSelect={(item) => {
                 const id = item.value
                 const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
