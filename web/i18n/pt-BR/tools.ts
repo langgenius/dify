@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Chave do Cabeçalho HTTP, você pode deixar como "Authorization" se não tiver ideia do que é ou definir um valor personalizado',
       types: {
         none: 'Nenhum',
-        api_key: 'Chave de API',
         apiKeyPlaceholder: 'Nome do cabeçalho HTTP para a Chave de API',
         apiValuePlaceholder: 'Digite a Chave de API',
         api_key_query: 'Parâmetro de consulta',

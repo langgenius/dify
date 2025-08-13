@@ -259,6 +259,19 @@ const translation = {
       searchApplicationsDesc: 'ค้นหาและนําทางไปยังแอปพลิเคชันของคุณ',
       searchWorkflowNodesHelp: 'คุณลักษณะนี้ใช้ได้เฉพาะเมื่อดูเวิร์กโฟลว์เท่านั้น นําทางไปยังเวิร์กโฟลว์ก่อน',
       searchWorkflowNodesDesc: 'ค้นหาและข้ามไปยังโหนดในเวิร์กโฟลว์ปัจจุบันตามชื่อหรือประเภท',
+      themeCategoryTitle: 'ธีม',
+      languageCategoryTitle: 'ภาษา',
+      runTitle: 'คำสั่ง',
+      themeDark: 'ธีมมืด',
+      languageChangeDesc: 'เปลี่ยนภาษา UI',
+      themeSystem: 'ธีมระบบ',
+      themeLight: 'ธีมสว่าง',
+      runDesc: 'เรียกใช้คำสั่งอย่างรวดเร็ว (ธีม, ภาษา, ... )',
+      themeDarkDesc: 'ใช้รูปลักษณ์เข้ม',
+      themeCategoryDesc: 'เปลี่ยนธีมแอปพลิเคชัน',
+      languageCategoryDesc: 'เปลี่ยนภาษาของอินเทอร์เฟซ',
+      themeLightDesc: 'ใช้รูปลักษณ์ที่มีความสว่าง',
+      themeSystemDesc: 'ติดตามรูปลักษณ์ของระบบปฏิบัติการของคุณ',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',
@@ -290,6 +303,8 @@ const translation = {
     resultCount: '{{count}} ผลลัพธ์',
     resultCount_other: '{{count}} ผลลัพธ์',
     inScope: 'ใน {{scope}}s',
+    noMatchingCommands: 'ไม่พบคําสั่งที่ตรงกัน',
+    tryDifferentSearch: 'ลองใช้ข้อความค้นหาอื่น',
   },
 }
 

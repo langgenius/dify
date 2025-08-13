@@ -18,6 +18,7 @@ import InstallFromMarketplace from '../plugins/install-plugin/install-from-marke
 import type { Plugin } from '../plugins/types'
 import { Command } from 'cmdk'
 import CommandSelector from './command-selector'
+import { RunCommandProvider } from './actions/run'
 
 type Props = {
   onHide?: () => void
@@ -33,7 +34,12 @@ const GotoAnything: FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
-
+  const handleNavSearch = useCallback((q: string) => {
+    setShow(true)
+    setSearchQuery(q)
+    setCmdVal('')
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [])
   // Filter actions based on context
   const Actions = useMemo(() => {
     // Create a filtered copy of actions based on current page context
@@ -43,8 +49,8 @@ const GotoAnything: FC<Props> = ({
     }
     else {
       // Exclude node action on non-workflow pages
-      const { app, knowledge, plugin } = AllActions
-      return { app, knowledge, plugin }
+      const { app, knowledge, plugin, run } = AllActions
+      return { app, knowledge, plugin, run }
     }
   }, [isWorkflowPage])
 
@@ -133,6 +139,11 @@ const GotoAnything: FC<Props> = ({
     setSearchQuery('')
 
     switch (result.type) {
+      case 'command': {
+        const action = Object.values(Actions).find(a => a.key === '@run')
+        action?.action?.(result)
+        break
+      }
       case 'plugin':
         setActivePlugin(result.data)
         break
@@ -248,6 +259,7 @@ const GotoAnything: FC<Props> = ({
             className='outline-none'
             value={cmdVal}
             onValueChange={setCmdVal}
+            disablePointerSelection
           >
             <div className='flex items-center gap-3 border-b border-divider-subtle bg-components-panel-bg-blur px-4 py-3'>
               <RiSearchLine className='h-4 w-4 text-text-quaternary' />
@@ -383,6 +395,7 @@ const GotoAnything: FC<Props> = ({
         </div>
 
       </Modal>
+      <RunCommandProvider onNavSearch={handleNavSearch} />
       {
         activePlugin && (
           <InstallFromMarketplace

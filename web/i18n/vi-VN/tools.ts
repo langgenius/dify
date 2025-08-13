@@ -54,7 +54,6 @@ const translation = {
       keyTooltip: 'Khóa tiêu đề HTTP, bạn có thể để trống nếu không biết hoặc đặt một giá trị tùy chỉnh',
       types: {
         none: 'Không',
-        api_key: 'Khóa API',
         apiKeyPlaceholder: 'Tên tiêu đề HTTP cho Khóa API',
         apiValuePlaceholder: 'Nhập Khóa API',
         api_key_query: 'Tham số truy vấn',

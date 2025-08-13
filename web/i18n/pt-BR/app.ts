@@ -263,6 +263,19 @@ const translation = {
       searchWorkflowNodesHelp: 'Esse recurso só funciona ao visualizar um fluxo de trabalho. Navegue até um fluxo de trabalho primeiro.',
       searchKnowledgeBasesDesc: 'Pesquise e navegue até suas bases de conhecimento',
       searchWorkflowNodes: 'Nós de fluxo de trabalho de pesquisa',
+      themeDarkDesc: 'Use aparência escura',
+      themeCategoryDesc: 'Mudar o tema do aplicativo',
+      themeLight: 'Tema Claro',
+      runDesc: 'Execute comandos rápidos (tema, idioma, ...)',
+      themeCategoryTitle: 'Tema',
+      runTitle: 'Comandos',
+      languageCategoryTitle: 'Idioma',
+      themeSystem: 'Tema do Sistema',
+      languageChangeDesc: 'Mudar o idioma da interface',
+      themeDark: 'Tema Escuro',
+      themeLightDesc: 'Use aparência clara',
+      themeSystemDesc: 'Siga a aparência do seu sistema operacional',
+      languageCategoryDesc: 'Mudar o idioma da interface',
     },
     emptyState: {
       noAppsFound: 'Nenhum aplicativo encontrado',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} resultado',
     resultCount_other: '{{count}} resultados',
     inScope: 'em {{scope}}s',
+    noMatchingCommands: 'Nenhum comando correspondente encontrado',
+    tryDifferentSearch: 'Tente um termo de pesquisa diferente',
   },
 }
 

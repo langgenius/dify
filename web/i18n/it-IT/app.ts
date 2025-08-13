@@ -269,6 +269,19 @@ const translation = {
       searchPlugins: 'Plugin di ricerca',
       searchWorkflowNodesDesc: 'Trovare e passare ai nodi nel flusso di lavoro corrente in base al nome o al tipo',
       searchKnowledgeBases: 'Cerca nelle Basi di Conoscenza',
+      themeCategoryTitle: 'Tema',
+      themeDarkDesc: 'Usa l\'aspetto scuro',
+      languageCategoryTitle: 'Lingua',
+      themeLight: 'Tema Chiaro',
+      themeSystem: 'Tema di sistema',
+      runTitle: 'Comandi',
+      themeDark: 'Tema scuro',
+      themeLightDesc: 'Usa un aspetto chiaro',
+      themeCategoryDesc: 'Cambia tema dell\'applicazione',
+      languageCategoryDesc: 'Cambia lingua dell\'interfaccia',
+      languageChangeDesc: 'Cambia lingua dell\'interfaccia',
+      runDesc: 'Esegui comandi rapidi (tema, lingua, ...)',
+      themeSystemDesc: 'Segui l\'aspetto del tuo sistema operativo',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
@@ -300,6 +313,8 @@ const translation = {
     resultCount: '{{count}} risultato',
     resultCount_other: '{{count}} risultati',
     inScope: 'in {{scope}}s',
+    tryDifferentSearch: 'Prova un termine di ricerca diverso',
+    noMatchingCommands: 'Nessun comando corrispondente trovato',
   },
 }
 

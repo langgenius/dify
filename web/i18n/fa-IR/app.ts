@@ -263,6 +263,19 @@ const translation = {
       searchKnowledgeBasesDesc: 'پایگاه های دانش خود را جستجو کرده و به آن ناوبری کنید',
       searchPluginsDesc: 'افزونه های خود را جستجو کرده و به آنها پیمایش کنید',
       searchWorkflowNodesDesc: 'گره ها را در گردش کار فعلی بر اساس نام یا نوع پیدا کنید و به آنها بروید',
+      themeCategoryTitle: 'تم',
+      languageCategoryTitle: 'زبان',
+      runTitle: 'دستورات',
+      themeSystem: 'تم سیستم',
+      themeLight: 'تم روشن',
+      themeDark: 'تم تاریک',
+      languageCategoryDesc: 'زبان رابط را تغییر دهید',
+      themeCategoryDesc: 'تغییر تم برنامه',
+      themeDarkDesc: 'از ظاهر تیره استفاده کنید',
+      themeLightDesc: 'از ظاهر روشن استفاده کنید',
+      languageChangeDesc: 'زبان رابط کاربری را تغییر دهید',
+      themeSystemDesc: 'به ظاهر سیستم‌عامل خود پایبند باشید',
+      runDesc: 'دستورات سریع اجرا کنید (موضوع، زبان، ...)',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} نتیجه',
     resultCount_other: '{{count}} نتیجه',
     inScope: 'در {{scope}}s',
+    noMatchingCommands: 'هیچ دستوری منطبق یافت نشد',
+    tryDifferentSearch: 'عبارت جستجوی دیگری را امتحان کنید',
   },
 }
 

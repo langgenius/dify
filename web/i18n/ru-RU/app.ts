@@ -263,6 +263,19 @@ const translation = {
       searchApplicationsDesc: 'Поиск и переход к приложениям',
       searchWorkflowNodesHelp: 'Эта функция работает только при просмотре рабочего процесса. Сначала перейдите к рабочему процессу.',
       searchWorkflowNodesDesc: 'Поиск узлов в текущем рабочем процессе и переход к ним по имени или типу',
+      themeCategoryDesc: 'Переключить тему приложения',
+      runTitle: 'Команды',
+      themeDark: 'Темная тема',
+      themeCategoryTitle: 'Тема',
+      languageCategoryTitle: 'Язык',
+      themeSystem: 'Системная тема',
+      runDesc: 'Запустите быстрые команды (тема, язык, ...)',
+      themeLight: 'Светлая тема',
+      themeDarkDesc: 'Используйте темный внешний вид',
+      languageChangeDesc: 'Изменить язык интерфейса',
+      languageCategoryDesc: 'Переключить язык интерфейса',
+      themeLightDesc: 'Используйте светлый внешний вид',
+      themeSystemDesc: 'Следуйте внешнему виду вашей операционной системы',
     },
     emptyState: {
       noPluginsFound: 'Плагины не найдены',
@@ -294,6 +307,8 @@ const translation = {
     resultCount: '{{count}} результат',
     resultCount_other: '{{count}} результатов',
     inScope: 'в {{scope}}s',
+    noMatchingCommands: 'Соответствующие команды не найдены',
+    tryDifferentSearch: 'Попробуйте использовать другой поисковый запрос',
   },
 }
 

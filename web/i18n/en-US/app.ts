@@ -279,6 +279,19 @@ const translation = {
       searchWorkflowNodes: 'Search Workflow Nodes',
       searchWorkflowNodesDesc: 'Find and jump to nodes in the current workflow by name or type',
       searchWorkflowNodesHelp: 'This feature only works when viewing a workflow. Navigate to a workflow first.',
+      runTitle: 'Commands',
+      runDesc: 'Run quick commands (theme, language, ...)',
+      themeCategoryTitle: 'Theme',
+      themeCategoryDesc: 'Switch application theme',
+      themeSystem: 'System Theme',
+      themeSystemDesc: 'Follow your OS appearance',
+      themeLight: 'Light Theme',
+      themeLightDesc: 'Use light appearance',
+      themeDark: 'Dark Theme',
+      themeDarkDesc: 'Use dark appearance',
+      languageCategoryTitle: 'Language',
+      languageCategoryDesc: 'Switch interface language',
+      languageChangeDesc: 'Change UI language',
     },
     emptyState: {
       noAppsFound: 'No apps found',
@@ -294,6 +307,8 @@ const translation = {
       knowledgeBases: 'Knowledge Bases',
       workflowNodes: 'Workflow Nodes',
     },
+    noMatchingCommands: 'No matching commands found',
+    tryDifferentSearch: 'Try a different search term',
   },
 }
 
