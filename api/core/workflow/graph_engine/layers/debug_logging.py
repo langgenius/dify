@@ -186,7 +186,10 @@ class DebugLoggingLayer(Layer):
 
         elif isinstance(event, NodeRunStreamChunkEvent):
             # Log stream chunks at debug level to avoid spam
-            self.logger.debug("📝 Stream chunk from %s: %s", event.node_id, self._truncate_value(event.chunk))
+            final_indicator = " (FINAL)" if event.is_final else ""
+            self.logger.debug(
+                "📝 Stream chunk from %s%s: %s", event.node_id, final_indicator, self._truncate_value(event.chunk)
+            )
 
         # Iteration events
         elif isinstance(event, NodeRunIterationStartedEvent):
