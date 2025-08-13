@@ -254,10 +254,10 @@ const translation = {
   maxActiveRequestsTip: 'Número máximo de solicitudes activas concurrentes por aplicación (0 para ilimitado)',
   gotoAnything: {
     actions: {
-      searchApplications: 'Aplicaciones de búsqueda',
+      searchApplications: 'Buscar aplicaciones',
       searchKnowledgeBasesDesc: 'Busque y navegue por sus bases de conocimiento',
       searchWorkflowNodes: 'Buscar nodos de flujo de trabajo',
-      searchPlugins: 'Complementos de búsqueda',
+      searchPlugins: 'Buscar complementos',
       searchWorkflowNodesDesc: 'Buscar y saltar a nodos en el flujo de trabajo actual por nombre o tipo',
       searchKnowledgeBases: 'Buscar en las bases de conocimiento',
       searchApplicationsDesc: 'Buscar y navegar a sus aplicaciones',

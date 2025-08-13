@@ -266,7 +266,7 @@ const translation = {
       searchApplications: 'Cerca applicazioni',
       searchPluginsDesc: 'Cerca e naviga verso i tuoi plugin',
       searchKnowledgeBasesDesc: 'Cerca e naviga nelle tue knowledge base',
-      searchPlugins: 'Plugin di ricerca',
+      searchPlugins: 'Cerca plugin',
       searchWorkflowNodesDesc: 'Trovare e passare ai nodi nel flusso di lavoro corrente in base al nome o al tipo',
       searchKnowledgeBases: 'Cerca nelle Basi di Conoscenza',
       themeCategoryTitle: 'Tema',

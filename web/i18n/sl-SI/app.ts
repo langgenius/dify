@@ -258,7 +258,7 @@ const translation = {
       searchKnowledgeBasesDesc: 'Iskanje in krmarjenje do zbirk znanja',
       searchWorkflowNodesHelp: 'Ta funkcija deluje le pri ogledu poteka dela. Najprej se pomaknite do poteka dela.',
       searchApplicationsDesc: 'Iskanje in krmarjenje do aplikacij',
-      searchPlugins: 'Iskalni vtičniki',
+      searchPlugins: 'Iskanje vtičnikov',
       searchApplications: 'Iskanje aplikacij',
       searchWorkflowNodesDesc: 'Iskanje vozlišč in skok nanje v trenutnem poteku dela po imenu ali vrsti',
       searchKnowledgeBases: 'Iskanje po zbirkah znanja',
