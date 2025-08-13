@@ -13,7 +13,7 @@ from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
-from .test_graph_engine import TableTestRunner
+from .test_table_runner import TableTestRunner
 
 
 def create_test_graph_engine(graph_config: dict, system_query: str):
@@ -63,7 +63,7 @@ def test_tool_in_chatflow():
     runner = TableTestRunner()
 
     # Load the workflow configuration
-    fixture_data = runner.workflow_runner.load_fixture("test_tool_in_chatflow")
+    fixture_data = runner.workflow_runner.load_fixture("chatflow_time_tool_static_output_workflow")
     graph_config = fixture_data.get("workflow", {}).get("graph", {})
     engine = create_test_graph_engine(graph_config, "1")
 

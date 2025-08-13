@@ -8,7 +8,7 @@ This module tests the loop node's ability to:
 4. Output the final loop variable value
 """
 
-from tests.unit_tests.core.workflow.graph_engine.test_graph_engine import (
+from tests.unit_tests.core.workflow.graph_engine.test_table_runner import (
     TableTestRunner,
     WorkflowTestCase,
 )
@@ -18,7 +18,7 @@ def test_loop_with_break_condition():
     """
     Test loop node with break condition.
 
-    The test_loop.yml fixture implements a loop that:
+    The increment_loop_with_break_condition_workflow.yml fixture implements a loop that:
     1. Starts with num=1
     2. Increments num by 1 each iteration
     3. Breaks when num >= 5
@@ -27,7 +27,7 @@ def test_loop_with_break_condition():
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="test_loop",
+        fixture_path="increment_loop_with_break_condition_workflow",
         inputs={},  # No inputs needed for this test
         expected_outputs={"num": 5},
         description="Loop with break condition when num >= 5",

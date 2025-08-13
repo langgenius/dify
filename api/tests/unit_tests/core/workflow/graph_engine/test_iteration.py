@@ -1,4 +1,4 @@
-from .test_graph_engine import TableTestRunner, WorkflowTestCase
+from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
 def test_simple_iteration_outputs():
@@ -11,7 +11,7 @@ def test_simple_iteration_outputs():
     runner = TableTestRunner()
 
     test_case = WorkflowTestCase(
-        fixture_path="test_iteration",
+        fixture_path="array_iteration_formatting_workflow",
         inputs={},
         expected_outputs={"output": ["output: 1", "output: 2", "output: 3"]},
         description="Iteration formats numbers into strings",
