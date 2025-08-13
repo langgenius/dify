@@ -156,7 +156,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
         with pytest.raises(ValueError) as exc_info:
             list(self.manager._process_blob_chunks(response_generator()))
 
-        assert "File is too large" in str(exc_info.value)
+        assert "The tool file size should be less than" in str(exc_info.value)
         assert "1024 bytes" in str(exc_info.value)
 
     def test_multiple_files_concurrent_processing(self):
