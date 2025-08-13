@@ -157,7 +157,7 @@ class TestBlobChunkProcessing(unittest.TestCase):
             list(self.manager._process_blob_chunks(response_generator()))
 
         assert "The tool file size should be less than" in str(exc_info.value)
-        assert "1024 bytes" in str(exc_info.value)
+        assert "1.00 KB" in str(exc_info.value)
 
     def test_multiple_files_concurrent_processing(self):
         """Test processing chunks from multiple files concurrently."""

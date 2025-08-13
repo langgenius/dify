@@ -1,6 +1,17 @@
 from typing import Optional
 
 
+def bytes_to_str(bytes_size: float) -> str:
+    """
+    Convert bytes to a human-readable string format.
+    If the size is less than 1MB, it returns the size in KB.
+    """
+    if bytes_size < 1024 * 1024:
+        return f"{bytes_size / 1024:.2f} KB"
+    mb_size = bytes_size / (1024 * 1024)
+    return f"{mb_size:.2f} MB"
+
+
 def validate_size(
     actual_size: int,
     hint: str = "",
@@ -21,10 +32,9 @@ def validate_size(
     assert isinstance(actual_size, int)
     if min_size and actual_size < min_size:
         raise exception_class(
-            f"{hint} size should be greater than {min_size / 1024 / 1024:.2f} MB,"
-            f" got {actual_size / 1024 / 1024:.2f} MB."
+            f"{hint} size should be less than {bytes_to_str(actual_size)}, got {bytes_to_str(actual_size)}"
         )
     if max_size and actual_size > max_size:
         raise exception_class(
-            f"{hint} size should be less than {max_size / 1024 / 1024:.2f} MB, got {actual_size / 1024 / 1024:.2f} MB."
+            f"{hint} size should be less than {bytes_to_str(actual_size)}, got {bytes_to_str(actual_size)}"
         )
