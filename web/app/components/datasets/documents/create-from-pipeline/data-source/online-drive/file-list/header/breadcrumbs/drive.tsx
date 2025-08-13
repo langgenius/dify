@@ -19,8 +19,8 @@ const Drive = ({
         type='button'
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          prefix.length > 0 && 'system-sm-medium text-text-secondary hover:bg-state-base-hover',
-          prefix.length === 0 && 'system-sm-regular text-text-tertiary',
+          prefix.length > 0 && 'system-sm-regular text-text-tertiary hover:bg-state-base-hover',
+          prefix.length === 0 && 'system-sm-medium text-text-secondary',
         )}
         onClick={handleBackToRoot}
         disabled={prefix.length === 0}
