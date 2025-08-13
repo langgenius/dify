@@ -15,7 +15,7 @@ export type TypeWithI18N<T = string> = {
 
 export type FormShowOnObject = {
   variable: string
-  value: string
+  value: string | string[]
 }
 
 export enum FormTypeEnum {
@@ -34,7 +34,11 @@ export enum FormTypeEnum {
   dynamicSelect = 'dynamic-select',
   textareaInput = 'textarea-input',
   promptInput = 'prompt-input',
+  objectList = 'object-list',
+  arrayList = 'array-list',
+  jsonInput = 'json-input',
   collapse = 'collapse',
+  editMode = 'edit-mode',
 }
 
 export type FormOption = {
@@ -47,13 +51,13 @@ export type FormOption = {
 export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any>
 
 export type FormSchema = {
-  type: FormTypeEnum
+  type: FormTypeEnum | ((form: AnyFormApi) => FormTypeEnum)
   name: string
   label: string | ReactNode | TypeWithI18N
   required: boolean
   default?: any
   tooltip?: string | TypeWithI18N
-  show_on?: FormShowOnObject[]
+  show_on?: FormShowOnObject[] | ((form: AnyFormApi) => FormShowOnObject[])
   url?: string
   scope?: string
   help?: string | TypeWithI18N
@@ -64,7 +68,8 @@ export type FormSchema = {
   inputContainerClassName?: string
   inputClassName?: string
   validators?: AnyValidators
-  showRadioUI?: boolean
+  selfFormProps?: (form: AnyFormApi) => Record<string, any>
+  onChange?: (form: AnyFormApi) => void
 }
 
 export type FormValues = Record<string, any>

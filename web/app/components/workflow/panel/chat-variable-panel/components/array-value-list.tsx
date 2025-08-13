@@ -52,7 +52,7 @@ const ArrayValueList: FC<Props> = ({
         <div className='flex items-center space-x-1' key={index}>
           <Input
             placeholder={t('workflow.chatVariable.modal.arrayValue') || ''}
-            value={list[index]}
+            value={list[index] || ''}
             onChange={handleNameChange(index)}
             type={isString ? 'text' : 'number'}
           />
