@@ -174,11 +174,11 @@ class ChatApi(Resource):
                 session=db.session,
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                alias_name=args["workflow_alias"]
+                alias_name=args["workflow_alias"],
             )
 
             if not workflow:
-                raise NotFound(f"Workflow with alias '{args['workflow_alias']}' not found")
+                raise WorkflowNotFoundError(f"Workflow with alias '{args['workflow_alias']}' not found")
 
             args["workflow_id"] = workflow.id
 

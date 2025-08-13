@@ -1,6 +1,5 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import type { VersionHistory } from '@/types/workflow'
 import type { WorkflowAlias } from '../../../types'
@@ -10,21 +9,24 @@ import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 
 import Select from '@/app/components/base/select'
-import { useCreateWorkflowAlias, useDeleteWorkflowAlias, useWorkflowAliasList } from '@/service/use-workflow-alias'
+import { useCreateWorkflowAlias, useDeleteWorkflowAlias } from '@/service/use-workflow-alias'
 import { workflowAliasTranslation } from '@/i18n/zh-Hans/workflow-alias'
 
 type AliasManagementModalProps = {
   isOpen: boolean
   onClose: () => void
   versionHistory: VersionHistory
+  aliases: WorkflowAlias[]
+  onAliasChange: () => void
 }
 
 const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
   isOpen,
   onClose,
   versionHistory,
+  aliases,
+  onAliasChange,
 }) => {
-  const { t } = useTranslation()
   const aliasT = workflowAliasTranslation
   const appDetail = useAppStore.getState().appDetail
 
@@ -39,16 +41,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
 
   const [isCreating, setIsCreating] = useState(false)
 
-  const {
-    data: aliasList,
-    refetch: refetchAliasList,
-  } = useWorkflowAliasList({
-    appId: appDetail!.id,
-    workflowId: versionHistory.id,
-  })
-
   const { mutateAsync: createAlias } = useCreateWorkflowAlias(appDetail!.id)
-
   const { mutateAsync: deleteAlias } = useDeleteWorkflowAlias(appDetail!.id)
 
   const resetForm = useCallback(() => {
@@ -90,7 +83,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       })
       resetForm()
       setIsAddingNew(false)
-      refetchAliasList()
+      onAliasChange()
     }
  catch (error: any) {
       Toast.notify({
@@ -101,7 +94,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
  finally {
       setIsCreating(false)
     }
-  }, [newAliasName, newAliasType, versionHistory.id, createAlias, resetForm, refetchAliasList, t])
+  }, [newAliasName, newAliasType, versionHistory.id, createAlias, resetForm, onAliasChange])
 
   const handleDeleteAlias = useCallback(async (alias: WorkflowAlias) => {
     if (alias.alias_type === 'system') {
@@ -118,7 +111,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
         type: 'success',
         message: aliasT.deleteSuccess,
       })
-      refetchAliasList()
+      onAliasChange()
     }
  catch (error: any) {
       Toast.notify({
@@ -126,7 +119,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
         message: error.message || aliasT.deleteFailure,
       })
     }
-  }, [deleteAlias, refetchAliasList, t])
+  }, [deleteAlias, onAliasChange])
 
   useEffect(() => {
     if (!isOpen)
@@ -143,9 +136,9 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
       <div className="space-y-2 overflow-visible">
 
         <div>
-          {aliasList?.items && aliasList.items.length > 0 ? (
+          {aliases && aliases.length > 0 ? (
             <div className="space-y-2">
-              {aliasList.items.map(alias => (
+              {aliases.map((alias: WorkflowAlias) => (
                 <div key={alias.id} className="group flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100">
                   <div className="flex flex-1 items-center justify-between">
                     <div className="flex items-center space-x-2">

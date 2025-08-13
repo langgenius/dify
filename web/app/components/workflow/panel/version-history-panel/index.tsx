@@ -11,6 +11,8 @@ import Filter from './filter'
 import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useWorkflowAliasList } from '@/service/use-workflow-alias'
+import type { WorkflowAlias } from '@/app/components/workflow/types'
 import Divider from '@/app/components/base/divider'
 import Loading from './loading'
 import Empty from './empty'
@@ -59,6 +61,31 @@ const VersionHistoryPanel = () => {
     userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
     namedOnly: isOnlyShowNamedVersions,
   })
+
+  // Extract all workflow IDs from version history for batch alias query (excluding draft)
+  const allWorkflowIds = versionHistory?.pages?.flatMap(page =>
+    page.items?.filter(item => item.version !== 'draft').map(item => item.id) || [],
+  ) || []
+
+  // Batch query aliases for all workflow versions (only when we have workflow IDs)
+  const { data: allAliases, refetch: refetchAliases } = useWorkflowAliasList({
+    appId: appDetail!.id,
+    workflowIds: allWorkflowIds,
+  })
+
+  // Create a map of workflow_id -> aliases for efficient lookup
+  const aliasesMap = React.useMemo(() => {
+    const map = new Map<string, WorkflowAlias[]>()
+    if (allAliases?.items) {
+      allAliases.items.forEach((alias) => {
+        if (!map.has(alias.workflow_id))
+          map.set(alias.workflow_id, [])
+
+        map.get(alias.workflow_id)!.push(alias)
+      })
+    }
+    return map
+  }, [allAliases])
 
   const handleVersionClick = useCallback((item: VersionHistory) => {
     if (item.id !== currentVersion?.id) {
@@ -252,6 +279,7 @@ const VersionHistoryPanel = () => {
                       onClick={handleVersionClick}
                       handleClickMenuItem={handleClickMenuItem.bind(null, item)}
                       isLast={isLast}
+                      aliases={aliasesMap.get(item.id) || []}
                     />
                   })
                 ))}
@@ -301,6 +329,8 @@ const VersionHistoryPanel = () => {
         isOpen={aliasModalOpen}
         versionHistory={operatedItem}
         onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.manageAlias)}
+        aliases={aliasesMap.get(operatedItem.id) || []}
+        onAliasChange={refetchAliases}
       />)}
     </div>
   )

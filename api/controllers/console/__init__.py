@@ -171,9 +171,7 @@ api.add_resource(
 # Import tag controllers
 # Register workflow alias routes
 from .app.workflow_alias import (
-    WorkflowAliasByWorkflowApi,
-    WorkflowAliasCreateApi,
-    WorkflowAliasDetailApi,
+    WorkflowAliasApi,
 )
 from .tag import tags
 
@@ -191,6 +189,4 @@ from .workspace import (
     workspace,
 )
 
-api.add_resource(WorkflowAliasCreateApi, "/apps/<uuid:app_id>/workflow-aliases")
-api.add_resource(WorkflowAliasDetailApi, "/apps/<uuid:app_id>/workflow-aliases/<string:alias_id>")
-api.add_resource(WorkflowAliasByWorkflowApi, "/apps/<uuid:app_id>/workflows/<string:workflow_id>/aliases")
+api.add_resource(WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases")

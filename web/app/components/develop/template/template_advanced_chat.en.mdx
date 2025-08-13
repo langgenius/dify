@@ -84,7 +84,7 @@ Chat applications support session persistence, allowing previous chat history to
       (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
       </Property>
       <Property name='workflow_alias' type='string' key='workflow_alias'>
-      (Optional) Workflow alias to specify a specific version of workflow. Priority: workflow_alias > workflow_id > latest published version.
+      (Optional) Workflow alias to specify a specific version of workflow. System searches in the following priority order: workflow_alias > workflow_id > latest published version.
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
@@ -234,7 +234,6 @@ Chat applications support session persistence, allowing previous chat history to
     - 400, `workflow_not_found`, specified workflow version not found
     - 400, `draft_workflow_error`, cannot use draft workflow version
     - 400, `workflow_id_format_error`, invalid workflow_id format, expected UUID format
-    - 404, `workflow_alias_not_found`, specified workflow alias not found
     - 400, `completion_request_error`, text generation failed
     - 500, internal server error
 

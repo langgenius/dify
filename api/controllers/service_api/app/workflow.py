@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from dateutil.parser import isoparse
 from flask import request
@@ -138,17 +139,15 @@ class WorkflowRunByIdentifierApi(Resource):
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         args = parser.parse_args()
 
-        workflow_id = self._resolve_workflow_id(app_model, identifier)
-
-        # Add workflow_id to args for AppGenerateService
-        args["workflow_id"] = workflow_id
-
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
         streaming = args.get("response_mode") == "streaming"
 
         try:
+            workflow_id = self._resolve_workflow_id(app_model, identifier)
+            # Add workflow_id to args for AppGenerateService
+            args["workflow_id"] = workflow_id
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
@@ -183,12 +182,21 @@ class WorkflowRunByIdentifierApi(Resource):
         """
         workflow_alias_service = WorkflowAliasService()
         workflow = workflow_alias_service.get_workflow_by_alias(
-            session=db.session,
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            alias_name=identifier
+            session=db.session, tenant_id=app_model.tenant_id, app_id=app_model.id, alias_name=identifier
         )
-        return workflow.id if workflow else identifier
+
+        if workflow:
+            return workflow.id
+
+        # If not found as alias, check if it's a valid UUID format
+        try:
+            uuid.UUID(identifier)
+            return identifier
+        except (ValueError, TypeError):
+            # Neither alias nor valid UUID format
+            raise WorkflowIdFormatError(
+                f"Invalid identifier '{identifier}'. Must be a valid workflow alias or UUID format."
+            )
 
 
 class WorkflowTaskStopApi(Resource):

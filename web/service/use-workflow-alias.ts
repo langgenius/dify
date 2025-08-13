@@ -1,17 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post } from './base'
+import { del, get, post } from './base'
 import type { WorkflowAlias, WorkflowAliasList } from '@/app/components/workflow/types'
 
-export const useWorkflowAliasList = ({ appId, workflowId }: {
+export const useWorkflowAliasList = ({ appId, workflowIds }: {
   appId: string
-  workflowId: string
+  workflowIds?: string[]
 }) => {
   return useQuery<WorkflowAliasList>({
-    queryKey: ['workflow-aliases', appId, workflowId],
+    queryKey: ['workflow-aliases', appId, workflowIds],
     queryFn: async () => {
-      return get<WorkflowAliasList>(`/apps/${appId}/workflows/${workflowId}/aliases`)
+      if (workflowIds && workflowIds.length > 0) {
+        const workflowIdsParam = workflowIds.join(',')
+        return get<WorkflowAliasList>(`/apps/${appId}/workflow-aliases?workflow_ids=${workflowIdsParam}`)
+      }
+ else {
+        // When no workflow IDs, get all aliases for the app
+        return get<WorkflowAliasList>(`/apps/${appId}/workflow-aliases`)
+      }
     },
-    enabled: !!appId && !!workflowId,
+    enabled: !!appId && (workflowIds === undefined || workflowIds.length > 0),
   })
 }
 
@@ -28,28 +35,39 @@ export const useCreateWorkflowAlias = (appId: string) => {
         body: data,
       })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
-    },
-  })
-}
+    onSuccess: (data) => {
+      // Instead of invalidating all queries, update the specific cache
+      // This prevents multiple network requests
+      queryClient.setQueriesData(
+        {
+          queryKey: ['workflow-aliases', appId],
+          exact: false,
+        },
+        (oldData: WorkflowAliasList | undefined) => {
+          if (!oldData) return oldData
 
-export const useUpdateWorkflowAlias = (appId: string) => {
-  const queryClient = useQueryClient()
+          // Add the new alias to the existing data
+          const newAlias = data
+          const existingAliases = oldData.items || []
 
-  return useMutation({
-    mutationFn: async ({ aliasId, data }: {
-      aliasId: string
-      data: {
-        alias_name?: string
-      }
-    }) => {
-      return patch<WorkflowAlias>(`/apps/${appId}/workflow-aliases/${aliasId}`, {
-        body: data,
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
+          // Check if this alias name already exists (for transfer case)
+          const existingIndex = existingAliases.findIndex(alias => alias.alias_name === newAlias.alias_name)
+          if (existingIndex >= 0) {
+            // Update existing alias (transfer case)
+            existingAliases[existingIndex] = newAlias
+          }
+ else {
+            // Add new alias
+            existingAliases.push(newAlias)
+          }
+
+          return {
+            ...oldData,
+            items: existingAliases,
+            limit: existingAliases.length,
+          }
+        },
+      )
     },
   })
 }
@@ -59,20 +77,30 @@ export const useDeleteWorkflowAlias = (appId: string) => {
 
   return useMutation({
     mutationFn: async (aliasId: string) => {
-      return del(`/apps/${appId}/workflow-aliases/${aliasId}`)
+      return del(`/apps/${appId}/workflow-aliases?alias_id=${aliasId}`)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-aliases', appId] })
-    },
-  })
-}
+    onSuccess: (data, variables) => {
+      // Instead of invalidating all queries, update the specific cache
+      // This prevents multiple network requests
+      queryClient.setQueriesData(
+        {
+          queryKey: ['workflow-aliases', appId],
+          exact: false,
+        },
+        (oldData: WorkflowAliasList | undefined) => {
+          if (!oldData) return oldData
 
-export const useWorkflowAliasDetail = ({ appId, aliasId }: { appId: string; aliasId: string }) => {
-  return useQuery<WorkflowAlias>({
-    queryKey: ['workflow-alias-detail', appId, aliasId],
-    queryFn: async () => {
-      return get<WorkflowAlias>(`/apps/${appId}/workflow-aliases/${aliasId}`)
+          // Remove the deleted alias from the existing data
+          const existingAliases = oldData.items || []
+          const filteredAliases = existingAliases.filter(alias => alias.id !== variables)
+
+          return {
+            ...oldData,
+            items: filteredAliases,
+            limit: filteredAliases.length,
+          }
+        },
+      )
     },
-    enabled: !!appId && !!aliasId,
   })
 }

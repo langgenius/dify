@@ -12,8 +12,9 @@ from .types import StringUUID
 
 class AliasType(Enum):
     """Alias type enumeration"""
-    SYSTEM = "system"    # System aliases like 'production', 'staging'
-    CUSTOM = "custom"    # User-defined custom aliases
+
+    SYSTEM = "system"  # System aliases like 'production', 'staging'
+    CUSTOM = "custom"  # User-defined custom aliases
 
 
 class WorkflowAlias(Base):
@@ -37,6 +38,8 @@ class WorkflowAlias(Base):
     """
 
     __tablename__ = "workflow_aliases"
+    __allow_unmapped__ = True  # Allow non-mapped attributes
+    __slots__ = ("_is_transferred", "_old_workflow_id")
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_alias_pkey"),
         # Ensure alias name is unique within an app
@@ -52,29 +55,24 @@ class WorkflowAlias(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     alias_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    alias_type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        server_default=AliasType.CUSTOM.value
-    )
+    alias_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=AliasType.CUSTOM.value)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._is_transferred = False
+        self._old_workflow_id = None
 
     @property
     def created_by_account(self):
         """Get the account that created this alias"""
         from .engine import db
+
         return db.session.get(Account, self.created_by)
 
     @property
