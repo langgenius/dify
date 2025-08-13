@@ -725,31 +725,32 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=DatasourceProviderType(datasource_type),
             )
             datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_real_datasource_credentials(
+            credentials = datasource_provider_service.get_datasource_credentials(
                 tenant_id=pipeline.tenant_id,
                 provider=datasource_node_data.get("provider_name"),
                 plugin_id=datasource_node_data.get("plugin_id"),
+                credential_id=datasource_node_data.get("credential_id"),
             )
             if credentials:
-                datasource_runtime.runtime.credentials = credentials[0].get("credentials")
+                datasource_runtime.runtime.credentials = credentials
             datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
 
             for datasource_info in datasource_info_list:
-                if datasource_info.get("key") and datasource_info.get("key", "").endswith("/"):
+                if datasource_info.get("id") and datasource_info.get("type") == "folder":
                     # get all files in the folder
                     self._get_files_in_folder(
                         datasource_runtime,
-                        datasource_info.get("key", ""),
-                        None,
+                        datasource_info.get("id", ""),
                         datasource_info.get("bucket", None),
                         user.id,
                         all_files,
                         datasource_info,
+                        None,
                     )
                 else:
                     all_files.append(
                         {
-                            "key": datasource_info.get("key", ""),
+                            "id": datasource_info.get("id", ""),
                             "bucket": datasource_info.get("bucket", None),
                         }
                     )
@@ -761,11 +762,11 @@ class PipelineGenerator(BaseAppGenerator):
         self,
         datasource_runtime: OnlineDriveDatasourcePlugin,
         prefix: str,
-        start_after: Optional[str],
         bucket: Optional[str],
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
+        next_page_parameters: Optional[dict] = None,
     ):
         """
         Get files in a folder.
@@ -776,7 +777,7 @@ class PipelineGenerator(BaseAppGenerator):
                 bucket=bucket,
                 prefix=prefix,
                 max_keys=20,
-                start_after=start_after,
+                next_page_parameters=next_page_parameters,
             ),
             provider_type=datasource_runtime.datasource_provider_type(),
         )
@@ -785,21 +786,27 @@ class PipelineGenerator(BaseAppGenerator):
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
-                    if file.key.endswith("/"):
+                    if file.type == "folder":
                         self._get_files_in_folder(
-                            datasource_runtime, file.key, None, bucket, user_id, all_files, datasource_info
+                            datasource_runtime,
+                            file.id,
+                            bucket,
+                            user_id,
+                            all_files,
+                            datasource_info,
+                            None,
                         )
                     else:
                         all_files.append(
                             {
-                                "key": file.key,
+                                "id": file.id,
                                 "bucket": bucket,
                             }
                         )
-                    last_file_key = file.key
                 is_truncated = files.is_truncated
+                next_page_parameters = files.next_page_parameters
 
         if is_truncated:
             self._get_files_in_folder(
-                datasource_runtime, prefix, last_file_key, bucket, user_id, all_files, datasource_info
+                datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
             )
