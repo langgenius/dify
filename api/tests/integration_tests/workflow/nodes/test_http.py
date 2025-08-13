@@ -164,7 +164,8 @@ def test_custom_authorization_header(setup_http_mock):
     assert "X-Auth:" in data
 
 
-def test_custom_auth_with_empty_api_key_does_not_set_header():
+@pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
+def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, no header should be set."""
     from core.workflow.entities.variable_pool import VariablePool
     from core.workflow.nodes.http_request.entities import (
