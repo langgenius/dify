@@ -657,7 +657,7 @@ class ToolConfig(BaseSettings):
 
     TOOL_FILE_MAX_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for tool generated files",
-        default=30 * 1024 * 1024,
+        default=50 * 1024 * 1024,
     )
 
 

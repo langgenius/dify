@@ -15,6 +15,7 @@ from core.file import file_manager
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
+from libs.validate_utils import validate_size
 
 from .entities import (
     HttpRequestNodeAuthorization,
@@ -298,18 +299,14 @@ class Executor:
 
     def _validate_and_parse_response(self, response: httpx.Response) -> Response:
         executor_response = Response(response)
-
-        threshold_size = (
-            dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+        validate_size(
+            actual_size=executor_response.size,
+            hint="File" if executor_response.is_file else "Text",
+            max_size=dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
             if executor_response.is_file
-            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE,
+            exception_class=ResponseSizeError,
         )
-        if executor_response.size > threshold_size:
-            raise ResponseSizeError(
-                f"{'File' if executor_response.is_file else 'Text'} size is too large,"
-                f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
-                f" but current size is {executor_response.readable_size}."
-            )
 
         return executor_response
 

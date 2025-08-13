@@ -8,6 +8,7 @@ from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.impl.base import BasePluginClient
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
+from libs.validate_utils import validate_size
 
 
 class FileChunk(BaseModel):
@@ -29,10 +30,12 @@ class FileChunk(BaseModel):
     @field_validator("total_length")
     @classmethod
     def validate_total_length(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("total_length must be positive")
-        if v > dify_config.TOOL_FILE_MAX_SIZE:
-            raise ValueError(f"total_length exceeds maximum file size of {dify_config.TOOL_FILE_MAX_SIZE} bytes")
+        validate_size(
+            actual_size=v,
+            hint="The tool file",
+            min_size=0,
+            max_size=dify_config.TOOL_FILE_MAX_SIZE,
+        )
         return v
 
     @model_validator(mode="before")
