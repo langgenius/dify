@@ -21,6 +21,7 @@ from services.file_service import FileService
 from .error import (
     FileTooLargeError,
     NoFileUploadedError,
+    SensitiveDocumentError,
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
@@ -80,6 +81,8 @@ class FileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+        except services.errors.file.SensitiveDocumentError:
+            raise SensitiveDocumentError()
 
         return upload_file, 201
 

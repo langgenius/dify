@@ -82,6 +82,12 @@ class FileTooLargeError(BaseHTTPException):
     code = 413
 
 
+class SensitiveDocumentError(BaseHTTPException):
+    error_code = "forbidden"
+    description = "Sensitive Document not allowed"
+    code = 404
+
+
 class UnsupportedFileTypeError(BaseHTTPException):
     error_code = "unsupported_file_type"
     description = "File type not allowed."

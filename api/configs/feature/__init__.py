@@ -299,6 +299,16 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    ENABLE_DOCUMENT_SENSITIVITY_CHECK: bool = Field(
+        description=("Enable checking document metadata for sensitivity labels before upload"),
+        default=False,
+    )
+
+    BLOCKED_SENSITIVITY_LEVELS: Optional[str] = Field(
+        description="comma separated sensitivity levels",
+        default="",
+    )
+
 
 class HttpConfig(BaseSettings):
     """

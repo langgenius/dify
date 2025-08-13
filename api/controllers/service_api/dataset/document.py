@@ -32,6 +32,7 @@ from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
+from services.errors.file import SensitiveDocumentError
 from services.file_service import FileService
 
 
@@ -246,13 +247,17 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        upload_file = FileService.upload_file(
-            filename=file.filename,
-            content=file.read(),
-            mimetype=file.mimetype,
-            user=current_user,
-            source="datasets",
-        )
+        try:
+            upload_file = FileService.upload_file(
+                filename=file.filename,
+                content=file.read(),
+                mimetype=file.mimetype,
+                user=current_user,
+                source="datasets",
+            )
+        except services.errors.file.SensitiveDocumentError as sensitive_error:
+            raise SensitiveDocumentError(sensitive_error.description)
+
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
