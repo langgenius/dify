@@ -12,6 +12,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { ConfigurationMethodEnum } from '../declarations'
+import type { Credential } from '../declarations'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
@@ -27,12 +28,13 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
+import { useRefreshModel } from '../hooks'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
   notConfigured?: boolean
   provider: ModelProvider
-  onOpenModal: (configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
+  onOpenModal: (configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields, credential?: Credential) => void
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   notConfigured,
@@ -80,6 +82,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       getModelList(v.payload)
   })
 
+  const { handleRefreshModel } = useRefreshModel()
+
   return (
     <div
       className={cn(
@@ -114,7 +118,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
         {
           showCredential && (
             <CredentialPanel
-              onSetup={() => onOpenModal(ConfigurationMethodEnum.predefinedModel)}
+              onSetup={(credential?: Credential) => onOpenModal(ConfigurationMethodEnum.predefinedModel, undefined, credential)}
+              onUpdate={() => handleRefreshModel(provider, ConfigurationMethodEnum.predefinedModel, undefined)}
               provider={provider}
             />
           )

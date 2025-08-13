@@ -6,6 +6,7 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 import { useRouter, useSearchParams } from 'next/navigation'
 import type {
   ConfigurationMethodEnum,
+  Credential,
   CustomConfigurationModelFixedFields,
   ModelLoadBalancingConfigEntry,
   ModelProvider,
@@ -79,6 +80,7 @@ export type ModelModalType = {
   currentProvider: ModelProvider
   currentConfigurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  credential?: Credential
 }
 export type LoadBalancingEntryModalType = ModelModalType & {
   entry?: ModelLoadBalancingConfigEntry
@@ -337,6 +339,7 @@ export const ModalContextProvider = ({
               provider={showModelModal.payload.currentProvider}
               configurateMethod={showModelModal.payload.currentConfigurationMethod}
               currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
+              credential={showModelModal.payload.credential}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
             />
