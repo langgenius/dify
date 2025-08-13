@@ -190,11 +190,11 @@ def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
         method="get",
         authorization=HttpRequestNodeAuthorization(
             type="api-key",
-            config=HttpRequestNodeAuthorization.Config(
-                type="custom",
-                api_key="",  # Empty api_key
-                header="X-Custom-Auth",
-            ),
+            config={
+                "type": "custom",
+                "api_key": "",  # Empty api_key
+                "header": "X-Custom-Auth",
+            },
         ),
         headers="",
         params="",
