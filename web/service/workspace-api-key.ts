@@ -84,7 +84,7 @@ export const updateWorkspaceApiKey: Fetcher<WorkspaceApiKey, {
   scopes?: string[]
   expiresInDays?: number
 }> = ({ keyId, name, scopes, expiresInDays }) => {
-  const payload: any = {}
+  const payload: UpdateWorkspaceApiKeyPayload = {}
   if (name !== undefined) payload.name = name
   if (scopes !== undefined) payload.scopes = scopes
   if (expiresInDays !== undefined) payload.expires_in_days = expiresInDays
