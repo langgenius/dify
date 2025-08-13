@@ -20,6 +20,7 @@ parameters_fields = {
     "annotation_reply": fields.Raw,
     "more_like_this": fields.Raw,
     "user_input_form": fields.Raw,
+    "workflow_output_form": fields.Raw,
     "sensitive_word_avoidance": fields.Raw,
     "file_upload": fields.Raw,
     "system_parameters": fields.Nested(parameters__system_parameters),
