@@ -67,7 +67,9 @@ class VariablePool(BaseModel):
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
         # Add rag pipeline variables to the variable pool
         for var in self.rag_pipeline_variables:
-            self.add((RAG_PIPELINE_VARIABLE_NODE_ID, var.variable.belong_to_node_id, var.variable.variable), var.value)
+            # Combine belong_to_node_id and variable into a single variable name
+            variable_name = f"{var.variable.belong_to_node_id}.{var.variable.variable}"
+            self.add((RAG_PIPELINE_VARIABLE_NODE_ID, variable_name), var.value)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """

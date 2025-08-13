@@ -109,19 +109,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = {
-                SystemVariableKey.FILES: files,
-                SystemVariableKey.USER_ID: user_id,
-                SystemVariableKey.APP_ID: app_config.app_id,
-                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
-                SystemVariableKey.WORKFLOW_EXECUTION_ID: self.application_generate_entity.workflow_execution_id,
-                SystemVariableKey.DOCUMENT_ID: self.application_generate_entity.document_id,
-                SystemVariableKey.BATCH: self.application_generate_entity.batch,
-                SystemVariableKey.DATASET_ID: self.application_generate_entity.dataset_id,
-                SystemVariableKey.DATASOURCE_TYPE: self.application_generate_entity.datasource_type,
-                SystemVariableKey.DATASOURCE_INFO: self.application_generate_entity.datasource_info,
-                SystemVariableKey.INVOKE_FROM: self.application_generate_entity.invoke_from.value,
-            }
+            system_inputs = SystemVariable(
+                files=files,
+                user_id=user_id,
+                app_id=app_config.app_id,
+                workflow_id=app_config.workflow_id,
+                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+                document_id=self.application_generate_entity.document_id,
+                batch=self.application_generate_entity.batch,
+                dataset_id=self.application_generate_entity.dataset_id,
+                datasource_type=self.application_generate_entity.datasource_type,
+                datasource_info=self.application_generate_entity.datasource_info,
+                invoke_from=self.application_generate_entity.invoke_from.value,
+            )
             rag_pipeline_variables = []
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
@@ -138,7 +138,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                         )
 
             variable_pool = VariablePool(
-                system_variables=SystemVariable(**system_inputs),
+                system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
                 conversation_variables=[],

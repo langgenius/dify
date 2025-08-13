@@ -204,16 +204,7 @@ class DatasourceNode(BaseNode):
                         size=upload_file.size,
                         storage_key=upload_file.key,
                     )
-                    variable_pool.add([self.node_id, "file"], [file_info])
-                    for key, value in datasource_info.items():
-                        # construct new key list
-                        new_key_list = ["file", key]
-                        self._append_variables_recursively(
-                            variable_pool=variable_pool,
-                            node_id=self.node_id,
-                            variable_key_list=new_key_list,
-                            variable_value=value,
-                        )
+                    variable_pool.add([self.node_id, "file"], file_info.to_dict())
                     yield RunCompletedEvent(
                         run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -307,7 +298,7 @@ class DatasourceNode(BaseNode):
         :param variable_value: variable value
         :return:
         """
-        variable_pool.add([node_id] + variable_key_list, variable_value)
+        variable_pool.add([node_id] + [".".join(variable_key_list)], variable_value)
 
         # if variable_value is a dict, then recursively append variables
         if isinstance(variable_value, dict):
@@ -533,16 +524,8 @@ class DatasourceNode(BaseNode):
                     mapping=mapping,
                     tenant_id=self.tenant_id,
                 )
-        variable_pool.add([self.node_id, "file"], [file])
-        for key, value in datasource_info.items():
-            # construct new key list
-            new_key_list = ["file", key]
-            self._append_variables_recursively(
-                variable_pool=variable_pool,
-                node_id=self.node_id,
-                variable_key_list=new_key_list,
-                variable_value=value,
-            )
+        if file:
+            variable_pool.add([self.node_id, "file"], file.to_dict())
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
