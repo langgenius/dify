@@ -186,6 +186,8 @@ def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
 
     # Create node data with custom auth and empty api_key
     node_data = HttpRequestNodeData(
+        title="http",
+        desc="",
         url="http://example.com",
         method="get",
         authorization=HttpRequestNodeAuthorization(
