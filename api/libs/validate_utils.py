@@ -21,11 +21,9 @@ def validate_size(
     assert isinstance(actual_size, int)
     if min_size and actual_size < min_size:
         raise exception_class(
-            f"{hint} should be greater than {min_size / 1024 / 1024:.2f} MB,"
-            f" got {actual_size / 1024 / 1024:.2f} MB."
+            f"{hint} should be greater than {min_size / 1024 / 1024:.2f} MB, got {actual_size / 1024 / 1024:.2f} MB."
         )
     if max_size and actual_size > max_size:
         raise exception_class(
-            f"{hint} size should be less than {max_size / 1024 / 1024:.2f} MB,"
-            f" got {actual_size / 1024 / 1024:.2f} MB."
+            f"{hint} size should be less than {max_size / 1024 / 1024:.2f} MB, got {actual_size / 1024 / 1024:.2f} MB."
         )
