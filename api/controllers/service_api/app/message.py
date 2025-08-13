@@ -21,7 +21,9 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.errors.conversation import ConversationNotExistsError
 from services.message_service import MessageService
+from services.conversation_service import ConversationService
 
 
 class MessageListApi(Resource):
@@ -132,28 +134,29 @@ class MessageDetailApi(Resource):
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
     }
 
-    @validate_app_token
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(message_detail_fields)
-    def get(self, app_model: App, message_id):
+    def get(self, app_model: App, end_user: EndUser, message_id):
         """
         Get message detail including workflow_run_id
         """
         message_id = str(message_id)
 
         try:
-            # Direct query message, no user verification required
-            message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
-
-            if not message:
-                raise MessageNotExistsError()
-
+            # Use MessageService.get_message with the end_user from API token validation
+            # The validate_app_token decorator ensures end_user is always provided
+            message = MessageService.get_message(
+                app_model=app_model,
+                user=end_user,
+                message_id=message_id
+            )
             return message
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
 
 class MessageSuggestedApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)

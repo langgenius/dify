@@ -2,17 +2,17 @@ from flask_restful import Resource, reqparse
 
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
-from controllers.service_api.wraps import validate_app_token
+from controllers.service_api.wraps import validate_app_token, FetchUserArg, WhereisUserArg
 from libs.helper import uuid_value
-from models.model import App
+from models.model import App, EndUser
 from services.workflow_run_service import WorkflowRunService
 
 
 class NodeExecutionsApi(Resource):
-    @validate_app_token
-    def get(self, app_model: App):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    def get(self, app_model: App, end_user: EndUser):
         """
-        Get workflow run node executions
+        Get workflow run node executions with user verification
         """
         parser = reqparse.RequestParser()
         parser.add_argument("workflow_run_id", type=uuid_value, required=True, location="args")
@@ -21,9 +21,9 @@ class NodeExecutionsApi(Resource):
         try:
             workflow_run_service = WorkflowRunService()
 
-            # No longer need user parameter, query directly using app_model.tenant_id
+            # Pass end_user to ensure proper access control
             node_executions = workflow_run_service.get_workflow_run_node_executions(
-                app_model=app_model, run_id=args["workflow_run_id"], user=None
+                app_model=app_model, run_id=args["workflow_run_id"], user=end_user
             )
 
             return {
