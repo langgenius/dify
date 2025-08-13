@@ -57,6 +57,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -389,6 +390,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if llm_result.message.content
             else ""
         )
+        message.updated_at = naive_utc_now()
         message.answer_tokens = usage.completion_tokens
         message.answer_unit_price = usage.completion_unit_price
         message.answer_price_unit = usage.completion_price_unit

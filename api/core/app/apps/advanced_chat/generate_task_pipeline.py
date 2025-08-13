@@ -74,6 +74,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -896,6 +897,7 @@ class AdvancedChatAppGenerateTaskPipeline:
     def _save_message(self, *, session: Session, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
         message = self._get_message(session=session)
         message.answer = self._task_state.answer
+        message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
         message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
