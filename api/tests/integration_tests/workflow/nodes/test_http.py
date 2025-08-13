@@ -174,7 +174,7 @@ def test_custom_auth_with_empty_api_key_does_not_set_header():
     )
     from core.workflow.nodes.http_request.executor import Executor
     from core.workflow.system_variable import SystemVariable
-    
+
     # Create variable pool
     variable_pool = VariablePool(
         system_variables=SystemVariable(user_id="test", files=[]),
@@ -182,7 +182,7 @@ def test_custom_auth_with_empty_api_key_does_not_set_header():
         environment_variables=[],
         conversation_variables=[],
     )
-    
+
     # Create node data with custom auth and empty api_key
     node_data = HttpRequestNodeData(
         url="http://example.com",
@@ -192,25 +192,23 @@ def test_custom_auth_with_empty_api_key_does_not_set_header():
             config=HttpRequestNodeAuthorization.Config(
                 type="custom",
                 api_key="",  # Empty api_key
-                header="X-Custom-Auth"
-            )
+                header="X-Custom-Auth",
+            ),
         ),
         headers="",
         params="",
         body=None,
-        ssl_verify=True
+        ssl_verify=True,
     )
-    
+
     # Create executor
     executor = Executor(
-        node_data=node_data,
-        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
-        variable_pool=variable_pool
+        node_data=node_data, timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10), variable_pool=variable_pool
     )
-    
+
     # Get assembled headers
     headers = executor._assembling_headers()
-    
+
     # When api_key is empty, the custom header should NOT be set
     assert "X-Custom-Auth" not in headers
 
