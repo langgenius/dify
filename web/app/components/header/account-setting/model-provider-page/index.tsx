@@ -9,6 +9,7 @@ import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard from './provider-added-card'
 import type {
   ConfigurationMethodEnum,
+  Credential,
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from './declarations'
@@ -126,7 +127,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
-              onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
+              onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields, credential?: Credential) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields, credential)}
             />
           ))}
         </div>
@@ -140,7 +141,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
                 notConfigured
                 key={provider.provider}
                 provider={provider}
-                onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
+                onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields, credential?: Credential) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields, credential)}
               />
             ))}
           </div>

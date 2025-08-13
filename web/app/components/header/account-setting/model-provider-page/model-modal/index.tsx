@@ -45,11 +45,14 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
+import { useModelFormSchemas } from '../model-auth/hooks'
+import type { Credential } from '../declarations'
 
 type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  credential?: Credential
   onCancel: () => void
   onSave: () => void
 }
@@ -58,6 +61,7 @@ const ModelModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
+  credential,
   onCancel,
   onSave,
 }) => {
@@ -71,6 +75,7 @@ const ModelModal: FC<ModelModalProps> = ({
     configurateMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
+    credential?.credential_id,
   )
   const { isCurrentWorkspaceManager } = useAppContext()
   const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
@@ -95,22 +100,7 @@ const ModelModal: FC<ModelModalProps> = ({
       setDraftConfig(originalConfig)
   }, [draftConfig, originalConfig])
 
-  const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider.provider_credential_schema.credential_form_schemas
-      : [
-        genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...(draftConfig?.enabled ? [] : provider.model_credential_schema.credential_form_schemas),
-      ]
-  }, [
-    providerFormSchemaPredefined,
-    provider.provider_credential_schema?.credential_form_schemas,
-    provider.supported_model_types,
-    provider.model_credential_schema?.credential_form_schemas,
-    provider.model_credential_schema?.model,
-    draftConfig?.enabled,
-  ])
+  const { formSchemas } = useModelFormSchemas(provider, providerFormSchemaPredefined, draftConfig)
   const formRef = useRef<FormRefObject>(null)
 
   const extendedSecretFormSchemas = useMemo(
@@ -152,6 +142,7 @@ const ModelModal: FC<ModelModalProps> = ({
       }) || { isCheckValidated: false, values: {} }
       if (!isCheckValidated)
         return
+
       const res = await saveCredentials(
         providerFormSchemaPredefined,
         provider.provider,
@@ -190,6 +181,7 @@ const ModelModal: FC<ModelModalProps> = ({
         providerFormSchemaPredefined,
         provider.provider,
         values,
+        credential?.credential_id,
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -227,7 +219,10 @@ const ModelModal: FC<ModelModalProps> = ({
                       showRadioUI: formSchema.type === FormTypeEnum.radio,
                     }
                   }) as FormSchema[]}
-                  defaultValues={formSchemasValue}
+                  defaultValues={{
+                    ...formSchemasValue,
+                    __authorization_name__: credential?.credential_name,
+                  }}
                   inputClassName='justify-start'
                   ref={formRef}
                 />

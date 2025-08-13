@@ -181,6 +181,11 @@ export type QuotaConfiguration = {
   is_valid: boolean
 }
 
+export type Credential = {
+  credential_id: string
+  credential_name: string
+}
+
 export type ModelProvider = {
   provider: string
   label: TypeWithI18N
@@ -207,6 +212,9 @@ export type ModelProvider = {
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
     status: CustomConfigurationStatusEnum
+    current_credential_id?: string
+    current_credential_name?: string
+    available_credentials?: Credential[]
   }
   system_configuration: {
     enabled: boolean

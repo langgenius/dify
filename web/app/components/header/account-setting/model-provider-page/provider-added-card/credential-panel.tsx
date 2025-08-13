@@ -1,7 +1,10 @@
-import type { FC } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiEqualizer2Line } from '@remixicon/react'
-import type { ModelProvider } from '../declarations'
+import type {
+  Credential,
+  ModelProvider,
+} from '../declarations'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -19,15 +22,18 @@ import Button from '@/app/components/base/button'
 import { changeModelProviderPriority } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import Authorized from '../model-auth/authorized'
 
 type CredentialPanelProps = {
   provider: ModelProvider
-  onSetup: () => void
+  onSetup: (credential?: Credential) => void
+  onUpdate: () => void
 }
-const CredentialPanel: FC<CredentialPanelProps> = ({
+const CredentialPanel = ({
   provider,
   onSetup,
-}) => {
+  onUpdate,
+}: CredentialPanelProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -38,6 +44,13 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
   const priorityUseType = provider.preferred_provider_type
   const isCustomConfigured = customConfig.status === CustomConfigurationStatusEnum.active
   const configurateMethods = provider.configurate_methods
+  const {
+    current_credential_id,
+    current_credential_name,
+    available_credentials,
+  } = provider.custom_configuration
+  const authorized = current_credential_id && current_credential_name && available_credentials?.every(item => !!item.credential_id)
+  const authRemoved = !!available_credentials?.length && available_credentials?.every(item => !item.credential_id)
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -61,25 +74,58 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
       } as any)
     }
   }
+  const credentialLabel = useMemo(() => {
+    if (authorized)
+      return current_credential_name
+    if (authRemoved)
+      return 'Auth removed'
+    return 'Unauthorized'
+  }, [authorized, authRemoved, current_credential_name])
 
   return (
     <>
       {
         provider.provider_credential_schema && (
           <div className='relative ml-1 w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1'>
-            <div className='system-xs-medium-uppercase mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary'>
-              API-KEY
-              <Indicator color={isCustomConfigured ? 'green' : 'red'} />
+            <div className='system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary'>
+              <div
+                className='grow truncate'
+                title={credentialLabel}
+              >
+                {credentialLabel}
+              </div>
+              <Indicator className='shrink-0' color={authorized ? 'green' : 'red'} />
             </div>
             <div className='flex items-center gap-0.5'>
-              <Button
-                className='grow'
-                size='small'
-                onClick={onSetup}
-              >
-                <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-                {t('common.operation.setup')}
-              </Button>
+              {
+                (!authorized || authRemoved) && (
+                  <Button
+                    className='grow'
+                    size='small'
+                    onClick={() => onSetup()}
+                    variant={!authorized ? 'secondary-accent' : 'secondary'}
+                  >
+                    <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
+                    {
+                      authRemoved
+                        ? t('common.operation.config')
+                        : t('common.operation.setup')
+                    }
+                  </Button>
+                )
+              }
+              {
+                authorized && (
+                  <Authorized
+                    provider={provider.provider}
+                    onSetup={onSetup}
+                    credentials={available_credentials ?? []}
+                    selectedCredentialId={current_credential_id}
+                    showItemSelectedIcon
+                    onUpdate={onUpdate}
+                  />
+                )
+              }
               {
                 systemConfig.enabled && isCustomConfigured && (
                   <PrioritySelector

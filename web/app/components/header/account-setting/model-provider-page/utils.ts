@@ -82,12 +82,14 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
   let body, url
 
   if (predefined) {
+    const { __authorization_name__, ...rest } = v
     body = {
       config_from: ConfigurationMethodEnum.predefinedModel,
-      credentials: v,
+      credentials: rest,
       load_balancing: loadBalancing,
+      name: __authorization_name__,
     }
-    url = `/workspaces/current/model-providers/${provider}`
+    url = `/workspaces/current/model-providers/${provider}/credentials`
   }
   else {
     const { __model_name, __model_type, ...credentials } = v
@@ -117,12 +119,17 @@ export const savePredefinedLoadBalancingConfig = async (provider: string, v: For
   return setModelProvider({ url, body })
 }
 
-export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
+export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue, credentialId?: string) => {
   let url = ''
   let body
 
   if (predefined) {
-    url = `/workspaces/current/model-providers/${provider}`
+    url = `/workspaces/current/model-providers/${provider}/credentials`
+    if (credentialId) {
+      body = {
+        credential_id: credentialId,
+      }
+    }
   }
   else {
     if (v) {
