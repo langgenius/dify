@@ -37,6 +37,7 @@ const GotoAnything: FC<Props> = ({
   const handleNavSearch = useCallback((q: string) => {
     setShow(true)
     setSearchQuery(q)
+    setCmdVal('')
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
   // Filter actions based on context
@@ -333,7 +334,7 @@ const GotoAnything: FC<Props> = ({
                         <Command.Item
                           key={`${result.type}-${result.id}`}
                           value={result.title}
-                          className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover-alt aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                          className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
                           onSelect={() => handleNavigate(result)}
                         >
                           {result.icon}
