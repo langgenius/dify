@@ -8,8 +8,8 @@ export enum ScrollPosition {
 }
 
 type Params = {
-  wrapElemRef: React.RefObject<HTMLElement>
-  nextToStickyELemRef: React.RefObject<HTMLElement>
+  wrapElemRef: React.RefObject<HTMLElement | null>
+  nextToStickyELemRef: React.RefObject<HTMLElement | null>
 }
 const useStickyScroll = ({
   wrapElemRef,

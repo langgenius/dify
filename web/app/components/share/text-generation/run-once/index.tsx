@@ -109,7 +109,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                       className='h-[104px] sm:text-xs'
                       placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                       value={inputs[item.key]}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
                   )}
                   {item.type === 'number' && (
