@@ -218,7 +218,6 @@ export const useShortcuts = (): void => {
   useKeyPress(
     'shift',
     (e) => {
-      console.log('Shift down', e)
       if (shouldHandleShortcut(e))
         dimOtherNodes()
     },

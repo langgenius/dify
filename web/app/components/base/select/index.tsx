@@ -192,6 +192,7 @@ const SimpleSelect: FC<ISelectProps> = ({
   const localPlaceholder = placeholder || t('common.placeholder.select')
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     let defaultSelect = null
@@ -220,8 +221,11 @@ const SimpleSelect: FC<ISelectProps> = ({
           <ListboxButton onClick={() => {
               // get data-open, use setTimeout to ensure the attribute is set
               setTimeout(() => {
-                if (listboxRef.current)
-                  onOpenChange?.(listboxRef.current.getAttribute('data-open') !== null)
+                if (listboxRef.current) {
+                  const isOpen = listboxRef.current.getAttribute('data-open') !== null
+                  setOpen(isOpen)
+                  onOpenChange?.(isOpen)
+                }
               })
           }} className={classNames(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
             <span className={classNames('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
@@ -240,10 +244,17 @@ const SimpleSelect: FC<ISelectProps> = ({
                   />
                 )
                 : (
-                  <ChevronDownIcon
-                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                    aria-hidden="true"
-                  />
+                  open ? (
+                    <ChevronUpIcon
+                      className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ChevronDownIcon
+                      className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                      aria-hidden="true"
+                    />
+                  )
                 )}
             </span>
           </ListboxButton>
