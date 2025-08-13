@@ -163,20 +163,18 @@ def test_custom_authorization_header(setup_http_mock):
     # Custom authorization header should be set (may be masked)
     assert "X-Auth:" in data
 
+
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_does_not_set_header():
     """Test: In custom authentication mode, when the api_key is empty, no header should be set."""
-    auth_config = {
-        "type": "custom",
-        "header": "X-Custom-Auth",
-        "api_key": ""
-    }
-    
+    auth_config = {"type": "custom", "header": "X-Custom-Auth", "api_key": ""}
+
     headers = {}
     apply_auth(headers, auth_config)
-    
+
     assert "X-Custom-Auth" not in headers
     assert len(headers) == 0
+
 
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_bearer_authorization_with_custom_header_ignored(setup_http_mock):
