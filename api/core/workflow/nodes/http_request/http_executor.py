@@ -235,7 +235,7 @@ class HttpExecutor:
                 for kv in kv_paris:
                     if not kv.strip():
                         continue
-                    kv = kv.split(':')
+                    kv = kv.split(':', 1)
                     if len(kv) == 2:
                         body[kv[0].strip()] = kv[1]
                     elif len(kv) == 1:
@@ -245,12 +245,13 @@ class HttpExecutor:
 
                 if node_data.body.type == 'form-data':
                     self.files = {
-                        k: ('', v) for k, v in body.items()
+                        k: ('', v) for k, v in body.items() if k.strip()
                     }
                     random_str = lambda n: ''.join([chr(randint(97, 122)) for _ in range(n)])
                     self.boundary = f'----WebKitFormBoundary{random_str(16)}'
 
-                    self.headers['Content-Type'] = f'multipart/form-data; boundary={self.boundary}'
+                    # Let httpx handle the boundary automatically
+                    # self.headers['Content-Type'] = f'multipart/form-data; boundary={self.boundary}'
                 else:
                     self.body = urlencode(body)
             elif node_data.body.type in ['json', 'raw-text']:

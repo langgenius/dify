@@ -238,6 +238,46 @@ def test_form_data(setup_http_mock):
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
 
+@pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
+def test_form_data_with_colons_and_empty_fields(setup_http_mock):
+    """Test form-data with values containing colons and empty fields - should not include empty field names"""
+    node = HttpRequestNode(config={
+        'id': '1',
+        'data': {
+            'title': 'http',
+            'desc': '',
+            'method': 'post',
+            'url': 'http://example.com',
+            'authorization': {
+                'type': 'api-key',
+                'config': {
+                    'type': 'basic',
+                    'api_key':'ak-xxx',
+                    'header': 'api-key',
+                }
+            },
+            'headers': 'X-Header:123',
+            'params': 'A:b',
+            'body': {
+                'type': 'form-data',
+                'data': 'modelStr:{"test": "data"}\nraw:{{#a.b123.args2#}}\n:'
+            },
+        }
+    }, **BASIC_NODE_DATA)
+
+    result = node.run(pool)
+    data = result.process_data.get('request', '')
+
+    # Should include valid fields with values containing colons
+    assert 'form-data; name="modelStr"' in data
+    assert '{"test": "data"}' in data
+    assert 'form-data; name="raw"' in data
+    assert '2' in data
+    # Should NOT include empty field names (this was the bug)
+    assert 'form-data; name=""' not in data
+    assert 'api-key: Basic ak-xxx' in data
+    assert 'X-Header: 123' in data
+
 def test_none_data(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
