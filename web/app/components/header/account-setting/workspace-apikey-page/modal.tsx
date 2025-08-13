@@ -29,7 +29,22 @@ const WorkspaceApiKeyModal: FC<WorkspaceApiKeyModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const [name, setName] = useState(data.name || '')
-  const [expiresInDays, setExpiresInDays] = useState(data.expires_in_days || 30)
+  const getExpiresInDays = (data: Partial<WorkspaceApiKey>) => {
+    if (typeof data.expires_in_days === 'number') {
+      return data.expires_in_days
+    }
+    if (data.expires_at) {
+      const expiresAt = new Date(data.expires_at)
+      const now = new Date()
+      // Calculate difference in days, rounding up
+      const diffMs = expiresAt.getTime() - now.getTime()
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+      // Clamp between 1 and 365
+      return Math.min(Math.max(diffDays, 1), 365)
+    }
+    return 30
+  }
+  const [expiresInDays, setExpiresInDays] = useState(getExpiresInDays(data))
   const [scopes, setScopes] = useState<string[]>(data.scopes || [])
   const [loading, setLoading] = useState(false)
   const [newApiKey, setNewApiKey] = useState<string | undefined>()
