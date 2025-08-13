@@ -9,7 +9,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
-from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.system_variable import SystemVariable
@@ -51,8 +50,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         """
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
-
-        workflow_callbacks: list[WorkflowCallback] = []
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run:
@@ -134,7 +131,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             command_channel=command_channel,
         )
 
-        generator = workflow_entry.run(callbacks=workflow_callbacks)
+        generator = workflow_entry.run()
 
         for event in generator:
             self._handle_event(workflow_entry, event)

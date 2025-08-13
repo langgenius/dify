@@ -8,7 +8,6 @@ from configs import dify_config
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
-from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -101,31 +100,18 @@ class WorkflowEntry:
             )
             self.graph_engine.layer(debug_layer)
 
-    def run(
-        self,
-        *,
-        callbacks: Sequence[WorkflowCallback],
-    ) -> Generator[GraphEngineEvent, None, None]:
-        """
-        :param callbacks: workflow callbacks
-        """
+    def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
 
         try:
             # run workflow
             generator = graph_engine.run()
-            for event in generator:
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_event(event=event)
-                yield event
+            yield from generator
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
             logger.exception("Unknown Error when workflow entry running")
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_event(event=GraphRunFailedEvent(error=str(e)))
+            yield GraphRunFailedEvent(error=str(e))
             return
 
     @classmethod

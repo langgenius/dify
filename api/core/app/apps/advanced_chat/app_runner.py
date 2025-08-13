@@ -23,7 +23,6 @@ from core.app.features.annotation_reply.annotation_reply import AnnotationReplyF
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
-from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities import GraphRuntimeState, VariablePool
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.system_variable import SystemVariable
@@ -77,8 +76,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         app_record = db.session.query(App).where(App.id == app_config.app_id).first()
         if not app_record:
             raise ValueError("App not found")
-
-        workflow_callbacks: list[WorkflowCallback] = []
 
         if self.application_generate_entity.single_iteration_run:
             # if only single iteration run is requested
@@ -188,9 +185,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             command_channel=command_channel,
         )
 
-        generator = workflow_entry.run(
-            callbacks=workflow_callbacks,
-        )
+        generator = workflow_entry.run()
 
         for event in generator:
             self._handle_event(workflow_entry, event)

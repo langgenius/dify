@@ -132,18 +132,10 @@ class TestWorkflowEntryRedisChannel:
                 command_channel=redis_channel,
             )
 
-            # Mock callbacks
-            mock_callback = MagicMock()
-
             # Run the workflow
-            events = list(workflow_entry.run(callbacks=[mock_callback]))
+            events = list(workflow_entry.run())
 
             # Verify events were generated
             assert len(events) == 2
             assert events[0] == mock_event1
             assert events[1] == mock_event2
-
-            # Verify callbacks were called
-            assert mock_callback.on_event.call_count == 2
-            mock_callback.on_event.assert_any_call(event=mock_event1)
-            mock_callback.on_event.assert_any_call(event=mock_event2)
