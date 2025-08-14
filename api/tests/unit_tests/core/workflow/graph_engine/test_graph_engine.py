@@ -456,9 +456,7 @@ def test_layer_system_basic():
 
     # Load a simple echo workflow
     fixture_data = runner.load_fixture("simple_passthrough_workflow")
-    graph, graph_runtime_state = runner.create_graph_from_fixture(
-        fixture_data, custom_inputs={"query": "test layer system"}
-    )
+    graph, graph_runtime_state = runner.create_graph_from_fixture(fixture_data, inputs={"query": "test layer system"})
 
     # Create engine with layer
     engine = GraphEngine(
@@ -523,9 +521,7 @@ def test_layer_chaining():
 
     # Load workflow
     fixture_data = runner.load_fixture("simple_passthrough_workflow")
-    graph, graph_runtime_state = runner.create_graph_from_fixture(
-        fixture_data, custom_inputs={"query": "test chaining"}
-    )
+    graph, graph_runtime_state = runner.create_graph_from_fixture(fixture_data, inputs={"query": "test chaining"})
 
     # Create engine
     engine = GraphEngine(
@@ -581,9 +577,7 @@ def test_layer_error_handling():
 
     # Load workflow
     fixture_data = runner.load_fixture("simple_passthrough_workflow")
-    graph, graph_runtime_state = runner.create_graph_from_fixture(
-        fixture_data, custom_inputs={"query": "test error handling"}
-    )
+    graph, graph_runtime_state = runner.create_graph_from_fixture(fixture_data, inputs={"query": "test error handling"})
 
     # Create engine with faulty layer
     engine = GraphEngine(

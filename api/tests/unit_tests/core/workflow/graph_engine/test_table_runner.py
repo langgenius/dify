@@ -41,8 +41,9 @@ class WorkflowTestCase:
     """Represents a single test case for table-driven testing."""
 
     fixture_path: str
-    inputs: dict[str, Any]
     expected_outputs: dict[str, Any]
+    inputs: dict[str, Any] = field(default_factory=dict)
+    query: str = ""
     description: str = ""
     timeout: float = 30.0
     mock_config: Optional[MockConfig] = None
@@ -125,7 +126,8 @@ class WorkflowRunner:
     def create_graph_from_fixture(
         self,
         fixture_data: dict[str, Any],
-        custom_inputs: Optional[dict[str, Any]] = None,
+        query: str = "",
+        inputs: Optional[dict[str, Any]] = None,
         use_mock_factory: bool = False,
         mock_config: Optional[MockConfig] = None,
     ) -> tuple[Graph, GraphRuntimeState]:
@@ -135,9 +137,6 @@ class WorkflowRunner:
 
         if not graph_config:
             raise ValueError("Fixture missing workflow.graph configuration")
-
-        app_config = fixture_data.get("app", {})
-        mode = app_config.get("mode", "workflow")
 
         graph_init_params = GraphInitParams(
             tenant_id="test_tenant",
@@ -155,8 +154,9 @@ class WorkflowRunner:
             app_id=graph_init_params.app_id,
             workflow_id=graph_init_params.workflow_id,
             files=[],
+            query=query,
         )
-        user_inputs = custom_inputs if custom_inputs is not None else {}
+        user_inputs = inputs if inputs is not None else {}
         variable_pool = VariablePool(
             system_variables=system_variables,
             user_inputs=user_inputs,
@@ -302,8 +302,9 @@ class TableTestRunner:
 
             # Create graph from fixture
             graph, graph_runtime_state = self.workflow_runner.create_graph_from_fixture(
-                fixture_data,
-                test_case.inputs,
+                fixture_data=fixture_data,
+                inputs=test_case.inputs,
+                query=test_case.query,
                 use_mock_factory=test_case.use_auto_mock,
                 mock_config=test_case.mock_config,
             )
@@ -384,6 +385,7 @@ class TableTestRunner:
                 event_mismatch_details=event_mismatch_details,
                 events=events,
                 validation_details=validation_details,
+                error=None if success else Exception(validation_details or event_mismatch_details or "Test failed"),
             )
 
         except Exception as e:
